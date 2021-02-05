@@ -55,6 +55,9 @@ IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/git
 IT_REMOTE_NON_RENKU_REPO_URL = os.getenv(
     "IT_REMOTE_NON_RENKU_REPO_URL", "https://dev.renku.ch/gitlab/renku-qa/core-it-non-renku"
 )
+IT_REMOTE_NO_COMMITS_REPO_URL = os.getenv(
+    "IT_REMOTE_NO_COMMITS_REPO_URL", "https://dev.renku.ch/gitlab/renku-qa/core-it-no-commits"
+)
 IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
 
@@ -68,6 +71,12 @@ def it_remote_repo():
 def it_remote_non_renku_repo():
     """Returns a remote path to integration test repository."""
     return IT_REMOTE_NON_RENKU_REPO_URL
+
+
+@pytest.fixture(scope="module")
+def it_remote_no_commits_repo():
+    """Returns a remote path to integration test repository."""
+    return IT_REMOTE_NO_COMMITS_REPO_URL
 
 
 @contextlib.contextmanager
@@ -268,7 +277,7 @@ def template_update(tmpdir, local_client, mocker, template):
             # TODO: remove this once the renku template contains RENKU_VERSION
             dockerfile_path = template_path / "Dockerfile"
             dockerfile = dockerfile_path.read_text()
-            dockerfile_path.write_text(f"{dockerfile}\nARG RENKU_VERSION=0.0.1")
+            dockerfile_path.write_text(f"ARG RENKU_VERSION=0.0.1\n{dockerfile}")
 
         # NOTE: init project from template
         create_from_template(
@@ -420,6 +429,16 @@ def client_with_datasets(client, directory_tree):
         dataset.creators = [person_1, person_2]
 
         client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
+
+    yield client
+
+
+@pytest.fixture()
+def client_with_new_graph(client):
+    """A client with new graph metadata."""
+    from renku.core.incubation.graph import generate_graph
+
+    generate_graph().build().execute(force=True)
 
     yield client
 
@@ -894,6 +913,17 @@ def mock_redis():
     monkey_patch.undo()
 
 
+@pytest.fixture
+def real_sync():
+    """Enable remote sync."""
+    import importlib
+
+    from renku.core.commands import save
+
+    # NOTE: Use this fixture only in serial tests. save.repo_sync is mocked; reloading the save module to undo the mock.
+    importlib.reload(save)
+
+
 @pytest.fixture(scope="module")
 def svc_client(mock_redis):
     """Renku service client."""
@@ -930,23 +960,28 @@ def svc_client_cache(mock_redis, identity_headers):
     ctx.pop()
 
 
-def integration_repo_path(headers, url_components):
+def integration_repo_path(headers, project_id, url_components):
     """Constructs integration repo path."""
-    from renku.service.config import CACHE_PROJECTS_PATH
     from renku.service.serializers.headers import UserIdentityHeaders
+    from renku.service.utils import make_project_path
 
     user = UserIdentityHeaders().load(headers)
-    project_path = CACHE_PROJECTS_PATH / user["user_id"] / url_components.owner / url_components.name
+    project = {
+        "project_id": project_id,
+        "owner": url_components.owner,
+        "name": url_components.name,
+    }
 
+    project_path = make_project_path(user, project)
     return project_path
 
 
 @contextlib.contextmanager
-def integration_repo(headers, url_components):
+def integration_repo(headers, project_id, url_components):
     """With integration repo helper."""
     from renku.core.utils.contexts import chdir
 
-    with chdir(integration_repo_path(headers, url_components)):
+    with chdir(integration_repo_path(headers, project_id, url_components)):
         repo = Repo(".")
         yield repo
 
@@ -963,7 +998,7 @@ def identity_headers():
         "iat": 1595317694,
         "iss": "https://stable.dev.renku.ch/auth/realms/Renku",
         "aud": ["renku"],
-        "sub": "12345",
+        "sub": "9ab2fc80-3a5c-426d-ae78-56de01d214df",
         "typ": "ID",
         "azp": "renku",
         "nonce": "12345",
@@ -980,7 +1015,7 @@ def identity_headers():
 
     headers = {
         "Content-Type": "application/json",
-        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256"),
         "Authorization": "Bearer {0}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
     }
 
@@ -994,13 +1029,12 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers):
 
     url_components = GitURL.parse(IT_REMOTE_REPO_URL)
 
-    payload = {"git_url": IT_REMOTE_REPO_URL}
+    payload = {"git_url": IT_REMOTE_REPO_URL, "depth": 0}
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
     assert response
-    assert "result" in response.json
-    assert "error" not in response.json
+    assert {"result"} == set(response.json.keys())
 
     project_id = response.json["result"]["project_id"]
     assert isinstance(uuid.UUID(project_id), uuid.UUID)
@@ -1008,8 +1042,8 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers):
     yield svc_client, identity_headers, project_id, url_components
 
     # Teardown step: Delete all branches except master (if needed).
-    if integration_repo_path(identity_headers, url_components).exists():
-        with integration_repo(identity_headers, url_components) as repo:
+    if integration_repo_path(identity_headers, project_id, url_components).exists():
+        with integration_repo(identity_headers, project_id, url_components) as repo:
             try:
                 repo.remote().push(refspec=(":{0}".format(repo.active_branch.name)))
             except GitCommandError:
@@ -1021,7 +1055,7 @@ def svc_client_setup(integration_lifecycle):
     """Service client setup."""
     svc_client, headers, project_id, url_components = integration_lifecycle
 
-    with integration_repo(headers, url_components) as repo:
+    with integration_repo(headers, project_id, url_components) as repo:
         repo.git.checkout("master")
 
         new_branch = uuid.uuid4().hex
@@ -1038,7 +1072,7 @@ def svc_client_with_user(svc_client_cache):
 
     svc_client, headers, cache = svc_client_cache
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
 
     yield svc_client, headers, cache, user
@@ -1055,6 +1089,12 @@ def svc_client_with_repo(svc_client_setup):
     assert response.json["result"]
 
     yield svc_client, deepcopy(headers), project_id, url_components
+
+
+@pytest.fixture
+def svc_synced_client(svc_client_with_user, real_sync):
+    """Renku service client with remote sync."""
+    yield svc_client_with_user
 
 
 @pytest.fixture
@@ -1102,17 +1142,38 @@ def svc_client_templates_creation(svc_client_with_templates):
 
 @pytest.fixture
 def svc_protected_repo(svc_client, identity_headers):
-    """Service client with remote protected repository."""
+    """Service client with migrated remote protected repository."""
     payload = {
         "git_url": IT_PROTECTED_REMOTE_REPO_URL,
+        "depth": 0,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
-    project_id = response.json["result"]["project_id"]
-    _ = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=identity_headers)
+    data = {
+        "project_id": response.json["result"]["project_id"],
+        "skip_template_update": True,
+        "skip_docker_update": True,
+    }
+    svc_client.post("/cache.migrate", data=json.dumps(data), headers=identity_headers)
 
     yield svc_client, identity_headers, payload, response
+
+
+@pytest.fixture
+def svc_protected_old_repo(svc_synced_client):
+    """Service client with remote protected repository."""
+    svc_client, identity_headers, cache, user = svc_synced_client
+
+    payload = {
+        "git_url": IT_PROTECTED_REMOTE_REPO_URL,
+        "depth": 0,
+    }
+
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    project_id = response.json["result"]["project_id"]
+
+    yield svc_client, identity_headers, project_id, cache, user
 
 
 @pytest.fixture(

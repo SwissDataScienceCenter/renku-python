@@ -60,7 +60,8 @@ def repo_sync(repo, message=None, remote=None, paths=None):
 
     # get branch that's pushed
     if repo.active_branch.tracking_branch():
-        pushed_branch = repo.active_branch.tracking_branch().name
+        ref = repo.active_branch.tracking_branch().name
+        pushed_branch = ref.split("/")[-1]
     else:
         pushed_branch = repo.active_branch.name
 
@@ -92,7 +93,15 @@ def repo_sync(repo, message=None, remote=None, paths=None):
     if paths:
         # commit uncommitted changes
         try:
-            repo.git.add(*paths)
+            staged_files = (
+                {git_unicode_unescape(d.a_path) for d in repo.index.diff("HEAD")} if repo.head.is_valid() else set()
+            )
+
+            path_to_save = set(paths) - staged_files
+
+            if path_to_save:
+                repo.git.add(*path_to_save)
+
             saved_paths = [d.b_path for d in repo.index.diff("HEAD")]
 
             if not message:
@@ -116,11 +125,20 @@ def repo_sync(repo, message=None, remote=None, paths=None):
             origin.pull(repo.active_branch)
 
         result = origin.push(repo.active_branch)
+
         if result and "[remote rejected] (pre-receive hook declined)" in result[0].summary:
-            # NOTE: Push to new remote branch if original one is protected.
+            # NOTE: Push to new remote branch if original one is protected and reset the cache.
+            old_pushed_branch = pushed_branch
+            old_active_branch = repo.active_branch
             pushed_branch = uuid4().hex
-            repo.create_head(pushed_branch)
-            repo.remote().push(pushed_branch)
+            try:
+                repo.create_head(pushed_branch)
+                repo.remote().push(pushed_branch)
+            finally:
+                # Reset cache
+                repo.git.checkout(old_active_branch)
+                ref = f"{origin}/{old_pushed_branch}"
+                repo.index.reset(commit=ref, head=True, working_tree=True)
 
     except git.exc.GitCommandError as e:
         raise errors.GitError("Cannot push changes") from e

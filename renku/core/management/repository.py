@@ -36,7 +36,10 @@ from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.projects import Project
+from renku.core.models.provenance.activity import ActivityCollection
+from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.refs import LinkReference
+from renku.core.models.workflow.dependency_graph import DependencyGraph
 
 from .git import GitCore
 
@@ -100,6 +103,12 @@ class RepositoryApiMixin(GitCore):
     WORKFLOW = "workflow"
     """Directory for storing workflow in Renku."""
 
+    DEPENDENCY_GRAPH = "dependency.json"
+    """File for storing dependency graph."""
+
+    PROVENANCE_GRAPH = "provenance.json"
+    """File for storing ProvenanceGraph."""
+
     ACTIVITY_INDEX = "activity_index.yaml"
     """Caches activities that generated a path."""
 
@@ -124,6 +133,8 @@ class RepositoryApiMixin(GitCore):
     _activity_index = attr.ib(default=None)
 
     _remote_cache = attr.ib(factory=dict)
+
+    _dependency_graph = None
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
@@ -191,11 +202,31 @@ class RepositoryApiMixin(GitCore):
         """Return a ``Path`` instance to the template checksums file."""
         return self.renku_path / self.TEMPLATE_CHECKSUMS
 
+    @property
+    def provenance_graph_path(self):
+        """Path to store activity files."""
+        return self.renku_path / self.PROVENANCE_GRAPH
+
+    @property
+    def dependency_graph_path(self):
+        """Path to the dependency graph file."""
+        return self.renku_path / self.DEPENDENCY_GRAPH
+
     @cached_property
     def cwl_prefix(self):
         """Return a CWL prefix."""
         self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
         return str(self.workflow_path.resolve().relative_to(self.path))
+
+    @property
+    def dependency_graph(self):
+        """Return dependency graph if available."""
+        if not self.has_graph_files():
+            return
+        if not self._dependency_graph:
+            self._dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
+
+        return self._dependency_graph
 
     @property
     def project(self):
@@ -436,6 +467,55 @@ class RepositoryApiMixin(GitCore):
             run = step.run.generate_process_run(client=self, commit=self.repo.head.commit, path=path,)
             run.to_yaml(path=path)
             self.add_to_activity_index(run)
+
+    def process_and_store_run(self, command_line_tool, name, client):
+        """Create Plan and Activity from CommandLineTool and store them."""
+        filename = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(command_line_tool.baseCommand)))
+
+        # Store Run and ProcessRun as before
+        self.workflow_path.mkdir(exist_ok=True)
+        path = self.workflow_path / filename
+
+        process_run = command_line_tool.generate_process_run(client=self, commit=self.repo.head.commit, path=path)
+        process_run.to_yaml(path=path)
+        self.add_to_activity_index(process_run)
+
+        self.update_graphs(process_run)
+
+    def update_graphs(self, activity_run):
+        """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
+        if not self.has_graph_files():
+            return
+
+        dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
+        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+
+        activity_collection = ActivityCollection.from_activity_run(activity_run, dependency_graph, self)
+
+        provenance_graph.add(activity_collection)
+
+        dependency_graph.to_json()
+        provenance_graph.to_json()
+
+    def has_graph_files(self):
+        """Return true if dependency or provenance graph exists."""
+        return self.dependency_graph_path.exists() or self.provenance_graph_path.exists()
+
+    def initialize_graph(self):
+        """Create empty graph files."""
+        self.dependency_graph_path.write_text("[]")
+        self.provenance_graph_path.write_text("[]")
+
+    def remove_graph_files(self):
+        """Remove all graph files."""
+        try:
+            self.dependency_graph_path.unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            self.provenance_graph_path.unlink()
+        except FileNotFoundError:
+            pass
 
     def init_repository(self, force=False, user=None):
         """Initialize an empty Renku repository."""

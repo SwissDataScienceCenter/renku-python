@@ -18,6 +18,58 @@
 Changes
 =======
 
+`0.13.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.12.3...v0.13.0>`__ (2021-01-29)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix renku save with deleted files
+   (`#1849 <https://github.com/SwissDataScienceCenter/renku-python/issues/1849>`__)
+   (`93348f9 <https://github.com/SwissDataScienceCenter/renku-python/commit/93348f992eaf2b27b3eccf1460e1dd333d2fab77>`__)
+-  **core:** migration error when multiple outputs bind to the same input
+   (`#1832 <https://github.com/SwissDataScienceCenter/renku-python/issues/1832>`__)
+   (`bb19b47 <https://github.com/SwissDataScienceCenter/renku-python/commit/bb19b4786054f3e56ba64967a276906a393f6d74>`__)
+-  **core:** output git lfs error messages when there is an error
+   (`#1838 <https://github.com/SwissDataScienceCenter/renku-python/issues/1838>`__)
+   (`e2b5421 <https://github.com/SwissDataScienceCenter/renku-python/commit/e2b54215a60e7431d97e1f1e2e981f41008390c1>`__)
+-  **service:** reset cache after failed push
+   (`#1836 <https://github.com/SwissDataScienceCenter/renku-python/issues/1836>`__)
+   (`f41df17 <https://github.com/SwissDataScienceCenter/renku-python/commit/f41df17766c90d7ab43a21a1acea42a4333b9a81>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** add dataset show command
+   (`#1798 <https://github.com/SwissDataScienceCenter/renku-python/issues/1798>`__)
+   (`31e87f7 <https://github.com/SwissDataScienceCenter/renku-python/commit/31e87f7024bbdb96c685315a9ed6e87e9ae6a3a5>`__)
+-  **core:** cache for workflow migrations
+   (`#1853 <https://github.com/SwissDataScienceCenter/renku-python/issues/1853>`__)
+   (`f240d95 <https://github.com/SwissDataScienceCenter/renku-python/commit/f240d95d95475373046cc9199987fcdc095a9547>`__)
+-  **service:** gzip decompression support
+   (`#1784 <https://github.com/SwissDataScienceCenter/renku-python/issues/1784>`__)
+   (`59db473 <https://github.com/SwissDataScienceCenter/renku-python/commit/59db4735d12ffe84969d48e44ea1b6266908f052>`__)
+-  **service:** use jwt sub claim as user-id
+   (`#1793 <https://github.com/SwissDataScienceCenter/renku-python/issues/1793>`__)
+   (`06f815a <https://github.com/SwissDataScienceCenter/renku-python/commit/06f815a55d1c1cd41203c37b0f569d542c1cbec0>`__)
+
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.12.2...v0.12.3>`__ (2021-01-05)
+----------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix gitlab ID parsing when GITLAB_BASE_URL is set without
+   port
+   (`#1823 <https://github.com/SwissDataScienceCenter/renku-python/pull/1823>`__)
+   (`4f94165 <https://github.com/SwissDataScienceCenter/renku-python/commit/4f94165bbc84b1afd01e1ffcd6cf8a2a9ea25fb3>`__)
+-  **service:** add datasets.remove to swagger docs
+   (`#1778 <https://github.com/SwissDataScienceCenter/renku-python/issues/1778>`__)
+   (`631e6f5 <https://github.com/SwissDataScienceCenter/renku-python/commit/631e6f594c87f028d4f904ee74310f252db49ce7>`__)
+-  **service:** correctly handle cloning of project with no commits
+   (`#1790 <https://github.com/SwissDataScienceCenter/renku-python/issues/1790>`__)
+   (`440b238 <https://github.com/SwissDataScienceCenter/renku-python/commit/440b238ccb87f034f0cc6f1ea57b1f46d5213750>`__)
+
 ` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.12.1...v0.12.2>`__ (2020-12-02)
 ----------------------------------------------------------------------------------------------------
 

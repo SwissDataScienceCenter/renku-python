@@ -29,7 +29,7 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 
 URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
-REFERENCE = "0.1.11"
+REFERENCE = "0.1.15"
 
 
 class DownloadTemplates(Command):
@@ -90,23 +90,23 @@ history = open("CHANGES.rst").read()
 
 tests_require = [
     "black==19.10b0",
-    "check-manifest>=0.37,<0.46",
+    "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.4",
-    "fakeredis>=1.4.1,<1.4.5",
+    "fakeredis>=1.4.1,<1.4.6",
     "flake8>=3.8,<3.9",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.0.1",
-    "isort>=5.3.2,<5.7.0",
+    "isort>=5.3.2,<5.8.0",
     "pydocstyle>=3.0.0,<5.1.2",
     "pytest-black>=0.3.10,<0.3.13",
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<2.11.0",
-    "pytest-flake8>=1.0.6,<=1.0.6",
-    "pytest-mock>=3.2.0,<3.4.0",
+    "pytest-flake8>=1.0.6,<1.0.8",
+    "pytest-mock>=3.2.0,<3.6.0",
     "pytest-timeout==1.4.2",
     "pytest-pep8==1.0.6",
-    "pytest-xdist>=1.34.0,<2.2.0",
-    "pytest>=4.0.0,<6.1.3",
+    "pytest-xdist>=1.34.0,<2.3.0",
+    "pytest>=4.0.0,<6.2.2",
     "responses>=0.7.0,<0.12.2",
 ]
 
@@ -115,15 +115,16 @@ service_requires = [
     "flask-apispec==0.11.0",
     "flask-swagger-ui==3.36.0",
     "gunicorn",
-    "marshmallow==3.9.1",
-    "rq==1.6.1",
+    "marshmallow==3.10.0",
+    "rq==1.7.0",
     "rq-scheduler==0.10.0",
-    "sentry-sdk[flask]>=0.7.4,<0.17.9",
+    "sentry-sdk[flask]>=0.7.4,<0.19.6",
     "walrus==0.8.1",
+    "ptvsd>=4.3.0,<4.4.0",
 ]
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.3.2", "sphinx-rtd-theme==0.5.0",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.4.4", "sphinx-rtd-theme==0.5.",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
     "tests": tests_require,
@@ -152,7 +153,7 @@ install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "apispec>=4.0.0,<=4.1.0",
     "attrs>=19.3.0,<=20.2.0",
-    "calamus>=0.3.3,<0.3.4",
+    "calamus>=0.3.6,<0.3.7",
     "click-completion>=0.5.0,<=0.5.3",
     "click>=7.0,<=7.1.2",
     "click-plugins==1.1.1",
@@ -161,7 +162,7 @@ install_requires = [
     "cwltool>=3.0.20200724003302,<=3.0.20200807132242",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
-    "gitpython==3.1.11",
+    "gitpython==3.1.12",
     "humanize>=2.5.0,<2.7.0",
     "jinja2>=2.10.3,<=2.11.2",
     "pathspec>=0.7.0,<=0.8.0",
@@ -175,10 +176,11 @@ install_requires = [
     "pyshacl==0.11.3.post1",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
-    "pyjwt==1.7.1",
+    "pyjwt==2.0.0",
     "redis==3.5.3",
+    "rich>=9.3.0,<9.4.0",
     "rdflib==4.2.2",
-    "rdflib-jsonld>=0.4.0,<0.5.0",
+    "rdflib-jsonld>=0.4.0,<0.6.0",
     "requests>=2.23.0,<=2.24.0",
     "ndg-httpsclient==0.5.1",
     "setuptools_scm>=3.1.0,<=4.1.2",

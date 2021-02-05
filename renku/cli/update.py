@@ -117,22 +117,11 @@ The following commands will produce the same result.
 
 """
 
-import sys
-import uuid
-
 import click
-from git import Actor
 
-from renku.core.commands.client import pass_local_client
-from renku.core.commands.cwl_runner import execute
-from renku.core.commands.graph import Graph, _safe_path
+from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.options import option_siblings
-from renku.core.errors import ParameterError
-from renku.core.models.cwl.command_line_tool import delete_indirect_files_list, read_indirect_parameters
-from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
-from renku.core.models.workflow.converters.cwl import CWLConverter
-from renku.core.models.workflow.parameters import RunParameter
-from renku.version import __version__, version_url
+from renku.core.commands.update import update_workflows
 
 
 @click.command()
@@ -141,90 +130,10 @@ from renku.version import __version__, version_url
 @click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all outdated files.")
 @option_siblings
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
-@click.pass_context
-@pass_local_client(clean=True, requires_migration=True, commit=True, commit_empty=False)
-def update(client, ctx, revision, no_output, update_all, siblings, paths):
+def update(revision, no_output, update_all, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
-    if not paths and not update_all:
-        click.echo(ctx.get_help(), color=ctx.color)
-        return
-    elif paths and update_all:
-        raise ParameterError("Cannot use PATHS and --all/-a at the same time.")
+    communicator = ClickCallback()
 
-    graph = Graph(client)
-    outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
-    outputs = {node for node in outputs if graph.need_update(node)}
-    if not outputs:
-        click.secho("All files were generated from the latest inputs.", fg="green")
-        sys.exit(0)
-
-    # Check or extend siblings of outputs.
-    outputs = siblings(graph, outputs)
-    output_paths = {node.path for node in outputs if _safe_path(node.path)}
-
-    # Get all clean nodes.
-    input_paths = {node.path for node in graph.nodes} - output_paths
-
-    # Store the generated workflow used for updating paths.
-    workflow = graph.as_workflow(input_paths=input_paths, output_paths=output_paths, outputs=outputs,)
-
-    execute_workflow(
-        client=client, workflow=workflow, output_paths=output_paths, command_name="update", update_commits=True
+    update_workflows().with_communicator(communicator).build().execute(
+        revision=revision, no_output=no_output, update_all=update_all, siblings=siblings, paths=paths
     )
-
-
-def execute_workflow(client, workflow, output_paths, command_name, update_commits):
-    """Execute a Run."""
-    wf, path = CWLConverter.convert(workflow, client)
-    # Don't compute paths if storage is disabled.
-    if client.check_external_storage():
-        # Make sure all inputs are pulled from a storage.
-        paths_ = (i.consumes.path for i in workflow.inputs)
-        client.pull_paths_from_storage(*paths_)
-
-    delete_indirect_files_list(client.path)
-
-    # Execute the workflow and relocate all output files.
-    # FIXME get new output paths for edited tools
-    # output_paths = {path for _, path in workflow.iter_output_files()}
-    execute(client, path, output_paths=output_paths)
-
-    paths = [o.produces.path for o in workflow.outputs]
-
-    client.repo.git.add(*paths)
-
-    if client.repo.is_dirty():
-        commit_msg = f"renku {command_name}: committing {len(paths)} newly added files"
-
-        committer = Actor(f"renku {__version__}", version_url)
-
-        client.repo.index.commit(
-            commit_msg, committer=committer, skip_hooks=True,
-        )
-
-    workflow_name = f"{uuid.uuid4().hex}_{command_name}.yaml"
-
-    path = client.workflow_path / workflow_name
-
-    workflow.update_id_and_label_from_commit_path(client, client.repo.head.commit, path)
-
-    if not workflow.subprocesses:  # Update parameters if there is only one step
-        _update_run_parameters(run=workflow, working_dir=client.path)
-
-    cls = WorkflowRun if workflow.subprocesses else ProcessRun
-    run = cls.from_run(run=workflow, client=client, path=path, update_commits=update_commits)
-    run.to_yaml(path=path)
-    client.add_to_activity_index(run)
-
-
-def _update_run_parameters(run, working_dir):
-
-    default_parameters = {p.name: p for p in run.run_parameters}
-
-    indirect_parameters = read_indirect_parameters(working_dir)
-    for name, value in indirect_parameters.items():
-        id_ = RunParameter.generate_id(run_id=run._id, name=name)
-        parameter = RunParameter(id=id_, name=name, value=value)
-        default_parameters[name] = parameter
-
-    run.run_parameters = list(default_parameters.values())

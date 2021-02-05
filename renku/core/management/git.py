@@ -128,7 +128,9 @@ class GitCore:
     def dirty_paths(self):
         """Get paths of dirty files in the repository."""
         repo_path = self.repo.working_dir
-        staged_files = self.repo.index.diff("HEAD") if self.repo.head.is_valid() else []
+        staged_files = (
+            [git_unicode_unescape(d.a_path) for d in self.repo.index.diff("HEAD")] if self.repo.head.is_valid() else []
+        )
         return {os.path.join(repo_path, p) for p in self.repo.untracked_files + self.modified_paths + staged_files}
 
     @property

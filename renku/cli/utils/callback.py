@@ -33,10 +33,10 @@ class StandardOutput(CommunicationCallback):
         self._progress_bars = {}
         self._progress_types = ["download"]
 
-    def echo(self, msg):
+    def echo(self, msg, end="\n"):
         """Write a message."""
         with CommunicationCallback.lock:
-            print(msg)
+            print(msg, end=end)
 
     def info(self, msg):
         """Write an info message."""
@@ -100,9 +100,13 @@ class ClickCallback(StandardOutput):
     WARNING = click.style("Warning: ", bold=True, fg="yellow")
     ERROR = click.style("Error: ", bold=True, fg="red")
 
-    def echo(self, msg):
+    def echo(self, msg, end="\n"):
         """Write a message."""
-        click.echo(msg)
+        new_line = True
+        if end != "\n":
+            msg = msg + end
+            new_line = False
+        click.echo(msg, nl=new_line)
 
     def info(self, msg):
         """Write an info message."""

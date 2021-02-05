@@ -65,10 +65,17 @@ def clone(
 
     remote_refs = [Path(ref.abspath).name for ref in repo.remote().refs]
 
-    if checkout_rev in remote_refs:
-        repo.git.checkout(checkout_rev)
-    elif checkout_rev:
-        repo.git.checkout(checkout_rev, b=checkout_rev)
+    try:
+        if checkout_rev in remote_refs:
+            repo.git.checkout(checkout_rev)
+        elif checkout_rev:
+            repo.git.checkout(checkout_rev, b=checkout_rev)
+    except GitCommandError as e:
+        msg = str(e)
+        if "is not a commit and a branch" in msg and "cannot be created from it" in msg:
+            return repo, False  # NOTE: Project has no commits to check out
+
+        raise
 
     if config:
         config_writer = repo.config_writer()

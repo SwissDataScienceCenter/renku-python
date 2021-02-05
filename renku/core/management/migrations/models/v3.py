@@ -200,7 +200,7 @@ class PersonSchemaV3(JsonLDSchema):
     _id = fields.Id()
     name = StringList(schema.name)
     email = fields.String(schema.email, missing=None)
-    label = StringList(rdfs.label)
+    label = StringList(rdfs.label, missing=None)
     affiliation = StringList(schema.affiliation, missing=None)
     alternate_name = StringList(schema.alternateName, missing=None)
 
@@ -243,7 +243,7 @@ class CommitMixinSchemaV3(JsonLDSchema):
     _id = fields.Id(missing=None)
     _label = fields.String(rdfs.label, missing=None)
     _project = fields.Nested(schema.isPartOf, ProjectSchemaV3, missing=None)
-    path = fields.String(prov.atLocation)
+    path = fields.String(prov.atLocation, missing=None)
 
 
 class EntitySchemaV3(CommitMixinSchemaV3):
@@ -328,20 +328,20 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
         model = Dataset
         unknown = EXCLUDE
 
-    creators = fields.Nested(schema.creator, PersonSchemaV3, many=True)
+    creators = fields.Nested(schema.creator, PersonSchemaV3, many=True, missing=None)
     date_created = fields.DateTime(schema.dateCreated, missing=None)
     date_published = fields.DateTime(schema.datePublished, missing=None)
     description = fields.String(schema.description, missing=None)
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV3, many=True)
     identifier = fields.String(schema.identifier)
     in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
-    keywords = fields.List(schema.keywords, fields.String())
+    keywords = fields.List(schema.keywords, fields.String(), missing=None)
     license = Uri(schema.license, missing=None, allow_none=True)
     name = fields.String(schema.alternateName, missing=None)
     same_as = fields.Nested(schema.sameAs, UrlSchemaV3, missing=None)
-    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, missing=None)
     title = fields.String(schema.name)
-    url = fields.String(schema.url)
+    url = fields.String(schema.url, missing=None)
     version = fields.String(schema.version, missing=None)
 
     @pre_load

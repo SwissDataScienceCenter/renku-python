@@ -36,33 +36,26 @@ filename before ``@``.
 
 import click
 
+from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.ascii import _format_sha1
-from renku.core.commands.client import pass_local_client
-from renku.core.commands.graph import Graph
+from renku.core.commands.status import get_status
 
 
 @click.command()
 @click.option("--revision", default="HEAD", help="Display status as it was in the given revision")
 @click.option("--no-output", is_flag=True, default=False, help="Display commands without output files.")
 @click.argument("path", type=click.Path(exists=True, dir_okay=False), nargs=-1)
-@pass_local_client(clean=True, requires_migration=True, commit=False)
 @click.pass_context
-def status(ctx, client, revision, no_output, path):
+def status(ctx, revision, no_output, path):
     """Show a status of the repository."""
-    graph = Graph(client)
-    # TODO filter only paths = {graph.normalize_path(p) for p in path}
-    status = graph.build_status(revision=revision, can_be_cwl=no_output)
+    communicator = ClickCallback()
 
-    if client.has_external_files():
-        click.echo(
-            "Changes in external files are not detected automatically. To "
-            'update external files run "renku dataset update -e".'
-        )
+    result = (
+        get_status().with_communicator(communicator).build().execute(revision=revision, no_output=no_output, path=path)
+    )
 
-    try:
-        click.echo("On branch {0}".format(client.repo.active_branch))
-    except TypeError:
-        click.echo("Git HEAD is detached!\n" " Please move back to your working branch to use renku\n")
+    graph, status = result.output
+
     if status["outdated"]:
         click.echo(
             "Outdated outputs:\n"

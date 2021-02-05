@@ -49,7 +49,7 @@ class Project(Model):
     @property
     def abs_path(self):
         """Full path of cached project."""
-        return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.name
+        return CACHE_PROJECTS_PATH / self.user_id / self.project_id / self.owner / self.name
 
     @property
     def age(self):
