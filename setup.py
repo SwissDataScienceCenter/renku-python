@@ -149,7 +149,6 @@ for name, reqs in extras_require.items():
     extras_require["nodocs"].extend(reqs)
 
 install_requires = [
-    "PyYAML>=3.12,<=5.3.1",
     "apispec>=4.0.0,<=4.1.0",
     "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<=20.2.0",
@@ -170,13 +169,14 @@ install_requires = [
     "patool==1.12",
     "pluggy==0.13.1",
     "psutil>=5.4.7,<=5.7.2",
-    "pyOpenSSL>=19.0.0,<=19.1.0",
     "pyasn1>=0.4.5,<=0.4.8",
     "pyjwt==2.0.0",
     "pyld==2.0.3",
+    "pyOpenSSL>=19.0.0,<=19.1.0",
     "pyshacl==0.11.3.post1",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
+    "PyYAML>=3.12,<=5.3.1",
     "rdflib-jsonld>=0.4.0,<0.6.0",
     "rdflib==4.2.2",
     "redis==3.5.3",
@@ -247,7 +247,7 @@ setup(
     author_email="contact@datascience.ch",
     url="https://github.com/swissdatasciencecenter/renku-python",
     project_urls={
-        "Changelog": "https://github.com/swissdatasciencecenter/renku-python" "/blob/master/CHANGES.rst",
+        "Changelog": "https://github.com/swissdatasciencecenter/renku-python/blob/master/CHANGES.rst",
         "Docs": "https://renku-python.rtfd.io/",
     },
     packages=packages,
