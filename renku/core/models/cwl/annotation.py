@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,7 +23,7 @@ from marshmallow import EXCLUDE
 from renku.core.models.calamus import JsonLDSchema, dcterms, fields, oa
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class Annotation:
     """Represents a custom annotation for a research object."""
 

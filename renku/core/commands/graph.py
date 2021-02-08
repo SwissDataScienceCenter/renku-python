@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -53,7 +53,7 @@ def _safe_path(filepath, can_be_cwl=False):
     return True
 
 
-@attr.s(cmp=False)
+@attr.s(eq=False, order=False)
 class Graph(object):
     """Represent the provenance graph."""
 

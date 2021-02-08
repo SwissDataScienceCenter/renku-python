@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -159,7 +159,7 @@ def _convert_run_parameter(parameter, run_id):
 
 
 @total_ordering
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class Run(CommitMixin):
     """Represents a `renku run` execution template."""
 
@@ -384,7 +384,7 @@ class Run(CommitMixin):
 
 
 @total_ordering
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class OrderedSubprocess:
     """A subprocess with ordering."""
 
