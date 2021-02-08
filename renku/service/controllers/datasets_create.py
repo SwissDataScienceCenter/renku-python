@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets create controller."""
 from renku.core.commands.dataset import create_dataset
+from renku.service.config import CACHE_UPLOADS_PATH
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadWithSyncOperation
 from renku.service.serializers.datasets import DatasetCreateRequest, DatasetCreateResponseRPC
@@ -43,8 +44,18 @@ class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
         """Controller operation context."""
         return self.ctx
 
+    def _handle_uploaded_images(self):
+        """Handles uploaded or relative dataset images."""
+        for img in self.ctx.get("images", []):
+            if img.get("file_id"):
+                file = self.cache.get_file(self.user, img.pop("file_id"))
+                img["content_url"] = str(file.abs_path)
+
     def renku_op(self):
         """Renku operation for the controller."""
+        self._handle_uploaded_images()
+        user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
+
         return (
             create_dataset()
             .with_commit_message(self.ctx["commit_message"])
@@ -55,6 +66,8 @@ class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
                 creators=self.ctx.get("creators"),
                 description=self.ctx.get("description"),
                 keywords=self.ctx.get("keywords"),
+                images=self.ctx.get("images"),
+                safe_image_paths=[user_cache_dir],
             )
         )
 

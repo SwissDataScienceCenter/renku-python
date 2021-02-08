@@ -484,7 +484,14 @@ def edit(name, title, description, creators, keyword):
     result = (
         edit_dataset()
         .build()
-        .execute(name=name, title=title, description=description, creators=creators, keywords=keywords,)
+        .execute(
+            name=name,
+            title=title,
+            description=description,
+            creators=creators,
+            keywords=keywords,
+            skip_image_update=True,
+        )
     )
 
     updated, no_email_warnings = result.output
@@ -498,7 +505,7 @@ def edit(name, title, description, creators, keyword):
             )
         )
     else:
-        click.echo("Successfully updated: {}.".format(", ".join(updated)))
+        click.echo("Successfully updated: {}.".format(", ".join(updated.keys())))
         if no_email_warnings:
             click.echo(ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(no_email_warnings))
 
