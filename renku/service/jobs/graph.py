@@ -81,7 +81,11 @@ def _build_and_report(callback_payload, callback_url, ctx):
     """Build graph and report on result."""
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
-            Repo.clone_from(ctx["url_with_auth"], tmpdir)
+            repo = Repo.clone_from(ctx["url_with_auth"], tmpdir)
+
+            if "commit_id" in callback_payload:
+                repo.git.checkout(callback_payload["commit_id"])
+
         except GitError as e:
             report_recoverable(callback_payload, e, callback_url)
 
@@ -93,7 +97,7 @@ def _build_and_report(callback_payload, callback_url, ctx):
                 result, _, _ = result.output
 
                 if result:
-                    graph = build_graph(revision=callback_payload["commit_id"])
+                    graph = build_graph()
                     graph_payload = {"payload": jsonld(graph, strict=True, to_stdout=False)}
                 else:
                     report_unrecoverable(callback_payload, MigrationError("migration failed"), callback_url)
@@ -117,7 +121,7 @@ def graph_build_job(revision, git_url, callback_url, token, timeout_sec=None):
     ctx = ProjectCloneContext().load({"git_url": git_url, "token": token}, unknown=EXCLUDE)
     callback_payload = {
         "project_url": git_url,
-        "commit_id": revision or "HEAD",
+        "commit_id": revision or "master",
     }
 
     try:

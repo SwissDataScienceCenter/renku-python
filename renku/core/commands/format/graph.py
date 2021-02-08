@@ -335,7 +335,7 @@ def makefile(graph, strict=False):
 
 def jsonld(graph, strict=False, to_stdout=True):
     """Format graph as JSON-LD file."""
-    ld = _jsonld(graph, "expand", to_stdout=to_stdout)
+    ld = _jsonld(graph, "expand")
 
     if strict:
         r, _, t = validate_graph(ld, format="json-ld")
