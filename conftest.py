@@ -983,7 +983,15 @@ def integration_repo(headers, project_id, url_components):
 
     with chdir(integration_repo_path(headers, project_id, url_components)):
         repo = Repo(".")
+        repo.heads.master.checkout()
+
         yield repo
+
+        if integration_repo_path(headers, project_id, url_components).exists():
+            repo.git.reset("--hard")
+            repo.heads.master.checkout()
+            repo.git.reset("--hard")
+            repo.git.clean("-xdf")
 
 
 @pytest.fixture(scope="module")
@@ -1085,7 +1093,12 @@ def svc_client_setup(integration_lifecycle):
         current = repo.create_head(new_branch)
         current.checkout()
 
-    yield svc_client, deepcopy(headers), project_id, url_components
+        yield svc_client, deepcopy(headers), project_id, url_components
+
+        if integration_repo_path(headers, project_id, url_components).exists():
+            # NOTE: Some tests delete the repo
+            repo.git.checkout("master")
+            repo.git.branch("-D", current)
 
 
 @pytest.fixture
