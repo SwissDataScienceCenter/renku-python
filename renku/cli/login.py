@@ -23,7 +23,7 @@ TODO: Write Documentation
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.login import login_command, logout_command
+from renku.core.commands.login import login_command, logout_command, token_command
 
 
 @click.command()
@@ -41,3 +41,11 @@ def logout():
     """Logout from the platform and delete credentials."""
     communicator = ClickCallback()
     logout_command().with_communicator(communicator).build().execute()
+
+
+@click.command(hidden=True)
+@click.argument("command")
+def token(command):
+    """Logout from the platform and delete credentials."""
+    communicator = ClickCallback()
+    token_command().with_communicator(communicator).build().execute(command=command)

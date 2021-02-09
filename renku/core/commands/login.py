@@ -66,9 +66,11 @@ def _login(client, endpoint):
         communication.error(f"Cannot get access token from remote host: {parsed_endpoint.geturl()}")
         sys.exit(1)
 
-    print(f"ACCESS TOKEN: {access_token}")  # TODO delete
-    print(f"REFRESH TOKEN: {response.json().get('refresh_token')}")  # TODO delete
-    _store_token(client, parsed_endpoint.netloc, access_token)
+    print(f"\n{access_token}")  # TODO delete
+    print(f"\n{response.json().get('refresh_token')}")  # TODO delete
+    _store_token(client, parsed_endpoint, access_token)
+    import os
+    os.environ["GITHUB_TOKEN"] = access_token
 
 
 def _parse_endpoint(endpoint):
@@ -94,9 +96,13 @@ def _get_url(parsed_endpoint, path, query):
     return parsed_endpoint._replace(path=path, query=query).geturl()
 
 
-def _store_token(client, endpoint_netloc, token):
-    client.set_value(section="tokens", key=endpoint_netloc, value=token, global_only=True)
+def _store_token(client, parsed_endpoint, token):
+    client.set_value(section="token", key="token", value=token, global_only=True)
     # TODO git credential helper, chmod 600
+
+    key = f"http.{parsed_endpoint.geturl()}.extraheader"
+    value = f"AUTHORIZATION: bearer {token}"
+    client.repo.git.config(key, value, local=True)
 
 
 def logout_command():
@@ -107,3 +113,18 @@ def logout_command():
 def _logout(client):
     client.remove_value(section="tokens", key="*", global_only=True)
     # TODO git credential helper
+
+
+def token_command():
+    """Return a command as git credential helper."""
+    return Command().command(_token)
+
+
+def _token(client, command):
+    if command != "get":
+        communication.error(f"BAD COMMAND {command}")
+        return
+    token = client.get_value(section="token", key="token", global_only=False)
+
+    communication.echo("username=x-access-token")
+    communication.echo(f"password={token}")
