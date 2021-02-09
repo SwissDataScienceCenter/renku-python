@@ -61,6 +61,8 @@ def check_queues(queue_list):
 def start_worker(queue_list):
     """Start worker."""
     check_queues(queue_list)
+    worker_log.info(f"working on queues: {queue_list}")
+
     with worker(queue_list) as rq_worker:
         worker_log.info("running worker")
         rq_worker.work(logging_level=DEPLOYMENT_LOG_LEVEL)

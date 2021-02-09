@@ -112,8 +112,8 @@ spec:
         - name: {{ .Chart.Name }}-datasets-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python"]
-          args: ["renku/service/worker.py"]
+          command: ["renku"]
+          args: ["service", "worker"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -150,8 +150,8 @@ spec:
         - name: {{ .Chart.Name }}-management-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python"]
-          args: ["renku/service/worker.py"]
+          command: ["renku"]
+          args: ["service", "worker"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -186,8 +186,8 @@ spec:
         - name: {{ .Chart.Name }}-scheduler
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python"]
-          args: ["renku/service/scheduler.py"]
+          command: ["renku"]
+          args: ["service", "scheduler"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master

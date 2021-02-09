@@ -86,6 +86,7 @@ from renku.cli.remove import remove
 from renku.cli.rerun import rerun
 from renku.cli.run import run
 from renku.cli.save import save
+from renku.cli.service import service
 from renku.cli.show import show
 from renku.cli.status import status
 from renku.cli.storage import storage
@@ -210,3 +211,4 @@ cli.add_command(status)
 cli.add_command(storage)
 cli.add_command(update)
 cli.add_command(workflow)
+cli.add_command(service)
