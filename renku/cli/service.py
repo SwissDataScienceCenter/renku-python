@@ -51,13 +51,14 @@ def run_api():
     sys.exit(run())
 
 
-def run_worker():
+def run_worker(queues):
     """Run service workers."""
-    queues = os.getenv("RENKU_SVC_WORKER_QUEUES", "")
-    queues = [queue_name.strip() for queue_name in queues.strip().split(",")]
-
     if not queues:
-        queues = QUEUES
+        queues = os.getenv("RENKU_SVC_WORKER_QUEUES", "")
+        queues = [queue_name.strip() for queue_name in queues.strip().split(",")]
+
+        if not queues:
+            queues = QUEUES
 
     start_worker(queues)
 
@@ -92,6 +93,7 @@ def scheduler_start():
 
 
 @service.command(name="worker")
-def worker_start():
+@click.option("-q", "--queue", multiple=True)
+def worker_start(queue):
     """Start service worker in active shell session. By default it listens on all queues."""
-    run_worker()
+    run_worker(list(queue))
