@@ -76,11 +76,8 @@ class UserIdentityToken(Schema):
         return data
 
 
-class UserIdentityHeaders(Schema):
-    """User identity schema."""
-
-    user_token = fields.String(required=True, data_key="renku-user")
-    auth_token = fields.String(required=True, data_key="authorization")
+class RenkuHeaders:
+    """Renku headers support."""
 
     @staticmethod
     def decode_token(token):
@@ -119,6 +116,10 @@ class UserIdentityHeaders(Schema):
 
         return data
 
+
+class IdentityHeaders(Schema):
+    """User identity schema."""
+
     @pre_load
     def set_fields(self, data, **kwargs):
         """Set fields for serialization."""
@@ -128,17 +129,36 @@ class UserIdentityHeaders(Schema):
         expected_keys = old_keys + [field.data_key for field in self.fields.values()]
 
         data = {key.lower(): value for key, value in data.items() if key.lower() in expected_keys}
-        data = self.reset_old_headers(data)
+        data = RenkuHeaders.reset_old_headers(data)
 
         return data
 
     @post_load
     def set_user(self, data, **kwargs):
         """Extract user object from a JWT."""
-        user = self.decode_user(data["user_token"])
-        return {
-            "fullname": user.pop("name"),
-            "email": user.pop("email"),
-            "user_id": user.pop("user_id"),
-            "token": self.decode_token(data["auth_token"]),
-        }
+        result = {}
+
+        if "auth_token" in data:
+            result["token"] = RenkuHeaders.decode_token(data["auth_token"])
+
+        if data and "user_token" in data:
+            user = RenkuHeaders.decode_user(data["user_token"])
+            result["fullname"] = user.pop("name")
+            result["email"] = user.pop("email")
+            result["user_id"] = user.pop("user_id")
+
+        return result
+
+
+class RequiredIdentityHeaders(IdentityHeaders):
+    """Identity schema for required headers."""
+
+    user_token = fields.String(required=True, data_key="renku-user")
+    auth_token = fields.String(required=True, data_key="authorization")
+
+
+class OptionalIdentityHeaders(IdentityHeaders):
+    """Identity schema for optional headers."""
+
+    user_token = fields.String(data_key="renku-user")
+    auth_token = fields.String(data_key="authorization")
