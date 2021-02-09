@@ -5,7 +5,6 @@ name = "pypi"
 
 [packages]
 renku = {editable = true, extras = ["all"], path = "."}
-python-dotenv = "*"
 
 [dev-packages]
 chartpress = "==1.0.3"
