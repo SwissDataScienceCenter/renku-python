@@ -21,10 +21,18 @@ from marshmallow import Schema, fields, post_load, pre_load
 
 from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
 from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
+from renku.core.models.datasets import ImageObjectJson as ImageObject
+from renku.core.models.datasets import ImageObjectRequestJson as ImageObjectRequest
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class DatasetCreateRequest(DatasetDetails):
+class DatasetDetailsRequest(DatasetDetails):
+    """Request schema with dataset image information."""
+
+    images = marshmallow.fields.List(marshmallow.fields.Nested(ImageObjectRequest))
+
+
+class DatasetCreateRequest(DatasetDetailsRequest):
     """Request schema for a dataset create view."""
 
     project_id = fields.String(required=True)
@@ -148,10 +156,16 @@ class DatasetListRequest(Schema):
     branch = fields.String()
 
 
+class DatasetDetailsResponse(DatasetDetails):
+    """Request schema with dataset image information."""
+
+    images = marshmallow.fields.List(marshmallow.fields.Nested(ImageObject))
+
+
 class DatasetListResponse(Schema):
     """Response schema for dataset list view."""
 
-    datasets = fields.List(fields.Nested(DatasetDetails), required=True)
+    datasets = fields.List(fields.Nested(DatasetDetailsResponse), required=True)
 
 
 class DatasetListResponseRPC(JsonRPCResponse):
@@ -224,6 +238,7 @@ class DatasetEditRequest(Schema):
     description = fields.String(default=None)
     creators = fields.List(fields.Nested(DatasetCreators))
     keywords = fields.List(fields.String())
+    images = fields.List(fields.Nested(ImageObjectRequest))
 
     project_id = fields.String()
     git_url = fields.String()

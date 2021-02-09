@@ -963,10 +963,10 @@ def svc_client_cache(mock_redis, identity_headers):
 
 def integration_repo_path(headers, project_id, url_components):
     """Constructs integration repo path."""
-    from renku.service.serializers.headers import UserIdentityHeaders
+    from renku.service.serializers.headers import RequiredIdentityHeaders
     from renku.service.utils import make_project_path
 
-    user = UserIdentityHeaders().load(headers)
+    user = RequiredIdentityHeaders().load(headers)
     project = {
         "project_id": project_id,
         "owner": url_components.owner,
@@ -984,7 +984,15 @@ def integration_repo(headers, project_id, url_components):
 
     with chdir(integration_repo_path(headers, project_id, url_components)):
         repo = Repo(".")
+        repo.heads.master.checkout()
+
         yield repo
+
+        if integration_repo_path(headers, project_id, url_components).exists():
+            repo.git.reset("--hard")
+            repo.heads.master.checkout()
+            repo.git.reset("--hard")
+            repo.git.clean("-xdf")
 
 
 @pytest.fixture(scope="module")
@@ -1021,6 +1029,29 @@ def identity_headers():
     }
 
     return headers
+
+
+@pytest.fixture(scope="module")
+def authentication_headers_raw():
+    """Get authentication headers without renku user identification."""
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {0}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
+    }
+
+    return headers
+
+
+@pytest.fixture(scope="module")
+def authentication_headers(authentication_headers_raw):
+    """Get authentication headers."""
+    identification = {
+        "Renku-User-Id": "b4b4de0eda0f471ab82702bd5c367fa7",
+        "Renku-User-FullName": "Just Sam",
+        "Renku-User-Email": "contact@justsam.io",
+    }
+
+    return {**authentication_headers_raw, **identification}
 
 
 @pytest.fixture(scope="module")
@@ -1063,7 +1094,12 @@ def svc_client_setup(integration_lifecycle):
         current = repo.create_head(new_branch)
         current.checkout()
 
-    yield svc_client, deepcopy(headers), project_id, url_components
+        yield svc_client, deepcopy(headers), project_id, url_components
+
+        if integration_repo_path(headers, project_id, url_components).exists():
+            # NOTE: Some tests delete the repo
+            repo.git.checkout("master")
+            repo.git.branch("-D", current)
 
 
 @pytest.fixture
@@ -1343,12 +1379,12 @@ def large_file(tmp_path, client):
 @pytest.fixture()
 def ctrl_init(svc_client_cache):
     """Cache object for controller testing."""
-    from renku.service.serializers.headers import UserIdentityHeaders
+    from renku.service.serializers.headers import RequiredIdentityHeaders
 
     _, headers, cache = svc_client_cache
 
     headers["Authorization"] = "Bearer not-a-token"
-    user_data = UserIdentityHeaders().load(headers)
+    user_data = RequiredIdentityHeaders().load(headers)
 
     return cache, user_data
 

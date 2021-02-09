@@ -53,7 +53,7 @@ def _safe_path(filepath, can_be_cwl=False):
     return True
 
 
-@attr.s(cmp=False)
+@attr.s(eq=False, order=False)
 class Graph(object):
     """Represent the provenance graph."""
 
@@ -522,7 +522,7 @@ class Graph(object):
 
 
 @pass_local_client(requires_migration=True)
-def build_graph(client, revision, no_output, paths):
+def build_graph(client, revision="HEAD", no_output=False, paths=()):
     """Build graph structure."""
     graph = Graph(client)
     if not paths:
