@@ -20,7 +20,6 @@ import os
 import sys
 
 import click
-from dotenv import load_dotenv
 from gunicorn.app.wsgiapp import run
 
 from renku.core.commands.echo import ERROR
@@ -69,6 +68,7 @@ def service(env):
     """Manage service components."""
     try:
         import redis  # noqa: F401
+        from dotenv import load_dotenv
     except ImportError:
         # NOTE: Service dependency is missing.
 
