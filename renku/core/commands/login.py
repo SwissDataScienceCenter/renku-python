@@ -17,6 +17,7 @@
 # limitations under the License.
 """Logging in to a Renku deployment."""
 
+import os
 import sys
 import time
 import urllib
@@ -24,12 +25,16 @@ import uuid
 import webbrowser
 from pathlib import posixpath
 
+import git
 import requests
 
 from renku.core import errors
 from renku.core.commands.config import read_config
 from renku.core.incubation.command import Command
+from renku.core.models.enums import ConfigFilter
 from renku.core.utils import communication
+
+CONFIG_SECTION = "http"
 
 
 def login_command():
@@ -40,6 +45,11 @@ def login_command():
 def _login(client, endpoint):
     parsed_endpoint = _parse_endpoint(endpoint)
     query = urllib.parse.urlencode({"cli_token": str(uuid.uuid4())})
+
+    communication.echo(
+        f"Please log in at {parsed_endpoint.geturl()} on your browser.\n"
+        "Once completed, you may close the browser window."
+    )
 
     login_url = _get_url(parsed_endpoint, "/api/auth/login", query)
     webbrowser.open_new_tab(login_url)
@@ -59,33 +69,28 @@ def _login(client, endpoint):
         else:
             if response.status_code == 200:
                 access_token = response.json().get("access_token")
-                print(response.json())  # TODO delete
                 break
 
     if access_token is None:
         communication.error(f"Cannot get access token from remote host: {parsed_endpoint.geturl()}")
         sys.exit(1)
 
-    print(f"\n{access_token}")  # TODO delete
-    print(f"\n{response.json().get('refresh_token')}")  # TODO delete
     _store_token(client, parsed_endpoint, access_token)
-    import os
-    os.environ["GITHUB_TOKEN"] = access_token
 
 
 def _parse_endpoint(endpoint):
     if not endpoint:
         try:
-            endpoint = read_config("endpoint")
+            endpoint = read_config().build().execute("endpoint").output
         except errors.ParameterError:
-            raise errors.ParameterError("`endpoint` parameter is missing.")
+            raise errors.ParameterError("Parameter `endpoint` is missing.")
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"
 
     parsed_endpoint = urllib.parse.urlparse(endpoint)
     if not parsed_endpoint.netloc:
-        raise errors.ParameterError(f"Invalid endpoint: {endpoint}.")
+        raise errors.ParameterError(f"Invalid endpoint: `{endpoint}`.")
 
     path = parsed_endpoint.path or "/"
     return parsed_endpoint._replace(scheme="https", path=path, params="", query="", fragment="")
@@ -97,12 +102,21 @@ def _get_url(parsed_endpoint, path, query):
 
 
 def _store_token(client, parsed_endpoint, token):
-    client.set_value(section="token", key="token", value=token, global_only=True)
-    # TODO git credential helper, chmod 600
+    client.set_value(section=CONFIG_SECTION, key=parsed_endpoint.netloc, value=token, global_only=True)
+    os.chmod(client.global_config_path, 0o600)
 
-    key = f"http.{parsed_endpoint.geturl()}.extraheader"
-    value = f"AUTHORIZATION: bearer {token}"
-    client.repo.git.config(key, value, local=True)
+    if not client.repo:
+        communication.warn("Not inside a git repository: Cannot store credentials.")
+        return
+
+    value = f"Renku-Token: {token}"
+    client.repo.git.config("http.extraheader", value, local=True)
+
+
+def read_renku_token(client, endpoint):
+    """Read renku token from renku config file."""
+    parsed_endpoint = _parse_endpoint(endpoint)
+    return client.get_value(section=CONFIG_SECTION, key=parsed_endpoint.netloc, config_filter=ConfigFilter.GLOBAL_ONLY)
 
 
 def logout_command():
@@ -111,20 +125,13 @@ def logout_command():
 
 
 def _logout(client):
-    client.remove_value(section="tokens", key="*", global_only=True)
-    # TODO git credential helper
+    client.remove_value(section=CONFIG_SECTION, key="*", global_only=True)
 
-
-def token_command():
-    """Return a command as git credential helper."""
-    return Command().command(_token)
-
-
-def _token(client, command):
-    if command != "get":
-        communication.error(f"BAD COMMAND {command}")
+    if not client.repo:
+        communication.warn("Not inside a git repository: Cannot remove credentials.")
         return
-    token = client.get_value(section="token", key="token", global_only=False)
 
-    communication.echo("username=x-access-token")
-    communication.echo(f"password={token}")
+    try:
+        client.repo.git.config("http.extraheader", local=True, unset=True)
+    except git.exc.GitCommandError:  # NOTE: If already logged out, git config --unset raises an exception
+        pass

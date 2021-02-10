@@ -18,28 +18,110 @@
 """Test ``login`` command."""
 
 from renku.cli import cli
+from renku.core.commands.login import read_renku_token
+from renku.core.utils.contexts import chdir
+
+ENDPOINT = "renku.deployment.ch"
 
 
 def test_login(runner, client, mock_login):
-    """Test login command with no endpoint."""
-    result = runner.invoke(cli, ["login", "renku.deployment.ch"])
+    """Test login command."""
+    result = runner.invoke(cli, ["login", ENDPOINT])
 
     assert 0 == result.exit_code
-    assert "jwt-token" in client.get_value(section="tokens", key="renku.deployment.ch")
+    assert "jwt-token" == read_renku_token(client, ENDPOINT)
+    assert "Renku-Token: jwt-token" == client.repo.config_reader().get_value("http", "extraheader", default="")
 
 
-def test_login_no_endpoint(runner):
+def test_login_no_endpoint(runner, client):
     """Test login command with no endpoint."""
     result = runner.invoke(cli, ["login"])
 
     assert 2 == result.exit_code
-    assert "`endpoint` parameter is missing." in result.output
+    assert "Parameter `endpoint` is missing." in result.output
+
+
+def test_login_with_config_endpoint(runner, client):
+    """Test login command with endpoint in config file."""
+    assert 0 == runner.invoke(cli, ["config", "set", "endpoint", ENDPOINT]).exit_code
+
+    result = runner.invoke(cli, ["login"])
+
+    assert 0 == result.exit_code
+    assert "Successfully logged in." in result.output
+
+
+def test_login_non_git(runner, client, mock_login, directory_tree):
+    """Test login from a non-git directory."""
+    with chdir(directory_tree):
+        result = runner.invoke(cli, ["login", ENDPOINT])
+
+    assert 0 == result.exit_code
+    assert "jwt-token" == read_renku_token(client, ENDPOINT)
+    assert "Successfully logged in." in result.output
+    assert "Warning: Not inside a git repository: Cannot store credentials." in result.output
 
 
 def test_logout(runner, client, mock_login):
     """Test logout removes all credentials."""
-    assert 0 == runner.invoke(cli, ["login", "renku.deployment.ch"]).exit_code
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
-    assert client.get_value(section="tokens", key="renku.deployment.ch") is None
+    assert read_renku_token(client, ENDPOINT) is None
+    assert "" == client.repo.config_reader().get_value("http", "extraheader", default="")
+
+
+def test_logout_non_git(runner, client, mock_login, directory_tree):
+    """Test logout from a non-git directory."""
+    with chdir(directory_tree):
+        assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
+
+        result = runner.invoke(cli, ["logout"])
+
+    assert 0 == result.exit_code
+    assert read_renku_token(client, ENDPOINT) is None
+    assert "Warning: Not inside a git repository: Cannot remove credentials." in result.output
+
+
+def test_repeated_login(runner, client, mock_login):
+    """Test multiple logins."""
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
+
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
+    assert "jwt-token" == read_renku_token(client, ENDPOINT)
+    assert "Renku-Token: jwt-token" == client.repo.config_reader().get_value("http", "extraheader", default="")
+
+
+def test_repeated_logout(runner, client, mock_login):
+    """Test multiple logouts."""
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
+
+    assert 0 == runner.invoke(cli, ["logout"]).exit_code
+
+    assert 0 == runner.invoke(cli, ["logout"]).exit_code
+    assert read_renku_token(client, ENDPOINT) is None
+    assert "" == client.repo.config_reader().get_value("http", "extraheader", default="")
+
+
+def test_login_to_multiple_endpoints(runner, client, mock_login):
+    """Test login to multiple endpoints."""
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
+
+    assert 0 == runner.invoke(cli, ["login", "other.deployment"]).exit_code
+
+    assert "jwt-token" == read_renku_token(client, ENDPOINT)
+    assert "other-token" == read_renku_token(client, "other.deployment")
+    assert "Renku-Token: other-token" == client.repo.config_reader().get_value("http", "extraheader", default="")
+
+
+def test_logout_removes_all_credentials(runner, client, mock_login):
+    """Test logout removes multiple credentials."""
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
+    assert 0 == runner.invoke(cli, ["login", "other.deployment"]).exit_code
+
+    assert 0 == runner.invoke(cli, ["logout"]).exit_code
+
+    assert read_renku_token(client, ENDPOINT) is None
+    assert read_renku_token(client, "other.deployment") is None
+    assert "" == client.repo.config_reader().get_value("http", "extraheader", default="")
