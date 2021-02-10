@@ -191,7 +191,7 @@ def create_from_template(
             client.import_from_template(template_path, metadata, force)
 
         if data_dir:
-            client.set_value("renku", client.DATA_DIR_CONFIG_KEY, data_dir)
+            client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
             data_path = client.path / data_dir
             data_path.mkdir(parents=True, exist_ok=True)
             (data_path / ".gitkeep").touch(exist_ok=True)

@@ -126,7 +126,7 @@ class StorageApiMixin(RepositoryApiMixin):
     @property
     def minimum_lfs_file_size(self):
         """The minimum size of a file in bytes to be added to lfs."""
-        size = self.get_value("renku", "lfs_threshold") or "100kb"
+        size = self.get_value("renku", "lfs_threshold")
 
         return parse_file_size(size)
 
