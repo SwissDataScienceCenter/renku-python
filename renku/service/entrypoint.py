@@ -24,19 +24,29 @@ import uuid
 import sentry_sdk
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
-from flask import Flask, request
+from flask import Flask, jsonify, request
 from flask_apispec import FlaskApiSpec
 from flask_swagger_ui import get_swaggerui_blueprint
 from jwt import InvalidTokenError
+from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.service.cache import cache
-from renku.service.config import API_SPEC_URL, API_VERSION, CACHE_DIR, OPENAPI_VERSION, SERVICE_NAME, SWAGGER_URL
+from renku.service.config import (
+    API_SPEC_URL,
+    API_VERSION,
+    CACHE_DIR,
+    OPENAPI_VERSION,
+    SERVICE_NAME,
+    SERVICE_ROUTE_ERROR,
+    SWAGGER_URL,
+)
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
+from renku.service.views import error_response
 from renku.service.views.cache import (
     CACHE_BLUEPRINT_TAG,
     cache_blueprint,
@@ -180,15 +190,35 @@ def after_request(response):
 
 @app.errorhandler(Exception)
 def exceptions(e):
-    """App exception logger."""
-    tb = traceback.format_exc()
-    service_log.error(
-        "{} {} {} {} 5xx INTERNAL SERVER ERROR\n{}".format(
-            request.remote_addr, request.method, request.scheme, request.full_path, tb
-        )
-    )
+    """This exceptions handler manages Flask/Werkzeug exceptions.
 
-    return e.status_code
+    For Renku exception handlers check ``service/decorators.py``
+    """
+
+    # NOTE: Capture werkzeug exceptions and propagate them to sentry.
+    capture_exception(e)
+
+    # NOTE: Capture traceback for dumping it to the log.
+    tb = traceback.format_exc()
+
+    if hasattr(e, "code") and e.code == 404:
+        service_log.error(
+            "{} {} {} {} 404 NOT FOUND\n{}".format(
+                request.remote_addr, request.method, request.scheme, request.full_path, tb
+            )
+        )
+        return error_response(SERVICE_ROUTE_ERROR - e.code, e.name)
+
+    if hasattr(e, "code") and e.code >= 500:
+        service_log.error(
+            "{} {} {} {} 5xx INTERNAL SERVER ERROR\n{}".format(
+                request.remote_addr, request.method, request.scheme, request.full_path, tb
+            )
+        )
+        return error_response(SERVICE_ROUTE_ERROR - e.code, e.name)
+
+    # NOTE: Werkzeug exceptions should be covered above, following line is for unexpected HTTP server errors.
+    return error_response(SERVICE_ROUTE_ERROR, str(e))
 
 
 app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
