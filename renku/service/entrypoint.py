@@ -40,7 +40,7 @@ from renku.service.config import (
     CACHE_DIR,
     OPENAPI_VERSION,
     SERVICE_NAME,
-    SERVICE_ROUTE_ERROR,
+    HTTP_SERVER_ERROR,
     SWAGGER_URL,
 )
 from renku.service.logger import service_log
@@ -207,7 +207,7 @@ def exceptions(e):
                 request.remote_addr, request.method, request.scheme, request.full_path, tb
             )
         )
-        return error_response(SERVICE_ROUTE_ERROR - e.code, e.name)
+        return error_response(HTTP_SERVER_ERROR - e.code, e.name)
 
     if hasattr(e, "code") and e.code >= 500:
         service_log.error(
@@ -215,10 +215,10 @@ def exceptions(e):
                 request.remote_addr, request.method, request.scheme, request.full_path, tb
             )
         )
-        return error_response(SERVICE_ROUTE_ERROR - e.code, e.name)
+        return error_response(HTTP_SERVER_ERROR - e.code, e.name)
 
     # NOTE: Werkzeug exceptions should be covered above, following line is for unexpected HTTP server errors.
-    return error_response(SERVICE_ROUTE_ERROR, str(e))
+    return error_response(HTTP_SERVER_ERROR, str(e))
 
 
 app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
