@@ -38,9 +38,9 @@ from renku.service.config import (
     API_SPEC_URL,
     API_VERSION,
     CACHE_DIR,
+    HTTP_SERVER_ERROR,
     OPENAPI_VERSION,
     SERVICE_NAME,
-    HTTP_SERVER_ERROR,
     SWAGGER_URL,
 )
 from renku.service.logger import service_log
