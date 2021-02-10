@@ -28,7 +28,7 @@ from renku.service.scheduler import start_scheduler
 from renku.service.worker import start_worker
 
 
-def run_api():
+def run_api(addr="0.0.0.0", port=8080, timeout=600):
     """Run service JSON-RPC API."""
     svc_num_workers = os.getenv("RENKU_SVC_NUM_WORKERS", "1")
     svc_num_threads = os.getenv("$RENKU_SVC_NUM_THREADS", "2")
@@ -36,9 +36,10 @@ def run_api():
     sys.argv = [
         "gunicorn",
         "renku.service.entrypoint:app",
-        "-b" "0.0.0.0:8080",
+        "-b",
+        f"{addr}:{port}",
         "--timeout",
-        "600",
+        f"{timeout}",
         "--workers",
         svc_num_workers,
         "--worker-class",
@@ -69,6 +70,8 @@ def service(env):
     try:
         import redis  # noqa: F401
         from dotenv import load_dotenv
+
+        load_dotenv(dotenv_path=env)
     except ImportError:
         # NOTE: Service dependency is missing.
 
@@ -77,13 +80,35 @@ def service(env):
             "Please install `pip install renku[service]` to enable service component control."
         )
 
-    load_dotenv(dotenv_path=env)
-
 
 @service.command(name="api")
-def api_start():
+@click.option(
+    "-a",
+    "--addr",
+    type=str,
+    default="0.0.0.0",
+    show_default=True,
+    help="Address on which API service should listen to. By default uses IPv4.",
+)
+@click.option(
+    "-p",
+    "--port",
+    type=int,
+    default=8080,
+    show_default=True,
+    help="Port on which API service should listen to. Avoid ports below 1024, for those use reverse-proxies.",
+)
+@click.option(
+    "-t",
+    "--timeout",
+    type=int,
+    default=600,
+    show_default=True,
+    help="Request silent for more than this many seconds are dropped.",
+)
+def api_start(addr, port, timeout):
     """Start service JSON-RPC API in active shell session."""
-    run_api()
+    run_api(addr, port, timeout)
 
 
 @service.command(name="scheduler")
