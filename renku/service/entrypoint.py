@@ -47,6 +47,7 @@ from renku.service.views.cache import (
     project_clone_view,
     upload_file_view,
 )
+from renku.service.views.config import CONFIG_BLUEPRINT_TAG, config_blueprint, set_config, show_config
 from renku.service.views.datasets import (
     DATASET_BLUEPRINT_TAG,
     add_file_to_dataset_view,
@@ -120,6 +121,7 @@ def build_routes(app):
         }
     )
     app.register_blueprint(cache_blueprint)
+    app.register_blueprint(config_blueprint)
     app.register_blueprint(dataset_blueprint)
     app.register_blueprint(graph_blueprint)
     app.register_blueprint(jobs_blueprint)
@@ -141,6 +143,10 @@ def build_routes(app):
     docs.register(list_projects_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(migrate_project_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(migration_check_project_view, blueprint=CACHE_BLUEPRINT_TAG)
+
+    # NOTE: Config endpoint
+    docs.register(show_config, blueprint=CONFIG_BLUEPRINT_TAG)
+    docs.register(set_config, blueprint=CONFIG_BLUEPRINT_TAG)
 
     # NOTE: Dataset endpoints
     docs.register(list_datasets_view, blueprint=DATASET_BLUEPRINT_TAG)
