@@ -24,7 +24,7 @@ import uuid
 import sentry_sdk
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
-from flask import Flask, jsonify, request
+from flask import Flask, request
 from flask_apispec import FlaskApiSpec
 from flask_swagger_ui import get_swaggerui_blueprint
 from jwt import InvalidTokenError
