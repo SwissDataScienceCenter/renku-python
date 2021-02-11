@@ -20,7 +20,6 @@ import os
 import sys
 
 import click
-from gunicorn.app.wsgiapp import run
 
 from renku.core.commands.echo import ERROR
 from renku.service.jobs.queues import QUEUES
@@ -30,6 +29,8 @@ from renku.service.worker import start_worker
 
 def run_api(addr="0.0.0.0", port=8080, timeout=600):
     """Run service JSON-RPC API."""
+    from gunicorn.app.wsgiapp import run
+
     svc_num_workers = os.getenv("RENKU_SVC_NUM_WORKERS", "1")
     svc_num_threads = os.getenv("$RENKU_SVC_NUM_THREADS", "2")
 

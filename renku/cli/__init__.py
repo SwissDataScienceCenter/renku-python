@@ -103,7 +103,7 @@ from renku.core.management.repository import default_path
 #: Monkeypatch Click application.
 click_completion.init()
 
-WARNING_UNPROTECTED_COMMANDS = ["init", "clone", "help"]
+WARNING_UNPROTECTED_COMMANDS = ["init", "clone", "service", "help"]
 
 
 def _uuid_representer(dumper, data):
