@@ -22,9 +22,6 @@ import sys
 import click
 
 from renku.core.commands.echo import ERROR
-from renku.service.jobs.queues import QUEUES
-from renku.service.scheduler import start_scheduler
-from renku.service.worker import start_worker
 
 
 def run_api(addr="0.0.0.0", port=8080, timeout=600):
@@ -54,6 +51,9 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600):
 
 def run_worker(queues):
     """Run service workers."""
+    from renku.service.jobs.queues import QUEUES
+    from renku.service.worker import start_worker
+
     if not queues:
         queues = os.getenv("RENKU_SVC_WORKER_QUEUES", "")
         queues = [queue_name.strip() for queue_name in queues.strip().split(",")]
@@ -66,10 +66,12 @@ def run_worker(queues):
 
 @click.group()
 @click.option("-e", "--env", default=None, type=click.Path(exists=True, dir_okay=False), help="Path to the .env file.")
-def service(env):
+@click.pass_context
+def service(ctx, env):
     """Manage service components."""
     try:
         import redis  # noqa: F401
+        import rq  # noqa: F401
         from dotenv import load_dotenv
 
         load_dotenv(dotenv_path=env)
@@ -80,6 +82,7 @@ def service(env):
             ERROR + "Dependency not found! "
             "Please install `pip install renku[service]` to enable service component control."
         )
+        ctx.exit(1)
 
 
 @service.command(name="api")
@@ -115,6 +118,8 @@ def api_start(addr, port, timeout):
 @service.command(name="scheduler")
 def scheduler_start():
     """Start service scheduler in active shell session."""
+    from renku.service.scheduler import start_scheduler
+
     start_scheduler()
 
 
