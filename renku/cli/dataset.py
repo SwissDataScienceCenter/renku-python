@@ -313,6 +313,14 @@ the name of the parent dataverse where the dataset will be exported to.
 Server's URL is stored in your Renku setting and you don't need to pass it
 every time.
 
+To export a dataset to OLOS you must pass the OLOS server's base URL and
+supply your access token when prompted for it. You must also choose which
+organizational unit to export the dataset to from the list shown during
+the export. The export does not map contributors from Renku to OLOS and
+also doesn't map License information. Additionally, all file categories
+default to Primary/Derived. This has to adjusted manually in the OLOS
+interface after the export is done.
+
 
 Listing all files in the project associated with a dataset.
 
