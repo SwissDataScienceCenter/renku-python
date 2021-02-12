@@ -24,7 +24,7 @@ import uuid
 import sentry_sdk
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
-from flask import Flask, request
+from flask import Flask, redirect, request, url_for
 from flask_apispec import FlaskApiSpec
 from flask_swagger_ui import get_swaggerui_blueprint
 from jwt import InvalidTokenError
@@ -95,8 +95,14 @@ def create_app():
 
     build_routes(app)
 
+    @app.route("/")
+    def root():
+        """Root redirect to docs."""
+        return redirect(url_for("swagger_ui.show"))
+
     @app.route("/health")
     def health():
+        """Service health check."""
         import renku
 
         return "renku repository service version {}\n".format(renku.__version__)
