@@ -56,7 +56,7 @@ def run_worker(queues):
 
     if not queues:
         queues = os.getenv("RENKU_SVC_WORKER_QUEUES", "")
-        queues = [queue_name.strip() for queue_name in queues.strip().split(",")]
+        queues = [queue_name.strip() for queue_name in queues.strip().split(",") if queue_name.strip()]
 
         if not queues:
             queues = QUEUES
@@ -127,4 +127,4 @@ def scheduler_start():
 @click.option("-q", "--queue", multiple=True)
 def worker_start(queue):
     """Start service worker in active shell session. By default it listens on all queues."""
-    run_worker(list(queue))
+    run_worker([q.strip() for q in queue if q])

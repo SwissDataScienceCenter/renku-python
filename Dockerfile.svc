@@ -36,4 +36,4 @@ USER shuhitsu
 ENV RENKU_SVC_NUM_WORKERS 4
 ENV RENKU_SVC_NUM_THREADS 8
 
-CMD ["renku", "service", "api"]
+ENTRYPOINT ["renku", "service"]
