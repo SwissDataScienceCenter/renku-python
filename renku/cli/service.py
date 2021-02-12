@@ -34,6 +34,7 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600):
     sys.argv = [
         "gunicorn",
         "renku.service.entrypoint:app",
+        "--reload",
         "-b",
         f"{addr}:{port}",
         "--timeout",
