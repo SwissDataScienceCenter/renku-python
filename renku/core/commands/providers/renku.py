@@ -30,8 +30,9 @@ from renku.core import errors
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.management.migrate import is_project_unsupported, migrate
 from renku.core.models.datasets import Url
+from renku.core.models.enums import ConfigFilter
 from renku.core.utils.migrate import MigrationType
-from renku.core.utils.urls import remove_credentials
+from renku.core.utils.urls import parse_authentication_endpoint, remove_credentials
 
 
 @attr.s
@@ -40,6 +41,8 @@ class RenkuProvider(ProviderApi):
 
     is_doi = attr.ib(default=False)
     _accept = attr.ib(default="application/json")
+    _authorization_header = attr.ib(default=None)
+    _authentication_endpoint = attr.ib(default="")
 
     @staticmethod
     def supports(uri):
@@ -56,6 +59,8 @@ class RenkuProvider(ProviderApi):
         :return: ``_RenkuRecordSerializer``
         """
         from renku.core.management import LocalClient
+
+        self._prepare_authentication(client, uri)
 
         initial_identifier, kg_urls = self._get_dataset_info(uri)
 
@@ -103,7 +108,7 @@ class RenkuProvider(ProviderApi):
         dataset = remote_client.load_dataset(dataset_name)
 
         if not dataset:
-            raise errors.ParameterError(f'Cannot find dataset with name "{dataset_name}" in project "{project_url}"')
+            raise errors.ParameterError(f"Cannot find dataset with name '{dataset_name}' in project '{project_url}'")
 
         return _RenkuRecordSerializer(dataset, project_url, remote_client, uri=uri)
 
@@ -121,15 +126,15 @@ class RenkuProvider(ProviderApi):
         """True if provider is a git repository."""
         return True
 
-    def _migrate_project(self, client):
+    @staticmethod
+    def _migrate_project(client):
         if is_project_unsupported(client):
             return
         # NOTE: We are not interested in migrating workflows when importing datasets
         client.migration_type = ~MigrationType.WORKFLOWS
         migrate(client, skip_template_update=True, skip_docker_update=True)
 
-    @staticmethod
-    def _get_dataset_info(uri):
+    def _get_dataset_info(self, uri):
         """Return initial dataset identifier and urls of all projects that contain the dataset."""
         parsed_url = urllib.parse.urlparse(uri)
 
@@ -137,7 +142,7 @@ class RenkuProvider(ProviderApi):
         kg_path = f"/knowledge-graph/{dataset_id.strip('/')}"
         kg_url = parsed_url._replace(path=kg_path).geturl()
 
-        response = RenkuProvider._query_knowledge_graph(kg_url)
+        response = self._query_knowledge_graph(kg_url)
         initial_identifier = response.get("versions", {}).get("initial")
 
         if project_id:
@@ -162,27 +167,29 @@ class RenkuProvider(ProviderApi):
         # https://<host>/projects/:namespace/:name/datasets/:id
         # https://<host>/datasets/:id
         path = parsed_url.path.rstrip("/")
-        match = re.match(r"(/projects/[^?/]+/[^?/]+)?(/datasets/[^?/]+)$", path)
+        match = re.match(r"(/projects/(?:[^?/]+/)+[^?/]+)?(/datasets/[^?/]+)$", path)
         project_id, dataset_id = match.groups() if match else (None, None)
         return project_id, dataset_id
 
-    @staticmethod
-    def _query_knowledge_graph(url):
+    def _query_knowledge_graph(self, url):
         try:
-            response = requests.get(url)
+            response = requests.get(url, headers=self._authorization_header)
         except urllib.error.HTTPError as e:
             raise errors.OperationError(f"Cannot access knowledge graph: {url}") from e
 
         if response.status_code == 404:
             raise errors.ProjectNotFound(f"Resource not found in knowledge graph: {url}")
+        elif response.status_code in [401, 403]:
+            raise errors.OperationError(
+                f"Unauthorized access to knowledge graph: Run 'renku login {self._authentication_endpoint}'"
+            )
         elif response.status_code != 200:
             raise errors.OperationError(f"Cannot access knowledge graph: {url}\nResponse code: {response.status_code}")
 
         return response.json()
 
-    @staticmethod
-    def _get_project_urls(project_kg_url):
-        json = RenkuProvider._query_knowledge_graph(project_kg_url)
+    def _get_project_urls(self, project_kg_url):
+        json = self._query_knowledge_graph(project_kg_url)
         urls = json.get("urls", {})
 
         project_datasets_kg_url = None
@@ -193,6 +200,19 @@ class RenkuProvider(ProviderApi):
                 break
 
         return project_datasets_kg_url, urls.get("ssh"), urls.get("http")
+
+    def _prepare_authentication(self, client, uri):
+        token = self._read_renku_token(client, uri)
+        self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
+
+    def _read_renku_token(self, client, uri):
+        """Read renku token from renku config file."""
+        try:
+            parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=uri)
+        except errors.ParameterError:
+            return
+        self._authentication_endpoint = parsed_endpoint.netloc
+        return client.get_value(section="http", key=parsed_endpoint.netloc, config_filter=ConfigFilter.GLOBAL_ONLY)
 
 
 class _RenkuRecordSerializer:

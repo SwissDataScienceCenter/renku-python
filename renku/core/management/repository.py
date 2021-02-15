@@ -138,7 +138,7 @@ class RepositoryApiMixin(GitCore):
 
     _dependency_graph = None
 
-    _migration_type = attr.ib(default=MigrationType.All)
+    _migration_type = attr.ib(default=MigrationType.ALL)
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
