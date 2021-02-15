@@ -225,6 +225,78 @@ def test_create_dataset_with_images(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
+def test_create_dataset_with_image_download(svc_client_with_repo):
+    """Create a new dataset with metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = {
+        "project_id": project_id,
+        "name": "{0}".format(uuid.uuid4().hex),
+        "title": "my little dataset",
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "description": "my little description",
+        "images": [{"content_url": "https://renkulab.io", "position": 1, "download": True},],
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    assert response
+    assert {"error"} == response.json.keys()
+
+    payload = {
+        "project_id": project_id,
+        "name": "{0}".format(uuid.uuid4().hex),
+        "title": "my little dataset",
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "description": "my little description",
+        "images": [{"content_url": "https://renkulab.io/doesnt_exist.png", "position": 1, "download": True},],
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    assert response
+    assert {"error"} == response.json.keys()
+
+    payload = {
+        "project_id": project_id,
+        "name": "{0}".format(uuid.uuid4().hex),
+        "title": "my little dataset",
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "description": "my little description",
+        "images": [
+            {
+                "content_url": "https://raw.githubusercontent.com/SwissDataScienceCenter/calamus/master/docs/reed.png",
+                "position": 1,
+                "download": True,
+            },
+        ],
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params = {
+        "project_id": project_id,
+    }
+    response = svc_client.get("/datasets.list", query_string=params, headers=headers,)
+
+    assert response
+    assert_rpc_response(response)
+
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    assert len(ds["images"]) == 1
+    img1 = next(img for img in ds["images"] if img["position"] == 1)
+
+    assert img1["content_url"].startswith(".renku/dataset_images/")
+    assert img1["content_url"].endswith("/1.png")
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_create_dataset_with_uploaded_images(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
