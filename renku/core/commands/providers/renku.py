@@ -30,6 +30,7 @@ from renku.core import errors
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.management.migrate import is_project_unsupported, migrate
 from renku.core.models.datasets import Url
+from renku.core.utils.migrate import MigrationType
 from renku.core.utils.urls import remove_credentials
 
 
@@ -123,6 +124,8 @@ class RenkuProvider(ProviderApi):
     def _migrate_project(self, client):
         if is_project_unsupported(client):
             return
+        # NOTE: We are not interested in migrating workflows when importing datasets
+        client.migration_type = ~MigrationType.WORKFLOWS
         migrate(client, skip_template_update=True, skip_docker_update=True)
 
     @staticmethod

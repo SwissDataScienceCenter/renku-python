@@ -17,9 +17,20 @@
 # limitations under the License.
 """Helper utils for migrations."""
 
+from enum import IntFlag
+
 import pyld
 
 from renku.core.models.jsonld import read_yaml
+
+
+class MigrationType(IntFlag):
+    """Type of migration that is being executed."""
+
+    DATASETS = 1
+    WORKFLOWS = 2
+    STRUCTURAL = 4
+    ALL = DATASETS | WORKFLOWS | STRUCTURAL
 
 
 def migrate_types(data):

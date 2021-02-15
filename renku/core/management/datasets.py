@@ -56,6 +56,7 @@ from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git, run_command
+from renku.core.utils.migrate import MigrationType
 from renku.core.utils.urls import remove_credentials
 
 
@@ -916,7 +917,13 @@ class DatasetsApiMixin(object):
         if is_project_unsupported(client):
             return files
 
-        migrate(client, skip_template_update=True, skip_docker_update=True)
+        migration_type = client.migration_type
+        # NOTE: We are not interested in migrating workflows when looking for dataset metadata
+        client.migration_type = ~MigrationType.WORKFLOWS
+        try:
+            migrate(client, skip_template_update=True, skip_docker_update=True)
+        finally:
+            client.migration_type = migration_type
 
         for _, dataset in client.datasets.items():
             for file_ in dataset.files:

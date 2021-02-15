@@ -41,6 +41,7 @@ from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.dependency_graph import DependencyGraph
+from renku.core.utils.migrate import MigrationType
 
 from .git import GitCore
 
@@ -137,6 +138,8 @@ class RepositoryApiMixin(GitCore):
 
     _dependency_graph = None
 
+    _migration_type = attr.ib(default=MigrationType.All)
+
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         #: Configure Renku path.
@@ -177,6 +180,18 @@ class RepositoryApiMixin(GitCore):
     def lock(self):
         """Create a Renku config lock."""
         return filelock.FileLock(str(self.renku_path.with_suffix(self.LOCK_SUFFIX)), timeout=0,)
+
+    @property
+    def migration_type(self):
+        """Type of migration that is being executed on this client."""
+        return self._migration_type
+
+    @migration_type.setter
+    def migration_type(self, value):
+        """Set type of migration."""
+        if not isinstance(value, MigrationType):
+            raise ValueError(f"Invalid value for MigrationType: {type(value)}")
+        self._migration_type = value
 
     @property
     def renku_metadata_path(self):
