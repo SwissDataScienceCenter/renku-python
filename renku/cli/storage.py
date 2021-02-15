@@ -58,7 +58,7 @@ to LFS:
 
 .. code-block:: console
 
-    $ renku storage fix
+    $ renku storage migrate --all
 
 This will move all files that are bigger than the renku `lfs_threshold` config
 value and are not excluded by `.renkulfsignore` into git LFS.
@@ -68,7 +68,7 @@ like:
 
 .. code-block:: console
 
-    $ renku storage fix big_file other_big_file
+    $ renku storage migrate big_file other_big_file
 """
 import os
 
@@ -148,13 +148,18 @@ def check(client, all):
 
 
 @storage.command()
+@click.option("--all", "-a", "migrate_all", is_flag=True, default=False, help="Migrate all large files not in git LFS.")
 @click.argument(
     "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1,
 )
 @pass_local_client
-def fix(client, paths):
-    """Fix large files committed to git by moving them to LFS."""
+def migrate(client, migrate_all, paths):
+    """Migrate large files committed to git by moving them to LFS."""
     if not paths:
+        if not migrate_all:
+            click.echo("Please specify paths to migrate or use the --all flag to migrate all large files.")
+            exit(1)
+
         lfs_paths = check_lfs().build().execute(everything=all).output
 
         if not lfs_paths:
