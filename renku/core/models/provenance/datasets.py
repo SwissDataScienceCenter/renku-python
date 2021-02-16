@@ -456,7 +456,7 @@ class DatasetProvenance:
         """Return the latest version of a dataset."""
         datasets = {d.id: d for d in self.get_by_name(name)}
 
-        for dataset in self.get_by_name(name):
+        for dataset in list(datasets.values()):
             if dataset.derived_from:
                 datasets.pop(dataset.derived_from.url_id, None)
 
