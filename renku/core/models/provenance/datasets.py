@@ -276,7 +276,7 @@ class Dataset:
         for path in files:
             file = files[path]
             dataset_file = DatasetFile.from_dataset_file(file, client=client, revision=revision)
-            if not revision:
+            if not dataset_file:
                 continue
 
             dataset_files.append(dataset_file)
@@ -454,19 +454,19 @@ class DatasetProvenance:
 
     def get_latest_by_name(self, name):
         """Return the latest version of a dataset."""
-        datasets_ids = set(d.id for d in self.get_by_name(name))
+        datasets = {d.id: d for d in self.get_by_name(name)}
 
         for dataset in self.get_by_name(name):
             if dataset.derived_from:
-                datasets_ids.remove(dataset.derived_from.url_id)
+                datasets.pop(dataset.derived_from.url_id, None)
 
-        assert len(datasets_ids) <= 1, f"There are more than one latest versions with name `{name}`"
+        assert len(datasets) <= 1, f"There are more than one latest versions with name `{name}`"
 
-        if not datasets_ids:
+        if not datasets:
             return None
 
-        url = datasets_ids.pop()
-        return next(d for d in self.get_by_name(name) if d.id == url)
+        _, dataset = datasets.popitem()
+        return dataset
 
     @property
     def datasets(self):
