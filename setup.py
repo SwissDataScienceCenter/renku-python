@@ -126,7 +126,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.4.4", "sphinx-rtd-theme==0.5."],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.4.4", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -156,7 +156,7 @@ install_requires = [
     "click-completion>=0.5.0,<=0.5.3",
     "click-plugins==1.1.1",
     "click>=7.0,<=7.1.2",
-    "cryptography>=3.2,<=3.2",
+    "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool>=3.0.20200724003302,<=3.0.20200807132242",
     "environ_config>=18.2.0,<=20.1.0",

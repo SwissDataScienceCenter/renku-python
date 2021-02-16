@@ -97,17 +97,11 @@ def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
     assert "These paths were ignored as they are not pushed" in result.output
 
 
-def test_lfs_fix(runner, project, client):
+def test_lfs_migrate(runner, project, client):
     """Test ``renku storage migrate`` command for large files in git."""
 
-    with (client.path / "dataset_file").open("w") as fp:
-        fp.write("dataset file")
-
-    with (client.path / "workflow_file").open("w") as fp:
-        fp.write("workflow file")
-
-    with (client.path / "regular_file").open("w") as fp:
-        fp.write("regular file")
+    for _file in ["dataset_file", "workflow_file", "regular_file"]:
+        (client.path / _file).write_text(_file)
 
     client.repo.git.add("*")
     client.repo.index.commit("add files")
@@ -140,24 +134,16 @@ def test_lfs_fix(runner, project, client):
     assert ".renku/dataset.json" in changed_files
     assert ".renku/provenance.json" in changed_files
 
-    with (client.path / ".renku" / "dataset.json").open("r") as fp:
-        assert dataset_checksum not in fp.read()
+    assert dataset_checksum not in (client.path / ".renku" / "dataset.json").read_text()
 
-    with (client.path / ".renku" / "provenance.json").open("r") as fp:
-        assert workflow_checksum not in fp.read()
+    assert workflow_checksum not in (client.path / ".renku" / "provenance.json").read_text()
 
 
-def test_lfs_fix_no_changes(runner, project, client):
+def test_lfs_migrate_no_changes(runner, project, client):
     """Test ``renku storage migrate`` command without broken files."""
 
-    with (client.path / "dataset_file").open("w") as fp:
-        fp.write("dataset file")
-
-    with (client.path / "workflow_file").open("w") as fp:
-        fp.write("workflow file")
-
-    with (client.path / "regular_file").open("w") as fp:
-        fp.write("regular file")
+    for _file in ["dataset_file", "workflow_file", "regular_file"]:
+        (client.path / _file).write_text(_file)
 
     client.repo.git.add("*")
     client.repo.index.commit("add files")
@@ -180,18 +166,11 @@ def test_lfs_fix_no_changes(runner, project, client):
     assert previous_head == client.repo.head.commit.hexsha
 
 
-def test_lfs_fix_explicit_path(runner, project, client):
+def test_lfs_migrate_explicit_path(runner, project, client):
     """Test ``renku storage migrate`` command explicit path."""
 
-    with (client.path / "dataset_file").open("w") as fp:
-        fp.write("dataset file")
-
-    with (client.path / "workflow_file").open("w") as fp:
-        fp.write("workflow file")
-
-    regular_file = client.path / "regular_file"
-    with regular_file.open("w") as fp:
-        fp.write("regular file")
+    for _file in ["dataset_file", "workflow_file", "regular_file"]:
+        (client.path / _file).write_text(_file)
 
     client.repo.git.add("*")
     client.repo.index.commit("add files")
@@ -214,11 +193,8 @@ def test_lfs_fix_explicit_path(runner, project, client):
 
     assert previous_head != client.repo.head.commit.hexsha
 
-    with (client.path / ".renku" / "dataset.json").open("r") as fp:
-        assert dataset_checksum in fp.read()
+    assert dataset_checksum in (client.path / ".renku" / "dataset.json").read_text()
 
-    with (client.path / ".renku" / "provenance.json").open("r") as fp:
-        assert workflow_checksum in fp.read()
+    assert workflow_checksum in (client.path / ".renku" / "provenance.json").read_text()
 
-    with regular_file.open("r") as fp:
-        assert "oid sha256:" in fp.read()
+    assert "oid sha256:" in (client.path / "regular_file").read_text()
