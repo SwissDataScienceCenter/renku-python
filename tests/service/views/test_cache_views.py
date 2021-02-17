@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -194,7 +194,7 @@ def test_file_upload_with_users(svc_client, identity_headers):
     }
 
     headers_user2 = {
-        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256"),
         "Authorization": identity_headers["Authorization"],
     }
 
@@ -370,6 +370,7 @@ def test_clone_projects_invalid_headers(svc_client, identity_headers):
     assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
 
     response = svc_client.get("/cache.project_list", headers=identity_headers)
+
     assert response
     assert {"result"} == set(response.json.keys())
     assert 1 == len(response.json["result"]["projects"])

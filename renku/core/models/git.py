@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -95,7 +95,7 @@ class GitURL(object):
     port = attr.ib(default=None)
     owner = attr.ib(default=None)
     name = attr.ib(default=None, converter=filter_repo_name)
-    _regex = attr.ib(default=None, cmp=False)
+    _regex = attr.ib(default=None, eq=False, order=False)
 
     def __attrs_post_init__(self):
         """Derive basic information."""

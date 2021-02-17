@@ -419,6 +419,12 @@
                }
             },
             {
+               "path": "schema:image",
+               "sh:class": {
+                  "@id": "schema:ImageObject"
+               }
+            },
+            {
                "path": "schema:inLanguage",
                "sh:class": {
                   "@id": "schema:Language"
@@ -602,6 +608,37 @@
                "sh:class": {
                   "@id": "prov:Generation"
                }
+            }
+         ]
+      },
+      {
+         "@id": "_:imageObjectShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "schema:ImageObject",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:contentUrl",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:position",
+               "datatype": {
+                  "@id": "xsd:integer"
+               },
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },

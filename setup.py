@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -29,7 +29,7 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 
 URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
-REFERENCE = "0.1.11"
+REFERENCE = "0.1.15"
 
 
 class DownloadTemplates(Command):
@@ -103,39 +103,38 @@ tests_require = [
     "pytest-cov>=2.5.1,<2.11.0",
     "pytest-flake8>=1.0.6,<1.0.8",
     "pytest-mock>=3.2.0,<3.6.0",
-    "pytest-timeout==1.4.2",
     "pytest-pep8==1.0.6",
+    "pytest-timeout==1.4.2",
     "pytest-xdist>=1.34.0,<2.3.0",
     "pytest>=4.0.0,<6.2.2",
     "responses>=0.7.0,<0.12.2",
 ]
 
+
 service_requires = [
-    "flask==1.1.2",
     "flask-apispec==0.11.0",
     "flask-swagger-ui==3.36.0",
+    "flask==1.1.2",
     "gunicorn",
     "marshmallow==3.10.0",
-    "rq==1.7.0",
+    "ptvsd>=4.3.0,<4.4.0",
     "rq-scheduler==0.10.0",
+    "rq==1.7.0",
     "sentry-sdk[flask]>=0.7.4,<0.19.6",
     "walrus==0.8.1",
-    "ptvsd>=4.3.0,<4.4.0",
 ]
 
+
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.4.4", "sphinx-rtd-theme==0.5.",],
-    "runner": ["cwlref-runner==1.0",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.4.4", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
     "service": service_requires,
 }
 
-setup_requires = [
-    "wheel",
-    "pytest-runner>=2.6.2,<=5.2",
-    "setuptools_scm>=3.1.0,<=4.1.2",
-]
+setup_requires = ["pytest-runner>=2.6.2,<=5.2", "setuptools_scm>=3.1.0,<=4.1.2", "wheel"]
+
 
 extras_require["all"] = list(setup_requires)
 for name, reqs in extras_require.items():
@@ -150,14 +149,14 @@ for name, reqs in extras_require.items():
     extras_require["nodocs"].extend(reqs)
 
 install_requires = [
-    "appdirs>=1.4.3,<=1.4.4 ",
     "apispec>=4.0.0,<=4.1.0",
+    "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<=20.2.0",
     "calamus>=0.3.6,<0.3.7",
     "click-completion>=0.5.0,<=0.5.3",
-    "click>=7.0,<=7.1.2",
     "click-plugins==1.1.1",
-    "cryptography>=3.2,<=3.2",
+    "click>=7.0,<=7.1.2",
+    "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool>=3.0.20200724003302,<=3.0.20200807132242",
     "environ_config>=18.2.0,<=20.1.0",
@@ -165,30 +164,31 @@ install_requires = [
     "gitpython==3.1.12",
     "humanize>=2.5.0,<2.7.0",
     "jinja2>=2.10.3,<=2.11.2",
+    "ndg-httpsclient==0.5.1",
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
     "pluggy==0.13.1",
     "psutil>=5.4.7,<=5.7.2",
     "pyasn1>=0.4.5,<=0.4.8",
-    "PyYAML>=3.12,<=5.3.1",
+    "pyjwt==2.0.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<=19.1.0",
     "pyshacl==0.11.3.post1",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
-    "pyjwt==1.7.1",
-    "redis==3.5.3",
-    "rich>=9.3.0,<9.4.0",
-    "rdflib==4.2.2",
+    "PyYAML>=3.12,<=5.3.1",
     "rdflib-jsonld>=0.4.0,<0.6.0",
+    "rdflib==4.2.2",
+    "redis==3.5.3",
     "requests>=2.23.0,<=2.24.0",
-    "ndg-httpsclient==0.5.1",
+    "rich>=9.3.0,<9.4.0",
     "setuptools_scm>=3.1.0,<=4.1.2",
     "tabulate>=0.7.7,<=0.8.7",
     "tqdm>=4.48.1,<=4.48.2",
     "wcmatch>=6.0.0,<=6.1",
     "werkzeug>=0.15.5,<=1.0.1",
 ]
+
 
 complete_setup_requires = list(set(install_requires + setup_requires))
 
@@ -247,14 +247,14 @@ setup(
     author_email="contact@datascience.ch",
     url="https://github.com/swissdatasciencecenter/renku-python",
     project_urls={
-        "Changelog": ("https://github.com/swissdatasciencecenter/renku-python" "/blob/master/CHANGES.rst"),
+        "Changelog": "https://github.com/swissdatasciencecenter/renku-python/blob/master/CHANGES.rst",
         "Docs": "https://renku-python.rtfd.io/",
     },
     packages=packages,
     zip_safe=False,
     include_package_data=True,
     platforms="any",
-    entry_points={"console_scripts": ["renku=renku.cli:cli"],},
+    entry_points={"console_scripts": ["renku=renku.cli:cli"]},
     extras_require=extras_require,
     install_requires=install_requires,
     setup_requires=complete_setup_requires,
@@ -276,7 +276,6 @@ setup(
         "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",

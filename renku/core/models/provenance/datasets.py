@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -33,6 +33,7 @@ from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, f
 from renku.core.models.datasets import (
     DatasetFileSchema,
     DatasetTagSchema,
+    ImageObjectSchema,
     LanguageSchema,
     Url,
     UrlSchema,
@@ -145,6 +146,7 @@ class Dataset:
         files=None,
         id=None,
         identifier=None,
+        images=[],
         immutable=False,
         in_language=None,
         keywords=None,
@@ -172,6 +174,7 @@ class Dataset:
         self.derived_from = derived_from
         self.description = description
         self.files = files or []
+        self.images = images
         self.immutable = immutable
         self.in_language = in_language
         self.keywords = keywords or []
@@ -211,6 +214,7 @@ class Dataset:
             files=files,
             id=None,
             identifier=dataset.identifier,
+            images=dataset.images,
             in_language=dataset.in_language,
             keywords=dataset.keywords,
             license=dataset.license,
@@ -286,6 +290,7 @@ class Dataset:
         self.date_published = dataset.date_published
         self.derived_from = dataset.derived_from
         self.description = dataset.description
+        self.images = dataset.images
         self.in_language = dataset.in_language
         self.keywords = dataset.keywords
         self.license = dataset.license
@@ -463,7 +468,7 @@ class NewDatasetFileSchema(JsonLDSchema):
     based_on = Nested(schema.isBasedOn, DatasetFileSchema, missing=None, propagate_client=False)
     date_added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     date_deleted = fields.DateTime(prov.invalidatedAtTime, missing=None, allow_none=True, format="iso")
-    entity = Nested(renku.entity, EntitySchema)
+    entity = Nested(prov.entity, EntitySchema)
     id = fields.Id()
     is_external = fields.Boolean(renku.external, missing=False)
     source = fields.String(renku.source, missing=None)
@@ -497,6 +502,7 @@ class NewDatasetSchema(JsonLDSchema):
     files = Nested(schema.hasPart, NewDatasetFileSchema, many=True)
     id = fields.Id(missing=None)
     identifier = fields.String(schema.identifier)
+    images = fields.Nested(schema.image, ImageObjectSchema, missing=None, allow_none=True)
     in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
     keywords = fields.List(schema.keywords, fields.String(), missing=None, allow_none=True)
     license = Uri(schema.license, missing=None, allow_none=True)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -59,7 +59,9 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
-    dest = make_project_path(user_data, {"owner": url_components.owner, "name": url_components.name})
+    dest = make_project_path(
+        user_data, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+    )
 
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
@@ -100,7 +102,9 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
-    dest = make_project_path(user, {"owner": url_components.owner, "name": url_components.name})
+    dest = make_project_path(
+        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+    )
 
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
@@ -148,7 +152,9 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
-    dest = make_project_path(user, {"owner": url_components.owner, "name": url_components.name})
+    dest = make_project_path(
+        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+    )
 
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
@@ -191,7 +197,9 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
-    dest = make_project_path(user, {"owner": url_components.owner, "name": url_components.name})
+    dest = make_project_path(
+        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+    )
 
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
@@ -240,7 +248,9 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     assert_rpc_response(response)
     assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"].keys())
 
-    dest = make_project_path(user, {"owner": url_components.owner, "name": url_components.name})
+    dest = make_project_path(
+        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+    )
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["files"][0]["job_id"]
     commit_message = "service: dataset add remote file"
@@ -272,7 +282,9 @@ def test_dataset_project_lock(doi, svc_client_with_repo):
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
-    dest = make_project_path(user, {"owner": url_components.owner, "name": url_components.name})
+    dest = make_project_path(
+        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+    )
 
     old_commit = Repo(dest).head.commit
 

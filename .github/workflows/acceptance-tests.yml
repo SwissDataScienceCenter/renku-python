@@ -51,7 +51,7 @@ jobs:
         RENKU_ANONYMOUS_SESSIONS: true
         RENKU_TESTS_ENABLED: true
         renku_core: "@${{ github.head_ref }}"
-        renku: "@development"
+        renku: "@master"
     - name: Check existing renkubot comment
       uses: peter-evans/find-comment@v1
       id: findcomment
@@ -69,60 +69,44 @@ jobs:
           You can access the deployment of this PR at https://renku-ci-rp-${{ github.event.number }}.dev.renku.ch
 
   test-pr:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     if: github.event.action != 'closed'
     needs: [check-deploy, deploy-pr]
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v1
       with:
-        python-version: 3.7
-    - name: Install dependencies
-      run: |
-        sudo apt-get update -y && sudo apt-get install -y grep
-        pip install yq
+        python-version: 3.8
     - name: Test the PR
       if: needs.check-deploy.outputs.pr-contains-string == 'true'
       env:
-        RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
-        RENKU_RELEASE: "renku-ci-rp-${{ github.event.number }}"
+        KUBECONFIG: ${{ github.workspace }}/renkubot-kube.config
+        RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
+        RENKU_RELEASE: renku-ci-rp-${{ github.event.number }}
       run: |
-        RENKU_PYTHON_VERSION=$(git rev-parse HEAD)
-        echo "Passing rp version $RENKU_PYTHON_VERSION"
-
-        git clone https://github.com/SwissDataScienceCenter/renku.git /tmp/renku
-        cd /tmp/renku/
-        git checkout development
-        cd acceptance-tests
-        COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose build --build-arg renku_python_ref=${RENKU_PYTHON_VERSION} sbt
-        docker-compose run -e RENKU_TEST_URL=https://${RENKU_RELEASE}.dev.renku.ch \
-                           -e RENKU_TEST_FULL_NAME="Renku Bot" \
-                           -e RENKU_TEST_EMAIL="renku@datascience.ch" \
-                           -e RENKU_TEST_REGISTER="1" \
-                           -e RENKU_TEST_USERNAME="renku-test" \
-                           -e RENKU_TEST_PASSWORD="$RENKU_BOT_DEV_PASSWORD" \
-                           -e RENKU_TEST_ANON_AVAILABLE="true" sbt
-    - name: Prepare artifact for packaging on failure
+        echo "$RENKUBOT_KUBECONFIG" > ${{ github.workspace }}/renkubot-kube.config
+        helm test ${RENKU_RELEASE} --namespace ${RENKU_RELEASE} --timeout 40m --logs
+    - name: Download artifact for packaging on failure
       if: failure()
-      run: |
-        mkdir test-artifacts
-        cp target/*.png test-artifacts 2>/dev/null || :
-        cp target/*.log test-artifacts 2>/dev/null || :
-        sudo rm -rf target/20*/.renku/cache 2>/dev/null || :
-        cp -r target/20* test-artifacts 2>/dev/null || :
+      uses: SwissDataScienceCenter/renku/actions/download-test-artifacts@master
+      env:
+        RENKU_VALUES: ${{ secrets.CI_RENKU_VALUES }}
+        TEST_ARTIFACTS_PATH: "tests-artifacts-${{ github.sha }}"
     - name: Upload screenshots on failure
       if: failure()
       uses: actions/upload-artifact@v1
       with:
         name: acceptance-test-artifacts
-        path: test-artifacts
+        path: ${{ github.workspace }}/test-artifacts/
   cleanup:
     if: github.event.action == 'closed'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
-    - uses: SwissDataScienceCenter/renku/actions/teardown-renku@master
+    - uses: actions/checkout@v2
+    - name: renku teardown
+      uses: SwissDataScienceCenter/renku/actions/teardown-renku@master
       env:
-        GITLAB_TOKEN: ${{ secrets.GITLAB_DEV_TOKEN }}
-        KUBECONFIG: ${{ github.workspace }}/renkubot-kube.config
-        RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
+        GITLAB_TOKEN: ${{ secrets.DEV_GITLAB_TOKEN }}
+        KUBECONFIG: "${{ github.workspace }}/renkubot-kube.config"
         RENKU_RELEASE: renku-ci-rp-${{ github.event.number }}
+        RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}

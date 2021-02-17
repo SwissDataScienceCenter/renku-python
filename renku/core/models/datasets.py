@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -339,6 +339,11 @@ def _convert_language(obj):
     return Language.from_jsonld(obj) if isinstance(obj, dict) else obj
 
 
+def _convert_image(obj):
+    """Convert language object."""
+    return ImageObject.from_jsonld(obj) if isinstance(obj, dict) else obj
+
+
 def _convert_keyword(keywords):
     """Convert keywords collection."""
     if isinstance(keywords, (list, tuple)):
@@ -360,6 +365,7 @@ class Dataset(Entity, CreatorMixin):
         "date_published",
         "description",
         "files",
+        "images",
         "in_language",
         "keywords",
         "license",
@@ -378,6 +384,8 @@ class Dataset(Entity, CreatorMixin):
     identifier = attr.ib(default=attr.Factory(uuid.uuid4), kw_only=True, converter=_extract_doi)
 
     in_language = attr.ib(default=None, converter=_convert_language, kw_only=True)
+
+    images = attr.ib(converter=_convert_image, default=None, kw_only=True)
 
     keywords = attr.ib(converter=_convert_keyword, kw_only=True, default=None)
 
@@ -702,6 +710,25 @@ class Dataset(Entity, CreatorMixin):
         return DatasetSchema(flattened=True).dump(self)
 
 
+class ImageObject:
+    """Represents a schema.org `ImageObject`."""
+
+    def __init__(self, content_url: str, position: int, id=None):
+        self.content_url = content_url
+        self.position = position
+        self.id = id
+
+    @staticmethod
+    def generate_id(dataset: Dataset, position: int) -> str:
+        """Generate @id field."""
+        return urljoin(dataset._id + "/", pathlib.posixpath.join("images", str(position)))
+
+    @property
+    def is_absolute(self):
+        """Whether content_url is an absolute or relative url."""
+        return bool(urlparse(self.content_url).netloc)
+
+
 class CreatorMixinSchema(JsonLDSchema):
     """CreatorMixin schema."""
 
@@ -793,6 +820,21 @@ class DatasetFileSchema(EntitySchema):
         return obj
 
 
+class ImageObjectSchema(JsonLDSchema):
+    """ImageObject schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.ImageObject
+        model = ImageObject
+        unknown = EXCLUDE
+
+    id = fields.Id(missing=None)
+    content_url = fields.String(schema.contentUrl)
+    position = fields.Integer(schema.position)
+
+
 class DatasetSchema(EntitySchema, CreatorMixinSchema):
     """Dataset schema."""
 
@@ -815,6 +857,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     description = fields.String(schema.description, missing=None)
     identifier = fields.String(schema.identifier)
     in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
+    images = fields.Nested(schema.image, ImageObjectSchema, many=True, missing=None, allow_none=True)
     keywords = fields.List(schema.keywords, fields.String(), allow_none=True, missing=None)
     license = Uri(schema.license, allow_none=True, missing=None)
     title = fields.String(schema.name)
@@ -927,6 +970,21 @@ def generate_dataset_file_url(client, filepath):
     project_id = project_id._replace(path=path)
 
     return project_id.geturl()
+
+
+class ImageObjectJson(marshmallow.Schema):
+    """ImageObject json schema."""
+
+    content_url = marshmallow.fields.String()
+    position = marshmallow.fields.Integer()
+
+
+class ImageObjectRequestJson(marshmallow.Schema):
+    """ImageObject json schema."""
+
+    file_id = marshmallow.fields.String()
+    content_url = marshmallow.fields.String()
+    position = marshmallow.fields.Integer()
 
 
 class DatasetCreatorsJson(marshmallow.Schema):

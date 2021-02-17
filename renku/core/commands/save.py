@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -93,7 +93,15 @@ def repo_sync(repo, message=None, remote=None, paths=None):
     if paths:
         # commit uncommitted changes
         try:
-            repo.git.add(*paths)
+            staged_files = (
+                {git_unicode_unescape(d.a_path) for d in repo.index.diff("HEAD")} if repo.head.is_valid() else set()
+            )
+
+            path_to_save = set(paths) - staged_files
+
+            if path_to_save:
+                repo.git.add(*path_to_save)
+
             saved_paths = [d.b_path for d in repo.index.diff("HEAD")]
 
             if not message:

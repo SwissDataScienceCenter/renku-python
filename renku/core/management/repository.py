@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -35,6 +35,7 @@ from werkzeug.utils import cached_property, secure_filename
 from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
+from renku.core.models.enums import ConfigFilter
 from renku.core.models.projects import Project
 from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
@@ -134,6 +135,8 @@ class RepositoryApiMixin(GitCore):
 
     _remote_cache = attr.ib(factory=dict)
 
+    _dependency_graph = None
+
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         #: Configure Renku path.
@@ -144,7 +147,7 @@ class RepositoryApiMixin(GitCore):
         path.relative_to(path)
         self.renku_path = path
 
-        data_dir = self.get_value("renku", self.DATA_DIR_CONFIG_KEY, local_only=True)
+        data_dir = self.get_value("renku", self.DATA_DIR_CONFIG_KEY, config_filter=ConfigFilter.LOCAL_ONLY)
         self.data_dir = data_dir or self.data_dir
 
         self._subclients = {}
@@ -215,6 +218,16 @@ class RepositoryApiMixin(GitCore):
         """Return a CWL prefix."""
         self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
         return str(self.workflow_path.resolve().relative_to(self.path))
+
+    @property
+    def dependency_graph(self):
+        """Return dependency graph if available."""
+        if not self.has_graph_files():
+            return
+        if not self._dependency_graph:
+            self._dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
+
+        return self._dependency_graph
 
     @property
     def project(self):
@@ -488,6 +501,22 @@ class RepositoryApiMixin(GitCore):
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""
         return self.dependency_graph_path.exists() or self.provenance_graph_path.exists()
+
+    def initialize_graph(self):
+        """Create empty graph files."""
+        self.dependency_graph_path.write_text("[]")
+        self.provenance_graph_path.write_text("[]")
+
+    def remove_graph_files(self):
+        """Remove all graph files."""
+        try:
+            self.dependency_graph_path.unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            self.provenance_graph_path.unlink()
+        except FileNotFoundError:
+            pass
 
     def init_repository(self, force=False, user=None):
         """Initialize an empty Renku repository."""

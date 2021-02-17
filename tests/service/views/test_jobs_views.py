@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -200,7 +200,7 @@ def test_job_details_by_user(svc_client_with_user):
 
     excluded_user_headers = {
         "Content-Type": "application/json",
-        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256"),
         "Authorization": headers["Authorization"],
     }
 

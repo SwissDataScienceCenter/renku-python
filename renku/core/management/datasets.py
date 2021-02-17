@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -30,7 +30,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
 from urllib import error, parse
-from urllib.parse import ParseResult
+from urllib.parse import ParseResult, urlparse
 
 import attr
 import patoolib
@@ -46,6 +46,7 @@ from renku.core.models.datasets import (
     Dataset,
     DatasetFile,
     DatasetTag,
+    ImageObject,
     generate_dataset_file_url,
     is_dataset_name_valid,
 )
@@ -70,6 +71,9 @@ class DatasetsApiMixin(object):
     CACHE = "cache"
     """Directory to cache transient data."""
 
+    DATASET_IMAGES = "dataset_images"
+    """Directory for dataset images."""
+
     DATASETS_PROVENANCE = "dataset.json"
     """File for storing datasets' provenance."""
 
@@ -83,6 +87,14 @@ class DatasetsApiMixin(object):
             return self._temporary_datasets_path
 
         return self.path / self.renku_home / self.DATASETS
+
+    @property
+    def renku_dataset_images_path(self):
+        """Return a ``Path`` instance of Renku dataset metadata folder."""
+        if self._temporary_datasets_path:
+            return self._temporary_datasets_path
+
+        return self.path / self.renku_home / self.DATASET_IMAGES
 
     @property
     def datasets_provenance_path(self):
@@ -131,8 +143,19 @@ class DatasetsApiMixin(object):
         self.datasets_provenance.to_json()
 
     def has_datasets_provenance_file(self):
-        """Return true if dependency or provenance graph exists."""
+        """Return true if dataset provenance exists."""
         return self.datasets_provenance_path.exists()
+
+    def remove_datasets_provenance_file(self):
+        """Remove dataset provenance."""
+        try:
+            self.datasets_provenance_path.unlink()
+        except FileNotFoundError:
+            pass
+
+    def initialize_datasets_provenance(self):
+        """Create empty dataset provenance file."""
+        self.datasets_provenance_path.write_text("[]")
 
     def datasets_from_commit(self, commit=None):
         """Return datasets defined in a commit."""
@@ -224,7 +247,9 @@ class DatasetsApiMixin(object):
 
         dataset.to_yaml()
 
-    def create_dataset(self, name=None, title=None, description=None, creators=None, keywords=None):
+    def create_dataset(
+        self, name=None, title=None, description=None, creators=None, keywords=None, images=None, safe_image_paths=[]
+    ):
         """Create a dataset."""
         if not name:
             raise errors.ParameterError("Dataset name must be provided.")
@@ -266,12 +291,90 @@ class DatasetsApiMixin(object):
             immutable=True,  # No mutation required when first creating a dataset
         )
 
+        if images:
+            safe_image_paths.append(self.path)
+            self.set_dataset_images(dataset, images, safe_image_paths)
+
         dataset_ref = LinkReference.create(client=self, name="datasets/" + name)
         dataset_ref.set_reference(metadata_path)
 
         dataset.to_yaml(path=metadata_path)
 
         return dataset, metadata_path, dataset_ref
+
+    def set_dataset_images(self, dataset, images, safe_image_paths=[]):
+        """Set the images on a dataset."""
+
+        if not images:
+            images = []
+
+        (self.renku_dataset_images_path / dataset.identifier).mkdir(exist_ok=True, parents=True)
+
+        previous_images = dataset.images or []
+
+        dataset.images = []
+
+        images_updated = False
+
+        for img in images:
+            position = img["position"]
+            content_url = img["content_url"]
+
+            if any(i.position == img["position"] for i in dataset.images):
+                raise errors.DatasetImageError(f"Duplicate dataset image specified for position {position}")
+
+            existing = next(
+                (i for i in previous_images if i.position == img["position"] and i.content_url == img["content_url"]),
+                None,
+            )
+
+            if existing:
+                dataset.images.append(existing)
+                continue
+
+            if urlparse(content_url).netloc:
+                # NOTE: absolute url
+                dataset.images.append(ImageObject(content_url, position, id=ImageObject.generate_id(dataset, position)))
+                images_updated = True
+                continue
+
+            path = content_url
+            if not os.path.isabs(path):
+                path = os.path.normpath(os.path.join(self.path, path))
+
+            if not os.path.exists(path) or not any(os.path.commonprefix([path, p]) == str(p) for p in safe_image_paths):
+                # NOTE: make sure files exists and prevent path traversal
+                raise errors.DatasetImageError(f"Dataset image with relative path {content_url} not found")
+
+            image_folder = self.renku_dataset_images_path / dataset.identifier
+
+            if not path.startswith(str(image_folder)):
+                # NOTE: only copy dataset image if it's not in .renku/datasets/<id>/images/ already
+                _, ext = os.path.splitext(content_url)
+                img_path = image_folder / f"{position}{ext}"
+                shutil.copy(path, img_path)
+
+            dataset.images.append(
+                ImageObject(
+                    str(img_path.relative_to(self.path)), position, id=ImageObject.generate_id(dataset, position)
+                )
+            )
+            images_updated = True
+
+        new_urls = [i.content_url for i in dataset.images]
+
+        for prev in previous_images:
+            # NOTE: Delete images if they were removed
+            if prev.content_url in new_urls or urlparse(prev.content_url).netloc:
+                continue
+
+            path = prev.content_url
+            if not os.path.isabs(path):
+                path = os.path.normpath(os.path.join(self.path, path))
+
+            os.remove(path)
+
+        return images_updated or dataset.images != previous_images
 
     def add_data_to_dataset(
         self,
@@ -1206,6 +1309,7 @@ def _check_url(url):
 
 DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / DatasetsApiMixin.DATASETS,
+    Path(RENKU_HOME) / DatasetsApiMixin.DATASET_IMAGES,
     Path(RENKU_HOME) / DatasetsApiMixin.POINTERS,
     Path(RENKU_HOME) / LinkReference.REFS,
     Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,

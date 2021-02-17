@@ -47,7 +47,7 @@ from renku.service.config import (
     REDIS_EXCEPTION_ERROR_CODE,
     RENKU_EXCEPTION_ERROR_CODE,
 )
-from renku.service.serializers.headers import UserIdentityHeaders
+from renku.service.serializers.headers import OptionalIdentityHeaders, RequiredIdentityHeaders
 from renku.service.utils.squash import squash
 from renku.service.views import error_response
 
@@ -59,7 +59,7 @@ def requires_identity(f):
     def decorated_function(*args, **kws):
         """Represents decorated function."""
         try:
-            user_identity = UserIdentityHeaders().load(request.headers)
+            user_identity = RequiredIdentityHeaders().load(request.headers)
         except (ValidationError, KeyError) as e:
             capture_exception(e)
 
@@ -77,11 +77,7 @@ def optional_identity(f):
     @wraps(f)
     def decorated_function(*args, **kws):
         """Represents decorated function."""
-        try:
-            user_identity = UserIdentityHeaders().load(request.headers)
-        except (ValidationError, KeyError):
-            return f(None, *args, **kws)
-
+        user_identity = OptionalIdentityHeaders().load(request.headers)
         return f(user_identity, *args, **kws)
 
     return decorated_function
@@ -96,6 +92,7 @@ def handle_redis_except(f):
         try:
             return f(*args, **kwargs)
         except (RedisError, OSError) as e:
+            # NOTE: Trap the process working directory when internal error occurs.
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
@@ -242,6 +239,7 @@ def handle_git_except(f):
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
                 pass
+
             capture_exception(e)
 
             error_code = GIT_ACCESS_DENIED_ERROR_CODE if "Access denied" in e.stderr else GIT_UNKNOWN_ERROR_CODE

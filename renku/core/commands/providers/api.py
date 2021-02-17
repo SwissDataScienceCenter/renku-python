@@ -45,6 +45,11 @@ class ProviderApi(abc.ABC):
         """True if provider is a git repository."""
         return False
 
+    @property
+    def supports_images(self):
+        """True if provider is a git repository."""
+        return False
+
 
 class ExporterApi(abc.ABC):
     """Interface defining exporter methods."""

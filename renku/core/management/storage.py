@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -126,7 +126,7 @@ class StorageApiMixin(RepositoryApiMixin):
     @property
     def minimum_lfs_file_size(self):
         """The minimum size of a file in bytes to be added to lfs."""
-        size = self.get_value("renku", "lfs_threshold") or "100kb"
+        size = self.get_value("renku", "lfs_threshold")
 
         return parse_file_size(size)
 
@@ -177,7 +177,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 path = Path(path).relative_to(self.path)
 
             # Do not add files with filter=lfs in .gitattributes
-            if attrs.get(str(path), {}).get("filter") == "lfs":
+            if attrs.get(str(path), {}).get("filter") == "lfs" or not (self.path / path).exists():
                 continue
 
             if path.is_dir() and not any(self.renku_lfs_ignore.match_tree(str(path))):
@@ -375,6 +375,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
     def check_requires_tracking(self, *paths):
         """Check paths and return a list of those that must be tracked."""
+
         if not self.external_storage_requested:
             return
 
