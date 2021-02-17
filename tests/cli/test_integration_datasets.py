@@ -740,6 +740,7 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("use_graph", [False, True])
 @pytest.mark.parametrize(
     "params,path",
     [
@@ -757,26 +758,25 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
     ],
 )
 @flaky(max_runs=10, min_passes=1)
-def test_add_data_from_git(runner, client, params, path):
+def test_add_data_from_git(runner, client_with_new_graph, params, path, use_graph):
     """Test add data to datasets from a git repository."""
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+    command = ["graph", "dataset", "add"] if use_graph else ["dataset", "add"]
 
     # create a dataset and add a file to it
     result = runner.invoke(
         cli,
-        ["dataset", "add", "remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", "-d", "existing/LICENSE", remote],
+        command + ["remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", "-d", "existing/LICENSE", remote],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params, catch_exceptions=False,
-    )
+    result = runner.invoke(cli, command + ["remote", "--ref", "0.3.0", remote] + params, catch_exceptions=False)
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert Path(path).exists()
 
-    file_ = read_dataset_file_metadata(client, "remote", path)
+    file_ = read_dataset_file_metadata(client_with_new_graph, "remote", path)
     assert file_.url.endswith(os.path.join("files", "blob", path))
     assert file_.source == remote
     assert file_.based_on.source == remote
@@ -1434,7 +1434,7 @@ def test_datasets_provenance_after_import(runner, client_with_new_graph):
     """Test dataset provenance is updated after importing a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-data", "10.7910/DVN/F4NUMR"]).exit_code
 
-    dataset = client_with_new_graph.datasets_provenance.get_by_name("my-data")
+    dataset = next(client_with_new_graph.datasets_provenance.get_by_name("my-data"), None)
 
     assert dataset is not None
 
