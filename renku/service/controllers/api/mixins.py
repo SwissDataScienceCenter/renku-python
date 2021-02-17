@@ -28,7 +28,7 @@ from renku.core.management.repository import RepositoryApiMixin
 from renku.core.utils.contexts import click_context
 from renku.service.cache.models.user import User
 from renku.service.controllers.utils.remote_project import RemoteProject
-from renku.service.errors import IdentificationError
+from renku.service.errors import AuthenticationTokenMissing, IdentificationError, OperationNotSupported
 
 
 def local_identity(method):
@@ -50,6 +50,9 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
     def __init__(self, cache, user_data, request_data):
         """Read operation mixin for controllers."""
+        if user_data and "user_id" in user_data and cache is not None:
+            self.user = cache.ensure_user(user_data)
+
         self.cache = cache
         self.user_data = user_data
         self.request_data = request_data
@@ -57,9 +60,6 @@ class ReadOperationMixin(metaclass=ABCMeta):
         # NOTE: This is absolute project path and its set before invocation of `renku_op`,
         # so its safe to use it in controller operations. Its type will always be `pathlib.Path`.
         self.project_path = None
-
-        if user_data:
-            self.user = cache.ensure_user(user_data)
 
     @property
     @abstractmethod
@@ -83,7 +83,10 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
     @local_identity
     def local(self):
-        """Execute operation against service cache."""
+        """Execute renku operation against service cache."""
+        if self.user is None or self.cache is None:
+            raise OperationNotSupported("local execution is disabled")
+
         project = self.cache.get_project(self.user, self.context["project_id"])
 
         if not project.initialized:
@@ -95,7 +98,10 @@ class ReadOperationMixin(metaclass=ABCMeta):
             return self.renku_op()
 
     def remote(self):
-        """Execute operation against remote project."""
+        """Execute renku operation against remote project."""
+        if self.user_data and "token" not in self.user_data:
+            raise AuthenticationTokenMissing()
+
         project = RemoteProject(self.user_data, self.request_data)
 
         with project.remote() as path:

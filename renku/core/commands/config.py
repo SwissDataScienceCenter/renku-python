@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,21 +17,39 @@
 # limitations under the License.
 """Get and set Renku repository or global options."""
 from renku.core import errors
+from renku.core.incubation.command import Command
 from renku.core.management.config import CONFIG_LOCAL_PATH
-
-from .client import pass_local_client
+from renku.core.models.enums import ConfigFilter
 
 
 def _split_section_and_key(key):
     """Return a tuple with config section and key."""
     parts = key.split(".")
     if len(parts) > 1:
-        return 'renku "{0}"'.format(parts[0]), ".".join(parts[1:])
+        return "{0}".format(parts[0]), ".".join(parts[1:])
     return "renku", key
 
 
-@pass_local_client(clean=False, requires_migration=True, commit=True, commit_only=CONFIG_LOCAL_PATH, commit_empty=False)
-def update_config(client, key, *, value=None, remove=False, global_only=False, commit_message=None):
+def _update_multiple_config(client, values, global_only=False, commit_message=None):
+    """Add, update, or remove multiple configuration values."""
+    for k, v in values.items():
+        if v is not None:
+            _update_config(client, k, value=v, global_only=global_only)
+        else:
+            _update_config(client, k, remove=True, global_only=global_only)
+
+
+def update_multiple_config():
+    """Command for updating config."""
+    return (
+        Command()
+        .command(_update_multiple_config)
+        .require_migration()
+        .with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH)
+    )
+
+
+def _update_config(client, key, *, value=None, remove=False, global_only=False, commit_message=None):
     """Add, update, or remove configuration values."""
     section, section_key = _split_section_and_key(key)
     if remove:
@@ -43,14 +61,28 @@ def update_config(client, key, *, value=None, remove=False, global_only=False, c
         return value
 
 
-@pass_local_client
-def read_config(client, key, local_only, global_only):
+def update_config():
+    """Command for updating config."""
+    return (
+        Command()
+        .command(_update_config)
+        .require_migration()
+        .with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH)
+    )
+
+
+def _read_config(client, key, config_filter=ConfigFilter.ALL, as_string=True):
     """Read configuration."""
     if key:
         section, section_key = _split_section_and_key(key)
-        value = client.get_value(section, section_key, local_only=local_only, global_only=global_only)
+        value = client.get_value(section, section_key, config_filter=config_filter)
         if value is None:
             raise errors.ParameterError('Key "{}" not found.'.format(key))
         return value
 
-    return client.get_config(local_only=local_only, global_only=global_only)
+    return client.get_config(config_filter=config_filter, as_string=as_string)
+
+
+def read_config():
+    """Command for updating config."""
+    return Command().command(_read_config)

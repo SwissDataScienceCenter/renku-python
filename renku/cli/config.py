@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -103,8 +103,9 @@ The following values are available for the ``renku config`` command:
 """
 import click
 
-from renku.core import errors
+from renku.cli.utils.click import MutuallyExclusiveOption
 from renku.core.commands.config import read_config, update_config
+from renku.core.models.enums import ConfigFilter
 
 
 @click.group()
@@ -115,18 +116,46 @@ def config():
 
 @config.command()
 @click.argument("key", required=False, default=None)
-@click.option("--local", "local_only", is_flag=True, help="Read from local configuration only.")
-@click.option("--global", "global_only", is_flag=True, help="Read from global configuration only.")
-def show(key, local_only, global_only):
+@click.option(
+    "--local",
+    "local_only",
+    cls=MutuallyExclusiveOption,
+    is_flag=True,
+    help="Read from local configuration only.",
+    mutually_exclusive=[("global_only", "--global"), ("default_only", "--default")],
+)
+@click.option(
+    "--global",
+    "global_only",
+    cls=MutuallyExclusiveOption,
+    is_flag=True,
+    help="Read from global configuration only.",
+    mutually_exclusive=[("local_only", "--local"), ("default_only", "--default")],
+)
+@click.option(
+    "--default",
+    "default_only",
+    cls=MutuallyExclusiveOption,
+    is_flag=True,
+    help="Show default values if applicable.",
+    mutually_exclusive=[("local_only", "--local"), ("global_only", "--global")],
+)
+def show(key, local_only, global_only, default_only):
     """Show current configuration.
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
-    if local_only and global_only:
-        raise errors.UsageError("Cannot use --local and --global together.")
+    config_filter = ConfigFilter.ALL
 
-    value = read_config(key, local_only, global_only)
-    click.secho(value)
+    if local_only:
+        config_filter = ConfigFilter.LOCAL_ONLY
+    elif global_only:
+        config_filter = ConfigFilter.GLOBAL_ONLY
+    elif default_only:
+        config_filter = ConfigFilter.DEFAULT_ONLY
+
+    value = read_config().build().execute(key, config_filter=config_filter)
+    click.secho(value.output)
 
 
 @config.command("set")
@@ -138,7 +167,7 @@ def set_(key, value, global_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
-    update_config(key, value=value, global_only=global_only)
+    update_config().build().execute(key, value=value, global_only=global_only)
     click.secho("OK", fg="green")
 
 
@@ -150,5 +179,5 @@ def remove(key, global_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
-    update_config(key, remove=True, global_only=global_only)
+    update_config().build().execute(key, remove=True, global_only=global_only)
     click.secho("OK", fg="green")

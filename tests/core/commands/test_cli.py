@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -35,6 +35,7 @@ from renku import __version__
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
+from renku.core.models.enums import ConfigFilter
 from renku.core.utils.contexts import chdir
 
 
@@ -762,7 +763,7 @@ def test_config_manager_creation(client, global_config_dir, global_only, config_
     """Check creation of configuration file."""
     path = getattr(client, config_path_attr)
     assert path.endswith("renku.ini")
-    config = client.load_config(local_only=False, global_only=False)
+    config = client.load_config(config_filter=ConfigFilter.ALL)
     client.store_config(config, global_only=global_only)
     assert Path(path).exists()
 
@@ -770,15 +771,18 @@ def test_config_manager_creation(client, global_config_dir, global_only, config_
 @pytest.mark.parametrize("global_only", (False, True))
 def test_config_manager_set_value(client, global_config_dir, global_only):
     """Check writing to configuration."""
-    local_only = not global_only
+    config_filter = ConfigFilter.GLOBAL_ONLY
+
+    if not global_only:
+        config_filter = ConfigFilter.LOCAL_ONLY
 
     client.set_value("zenodo", "access_token", "my-secret", global_only=global_only)
 
-    config = client.load_config(local_only=local_only, global_only=global_only)
+    config = client.load_config(config_filter=config_filter)
     assert config.get("zenodo", "access_token") == "my-secret"
 
     client.remove_value("zenodo", "access_token", global_only=global_only)
-    config = client.load_config(local_only=local_only, global_only=global_only)
+    config = client.load_config(config_filter=config_filter)
     assert "zenodo" not in config.sections()
 
 
@@ -788,14 +792,14 @@ def test_config_get_value(client, global_config_dir):
     client.set_value("local", "key", "local-value")
     value = client.get_value("local", "key")
     assert "local-value" == value
-    value = client.get_value("local", "key", global_only=True)
+    value = client.get_value("local", "key", config_filter=ConfigFilter.GLOBAL_ONLY)
     assert value is None
 
     # Value set globally is stored globally
     client.set_value("global", "key", "global-value", global_only=True)
-    value = client.get_value("global", "key", local_only=True)
+    value = client.get_value("global", "key", config_filter=ConfigFilter.LOCAL_ONLY)
     assert value is None
-    value = client.get_value("global", "key", global_only=True)
+    value = client.get_value("global", "key", config_filter=ConfigFilter.GLOBAL_ONLY)
     assert "global-value" == value
     value = client.get_value("global", "key")
     assert "global-value" == value

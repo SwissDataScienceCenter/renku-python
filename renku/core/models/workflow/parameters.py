@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -29,7 +29,7 @@ from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku,
 from renku.core.models.entities import CollectionSchema, EntitySchema
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class MappedIOStream(object):
     """Represents an IO stream (stdin, stdout, stderr)."""
 
@@ -79,7 +79,7 @@ class MappedIOStream(object):
         return MappedIOStreamSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class CommandParameter(object):
     """Represents a parameter for an execution template."""
 
@@ -98,7 +98,7 @@ class CommandParameter(object):
         return "/".join(self._id.split("/")[-2:])
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class CommandArgument(CommandParameter):
     """An argument to a command that is neither input nor output."""
 
@@ -146,7 +146,7 @@ class CommandArgument(CommandParameter):
         return CommandArgumentSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class CommandInput(CommandParameter):
     """An input to a command."""
 
@@ -203,7 +203,7 @@ class CommandInput(CommandParameter):
         return CommandInputSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class CommandInputTemplate(CommandParameter):
     """Template for inputs of a Plan."""
 
@@ -252,7 +252,7 @@ class CommandInputTemplate(CommandParameter):
         return CommandInputTemplateSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class CommandOutput(CommandParameter):
     """An output of a command."""
 
@@ -314,7 +314,7 @@ class CommandOutput(CommandParameter):
         return CommandOutputSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class RunParameter:
     """A run parameter that is set inside the script."""
 
@@ -361,7 +361,7 @@ class RunParameter:
         return RunParameterSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class CommandOutputTemplate(CommandParameter):
     """Template for outputs of a Plan."""
 

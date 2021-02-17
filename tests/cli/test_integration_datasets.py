@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -300,6 +300,34 @@ def test_dataset_import_renkulab_dataset(runner, project, client, url):
 
     dataset = [d for d in client.datasets.values()][0]
     assert dataset.same_as.url["@id"] == url
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_dataset_import_renkulab_dataset_with_image(runner, project, client):
+    """Test dataset import from Renkulab projects."""
+    result = runner.invoke(
+        cli, ["dataset", "import", "https://dev.renku.ch/datasets/4f36f891-bb7c-4b2b-ab13-7633cc270a40"], input="y"
+    )
+
+    assert 0 == result.exit_code
+    assert "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391" in result.output
+
+    assert "0.00" in result.output
+    assert "OK" in result.output
+
+    result = runner.invoke(cli, ["dataset", "ls-files"])
+    assert 0 == result.exit_code
+    assert "bla" in result.output
+
+    dataset = [d for d in client.datasets.values()][0]
+    assert 2 == len(dataset.images)
+    img1 = next((i for i in dataset.images if i.position == 1))
+    img2 = next((i for i in dataset.images if i.position == 2))
+
+    assert img1.content_url == "https://example.com/image1.jpg"
+    assert img2.content_url.endswith("/2.png")
+    assert os.path.exists(client.path / img2.content_url)
 
 
 @pytest.mark.integration

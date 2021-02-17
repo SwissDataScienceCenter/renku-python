@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -90,7 +90,7 @@ def _set_entity_client_commit(entity, client, commit):
         entity.commit = commit
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class Activity(CommitMixin):
     """Represent an activity in the repository."""
 
@@ -403,7 +403,7 @@ class Activity(CommitMixin):
         return ActivitySchema(flattened=True).dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class ProcessRun(Activity):
     """A process run is a particular execution of a Process description."""
 
@@ -588,7 +588,7 @@ class ProcessRun(Activity):
         return ProcessRunSchema(flattened=True).dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class WorkflowRun(ProcessRun):
     """A workflow run typically contains several subprocesses."""
 

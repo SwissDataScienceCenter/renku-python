@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -60,6 +60,7 @@ def test_safe_class_attributes(tmpdir):
         "CACHE",
         "CONFIG_NAME",
         "DATASETS",
+        "DATASET_IMAGES",
         "DATASETS_PROVENANCE",
         "DATA_DIR_CONFIG_KEY",
         "DEPENDENCY_GRAPH",
