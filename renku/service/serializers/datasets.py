@@ -23,6 +23,7 @@ from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
 from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
 from renku.core.models.datasets import ImageObjectJson as ImageObject
 from renku.core.models.datasets import ImageObjectRequestJson as ImageObjectRequest
+from renku.service.serializers.common import RenkuSyncSchema
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -48,11 +49,10 @@ class DatasetCreateRequest(DatasetDetailsRequest):
         return data
 
 
-class DatasetCreateResponse(Schema):
+class DatasetCreateResponse(RenkuSyncSchema):
     """Response schema for a dataset create view."""
 
     name = fields.String(required=True)
-    remote_branch = fields.String()
 
 
 class DatasetCreateResponseRPC(JsonRPCResponse):
@@ -78,11 +78,10 @@ class DatasetRemoveRequest(DatasetDetails):
         return data
 
 
-class DatasetRemoveResponse(Schema):
+class DatasetRemoveResponse(RenkuSyncSchema):
     """Response schema for a dataset create view."""
 
     name = fields.String(required=True)
-    remote_branch = fields.String()
 
 
 class DatasetRemoveResponseRPC(JsonRPCResponse):
@@ -131,14 +130,13 @@ class DatasetAddRequest(Schema):
         return data
 
 
-class DatasetAddResponse(Schema):
+class DatasetAddResponse(RenkuSyncSchema):
     """Response schema for a dataset add file view."""
 
     project_id = fields.String(required=True)
     name = fields.String(required=True)
 
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
-    remote_branch = fields.String()
 
 
 class DatasetAddResponseRPC(JsonRPCResponse):
@@ -245,12 +243,11 @@ class DatasetEditRequest(Schema):
     commit_message = fields.String()
 
 
-class DatasetEditResponse(Schema):
+class DatasetEditResponse(RenkuSyncSchema):
     """Dataset edit metadata response."""
 
     edited = fields.Dict(required=True)
     warnings = fields.List(fields.String())
-    remote_branch = fields.String()
 
 
 class DatasetEditResponseRPC(JsonRPCResponse):
@@ -282,12 +279,10 @@ class DatasetUnlinkRequest(Schema):
         return data
 
 
-class DatasetUnlinkResponse(Schema):
+class DatasetUnlinkResponse(RenkuSyncSchema):
     """Dataset unlink files response."""
 
     unlinked = fields.List(fields.String())
-
-    remote_branch = fields.String()
 
 
 class DatasetUnlinkResponseRPC(JsonRPCResponse):
