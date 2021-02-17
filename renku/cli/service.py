@@ -83,6 +83,7 @@ def service(ctx, env):
             ERROR + "Dependency not found! "
             "Please install `pip install renku[service]` to enable service component control."
         )
+
         ctx.exit(1)
 
 
