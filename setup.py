@@ -112,6 +112,7 @@ tests_require = [
 
 
 service_requires = [
+    "apispec>=4.0.0,<=4.1.0",
     "flask-apispec==0.11.0",
     "flask-swagger-ui==3.36.0",
     "flask==1.1.2",
@@ -119,6 +120,7 @@ service_requires = [
     "marshmallow==3.10.0",
     "ptvsd>=4.3.0,<4.4.0",
     "python-dotenv==0.15.0",
+    "redis==3.5.3",
     "rq-scheduler==0.10.0",
     "rq==1.7.0",
     "sentry-sdk[flask]>=0.7.4,<0.19.6",
@@ -150,7 +152,6 @@ for name, reqs in extras_require.items():
     extras_require["nodocs"].extend(reqs)
 
 install_requires = [
-    "apispec>=4.0.0,<=4.1.0",
     "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<=20.2.0",
     "calamus>=0.3.6,<0.3.7",
@@ -180,7 +181,6 @@ install_requires = [
     "PyYAML>=3.12,<=5.3.1",
     "rdflib-jsonld>=0.4.0,<0.6.0",
     "rdflib==4.2.2",
-    "redis==3.5.3",
     "requests>=2.23.0,<=2.24.0",
     "rich>=9.3.0,<9.4.0",
     "setuptools_scm>=3.1.0,<=4.1.2",
