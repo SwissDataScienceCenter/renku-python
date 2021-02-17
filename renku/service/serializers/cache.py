@@ -27,6 +27,7 @@ from werkzeug.utils import secure_filename
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
+from renku.service.serializers.common import RenkuSyncSchema
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -102,6 +103,7 @@ class ProjectCloneRequest(Schema):
 
     git_url = fields.String(required=True)
     depth = fields.Integer(missing=PROJECT_CLONE_DEPTH_DEFAULT)
+    ref = fields.String(missing="master")
 
 
 class ProjectCloneContext(ProjectCloneRequest):
@@ -117,7 +119,6 @@ class ProjectCloneContext(ProjectCloneRequest):
     email = fields.String()
     owner = fields.String()
     token = fields.String()
-    ref = fields.String(missing="master")
 
     @validates("git_url")
     def validate_git_url(self, value):
@@ -209,7 +210,7 @@ class ProjectMigrateRequest(Schema):
         return data
 
 
-class ProjectMigrateResponse(Schema):
+class ProjectMigrateResponse(RenkuSyncSchema):
     """Response schema for project migrate."""
 
     was_migrated = fields.Boolean()
