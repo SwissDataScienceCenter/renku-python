@@ -168,7 +168,7 @@ class DatasetFile:
                 source=self.source,
                 url=None,
             )
-        except KeyError:  # path does not exists at revision
+        except KeyError:  # NOTE: cannot find a previous commit for path starting at revision
             return None
 
 
@@ -271,6 +271,7 @@ class Dataset:
 
     @staticmethod
     def _convert_from_dataset_files(files, client, revision):
+        """Create instances from renku.core.models.datasets.DatasetFile."""
         dataset_files = []
         files = {f.path: f for f in files}  # NOTE: To make sure there are no duplicate paths
         for path in files:
@@ -404,6 +405,7 @@ class Dataset:
         )
 
     def _convert_to_dataset_files(self, client):
+        """Create instances of renku.core.models.datasets.DatasetFile."""
         dataset_files = []
         for file in self.files:
             dataset_file = file.to_dataset_file(client)
