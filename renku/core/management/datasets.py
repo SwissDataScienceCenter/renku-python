@@ -336,20 +336,18 @@ class DatasetsApiMixin(object):
             image_type = None
             if urlparse(content_url).netloc:
                 # NOTE: absolute url
-                if "download" not in img or not img["download"]:
+                if not img.get("mirror_locally", False):
                     dataset.images.append(
                         ImageObject(content_url, position, id=ImageObject.generate_id(dataset, position))
                     )
                     images_updated = True
                     continue
 
-                # NOTE: download the image locally
+                # NOTE: mirror the image locally
                 try:
                     path, _ = urlretrieve(content_url)
-                except (requests.exceptions.HTTPError, error.HTTPError, error.URLError) as e:
-                    raise errors.DatasetImageError(
-                        f"Dataset image with url {content_url} couldn't be downloaded"
-                    ) from e
+                except error.URLError as e:
+                    raise errors.DatasetImageError(f"Dataset image with url {content_url} couldn't be mirrored") from e
 
                 image_type = imghdr.what(path)
                 if not image_type:
