@@ -102,6 +102,7 @@ class ProjectCloneRequest(Schema):
 
     git_url = fields.String(required=True)
     depth = fields.Integer(missing=PROJECT_CLONE_DEPTH_DEFAULT)
+    ref = fields.String(missing="master")
 
 
 class ProjectCloneContext(ProjectCloneRequest):
@@ -117,7 +118,6 @@ class ProjectCloneContext(ProjectCloneRequest):
     email = fields.String()
     owner = fields.String()
     token = fields.String()
-    ref = fields.String(missing="master")
 
     @validates("git_url")
     def validate_git_url(self, value):
