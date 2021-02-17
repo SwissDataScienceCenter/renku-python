@@ -136,6 +136,42 @@ Use following installation steps based on your operating system and preferences
 if you would like to work with the command line interface and you do not need
 the Python library to be importable.
 
+.. _windows-before-reference:
+
+Windows
+~~~~~~~
+.. _windows-after-reference:
+
+.. note::
+
+    We don't officially support Windows, but renku works well in the Windows Subsystem for Linux(WSL).
+    As such, the following can be regarded as a best effort description on how to run renku on Windows.
+
+Renku can be run using the Windows Subsystem for Linux (WSL). To install the WSL, please follow the
+`official instructions <https://docs.microsoft.com/en-us/windows/wsl/install-win10#manual-installation-steps>`__.
+
+We recommend you use the Ubuntu 20.04 image in the WSL when you get to that step of the installation.
+
+Once WSL is installed, launch the WSL terminal and install the packages required by renku with:
+
+::
+
+    $ sudo apt-get update && sudo apt-get install git python3 python3-pip python3-venv pipx
+
+Since Ubuntu has a very outdated version of git LFS installed which can have some bugs when cloning
+repositories, we recommend you manually install the newest version by following
+`these instructions <https://github.com/git-lfs/git-lfs/wiki/Installation#debian-and-ubuntu>`__.
+
+Once all the requirements are installed, you can install renku normally by running:
+
+::
+
+    $ pipx install renku
+    $ pipx ensurepath
+
+After this, renku is ready to use. You can access your Windows in the various mountpoints in
+``/mnt/`` and you can execute Windows executables (e.g. \*.exe) as usual directly from the
+WSL (so ``renku run myexecutable.exe`` will work as expected).
 
 .. _docker-before-reference:
 
