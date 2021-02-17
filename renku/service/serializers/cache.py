@@ -27,6 +27,7 @@ from werkzeug.utils import secure_filename
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
+from renku.service.serializers.common import RenkuSyncSchema
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -209,7 +210,7 @@ class ProjectMigrateRequest(Schema):
         return data
 
 
-class ProjectMigrateResponse(Schema):
+class ProjectMigrateResponse(RenkuSyncSchema):
     """Response schema for project migrate."""
 
     was_migrated = fields.Boolean()
