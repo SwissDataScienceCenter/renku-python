@@ -25,7 +25,6 @@ import uuid
 import webbrowser
 from pathlib import posixpath
 
-import git
 import requests
 
 from renku.core import errors
@@ -95,13 +94,6 @@ def _store_token(client, parsed_endpoint, token):
     client.set_value(section=CONFIG_SECTION, key=parsed_endpoint.netloc, value=token, global_only=True)
     os.chmod(client.global_config_path, 0o600)
 
-    if not client.repo:
-        communication.warn("Not inside a git repository: Cannot store credentials.")
-        return
-
-    value = f"Renku-Token: {token}"
-    client.repo.git.config("http.extraheader", value, local=True)
-
 
 def read_renku_token(client, endpoint):
     """Read renku token from renku config file."""
@@ -116,12 +108,3 @@ def logout_command():
 
 def _logout(client):
     client.remove_value(section=CONFIG_SECTION, key="*", global_only=True)
-
-    if not client.repo:
-        communication.warn("Not inside a git repository: Cannot remove credentials.")
-        return
-
-    try:
-        client.repo.git.config("http.extraheader", local=True, unset=True)
-    except git.exc.GitCommandError:  # NOTE: If already logged out, git config --unset raises an exception
-        pass
