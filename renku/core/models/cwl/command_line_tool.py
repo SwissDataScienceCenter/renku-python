@@ -139,7 +139,7 @@ class CommandLineToolFactory(object):
             raise NotImplementedError(self.stdin)
         for input_ in self.inputs:
             if input_.type in PATH_OBJECTS and input_.default:
-                yield (input_.id, os.path.normpath(os.path.join(basedir, str(input_.default.path))))
+                yield input_.id, os.path.normpath(os.path.join(basedir, str(input_.default.path)))
 
     @contextmanager
     def watch(self, client, no_output=False):
