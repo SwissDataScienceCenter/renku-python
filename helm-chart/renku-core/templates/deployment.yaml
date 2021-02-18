@@ -92,6 +92,8 @@ spec:
             {{ end }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ .Values.gitLFSSkipSmudge | quote }}
+            - name: RENKU_DOMAIN
+              value: {{ .Values.global.renku.domain }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -143,6 +145,8 @@ spec:
               value: {{ .Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ .Values.gitLFSSkipSmudge | quote }}
+            - name: RENKU_DOMAIN
+              value: {{ .Values.global.renku.domain }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -179,6 +183,8 @@ spec:
               value: {{ .Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ .Values.gitLFSSkipSmudge | quote }}
+            - name: RENKU_DOMAIN
+              value: {{ .Values.global.renku.domain }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}

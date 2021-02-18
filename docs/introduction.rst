@@ -56,6 +56,15 @@
 
 .. include:: ../README.rst
    :start-after: pip-after-reference:
+   :end-before: windows-before-reference:
+
+.. raw:: html
+
+   <h3>Windows</h3>
+
+
+.. include:: ../README.rst
+   :start-after: windows-after-reference:
    :end-before: docker-before-reference:
 
 .. raw:: html
