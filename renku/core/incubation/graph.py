@@ -79,13 +79,6 @@ def _generate_graph(client, force):
 
             provenance_graph.add(activity_collection)
 
-            # NOTE: we serialize activity_collection after adding it to the provenance graph so that its activities have
-            # their order set
-            new_path = client.provenance_path / f"{Path(path).stem}.json"
-            activity_collection.to_json(new_path)
-
-            assert provenance_graph.order == activity_collection.max_order
-
     def process_datasets(commit):
         files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
         paths = [git_unicode_unescape(f.a_path) for f in files_diff]
