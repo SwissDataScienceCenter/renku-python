@@ -81,6 +81,30 @@ class DatasetFile:
 
         self._update_metadata()
 
+    @classmethod
+    def from_dataset_file(cls, dataset_file, client, revision):
+        """Create an instance by converting from renku.core.models.datasets.DatasetFile if available at revision."""
+        path = dataset_file.path
+
+        checksum = _get_object_hash(revision=revision, path=path, client=client)
+        if not checksum:
+            return None
+
+        host = get_host(client)
+        id = _generate_entity_id(entity_checksum=checksum, path=path, host=host)
+        entity = Entity(id=id, checksum=checksum, path=path)
+
+        return cls(
+            client=client,
+            based_on=dataset_file.based_on,
+            date_added=dataset_file.added,
+            entity=entity,
+            id=None,
+            is_external=dataset_file.external,
+            source=dataset_file.source,
+            url=None,
+        )
+
     @staticmethod
     def generate_id(client, identifier, path):
         """Generate @id field."""
@@ -127,6 +151,25 @@ class DatasetFile:
 
         parsed_url = urlparse(self.id)
         return list(Path(parsed_url.path).parents)[-3].name
+
+    def to_dataset_file(self, client, revision="HEAD"):
+        """Return an instance of renku.core.models.datasets.DatasetFile at a revision."""
+        from renku.core.models.datasets import DatasetFile
+
+        try:
+            return DatasetFile.from_revision(
+                client=client,
+                revision=revision,
+                added=self.date_added,
+                based_on=self.based_on,
+                external=self.is_external,
+                id=None,
+                path=self.entity.path,
+                source=self.source,
+                url=None,
+            )
+        except KeyError:  # NOTE: cannot find a previous commit for path starting at revision
+            return None
 
 
 class Dataset:
@@ -200,9 +243,9 @@ class Dataset:
     @classmethod
     def from_dataset(cls, dataset, client, revision):
         """Create an instance by converting from renku.core.models.datasets.Dataset."""
-        files = _convert_dataset_files(dataset.files, client, revision)
+        files = cls._convert_from_dataset_files(dataset.files, client, revision)
 
-        return Dataset(
+        return cls(
             name=dataset.name,
             client=client,
             creators=dataset.creators,
@@ -225,6 +268,21 @@ class Dataset:
             url=dataset.url,
             version=dataset.version,
         )
+
+    @staticmethod
+    def _convert_from_dataset_files(files, client, revision):
+        """Create instances from renku.core.models.datasets.DatasetFile."""
+        dataset_files = []
+        files = {f.path: f for f in files}  # NOTE: To make sure there are no duplicate paths
+        for path in files:
+            file = files[path]
+            dataset_file = DatasetFile.from_dataset_file(file, client=client, revision=revision)
+            if not dataset_file:
+                continue
+
+            dataset_files.append(dataset_file)
+
+        return dataset_files
 
     @property
     def client(self):
@@ -316,37 +374,47 @@ class Dataset:
             return
 
         new_files = [v for k, v in updated_files.items() if k in new_paths]
-        dataset_files = _convert_dataset_files(new_files, client, revision)
+        dataset_files = self._convert_from_dataset_files(new_files, client, revision)
         self.files.extend(dataset_files)
 
+    def to_dataset(self, client):
+        """Return an instance of renku.core.models.datasets.Dataset."""
+        from renku.core.models.datasets import Dataset
 
-def _convert_dataset_files(files, client, revision):
-    dataset_files = []
-    files = {f.path: f for f in files}  # NOTE: To make sure there are no duplicate paths
-    for path in files:
-        file_ = files[path]
-        checksum = _get_object_hash(revision=revision, path=file_.path, client=client)
-        if not checksum:
-            continue
+        files = self._convert_to_dataset_files(client)
 
-        host = get_host(client)
-        id_ = _generate_entity_id(entity_checksum=checksum, path=file_.path, host=host)
-        entity = Entity(id=id_, checksum=checksum, path=file_.path)
-
-        dataset_file = DatasetFile(
+        return Dataset(
+            name=self.name,
             client=client,
-            based_on=file_.based_on,
-            date_added=file_.added,
-            entity=entity,
-            id=None,
-            is_external=file_.external,
-            source=file_.source,
-            url=None,
+            creators=self.creators,
+            date_created=self.date_created,
+            date_published=self.date_published,
+            derived_from=self.derived_from,
+            description=self.description,
+            files=files,
+            id=self.id,
+            identifier=self.identifier,
+            in_language=self.in_language,
+            keywords=self.keywords,
+            license=self.license,
+            same_as=self.same_as,
+            tags=self.tags,
+            title=self.title,
+            url=self.url,
+            version=self.version,
         )
 
-        dataset_files.append(dataset_file)
+    def _convert_to_dataset_files(self, client):
+        """Create instances of renku.core.models.datasets.DatasetFile."""
+        dataset_files = []
+        for file in self.files:
+            dataset_file = file.to_dataset_file(client)
+            if not dataset_file:
+                continue
 
-    return dataset_files
+            dataset_files.append(dataset_file)
+
+        return dataset_files
 
 
 def _generate_entity_id(entity_checksum, path, host):
@@ -377,13 +445,30 @@ class DatasetProvenance:
 
     def get(self, identifier):
         """Return a dataset by its original identifier."""
-        datasets = [d for d in self._datasets if d.identifier == identifier]
-        assert len(datasets) <= 1, f"Found more than one with identifier `{identifier}`."
-        return datasets[0] if datasets else None
+        datasets = (d for d in self._datasets if d.identifier == identifier)
+        dataset = next(datasets, None)
+        assert next(datasets, None) is None, f"Found more than one dataset with identifier `{identifier}`."
+        return dataset
 
     def get_by_name(self, name):
-        """Return a list of datasets by name."""
-        return [d for d in self._datasets if d.name == name]
+        """Return a generator that yields datasets by name."""
+        return (d for d in self._datasets if d.name == name)
+
+    def get_latest_by_name(self, name):
+        """Return the latest version of a dataset."""
+        datasets = {d.id: d for d in self.get_by_name(name)}
+
+        for dataset in list(datasets.values()):
+            if dataset.derived_from:
+                datasets.pop(dataset.derived_from.url_id, None)
+
+        assert len(datasets) <= 1, f"There are more than one latest versions with name `{name}`"
+
+        if not datasets:
+            return None
+
+        _, dataset = datasets.popitem()
+        return dataset
 
     @property
     def datasets(self):

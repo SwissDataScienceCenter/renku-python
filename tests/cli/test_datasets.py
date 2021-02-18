@@ -507,12 +507,12 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     assert 0 == result.exit_code
 
 
-def test_repository_file_to_dataset(runner, project, client, subdirectory):
+@pytest.mark.parametrize("use_graph", [False, True])
+def test_repository_file_to_dataset(runner, client_with_new_graph, subdirectory, use_graph):
     """Test adding a file from the repository into a dataset."""
     # create a dataset
-    result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code
-    assert "OK" in result.output
+    client = client_with_new_graph
+    assert 0 == runner.invoke(cli, ["dataset", "create", "dataset"]).exit_code
 
     a_path = client.path / "a"
     a_path.write_text("a content")
@@ -521,7 +521,8 @@ def test_repository_file_to_dataset(runner, project, client, subdirectory):
     client.repo.git.commit(message="Added file a", no_verify=True)
 
     # add data
-    result = runner.invoke(cli, ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False,)
+    command = ["graph"] if use_graph else []
+    result = runner.invoke(cli, command + ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False,)
     assert 0 == result.exit_code
 
     with client.with_dataset("dataset") as dataset:
@@ -1750,33 +1751,31 @@ def test_immutability_after_remove(directory_tree, runner, client):
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
 
 
-def test_datasets_provenance_after_create(runner, client_with_new_graph):
+@pytest.mark.parametrize("use_graph", [False, True])
+def test_datasets_provenance_after_create(runner, client_with_new_graph, use_graph):
     """Test datasets provenance is updated after creating a dataset."""
-    assert (
-        0
-        == runner.invoke(
-            cli,
-            [
-                "dataset",
-                "create",
-                "my-data",
-                "--title",
-                "Long Title",
-                "--description",
-                "some description here",
-                "-c",
-                "John Doe <john.doe@mail.ch>",
-                "-c",
-                "John Smiths<john.smiths@mail.ch>",
-                "-k",
-                "keyword-1",
-                "-k",
-                "keyword-2",
-            ],
-        ).exit_code
-    )
+    args = [
+        "dataset",
+        "create",
+        "my-data",
+        "--title",
+        "Long Title",
+        "--description",
+        "some description here",
+        "-c",
+        "John Doe <john.doe@mail.ch>",
+        "-c",
+        "John Smiths<john.smiths@mail.ch>",
+        "-k",
+        "keyword-1",
+        "-k",
+        "keyword-2",
+    ]
+    if use_graph:
+        args = ["graph"] + args
+    assert 0 == runner.invoke(cli, args,).exit_code
 
-    dataset = client_with_new_graph.datasets_provenance.get_by_name("my-data")[0]
+    dataset = next(client_with_new_graph.datasets_provenance.get_by_name("my-data"))
 
     assert "Long Title" == dataset.title
     assert "my-data" == dataset.name
@@ -1810,7 +1809,7 @@ def test_datasets_provenance_after_add(runner, client_with_new_graph, directory_
     """Test datasets provenance is updated after adding data to a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "-c", str(directory_tree / "file1")]).exit_code
 
-    dataset = client_with_new_graph.datasets_provenance.get_by_name("my-data")[0]
+    dataset = next(client_with_new_graph.datasets_provenance.get_by_name("my-data"))
     path = os.path.join(DATA_DIR, "my-data", "file1")
     file_ = dataset.find_file(path)
     object_hash = client_with_new_graph.repo.git.rev_parse(f"HEAD:{path}")
@@ -1821,15 +1820,17 @@ def test_datasets_provenance_after_add(runner, client_with_new_graph, directory_
     assert path == file_.entity.path
 
 
-def test_datasets_provenance_not_updated_after_same_add(runner, client_with_new_graph, directory_tree):
+@pytest.mark.parametrize("use_graph", [False, True])
+def test_datasets_provenance_not_updated_after_same_add(runner, client_with_new_graph, directory_tree, use_graph):
     """Test datasets provenance is not updated if adding same files multiple times."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--create", str(directory_tree)]).exit_code
+    command = ["graph", "dataset", "add"] if use_graph else ["dataset", "add"]
+    assert 0 == runner.invoke(cli, command + ["my-data", "--create", str(directory_tree)]).exit_code
     commit_sha_before = client_with_new_graph.repo.head.object.hexsha
 
-    assert 1 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree)]).exit_code
+    assert 1 == runner.invoke(cli, command + ["my-data", str(directory_tree)]).exit_code
     commit_sha_after = client_with_new_graph.repo.head.object.hexsha
 
-    datasets = client_with_new_graph.datasets_provenance.get_by_name("my-data")
+    datasets = list(client_with_new_graph.datasets_provenance.get_by_name("my-data"))
 
     assert 1 == len(datasets)
     assert commit_sha_before == commit_sha_after
@@ -1881,7 +1882,7 @@ def test_datasets_provenance_after_adding_tag(runner, client_with_new_graph):
 
     assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "42.0"]).exit_code
 
-    datasets = client_with_new_graph.datasets_provenance.get_by_name("my-data")
+    datasets = list(client_with_new_graph.datasets_provenance.get_by_name("my-data"))
 
     assert 1 == len(datasets)
     assert "42.0" in [t.name for t in datasets[0].tags]
@@ -1894,7 +1895,7 @@ def test_datasets_provenance_after_removing_tag(runner, client_with_new_graph):
 
     assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "my-data", "42.0"]).exit_code
 
-    datasets = client_with_new_graph.datasets_provenance.get_by_name("my-data")
+    datasets = list(client_with_new_graph.datasets_provenance.get_by_name("my-data"))
 
     assert 1 == len(datasets)
     assert "42.0" not in [t.name for t in datasets[0].tags]
@@ -1920,3 +1921,28 @@ def test_datasets_provenance_multiple(runner, client_with_new_graph, directory_t
     assert datasets_provenance.get(version_3.identifier)
     assert datasets_provenance.get(version_4.identifier)
     assert datasets_provenance.get(version_5.identifier)
+
+
+def test_datasets_provenance_get_latest(runner, client_with_new_graph, directory_tree):
+    """Test getting last dataset mutation."""
+    assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "edit", "my-data", "-k", "new-data"]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree)]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "42.0"]).exit_code
+
+    dataset = client_with_new_graph.load_dataset("my-data")
+    datasets_provenance = client_with_new_graph.datasets_provenance
+
+    assert dataset.identifier == datasets_provenance.get_latest_by_name("my-data").identifier
+
+
+def test_datasets_provenance_add_file(runner, client_with_new_graph, directory_tree):
+    """Test getting last dataset mutation."""
+    file1 = str(directory_tree.joinpath("file1"))
+    assert 0 == runner.invoke(cli, ["graph", "dataset", "add", "--create", "my-data", file1]).exit_code
+    dir1 = str(directory_tree.joinpath("dir1"))
+    assert 0 == runner.invoke(cli, ["graph", "dataset", "add", "my-data", dir1]).exit_code
+
+    dataset = client_with_new_graph.load_dataset("my-data")
+
+    assert {"file1", "file2", "file3"} == {f.filename for f in dataset.files}

@@ -602,7 +602,7 @@ class WorkflowRun(ProcessRun):
         return {i: p for i, p in enumerate(self._processes)}
 
     @classmethod
-    def from_run(cls, run, client, path, commit=None, update_commits=False):
+    def from_run(cls, run, client, path, commit=None, subprocess_index=None, update_commits=False):
         """Convert a ``Run`` to a ``WorkflowRun``."""
         from .agents import SoftwareAgent
 
