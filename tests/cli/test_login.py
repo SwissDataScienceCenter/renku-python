@@ -38,7 +38,7 @@ def test_login_no_endpoint(runner, client):
     result = runner.invoke(cli, ["login"])
 
     assert 2 == result.exit_code
-    assert "Parameter `endpoint` is missing." in result.output
+    assert "Parameter 'endpoint' is missing." in result.output
 
 
 def test_login_with_config_endpoint(runner, client):
@@ -66,9 +66,11 @@ def test_logout(runner, client, mock_login):
     """Test logout removes all credentials."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
-    assert 0 == runner.invoke(cli, ["logout"]).exit_code
+    result = runner.invoke(cli, ["logout"])
 
+    assert 0 == result.exit_code
     assert read_renku_token(client, ENDPOINT) is None
+    assert "Successfully logged out." in result.output
     assert "" == client.repo.config_reader().get_value("http", "extraheader", default="")
 
 

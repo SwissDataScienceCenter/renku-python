@@ -68,3 +68,4 @@ def logout():
     """Logout from the platform and delete credentials."""
     communicator = ClickCallback()
     logout_command().with_communicator(communicator).build().execute()
+    click.secho("Successfully logged out.", fg="green")

@@ -29,10 +29,10 @@ import git
 import requests
 
 from renku.core import errors
-from renku.core.commands.config import read_config
 from renku.core.incubation.command import Command
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils import communication
+from renku.core.utils.urls import parse_authentication_endpoint
 
 CONFIG_SECTION = "http"
 
@@ -43,7 +43,7 @@ def login_command():
 
 
 def _login(client, endpoint):
-    parsed_endpoint = _parse_endpoint(endpoint)
+    parsed_endpoint = _parse_endpoint(client, endpoint)
     query = urllib.parse.urlencode({"cli_token": str(uuid.uuid4())})
 
     communication.echo(
@@ -78,22 +78,12 @@ def _login(client, endpoint):
     _store_token(client, parsed_endpoint, access_token)
 
 
-def _parse_endpoint(endpoint):
-    if not endpoint:
-        try:
-            endpoint = read_config().build().execute("endpoint").output
-        except errors.ParameterError:
-            raise errors.ParameterError("Parameter `endpoint` is missing.")
+def _parse_endpoint(client, endpoint):
+    parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=endpoint)
+    if not parsed_endpoint:
+        raise errors.ParameterError("Parameter 'endpoint' is missing.")
 
-    if not endpoint.startswith("http"):
-        endpoint = f"https://{endpoint}"
-
-    parsed_endpoint = urllib.parse.urlparse(endpoint)
-    if not parsed_endpoint.netloc:
-        raise errors.ParameterError(f"Invalid endpoint: `{endpoint}`.")
-
-    path = parsed_endpoint.path or "/"
-    return parsed_endpoint._replace(scheme="https", path=path, params="", query="", fragment="")
+    return parsed_endpoint
 
 
 def _get_url(parsed_endpoint, path, query):
@@ -115,7 +105,7 @@ def _store_token(client, parsed_endpoint, token):
 
 def read_renku_token(client, endpoint):
     """Read renku token from renku config file."""
-    parsed_endpoint = _parse_endpoint(endpoint)
+    parsed_endpoint = _parse_endpoint(client, endpoint)
     return client.get_value(section=CONFIG_SECTION, key=parsed_endpoint.netloc, config_filter=ConfigFilter.GLOBAL_ONLY)
 
 
