@@ -67,8 +67,8 @@ knows how to handle PyPI packages. Our recommendation is to use `:code:pipx
 .. note::
 
    We do not officially support Windows at this moment. The way Windows
-   handles paths and symlinks interferes with some renku functionality.
-   We recommend using the Windows Subsystem for Linux (WSL) to use renku
+   handles paths and symlinks interferes with some Renku functionality.
+   We recommend using the Windows Subsystem for Linux (WSL) to use Renku
    on Windows.
 
 
@@ -95,13 +95,13 @@ Once ``pipx`` is installed use following command to install ``renku``.
     ~/.local/bin/renku
 
 
-``pipx`` installs renku into its own virtual environment, making sure that it
+``pipx`` installs Renku into its own virtual environment, making sure that it
 does not pollute any other packages or versions that you may have already
 installed.
 
 .. note::
 
-    If you install renku as a dependency in a virtual environment and the
+    If you install Renku as a dependency in a virtual environment and the
     environment is active, your shell will default to the version installed
     in the virtual environment, *not* the version installed by ``pipx``.
 
@@ -136,6 +136,42 @@ Use following installation steps based on your operating system and preferences
 if you would like to work with the command line interface and you do not need
 the Python library to be importable.
 
+.. _windows-before-reference:
+
+Windows
+~~~~~~~
+.. _windows-after-reference:
+
+.. note::
+
+    We don't officially support Windows yet, but Renku works well in the Windows Subsystem for Linux (WSL).
+    As such, the following can be regarded as a best effort description on how to get started with Renku on Windows.
+
+Renku can be run using the Windows Subsystem for Linux (WSL). To install the WSL, please follow the
+`official instructions <https://docs.microsoft.com/en-us/windows/wsl/install-win10#manual-installation-steps>`__.
+
+We recommend you use the Ubuntu 20.04 image in the WSL when you get to that step of the installation.
+
+Once WSL is installed, launch the WSL terminal and install the packages required by Renku with:
+
+::
+
+    $ sudo apt-get update && sudo apt-get install git python3 python3-pip python3-venv pipx
+
+Since Ubuntu has an older version of git LFS installed by default which is known to have some bugs when cloning
+repositories, we recommend you manually install the newest version by following
+`these instructions <https://github.com/git-lfs/git-lfs/wiki/Installation#debian-and-ubuntu>`__.
+
+Once all the requirements are installed, you can install Renku normally by running:
+
+::
+
+    $ pipx install renku
+    $ pipx ensurepath
+
+After this, Renku is ready to use. You can access your Windows in the various mount points in
+``/mnt/`` and you can execute Windows executables (e.g. \*.exe) as usual directly from the
+WSL (so ``renku run myexecutable.exe`` will work as expected).
 
 .. _docker-before-reference:
 
@@ -156,7 +192,7 @@ container.
 CLI Example
 -----------
 
-Initialize a renku project:
+Initialize a Renku project:
 
 ::
 
