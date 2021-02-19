@@ -55,6 +55,7 @@ from renku.core.models.provenance.agents import Person
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
+from renku.core.utils.git import run_command
 from renku.core.utils.urls import remove_credentials
 
 
@@ -890,9 +891,14 @@ class DatasetsApiMixin(object):
         repo_path = str(repo_path)
 
         try:
-            includes = ",".join(shlex.quote(p) for p in paths)
-            status = run(
-                ["git", "lfs", "pull", "--include", includes], stderr=PIPE, cwd=repo_path, universal_newlines=True
+            paths = [shlex.quote(p) for p in paths]
+            status = run_command(
+                ["git", "lfs", "pull", "--include"],
+                *paths,
+                separator=",",
+                stderr=PIPE,
+                cwd=repo_path,
+                universal_newlines=True,
             )
             if status.returncode != 0:
                 message = "\n\t".join(status.stderr.split("\n"))
