@@ -45,7 +45,10 @@ Logging out from Renku removes the secure token from your system:
 
 .. code-block:: console
 
-    $ renku logout
+    $ renku logout <endpoint>
+
+If you don't specify an endpoint when logging out, credentials for all
+endpoints are removed.
 """
 
 import click
@@ -64,8 +67,9 @@ def login(endpoint):
 
 
 @click.command()
-def logout():
+@click.argument("endpoint", required=False, default=None)
+def logout(endpoint):
     """Logout from the platform and delete credentials."""
     communicator = ClickCallback()
-    logout_command().with_communicator(communicator).build().execute()
+    logout_command().with_communicator(communicator).build().execute(endpoint=endpoint)
     click.secho("Successfully logged out.", fg="green")

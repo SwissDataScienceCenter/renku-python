@@ -31,7 +31,7 @@ def test_login(runner, client, mock_login):
     assert "jwt-token" == read_renku_token(client, ENDPOINT)
 
 
-def test_login_no_endpoint(runner, client):
+def test_login_no_endpoint(runner, client, mock_login):
     """Test login command with no endpoint."""
     result = runner.invoke(cli, ["login"])
 
@@ -39,7 +39,15 @@ def test_login_no_endpoint(runner, client):
     assert "Parameter 'endpoint' is missing." in result.output
 
 
-def test_login_with_config_endpoint(runner, client):
+def test_login_invalid_endpoint(runner, client, mock_login):
+    """Test login with and invalid endpoint."""
+    result = runner.invoke(cli, ["login", "http: //example.com"])
+
+    assert 2 == result.exit_code
+    assert "Invalid endpoint: `http: //example.com`." in result.output
+
+
+def test_login_with_config_endpoint(runner, client, mock_login):
     """Test login command with endpoint in config file."""
     assert 0 == runner.invoke(cli, ["config", "set", "endpoint", ENDPOINT]).exit_code
 
@@ -88,8 +96,8 @@ def test_login_to_multiple_endpoints(runner, client, mock_login):
     assert "other-token" == read_renku_token(client, "other.deployment")
 
 
-def test_logout_removes_all_credentials(runner, client, mock_login):
-    """Test logout removes multiple credentials."""
+def test_logout_all(runner, client, mock_login):
+    """Test logout with no endpoint removes multiple credentials."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
     assert 0 == runner.invoke(cli, ["login", "other.deployment"]).exit_code
 
@@ -97,3 +105,23 @@ def test_logout_removes_all_credentials(runner, client, mock_login):
 
     assert read_renku_token(client, ENDPOINT) is None
     assert read_renku_token(client, "other.deployment") is None
+
+
+def test_logout_one_endpoint(runner, client, mock_login):
+    """Test logout from an endpoint removes credentials for that endpoint only."""
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
+    assert 0 == runner.invoke(cli, ["login", "other.deployment"]).exit_code
+
+    assert 0 == runner.invoke(cli, ["logout", ENDPOINT]).exit_code
+
+    assert read_renku_token(client, ENDPOINT) is None
+    assert read_renku_token(client, "other.deployment") is not None
+
+
+def test_logout_non_existing_endpoint(runner, client, mock_login):
+    """Test logout from a non-existing endpoint does nothing."""
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
+
+    assert 0 == runner.invoke(cli, ["logout", "non.existing"]).exit_code
+
+    assert read_renku_token(client, ENDPOINT) is not None

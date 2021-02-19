@@ -106,5 +106,11 @@ def logout_command():
     return Command().command(_logout)
 
 
-def _logout(client):
-    client.remove_value(section=CONFIG_SECTION, key="*", global_only=True)
+def _logout(client, endpoint):
+    if endpoint:
+        parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=endpoint)
+        key = parsed_endpoint.netloc
+    else:
+        key = "*"
+
+    client.remove_value(section=CONFIG_SECTION, key=key, global_only=True)
