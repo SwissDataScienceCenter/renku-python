@@ -56,3 +56,12 @@ def run_command(command, *paths, separator=None, **kwargs):
             raise errors.GitError(f"Cannot run command {command} : {e}")
 
     return result
+
+
+def add_to_git(git, *paths, **kwargs):
+    """Split `paths` and add them to git to make sure that argument list will be within os limits."""
+    batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
+
+    for index in range(batch_size):
+        batch = paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]
+        git.add(*batch, **kwargs)

@@ -35,7 +35,7 @@ from renku.core.models.provenance.activities import Collection
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.utils.file_size import parse_file_size
-from renku.core.utils.git import run_command
+from renku.core.utils.git import add_to_git, run_command
 
 from .git import _expand_directories
 from .repository import RepositoryApiMixin
@@ -359,7 +359,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 object_path.unlink()
 
             # add paths so they don't show as modified
-            client.repo.git.add(*paths)
+            add_to_git(client.repo.git, *paths)
 
         return untracked_paths, local_only_paths
 

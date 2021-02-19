@@ -28,7 +28,7 @@ import uuid
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
-from subprocess import PIPE, SubprocessError, run
+from subprocess import PIPE, SubprocessError
 from urllib import error, parse
 from urllib.parse import ParseResult, urlparse
 
@@ -55,7 +55,7 @@ from renku.core.models.provenance.agents import Person
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
-from renku.core.utils.git import run_command
+from renku.core.utils.git import add_to_git, run_command
 from renku.core.utils.urls import remove_credentials
 
 
@@ -565,7 +565,7 @@ class DatasetsApiMixin(object):
                 )
 
         # Force-add to include possible ignored files
-        self.repo.git.add(*files_to_commit, force=True)
+        add_to_git(self.repo.git, *files_to_commit, force=True)
         self.repo.git.add(self.renku_pointers_path, force=True)
 
         staged_files = self.repo.index.diff("HEAD")
@@ -1059,7 +1059,7 @@ class DatasetsApiMixin(object):
 
         file_paths = {str(self.path / f.path) for f in updated_files + deleted_files}
         # Force-add to include possible ignored files that are in datasets
-        self.repo.git.add(*file_paths, force=True)
+        add_to_git(self.repo.git, *file_paths, force=True)
         skip_hooks = not self.external_storage_requested
         self.repo.index.commit(
             "renku dataset: updated {} files and deleted {} files".format(len(updated_files), len(deleted_files)),
@@ -1144,7 +1144,7 @@ class DatasetsApiMixin(object):
         if not updated_files_paths:
             return
 
-        self.repo.git.add(*updated_files_paths, force=True)
+        add_to_git(self.repo.git, *updated_files_paths, force=True)
         self.repo.git.add(self.renku_pointers_path, force=True)
         commit = self.repo.index.commit("renku dataset: updated {} external files".format(len(updated_files_paths)))
 
