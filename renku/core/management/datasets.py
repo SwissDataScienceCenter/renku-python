@@ -123,7 +123,7 @@ class DatasetsApiMixin(object):
     @property
     def datasets_provenance(self):
         """Return dataset provenance if available."""
-        if not self.has_datasets_provenance_file():
+        if not self.has_datasets_provenance():
             return
         if not self._datasets_provenance:
             self._datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
@@ -132,7 +132,7 @@ class DatasetsApiMixin(object):
 
     def update_datasets_provenance(self, dataset, remove=False):
         """Update datasets provenance for a dataset."""
-        if not self.has_datasets_provenance_file():
+        if not self.has_datasets_provenance():
             return
 
         if remove:
@@ -142,7 +142,7 @@ class DatasetsApiMixin(object):
 
         self.datasets_provenance.to_json()
 
-    def has_datasets_provenance_file(self):
+    def has_datasets_provenance(self):
         """Return true if dataset provenance exists."""
         return self.datasets_provenance_path.exists()
 
@@ -223,6 +223,8 @@ class DatasetsApiMixin(object):
         """Yield an editable metadata object for a dataset."""
         dataset = self.load_dataset(name=name)
         clean_up_required = False
+        dataset_ref = None
+        path = None
 
         if dataset is None:
             if not create:
@@ -232,6 +234,7 @@ class DatasetsApiMixin(object):
             dataset, path, dataset_ref = self.create_dataset(name=name)
         elif create:
             raise errors.DatasetExistsError('Dataset exists: "{}".'.format(name))
+
         dataset_path = self.path / self.data_dir / dataset.name
         dataset_path.mkdir(parents=True, exist_ok=True)
 
@@ -246,6 +249,51 @@ class DatasetsApiMixin(object):
             raise
 
         dataset.to_yaml()
+
+    @contextmanager
+    def with_dataset_provenance(self, name=None, create=False):
+        """Yield a dataset's metadata from dataset provenance."""
+        dataset = self.load_dataset_from_provenance(name=name)
+        clean_up_required = False
+        dataset_ref = None
+        path = None
+
+        if dataset is None:
+            if not create:
+                raise errors.DatasetNotFound(name=name)
+
+            clean_up_required = True
+            dataset, path, dataset_ref = self.create_dataset(name=name)
+        elif create:
+            raise errors.DatasetExistsError('Dataset exists: "{}".'.format(name))
+        else:
+            dataset = dataset.to_dataset(self)
+
+        dataset_path = self.path / self.data_dir / dataset.name
+        dataset_path.mkdir(parents=True, exist_ok=True)
+
+        try:
+            yield dataset
+        except Exception:
+            # TODO use a general clean-up strategy
+            # https://github.com/SwissDataScienceCenter/renku-python/issues/736
+            if clean_up_required:
+                dataset_ref.delete()
+                shutil.rmtree(path.parent, ignore_errors=True)
+            raise
+
+        dataset.to_yaml(os.path.join(self.path, dataset.path, self.METADATA))
+
+    def load_dataset_from_provenance(self, name, strict=False):
+        """Load latest dataset's metadata from dataset provenance file."""
+        dataset = None
+        if name:
+            dataset = self.datasets_provenance.get_latest_by_name(name)
+
+        if not dataset and strict:
+            raise errors.DatasetNotFound(name=name)
+
+        return dataset
 
     def create_dataset(
         self, name=None, title=None, description=None, creators=None, keywords=None, images=None, safe_image_paths=[]

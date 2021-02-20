@@ -138,7 +138,7 @@ class ProvenanceGraph:
         self._graph.bind("wfprov", "http://purl.org/wf4ever/wfprov#")
 
         for prefix, namespace in self._custom_bindings.items():
-            self._graph.bind(prefix, namespace, replace=True)
+            self._graph.bind(prefix, namespace)
 
     def get_latest_plans_usages(self):
         """Return a list of tuples with path and check of all Usage paths."""
