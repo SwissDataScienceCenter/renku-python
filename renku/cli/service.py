@@ -24,17 +24,21 @@ import click
 from renku.core.commands.echo import ERROR
 
 
-def run_api(addr="0.0.0.0", port=8080, timeout=600):
+def run_api(addr="0.0.0.0", port=8080, timeout=600, is_debug=False):
     """Run service JSON-RPC API."""
     from gunicorn.app.wsgiapp import run
 
     svc_num_workers = os.getenv("RENKU_SVC_NUM_WORKERS", "1")
-    svc_num_threads = os.getenv("$RENKU_SVC_NUM_THREADS", "2")
+    svc_num_threads = os.getenv("RENKU_SVC_NUM_THREADS", "2")
+
+    loading_opt = "--preload"
+    if is_debug:
+        loading_opt = "--reload"
 
     sys.argv = [
         "gunicorn",
         "renku.service.entrypoint:app",
-        "--reload",
+        loading_opt,
         "-b",
         f"{addr}:{port}",
         "--timeout",
@@ -45,6 +49,8 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600):
         "gthread",
         "--threads",
         svc_num_threads,
+        "--log-level",
+        "debug",
     ]
 
     sys.exit(run())
@@ -112,9 +118,12 @@ def service(ctx, env):
     show_default=True,
     help="Request silent for more than this many seconds are dropped.",
 )
-def api_start(addr, port, timeout):
+@click.option(
+    "-d", "--debug", default=False, is_flag=True, help="Start API in debug mode.",
+)
+def api_start(addr, port, timeout, debug):
     """Start service JSON-RPC API in active shell session."""
-    run_api(addr, port, timeout)
+    run_api(addr, port, timeout, debug)
 
 
 @service.command(name="scheduler")
