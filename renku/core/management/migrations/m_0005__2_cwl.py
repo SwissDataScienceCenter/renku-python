@@ -38,6 +38,7 @@ from renku.core.models.workflow.parameters import CommandArgument, CommandInput,
 from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
+from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
@@ -48,6 +49,8 @@ default_missing_software_agent = SoftwareAgent(
 
 def migrate(client):
     """Migration function."""
+    if MigrationType.WORKFLOWS not in client.migration_type:
+        return
     _migrate_old_workflows(client)
 
 
