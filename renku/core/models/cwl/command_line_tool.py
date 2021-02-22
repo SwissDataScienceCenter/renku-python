@@ -31,6 +31,7 @@ from git import Actor
 
 from renku.core import errors
 from renku.core.commands.echo import INFO
+from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
@@ -231,7 +232,7 @@ class CommandLineToolFactory(object):
                         + "\n\trenku config set show_lfs_message False"
                     )
 
-            repo.git.add(*output_paths)
+            add_to_git(repo.git, *output_paths)
 
             if repo.is_dirty():
                 commit_msg = f"renku run: committing {len(output_paths)} newly added files"

@@ -31,6 +31,7 @@ from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.workflow.converters.cwl import CWLConverter
 from renku.core.models.workflow.parameters import RunParameter
 from renku.core.utils import communication
+from renku.core.utils.git import add_to_git
 from renku.version import __version__, version_url
 
 
@@ -83,7 +84,7 @@ def execute_workflow(client, workflow, output_paths, command_name, update_commit
 
     paths = [o.produces.path for o in workflow.outputs]
 
-    client.repo.git.add(*paths)
+    add_to_git(client.repo.git, *paths)
 
     if client.repo.is_dirty():
         commit_msg = f"renku {command_name}: committing {len(paths)} newly added files"

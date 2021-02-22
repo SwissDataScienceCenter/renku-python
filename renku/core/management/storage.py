@@ -20,7 +20,6 @@ import csv
 import functools
 import os
 import re
-import shlex
 import tempfile
 from collections import defaultdict
 from pathlib import Path
@@ -36,6 +35,7 @@ from renku.core.models.provenance.activities import Collection
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.utils.file_size import parse_file_size
+from renku.core.utils.git import add_to_git, run_command
 
 from .git import _expand_directories
 from .repository import RepositoryApiMixin
@@ -195,8 +195,9 @@ class StorageApiMixin(RepositoryApiMixin):
 
         if track_paths:
             try:
-                result = run(
-                    self._CMD_STORAGE_TRACK + track_paths,
+                result = run_command(
+                    self._CMD_STORAGE_TRACK,
+                    *track_paths,
                     stdout=PIPE,
                     stderr=STDOUT,
                     cwd=self.path,
@@ -214,12 +215,8 @@ class StorageApiMixin(RepositoryApiMixin):
     def untrack_paths_from_storage(self, *paths):
         """Untrack paths from the external storage."""
         try:
-            result = run(
-                self._CMD_STORAGE_UNTRACK + list(paths),
-                stdout=PIPE,
-                stderr=STDOUT,
-                cwd=self.path,
-                universal_newlines=True,
+            result = run_command(
+                self._CMD_STORAGE_UNTRACK, *paths, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True,
             )
 
             if result.returncode != 0:
@@ -263,8 +260,6 @@ class StorageApiMixin(RepositoryApiMixin):
     @check_external_storage_wrapper
     def pull_paths_from_storage(self, *paths):
         """Pull paths from LFS."""
-        import math
-
         client_dict = defaultdict(list)
 
         for path in _expand_directories(paths):
@@ -278,19 +273,18 @@ class StorageApiMixin(RepositoryApiMixin):
             client_dict[client.path].append(str(relative_path))
 
         for client_path, paths in client_dict.items():
-            batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
-            for index in range(batch_size):
-                result = run(
-                    self._CMD_STORAGE_PULL
-                    + [shlex.quote(",".join(paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]))],
-                    cwd=client_path,
-                    stdout=PIPE,
-                    stderr=STDOUT,
-                    universal_newlines=True,
-                )
+            result = run_command(
+                self._CMD_STORAGE_PULL,
+                *paths,
+                separator=",",
+                cwd=client_path,
+                stdout=PIPE,
+                stderr=STDOUT,
+                universal_newlines=True,
+            )
 
-                if result.returncode != 0:
-                    raise errors.GitLFSError(f"Error executing 'git lfs pull: \n {result.stdout}")
+            if result.returncode != 0:
+                raise errors.GitLFSError(f"Error executing 'git lfs pull: \n {result.stdout}")
 
     @check_external_storage_wrapper
     def clean_storage_cache(self, *paths):
@@ -365,15 +359,15 @@ class StorageApiMixin(RepositoryApiMixin):
                 object_path.unlink()
 
             # add paths so they don't show as modified
-            client.repo.git.add(*paths)
+            add_to_git(client.repo.git, *paths)
 
         return untracked_paths, local_only_paths
 
     @check_external_storage_wrapper
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
-        result = run(
-            self._CMD_STORAGE_CHECKOUT + list(paths), cwd=self.path, stdout=PIPE, stderr=STDOUT, universal_newlines=True
+        result = run_command(
+            self._CMD_STORAGE_CHECKOUT, *paths, cwd=self.path, stdout=PIPE, stderr=STDOUT, universal_newlines=True,
         )
 
         if result.returncode != 0:

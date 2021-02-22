@@ -23,6 +23,7 @@ from uuid import uuid4
 import git
 
 from renku.core import errors
+from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
 
 from .client import pass_local_client
@@ -100,7 +101,7 @@ def repo_sync(repo, message=None, remote=None, paths=None):
             path_to_save = set(paths) - staged_files
 
             if path_to_save:
-                repo.git.add(*path_to_save)
+                add_to_git(repo.git, *path_to_save)
 
             saved_paths = [d.b_path for d in repo.index.diff("HEAD")]
 
