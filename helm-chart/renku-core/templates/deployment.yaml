@@ -43,15 +43,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{ if .Values.debug }}
-          command: ["sh", "-c",
-                  "gunicorn --reload \
-                  renku.service.entrypoint:app \
-                  -b 0.0.0.0:8080 \
-                  --timeout 600 \
-                  --workers 1 \
-                  --worker-class gthread \
-                  --threads $(RENKU_SVC_NUM_THREADS)"
-                ]
+          command: ["api", "--debug"]
           securityContext:
             runAsGroup: 2000
           {{ else }}
