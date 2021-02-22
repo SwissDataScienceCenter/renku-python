@@ -23,7 +23,7 @@ COPY . /code/renku
 # Set CLEAN_INSTALL to a non-null value to ensure that only a committed version of
 # renku-python is installed in the image. This is the default for chartpress builds.
 ARG CLEAN_INSTALL
-RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi && pip install -e .[service]
+RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi && pip install .[service]
 
 # Set group of code directory to 'debug' so files can be changed when running the pod
 # in debug mode
@@ -35,13 +35,5 @@ USER shuhitsu
 
 ENV RENKU_SVC_NUM_WORKERS 4
 ENV RENKU_SVC_NUM_THREADS 8
-CMD [ \
-    "sh", "-c", \
-    "gunicorn \
-    renku.service.entrypoint:app \
-    -b 0.0.0.0:8080 \
-    --timeout 600 \
-    --workers $RENKU_SVC_NUM_WORKERS \
-    --worker-class gthread \
-    --threads $RENKU_SVC_NUM_THREADS" \
-]
+
+ENTRYPOINT ["renku", "service"]
