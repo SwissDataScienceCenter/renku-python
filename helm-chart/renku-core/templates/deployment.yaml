@@ -43,17 +43,11 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{ if .Values.debug }}
-          args: ["sh", "-c",
-                  "gunicorn --reload \
-                  renku.service.entrypoint:app \
-                  -b 0.0.0.0:8080 \
-                  --timeout 600 \
-                  --workers 1 \
-                  --worker-class gthread \
-                  --threads $(RENKU_SVC_NUM_THREADS)"
-                ]
+          command: ["api", "--debug"]
           securityContext:
             runAsGroup: 2000
+          {{ else }}
+          args: ["api"]
           {{ end }}
           env:
             - name: REDIS_HOST
@@ -114,8 +108,7 @@ spec:
         - name: {{ .Chart.Name }}-datasets-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python"]
-          args: ["renku/service/worker.py"]
+          args: ["worker"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -154,8 +147,7 @@ spec:
         - name: {{ .Chart.Name }}-management-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python"]
-          args: ["renku/service/worker.py"]
+          args: ["worker"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -192,8 +184,7 @@ spec:
         - name: {{ .Chart.Name }}-scheduler
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python"]
-          args: ["renku/service/scheduler.py"]
+          args: ["scheduler"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master

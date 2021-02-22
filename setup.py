@@ -118,6 +118,7 @@ service_requires = [
     "gunicorn",
     "marshmallow==3.10.0",
     "ptvsd>=4.3.0,<4.4.0",
+    "python-dotenv==0.15.0",
     "rq-scheduler==0.10.0",
     "rq==1.7.0",
     "sentry-sdk[flask]>=0.7.4,<0.19.6",
