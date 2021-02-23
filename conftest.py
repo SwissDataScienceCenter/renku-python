@@ -493,6 +493,21 @@ def missing_kg_project_responses():
         yield rsps
 
 
+@pytest.fixture
+def mock_kg():
+    """Mock KG responses for dataset import."""
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as requests_mock:
+
+        def callback(request):
+            authorization = request.headers.get("Authorization")
+            status_code = 404 if authorization == "Bearer renku-token" else 401
+            return status_code, {"Content-Type": "application/json"}, ""
+
+        requests_mock.add_callback(responses.GET, "https://renku.ch/knowledge-graph/datasets/123", callback=callback)
+
+        yield requests_mock
+
+
 @pytest.fixture()
 def directory_tree(tmp_path):
     """Create a test directory tree."""

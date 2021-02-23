@@ -1946,3 +1946,27 @@ def test_datasets_provenance_add_file(runner, client_with_new_graph, directory_t
     dataset = client_with_new_graph.load_dataset("my-data")
 
     assert {"file1", "file2", "file3"} == {f.filename for f in dataset.files}
+
+
+def test_unauthorized_import(runner, client, mock_kg):
+    """Test importing without a valid token."""
+    result = runner.invoke(cli, ["dataset", "import", "https://renku.ch/projects/user/project-name/datasets/123"])
+
+    assert 1 == result.exit_code
+    assert "Unauthorized access to knowledge graph" in result.output
+    assert "renku login renku.ch" in result.output
+
+
+def test_authorized_import(runner, client, mock_kg):
+    """Test importing with a valid token.
+
+    NOTE: Returning 404 from KG means that the request was authorized. We don't implement a full import due to mocking
+    complexity.
+    """
+    client.set_value("http", "renku.ch", "renku-token", global_only=True)
+
+    result = runner.invoke(cli, ["dataset", "import", "https://renku.ch/projects/user/project-name/datasets/123"])
+
+    assert 1 == result.exit_code
+    assert "Unauthorized access to knowledge graph" not in result.output
+    assert "Resource not found in knowledge graph" in result.output
