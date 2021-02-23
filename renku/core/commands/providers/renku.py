@@ -62,7 +62,7 @@ class RenkuProvider(ProviderApi):
 
         self._prepare_authentication(client, uri)
 
-        initial_identifier, kg_urls = self._get_dataset_info(uri)
+        same_as, initial_identifier, kg_urls = self._get_dataset_info(uri)
 
         project_url = None
         failed_urls = []
@@ -77,7 +77,14 @@ class RenkuProvider(ProviderApi):
 
             datasets = self._query_knowledge_graph(project_datasets_kg_url)
 
-            dataset_name = next(ds["name"] for ds in datasets if ds["versions"].get("initial") == initial_identifier)
+            dataset_name = next(
+                (ds["name"] for ds in datasets if ds["versions"].get("initial") == initial_identifier), None
+            )
+            if not dataset_name and same_as:
+                dataset_name = next((ds["name"] for ds in datasets if ds.get("sameAs") == same_as), None)
+
+            if not dataset_name:
+                continue
 
             # Check if we can clone the project
             for url in (ssh_url, https_url):
@@ -144,6 +151,7 @@ class RenkuProvider(ProviderApi):
 
         response = self._query_knowledge_graph(kg_url)
         initial_identifier = response.get("versions", {}).get("initial")
+        same_as = response.get("sameAs")
 
         if project_id:
             kg_path = f"/knowledge-graph/{project_id.strip('/')}"
@@ -160,7 +168,7 @@ class RenkuProvider(ProviderApi):
             kg_urls = [get_project_link(p) for p in projects]
             kg_urls = [u for u in kg_urls if u]
 
-        return initial_identifier, kg_urls
+        return same_as, initial_identifier, kg_urls
 
     @staticmethod
     def _extract_project_and_dataset_ids(parsed_url):
