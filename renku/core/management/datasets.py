@@ -784,7 +784,7 @@ class DatasetsApiMixin(object):
                 if remote_client._is_external_file(src):
                     operation = (src.resolve(), dst, "symlink")
                 else:
-                    operation = (src, dst, "copy")
+                    operation = (src, dst, "move")
 
                 results.append(
                     {
@@ -1237,6 +1237,7 @@ class DatasetsApiMixin(object):
             except GitCommandError:
                 raise errors.ParameterError('Cannot find reference "{}" in Git repository: {}'.format(ref, url))
 
+        depth = 1 if not ref else None
         ref = ref or renku_branch
         u = GitURL.parse(url)
         path = u.pathname
@@ -1251,6 +1252,7 @@ class DatasetsApiMixin(object):
             repo = Repo(str(repo_path))
             if repo.remotes.origin.url == url:
                 try:
+                    repo.git.checkout(".")
                     repo.git.fetch(all=True)
                     repo.git.checkout(ref)
                     try:
@@ -1269,7 +1271,7 @@ class DatasetsApiMixin(object):
             except PermissionError:
                 raise errors.InvalidFileOperation("Cannot delete files in {}: Permission denied".format(repo_path))
 
-        repo, _ = clone(url, path=str(repo_path), install_githooks=False)
+        repo, _ = clone(url, path=str(repo_path), install_githooks=False, depth=depth)
 
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It
