@@ -35,11 +35,8 @@ def run_command(command, *paths, separator=None, **kwargs):
     :returns: Result of last invocation.
     """
     result = None
-    batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
-    n_executions = max(batch_size, 1)
 
-    for index in range(n_executions):
-        batch = paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]
+    for batch in split_paths(*paths):
         if separator:
             batch = [separator.join(batch)]
 
@@ -60,8 +57,14 @@ def run_command(command, *paths, separator=None, **kwargs):
 
 def add_to_git(git, *paths, **kwargs):
     """Split `paths` and add them to git to make sure that argument list will be within os limits."""
+    for batch in split_paths(*paths):
+        git.add(*batch, **kwargs)
+
+
+def split_paths(*paths):
+    """Return a generator with split list of paths."""
     batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
+    batch_size = max(batch_size, 1)
 
     for index in range(batch_size):
-        batch = paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]
-        git.add(*batch, **kwargs)
+        yield paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]

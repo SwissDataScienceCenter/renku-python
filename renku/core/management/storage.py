@@ -41,10 +41,6 @@ from renku.core.utils.git import add_to_git, run_command
 from .git import _expand_directories
 from .repository import RepositoryApiMixin
 
-# Batch size for when renku is expanding a large list
-# of files into an argument string.
-ARGUMENT_BATCH_SIZE = 100
-
 
 def check_external_storage_wrapper(fn):
     """Check availability of external storage on methods that need it.
