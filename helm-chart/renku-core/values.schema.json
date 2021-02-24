@@ -1,0 +1,212 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema#",
+    "properties": {
+      "replicaCount": {
+        "description": "The number of replicas of the service workers to deploy",
+        "type": "integer",
+        "minimum": 0
+      },
+      "cacheDirectory": {
+        "description": "The directory the project cache is in",
+        "type": "string",
+        "pattern": "^(/[^/]+)+$"
+      },
+      "cleanupInterval": {
+        "description": "Interval for cache cleanup",
+        "type": "integer",
+        "minimum": 0
+      },
+      "projectCloneDepth": {
+        "description": "Depth of git clone in cache",
+        "type": "integer",
+        "minimum": 1
+      },
+      "templateCloneDepth": {
+        "description": "Depth of git clone for templates",
+        "type": "integer",
+        "minimum": 1
+      },
+      "datasetsWorkerQueues": {
+        "description": "Name of the worker queue for dataset jobs",
+        "type": "string"
+      },
+      "managementWorkerQueues": {
+        "description": "Name of the worker queue for management jobs",
+        "type": "string"
+      },
+      "cleanupFilesTTL": {
+        "description": "Time to live for uploaded files",
+        "type": "integer",
+        "minimum": 0
+      },
+      "cleanupProjectsTTL": {
+        "description": "Time to live for projects in cache",
+        "type": "integer",
+        "minimum": 0
+      },
+      "logLevel": {
+        "description": "Logging level",
+        "type": "string"
+      },
+      "gitLFSSkipSmudge": {
+        "description": "Whether to download files from LFS when cloning a project",
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "nWorkers": {
+        "description": "Number of gunicorn workers for the service",
+        "type": "integer",
+        "minimum": 1
+      },
+      "nThreads": {
+        "description": "Number of gunicorn threads per worker for the service",
+        "type": "integer",
+        "minimum": 1
+      },
+      "jwtTokenSecret": {
+        "description": "Secret to encrypt jwt tokens",
+        "type": "string",
+        "minLength": 32
+      },
+      "image": {
+        "description": "Docker image settings",
+        "properties": {
+            "repository": {
+                "type": "string"
+            },
+            "tag": {
+                "type": "string"
+            },
+            "pullPolicy": {
+                "type": "string"
+            }
+        },
+        "type": "object"
+      },
+      "imagePullSecrets": {
+        "description": "Secrets necessary for pulling the image",
+        "type": "array",
+        "items": {
+            "type": "object"
+        }
+      },
+      "nameOverride": {
+        "description": "Override for the chart name",
+        "type": "string"
+      },
+      "fullnameOverride": {
+        "description": "Override for the chart fullname",
+        "type": "string"
+      },
+      "service": {
+          "description": "Kubernetes service definition",
+          "properties": {
+            "type": {
+                "description": "The type of kubernetes service",
+                "type": "string"
+            },
+            "port": {
+                "description": "The port of the kubernetes service",
+                "type": "integer",
+                "minimum": 1
+            }
+          },
+          "type": "object"
+      },
+      "ingress": {
+        "description": "Kubernetes ingress definition",
+        "properties": {
+            "enabled": {
+                "description": "whether to enable the ingress or not",
+                "type": "boolean"
+            }
+        },
+        "type": "object"
+      },
+      "metrics": {
+          "description": "Definition of Redis Queue metrics",
+          "properties": {
+            "enabled":{
+                "description": "whether to enable redis queue metrics",
+                "type":"boolean"
+            },
+            "image": {
+                "description": "Image settings for rq metrics",
+                "properties": {
+                    "repository": {
+                        "type": "string"
+                    },
+                    "tag": {
+                        "type": "string"
+                    },
+                    "pullPolicy": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+          },
+          "type": "object"
+      },
+      "resources": {
+          "description": "Kubenetes resource requests/limites (cpu/memory/etc.) to request",
+          "type": "object"
+      },
+      "nodeSelector": {
+          "description": "Node selector for deployment",
+          "type": "object"
+      },
+      "tolerations": {
+          "description": "Tolerations for deployment",
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+      },
+      "affinity": {
+          "description": "Affinity for deployment",
+          "type": "object"
+      },
+      "redis": {
+          "description": "Settings for the redis subchart",
+          "type": "object"
+      },
+      "sentry": {
+          "description": "Definition of sentry instance to use to log warnings/errors",
+          "properties": {
+              "dsn": {
+                  "description": "URI of the sentry Data Source Name",
+                  "type": ["string", "null"]
+              },
+              "environment": {
+                  "description": "Name of the sentry environment to post to",
+                  "type": ["string", "null"]
+              }
+          },
+          "type": "object"
+      }
+    },
+    "required": [
+        "replicaCount",
+        "cacheDirectory",
+        "cleanupInterval",
+        "projectCloneDepth",
+        "templateCloneDepth",
+        "datasetsWorkerQueues",
+        "managementWorkerQueues",
+        "cleanupFilesTTL",
+        "cleanupProjectsTTL",
+        "logLevel",
+        "gitLFSSkipSmudge",
+        "jwtTokenSecret",
+        "image",
+        "service",
+        "ingress",
+        "metrics",
+        "redis",
+        "sentry"
+    ],
+    "title": "Values",
+    "type": "object"
+  }

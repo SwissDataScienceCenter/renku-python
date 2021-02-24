@@ -7,7 +7,7 @@ replicaCount: 1
 cacheDirectory: /svc/cache
 cleanupInterval: 3600
 projectCloneDepth: 1
-templateCloneDepth: 0
+templateCloneDepth: 1
 
 datasetsWorkerQueues: datasets.jobs
 managementWorkerQueues: cache.cleanup.files,cache.cleanup.projects
@@ -61,11 +61,11 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-nodeSelector: {}
+# nodeSelector: {}
 
-tolerations: []
+# tolerations: []
 
-affinity: {}
+# affinity: {}
 
 ## The renku core service deploys its own redis as a dependency. These values
 ## do probably not need to be changed.

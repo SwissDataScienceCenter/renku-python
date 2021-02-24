@@ -37,6 +37,8 @@ from renku.core.models.provenance.agents import Person, SoftwareAgent
 from renku.core.models.workflow.parameters import CommandArgument, CommandInput, CommandOutput, MappedIOStream
 from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
+from renku.core.utils.git import add_to_git
+from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
@@ -47,6 +49,8 @@ default_missing_software_agent = SoftwareAgent(
 
 def migrate(client):
     """Migration function."""
+    if MigrationType.WORKFLOWS not in client.migration_type:
+        return
     _migrate_old_workflows(client)
 
 
@@ -83,7 +87,7 @@ def _migrate_old_workflows(client):
         paths = [cwl_file, path]
         if client.activity_index_path.exists():
             paths.append(client.activity_index_path)
-        client.repo.git.add(*paths)
+        add_to_git(client.repo.git, *paths)
 
         if client.repo.is_dirty():
             commit_msg = "renku migrate: " "committing migrated workflow"
