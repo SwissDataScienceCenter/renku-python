@@ -18,6 +18,7 @@
 """Client for handling a data storage."""
 import csv
 import functools
+import itertools
 import os
 import re
 import tempfile
@@ -124,10 +125,14 @@ class StorageApiMixin(RepositoryApiMixin):
     def renku_lfs_ignore(self):
         """Gets pathspec for files to not add to LFS."""
         ignore_path = self.path / self.RENKU_LFS_IGNORE_PATH
+        renku_protected_paths = [".renku"]
+
         if not os.path.exists(ignore_path):
-            return pathspec.PathSpec.from_lines("renku_gitwildmatch", [])
+            return pathspec.PathSpec.from_lines("renku_gitwildmatch", renku_protected_paths)
         with ignore_path.open("r") as f:
-            return pathspec.PathSpec.from_lines("renku_gitwildmatch", f)
+            # NOTE: Append `renku_protected_paths` at the end to give it the highest priority
+            lines = itertools.chain(f, renku_protected_paths)
+            return pathspec.PathSpec.from_lines("renku_gitwildmatch", lines)
 
     @property
     def minimum_lfs_file_size(self):
@@ -186,9 +191,13 @@ class StorageApiMixin(RepositoryApiMixin):
             if attrs.get(str(path), {}).get("filter") == "lfs" or not (self.path / path).exists():
                 continue
 
-            if path.is_dir() and not any(self.renku_lfs_ignore.match_tree(str(path))):
+            if (
+                path.is_dir()
+                and not self.renku_lfs_ignore.match_file(path)
+                and not any(self.renku_lfs_ignore.match_tree(path))
+            ):
                 track_paths.append(str(path / "**"))
-            elif not self.renku_lfs_ignore.match_file(str(path)):
+            elif not self.renku_lfs_ignore.match_file(path):
                 file_size = os.path.getsize(str(os.path.relpath(self.path / path, os.getcwd())))
                 if file_size >= self.minimum_lfs_file_size:
                     track_paths.append(str(path))
@@ -414,7 +423,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
             pattern = p.pattern.replace(os.linesep, "").replace("\n", "")
             if pattern.startswith("!"):
-                pattern.replace("!", "", 1)
+                pattern = pattern.replace("!", "", 1)
 
             if p.include:  # File ignored by LFS
                 excludes.append(pattern)
@@ -425,12 +434,6 @@ class StorageApiMixin(RepositoryApiMixin):
             excludes = ["--exclude", ",".join(excludes)]
         if includes:
             includes = ["--include", ",".join(includes)]
-
-        # TODO: Do properly for all commands, see https://github.com/SwissDataScienceCenter/renku-python/issues/1866
-        if excludes:
-            excludes[1] += ",.renku/"
-        else:
-            excludes = ["--exclude", ".renku/"]
 
         above = ["--above", str(self.minimum_lfs_file_size)]
 
