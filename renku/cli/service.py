@@ -17,11 +17,23 @@
 # limitations under the License.
 """Commands to launch service components."""
 import os
+import signal
+import subprocess
 import sys
+import tempfile
+import time
+from datetime import datetime
+from pathlib import Path
 
 import click
+import psutil
 
 from renku.core.commands.echo import ERROR
+from renku.core.models.tabulate import tabulate
+from renku.core.utils.contexts import chdir
+
+RENKU_DAEMON_LOG_FILE = "renku.log"
+RENKU_DAEMON_ERR_FILE = "renku.err"
 
 
 def run_api(addr="0.0.0.0", port=8080, timeout=600, is_debug=False):
@@ -69,6 +81,62 @@ def run_worker(queues):
             queues = QUEUES
 
     start_worker(queues)
+
+
+def check_cmdline(cmdline, include=None):
+    """Check `cmdline` command of a process."""
+    include = include or []
+    service_components = include + ["api", "scheduler", "worker"]
+
+    for cmd in service_components:
+        if cmd in cmdline:
+            return True
+
+    return False
+
+
+def list_renku_processes(include=None):
+    """List renku processes."""
+    include = include or []
+    processes = [psutil.Process(pid) for pid in psutil.pids()]
+
+    renku_processes = [proc for proc in processes if proc.name() == "renku" and check_cmdline(proc.cmdline(), include)]
+
+    renku_proc_info = sorted(
+        [
+            {
+                "create_time": datetime.fromtimestamp(proc.create_time()).strftime("%d.%b %H:%M"),
+                "pid": proc.pid,
+                "cmdline": f"renku {' '.join(proc.cmdline()[2:])}",
+                "status": proc.status(),
+                "mem_perct": proc.memory_percent(),
+                "cpu_perct": proc.cpu_percent(),
+                "num_threads": proc.num_threads(),
+                "num_fds": proc.num_fds(),
+            }
+            for proc in renku_processes
+        ],
+        key=lambda k: k["cmdline"],
+    )
+
+    return renku_proc_info
+
+
+def read_logs(log_file, follow=True, output_all=False):
+    """Read logs file. Supports following logs in realtime."""
+    if follow and not output_all:
+        log_file.seek(0, os.SEEK_END)
+
+    while True:
+        line = log_file.readline()
+        if not line and follow:
+            time.sleep(0.1)
+            continue
+
+        if not line and not follow:
+            return
+
+        yield line
 
 
 @click.group()
@@ -139,3 +207,145 @@ def scheduler_start():
 def worker_start(queue):
     """Start service worker in active shell session. By default it listens on all queues."""
     run_worker([q.strip() for q in queue if q])
+
+
+@service.command(name="ps")
+@click.pass_context
+def ps(ctx):
+    """Check status of running services."""
+    processes = list_renku_processes()
+    headers = [{k.upper(): v for k, v in rec.items()} for rec in processes]
+
+    output = tabulate(processes, headers=headers,)
+
+    if not processes:
+        click.echo("Renku service components are down.")
+        ctx.exit()
+
+    click.echo(output)
+
+
+@service.command(name="up")
+@click.option("-d", "--daemon", is_flag=True, default=False, help="Starts ALL processes in daemon mode.")
+@click.option("-rd", "--runtime-dir", default=".", help="Directory for runtime metadata in daemon mode.")
+@click.pass_context
+def all_start(ctx, daemon, runtime_dir):
+    """Start ALL service components in daemon mode."""
+    from circus import get_arbiter
+
+    services = [
+        {
+            "name": "RenkuCoreService",
+            "cmd": "renku",
+            "args": ["service", "api"],
+            "numprocesses": 1,
+            "env": os.environ.copy(),
+            "shell": True,
+        },
+        {
+            "name": "RenkuCoreScheduler",
+            "cmd": "renku",
+            "args": ["service", "scheduler"],
+            "numprocesses": 1,
+            "env": os.environ.copy(),
+            "shell": True,
+        },
+        {
+            "name": "RenkuCoreWorker",
+            "cmd": "renku",
+            "args": ["service", "worker"],
+            "numprocesses": 1,
+            "env": os.environ.copy(),
+            "shell": True,
+        },
+    ]
+
+    def launch_arbiter(arbiter):
+        """Helper for launching arbiter process."""
+        with chdir(runtime_dir):
+            try:
+                arbiter.start()
+            finally:
+                arbiter.stop()
+
+    if not daemon:
+        launch_arbiter(get_arbiter(services))
+        ctx.exit()
+
+    # NOTE: If we are running in daemon mode, the runtime directory is generated is OS /tmp directory.
+    # Since in this case daemon is long running process we don't want to pollute user space.
+    if not runtime_dir or runtime_dir == ".":
+        runtime_dir = tempfile.mkdtemp()
+
+    os.environ["CACHE_DIR"] = runtime_dir
+    click.echo(f"Using runtime directory: {runtime_dir}")
+
+    log_stdout = Path(runtime_dir) / RENKU_DAEMON_LOG_FILE
+    log_stderr = Path(runtime_dir) / RENKU_DAEMON_ERR_FILE
+
+    subprocess.Popen(
+        ["renku", "service", "up", "--runtime-dir", runtime_dir],
+        stdout=log_stdout.open(mode="w"),
+        stderr=log_stderr.open(mode="w"),
+        start_new_session=True,
+    )
+
+    click.secho("OK", fg="green")
+
+
+@service.command(name="down")
+def all_stop():
+    """Stop ALL service components."""
+    # NOTE: We include `renku service up` because that process contains the arbiter and watcher.
+    processes = list_renku_processes(["up"])
+
+    for proc in processes:
+        click.echo(f"Shutting down [{proc['pid']}] `{proc['cmdline']}`")
+        os.kill(proc["pid"], signal.SIGKILL)
+
+    if processes:
+        click.secho("OK", fg="green")
+    else:
+        click.echo("Nothing to shut down.")
+
+
+@service.command(name="restart")
+def all_restart():
+    """Restart ALL running service components."""
+    processes = list_renku_processes()
+
+    for proc in processes:
+        click.echo(f"Restarting `{proc['cmdline']}`")
+        os.kill(proc["pid"], signal.SIGKILL)
+
+    if processes:
+        click.secho("OK", fg="green")
+    else:
+        click.echo("Nothing to restart.")
+
+
+@service.command(name="logs")
+@click.option("-f", "--follow", is_flag=True, default=False, help="Follows logs of damonized service components.")
+@click.option(
+    "-a", "--output-all", is_flag=True, default=False, help="Outputs ALL logs of damonized service components."
+)
+@click.option("-e", "--errors", is_flag=True, default=False, help="Outputs ALL errors of damonized service components.")
+@click.pass_context
+def all_logs(ctx, follow, output_all, errors):
+    """Check logs of ALL running daemonized service components."""
+    processes = list_renku_processes(["up"])
+
+    if not processes:
+        click.echo("Daemonized component processes are not running.\nStart them with `renku service up --daemon`")
+        ctx.exit()
+
+    for proc in processes:
+        if "cmdline" in proc and "up" in proc["cmdline"]:
+            runtime_dir = Path(proc["cmdline"].split("--runtime-dir")[-1].strip())
+
+            stream = runtime_dir / RENKU_DAEMON_LOG_FILE
+            if errors:
+                stream = runtime_dir / RENKU_DAEMON_ERR_FILE
+
+            for line in read_logs(stream.open(mode="r"), follow=follow, output_all=output_all):
+                click.echo(line)
