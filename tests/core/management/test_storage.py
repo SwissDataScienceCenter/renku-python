@@ -21,7 +21,7 @@ import pytest
 
 
 @pytest.mark.parametrize("path", [".", "datasets"])
-def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path):
+def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path, subdirectory):
     """Test .renku directory and its content are not included in the LFS."""
     # Explicitly set .renku to not being ignored
     (client_with_datasets.path / ".renkulfsignore").write_text("!.renku")

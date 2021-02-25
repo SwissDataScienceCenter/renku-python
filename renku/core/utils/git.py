@@ -63,8 +63,8 @@ def add_to_git(git, *paths, **kwargs):
 
 def split_paths(*paths):
     """Return a generator with split list of paths."""
-    batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
-    batch_size = max(batch_size, 1)
+    batch_count = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
+    batch_count = max(batch_count, 1)
 
-    for index in range(batch_size):
+    for index in range(batch_count):
         yield paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]

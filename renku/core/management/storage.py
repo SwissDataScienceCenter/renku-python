@@ -121,7 +121,7 @@ class StorageApiMixin(RepositoryApiMixin):
     def renku_lfs_ignore(self):
         """Gets pathspec for files to not add to LFS."""
         ignore_path = self.path / self.RENKU_LFS_IGNORE_PATH
-        renku_protected_paths = [".renku"]
+        renku_protected_paths = ["/.renku"]
 
         if not os.path.exists(ignore_path):
             return pathspec.PathSpec.from_lines("renku_gitwildmatch", renku_protected_paths)
