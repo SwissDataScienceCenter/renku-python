@@ -30,7 +30,7 @@ from renku.core import errors
 from renku.core.commands.dataset import add_to_dataset, create_dataset, file_unlink, list_datasets, list_files
 from renku.core.errors import OperationError, ParameterError
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.models.datasets import Dataset
+from renku.core.models.datasets import Dataset, get_slug
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
 from tests.utils import assert_dataset_is_mutated, raises
@@ -257,3 +257,19 @@ def test_cannot_mutate_immutable_dataset():
 
     with pytest.raises(OperationError):
         dataset.mutate()
+
+
+@pytest.mark.parametrize(
+    "name, slug",
+    [
+        (" a name  ", "a_name"),
+        ("..non-alphanumeric start or end-_", "non-alphanumeric_start_or_end"),
+        ("double ..__._- non-alphanumeric", "double_non-alphanumeric"),
+        ("double..dots", "double.dots"),
+        ("nön-àsçîï", "non-ascii"),
+        ("ends in .lock", "ends_in_lock"),
+    ],
+)
+def test_dataset_name_slug(name, slug):
+    """Test slug generation from name."""
+    assert slug == get_slug(name)

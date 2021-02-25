@@ -42,13 +42,13 @@ from tests.utils import assert_dataset_is_mutated
     [
         {
             "doi": "10.5281/zenodo.2658634",
-            "name": "pyndl_naive_discriminat_v064",
+            "name": "pyndl_naive_discriminati_v0.6.4",
             "creator": "Konstantin Sering, Marc Weitz, David-Elias Künstle, Lennart Schneider",
             "version": "v0.6.4",
         },
         {
             "doi": "10.7910/DVN/F4NUMR",
-            "name": "replication_data_for_ca_22",
+            "name": "replication_data_for_cam_2.2",
             "creator": "James Druckman, Martin Kifer, Michael Parkin",
             "version": "2",
         },
