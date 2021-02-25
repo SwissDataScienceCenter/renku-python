@@ -33,6 +33,7 @@ import attr
 import git
 
 from renku.core import errors
+from renku.core.utils.git import split_paths
 from renku.core.utils.scm import git_unicode_unescape, shorten_message
 from renku.core.utils.urls import remove_credentials
 
@@ -146,23 +147,26 @@ class GitCore:
         """Return ignored paths matching ``.gitignore`` file."""
         from git.exc import GitCommandError
 
-        try:
-            return self.repo.git.check_ignore(*paths).split()
-        except GitCommandError:
-            pass
+        for batch in split_paths(*paths):
+            try:
+                return self.repo.git.check_ignore(*batch).split()
+            except GitCommandError:
+                pass
 
     def find_attr(self, *paths):
         """Return map with path and its attributes."""
         from git.exc import GitCommandError
 
         attrs = defaultdict(dict)
-        try:
-            data = self.repo.git.check_attr("-z", "-a", "--", *paths)
-            for file, name, value in zip_longest(*[iter(data.strip("\0").split("\0"))] * 3):
-                if file:
-                    attrs[file][name] = value
-        except GitCommandError:
-            pass
+
+        for batch in split_paths(*paths):
+            try:
+                data = self.repo.git.check_attr("-z", "-a", "--", *batch)
+                for file, name, value in zip_longest(*[iter(data.strip("\0").split("\0"))] * 3):
+                    if file:
+                        attrs[file][name] = value
+            except GitCommandError:
+                pass
 
         return attrs
 
