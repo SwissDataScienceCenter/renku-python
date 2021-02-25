@@ -74,9 +74,15 @@ import os
 
 import click
 
-from renku.core.commands.client import pass_local_client
+from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import WARNING
-from renku.core.commands.storage import check_lfs, fix_lfs
+from renku.core.commands.storage import (
+    check_lfs_command,
+    check_lfs_hook_command,
+    clean_command,
+    fix_lfs_command,
+    pull_command,
+)
 
 
 @click.group()
@@ -88,34 +94,19 @@ def storage():
 @click.argument(
     "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
 )
-@pass_local_client
-def pull(client, paths):
+def pull(paths):
     """Pull the specified paths from external storage."""
-    client.pull_paths_from_storage(*paths)
+    pull_command().build().execute(paths=paths)
 
 
 @storage.command()
 @click.argument(
     "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
 )
-@pass_local_client
-def clean(client, paths):
+def clean(paths):
     """Remove files from lfs cache/turn them back into pointer files."""
-    untracked_paths, local_only_paths = client.clean_storage_cache(*paths)
-
-    if untracked_paths:
-        click.echo(
-            WARNING
-            + "These paths were ignored as they are not tracked"
-            + " in git LFS:\n\t{}\n".format("\n\t".join(untracked_paths))
-        )
-
-    if local_only_paths:
-        click.echo(
-            WARNING
-            + "These paths were ignored as they are not pushed to "
-            + "a remote with git LFS:\n\t{}\n".format("\n\t".join(local_only_paths))
-        )
+    communicator = ClickCallback()
+    clean_command().with_communicator(communicator).build().execute(paths=paths)
 
     click.secho("OK", fg="green")
 
@@ -124,10 +115,9 @@ def clean(client, paths):
 @click.argument(
     "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
 )
-@pass_local_client
-def check_lfs_hook(client, paths):
+def check_lfs_hook(paths):
     """Check specified paths are tracked in external storage."""
-    paths = client.check_requires_tracking(*paths)
+    paths = check_lfs_hook_command().build().execute(paths=paths).output
     if paths:
         click.echo(os.linesep.join(paths))
         exit(1)
@@ -135,10 +125,9 @@ def check_lfs_hook(client, paths):
 
 @storage.command()
 @click.option("--all", is_flag=True, help="Include all branches.")
-@pass_local_client
-def check(client, all):
+def check(all):
     """Check if large files are committed to Git history."""
-    files = check_lfs().build().execute(everything=all).output
+    files = check_lfs_command().build().execute(everything=all).output
     if files:
         message = WARNING + "Git history contains large files\n\t" + "\n\t".join(files)
         click.echo(message)
@@ -152,15 +141,14 @@ def check(client, all):
 @click.argument(
     "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1,
 )
-@pass_local_client
-def migrate(client, migrate_all, paths):
+def migrate(migrate_all, paths):
     """Migrate large files committed to git by moving them to LFS."""
     if not paths:
         if not migrate_all:
             click.echo("Please specify paths to migrate or use the --all flag to migrate all large files.")
             exit(1)
 
-        lfs_paths = check_lfs().build().execute(everything=all).output
+        lfs_paths = check_lfs_command().build().execute(everything=all).output
 
         if not lfs_paths:
             click.echo("All files are already in LFS")
@@ -169,4 +157,4 @@ def migrate(client, migrate_all, paths):
         if not click.confirm("The following files will be moved to Git LFS:\n\t" + "\n\t".join(lfs_paths)):
             exit(0)
 
-    fix_lfs().build().execute(paths)
+    fix_lfs_command().build().execute(paths)

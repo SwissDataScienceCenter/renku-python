@@ -25,7 +25,7 @@ import attr
 from git import NULL_TREE
 
 from renku.core import errors
-from renku.core.commands.client import pass_local_client
+from renku.core.incubation.command import Command
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.git import Range
 from renku.core.models.provenance.activities import Activity, ProcessRun, Usage, WorkflowRun
@@ -521,8 +521,7 @@ class Graph(object):
         return run
 
 
-@pass_local_client(requires_migration=True)
-def build_graph(client, revision="HEAD", no_output=False, paths=()):
+def _build_graph(client, revision="HEAD", no_output=False, paths=()):
     """Build graph structure."""
     graph = Graph(client)
     if not paths:
@@ -542,3 +541,8 @@ def build_graph(client, revision="HEAD", no_output=False, paths=()):
     # NOTE shall we warn when "not no_output and not paths"?
     graph.build(paths=paths, revision=revision, can_be_cwl=no_output)
     return graph
+
+
+def build_graph_command():
+    """Command to build graph structure."""
+    return Command().command(_build_graph).require_migration()

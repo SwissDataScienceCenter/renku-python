@@ -55,7 +55,7 @@ class CommunicationCallback:
     def has_prompt(self):
         """Return True if communicator provides a direct prompt to users."""
 
-    def prompt(self, msg, type=None, default=None):
+    def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt."""
 
 
@@ -122,12 +122,12 @@ class _CommunicationManger(CommunicationCallback):
                 if listener.has_prompt():
                     return listener.confirm(msg, abort, warning)
 
-    def prompt(self, msg, type=None, default=None):
+    def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt from the first callback that has a prompt."""
         with CommunicationCallback.lock:
             for listener in self._listeners:
                 if listener.has_prompt():
-                    return listener.prompt(msg, type, default)
+                    return listener.prompt(msg, type, default, **kwargs)
 
     def start_progress(self, name, total, **kwargs):
         """Create a new progress tracker."""
@@ -213,9 +213,9 @@ def confirm(msg, abort=False, warning=False):
 
 
 @ensure_manager
-def prompt(msg, type=None, default=None):
+def prompt(msg, type=None, default=None, **kwargs):
     """Show a message prompt."""
-    return _thread_local.communication_manager.prompt(msg, type, default)
+    return _thread_local.communication_manager.prompt(msg, type, default, **kwargs)
 
 
 @ensure_manager

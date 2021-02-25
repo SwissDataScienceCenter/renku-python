@@ -22,12 +22,12 @@ import os
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import WARNING
 from renku.core.commands.migrate import (
     MIGRATION_REQUIRED,
     NON_RENKU_REPOSITORY,
     UNSUPPORTED_PROJECT,
+    check_immutable_template_files_command,
     check_project,
     migrate_project,
     migrations_check,
@@ -104,10 +104,10 @@ def migrationscheck():
 @click.argument(
     "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
 )
-@pass_local_client
-def check_immutable_template_files(client, paths):
+def check_immutable_template_files(paths):
     """Check specified paths if they are marked immutable in the template."""
-    paths = client.check_immutable_template_files(*paths)
+    result = check_immutable_template_files_command().build().execute(paths=paths)
+    paths = result.output
     if paths:
         click.echo(os.linesep.join(paths))
         exit(1)

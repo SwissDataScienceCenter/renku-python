@@ -21,7 +21,7 @@ import shutil
 import git
 from marshmallow import EXCLUDE
 
-from renku.core.commands.init import create_from_template_local, read_template_manifest
+from renku.core.commands.init import create_from_template_local_command, read_template_manifest
 from renku.core.errors import RenkuException
 from renku.core.utils.contexts import click_context
 from renku.service.controllers.api.abstract import ServiceCtrl
@@ -134,7 +134,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
         source_path = template_project.abs_path / self.ctx["identifier"]
 
         with click_context(new_project_path, "create_from_template"):
-            create_from_template_local(
+            create_from_template_local_command().build().execute(
                 source_path,
                 self.ctx["project_name"],
                 provided_parameters,
