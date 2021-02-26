@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -51,7 +51,6 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "project_repository",
         "url",
         "identifier",
-        "initialized",
         "parameters",
         "project_name",
         "name",
@@ -80,7 +79,6 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "__project_slug__",
     }
     assert expected_metadata == set(received_metadata.keys())
-
     assert payload["url"] == received_metadata["__template_source__"]
     assert payload["ref"] == received_metadata["__template_ref__"]
     assert payload["identifier"] == received_metadata["__template_id__"]

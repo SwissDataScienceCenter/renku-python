@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -26,6 +26,13 @@ Renku Command Line
 --------------
 
 .. automodule:: renku.cli.init
+
+.. _cli-clone:
+
+``renku clone``
+---------------
+
+.. automodule:: renku.cli.clone
 
 .. _cli-config:
 

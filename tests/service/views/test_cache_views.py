@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -24,6 +24,7 @@ import uuid
 import jwt
 import pytest
 from flaky import flaky
+from git import Repo
 
 from conftest import IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
@@ -193,7 +194,7 @@ def test_file_upload_with_users(svc_client, identity_headers):
     }
 
     headers_user2 = {
-        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256"),
         "Authorization": identity_headers["Authorization"],
     }
 
@@ -369,6 +370,7 @@ def test_clone_projects_invalid_headers(svc_client, identity_headers):
     assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
 
     response = svc_client.get("/cache.project_list", headers=identity_headers)
+
     assert response
     assert {"result"} == set(response.json.keys())
     assert 1 == len(response.json["result"]["projects"])
@@ -675,3 +677,56 @@ def test_check_no_migrations(svc_client_with_repo):
     assert not response.json["result"]["template_update_possible"]
     assert not response.json["result"]["docker_update_possible"]
     assert response.json["result"]["project_supported"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@pytest.mark.serial
+@flaky(max_runs=10, min_passes=1)
+def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
+    """Check cache state is reset after pushing to a protected branch fails."""
+    svc_client, headers, project_id, cache, user = svc_protected_old_repo
+
+    project = cache.get_project(user, project_id)
+    repo = Repo(path=project.abs_path)
+    commit_sha_before = repo.head.object.hexsha
+    active_branch_before = repo.active_branch.name
+
+    response = svc_client.post(
+        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+    )
+    assert 200 == response.status_code
+    assert response.json["result"]["was_migrated"]
+
+    project = cache.get_project(user, project_id)
+    repo = Repo(path=project.abs_path)
+
+    assert commit_sha_before == repo.head.object.hexsha
+    assert active_branch_before == repo.active_branch.name
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@pytest.mark.serial
+@flaky(max_runs=10, min_passes=1)
+def test_migrating_protected_branch(svc_protected_old_repo):
+    """Check migrating on a protected branch does not change cache state."""
+    svc_client, headers, project_id, _, _ = svc_protected_old_repo
+
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    assert 200 == response.status_code
+    assert response.json["result"]["migration_required"]
+
+    response = svc_client.post(
+        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["was_migrated"]
+    assert any(
+        m.startswith("Successfully applied") and m.endswith("migrations.") for m in response.json["result"]["messages"]
+    )
+
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    assert 200 == response.status_code
+    assert response.json["result"]["migration_required"]

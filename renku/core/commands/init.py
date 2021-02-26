@@ -28,6 +28,7 @@ import yaml
 
 from renku.core import errors
 from renku.core.management.config import RENKU_HOME
+from renku.core.utils import communication
 
 from .client import pass_local_client
 
@@ -72,7 +73,7 @@ def fetch_template_from_git(source, ref="master", tempdir=None):
     return tempdir / TEMPLATE_MANIFEST, template_repo.head.commit.hexsha
 
 
-def fetch_template(template_source, template_ref, process_callback=None):
+def fetch_template(template_source, template_ref):
     """Fetches a local or remote template.
 
     :param template_source: url or full path of the templates repository
@@ -80,13 +81,11 @@ def fetch_template(template_source, template_ref, process_callback=None):
     :return: tuple of (template manifest, template folder, template source, template version)
     """
     if template_source and template_source != "renku":
-        if process_callback:
-            process_callback("Fetching template from {0}@{1}... ".format(template_source, template_ref))
+        communication.echo("Fetching template from {0}@{1}... ".format(template_source, template_ref))
         template_folder = Path(mkdtemp())
         _, template_version = fetch_template_from_git(template_source, template_ref, template_folder)
         template_manifest = read_template_manifest(template_folder, checkout=True)
-        if process_callback:
-            process_callback("OK")
+        communication.echo("OK")
     else:
         from renku import __version__
 
@@ -192,7 +191,7 @@ def create_from_template(
             client.import_from_template(template_path, metadata, force)
 
         if data_dir:
-            client.set_value("renku", client.DATA_DIR_CONFIG_KEY, data_dir)
+            client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
             data_path = client.path / data_dir
             data_path.mkdir(parents=True, exist_ok=True)
             (data_path / ".gitkeep").touch(exist_ok=True)

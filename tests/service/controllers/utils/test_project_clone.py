@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -49,30 +49,25 @@ def test_service_user_project_clone(svc_client_cache):
 
     project_data = ManifestTemplatesRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
     project_one = user_project_clone(user_data, project_data)
-    time.sleep(1)
-
-    assert project_one.age == 1
+    assert project_one.age >= 0
     assert not project_one.ttl_expired()
     assert project_one.exists()
     old_path = project_one.abs_path
 
     os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1"
     time.sleep(1)
-    assert project_one.age == 2
     assert project_one.ttl_expired()
 
     os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "3600"
-    project_two = user_project_clone(user_data, project_data)
-    time.sleep(1)
 
-    assert project_two.age == 1
+    project_two = user_project_clone(user_data, project_data)
+    assert project_two.age >= 0
     assert not project_two.ttl_expired()
     assert project_two.exists()
 
     new_path = project_two.abs_path
-    assert old_path == new_path
+    assert old_path != new_path
     user = cache.get_user(user_data["user_id"])
-
     projects = [project.project_id for project in cache.get_projects(user)]
-    assert project_one.project_id not in projects
+    assert project_one.project_id in projects
     assert project_two.project_id in projects

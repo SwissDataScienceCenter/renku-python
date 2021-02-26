@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,15 +17,12 @@
 # limitations under the License.
 """PoC command for testing the new graph design."""
 
-import functools
-import sys
-
 import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
 from renku.core.incubation.command import Command
-from renku.core.incubation.graph import export_graph, generate_datasets_provenance, generate_graph
+from renku.core.incubation.graph import FORMATS, add_to_dataset, create_dataset, export_graph, generate_graph
 from renku.core.incubation.graph import status as get_status
 from renku.core.incubation.graph import update as perform_update
 from renku.core.models.workflow.dependency_graph import DependencyGraph
@@ -43,7 +40,7 @@ def generate(force):
     """Create new graph metadata."""
 
     communicator = ClickCallback()
-    (generate_graph().with_communicator(communicator).build().execute(force=force))
+    generate_graph().with_communicator(communicator).build().execute(force=force)
 
     click.secho("\nOK", fg="green")
 
@@ -65,9 +62,8 @@ def status(ctx):
     if stales:
         click.echo(
             f"Outdated outputs({len(stales)}):\n"
-            '  (use "renku log [<file>...]" to see the full lineage)\n'
-            '  (use "renku update [<file>...]" to '
-            "generate the file from its latest inputs)\n"
+            "  (use `renku log [<file>...]` to see the full lineage)\n"
+            "  (use `renku update [<file>...]` to generate the file from its latest inputs)\n"
         )
         for k, v in stales.items():
             paths = click.style(", ".join(sorted(v)), fg="red", bold=True)
@@ -79,8 +75,7 @@ def status(ctx):
     if modified:
         click.echo(
             f"Modified inputs({len(modified)}):\n"
-            '  (use "renku log --revision <sha1> <file>" to see a lineage '
-            "for the given revision)\n"
+            "  (use `renku log --revision <sha1> <file>` to see a lineage for the given revision)\n"
         )
         for v in modified:
             click.echo(click.style(f"\t{v}", fg="blue", bold=True))
@@ -89,8 +84,7 @@ def status(ctx):
     if deleted:
         click.echo(
             "Deleted files used to generate outputs:\n"
-            '  (use "git show <sha1>:<file>" to see the file content '
-            "for the given revision)\n"
+            "  (use `git show <sha1>:<file>` to see the file content for the given revision)\n"
         )
         for v in deleted:
             click.echo(click.style(f"\t{v}", fg="blue", bold=True))
@@ -122,62 +116,76 @@ def save(path):
         Command().command(_to_png).build().execute(path=path)
 
 
-def _dot(rdf_graph, simple=True, debug=False, landscape=False):
-    """Format graph as a dot file."""
-    from rdflib.tools.rdf2dot import rdf2dot
-
-    from renku.core.commands.format.graph import _rdf2dot_reduced, _rdf2dot_simple
-
-    if debug:
-        rdf2dot(rdf_graph, sys.stdout)
-        return
-
-    sys.stdout.write('digraph { \n node [ fontname="DejaVu Sans" ] ; \n ')
-    if landscape:
-        sys.stdout.write('rankdir="LR" \n')
-    if simple:
-        _rdf2dot_simple(rdf_graph, sys.stdout, graph=graph)
-        return
-    _rdf2dot_reduced(rdf_graph, sys.stdout)
-
-
-_dot_full = functools.partial(_dot, simple=False, landscape=False)
-_dot_landscape = functools.partial(_dot, simple=True, landscape=True)
-_dot_full_landscape = functools.partial(_dot, simple=False, landscape=True)
-_dot_debug = functools.partial(_dot, debug=True)
-
-
-def _json_ld(rdf_graph):
-    """Format graph as JSON-LD."""
-    data = rdf_graph.serialize(format="json-ld").decode("utf-8")
-    print(data)
-
-
-_FORMATS = {
-    "dot": _dot,
-    "dot-full": _dot_full,
-    "dot-landscape": _dot_landscape,
-    "dot-full-landscape": _dot_full_landscape,
-    "dot-debug": _dot_debug,
-    "json-ld": _json_ld,
-    "jsonld": _json_ld,
-}
-
-
 @graph.command()
-@click.option("--format", type=CaseInsensitiveChoice(_FORMATS), default="json-ld", help="Choose an output format.")
-@click.option("-d", "--dataset", is_flag=True, help="Include datasets.")
-def export(format, dataset):
+@click.option("--format", type=CaseInsensitiveChoice(FORMATS), default="json-ld", help="Choose an output format.")
+@click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
+@click.option("--workflows-only", is_flag=True, help="Exclude datasets metadata from export.")
+def export(format, strict, workflows_only):
     r"""Equivalent of `renku log --format json-ld`."""
     communicator = ClickCallback()
-    (export_graph().with_communicator(communicator).build().execute(format=_FORMATS[format], dataset=dataset))
+    export_graph().with_communicator(communicator).build().execute(
+        format=format, workflows_only=workflows_only, strict=strict
+    )
 
 
-@graph.command()
-@click.option("-f", "--force", is_flag=True, help="Delete existing metadata and regenerate all.")
-def generate_dataset(force):
-    """Create new graph metadata for datasets."""
+@graph.group()
+def dataset():
+    """Proof-of-Concept command for dataset operations using new metadata."""
+
+
+@dataset.command()
+@click.argument("name")
+@click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
+@click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
+@click.option(
+    "-c",
+    "--creator",
+    "creators",
+    default=None,
+    multiple=True,
+    help="Creator's name, email, and affiliation. Accepted format is ``Forename Surname <email> [affiliation]``.",
+)
+@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
+def create(name, title, description, creators, keyword):
+    """Create a new dataset."""
     communicator = ClickCallback()
-    (generate_datasets_provenance().with_communicator(communicator).build().execute(force=force))
 
-    click.secho("\nOK", fg="green")
+    result = (
+        create_dataset()
+        .with_communicator(communicator)
+        .build()
+        .execute(name=name, title=title, description=description, creators=creators, keywords=keyword)
+    )
+
+    new_dataset = result.output
+
+    click.echo(f"Use the name ``{new_dataset.name}`` to refer to this dataset.")
+    click.secho("OK", fg="green")
+
+
+@dataset.command()
+@click.argument("name")
+@click.argument("urls", nargs=-1)
+@click.option("-e", "--external", is_flag=True, help="Creates a link to external data.")
+@click.option("--force", is_flag=True, help="Allow adding otherwise ignored files.")
+@click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
+@click.option("-c", "--create", is_flag=True, help="Create dataset if it does not exist.")
+@click.option("-s", "--source", "sources", default=None, multiple=True, help="Paths within remote git repo to be added")
+@click.option("-d", "--destination", "destination", default="", help="Destination directory within the dataset path")
+@click.option("--ref", default=None, help="Add files from a specific commit/tag/branch.")
+def add(name, urls, external, force, overwrite, create, sources, destination, ref):
+    """Add data to a dataset."""
+    communicator = ClickCallback()
+
+    add_to_dataset().with_communicator(communicator).build().execute(
+        urls=urls,
+        name=name,
+        external=external,
+        force=force,
+        overwrite=overwrite,
+        create=create,
+        sources=sources,
+        destination=destination,
+        ref=ref,
+    )
+    click.secho("OK", fg="green")

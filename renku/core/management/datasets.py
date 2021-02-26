@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -28,9 +28,9 @@ import uuid
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
-from subprocess import PIPE, SubprocessError, run
+from subprocess import PIPE, SubprocessError
 from urllib import error, parse
-from urllib.parse import ParseResult
+from urllib.parse import ParseResult, urlparse
 
 import attr
 import patoolib
@@ -46,6 +46,7 @@ from renku.core.models.datasets import (
     Dataset,
     DatasetFile,
     DatasetTag,
+    ImageObject,
     generate_dataset_file_url,
     is_dataset_name_valid,
 )
@@ -54,6 +55,8 @@ from renku.core.models.provenance.agents import Person
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
+from renku.core.utils.git import add_to_git, run_command
+from renku.core.utils.migrate import MigrationType
 from renku.core.utils.urls import remove_credentials
 
 
@@ -70,6 +73,9 @@ class DatasetsApiMixin(object):
     CACHE = "cache"
     """Directory to cache transient data."""
 
+    DATASET_IMAGES = "dataset_images"
+    """Directory for dataset images."""
+
     DATASETS_PROVENANCE = "dataset.json"
     """File for storing datasets' provenance."""
 
@@ -83,6 +89,14 @@ class DatasetsApiMixin(object):
             return self._temporary_datasets_path
 
         return self.path / self.renku_home / self.DATASETS
+
+    @property
+    def renku_dataset_images_path(self):
+        """Return a ``Path`` instance of Renku dataset metadata folder."""
+        if self._temporary_datasets_path:
+            return self._temporary_datasets_path
+
+        return self.path / self.renku_home / self.DATASET_IMAGES
 
     @property
     def datasets_provenance_path(self):
@@ -111,7 +125,7 @@ class DatasetsApiMixin(object):
     @property
     def datasets_provenance(self):
         """Return dataset provenance if available."""
-        if not self.has_datasets_provenance_file():
+        if not self.has_datasets_provenance():
             return
         if not self._datasets_provenance:
             self._datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
@@ -120,7 +134,7 @@ class DatasetsApiMixin(object):
 
     def update_datasets_provenance(self, dataset, remove=False):
         """Update datasets provenance for a dataset."""
-        if not self.has_datasets_provenance_file():
+        if not self.has_datasets_provenance():
             return
 
         if remove:
@@ -130,9 +144,20 @@ class DatasetsApiMixin(object):
 
         self.datasets_provenance.to_json()
 
-    def has_datasets_provenance_file(self):
-        """Return true if dependency or provenance graph exists."""
+    def has_datasets_provenance(self):
+        """Return true if dataset provenance exists."""
         return self.datasets_provenance_path.exists()
+
+    def remove_datasets_provenance_file(self):
+        """Remove dataset provenance."""
+        try:
+            self.datasets_provenance_path.unlink()
+        except FileNotFoundError:
+            pass
+
+    def initialize_datasets_provenance(self):
+        """Create empty dataset provenance file."""
+        self.datasets_provenance_path.write_text("[]")
 
     def datasets_from_commit(self, commit=None):
         """Return datasets defined in a commit."""
@@ -200,6 +225,8 @@ class DatasetsApiMixin(object):
         """Yield an editable metadata object for a dataset."""
         dataset = self.load_dataset(name=name)
         clean_up_required = False
+        dataset_ref = None
+        path = None
 
         if dataset is None:
             if not create:
@@ -209,6 +236,7 @@ class DatasetsApiMixin(object):
             dataset, path, dataset_ref = self.create_dataset(name=name)
         elif create:
             raise errors.DatasetExistsError('Dataset exists: "{}".'.format(name))
+
         dataset_path = self.path / self.data_dir / dataset.name
         dataset_path.mkdir(parents=True, exist_ok=True)
 
@@ -224,7 +252,54 @@ class DatasetsApiMixin(object):
 
         dataset.to_yaml()
 
-    def create_dataset(self, name=None, title=None, description=None, creators=None, keywords=None):
+    @contextmanager
+    def with_dataset_provenance(self, name=None, create=False):
+        """Yield a dataset's metadata from dataset provenance."""
+        dataset = self.load_dataset_from_provenance(name=name)
+        clean_up_required = False
+        dataset_ref = None
+        path = None
+
+        if dataset is None:
+            if not create:
+                raise errors.DatasetNotFound(name=name)
+
+            clean_up_required = True
+            dataset, path, dataset_ref = self.create_dataset(name=name)
+        elif create:
+            raise errors.DatasetExistsError('Dataset exists: "{}".'.format(name))
+        else:
+            dataset = dataset.to_dataset(self)
+
+        dataset_path = self.path / self.data_dir / dataset.name
+        dataset_path.mkdir(parents=True, exist_ok=True)
+
+        try:
+            yield dataset
+        except Exception:
+            # TODO use a general clean-up strategy
+            # https://github.com/SwissDataScienceCenter/renku-python/issues/736
+            if clean_up_required:
+                dataset_ref.delete()
+                shutil.rmtree(path.parent, ignore_errors=True)
+            raise
+
+        dataset.to_yaml(os.path.join(self.path, dataset.path, self.METADATA))
+
+    def load_dataset_from_provenance(self, name, strict=False):
+        """Load latest dataset's metadata from dataset provenance file."""
+        dataset = None
+        if name:
+            dataset = self.datasets_provenance.get_latest_by_name(name)
+
+        if not dataset and strict:
+            raise errors.DatasetNotFound(name=name)
+
+        return dataset
+
+    def create_dataset(
+        self, name=None, title=None, description=None, creators=None, keywords=None, images=None, safe_image_paths=[]
+    ):
         """Create a dataset."""
         if not name:
             raise errors.ParameterError("Dataset name must be provided.")
@@ -266,12 +341,90 @@ class DatasetsApiMixin(object):
             immutable=True,  # No mutation required when first creating a dataset
         )
 
+        if images:
+            safe_image_paths.append(self.path)
+            self.set_dataset_images(dataset, images, safe_image_paths)
+
         dataset_ref = LinkReference.create(client=self, name="datasets/" + name)
         dataset_ref.set_reference(metadata_path)
 
         dataset.to_yaml(path=metadata_path)
 
         return dataset, metadata_path, dataset_ref
+
+    def set_dataset_images(self, dataset, images, safe_image_paths=[]):
+        """Set the images on a dataset."""
+
+        if not images:
+            images = []
+
+        (self.renku_dataset_images_path / dataset.identifier).mkdir(exist_ok=True, parents=True)
+
+        previous_images = dataset.images or []
+
+        dataset.images = []
+
+        images_updated = False
+
+        for img in images:
+            position = img["position"]
+            content_url = img["content_url"]
+
+            if any(i.position == img["position"] for i in dataset.images):
+                raise errors.DatasetImageError(f"Duplicate dataset image specified for position {position}")
+
+            existing = next(
+                (i for i in previous_images if i.position == img["position"] and i.content_url == img["content_url"]),
+                None,
+            )
+
+            if existing:
+                dataset.images.append(existing)
+                continue
+
+            if urlparse(content_url).netloc:
+                # NOTE: absolute url
+                dataset.images.append(ImageObject(content_url, position, id=ImageObject.generate_id(dataset, position)))
+                images_updated = True
+                continue
+
+            path = content_url
+            if not os.path.isabs(path):
+                path = os.path.normpath(os.path.join(self.path, path))
+
+            if not os.path.exists(path) or not any(os.path.commonprefix([path, p]) == str(p) for p in safe_image_paths):
+                # NOTE: make sure files exists and prevent path traversal
+                raise errors.DatasetImageError(f"Dataset image with relative path {content_url} not found")
+
+            image_folder = self.renku_dataset_images_path / dataset.identifier
+
+            if not path.startswith(str(image_folder)):
+                # NOTE: only copy dataset image if it's not in .renku/datasets/<id>/images/ already
+                _, ext = os.path.splitext(content_url)
+                img_path = image_folder / f"{position}{ext}"
+                shutil.copy(path, img_path)
+
+            dataset.images.append(
+                ImageObject(
+                    str(img_path.relative_to(self.path)), position, id=ImageObject.generate_id(dataset, position)
+                )
+            )
+            images_updated = True
+
+        new_urls = [i.content_url for i in dataset.images]
+
+        for prev in previous_images:
+            # NOTE: Delete images if they were removed
+            if prev.content_url in new_urls or urlparse(prev.content_url).netloc:
+                continue
+
+            path = prev.content_url
+            if not os.path.isabs(path):
+                path = os.path.normpath(os.path.join(self.path, path))
+
+            os.remove(path)
+
+        return images_updated or dataset.images != previous_images
 
     def add_data_to_dataset(
         self,
@@ -413,7 +566,7 @@ class DatasetsApiMixin(object):
                 )
 
         # Force-add to include possible ignored files
-        self.repo.git.add(*files_to_commit, force=True)
+        add_to_git(self.repo.git, *files_to_commit, force=True)
         self.repo.git.add(self.renku_pointers_path, force=True)
 
         staged_files = self.repo.index.diff("HEAD")
@@ -631,7 +784,7 @@ class DatasetsApiMixin(object):
                 if remote_client._is_external_file(src):
                     operation = (src.resolve(), dst, "symlink")
                 else:
-                    operation = (src, dst, "copy")
+                    operation = (src, dst, "move")
 
                 results.append(
                     {
@@ -739,9 +892,14 @@ class DatasetsApiMixin(object):
         repo_path = str(repo_path)
 
         try:
-            includes = ",".join(shlex.quote(p) for p in paths)
-            status = run(
-                ["git", "lfs", "pull", "--include", includes], stderr=PIPE, cwd=repo_path, universal_newlines=True
+            paths = [shlex.quote(p) for p in paths]
+            status = run_command(
+                ["git", "lfs", "pull", "--include"],
+                *paths,
+                separator=",",
+                stderr=PIPE,
+                cwd=repo_path,
+                universal_newlines=True,
             )
             if status.returncode != 0:
                 message = "\n\t".join(status.stderr.split("\n"))
@@ -759,7 +917,13 @@ class DatasetsApiMixin(object):
         if is_project_unsupported(client):
             return files
 
-        migrate(client, skip_template_update=True, skip_docker_update=True)
+        migration_type = client.migration_type
+        # NOTE: We are not interested in migrating workflows when looking for dataset metadata
+        client.migration_type = ~MigrationType.WORKFLOWS
+        try:
+            migrate(client, skip_template_update=True, skip_docker_update=True)
+        finally:
+            client.migration_type = migration_type
 
         for _, dataset in client.datasets.items():
             for file_ in dataset.files:
@@ -902,7 +1066,7 @@ class DatasetsApiMixin(object):
 
         file_paths = {str(self.path / f.path) for f in updated_files + deleted_files}
         # Force-add to include possible ignored files that are in datasets
-        self.repo.git.add(*file_paths, force=True)
+        add_to_git(self.repo.git, *file_paths, force=True)
         skip_hooks = not self.external_storage_requested
         self.repo.index.commit(
             "renku dataset: updated {} files and deleted {} files".format(len(updated_files), len(deleted_files)),
@@ -987,7 +1151,7 @@ class DatasetsApiMixin(object):
         if not updated_files_paths:
             return
 
-        self.repo.git.add(*updated_files_paths, force=True)
+        add_to_git(self.repo.git, *updated_files_paths, force=True)
         self.repo.git.add(self.renku_pointers_path, force=True)
         commit = self.repo.index.commit("renku dataset: updated {} external files".format(len(updated_files_paths)))
 
@@ -1073,6 +1237,7 @@ class DatasetsApiMixin(object):
             except GitCommandError:
                 raise errors.ParameterError('Cannot find reference "{}" in Git repository: {}'.format(ref, url))
 
+        depth = 1 if not ref else None
         ref = ref or renku_branch
         u = GitURL.parse(url)
         path = u.pathname
@@ -1087,6 +1252,7 @@ class DatasetsApiMixin(object):
             repo = Repo(str(repo_path))
             if repo.remotes.origin.url == url:
                 try:
+                    repo.git.checkout(".")
                     repo.git.fetch(all=True)
                     repo.git.checkout(ref)
                     try:
@@ -1105,7 +1271,7 @@ class DatasetsApiMixin(object):
             except PermissionError:
                 raise errors.InvalidFileOperation("Cannot delete files in {}: Permission denied".format(repo_path))
 
-        repo, _ = clone(url, path=str(repo_path), install_githooks=False)
+        repo, _ = clone(url, path=str(repo_path), install_githooks=False, depth=depth)
 
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It
@@ -1206,6 +1372,7 @@ def _check_url(url):
 
 DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / DatasetsApiMixin.DATASETS,
+    Path(RENKU_HOME) / DatasetsApiMixin.DATASET_IMAGES,
     Path(RENKU_HOME) / DatasetsApiMixin.POINTERS,
     Path(RENKU_HOME) / LinkReference.REFS,
     Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,

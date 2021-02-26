@@ -53,14 +53,18 @@ def worker(queue_list):
 def check_queues(queue_list):
     """Check if listening on specified queues is possible."""
     for queue in queue_list:
-        if queue not in QUEUES:
-            err_msg = "invalid queue name: {0}\n\n" "valid queue names: \n{1}".format(queue, "\n".join(QUEUES))
+        if queue and queue not in QUEUES:
+            err_msg = "Invalid queue name: {0}\n\n" "Valid queue names: \n{1}".format(queue, "\n".join(QUEUES))
             raise UsageError(err_msg)
 
 
 def start_worker(queue_list):
     """Start worker."""
-    check_queues(queue_list)
+    q = [q.strip() for q in queue_list if q.strip()]
+    check_queues(q)
+
+    worker_log.info(f"working on queues: {queue_list}")
+
     with worker(queue_list) as rq_worker:
         worker_log.info("running worker")
         rq_worker.work(logging_level=DEPLOYMENT_LOG_LEVEL)

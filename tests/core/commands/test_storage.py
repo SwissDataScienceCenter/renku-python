@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -95,3 +95,106 @@ def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
 
     assert 0 == result.exit_code
     assert "These paths were ignored as they are not pushed" in result.output
+
+
+def test_lfs_migrate(runner, project, client):
+    """Test ``renku storage migrate`` command for large files in git."""
+
+    for _file in ["dataset_file", "workflow_file", "regular_file"]:
+        (client.path / _file).write_text(_file)
+
+    client.repo.git.add("*")
+    client.repo.index.commit("add files")
+    dataset_checksum = client.repo.head.commit.tree["dataset_file"].hexsha
+    workflow_checksum = client.repo.head.commit.tree["workflow_file"].hexsha
+
+    result = runner.invoke(cli, ["graph", "generate"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
+    assert 0 == result.exit_code
+
+    previous_head = client.repo.head.commit.hexsha
+
+    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
+    assert 0 == result.exit_code
+    assert "dataset_file" in result.output
+    assert "workflow_file" in result.output
+    assert "regular_file" in result.output
+    assert "*.ini" not in result.output
+
+    assert previous_head != client.repo.head.commit.hexsha
+    changed_files = client.repo.head.commit.stats.files.keys()
+    assert ".renku/dataset.json" in changed_files
+    assert ".renku/provenance.json" in changed_files
+
+    assert dataset_checksum not in (client.path / ".renku" / "dataset.json").read_text()
+
+    assert workflow_checksum not in (client.path / ".renku" / "provenance.json").read_text()
+
+
+def test_lfs_migrate_no_changes(runner, project, client):
+    """Test ``renku storage migrate`` command without broken files."""
+
+    for _file in ["dataset_file", "workflow_file", "regular_file"]:
+        (client.path / _file).write_text(_file)
+
+    client.repo.git.add("*")
+    client.repo.index.commit("add files")
+
+    result = runner.invoke(cli, ["graph", "generate"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
+    assert 0 == result.exit_code
+
+    previous_head = client.repo.head.commit.hexsha
+
+    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
+    assert 0 == result.exit_code
+    assert "All files are already in LFS" in result.output
+
+    assert previous_head == client.repo.head.commit.hexsha
+
+
+def test_lfs_migrate_explicit_path(runner, project, client):
+    """Test ``renku storage migrate`` command explicit path."""
+
+    for _file in ["dataset_file", "workflow_file", "regular_file"]:
+        (client.path / _file).write_text(_file)
+
+    client.repo.git.add("*")
+    client.repo.index.commit("add files")
+    dataset_checksum = client.repo.head.commit.tree["dataset_file"].hexsha
+    workflow_checksum = client.repo.head.commit.tree["workflow_file"].hexsha
+
+    result = runner.invoke(cli, ["graph", "generate"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
+    assert 0 == result.exit_code
+
+    previous_head = client.repo.head.commit.hexsha
+
+    result = runner.invoke(cli, ["storage", "migrate", "regular_file"])
+    assert 0 == result.exit_code
+
+    assert previous_head != client.repo.head.commit.hexsha
+
+    assert dataset_checksum in (client.path / ".renku" / "dataset.json").read_text()
+
+    assert workflow_checksum in (client.path / ".renku" / "provenance.json").read_text()
+
+    assert "oid sha256:" in (client.path / "regular_file").read_text()

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -28,7 +28,7 @@ class CommunicationCallback:
 
     lock = RLock()
 
-    def echo(self, msg):
+    def echo(self, msg, end="\n"):
         """Write a message."""
 
     def info(self, msg):
@@ -84,11 +84,11 @@ class _CommunicationManger(CommunicationCallback):
             if listener in self._listeners:
                 self._listeners.remove(listener)
 
-    def echo(self, msg):
+    def echo(self, msg, end="\n"):
         """Write a message."""
         with CommunicationCallback.lock:
             for listener in self._listeners:
-                listener.echo(msg)
+                listener.echo(msg, end=end)
 
     def info(self, msg):
         """Write an info message."""
@@ -177,9 +177,9 @@ def unsubscribe(listener):
 
 
 @ensure_manager
-def echo(msg):
+def echo(msg, end="\n"):
     """Write a message to all listeners."""
-    _thread_local.communication_manager.echo(msg)
+    _thread_local.communication_manager.echo(msg, end=end)
 
 
 @ensure_manager

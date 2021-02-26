@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -42,10 +42,11 @@ include Makefile
 include Pipfile Pipfile.lock
 include pyproject.toml
 include pytest.ini
+include renku/data/defaults.ini
 include snap/snapcraft.yaml
 prune .env
 prune .github
-recursive-include helm-chart .helmignore *.yaml *.lock *.tpl *.rst *.tgz
+recursive-include helm-chart .helmignore *.yaml *.lock *.tpl *.rst *.tgz *.json
 recursive-include .github CODEOWNERS
 recursive-include .travis *.sh
 recursive-include docs *.bat

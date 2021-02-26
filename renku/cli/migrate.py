@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,6 +21,7 @@ import os
 
 import click
 
+from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import WARNING
 from renku.core.commands.migrate import (
@@ -29,7 +30,6 @@ from renku.core.commands.migrate import (
     UNSUPPORTED_PROJECT,
     check_project,
     migrate_project,
-    migrate_project_no_commit,
     migrations_check,
     migrations_versions,
 )
@@ -42,7 +42,7 @@ from renku.core.errors import MigrationRequired, ProjectNotSupported
 def migrate(check, no_commit):
     """Check for migration and migrate to the latest Renku project version."""
     if check:
-        status = check_project()
+        status = check_project().build().execute().output
         if status == MIGRATION_REQUIRED:
             raise MigrationRequired
         elif status == UNSUPPORTED_PROJECT:
@@ -52,19 +52,19 @@ def migrate(check, no_commit):
 
         return
 
-    if no_commit:
-        result, _, _ = migrate_project_no_commit(
-            skip_template_update=True, skip_docker_update=True, progress_callback=click.secho,
-        )
-    else:
-        result, _, _ = migrate_project(
-            skip_template_update=True, skip_docker_update=True, progress_callback=click.secho,
-        )
+    communicator = ClickCallback()
+
+    command = migrate_project().with_communicator(communicator)
+    if not no_commit:
+        command = command.with_commit()
+    result = command.build().execute(skip_template_update=True, skip_docker_update=True)
+
+    result, _, _ = result.output
 
     if result:
         click.secho("OK", fg="green")
     else:
-        if check_project() == NON_RENKU_REPOSITORY:
+        if check_project().build().execute().output == NON_RENKU_REPOSITORY:
             click.secho(WARNING + "Not a renku project.")
         click.secho("No migrations required.")
 
@@ -72,7 +72,7 @@ def migrate(check, no_commit):
 @click.command(hidden=True)
 def migrationscheck():
     """Check status of the project and current renku-python version."""
-    latest_version, project_version = migrations_versions()
+    latest_version, project_version = migrations_versions().build().execute().output
     (
         migration_required,
         project_supported,
@@ -81,7 +81,7 @@ def migrationscheck():
         latest_template_version,
         automated_update,
         docker_update_possible,
-    ) = migrations_check()
+    ) = (migrations_check().build().execute().output)
 
     click.echo(
         json.dumps(

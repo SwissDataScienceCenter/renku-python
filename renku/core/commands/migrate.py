@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,6 +17,7 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
+from renku.core.incubation.command import Command
 from renku.core.management.migrate import (
     is_docker_update_possible,
     is_migration_required,
@@ -26,18 +27,18 @@ from renku.core.management.migrate import (
     migrate,
 )
 
-from .client import pass_local_client
-
 SUPPORTED_RENKU_PROJECT = 0
 MIGRATION_REQUIRED = 1
 UNSUPPORTED_PROJECT = 2
 NON_RENKU_REPOSITORY = 3
 
 
-@pass_local_client
-def migrations_check(client):
-    """Public function for a migrations check."""
+def migrations_check():
+    """Return a command for a migrations check."""
+    return Command().command(_migrations_check).lock_project()
 
+
+def _migrations_check(client):
     template_update_possible, current_version, new_version = is_template_update_possible(client)
     return (
         is_migration_required(client),
@@ -50,23 +51,25 @@ def migrations_check(client):
     )
 
 
-@pass_local_client
-def migrations_versions(client):
+def migrations_versions():
+    """Return a command to get source and destination migration versions."""
+    return Command().command(_migrations_versions).lock_project()
+
+
+def _migrations_versions(client):
     """Return source and destination migration versions."""
     from renku import __version__
 
     return __version__, client.latest_agent
 
 
-@pass_local_client(clean=True, commit=True, commit_empty=False)
-def migrate_project(
-    client,
-    force_template_update=False,
-    skip_template_update=False,
-    skip_docker_update=False,
-    skip_migrations=False,
-    progress_callback=None,
-    commit_message=None,
+def migrate_project():
+    """Return a command to migrate all project's entities."""
+    return Command().command(_migrate_project).lock_project().require_clean()
+
+
+def _migrate_project(
+    client, force_template_update=False, skip_template_update=False, skip_docker_update=False, skip_migrations=False,
 ):
     """Migrate all project's entities."""
     return migrate(
@@ -75,33 +78,15 @@ def migrate_project(
         skip_template_update=skip_template_update,
         skip_docker_update=skip_docker_update,
         skip_migrations=skip_migrations,
-        progress_callback=progress_callback,
     )
 
 
-@pass_local_client(clean=True, commit=False)
-def migrate_project_no_commit(
-    client,
-    force_template_update=False,
-    skip_template_update=False,
-    skip_docker_update=False,
-    skip_migrations=False,
-    progress_callback=None,
-):
-    """Migrate all project's entities but do not commit changes."""
-    return migrate(
-        client=client,
-        force_template_update=force_template_update,
-        skip_template_update=skip_template_update,
-        skip_docker_update=skip_docker_update,
-        skip_migrations=skip_migrations,
-        progress_callback=progress_callback,
-    )
+def check_project():
+    """Return a command to check if repository is a renku project, unsupported, or requires migration."""
+    return Command().command(_check_project).lock_project()
 
 
-@pass_local_client
-def check_project(client):
-    """Check if repository is a renku project, unsupported, or requires migration."""
+def _check_project(client):
     if not is_renku_project(client):
         return NON_RENKU_REPOSITORY
     elif is_migration_required(client):

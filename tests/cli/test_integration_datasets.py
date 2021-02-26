@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -300,6 +300,34 @@ def test_dataset_import_renkulab_dataset(runner, project, client, url):
 
     dataset = [d for d in client.datasets.values()][0]
     assert dataset.same_as.url["@id"] == url
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_dataset_import_renkulab_dataset_with_image(runner, project, client):
+    """Test dataset import from Renkulab projects."""
+    result = runner.invoke(
+        cli, ["dataset", "import", "https://dev.renku.ch/datasets/4f36f891-bb7c-4b2b-ab13-7633cc270a40"], input="y"
+    )
+
+    assert 0 == result.exit_code
+    assert "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391" in result.output
+
+    assert "0.00" in result.output
+    assert "OK" in result.output
+
+    result = runner.invoke(cli, ["dataset", "ls-files"])
+    assert 0 == result.exit_code
+    assert "bla" in result.output
+
+    dataset = [d for d in client.datasets.values()][0]
+    assert 2 == len(dataset.images)
+    img1 = next((i for i in dataset.images if i.position == 1))
+    img2 = next((i for i in dataset.images if i.position == 2))
+
+    assert img1.content_url == "https://example.com/image1.jpg"
+    assert img2.content_url.endswith("/2.png")
+    assert os.path.exists(client.path / img2.content_url)
 
 
 @pytest.mark.integration
@@ -712,6 +740,7 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("use_graph", [False, True])
 @pytest.mark.parametrize(
     "params,path",
     [
@@ -729,26 +758,25 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
     ],
 )
 @flaky(max_runs=10, min_passes=1)
-def test_add_data_from_git(runner, client, params, path):
+def test_add_data_from_git(runner, client_with_new_graph, params, path, use_graph):
     """Test add data to datasets from a git repository."""
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+    command = ["graph", "dataset", "add"] if use_graph else ["dataset", "add"]
 
     # create a dataset and add a file to it
     result = runner.invoke(
         cli,
-        ["dataset", "add", "remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", "-d", "existing/LICENSE", remote],
+        command + ["remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", "-d", "existing/LICENSE", remote],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params, catch_exceptions=False,
-    )
+    result = runner.invoke(cli, command + ["remote", "--ref", "0.3.0", remote] + params, catch_exceptions=False)
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert Path(path).exists()
 
-    file_ = read_dataset_file_metadata(client, "remote", path)
+    file_ = read_dataset_file_metadata(client_with_new_graph, "remote", path)
     assert file_.url.endswith(os.path.join("files", "blob", path))
     assert file_.source == remote
     assert file_.based_on.source == remote
@@ -1402,18 +1430,18 @@ def test_import_returns_last_dataset_version(runner, client, url):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_datasets_provenance_after_import(runner, client_with_datasets_provenance):
+def test_datasets_provenance_after_import(runner, client_with_new_graph):
     """Test dataset provenance is updated after importing a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-data", "10.7910/DVN/F4NUMR"]).exit_code
 
-    dataset = client_with_datasets_provenance.datasets_provenance.get_by_name("my-data")
+    dataset = next(client_with_new_graph.datasets_provenance.get_by_name("my-data"), None)
 
     assert dataset is not None
 
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_datasets_provenance_after_git_update(client_with_datasets_provenance, runner):
+def test_datasets_provenance_after_git_update(client_with_new_graph, runner):
     """Test dataset provenance is updated after an update."""
     url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
@@ -1422,22 +1450,22 @@ def test_datasets_provenance_after_git_update(client_with_datasets_provenance, r
 
     assert 0 == runner.invoke(cli, ["dataset", "update"], catch_exceptions=False).exit_code
 
-    dataset = client_with_datasets_provenance.load_dataset("my-data")
-    current_version = client_with_datasets_provenance.datasets_provenance.get(dataset.identifier)
+    dataset = client_with_new_graph.load_dataset("my-data")
+    current_version = client_with_new_graph.datasets_provenance.get(dataset.identifier)
 
     assert current_version.identifier != current_version.original_identifier
 
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_datasets_provenance_after_external_provider_update(client_with_datasets_provenance, runner):
+def test_datasets_provenance_after_external_provider_update(client_with_new_graph, runner):
     """Test dataset provenance is updated after an update from an external provider."""
     doi = "10.5281/zenodo.2658634"
     assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-data", doi]).exit_code
 
     assert 0 == runner.invoke(cli, ["dataset", "update", "my-data"]).exit_code
 
-    dataset = client_with_datasets_provenance.load_dataset("my-data")
-    current_version = client_with_datasets_provenance.datasets_provenance.get(dataset.identifier)
+    dataset = client_with_new_graph.load_dataset("my-data")
+    current_version = client_with_new_graph.datasets_provenance.get(dataset.identifier)
 
     assert current_version.identifier != current_version.original_identifier

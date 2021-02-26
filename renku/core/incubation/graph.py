@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,19 +16,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dependency and Provenance graph building."""
-
+import functools
 import shutil
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict
 
+import git
 from git import NULL_TREE, GitCommandError
+from pkg_resources import resource_filename
 
 from renku.core import errors
+from renku.core.commands.dataset import create_dataset_helper
 from renku.core.commands.update import execute_workflow
 from renku.core.incubation.command import Command
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.datasets import DatasetsApiMixin
+from renku.core.management.datasets import DATASET_METADATA_PATHS, DatasetsApiMixin
 from renku.core.management.migrate import migrate
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.models.entities import Entity
@@ -36,12 +40,12 @@ from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.activities import Activity as ActivityRun
 from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
-from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
 from renku.core.utils.contexts import measure
 from renku.core.utils.migrate import read_project_version_from_yaml
 from renku.core.utils.scm import git_unicode_unescape
+from renku.core.utils.shacl import validate_graph
 
 GRAPH_METADATA_PATHS = [
     Path(RENKU_HOME) / Path(RepositoryApiMixin.DEPENDENCY_GRAPH),
@@ -50,40 +54,17 @@ GRAPH_METADATA_PATHS = [
 ]
 
 
+def generate_graph():
+    """Return a command for generating the graph."""
+    command = Command().command(_generate_graph).lock_project()
+    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
+
+
 def _generate_graph(client, force):
     """Generate graph metadata."""
 
-    def create_empty_graph_files():
-        # Create empty graph files as defaults
-        client.dependency_graph_path.write_text("[]")
-        client.provenance_graph_path.write_text("[]")
-
-    commits = list(client.repo.iter_commits(paths=f"{client.workflow_path}*.yaml"))
-    n_commits = len(commits)
-    commits = reversed(commits)
-
-    if force:
-        try:
-            client.dependency_graph_path.unlink()
-        except FileNotFoundError:
-            pass
-        try:
-            client.provenance_graph_path.unlink()
-        except FileNotFoundError:
-            pass
-    else:
-        if client.has_graph_files():
-            raise errors.OperationError("Graph files exist. Use ``--force`` to regenerate the graph.")
-
-    create_empty_graph_files()
-
-    dependency_graph = DependencyGraph.from_json(client.dependency_graph_path)
-    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
-
-    for n, commit in enumerate(commits, start=1):
-        communication.echo(f"\rProcessing commits {n}/{n_commits}\r")
-
-        for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}*.yaml"):
+    def process_workflows(commit, provenance_graph):
+        for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.yaml"):
             # Ignore deleted files (they appear as ADDED in this backwards diff)
             if file_.change_type == "A":
                 continue
@@ -94,18 +75,54 @@ def _generate_graph(client, force):
                 continue
 
             workflow = ActivityRun.from_yaml(path=path, client=client)
-            activity_collection = ActivityCollection.from_activity_run(workflow, dependency_graph, client)
+            activity_collection = ActivityCollection.from_activity_run(workflow, client.dependency_graph, client)
 
             provenance_graph.add(activity_collection)
 
-    dependency_graph.to_json()
+    def process_datasets(commit):
+        files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
+        paths = [git_unicode_unescape(f.a_path) for f in files_diff]
+        deleted_paths = [git_unicode_unescape(f.a_path) for f in files_diff if f.change_type == "A"]
+
+        datasets, deleted_datasets = _fetch_datasets(client, commit.hexsha, paths=paths, deleted_paths=deleted_paths)
+
+        revision = commit.hexsha
+        date = commit.authored_datetime
+
+        for dataset in datasets:
+            client.datasets_provenance.update_dataset(dataset, client=client, revision=revision, date=date)
+        for dataset in deleted_datasets:
+            client.datasets_provenance.remove_dataset(dataset, client=client, revision=revision, date=date)
+
+    commits = list(client.repo.iter_commits(paths=[f"{client.workflow_path}/*.yaml", ".renku/datasets/*/*.yml"]))
+    n_commits = len(commits)
+    commits = reversed(commits)
+
+    if force:
+        client.remove_graph_files()
+        client.remove_datasets_provenance_file()
+    elif client.has_graph_files() or client.has_datasets_provenance():
+        raise errors.OperationError("Graph metadata exists. Use ``--force`` to regenerate it.")
+
+    client.initialize_graph()
+    client.initialize_datasets_provenance()
+
+    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
+
+    for n, commit in enumerate(commits, start=1):
+        communication.echo(f"Processing commits {n}/{n_commits}", end="\r")
+
+        process_workflows(commit, provenance_graph)
+        process_datasets(commit)
+
+    client.dependency_graph.to_json()
     provenance_graph.to_json()
+    client.datasets_provenance.to_json()
 
 
-def generate_graph():
-    """Return a command for generating the graph."""
-    command = Command().command(_generate_graph).lock_project()
-    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
+def status():
+    """Return a command for getting workflow graph status."""
+    return Command().command(_status)
 
 
 def _status(client):
@@ -116,8 +133,8 @@ def _status(client):
 
     if client.has_external_files():
         communication.warn(
-            "Changes in external files are not detected automatically. To "
-            'update external files run "renku dataset update -e".'
+            "Changes in external files are not detected automatically. To update external files run "
+            "`renku dataset update -e`."
         )
 
     try:
@@ -134,9 +151,8 @@ def _status(client):
     stales = defaultdict(set)
 
     with measure("CALCULATE UPDATES"):
-        dg = DependencyGraph.from_json(client.dependency_graph_path)
         for plan_id, path, _ in modified:
-            paths = dg.get_dependent_paths(plan_id, path)
+            paths = client.dependency_graph.get_dependent_paths(plan_id, path)
             for p in paths:
                 stales[p].add(path)
 
@@ -145,9 +161,10 @@ def _status(client):
     return stales, modified, deleted
 
 
-def status():
-    """Return a command for getting workflow graph status."""
-    return Command().command(_status)
+def update():
+    """Return a command for generating the graph."""
+    command = Command().command(_update).lock_project()
+    return command.require_migration().with_commit(commit_if_empty=False).require_clean()
 
 
 def _update(client, dry_run):
@@ -164,8 +181,7 @@ def _update(client, dry_run):
         return
 
     with measure("CALCULATE UPDATES"):
-        dg = DependencyGraph.from_json(client.dependency_graph_path)
-        plans, plans_with_deleted_inputs = dg.get_downstream(modified, deleted)
+        plans, plans_with_deleted_inputs = client.dependency_graph.get_downstream(modified, deleted)
 
     if plans_with_deleted_inputs:
         formatted_deleted_plans = "".join((f"\n\t{p}" for p in plans_with_deleted_inputs))
@@ -190,30 +206,34 @@ def _update(client, dry_run):
     )
 
 
-def update():
-    """Return a command for generating the graph."""
-    command = Command().command(_update).lock_project()
-    return command.require_migration().with_commit(commit_if_empty=False).require_clean()
+def export_graph():
+    """Return a command for exporting graph data."""
+    return Command().command(_export_graph)
 
 
-def _export_graph(client, format, dataset):
+def _export_graph(client, format, workflows_only, strict):
     """Output graph in specific format."""
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
 
     pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
+    format = format.lower()
+    if strict and format not in ["json-ld", "jsonld"]:
+        raise errors.SHACLValidationError(f"'--strict' not supported for '{format}'")
 
-    if dataset:
-        if not client.datasets_provenance_path.exists():
-            raise errors.ParameterError("Dataset provenance is not generated.")
+    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
+
+    if not workflows_only:
         pg.rdf_graph.parse(location=str(client.datasets_provenance_path), format="json-ld")
 
-    return format(pg.rdf_graph)
+    graph = pg.rdf_graph
 
+    if strict:
+        if format == "jsonld":
+            format = "json-ld"
+        _validate_graph(graph, format)
 
-def export_graph():
-    """Return a command for exporting graph data."""
-    return Command().command(_export_graph)
+    return FORMATS[format](graph)
 
 
 def _get_modified_paths(client, plans_usages):
@@ -231,46 +251,6 @@ def _get_modified_paths(client, plans_usages):
                 modified.add(plan_usage)
 
     return modified, deleted
-
-
-def _generate_datasets_provenance(client, force=False):
-    """Generate datasets provenance metadata."""
-    commits = list(client.repo.iter_commits(paths=".renku/datasets/*"))
-    n_commits = len(commits)
-    commits = reversed(commits)
-
-    if force:
-        try:
-            client.datasets_provenance_path.unlink()
-        except FileNotFoundError:
-            pass
-    else:
-        if client.datasets_provenance_path.exists():
-            raise errors.OperationError("Dataset provenance file exists. Use ``--force`` to regenerate it.")
-
-    # Create empty dataset provenance file
-    client.datasets_provenance_path.write_text("[]")
-
-    datasets_provenance = client.datasets_provenance
-
-    for n, commit in enumerate(commits, start=1):
-        communication.echo(f"\rProcessing commits {n}/{n_commits}\r")
-
-        files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*"))
-        paths = [git_unicode_unescape(f.a_path) for f in files_diff]
-        deleted_paths = [git_unicode_unescape(f.a_path) for f in files_diff if f.change_type == "A"]
-
-        datasets, deleted_datasets = _fetch_datasets(client, commit.hexsha, paths=paths, deleted_paths=deleted_paths)
-
-        revision = commit.hexsha
-        date = commit.authored_datetime
-
-        for dataset in datasets:
-            datasets_provenance.update_dataset(dataset, client=client, revision=revision, date=date)
-        for dataset in deleted_datasets:
-            datasets_provenance.remove_dataset(dataset, client=client, revision=revision, date=date)
-
-    datasets_provenance.to_json()
 
 
 def _fetch_datasets(client, revision, paths, deleted_paths):
@@ -341,7 +321,118 @@ def _fetch_datasets(client, revision, paths, deleted_paths):
     return datasets, deleted_datasets
 
 
-def generate_datasets_provenance():
-    """Return a command for generating dataset provenance."""
-    command = Command().command(_generate_datasets_provenance).lock_project()
-    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
+def _dot(rdf_graph, simple=True, debug=False, landscape=False):
+    """Format graph as a dot file."""
+    from rdflib.tools.rdf2dot import rdf2dot
+
+    from renku.core.commands.format.graph import _rdf2dot_reduced, _rdf2dot_simple
+
+    if debug:
+        rdf2dot(rdf_graph, sys.stdout)
+        return
+
+    sys.stdout.write('digraph { \n node [ fontname="DejaVu Sans" ] ; \n ')
+    if landscape:
+        sys.stdout.write('rankdir="LR" \n')
+    if simple:
+        _rdf2dot_simple(rdf_graph, sys.stdout, graph=rdf_graph)
+        return
+    _rdf2dot_reduced(rdf_graph, sys.stdout)
+
+
+_dot_full = functools.partial(_dot, simple=False, landscape=False)
+_dot_landscape = functools.partial(_dot, simple=True, landscape=True)
+_dot_full_landscape = functools.partial(_dot, simple=False, landscape=True)
+_dot_debug = functools.partial(_dot, debug=True)
+
+
+def _json_ld(rdf_graph):
+    """Format graph as JSON-LD."""
+    data = rdf_graph.serialize(format="json-ld").decode("utf-8")
+    print(data)
+
+
+FORMATS = {
+    "dot": _dot,
+    "dot-full": _dot_full,
+    "dot-landscape": _dot_landscape,
+    "dot-full-landscape": _dot_full_landscape,
+    "dot-debug": _dot_debug,
+    "json-ld": _json_ld,
+    "jsonld": _json_ld,
+}
+
+
+def _validate_graph(rdf_graph, format):
+    shacl_path = resource_filename("renku", "data/new_graph_shacl_shape.json")
+    r, _, t = validate_graph(rdf_graph, shacl_path=shacl_path, format=format)
+
+    if not r:
+        raise errors.SHACLValidationError(f"{t}\nCouldn't export: Invalid Knowledge Graph data")
+
+
+def create_dataset():
+    """Return a command for creating an empty dataset in the current repo."""
+    command = Command().command(_create_dataset).lock_dataset()
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
+
+
+def _create_dataset(client, name, title=None, description="", creators=None, keywords=None):
+    """Create a dataset in the repository."""
+    if not client.has_datasets_provenance():
+        raise errors.OperationError("Dataset provenance is not generated. Run `renku graph generate-dataset`.")
+
+    return create_dataset_helper(
+        client=client, name=name, title=title, description=description, creators=creators, keywords=keywords
+    )
+
+
+def add_to_dataset():
+    """Return a command for adding data to a dataset."""
+    command = Command().command(_add_to_dataset).lock_dataset()
+    return command.require_migration().with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
+
+
+def _add_to_dataset(
+    client,
+    urls,
+    name,
+    external=False,
+    force=False,
+    overwrite=False,
+    create=False,
+    sources=(),
+    destination="",
+    ref=None,
+):
+    """Add data to a dataset."""
+    if not client.has_datasets_provenance():
+        raise errors.OperationError("Dataset provenance is not generated. Run `renku graph generate-dataset`.")
+
+    if len(urls) == 0:
+        raise errors.UsageError("No URL is specified")
+    if sources and len(urls) > 1:
+        raise errors.UsageError("Cannot use `--source` with multiple URLs.")
+
+    try:
+        with client.with_dataset_provenance(name=name, create=create) as dataset:
+            client.add_data_to_dataset(
+                dataset,
+                urls=urls,
+                external=external,
+                force=force,
+                overwrite=overwrite,
+                sources=sources,
+                destination=destination,
+                ref=ref,
+            )
+
+        client.update_datasets_provenance(dataset)
+    except errors.DatasetNotFound:
+        raise errors.DatasetNotFound(
+            message=f"Dataset `{name}` does not exist.\nUse `renku dataset create {name}` to create the dataset or "
+            f"retry with `--create` option for automatic dataset creation."
+        )
+    except (FileNotFoundError, git.exc.NoSuchPathError) as e:
+        message = "\n\t".join(urls)
+        raise errors.ParameterError(f"Could not find paths/URLs: \n\t{message}") from e

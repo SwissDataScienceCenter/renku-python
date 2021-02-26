@@ -20,6 +20,7 @@
 import glob
 import os
 import uuid
+from collections import defaultdict
 from functools import cmp_to_key
 from hashlib import sha1
 from pathlib import Path
@@ -35,6 +36,9 @@ from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.provenance.agents import Person, SoftwareAgent
 from renku.core.models.workflow.parameters import CommandArgument, CommandInput, CommandOutput, MappedIOStream
 from renku.core.models.workflow.run import Run
+from renku.core.utils import communication
+from renku.core.utils.git import add_to_git
+from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
@@ -45,49 +49,45 @@ default_missing_software_agent = SoftwareAgent(
 
 def migrate(client):
     """Migration function."""
+    if MigrationType.WORKFLOWS not in client.migration_type:
+        return
     _migrate_old_workflows(client)
 
 
 def _migrate_old_workflows(client):
     """Migrates old cwl workflows to new jsonld format."""
-    wf_path = "{}/*.cwl".format(client.workflow_path)
 
-    cwl_paths = glob.glob(wf_path)
-
-    cwl_paths = [(p, _find_only_cwl_commit(client, p)) for p in cwl_paths]
-
-    def _sort_cwl_commits(e1, e2):
+    def sort_cwl_commits(e1, e2):
         """Sorts cwl commits in order of their creation."""
         commit1 = e1[1]
         commit2 = e2[1]
 
-        if client.repo.is_ancestor(commit1, commit2):
-            return -1
-        if client.repo.is_ancestor(commit2, commit1):
-            return 1
+        return _compare_commits(client, commit1, commit2)
 
-        if commit1.committed_date < commit2.committed_date:
-            return -1
-        if commit1.committed_date > commit2.committed_date:
-            return 1
+    cache = RepositoryCache.from_client(client)
+    client.cache = cache
 
-        if commit1.authored_date < commit2.authored_date:
-            return -1
-        if commit1.authored_date > commit2.authored_date:
-            return 1
-        raise ValueError(
-            f"Cannot order commits {commit1} and {commit2}, there is no "
-            "dependency between them and they have identical commit and "
-            "author dates"
-        )
+    wf_path = f"{client.workflow_path}/*.cwl"
+    for path in glob.glob(wf_path):
+        if path not in cache.cwl_files_commits:
+            raise ValueError(f"Couldn't find a previous commit for path `{path}`")
 
-    cwl_paths = sorted(cwl_paths, key=cmp_to_key(_sort_cwl_commits))
+    cwl_paths = list(cache.cwl_files_commits.items())
+    cwl_paths = sorted(cwl_paths, key=cmp_to_key(sort_cwl_commits))
 
-    for cwl_file, commit in cwl_paths:
+    for n, element in enumerate(cwl_paths, start=1):
+        communication.echo(f"Processing commit {n}/{len(cwl_paths)}", end="\r")
+
+        cwl_file, commit = element
+        if not Path(cwl_file).exists():
+            continue
         path = _migrate_cwl(client, cwl_file, commit)
         os.remove(cwl_file)
 
-        client.repo.git.add(cwl_file, path)
+        paths = [cwl_file, path]
+        if client.activity_index_path.exists():
+            paths.append(client.activity_index_path)
+        add_to_git(client.repo.git, *paths)
 
         if client.repo.is_dirty():
             commit_msg = "renku migrate: " "committing migrated workflow"
@@ -114,7 +114,7 @@ def _migrate_cwl(client, path, commit):
 def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit=None, persist=False):
     """Migrate a single step workflow."""
     if not commit:
-        commit = client.find_previous_commit(path, revision=parent_commit if parent_commit else "HEAD")
+        commit = client.cache.find_previous_commit(path, revision=parent_commit if parent_commit else "HEAD")
 
     run = Run(client=client, path=path, commit=commit)
     run.command = " ".join(cmd_line_tool.baseCommand)
@@ -193,6 +193,9 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             if listing.entry == '$({"listing": [], "class": "Directory"})':
                 created_outputs.append(listing.entryname)
 
+    # NOTE: multiple outputs might bind to the same input; we use this copy to find output bindings
+    all_inputs = inputs.copy()
+
     for o in outputs:
         prefix = None
         position = None
@@ -203,15 +206,18 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             if name.endswith(")"):
                 name = name[:-1]
 
-            matched_input = next(i for i in inputs if i.id == name)
-            inputs.remove(matched_input)
+            matched_input = next(i for i in all_inputs if i.id == name)
+            try:
+                inputs.remove(matched_input)
+            except ValueError:
+                pass
 
             if isinstance(matched_input.default, dict):
                 path = client.workflow_path / Path(matched_input.default["path"])
             else:
                 path = Path(matched_input.default)
 
-            path = Path(os.path.abspath(client.path / path)).relative_to(client.path)
+            path = Path(os.path.realpath(client.path / path)).relative_to(client.path)
 
             if matched_input.inputBinding:
                 prefix = matched_input.inputBinding.prefix
@@ -254,7 +260,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
 
         if isinstance(i.default, dict) and "class" in i.default and i.default["class"] in ["File", "Directory"]:
             path = client.workflow_path / Path(i.default["path"])
-            path = Path(os.path.abspath(path)).relative_to(client.path)
+            path = Path(os.path.realpath(path)).relative_to(client.path)
 
             run.inputs.append(
                 CommandInput(
@@ -303,7 +309,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
 def _migrate_composite_step(client, workflow, path, commit=None):
     """Migrate a composite workflow."""
     if not commit:
-        commit = client.find_previous_commit(path)
+        commit = client.cache.find_previous_commit(path)
     run = Run(client=client, path=path, commit=commit)
     rel_path = Path(path).relative_to(client.path)
     label = f"{rel_path}@{commit.hexsha}"
@@ -340,9 +346,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
 
 def _entity_from_path(client, path, commit):
     """Gets the entity associated with a path."""
-    client, commit, path = client.resolve_in_submodules(
-        client.find_previous_commit(path, revision=commit.hexsha), path,
-    )
+    client, commit, path = client.resolve_in_submodules(client.cache.find_previous_commit(path, revision=commit), path)
 
     entity_cls = Entity
     if (client.path / path).is_dir():
@@ -419,16 +423,104 @@ def parse_cwl_cached(path):
     return cwl
 
 
-def _find_only_cwl_commit(client, path, revision="HEAD"):
-    """Find the most recent isolated commit of a cwl file.
+class RepositoryCache:
+    """Cache for a git repo."""
 
-    Commits with multiple cwl files are disregarded
-    """
-    file_commits = list(client.repo.iter_commits(revision, paths=path, full_history=True))
+    def __init__(self, client, cache, cwl_files_commits):
+        self.client = client
+        self.cache = cache
+        self.cwl_files_commits = cwl_files_commits
 
-    for commit in file_commits:
-        cwl_files = [f for f in commit.stats.files.keys() if f.startswith(client.cwl_prefix) and path.endswith(".cwl")]
-        if len(cwl_files) == 1:
-            return commit
+    @classmethod
+    def from_client(cls, client):
+        """Return a cached repo."""
+        cache = defaultdict(list)
+        cwl_files_commits_map = {}
 
-    raise ValueError("Couldn't find a previous commit for path {}".format(path))
+        for n, commit in enumerate(client.repo.iter_commits(full_history=True), start=1):
+            communication.echo(f"Caching commit {n}", end="\r")
+
+            cwl_files = []
+            for file in commit.diff(commit.parents or NULL_TREE):
+                # Ignore deleted files (they appear as ADDED in this backwards diff)
+                if file.change_type == "A":
+                    continue
+
+                path = git_unicode_unescape(file.a_path)
+                cache[path].append(commit)
+
+                if path.startswith(client.cwl_prefix) and path.endswith(".cwl"):
+                    cwl_files.append(os.path.realpath(client.path / path))
+
+            cls._update_cwl_files_and_commits(client, commit, cwl_files_commits_map, cwl_files)
+
+        communication.echo(40 * " ", end="\r")
+
+        return RepositoryCache(client, cache, cwl_files_commits_map)
+
+    @staticmethod
+    def _update_cwl_files_and_commits(client, commit, cwl_files_commits_map, cwl_files):
+        if len(cwl_files) != 1:
+            return
+
+        path = cwl_files[0]
+        existing_commit = cwl_files_commits_map.get(path)
+
+        if existing_commit is None:
+            cwl_files_commits_map[path] = commit
+        elif _compare_commits(client, existing_commit, commit) < 0:  # existing commit is older
+            cwl_files_commits_map[path] = commit
+
+    def find_previous_commit(self, path, revision="HEAD"):
+        """Return a previous commit for a given path starting from 'revision'."""
+
+        def find_from_client(path, revision):
+            try:
+                return self.client.find_previous_commit(paths=path, revision=revision, full=True)
+            except KeyError:
+                communication.warn(f"Cannot find previous commit for {path} from {str(revision)}")
+                return revision
+
+        try:
+            path = (self.client.path / path).relative_to(self.client.path)
+        except ValueError:
+            pass
+        path = str(path)
+
+        if revision == "HEAD":
+            revision = self.client.head.commit
+
+        commits = self.cache.get(git_unicode_unescape(path))
+        if not commits:
+            return find_from_client(path, revision)
+
+        if revision in commits:
+            return revision
+
+        for commit in commits:
+            if _compare_commits(self.client, commit, revision) <= 0:
+                return commit
+
+        # No commit was found
+        return find_from_client(path, revision)
+
+
+def _compare_commits(client, commit1, commit2):
+    """Return -1 if commit1 is made before commit2."""
+    if client.repo.is_ancestor(commit1, commit2):
+        return -1
+    if client.repo.is_ancestor(commit2, commit1):
+        return 1
+
+    if commit1.committed_date < commit2.committed_date:
+        return -1
+    if commit1.committed_date > commit2.committed_date:
+        return 1
+
+    if commit1.authored_date < commit2.authored_date:
+        return -1
+    if commit1.authored_date > commit2.authored_date:
+        return 1
+
+    # NOTE: There is no ordering between the commits and there is no easy way for users to fix this
+    return 0

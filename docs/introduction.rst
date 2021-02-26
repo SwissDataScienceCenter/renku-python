@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -20,7 +20,7 @@
 
 .. toctree::
    :hidden:
-   
+
    installation
    gettingstarted
    commands
@@ -56,6 +56,15 @@
 
 .. include:: ../README.rst
    :start-after: pip-after-reference:
+   :end-before: windows-before-reference:
+
+.. raw:: html
+
+   <h3>Windows</h3>
+
+
+.. include:: ../README.rst
+   :start-after: windows-after-reference:
    :end-before: docker-before-reference:
 
 .. raw:: html

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -86,6 +86,7 @@ from renku.cli.remove import remove
 from renku.cli.rerun import rerun
 from renku.cli.run import run
 from renku.cli.save import save
+from renku.cli.service import service
 from renku.cli.show import show
 from renku.cli.status import status
 from renku.cli.storage import storage
@@ -102,7 +103,7 @@ from renku.core.management.repository import default_path
 #: Monkeypatch Click application.
 click_completion.init()
 
-WARNING_UNPROTECTED_COMMANDS = ["init", "clone", "help"]
+WARNING_UNPROTECTED_COMMANDS = ["init", "clone", "service", "help"]
 
 
 def _uuid_representer(dumper, data):
@@ -210,3 +211,4 @@ cli.add_command(status)
 cli.add_command(storage)
 cli.add_command(update)
 cli.add_command(workflow)
+cli.add_command(service)

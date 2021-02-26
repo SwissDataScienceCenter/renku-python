@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -90,7 +90,7 @@ def test_remote_project_context():
 
     with ctrl.remote() as project_path:
         assert project_path
-        latest_version, project_version = migrations_versions()
+        latest_version, project_version = migrations_versions().build().execute().output
         assert renku.__version__ == latest_version
         assert "pre-0.11.0" == project_version
 
@@ -102,7 +102,7 @@ def test_remote_project_context():
             latest_template_version,
             automated_update_possible,
             docker_update_possible,
-        ) = migrations_check()
+        ) = (migrations_check().build().execute().output)
         assert migration_required is True
         assert template_update_possible is False
         assert current_template_version is None

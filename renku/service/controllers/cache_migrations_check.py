@@ -42,7 +42,7 @@ class MigrationsCheckCtrl(ServiceCtrl, ReadOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        latest_version, project_version = migrations_versions()
+        latest_version, project_version = migrations_versions().build().execute().output
         (
             migration_required,
             project_supported,
@@ -51,7 +51,7 @@ class MigrationsCheckCtrl(ServiceCtrl, ReadOperationMixin):
             latest_template_version,
             automated_update,
             docker_update_possible,
-        ) = migrations_check()
+        ) = (migrations_check().build().execute().output)
 
         return {
             "migration_required": migration_required,

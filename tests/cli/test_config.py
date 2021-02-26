@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -52,6 +52,27 @@ def test_config_value_globally(client, runner, project, global_config_dir):
     # Value set globally is not visible in local config
     result = runner.invoke(cli, ["config", "show", "key", "--local"])
     assert 2 == result.exit_code
+
+
+def test_config_default(client, runner, project, global_config_dir):
+    """Check setting/getting from local configuration."""
+    result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["config", "set", "lfs_threshold", "10mb", "--global"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["config", "show", "lfs_threshold"])
+    assert 0 == result.exit_code
+    assert result.output == "0b\n"
+
+    result = runner.invoke(cli, ["config", "show", "lfs_threshold", "--global"])
+    assert 0 == result.exit_code
+    assert result.output == "10mb\n"
+
+    result = runner.invoke(cli, ["config", "show", "lfs_threshold", "--default"])
+    assert 0 == result.exit_code
+    assert result.output == "100kb\n"
 
 
 def test_config_get_non_existing_value(client, runner, project, global_config_dir):
@@ -119,7 +140,13 @@ def test_local_config_committed(client, runner, data_repository, global_config_d
 
 
 @pytest.mark.parametrize(
-    "args,message", [(["show", "--local", "--global", "key"], "Cannot use --local and --global together."),],
+    "args,message",
+    [
+        (
+            ["show", "--local", "--global", "key"],
+            "Illegal usage: `local_only` is mutually exclusive with arguments `--default, --global`",
+        ),
+    ],
 )
 def test_invalid_command_args(client, runner, project, global_config_dir, args, message):
     """Test invalid combination of command-line arguments."""

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -95,14 +95,13 @@ Showing dataset details:
 . code-block:: console
 
     $ renku dataset show some-dataset
-    Some Dataset
-    ---------------
-    Just some dataset
-
     Name: some-dataset
     Created: 2020-12-09 13:52:06.640778+00:00
     Creator(s): John Doe<john.doe@example.com> [SDSC]
     Keywords: Dataset, Data
+    Title: Some Dataset
+    Description:
+    Just some dataset
 
 Deleting a dataset:
 
@@ -485,7 +484,14 @@ def edit(name, title, description, creators, keyword):
     result = (
         edit_dataset()
         .build()
-        .execute(name=name, title=title, description=description, creators=creators, keywords=keywords,)
+        .execute(
+            name=name,
+            title=title,
+            description=description,
+            creators=creators,
+            keywords=keywords,
+            skip_image_update=True,
+        )
     )
 
     updated, no_email_warnings = result.output
@@ -499,7 +505,7 @@ def edit(name, title, description, creators, keyword):
             )
         )
     else:
-        click.echo("Successfully updated: {}.".format(", ".join(updated)))
+        click.echo("Successfully updated: {}.".format(", ".join(updated.keys())))
         if no_email_warnings:
             click.echo(ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(no_email_warnings))
 
@@ -510,16 +516,12 @@ def show(name):
     """Handle datasets."""
     result = show_dataset().build().execute(name=name)
     ds = result.output
-    click.secho(ds["title"], bold=True)
-    click.echo("-" * min(len(ds["title"]), click.get_terminal_size()[0]))
 
-    Console().print(Markdown(ds["description"]))
-    click.echo()
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(ds["name"], bold=True))
-    click.echo(click.style("Created: ", bold=True, fg="magenta") + ds["created_at"])
+    click.echo(click.style("Created: ", bold=True, fg="magenta") + (ds.get("created_at", "") or ""))
 
     creators = []
-    for creator in ds["creators"]:
+    for creator in ds.get("creators", []):
         if creator["affiliation"]:
             creators.append(f"{creator['name']} <{creator['email']}> [{creator['affiliation']}]")
         else:
@@ -527,10 +529,15 @@ def show(name):
 
     click.echo(click.style("Creator(s): ", bold=True, fg="magenta") + ", ".join(creators))
     if ds["keywords"]:
-        click.echo(click.style("Keywords: ", bold=True, fg="magenta") + ", ".join(ds["keywords"]))
+        click.echo(click.style("Keywords: ", bold=True, fg="magenta") + ", ".join(ds.get("keywords", "")))
 
     if ds["version"]:
-        click.echo(click.style("Version: ", bold=True, fg="magenta") + ds["version"])
+        click.echo(click.style("Version: ", bold=True, fg="magenta") + ds.get("version", ""))
+
+    click.echo(click.style("Title: ", bold=True, fg="magenta") + click.style(ds.get("title", ""), bold=True))
+
+    click.echo(click.style("Description: ", bold=True, fg="magenta"))
+    Console().print(Markdown(ds.get("description", "") or ""))
 
 
 @dataset.command()

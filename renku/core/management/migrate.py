@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -46,6 +46,7 @@ from renku.core.errors import (
     ProjectNotSupported,
     TemplateUpdateError,
 )
+from renku.core.utils import communication
 from renku.core.utils.migrate import read_project_version
 
 SUPPORTED_PROJECT_VERSION = 8
@@ -85,7 +86,6 @@ def migrate(
     skip_template_update=False,
     skip_docker_update=False,
     skip_migrations=False,
-    progress_callback=None,
     project_version=None,
 ):
     """Apply all migration files to the project."""
@@ -99,7 +99,7 @@ def migrate(
         and (force_template_update or client.project.automated_update)
     ):
         try:
-            template_updated, _, _ = _update_template(client, progress_callback=progress_callback)
+            template_updated, _, _ = _update_template(client)
         except TemplateUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -107,7 +107,7 @@ def migrate(
 
     if not skip_docker_update:
         try:
-            docker_updated = _update_dockerfile(client, progress_callback=progress_callback)
+            docker_updated = _update_dockerfile(client)
         except DockerfileUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -119,12 +119,12 @@ def migrate(
     project_version = project_version or _get_project_version(client)
     n_migrations_executed = 0
 
+    version = 1
     for version, path in get_migrations():
         if version > project_version:
             module = importlib.import_module(path)
-            if progress_callback:
-                module_name = module.__name__.split(".")[-1]
-                progress_callback(f"Applying migration {module_name}...")
+            module_name = module.__name__.split(".")[-1]
+            communication.echo(f"Applying migration {module_name}...")
             try:
                 module.migrate(client)
             except (Exception, BaseException) as e:
@@ -135,13 +135,12 @@ def migrate(
         client.project.version = str(version)
         client.project.to_yaml()
 
-        if progress_callback:
-            progress_callback(f"Successfully applied {n_migrations_executed} migrations.")
+        communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
 
     return n_migrations_executed != 0, template_updated, docker_updated
 
 
-def _update_template(client, check_only=False, progress_callback=None):
+def _update_template(client, check_only=False):
     """Update local files from the remote template."""
     from renku.core.commands.init import fetch_template
 
@@ -151,7 +150,7 @@ def _update_template(client, check_only=False, progress_callback=None):
         return False, None, None
 
     template_manifest, template_folder, template_source, template_version = fetch_template(
-        project.template_source, project.template_ref, progress_callback
+        project.template_source, project.template_ref
     )
 
     if template_source == "renku":
@@ -166,8 +165,7 @@ def _update_template(client, check_only=False, progress_callback=None):
     if check_only:
         return True, project.template_version, template_version
 
-    if progress_callback:
-        progress_callback("Updating project from template...")
+    communication.echo("Updating project from template...")
 
     template_filtered = [
         template_elem for template_elem in template_manifest if template_elem["folder"] == project.template_id
@@ -248,9 +246,8 @@ def _update_template(client, check_only=False, progress_callback=None):
         except TypeError:
             shutil.copy(file, destination)
 
-    if progress_callback:
-        updated = "\n".join(updated_files)
-        progress_callback(f"Updated project from template, updated files:\n{updated}")
+    updated = "\n".join(updated_files)
+    communication.echo(f"Updated project from template, updated files:\n{updated}")
 
     project.template_version = template_version
     project.to_yaml()
@@ -258,15 +255,14 @@ def _update_template(client, check_only=False, progress_callback=None):
     return True, project.template_version, template_version
 
 
-def _update_dockerfile(client, check_only=False, progress_callback=None):
+def _update_dockerfile(client, check_only=False):
     """Update the dockerfile to the newest version of renku."""
     from renku import __version__
 
     if not client.docker_path.exists():
         return False
 
-    if progress_callback:
-        progress_callback("Updating dockerfile...")
+    communication.echo("Updating dockerfile...")
 
     with open(client.docker_path, "r") as f:
         dockercontent = f.read()
@@ -295,8 +291,7 @@ def _update_dockerfile(client, check_only=False, progress_callback=None):
     with open(client.docker_path, "w") as f:
         f.write(dockercontent)
 
-    if progress_callback:
-        progress_callback("Updated dockerfile.")
+    communication.echo("Updated dockerfile.")
 
     return True
 

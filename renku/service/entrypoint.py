@@ -24,19 +24,29 @@ import uuid
 import sentry_sdk
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
-from flask import Flask, request
+from flask import Flask, redirect, request, url_for
 from flask_apispec import FlaskApiSpec
 from flask_swagger_ui import get_swaggerui_blueprint
 from jwt import InvalidTokenError
+from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.service.cache import cache
-from renku.service.config import API_SPEC_URL, API_VERSION, CACHE_DIR, OPENAPI_VERSION, SERVICE_NAME, SWAGGER_URL
+from renku.service.config import (
+    API_SPEC_URL,
+    API_VERSION,
+    CACHE_DIR,
+    HTTP_SERVER_ERROR,
+    OPENAPI_VERSION,
+    SERVICE_NAME,
+    SWAGGER_URL,
+)
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
+from renku.service.views import error_response
 from renku.service.views.cache import (
     CACHE_BLUEPRINT_TAG,
     cache_blueprint,
@@ -47,6 +57,7 @@ from renku.service.views.cache import (
     project_clone_view,
     upload_file_view,
 )
+from renku.service.views.config import CONFIG_BLUEPRINT_TAG, config_blueprint, set_config, show_config
 from renku.service.views.datasets import (
     DATASET_BLUEPRINT_TAG,
     add_file_to_dataset_view,
@@ -59,6 +70,7 @@ from renku.service.views.datasets import (
     remove_dataset_view,
     unlink_file_view,
 )
+from renku.service.views.graph import GRAPH_BLUEPRINT_TAG, graph_blueprint, graph_build_view
 from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, list_jobs
 from renku.service.views.templates import (
     TEMPLATES_BLUEPRINT_TAG,
@@ -93,8 +105,14 @@ def create_app():
 
     build_routes(app)
 
+    @app.route("/")
+    def root():
+        """Root redirect to docs."""
+        return redirect(url_for("swagger_ui.show"))
+
     @app.route("/health")
     def health():
+        """Service health check."""
         import renku
 
         return "renku repository service version {}\n".format(renku.__version__)
@@ -113,7 +131,9 @@ def build_routes(app):
         }
     )
     app.register_blueprint(cache_blueprint)
+    app.register_blueprint(config_blueprint)
     app.register_blueprint(dataset_blueprint)
+    app.register_blueprint(graph_blueprint)
     app.register_blueprint(jobs_blueprint)
     app.register_blueprint(templates_blueprint)
     app.register_blueprint(version_blueprint)
@@ -123,8 +143,10 @@ def build_routes(app):
 
     docs = FlaskApiSpec(app)
 
+    # NOTE: Version endpoint
     docs.register(version, blueprint=VERSION_BLUEPRINT_TAG)
 
+    # NOTE: Cache endpoints
     docs.register(list_uploaded_files_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(upload_file_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(project_clone_view, blueprint=CACHE_BLUEPRINT_TAG)
@@ -132,6 +154,11 @@ def build_routes(app):
     docs.register(migrate_project_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(migration_check_project_view, blueprint=CACHE_BLUEPRINT_TAG)
 
+    # NOTE: Config endpoint
+    docs.register(show_config, blueprint=CONFIG_BLUEPRINT_TAG)
+    docs.register(set_config, blueprint=CONFIG_BLUEPRINT_TAG)
+
+    # NOTE: Dataset endpoints
     docs.register(list_datasets_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(list_dataset_files_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(add_file_to_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
@@ -141,8 +168,13 @@ def build_routes(app):
     docs.register(remove_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(unlink_file_view, blueprint=DATASET_BLUEPRINT_TAG)
 
+    # NOTE: Graph endpoints
+    docs.register(graph_build_view, blueprint=GRAPH_BLUEPRINT_TAG)
+
+    # NOTE: User jobs endpoint
     docs.register(list_jobs, blueprint=JOBS_BLUEPRINT_TAG)
 
+    # NOTE: Template endpoints
     docs.register(read_manifest_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG)
     docs.register(create_project_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG)
 
@@ -164,16 +196,45 @@ def after_request(response):
 
 @app.errorhandler(Exception)
 def exceptions(e):
-    """App exception logger."""
+    """This exceptions handler manages Flask/Werkzeug exceptions.
+
+    For Renku exception handlers check ``service/decorators.py``
+    """
+
+    # NOTE: Capture werkzeug exceptions and propagate them to sentry.
+    capture_exception(e)
+
+    # NOTE: Capture traceback for dumping it to the log.
     tb = traceback.format_exc()
-    service_log.error(
-        "{} {} {} {} 5xx INTERNAL SERVER ERROR\n{}".format(
-            request.remote_addr, request.method, request.scheme, request.full_path, tb
+
+    if hasattr(e, "code") and e.code == 404:
+        service_log.error(
+            "{} {} {} {} 404 NOT FOUND\n{}".format(
+                request.remote_addr, request.method, request.scheme, request.full_path, tb
+            )
         )
-    )
+        return error_response(HTTP_SERVER_ERROR - e.code, e.name)
 
-    return e.status_code
+    if hasattr(e, "code") and e.code >= 500:
+        service_log.error(
+            "{} {} {} {} 5xx INTERNAL SERVER ERROR\n{}".format(
+                request.remote_addr, request.method, request.scheme, request.full_path, tb
+            )
+        )
+        return error_response(HTTP_SERVER_ERROR - e.code, e.name)
 
+    # NOTE: Werkzeug exceptions should be covered above, following line is for unexpected HTTP server errors.
+    return error_response(HTTP_SERVER_ERROR, str(e))
+
+
+app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
+
+if os.environ.get("DEBUG_MODE", "false") == "true":
+    import ptvsd
+
+    ptvsd.enable_attach()
+    app.logger.setLevel(logging.DEBUG)
+    app.logger.debug("debug mode enabled")
 
 if __name__ == "__main__":
     if len(JWT_TOKEN_SECRET) < 32:

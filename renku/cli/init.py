@@ -349,7 +349,7 @@ def init(
         )
 
     template_manifest, template_folder, template_source, template_version = fetch_template(
-        template_source, template_ref, click.echo
+        template_source, template_ref
     )
 
     # select specific template

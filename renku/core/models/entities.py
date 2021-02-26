@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -33,7 +33,7 @@ def _str_or_none(data):
     return str(data) if data is not None else data
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class CommitMixin:
     """Represent a commit mixin."""
 
@@ -85,7 +85,7 @@ class CommitMixin:
             self._id = self.default_id()
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class Entity(CommitMixin):
     """Represent a data value or item."""
 
@@ -155,7 +155,7 @@ class Entity(CommitMixin):
         self.client = client
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class Collection(Entity):
     """Represent a directory with files."""
 

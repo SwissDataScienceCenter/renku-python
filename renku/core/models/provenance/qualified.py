@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -83,7 +83,7 @@ class EntityProxyMixin:
         return getattr(entity, name)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class Usage(EntityProxyMixin):
     """Represent a dependent path."""
 
@@ -114,7 +114,7 @@ class Usage(EntityProxyMixin):
         return UsageSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(eq=False, order=False)
 class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 

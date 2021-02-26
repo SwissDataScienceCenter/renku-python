@@ -42,6 +42,13 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{ if .Values.debug }}
+          command: ["api", "--debug"]
+          securityContext:
+            runAsGroup: 2000
+          {{ else }}
+          args: ["api"]
+          {{ end }}
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -67,6 +74,8 @@ spec:
               value: {{ .Values.sentry.dsn }}
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
+            - name: DEBUG_MODE
+              value: {{ .Values.debug | quote }}
             {{ if .Values.nWorkers }}
             - name: RENKU_SVC_NUM_WORKERS
               value: {{ .Values.nWorkers | quote }}
@@ -77,6 +86,8 @@ spec:
             {{ end }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ .Values.gitLFSSkipSmudge | quote }}
+            - name: RENKU_DOMAIN
+              value: {{ .Values.global.renku.domain }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -97,8 +108,7 @@ spec:
         - name: {{ .Chart.Name }}-datasets-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python"]
-          args: ["renku/service/worker.py"]
+          args: ["worker"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -128,6 +138,8 @@ spec:
               value: {{ .Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ .Values.gitLFSSkipSmudge | quote }}
+            - name: RENKU_DOMAIN
+              value: {{ .Values.global.renku.domain }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -135,8 +147,7 @@ spec:
         - name: {{ .Chart.Name }}-management-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python"]
-          args: ["renku/service/worker.py"]
+          args: ["worker"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -164,6 +175,8 @@ spec:
               value: {{ .Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ .Values.gitLFSSkipSmudge | quote }}
+            - name: RENKU_DOMAIN
+              value: {{ .Values.global.renku.domain }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -171,8 +184,7 @@ spec:
         - name: {{ .Chart.Name }}-scheduler
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python"]
-          args: ["renku/service/scheduler.py"]
+          args: ["scheduler"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master

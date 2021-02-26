@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -48,6 +48,27 @@ to free up space locally, you can run:
     $ renku storage clean file1 file2
 
 This removes any data cached locally for files tracked in in git LFS.
+
+Migrate large files to git LFS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you accidentally checked a large file into git or are moving a non-LFS
+renku repo to git LFS, you can use the following command to migrate the files
+to LFS:
+
+.. code-block:: console
+
+    $ renku storage migrate --all
+
+This will move all files that are bigger than the renku `lfs_threshold` config
+value and are not excluded by `.renkulfsignore` into git LFS.
+
+To only migrate specific files, you can also pass their paths to the command
+like:
+
+.. code-block:: console
+
+    $ renku storage migrate big_file other_big_file
 """
 import os
 
@@ -55,6 +76,7 @@ import click
 
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import WARNING
+from renku.core.commands.storage import check_lfs, fix_lfs
 
 
 @click.group()
@@ -116,10 +138,35 @@ def check_lfs_hook(client, paths):
 @pass_local_client
 def check(client, all):
     """Check if large files are committed to Git history."""
-    files = client.check_lfs_migrate_info(everything=all)
+    files = check_lfs().build().execute(everything=all).output
     if files:
         message = WARNING + "Git history contains large files\n\t" + "\n\t".join(files)
         click.echo(message)
         exit(1)
     else:
         click.secho("OK", fg="green")
+
+
+@storage.command()
+@click.option("--all", "-a", "migrate_all", is_flag=True, default=False, help="Migrate all large files not in git LFS.")
+@click.argument(
+    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1,
+)
+@pass_local_client
+def migrate(client, migrate_all, paths):
+    """Migrate large files committed to git by moving them to LFS."""
+    if not paths:
+        if not migrate_all:
+            click.echo("Please specify paths to migrate or use the --all flag to migrate all large files.")
+            exit(1)
+
+        lfs_paths = check_lfs().build().execute(everything=all).output
+
+        if not lfs_paths:
+            click.echo("All files are already in LFS")
+            exit(0)
+
+        if not click.confirm("The following files will be moved to Git LFS:\n\t" + "\n\t".join(lfs_paths)):
+            exit(0)
+
+    fix_lfs().build().execute(paths)

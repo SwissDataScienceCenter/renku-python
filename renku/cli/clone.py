@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,14 +20,31 @@
 Cloning a Renku project
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-To clone a Renku project and set up required Git hooks and Git LFS use
-``renku clone`` command.
+To clone a Renku project use ``renku clone`` command. This command is preferred
+over using ``git clone`` because it sets up required Git hooks and enables
+Git-LFS automatically.
 
 .. code-block:: console
 
-    $ renku clone git+ssh://host.io/namespace/project.git
-        <destination-directory>
+    $ renku clone <repository-url> <destination-directory>
 
+It creates a new directory with the same name as the project. You can change
+the directory name by passing another name on the command line.
+
+By default, ``renku clone`` pulls data from Git-LFS after cloning. If you don't
+need the LFS data, pass ``--no-pull-data`` option to skip this step.
+
+.. Note:: To move a project to another Renku deployment you need to create a
+    new empty project in the target deployment and push both the
+    repository and Git-LFS objects to the new remote. Refer to Git documentation
+    for more details.
+
+    .. code-block:: console
+
+        $ git lfs fetch --all
+        $ git remote remove origin
+        $ git remote add origin <new-repository-url>
+        $ git push --mirror origin
 """
 
 import click
@@ -37,13 +54,11 @@ from renku.core.commands.echo import GitProgress
 
 
 @click.command()
-@click.option("--pull-data", is_flag=True, help="Pull data from Git-LFS.", default=False)
+@click.option("--no-pull-data", is_flag=True, help="Do not pull data from Git-LFS.", default=False)
 @click.argument("url")
 @click.argument("path", required=False, default=None)
-def clone(pull_data, url, path):
+def clone(no_pull_data, url, path):
     """Clone a Renku repository."""
-    click.echo("Cloning {} ...".format(url))
-
-    skip_smudge = not pull_data
-    project_clone(url=url, path=path, skip_smudge=skip_smudge, progress=GitProgress())
+    click.echo(f"Cloning {url} ...")
+    project_clone(url=url, path=path, skip_smudge=no_pull_data, progress=GitProgress())
     click.secho("OK", fg="green")

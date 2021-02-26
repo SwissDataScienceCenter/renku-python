@@ -433,7 +433,16 @@ jobs:
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -m integration -v --timeout=600 -n auto
+      run: pytest -m "integration and not serial" -v --timeout=600 -n auto
+    - name: Test with pytest(serial)
+      env:
+        LANG: en_US.UTF-8
+        LC_ALL: en_US.UTF-8
+        DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
+        IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
+        ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+      run: pytest -m "integration and serial" -v --timeout=600 -n auto
 
   test-macos-integration:
     runs-on: macos-latest
@@ -468,7 +477,16 @@ jobs:
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -m integration -v
+      run: pytest -m "integration and not serial" -v
+    - name: Test with pytest(serial)
+      env:
+        LANG: en_US.UTF-8
+        LC_ALL: en_US.UTF-8
+        DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
+        IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
+        ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+      run: pytest -m "integration and serial" -v
 
   publish-pypi:
     runs-on: ubuntu-latest
@@ -538,7 +556,7 @@ jobs:
   publish-chart:
     runs-on: ubuntu-latest
     needs: [docs-linux, test-linux-cli, test-linux-core, test-linux-service, test-macos-cli, test-macos-core, test-macos-service, test-linux-integration, test-macos-integration]
-    if: "startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'"
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
     - uses: actions/checkout@v2
       with:

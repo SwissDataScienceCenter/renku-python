@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -35,7 +35,7 @@ from tests.service.views.test_dataset_views import assert_rpc_response
 @pytest.mark.integration
 @pytest.mark.jobs
 @flaky(max_runs=30, min_passes=1)
-def test_cleanup_old_files(datapack_zip, svc_client_with_repo, service_job, mock_redis):
+def test_cleanup_old_files(datapack_zip, svc_client_with_repo, service_job):
     """Upload archive and add its contents to a dataset."""
     svc_client, headers, _, _ = svc_client_with_repo
     headers.pop("Content-Type")
@@ -103,7 +103,7 @@ def test_cleanup_files_old_keys(svc_client_with_user, service_job, tmp_path):
 @pytest.mark.jobs
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_cleanup_old_project(datapack_zip, svc_client_with_repo, service_job, mock_redis):
+def test_cleanup_old_project(datapack_zip, svc_client_with_repo, service_job):
     """Upload archive and add its contents to a dataset."""
     svc_client, headers, _, _ = svc_client_with_repo
     headers.pop("Content-Type")
@@ -214,20 +214,19 @@ def test_project_cleanup_success(svc_client_cache):
     project_data = ManifestTemplatesRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
     assert "user_id" not in project_data.keys()
     project_one = user_project_clone(user_data, project_data)
-    time.sleep(1)
 
-    assert project_one.age == 1
+    assert project_one.age >= 0
     assert not project_one.ttl_expired()
     assert project_one.exists()
 
     os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1"
     time.sleep(1)
-    assert project_one.age == 2
+
+    assert project_one.age >= 1
     assert project_one.ttl_expired()
 
     cache_project_cleanup()
 
-    project_data.pop("project_id")
     project_data = ManifestTemplatesRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
     assert "user_id" not in project_data.keys()
     user = cache.get_user(user_data["user_id"])
@@ -236,9 +235,8 @@ def test_project_cleanup_success(svc_client_cache):
 
     project_two = user_project_clone(user_data, project_data)
     os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1800"
-    time.sleep(1)
 
-    assert project_two.age == 1
+    assert project_two.age >= 0
     assert not project_two.ttl_expired()
     assert project_two.exists()
 

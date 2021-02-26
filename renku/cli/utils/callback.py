@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -33,10 +33,10 @@ class StandardOutput(CommunicationCallback):
         self._progress_bars = {}
         self._progress_types = ["download"]
 
-    def echo(self, msg):
+    def echo(self, msg, end="\n"):
         """Write a message."""
         with CommunicationCallback.lock:
-            print(msg)
+            print(msg, end=end)
 
     def info(self, msg):
         """Write an info message."""
@@ -100,9 +100,13 @@ class ClickCallback(StandardOutput):
     WARNING = click.style("Warning: ", bold=True, fg="yellow")
     ERROR = click.style("Error: ", bold=True, fg="red")
 
-    def echo(self, msg):
+    def echo(self, msg, end="\n"):
         """Write a message."""
-        click.echo(msg)
+        new_line = True
+        if end != "\n":
+            msg = msg + end
+            new_line = False
+        click.echo(msg, nl=new_line)
 
     def info(self, msg):
         """Write an info message."""
@@ -114,7 +118,7 @@ class ClickCallback(StandardOutput):
 
     def error(self, msg):
         """Write an error message."""
-        click.echo(self.ERROR + msg)
+        click.echo(self.ERROR + msg, err=True)
 
     def has_prompt(self):
         """Return True if communicator provides a direct prompt to users."""

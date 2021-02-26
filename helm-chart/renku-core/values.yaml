@@ -7,7 +7,7 @@ replicaCount: 1
 cacheDirectory: /svc/cache
 cleanupInterval: 3600
 projectCloneDepth: 1
-templateCloneDepth: 0
+templateCloneDepth: 1
 
 datasetsWorkerQueues: datasets.jobs
 managementWorkerQueues: cache.cleanup.files,cache.cleanup.projects
@@ -20,8 +20,8 @@ gitLFSSkipSmudge: 1
 
 # Concurrency settings for the main service:
 # the default it 4 workers with 8 threads set in the Dockerfile
-nWorkers:
-nThreads:
+nWorkers: 4
+nThreads: 8
 
 # NOTE: Make sure token secret is greater or equal to 32 bytes.
 jwtTokenSecret: bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn
@@ -61,11 +61,11 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-nodeSelector: {}
+# nodeSelector: {}
 
-tolerations: []
+# tolerations: []
 
-affinity: {}
+# affinity: {}
 
 ## The renku core service deploys its own redis as a dependency. These values
 ## do probably not need to be changed.
@@ -89,3 +89,9 @@ redis:
 sentry:
   dsn:
   environment:
+
+## Enable debug mode
+## WARNING: DO NOT enable this in production as it exposes the service container. It is to be used for
+## debugging a running instance of the core service and allows accessing and modifying the running
+## code directly. See the repository README for more information.
+debug: false

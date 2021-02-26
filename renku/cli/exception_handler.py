@@ -86,9 +86,9 @@ class RenkuExceptionsHandler(click.Group):
         try:
             return super().main(*args, **kwargs)
         except RenkuException as e:
-            click.echo("Error: {}".format(e))
+            click.echo(f"Error: {e}", err=True)
             if e.__cause__ is not None:
-                click.echo("\n{}".format(traceback.format_exc()))
+                click.echo(f"\n{traceback.format_exc()}")
             exit_code = 1
             if isinstance(e, (ParameterError, UsageError)):
                 exit_code = 2
@@ -147,7 +147,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
             with capture_internal_exceptions():
                 from git import Repo
 
-                from renku.core.commands import get_git_home
+                from renku.core.commands.git import get_git_home
                 from renku.core.models.provenance.agents import Person
 
                 repo = Repo(get_git_home())

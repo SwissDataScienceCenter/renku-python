@@ -24,6 +24,7 @@ from renku.core.commands.save import repo_sync
 from renku.core.errors import ParameterError, RenkuException
 from renku.core.utils.contexts import click_context
 from renku.service.logger import worker_log
+from renku.service.utils.callback import ServiceCallback
 from renku.service.views.decorators import requires_cache
 
 
@@ -31,25 +32,28 @@ def execute_migration(
     project, force_template_update, skip_template_update, skip_docker_update, skip_migrations, commit_message
 ):
     """Execute project migrations."""
-    messages = []
     worker_log.debug(f"migrating {project.abs_path}")
 
-    def collect_message(msg):
-        """Collect migration message."""
-        messages.append(msg)
+    communicator = ServiceCallback()
 
     with click_context(project.abs_path, "execute_migration"):
-        was_migrated, template_migrated, docker_migrated = migrate_project(
-            progress_callback=collect_message,
-            force_template_update=force_template_update,
-            skip_template_update=skip_template_update,
-            skip_docker_update=skip_docker_update,
-            skip_migrations=skip_migrations,
-            commit_message=commit_message,
+        result = (
+            migrate_project()
+            .with_commit(message=commit_message)
+            .with_communicator(communicator)
+            .build()
+            .execute(
+                force_template_update=force_template_update,
+                skip_template_update=skip_template_update,
+                skip_docker_update=skip_docker_update,
+                skip_migrations=skip_migrations,
+            )
         )
 
+        was_migrated, template_migrated, docker_migrated = result.output
+
     worker_log.debug(f"migration finished - was_migrated={was_migrated}")
-    return messages, was_migrated, template_migrated, docker_migrated
+    return communicator.messages, was_migrated, template_migrated, docker_migrated
 
 
 @requires_cache

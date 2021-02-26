@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -33,6 +33,7 @@ import attr
 import git
 
 from renku.core import errors
+from renku.core.utils.git import split_paths
 from renku.core.utils.scm import git_unicode_unescape, shorten_message
 from renku.core.utils.urls import remove_credentials
 
@@ -128,7 +129,9 @@ class GitCore:
     def dirty_paths(self):
         """Get paths of dirty files in the repository."""
         repo_path = self.repo.working_dir
-        staged_files = self.repo.index.diff("HEAD") if self.repo.head.is_valid() else []
+        staged_files = (
+            [git_unicode_unescape(d.a_path) for d in self.repo.index.diff("HEAD")] if self.repo.head.is_valid() else []
+        )
         return {os.path.join(repo_path, p) for p in self.repo.untracked_files + self.modified_paths + staged_files}
 
     @property
@@ -144,23 +147,26 @@ class GitCore:
         """Return ignored paths matching ``.gitignore`` file."""
         from git.exc import GitCommandError
 
-        try:
-            return self.repo.git.check_ignore(*paths).split()
-        except GitCommandError:
-            pass
+        for batch in split_paths(*paths):
+            try:
+                return self.repo.git.check_ignore(*batch).split()
+            except GitCommandError:
+                pass
 
     def find_attr(self, *paths):
         """Return map with path and its attributes."""
         from git.exc import GitCommandError
 
         attrs = defaultdict(dict)
-        try:
-            data = self.repo.git.check_attr("-z", "-a", "--", *paths)
-            for file, name, value in zip_longest(*[iter(data.strip("\0").split("\0"))] * 3):
-                if file:
-                    attrs[file][name] = value
-        except GitCommandError:
-            pass
+
+        for batch in split_paths(*paths):
+            try:
+                data = self.repo.git.check_attr("-z", "-a", "--", *batch)
+                for file, name, value in zip_longest(*[iter(data.strip("\0").split("\0"))] * 3):
+                    if file:
+                        attrs[file][name] = value
+            except GitCommandError:
+                pass
 
         return attrs
 

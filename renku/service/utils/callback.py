@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -32,7 +32,7 @@ class ServiceCallback(CommunicationCallback):
         self.errors = []
         self._user_job = user_job
 
-    def echo(self, msg):
+    def echo(self, msg, end="\n"):
         """Write a message."""
         self.messages.append(msg)
 
@@ -48,7 +48,7 @@ class ServiceCallback(CommunicationCallback):
         """Write an error message."""
         self.errors.append(msg)
 
-    def confirm(self, msg, abort=False):
+    def confirm(self, msg, abort=False, warning=False):
         """Get confirmation for an action using a prompt."""
         return False
 

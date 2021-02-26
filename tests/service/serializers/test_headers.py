@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,7 +18,7 @@
 """Tests for service header serializers."""
 import jwt
 
-from renku.service.serializers.headers import JWT_TOKEN_SECRET, UserIdentityHeaders
+from renku.service.serializers.headers import JWT_TOKEN_SECRET, RequiredIdentityHeaders
 
 
 def test_header_serializer(identity_headers):
@@ -46,7 +46,7 @@ def test_header_serializer(identity_headers):
         "email",
     } == set(decoded.keys())
 
-    user_identity = UserIdentityHeaders().load(identity_headers)
+    user_identity = RequiredIdentityHeaders().load(identity_headers)
     assert {"fullname", "email", "user_id", "token"} == set(user_identity.keys())
 
 
@@ -60,5 +60,5 @@ def test_old_headers():
         "Authorization": "Bearer None",
     }
 
-    user_identity = UserIdentityHeaders().load(old_headers)
+    user_identity = RequiredIdentityHeaders().load(old_headers)
     assert {"fullname", "email", "user_id", "token"} == set(user_identity.keys())

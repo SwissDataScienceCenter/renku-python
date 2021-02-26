@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,29 +16,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Client for handling a data storage."""
+import csv
 import functools
+import itertools
 import os
 import re
-import shlex
 import tempfile
 from collections import defaultdict
 from pathlib import Path
 from shutil import move, which
-from subprocess import PIPE, STDOUT, call, check_output, run
+from subprocess import PIPE, STDOUT, check_output, run
 
 import attr
 import pathspec
 from werkzeug.utils import cached_property
 
 from renku.core import errors
+from renku.core.models.provenance.activities import Collection
+from renku.core.models.provenance.datasets import DatasetProvenance
+from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.utils.file_size import parse_file_size
+from renku.core.utils.git import add_to_git, run_command
 
 from .git import _expand_directories
 from .repository import RepositoryApiMixin
-
-# Batch size for when renku is expanding a large list
-# of files into an argument string.
-ARGUMENT_BATCH_SIZE = 100
 
 
 def check_external_storage_wrapper(fn):
@@ -80,6 +81,8 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _CMD_STORAGE_PULL = ["git", "lfs", "pull", "-I"]
 
+    _CMD_STORAGE_MIGRATE_IMPORT = ["git", "lfs", "migrate", "import"]
+
     _CMD_STORAGE_MIGRATE_INFO = ["git", "lfs", "migrate", "info", "--top", "42000"]
 
     _CMD_STORAGE_LIST = ["git", "lfs", "ls-files", "-n"]
@@ -118,26 +121,37 @@ class StorageApiMixin(RepositoryApiMixin):
     def renku_lfs_ignore(self):
         """Gets pathspec for files to not add to LFS."""
         ignore_path = self.path / self.RENKU_LFS_IGNORE_PATH
+        renku_protected_paths = ["/.renku"]
+
         if not os.path.exists(ignore_path):
-            return pathspec.PathSpec.from_lines("renku_gitwildmatch", [])
+            return pathspec.PathSpec.from_lines("renku_gitwildmatch", renku_protected_paths)
         with ignore_path.open("r") as f:
-            return pathspec.PathSpec.from_lines("renku_gitwildmatch", f)
+            # NOTE: Append `renku_protected_paths` at the end to give it the highest priority
+            lines = itertools.chain(f, renku_protected_paths)
+            return pathspec.PathSpec.from_lines("renku_gitwildmatch", lines)
 
     @property
     def minimum_lfs_file_size(self):
         """The minimum size of a file in bytes to be added to lfs."""
-        size = self.get_value("renku", "lfs_threshold") or "100kb"
+        size = self.get_value("renku", "lfs_threshold")
 
         return parse_file_size(size)
 
     def init_external_storage(self, force=False):
         """Initialize the external storage for data."""
         try:
-            call(
-                self._CMD_STORAGE_INSTALL + (["--force"] if force else []), stdout=PIPE, stderr=STDOUT, cwd=self.path,
+            result = run(
+                self._CMD_STORAGE_INSTALL + (["--force"] if force else []),
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=self.path,
+                universal_newlines=True,
             )
+
+            if result.returncode != 0:
+                raise errors.GitLFSError(f"Error executing 'git lfs install: \n {result.stdout}")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+            raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
 
     def init_repository(self, force=False, user=None):
         """Initialize a local Renku repository."""
@@ -170,23 +184,35 @@ class StorageApiMixin(RepositoryApiMixin):
                 path = Path(path).relative_to(self.path)
 
             # Do not add files with filter=lfs in .gitattributes
-            if attrs.get(str(path), {}).get("filter") == "lfs":
+            if attrs.get(str(path), {}).get("filter") == "lfs" or not (self.path / path).exists():
                 continue
 
-            if path.is_dir() and not any(self.renku_lfs_ignore.match_tree(str(path))):
+            if (
+                path.is_dir()
+                and not self.renku_lfs_ignore.match_file(path)
+                and not any(self.renku_lfs_ignore.match_tree(path))
+            ):
                 track_paths.append(str(path / "**"))
-            elif not self.renku_lfs_ignore.match_file(str(path)):
+            elif not self.renku_lfs_ignore.match_file(path):
                 file_size = os.path.getsize(str(os.path.relpath(self.path / path, os.getcwd())))
                 if file_size >= self.minimum_lfs_file_size:
                     track_paths.append(str(path))
 
         if track_paths:
             try:
-                call(
-                    self._CMD_STORAGE_TRACK + track_paths, stdout=PIPE, stderr=STDOUT, cwd=self.path,
+                result = run_command(
+                    self._CMD_STORAGE_TRACK,
+                    *track_paths,
+                    stdout=PIPE,
+                    stderr=STDOUT,
+                    cwd=self.path,
+                    universal_newlines=True,
                 )
+
+                if result.returncode != 0:
+                    raise errors.GitLFSError(f"Error executing 'git lfs track: \n {result.stdout}")
             except (KeyboardInterrupt, OSError) as e:
-                raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+                raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
             return track_paths
         return []
 
@@ -194,11 +220,14 @@ class StorageApiMixin(RepositoryApiMixin):
     def untrack_paths_from_storage(self, *paths):
         """Untrack paths from the external storage."""
         try:
-            call(
-                self._CMD_STORAGE_UNTRACK + list(paths), stdout=PIPE, stderr=STDOUT, cwd=self.path,
+            result = run_command(
+                self._CMD_STORAGE_UNTRACK, *paths, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True,
             )
+
+            if result.returncode != 0:
+                raise errors.GitLFSError(f"Error executing 'git lfs untrack: \n {result.stdout}")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+            raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
 
     @check_external_storage_wrapper
     def list_tracked_paths(self, client=None):
@@ -207,7 +236,7 @@ class StorageApiMixin(RepositoryApiMixin):
         try:
             files = check_output(self._CMD_STORAGE_LIST, cwd=client.path, encoding="UTF-8")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+            raise errors.ParameterError(f"Couldn't run 'git lfs ls-files':\n{e}")
         files = [client.path / f for f in files.splitlines()]
         return files
 
@@ -218,7 +247,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
         if len(client.repo.remotes) < 1 or not client.repo.active_branch.tracking_branch():
             raise errors.ConfigurationError(
-                "No git remote is configured for {} branch {}.".format(client.path, client.repo.active_branch.name)
+                f"No git remote is configured for {client.path} branch {client.repo.active_branch.name}."
                 + "Cleaning the storage cache would lead to a loss of data as "
                 + "it is not on a server. Please see "
                 + "https://www.atlassian.com/git/tutorials/syncing for "
@@ -227,7 +256,7 @@ class StorageApiMixin(RepositoryApiMixin):
         try:
             status = check_output(self._CMD_STORAGE_STATUS, cwd=client.path, encoding="UTF-8")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+            raise errors.ParameterError(f"Couldn't run 'git lfs status':\n{e}")
 
         files = status.split("Objects to be committed:")[0].splitlines()[2:]
         files = [client.path / f.rsplit("(", 1)[0].strip() for f in files if f.strip()]
@@ -236,8 +265,6 @@ class StorageApiMixin(RepositoryApiMixin):
     @check_external_storage_wrapper
     def pull_paths_from_storage(self, *paths):
         """Pull paths from LFS."""
-        import math
-
         client_dict = defaultdict(list)
 
         for path in _expand_directories(paths):
@@ -251,15 +278,18 @@ class StorageApiMixin(RepositoryApiMixin):
             client_dict[client.path].append(str(relative_path))
 
         for client_path, paths in client_dict.items():
-            batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
-            for index in range(batch_size):
-                run(
-                    self._CMD_STORAGE_PULL
-                    + [shlex.quote(",".join(paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]))],
-                    cwd=client_path,
-                    stdout=PIPE,
-                    stderr=STDOUT,
-                )
+            result = run_command(
+                self._CMD_STORAGE_PULL,
+                *paths,
+                separator=",",
+                cwd=client_path,
+                stdout=PIPE,
+                stderr=STDOUT,
+                universal_newlines=True,
+            )
+
+            if result.returncode != 0:
+                raise errors.GitLFSError(f"Error executing 'git lfs pull: \n {result.stdout}")
 
     @check_external_storage_wrapper
     def clean_storage_cache(self, *paths):
@@ -311,9 +341,12 @@ class StorageApiMixin(RepositoryApiMixin):
                 with tempfile.NamedTemporaryFile(mode="w+t", encoding="utf-8", delete=False) as tmp, open(
                     path, "r+t"
                 ) as input_file:
-                    run(
-                        self._CMD_STORAGE_CLEAN, cwd=client_path, stdin=input_file, stdout=tmp,
+                    result = run(
+                        self._CMD_STORAGE_CLEAN, cwd=client_path, stdin=input_file, stdout=tmp, universal_newlines=True
                     )
+
+                    if result.returncode != 0:
+                        raise errors.GitLFSError(f"Error executing 'git lfs clean: \n {result.stdout}")
 
                     tmp_path = tmp.name
                 move(tmp_path, path)
@@ -331,19 +364,23 @@ class StorageApiMixin(RepositoryApiMixin):
                 object_path.unlink()
 
             # add paths so they don't show as modified
-            client.repo.git.add(*paths)
+            add_to_git(client.repo.git, *paths)
 
         return untracked_paths, local_only_paths
 
     @check_external_storage_wrapper
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
-        run(
-            self._CMD_STORAGE_CHECKOUT + list(paths), cwd=self.path, stdout=PIPE, stderr=STDOUT, check=True,
+        result = run_command(
+            self._CMD_STORAGE_CHECKOUT, *paths, cwd=self.path, stdout=PIPE, stderr=STDOUT, universal_newlines=True,
         )
+
+        if result.returncode != 0:
+            raise errors.GitLFSError(f"Error executing 'git lfs checkout: \n {result.stdout}")
 
     def check_requires_tracking(self, *paths):
         """Check paths and return a list of those that must be tracked."""
+
         if not self.external_storage_requested:
             return
 
@@ -372,10 +409,8 @@ class StorageApiMixin(RepositoryApiMixin):
 
         return track_paths
 
-    def check_lfs_migrate_info(self, everything=False):
-        """Return list of file groups in history should be in LFS."""
-        ref = ["--everything"] if everything else ["--include-ref", self.repo.active_branch.name]
-
+    def get_lfs_migrate_filters(self):
+        """Gets include, exclude and above filters for lfs migrate."""
         includes = []
         excludes = []
         for p in self.renku_lfs_ignore.patterns:
@@ -384,7 +419,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
             pattern = p.pattern.replace(os.linesep, "").replace("\n", "")
             if pattern.startswith("!"):
-                pattern.replace("!", "", 1)
+                pattern = pattern.replace("!", "", 1)
 
             if p.include:  # File ignored by LFS
                 excludes.append(pattern)
@@ -398,12 +433,23 @@ class StorageApiMixin(RepositoryApiMixin):
 
         above = ["--above", str(self.minimum_lfs_file_size)]
 
+        return includes, excludes, above
+
+    def check_lfs_migrate_info(self, everything=False):
+        """Return list of file groups in history should be in LFS."""
+        ref = ["--everything"] if everything else ["--include-ref", self.repo.active_branch.name]
+
+        includes, excludes, above = self.get_lfs_migrate_filters()
+
         command = self._CMD_STORAGE_MIGRATE_INFO + ref + above + includes + excludes
 
         try:
             lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True)
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.GitError("Couldn't run 'git lfs migrate info':\n{0}".format(e))
+            raise errors.GitError(f"Couldn't run 'git lfs migrate info':\n{e}")
+
+        if lfs_output.returncode != 0:
+            raise errors.GitLFSError(f"Error executing 'git lfs migrate info: \n {lfs_output.stdout}")
 
         groups = []
         files_re = re.compile(r"(.*\s+[\d.]+\s+\S+).*")
@@ -414,3 +460,110 @@ class StorageApiMixin(RepositoryApiMixin):
                 groups.append(match.groups()[0])
 
         return groups
+
+    def migrate_files_to_lfs(self, paths):
+        """Migrate files to Git LFS."""
+        if not self.has_graph_files:
+            raise errors.OperationError(
+                "This command is only supported with the new graph metadata, which doesn't exist. "
+                "Create it by running `renku graph generate`."
+            )
+
+        if paths:
+            includes = ["--include", ",".join(paths)]
+            excludes = []
+            above = []
+        else:
+            includes, excludes, above = self.get_lfs_migrate_filters()
+
+        tempdir = Path(tempfile.mkdtemp())
+        map_path = tempdir / "objectmap.csv"
+        object_map = [f"--object-map={map_path}"]
+
+        command = self._CMD_STORAGE_MIGRATE_IMPORT + above + includes + excludes + object_map
+
+        try:
+            lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True)
+        except (KeyboardInterrupt, OSError) as e:
+            raise errors.GitError(f"Couldn't run 'git lfs migrate import':\n{e}")
+
+        if lfs_output.returncode != 0:
+            raise errors.GitLFSError(f"Error executing 'git lfs migrate import: \n {lfs_output.stdout}")
+
+        with open(map_path, "r", newline="") as csvfile:
+            reader = csv.reader(csvfile, delimiter=",")
+
+            commit_sha_mapping = [(r[0], r[1]) for r in reader]
+
+        os.remove(map_path)
+
+        sha_mapping = dict()
+
+        repo_root = Path(".")
+
+        for old_commit_sha, new_commit_sha in commit_sha_mapping:
+            old_commit = self.repo.commit(old_commit_sha)
+            new_commit = self.repo.commit(new_commit_sha)
+            processed = set()
+
+            for path in old_commit.stats.files.keys():
+                path_obj = Path(path)
+
+                # NOTE: Get git object hash mapping for files and parent folders
+                while path_obj != repo_root:
+                    if path_obj in processed:
+                        break
+
+                    path_str = str(path_obj)
+                    old_sha = old_commit.tree[path_str].hexsha
+                    new_sha = new_commit.tree[path_str].hexsha
+
+                    sha_mapping[old_sha] = new_sha
+
+                    processed.add(path_obj)
+                    path_obj = path_obj.parent
+
+        def _map_checksum(entity, checksum_mapping):
+            """Update the checksum and id of an entity based on a mapping."""
+            if entity.checksum not in checksum_mapping:
+                return
+
+            new_checksum = checksum_mapping[entity.checksum]
+
+            entity._id = entity._id.replace(entity.checksum, new_checksum)
+            entity.checksum = new_checksum
+
+            if isinstance(entity, Collection) and entity.members:
+                for member in entity.members:
+                    _map_checksum(member, checksum_mapping)
+
+        # NOTE: Update workflow provenance
+        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+
+        for _, activity in provenance_graph.activities.items():
+            if activity.generated:
+                for generation in activity.generated:
+                    entity = generation.entity
+                    generation._id = generation._id.replace(entity.checksum, sha_mapping[entity.checksum])
+                    _map_checksum(entity, sha_mapping)
+
+            if activity.qualified_usage:
+                for usage in activity.qualified_usage:
+                    entity = usage.entity
+                    usage._id = usage._id.replace(entity.checksum, sha_mapping[entity.checksum])
+                    _map_checksum(entity, sha_mapping)
+
+            if activity.invalidated:
+                for entity in activity.invalidated:
+                    _map_checksum(entity, sha_mapping)
+
+        provenance_graph.to_json()
+
+        # NOTE: Update datasets provenance
+        datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
+
+        for dataset in datasets_provenance.datasets:
+            for file_ in dataset.files:
+                _map_checksum(file_.entity, sha_mapping)
+
+        datasets_provenance.to_json()
