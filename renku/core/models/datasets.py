@@ -894,24 +894,27 @@ def is_dataset_name_valid(name):
 
 def generate_default_name(dataset_title, dataset_version=None):
     """Get dataset name."""
+    max_length = 24
     # For compatibility with older versions use name as name
     # if it is valid; otherwise, use encoded name
     if is_dataset_name_valid(dataset_title):
         return dataset_title
 
     slug = get_slug(dataset_title)
-    slug = slug.lower()[:24]
+    name = slug[:max_length]
 
     if dataset_version:
-        version_slug = get_slug(dataset_version)
-        return f"{slug}_{version_slug}"
+        max_version_length = 10
+        version_slug = get_slug(dataset_version)[:max_version_length]
+        name = f"{name[:-(len(version_slug) + 1)]}_{version_slug}"
 
-    return slug
+    return name
 
 
 def get_slug(name):
     """Create a slug from name."""
-    no_space = re.sub(r"\s+", "_", name)
+    lower_case = name.lower()
+    no_space = re.sub(r"\s+", "_", lower_case)
     normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
     no_invalid_characters = re.sub(r"[^a-zA-Z0-9._-]", "_", normalized)
     no_duplicates = re.sub(r"([._-])[._-]+", r"\1", no_invalid_characters)

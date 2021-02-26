@@ -262,6 +262,7 @@ def test_cannot_mutate_immutable_dataset():
 @pytest.mark.parametrize(
     "name, slug",
     [
+        ("UPPER-CASE", "upper-case"),
         (" a name  ", "a_name"),
         ("..non-alphanumeric start or end-_", "non-alphanumeric_start_or_end"),
         ("double ..__._- non-alphanumeric", "double_non-alphanumeric"),
