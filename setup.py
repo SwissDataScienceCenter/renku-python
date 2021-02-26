@@ -123,7 +123,7 @@ service_requires = [
     "redis==3.5.3",
     "rq-scheduler==0.10.0",
     "rq==1.7.0",
-    "sentry-sdk[flask]>=0.7.4,<0.19.6",
+    "sentry-sdk[flask]>=0.7.4,<0.20.4",
     "walrus==0.8.1",
 ]
 
