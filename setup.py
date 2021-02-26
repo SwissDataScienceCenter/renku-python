@@ -91,7 +91,7 @@ history = open("CHANGES.rst").read()
 tests_require = [
     "black==19.10b0",
     "check-manifest>=0.37,<0.47",
-    "coverage>=4.5.3,<5.4",
+    "coverage>=4.5.3,<5.5",
     "fakeredis>=1.4.1,<1.4.6",
     "flake8>=3.8,<3.9",
     "flaky==3.7.0",
@@ -112,7 +112,7 @@ tests_require = [
 
 
 service_requires = [
-    "apispec>=4.0.0,<=4.1.0",
+    "apispec>=4.0.0,<4.4.0",
     "flask-apispec==0.11.0",
     "flask-swagger-ui==3.36.0",
     "flask==1.1.2",
@@ -123,7 +123,7 @@ service_requires = [
     "redis==3.5.3",
     "rq-scheduler==0.10.0",
     "rq==1.7.0",
-    "sentry-sdk[flask]>=0.7.4,<0.19.6",
+    "sentry-sdk[flask]>=0.7.4,<0.20.4",
     "walrus==0.8.1",
 ]
 
@@ -163,7 +163,7 @@ install_requires = [
     "cwltool>=3.0.20210124104916,<3.1",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
-    "gitpython==3.1.12",
+    "gitpython==3.1.13",
     "humanize>=2.5.0,<2.7.0",
     "jinja2>=2.10.3,<=2.11.2",
     "ndg-httpsclient==0.5.1",
@@ -175,7 +175,7 @@ install_requires = [
     "pyjwt==2.0.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<=19.1.0",
-    "pyshacl==0.11.3.post1",
+    "pyshacl==0.14.3",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
     "PyYAML>=3.12,<=5.3.1",
