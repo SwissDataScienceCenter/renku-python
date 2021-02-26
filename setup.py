@@ -100,7 +100,7 @@ tests_require = [
     "pydocstyle>=3.0.0,<5.1.2",
     "pytest-black>=0.3.10,<0.3.13",
     "pytest-cache==1.0",
-    "pytest-cov>=2.5.1,<2.11.0",
+    "pytest-cov>=2.5.1,<2.12.0",
     "pytest-flake8>=1.0.6,<1.0.8",
     "pytest-mock>=3.2.0,<3.6.0",
     "pytest-pep8==1.0.6",
