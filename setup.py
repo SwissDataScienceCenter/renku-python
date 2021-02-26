@@ -172,7 +172,7 @@ install_requires = [
     "pluggy==0.13.1",
     "psutil>=5.4.7,<=5.7.2",
     "pyasn1>=0.4.5,<=0.4.8",
-    "pyjwt==2.0.0",
+    "pyjwt==2.0.1",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<=19.1.0",
     "pyshacl==0.14.3",
