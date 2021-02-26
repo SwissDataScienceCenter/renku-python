@@ -95,7 +95,7 @@ tests_require = [
     "fakeredis>=1.4.1,<1.4.6",
     "flake8>=3.8,<3.9",
     "flaky==3.7.0",
-    "freezegun>=0.3.12,<1.0.1",
+    "freezegun>=0.3.12,<1.1.1",
     "isort>=5.3.2,<5.8.0",
     "pydocstyle>=3.0.0,<5.1.2",
     "pytest-black>=0.3.10,<0.3.13",
