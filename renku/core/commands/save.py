@@ -124,9 +124,20 @@ def repo_sync(repo, message=None, remote=None, paths=None):
 
     try:
         # NOTE: Push local changes to remote branch.
-        if origin.refs and repo.active_branch in origin.refs:
+        if origin.refs and repo.active_branch.tracking_branch() and repo.active_branch.tracking_branch() in origin.refs:
             origin.fetch()
-            origin.pull(repo.active_branch)
+            try:
+                origin.pull(repo.active_branch)
+            except git.exc.GitCommandError:
+                # NOTE: Couldn't pull, probably due to conflicts, try a merge.
+                # NOTE: the error sadly doesn't tell any details.
+                unmerged_blobs = repo.index.unmerged_blobs().values()
+                conflicts = (stage != 0 for blobs in unmerged_blobs for stage, _ in blobs)
+                if any(conflicts):
+                    repo.git.mergetool("-g")
+                    repo.git.commit("--no-edit")
+                else:
+                    raise
 
         result = origin.push(repo.active_branch)
 
@@ -143,6 +154,10 @@ def repo_sync(repo, message=None, remote=None, paths=None):
                 repo.git.checkout(old_active_branch)
                 ref = f"{origin}/{old_pushed_branch}"
                 repo.index.reset(commit=ref, head=True, working_tree=True)
+        elif result and " failed to push some refs" in result[0].summary:
+            # NOTE: Couldn't push for some reason
+            msg = result[0].summary
+            raise errors.GitError(f"Couldn't push changes. Reason:\n{msg}")
 
     except git.exc.GitCommandError as e:
         raise errors.GitError("Cannot push changes") from e
