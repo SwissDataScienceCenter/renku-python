@@ -28,7 +28,6 @@ import pytest
 from flaky import flaky
 from werkzeug.utils import secure_filename
 
-from conftest import IT_REMOTE_REPO_URL
 from renku.service.config import (
     GIT_ACCESS_DENIED_ERROR_CODE,
     INVALID_HEADERS_ERROR_CODE,
@@ -598,7 +597,7 @@ def test_list_datasets_view(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_list_datasets_anonymous(svc_client_with_repo):
+def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing datasets."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
@@ -615,7 +614,7 @@ def test_list_datasets_anonymous(svc_client_with_repo):
     assert expected_reason == response.json["error"]["reason"]
 
     params = {
-        "git_url": IT_REMOTE_REPO_URL,
+        "git_url": it_remote_repo_url,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers={})
     assert_rpc_response(response, with_key="error")
@@ -638,11 +637,11 @@ def test_list_datasets_anonymous(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo):
+def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing datasets."""
     svc_client, headers, _, _ = svc_client_with_repo
 
-    params = dict(git_url=it_remote_repo)
+    params = dict(git_url=it_remote_repo_url)
 
     response = svc_client.get("/datasets.list", query_string=params, headers=headers,)
 
@@ -685,7 +684,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_list_dataset_files_anonymous(svc_client_with_repo):
+def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing dataset files."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
@@ -698,7 +697,7 @@ def test_list_dataset_files_anonymous(svc_client_with_repo):
     expected_reason = "Cannot execute user operation while anonymous - user identification is missing."
     assert expected_reason == response.json["error"]["reason"]
 
-    params = {"git_url": IT_REMOTE_REPO_URL, "name": "ds1"}
+    params = {"git_url": it_remote_repo_url, "name": "ds1"}
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
     assert_rpc_response(response, with_key="error")
     assert {"code", "reason"} == set(response.json["error"].keys())
@@ -719,11 +718,11 @@ def test_list_dataset_files_anonymous(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo):
+def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing dataset files."""
     svc_client, headers, _, _ = svc_client_with_repo
 
-    params = dict(git_url=it_remote_repo, name="ds1")
+    params = dict(git_url=it_remote_repo_url, name="ds1")
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers,)
 

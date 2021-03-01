@@ -576,7 +576,7 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory):
 @pytest.mark.parametrize(
     "params,message",
     [
-        (["-s", "file", "https://example.com"], 'Cannot use "--source" with URLs or local files.'),
+        (["-s", "file", "https://renkulab.io/"], 'Cannot use "--source" with URLs or local files.'),
         (["-s", "file", "/some/local/path"], 'Cannot use "--source" with URLs or local files.'),
     ],
 )
@@ -1959,16 +1959,24 @@ def test_datasets_provenance_add_file(runner, client_with_new_graph, directory_t
     assert {"file1", "file2", "file3"} == {f.filename for f in dataset.files}
 
 
-def test_unauthorized_import(runner, client, mock_kg):
+@pytest.mark.usefixtures("mock_kg", "client", "runner")
+@pytest.mark.serial
+def test_unauthorized_import(mock_kg, client, runner):
     """Test importing without a valid token."""
-    result = runner.invoke(cli, ["dataset", "import", "https://renku.ch/projects/user/project-name/datasets/123"])
+    client.set_value("http", "renku.ch", "not-renku-token", global_only=True)
+
+    result = runner.invoke(
+        cli, ["dataset", "import", "https://renku.ch/projects/user/project-name/datasets/123"], catch_exceptions=False
+    )
 
     assert 1 == result.exit_code
     assert "Unauthorized access to knowledge graph" in result.output
     assert "renku login renku.ch" in result.output
 
 
-def test_authorized_import(runner, client, mock_kg):
+@pytest.mark.usefixtures("mock_kg", "client", "runner")
+@pytest.mark.serial
+def test_authorized_import(mock_kg, client, runner):
     """Test importing with a valid token.
 
     NOTE: Returning 404 from KG means that the request was authorized. We don't implement a full import due to mocking

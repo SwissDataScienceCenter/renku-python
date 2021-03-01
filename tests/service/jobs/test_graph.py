@@ -20,20 +20,19 @@ import json
 
 import pytest
 
-from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from renku.service.jobs.graph import graph_build_job
 
 
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-def test_graph_build_job():
+def test_graph_build_job(it_remote_repo_url, it_git_access_token):
     """Test graph build job."""
     payload = {
-        "git_url": IT_REMOTE_REPO_URL,
+        "git_url": it_remote_repo_url,
         "revision": "HEAD",
         "callback_url": "https://webhook.site",
-        "token": IT_GIT_ACCESS_TOKEN,
+        "token": it_git_access_token,
     }
 
     data = graph_build_job(**payload)
@@ -46,9 +45,9 @@ def test_graph_build_job():
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-def test_graph_build_job_no_callback():
+def test_graph_build_job_no_callback(it_remote_repo_url, it_git_access_token):
     """Test graph build job with missing callback."""
-    payload = {"git_url": IT_REMOTE_REPO_URL, "revision": "HEAD", "callback_url": "", "token": IT_GIT_ACCESS_TOKEN}
+    payload = {"git_url": it_remote_repo_url, "revision": "HEAD", "callback_url": "", "token": it_git_access_token}
 
     with pytest.raises(RuntimeError):
         graph_build_job(**payload)
@@ -57,13 +56,13 @@ def test_graph_build_job_no_callback():
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-def test_graph_build_job_no_revision():
+def test_graph_build_job_no_revision(it_remote_repo_url, it_git_access_token):
     """Test graph build job with missing revision."""
     payload = {
-        "git_url": IT_REMOTE_REPO_URL,
+        "git_url": it_remote_repo_url,
         "revision": None,
         "callback_url": "https://webhook.site",
-        "token": IT_GIT_ACCESS_TOKEN,
+        "token": it_git_access_token,
     }
 
     data = graph_build_job(**payload)
@@ -76,9 +75,9 @@ def test_graph_build_job_no_revision():
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-def test_graph_build_job_git_url():
+def test_graph_build_job_git_url(it_git_access_token):
     """Test graph build job with missing git url."""
-    payload = {"git_url": None, "revision": "HEAD", "callback_url": "", "token": IT_GIT_ACCESS_TOKEN}
+    payload = {"git_url": None, "revision": "HEAD", "callback_url": "", "token": it_git_access_token}
 
     with pytest.raises(RuntimeError):
         graph_build_job(**payload)
@@ -87,9 +86,9 @@ def test_graph_build_job_git_url():
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-def test_graph_build_job_missing_token():
+def test_graph_build_job_missing_token(it_remote_repo_url):
     """Test graph build job with missing token."""
-    payload = {"git_url": IT_REMOTE_REPO_URL, "revision": "HEAD", "callback_url": "", "token": None}
+    payload = {"git_url": it_remote_repo_url, "revision": "HEAD", "callback_url": "", "token": None}
 
     with pytest.raises(RuntimeError):
         graph_build_job(**payload)
@@ -98,9 +97,9 @@ def test_graph_build_job_missing_token():
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-def test_graph_build_job_invalid_token():
+def test_graph_build_job_invalid_token(it_remote_repo_url):
     """Test graph build job with wrong token."""
-    payload = {"git_url": IT_REMOTE_REPO_URL, "revision": "HEAD", "callback_url": "", "token": "123"}
+    payload = {"git_url": it_remote_repo_url, "revision": "HEAD", "callback_url": "", "token": "123"}
 
     with pytest.raises(RuntimeError):
         graph_build_job(**payload)
