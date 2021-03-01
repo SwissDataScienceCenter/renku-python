@@ -91,7 +91,7 @@ history = open("CHANGES.rst").read()
 tests_require = [
     "black==19.10b0",
     "check-manifest>=0.37,<0.47",
-    "coverage>=4.5.3,<5.4",
+    "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.4.6",
     "flake8>=3.8,<3.9",
     "flaky==3.7.0",
@@ -136,7 +136,7 @@ extras_require = {
     "service": service_requires,
 }
 
-setup_requires = ["pytest-runner>=2.6.2,<=5.2", "setuptools_scm>=3.1.0,<=4.1.2", "wheel"]
+setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<=4.1.2", "wheel"]
 
 
 extras_require["all"] = list(setup_requires)
@@ -172,7 +172,7 @@ install_requires = [
     "pluggy==0.13.1",
     "psutil>=5.4.7,<=5.7.2",
     "pyasn1>=0.4.5,<=0.4.8",
-    "pyjwt==2.0.0",
+    "pyjwt==2.0.1",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<=19.1.0",
     "pyshacl==0.14.3",
@@ -186,7 +186,7 @@ install_requires = [
     "setuptools_scm>=3.1.0,<=4.1.2",
     "tabulate>=0.7.7,<=0.8.7",
     "tqdm>=4.48.1,<=4.48.2",
-    "wcmatch>=6.0.0,<=6.1",
+    "wcmatch>=6.0.0,<8.2",
     "werkzeug>=0.15.5,<=1.0.1",
 ]
 
