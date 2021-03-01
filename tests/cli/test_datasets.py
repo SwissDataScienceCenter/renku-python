@@ -34,6 +34,7 @@ from renku.core.commands.providers import DataverseProvider, ProviderFactory, Ze
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.models.datasets import get_slug
 from renku.core.models.refs import LinkReference
 from tests.utils import assert_dataset_is_mutated
 
@@ -154,13 +155,23 @@ def test_datasets_create_with_same_name(runner, client):
 
 @pytest.mark.parametrize(
     "name",
-    ["any name /@#$!", "name longer than 24 characters", "semi valid-name", "dataset/new", "/dataset", "dataset/"],
+    [
+        "any name /@#$!",
+        "name longer than 24 characters",
+        "semi valid-name",
+        "dataset/new",
+        "/dataset",
+        "dataset/",
+        "name ends in.lock",
+    ],
 )
 def test_datasets_invalid_name(runner, client, name):
     """Test creating datasets with invalid name."""
     result = runner.invoke(cli, ["dataset", "create", name])
+
     assert 2 == result.exit_code
-    assert 'name "{}" is not valid.'.format(name) in result.output
+    assert f'Dataset name "{name}" is not valid' in result.output
+    assert f'Hint: "{get_slug(name)}" is valid' in result.output
 
 
 def test_datasets_create_dirty(runner, project, client):
