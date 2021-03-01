@@ -19,7 +19,7 @@
 
 You can use ``renku login`` command to authenticate with a remote Renku
 deployment. This command will bring up a browser window where you can log in
-using your credentials. Renku CLI receives and stores a secure token where will
+using your credentials. Renku CLI receives and stores a secure token that will
 be used for future authentications.
 
 .. code-block:: console
