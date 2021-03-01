@@ -136,7 +136,7 @@ extras_require = {
     "service": service_requires,
 }
 
-setup_requires = ["pytest-runner>=2.6.2,<=5.2", "setuptools_scm>=3.1.0,<=4.1.2", "wheel"]
+setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<=4.1.2", "wheel"]
 
 
 extras_require["all"] = list(setup_requires)
