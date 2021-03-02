@@ -21,6 +21,7 @@ import datetime
 import os
 import pathlib
 import re
+import unicodedata
 import uuid
 from pathlib import Path
 from urllib.parse import ParseResult, quote, urljoin, urlparse
@@ -893,28 +894,34 @@ def is_dataset_name_valid(name):
 
 def generate_default_name(dataset_title, dataset_version=None):
     """Get dataset name."""
+    max_length = 24
     # For compatibility with older versions use name as name
     # if it is valid; otherwise, use encoded name
     if is_dataset_name_valid(dataset_title):
         return dataset_title
 
-    name = re.sub(r"\s+", " ", dataset_title)
-    name = name.lower()[:24]
-
-    def to_unix(el):
-        """Parse string to unix friendly name."""
-        parsed_ = re.sub("[^a-zA-Z0-9]", "", re.sub(r"\s+", " ", el))
-        parsed_ = re.sub(" .+", ".", parsed_.lower())
-        return parsed_
-
-    name = [to_unix(el) for el in name.split()]
-    name = [el for el in name if el]
+    slug = get_slug(dataset_title)
+    name = slug[:max_length]
 
     if dataset_version:
-        version = to_unix(dataset_version)
-        return "{0}_{1}".format("_".join(name), version)
+        max_version_length = 10
+        version_slug = get_slug(dataset_version)[:max_version_length]
+        name = f"{name[:-(len(version_slug) + 1)]}_{version_slug}"
 
-    return "_".join(name)
+    return name
+
+
+def get_slug(name):
+    """Create a slug from name."""
+    lower_case = name.lower()
+    no_space = re.sub(r"\s+", "_", lower_case)
+    normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
+    no_invalid_characters = re.sub(r"[^a-zA-Z0-9._-]", "_", normalized)
+    no_duplicates = re.sub(r"([._-])[._-]+", r"\1", no_invalid_characters)
+    valid_start = re.sub(r"^[._-]", "", no_duplicates)
+    valid_end = re.sub(r"[._-]$", "", valid_start)
+    no_dot_lock_at_end = re.sub(r"\.lock$", "_lock", valid_end)
+    return no_dot_lock_at_end
 
 
 def generate_url_id(client, url_str, url_id):
