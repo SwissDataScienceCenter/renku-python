@@ -19,11 +19,9 @@
 
 import os
 import sys
-import time
 import urllib
 import uuid
 import webbrowser
-from pathlib import posixpath
 
 import requests
 
@@ -43,38 +41,30 @@ def login_command():
 
 def _login(client, endpoint):
     parsed_endpoint = _parse_endpoint(client, endpoint)
-    query = urllib.parse.urlencode({"cli_token": str(uuid.uuid4())})
+    cli_token = str(uuid.uuid4())
 
-    communication.echo(
-        f"Please log in at {parsed_endpoint.geturl()} on your browser.\n"
-        "Once completed, you may close the browser window."
-    )
+    communication.echo(f"Please log in at {parsed_endpoint.geturl()} on your browser.")
 
-    login_url = _get_url(parsed_endpoint, "/api/auth/login", query)
+    login_url = _get_url(parsed_endpoint, "/api/auth/login", cli_token=cli_token)
     webbrowser.open_new_tab(login_url)
 
-    info_url = _get_url(parsed_endpoint, "/api/auth/info", query)
-    access_token = None
-    wait_interval = 2
-    timeout = wait_interval * 30  # 60 seconds
-    while timeout > 0:
-        timeout -= wait_interval
-        time.sleep(wait_interval)
+    user_code = communication.prompt("Once completed, enter the security code that you receive at the end")
+    info_url = _get_url(parsed_endpoint, "/api/auth/info", cli_token=cli_token, user_code=user_code)
 
-        try:
-            response = requests.get(info_url)
-        except requests.RequestException:
-            pass
-        else:
-            if response.status_code == 200:
-                access_token = response.json().get("access_token")
-                break
+    try:
+        response = requests.get(info_url)
+    except requests.RequestException as e:
+        raise errors.OperationError("Cannot get access token from remote host.") from e
 
-    if access_token is None:
-        communication.error(f"Cannot get access token from remote host: {parsed_endpoint.geturl()}")
+    if response.status_code == 200:
+        access_token = response.json().get("access_token")
+        _store_token(client, parsed_endpoint, access_token)
+    else:
+        communication.error(
+            f"Remote host did not return an access token: {parsed_endpoint.geturl()}, "
+            f"status code: {response.status_code}"
+        )
         sys.exit(1)
-
-    _store_token(client, parsed_endpoint, access_token)
 
 
 def _parse_endpoint(client, endpoint):
@@ -85,8 +75,8 @@ def _parse_endpoint(client, endpoint):
     return parsed_endpoint
 
 
-def _get_url(parsed_endpoint, path, query):
-    path = posixpath.join(parsed_endpoint.path, path.lstrip("/"))
+def _get_url(parsed_endpoint, path, **query_args):
+    query = urllib.parse.urlencode(query_args)
     return parsed_endpoint._replace(path=path, query=query).geturl()
 
 

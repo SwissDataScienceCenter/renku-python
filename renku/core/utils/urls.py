@@ -82,8 +82,7 @@ def parse_authentication_endpoint(client, endpoint):
     if not parsed_endpoint.netloc:
         raise errors.ParameterError(f"Invalid endpoint: `{endpoint}`.")
 
-    path = parsed_endpoint.path or "/"
-    return parsed_endpoint._replace(scheme="https", path=path, params="", query="", fragment="")
+    return parsed_endpoint._replace(scheme="https", path="/", params="", query="", fragment="")
 
 
 def get_remote(repo):
