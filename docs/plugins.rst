@@ -79,6 +79,5 @@ where `myproject.pluginmodule:mycmd` points to a click command e.g.:
     import click
 
     @click.command()
-    @pass_local_client()
-    def mycmd(client):
+    def mycmd():
         ...

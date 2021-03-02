@@ -19,20 +19,229 @@
 
 import json
 import tempfile
+from collections import OrderedDict, namedtuple
 from pathlib import Path
 from tempfile import mkdtemp
 
+import attr
+import click
 import git
 import pkg_resources
 import yaml
 
 from renku.core import errors
+from renku.core.commands.git import set_git_home
+from renku.core.incubation.command import Command
 from renku.core.management.config import RENKU_HOME
+from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
 
-from .client import pass_local_client
-
 TEMPLATE_MANIFEST = "manifest.yaml"
+
+
+def create_template_sentence(templates, describe=False, instructions=False):
+    """Create templates choice sentence.
+
+    :ref templates: list of templates coming from manifest file
+    :ref instructions: add instructions
+    """
+    Template = namedtuple("Template", ["index", "id", "description", "variables"])
+
+    def extract_description(template_elem):
+        """Extract description from template manifest."""
+        if describe:
+            return template_elem["description"]
+        return None
+
+    def extract_variables(template_elem):
+        """Extract variables from tempalte manifest."""
+        if describe:
+            return "\n".join(
+                [f"{variable[0]}: {variable[1]}" for variable in template_elem.get("variables", {}).items()]
+            )
+
+        return ",".join(template_elem.get("variables", {}).keys())
+
+    templates_friendly = [
+        Template(
+            index=index + 1,
+            id=template_elem["folder"],
+            description=extract_description(template_elem),
+            variables=extract_variables(template_elem),
+        )
+        for index, template_elem in enumerate(templates)
+    ]
+
+    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters"),))
+
+    if describe:
+        table_headers["description"] = "Description"
+
+    text = tabulate(templates_friendly, headers=table_headers)
+
+    if not instructions:
+        return text
+    return "{0}\nPlease choose a template by typing the index".format(text)
+
+
+def store_directory(value):
+    """Store directory as a new Git home."""
+    Path(value).mkdir(parents=True, exist_ok=True)
+    set_git_home(value)
+    return value
+
+
+def is_path_empty(path):
+    """Check if path contains files.
+
+    :ref path: target path
+    """
+    gen = Path(path).glob("**/*")
+    return not any(gen)
+
+
+def _init(
+    client,
+    ctx,
+    external_storage_requested,
+    path,
+    name,
+    template_id,
+    template_index,
+    template_source,
+    template_ref,
+    metadata,
+    list_templates,
+    force,
+    describe,
+    data_dir,
+):
+    """Initialize a renku project."""
+    template_manifest, template_folder, template_source, template_version = fetch_template(
+        template_source, template_ref
+    )
+
+    # select specific template
+    repeat = False
+    template_data = None
+    if template_id:
+        if template_index:
+            raise errors.ParameterError("Use either --template-id or --template-index, not both", '"--template-index"')
+        template_filtered = [
+            template_elem for template_elem in template_manifest if template_elem["folder"] == template_id
+        ]
+        if len(template_filtered) == 1:
+            template_data = template_filtered[0]
+        else:
+            communication.echo(f'The template with id "{template_id}" is not available.')
+            repeat = True
+
+    if template_index or template_index == 0:
+        if template_index > 0 and template_index <= len(template_manifest):
+            template_data = template_manifest[template_index - 1]
+        else:
+            communication.echo(f"The template at index {template_index} is not available.")
+            repeat = True
+
+    if list_templates:
+        if template_data:
+            communication.echo(create_template_sentence([template_data], describe=describe))
+        else:
+            communication.echo(create_template_sentence(template_manifest, describe=describe))
+        return
+
+    if repeat or not (template_id or template_index):
+        templates = [template_elem for template_elem in template_manifest]
+        if len(templates) == 1:
+            template_data = templates[0]
+        else:
+            template_index = communication.prompt(
+                msg=create_template_sentence(templates, describe=describe, instructions=True),
+                type=click.IntRange(1, len(templates)),
+                show_default=False,
+                show_choices=False,
+            )
+            template_data = templates[template_index - 1]
+
+        template_id = template_data["folder"]
+
+    # verify variables have been passed
+    template_variables = template_data.get("variables", {})
+    template_variables_keys = set(template_variables.keys())
+    input_parameters_keys = set(metadata.keys())
+    for key in template_variables_keys - input_parameters_keys:
+        value = communication.prompt(
+            msg=(f'The template requires a value for "{key}" ' f"({template_variables[key]})"),
+            default="",
+            show_default=False,
+        )
+        metadata[key] = value
+    useless_variables = input_parameters_keys - template_variables_keys
+    if len(useless_variables) > 0:
+        communication.info(
+            "These parameters are not used by the template and were "
+            "ignored:\n\t{}".format("\n\t".join(useless_variables))
+        )
+        for key in useless_variables:
+            del metadata[key]
+
+    # set local path and storage
+    store_directory(path)
+    if not client.external_storage_requested:
+        external_storage_requested = False
+    ctx.obj = client = attr.evolve(
+        client, path=path, data_dir=data_dir, external_storage_requested=external_storage_requested
+    )
+    if not is_path_empty(path):
+        from git import GitCommandError
+
+        try:
+            commit = client.find_previous_commit("*")
+            branch_name = "pre_renku_init_{0}".format(commit.hexsha[:7])
+            with client.worktree(
+                path=path,
+                branch_name=branch_name,
+                commit=commit,
+                merge_args=["--no-ff", "-s", "recursive", "-X", "ours", "--allow-unrelated-histories"],
+            ):
+                communication.echo("Saving current data in branch {0}".format(branch_name))
+        except AttributeError:
+            communication.echo("Warning! Overwriting non-empty folder.")
+        except GitCommandError as e:
+            errors.GitError(e)
+
+    # supply additional metadata
+    metadata["__template_source__"] = template_source
+    metadata["__template_ref__"] = template_ref
+    metadata["__template_id__"] = template_id
+    metadata["__namespace__"] = ""
+    metadata["__sanitized_project_name__"] = ""
+    metadata["__repository__"] = ""
+    metadata["__project_slug__"] = ""
+
+    # clone the repo
+    template_path = template_folder / template_data["folder"]
+    communication.echo("Initializing new Renku repository... ", end="")
+    with client.lock:
+        try:
+            create_from_template(
+                template_path=template_path,
+                client=client,
+                name=name,
+                metadata=metadata,
+                template_version=template_version,
+                immutable_template_files=template_data.get("immutable_template_files", []),
+                automated_update=template_data.get("allow_template_update", False),
+                force=force,
+                data_dir=data_dir,
+            )
+        except FileExistsError as e:
+            raise errors.InvalidFileOperation(e)
+
+
+def init_command():
+    """Init command builder."""
+    return Command().command(_init)
 
 
 def fetch_template_from_git(source, ref="master", tempdir=None):
@@ -197,8 +406,7 @@ def create_from_template(
             (data_path / ".gitkeep").touch(exist_ok=True)
 
 
-@pass_local_client
-def create_from_template_local(
+def _create_from_template_local(
     client,
     template_path,
     name,
@@ -235,3 +443,8 @@ def create_from_template_local(
         user=user,
         commit_message=commit_message,
     )
+
+
+def create_from_template_local_command():
+    """Command to initialize a new project from a template."""
+    return Command().command(_create_from_template_local)

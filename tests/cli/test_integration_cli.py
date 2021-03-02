@@ -22,7 +22,7 @@ import pytest
 from flaky import flaky
 
 from renku.cli import cli
-from renku.core.commands.clone import project_clone
+from renku.core.commands.clone import project_clone_command
 from renku.core.utils.contexts import chdir
 
 
@@ -63,7 +63,11 @@ def test_renku_clone(runner, monkeypatch, url):
 def test_renku_clone_with_config(tmp_path, url):
     """Test cloning of a Renku repo and existence of required settings."""
     with chdir(tmp_path):
-        repo, _ = project_clone(url, config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"})
+        repo, _ = (
+            project_clone_command()
+            .build()
+            .execute(url, config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"})
+        ).output
 
         assert "master" == repo.active_branch.name
         reader = repo.config_reader()
@@ -79,11 +83,15 @@ def test_renku_clone_with_config(tmp_path, url):
 def test_renku_clone_checkout_rev(tmp_path, url):
     """Test cloning of a repo checking out a rev with static config."""
     with chdir(tmp_path):
-        repo, _ = project_clone(
-            url,
-            config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"},
-            checkout_rev="97f907e1a3f992d4acdc97a35df73b8affc917a6",
-        )
+        repo, _ = (
+            project_clone_command()
+            .build()
+            .execute(
+                url,
+                config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"},
+                checkout_rev="97f907e1a3f992d4acdc97a35df73b8affc917a6",
+            )
+        ).output
 
         assert "97f907e1a3f992d4acdc97a35df73b8affc917a6" == str(repo.active_branch)
         reader = repo.config_reader()
@@ -99,7 +107,11 @@ def test_renku_clone_checkout_rev(tmp_path, url):
 def test_renku_clone_checkout_revs(tmp_path, rev):
     """Test cloning of a Renku repo checking out a rev."""
     with chdir(tmp_path):
-        repo, _ = project_clone("https://dev.renku.ch/gitlab/contact/no-renku.git", checkout_rev=rev,)
+        repo, _ = (
+            project_clone_command()
+            .build()
+            .execute("https://dev.renku.ch/gitlab/contact/no-renku.git", checkout_rev=rev,)
+        ).output
 
         assert rev == repo.active_branch.name
 

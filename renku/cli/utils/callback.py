@@ -129,6 +129,6 @@ class ClickCallback(StandardOutput):
         prefix = self.WARNING if warning else ""
         return click.confirm(prefix + msg, abort=abort)
 
-    def prompt(self, msg, type=None, default=None):
+    def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt from the first callback that has a prompt."""
-        return click.prompt(msg, type=type, default=default)
+        return click.prompt(msg, type=type, default=default, **kwargs)

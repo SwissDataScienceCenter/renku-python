@@ -85,7 +85,7 @@ The ``--strict`` option is only supported for the ``jsonld``, ``rdf`` and
 import click
 
 from renku.core.commands.format.graph import FORMATS
-from renku.core.commands.graph import build_graph
+from renku.core.commands.graph import build_graph_command
 
 
 @click.command()
@@ -96,5 +96,5 @@ from renku.core.commands.graph import build_graph
 @click.argument("paths", type=click.Path(exists=False), nargs=-1)
 def log(revision, format, no_output, strict, paths):
     """Show logs for a file."""
-    graph = build_graph(revision, no_output, paths)
+    graph = build_graph_command().build().execute(revision, no_output, paths).output
     FORMATS[format](graph, strict=strict)

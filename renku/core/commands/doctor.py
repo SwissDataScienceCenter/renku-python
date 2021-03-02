@@ -18,8 +18,8 @@
 """Check your system and repository for potential problems."""
 import traceback
 
-from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import ERROR
+from renku.core.incubation.command import Command
 
 DOCTOR_INFO = """\
 Please note that the diagnosis report is used to help Renku maintainers with
@@ -28,8 +28,7 @@ and if in doubt ask an expert around or file an issue. Thanks!
 """
 
 
-@pass_local_client
-def doctor_check(client):
+def _doctor_check(client):
     """Check your system and repository for potential problems."""
     from . import checks
 
@@ -50,3 +49,8 @@ def doctor_check(client):
             problems.append(problems_)
 
     return is_ok, "\n".join(problems)
+
+
+def doctor_check_command():
+    """Command to check your system and repository for potential problems."""
+    return Command().command(_doctor_check)
