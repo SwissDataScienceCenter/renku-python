@@ -17,13 +17,11 @@
 # limitations under the License.
 """Clone a Renku repo along with all Renku-specific initializations."""
 
+from renku.core.incubation.command import Command
 from renku.core.management.clone import clone
 
-from .client import pass_local_client
 
-
-@pass_local_client
-def project_clone(
+def _project_clone(
     client,
     url,
     path=None,
@@ -52,3 +50,8 @@ def project_clone(
         raise_git_except=raise_git_except,
         checkout_rev=checkout_rev,
     )
+
+
+def project_clone_command():
+    """Command to clone a renku project."""
+    return Command().command(_project_clone)
