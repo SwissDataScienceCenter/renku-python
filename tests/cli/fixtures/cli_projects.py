@@ -44,7 +44,7 @@ def client_with_remote(client, tmpdir):
     Repo().init(path, bare=True)
 
     origin = client.repo.create_remote("origin", path)
-    client.repo.git.push("--set-upstream", "origin", "main")
+    client.repo.git.push("--set-upstream", "origin", "master")
 
     yield {"client": client, "origin": origin}
 
