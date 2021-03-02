@@ -184,7 +184,7 @@ install_requires = [
     "requests>=2.23.0,<=2.24.0",
     "rich>=9.3.0,<9.4.0",
     "setuptools_scm>=3.1.0,<5.0.2",
-    "tabulate>=0.7.7,<=0.8.7",
+    "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<=4.48.2",
     "wcmatch>=6.0.0,<8.2",
     "werkzeug>=0.15.5,<=1.0.1",
