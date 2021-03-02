@@ -23,7 +23,7 @@ import pytest
 from renku.cli import cli
 from renku.cli.service import list_renku_processes
 
-SVC_COMPONENTS_EXPECTED_BOOT_TIME = 15
+SVC_COMPONENTS_EXPECTED_BOOT_TIME = 20
 
 
 @pytest.mark.serial
