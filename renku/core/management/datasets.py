@@ -50,6 +50,7 @@ from renku.core.models.datasets import (
     DatasetTag,
     ImageObject,
     generate_dataset_file_url,
+    get_slug,
     is_dataset_name_valid,
 )
 from renku.core.models.git import GitURL
@@ -307,7 +308,8 @@ class DatasetsApiMixin(object):
             raise errors.ParameterError("Dataset name must be provided.")
 
         if not is_dataset_name_valid(name):
-            raise errors.ParameterError('Dataset name "{}" is not valid.'.format(name))
+            valid_name = get_slug(name)
+            raise errors.ParameterError(f'Dataset name "{name}" is not valid (Hint: "{valid_name}" is valid).')
 
         if self.load_dataset(name=name):
             raise errors.DatasetExistsError('Dataset exists: "{}".'.format(name))
