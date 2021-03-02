@@ -129,14 +129,14 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.5.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.10.1,<2.11.4", "Sphinx>=1.6.3,<3.5.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
     "service": service_requires,
 }
 
-setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<=4.1.2", "wheel"]
+setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<5.0.2", "wheel"]
 
 
 extras_require["all"] = list(setup_requires)
@@ -153,7 +153,7 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
-    "attrs>=19.3.0,<=20.2.0",
+    "attrs>=19.3.0,<20.4.0",
     "calamus>=0.3.7,<0.3.8",
     "click-completion>=0.5.0,<=0.5.3",
     "click-plugins==1.1.1",
@@ -164,8 +164,8 @@ install_requires = [
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
-    "humanize>=2.5.0,<2.7.0",
-    "jinja2>=2.10.3,<=2.11.2",
+    "humanize>=2.5.0,<3.3.0",
+    "jinja2>=2.10.3,<2.11.4",
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
@@ -183,10 +183,10 @@ install_requires = [
     "rdflib>=5.0.0,<5.1",
     "requests>=2.23.0,<=2.24.0",
     "rich>=9.3.0,<9.13.0",
-    "setuptools_scm>=3.1.0,<=4.1.2",
+    "setuptools_scm>=3.1.0,<5.0.2",
     "tabulate>=0.7.7,<=0.8.7",
     "tqdm>=4.48.1,<=4.48.2",
-    "wcmatch>=6.0.0,<=6.1",
+    "wcmatch>=6.0.0,<8.2",
     "werkzeug>=0.15.5,<=1.0.1",
 ]
 
