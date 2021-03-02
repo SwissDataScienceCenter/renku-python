@@ -226,11 +226,11 @@ def ps(ctx):
 
 
 @service.command(name="up")
-@click.option("-d", "--daemon", is_flag=True, default=False, help="Starts ALL processes in daemon mode.")
+@click.option("-d", "--daemon", is_flag=True, default=False, help="Starts all processes in daemon mode.")
 @click.option("-rd", "--runtime-dir", default=".", help="Directory for runtime metadata in daemon mode.")
 @click.pass_context
 def all_start(ctx, daemon, runtime_dir):
-    """Start ALL service components in daemon mode."""
+    """Start all service components in daemon mode."""
     from circus import get_arbiter
 
     services = [
@@ -295,13 +295,17 @@ def all_start(ctx, daemon, runtime_dir):
 
 @service.command(name="down")
 def all_stop():
-    """Stop ALL service components."""
+    """Stop all service components."""
     # NOTE: We include `renku service up` because that process contains the arbiter and watcher.
     processes = list_renku_processes(["up"])
 
     for proc in processes:
         click.echo(f"Shutting down [{proc['pid']}] `{proc['cmdline']}`")
-        os.kill(proc["pid"], signal.SIGKILL)
+        try:
+            os.kill(proc["pid"], signal.SIGKILL)
+        except ProcessLookupError:
+            click.echo(f"Process [{proc['pid']}] `{proc['cmdline']}` not found - skipping")
+            continue
 
     if processes:
         click.secho("OK", fg="green")
@@ -311,7 +315,7 @@ def all_stop():
 
 @service.command(name="restart")
 def all_restart():
-    """Restart ALL running service components."""
+    """Restart all running service components."""
     processes = list_renku_processes()
 
     for proc in processes:
@@ -329,10 +333,10 @@ def all_restart():
 @click.option(
     "-a", "--output-all", is_flag=True, default=False, help="Outputs ALL logs of damonized service components."
 )
-@click.option("-e", "--errors", is_flag=True, default=False, help="Outputs ALL errors of damonized service components.")
+@click.option("-e", "--errors", is_flag=True, default=False, help="Outputs all errors of damonized service components.")
 @click.pass_context
 def all_logs(ctx, follow, output_all, errors):
-    """Check logs of ALL running daemonized service components."""
+    """Check logs of all running daemonized service components."""
     processes = list_renku_processes(["up"])
 
     if not processes:
