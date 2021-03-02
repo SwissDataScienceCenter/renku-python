@@ -24,6 +24,7 @@ import git
 
 from renku.core import errors
 from renku.core.incubation.command import Command
+from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
 
@@ -124,6 +125,7 @@ def repo_sync(repo, message=None, remote=None, paths=None):
 
     try:
         # NOTE: Push local changes to remote branch.
+        merge_conflict = False
         if origin.refs and repo.active_branch.tracking_branch() and repo.active_branch.tracking_branch() in origin.refs:
             origin.fetch()
             try:
@@ -134,14 +136,25 @@ def repo_sync(repo, message=None, remote=None, paths=None):
                 unmerged_blobs = repo.index.unmerged_blobs().values()
                 conflicts = (stage != 0 for blobs in unmerged_blobs for stage, _ in blobs)
                 if any(conflicts):
-                    repo.git.mergetool("-g")
-                    repo.git.commit("--no-edit")
+                    merge_conflict = True
+
+                    if communication.confirm(
+                        "There were conflicts when updating the local data with remote changes,"
+                        " do you want to resolve them (if not, a new remote branch will be created)?",
+                        warning=True,
+                    ):
+                        repo.git.mergetool("-g")
+                        repo.git.commit("--no-edit")
+                        merge_conflict = False
+                    else:
+                        repo.head.reset(index=True, working_tree=True)
                 else:
                     raise
 
-        result = origin.push(repo.active_branch)
+        if not merge_conflict:
+            result = origin.push(repo.active_branch)
 
-        if result and "[remote rejected] (pre-receive hook declined)" in result[0].summary:
+        if merge_conflict or (result and "[remote rejected] (pre-receive hook declined)" in result[0].summary):
             # NOTE: Push to new remote branch if original one is protected and reset the cache.
             old_pushed_branch = pushed_branch
             old_active_branch = repo.active_branch
