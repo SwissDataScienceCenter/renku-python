@@ -95,7 +95,7 @@ class DAG(object):
         latest = self.graph.latest(node)
 
         # TODO move reference names to entity objects
-        from renku.cli.workflow import _deref
+        from renku.core.commands.workflow import _deref
 
         refs = node.client.workflow_names[node.path]
         formatted_refs = (
