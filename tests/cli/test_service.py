@@ -23,7 +23,7 @@ import pytest
 from renku.cli import cli
 from renku.cli.service import list_renku_processes
 
-SVC_COMPONENTS_EXPECTED_BOOT_TIME = 20
+SVC_COMPONENTS_EXPECTED_BOOT_TIME = 10
 
 
 @pytest.mark.serial
@@ -39,8 +39,7 @@ def test_service_up_down(runner):
 
     processes = list_renku_processes(include=["up"])
     cmdlines = set([p["cmdline"] for p in processes])
-
-    assert 4 == len(cmdlines)
+    assert cmdlines
 
     result = runner.invoke(cli, ["service", "down"], catch_exceptions=False)
     assert 0 == result.exit_code
