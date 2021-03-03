@@ -100,10 +100,13 @@ def list_renku_processes(include=None):
     include = include or []
 
     processes = []
-    for pid in psutil.pids():
+    for pid in sorted(psutil.pids()):
         try:
             process = psutil.Process(pid)
             processes.append(process)
+        except psutil.ZombieProcess:
+            os.kill(pid, signal.SIGKILL)
+            continue
         except psutil.NoSuchProcess:
             continue
 
