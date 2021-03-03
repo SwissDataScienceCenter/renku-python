@@ -76,7 +76,7 @@ def test_service_up_restart(runner):
     time.sleep(SVC_COMPONENTS_EXPECTED_BOOT_TIME)
 
     processes_after_restart = list_renku_processes(include=["renku", "up"])
-    assert 4 == len(processes_after_restart)
+    assert processes_after_restart
     assert [p["pid"] for p in processes] != [p["pid"] for p in processes_after_restart]
 
     result = runner.invoke(cli, ["service", "down"], catch_exceptions=False)
