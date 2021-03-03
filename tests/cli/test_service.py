@@ -73,7 +73,7 @@ def test_service_up_restart(runner):
     assert 0 == result.exit_code
 
     # NOTE: Restart all processes can take up to a second.
-    time.sleep(SVC_COMPONENTS_EXPECTED_BOOT_TIME // 2)
+    time.sleep(SVC_COMPONENTS_EXPECTED_BOOT_TIME)
 
     processes_after_restart = list_renku_processes(include=["renku", "up"])
     assert 4 == len(processes_after_restart)
@@ -83,7 +83,7 @@ def test_service_up_restart(runner):
     assert 0 == result.exit_code
 
     # NOTE: Booting down all processes can take up to a second.
-    time.sleep(SVC_COMPONENTS_EXPECTED_BOOT_TIME // 2)
+    time.sleep(SVC_COMPONENTS_EXPECTED_BOOT_TIME)
 
     processes = list_renku_processes(include=["renku", "up"])
     assert 0 == len(processes)
