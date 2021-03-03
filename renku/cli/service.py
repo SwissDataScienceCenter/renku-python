@@ -238,7 +238,7 @@ def ps(ctx):
 @click.option("-rd", "--runtime-dir", default=".", help="Directory for runtime metadata in daemon mode.")
 @click.pass_context
 def all_start(ctx, daemon, runtime_dir):
-    """Start all service components in daemon mode."""
+    """Start all service components."""
     from circus import get_arbiter
 
     services = [
