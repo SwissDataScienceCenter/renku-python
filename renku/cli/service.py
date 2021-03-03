@@ -117,7 +117,7 @@ def list_renku_processes(include=None):
                 proc.name() == "renku" or check_cmdline(proc.cmdline(), ["renku"])
             ):
                 renku_processes.append(proc)
-        except psutil.AccessDenied:
+        except (psutil.AccessDenied, psutil.NoSuchProcess):
             pass
 
     renku_proc_info = sorted(
