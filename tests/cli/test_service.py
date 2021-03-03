@@ -37,21 +37,20 @@ def test_service_up_down(runner):
     # NOTE: Booting up all processes can take few seconds.
     time.sleep(SVC_COMPONENTS_EXPECTED_BOOT_TIME)
 
-    processes = list_renku_processes(include=["up"])
+    processes = list_renku_processes(include=["renku", "up"])
     cmdlines = set([p["cmdline"] for p in processes])
-    assert cmdlines
+    assert 4 == len(cmdlines)
 
     result = runner.invoke(cli, ["service", "down"], catch_exceptions=False)
     assert 0 == result.exit_code
 
     # NOTE: Booting down all processes can take up to a second.
-    time.sleep(1)
+    time.sleep(5)
 
-    processes = list_renku_processes(include=["up"])
+    processes = list_renku_processes(include=["renku", "up"])
     assert 0 == len(processes)
 
 
-@pytest.mark.serial
 def test_service_up_restart(runner):
     """Check bringing service components up in daemon mode and restarting them."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
@@ -62,7 +61,7 @@ def test_service_up_restart(runner):
     # NOTE: Booting up all processes can take few seconds.
     time.sleep(SVC_COMPONENTS_EXPECTED_BOOT_TIME)
 
-    processes = list_renku_processes(include=["up"])
+    processes = list_renku_processes(include=["renku", "up"])
     cmdlines = set([p["cmdline"] for p in processes])
 
     assert 4 == len(cmdlines)
@@ -71,9 +70,9 @@ def test_service_up_restart(runner):
     assert 0 == result.exit_code
 
     # NOTE: Restart all processes can take up to a second.
-    time.sleep(1)
+    time.sleep(5)
 
-    processes_after_restart = list_renku_processes(include=["up"])
+    processes_after_restart = list_renku_processes(include=["renku", "up"])
     assert 4 == len(processes_after_restart)
     assert [p["pid"] for p in processes] != [p["pid"] for p in processes_after_restart]
 
@@ -81,7 +80,7 @@ def test_service_up_restart(runner):
     assert 0 == result.exit_code
 
     # NOTE: Booting down all processes can take up to a second.
-    time.sleep(1)
+    time.sleep(5)
 
-    processes = list_renku_processes(include=["up"])
+    processes = list_renku_processes(include=["renku", "up"])
     assert 0 == len(processes)
