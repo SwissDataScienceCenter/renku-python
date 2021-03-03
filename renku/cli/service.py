@@ -100,7 +100,15 @@ def list_renku_processes(include=None):
     include = include or []
     processes = [psutil.Process(pid) for pid in psutil.pids()]
 
-    renku_processes = [proc for proc in processes if proc.name() == "renku" and check_cmdline(proc.cmdline(), include)]
+    renku_processes = []
+    for proc in processes:
+        try:
+            if check_cmdline(proc.cmdline(), include) and (
+                proc.name() == "renku" or check_cmdline(proc.cmdline(), ["renku"])
+            ):
+                renku_processes.append(proc)
+        except psutil.AccessDenied:
+            pass
 
     renku_proc_info = sorted(
         [
