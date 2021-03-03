@@ -98,7 +98,14 @@ def check_cmdline(cmdline, include=None):
 def list_renku_processes(include=None):
     """List renku processes."""
     include = include or []
-    processes = [psutil.Process(pid) for pid in psutil.pids()]
+
+    processes = []
+    for pid in psutil.pids():
+        try:
+            process = psutil.Process(pid)
+            processes.append(process)
+        except psutil.NoSuchProcess:
+            continue
 
     renku_processes = []
     for proc in processes:
