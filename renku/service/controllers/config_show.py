@@ -43,8 +43,8 @@ class ShowConfigCtrl(ServiceCtrl, ReadOperationMixin):
     def renku_op(self):
         """Renku operation for the controller."""
         read_config_command = read_config().build()
-        local_config = read_config_command.execute(None, config_filter=ConfigFilter.LOCAL_ONLY, as_string=False)
-        default_config = read_config_command.execute(None, config_filter=ConfigFilter.DEFAULT_ONLY, as_string=False)
+        local_config = read_config_command.execute(key=None, config_filter=ConfigFilter.LOCAL_ONLY, as_string=False)
+        default_config = read_config_command.execute(key=None, config_filter=ConfigFilter.DEFAULT_ONLY, as_string=False)
         return {"config": local_config.output, "default": default_config.output}
 
     def to_response(self):

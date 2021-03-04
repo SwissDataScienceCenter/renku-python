@@ -45,7 +45,7 @@ class DatasetsRemoveCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        result = remove_dataset().with_commit_message(self.ctx["commit_message"]).build().execute(self.ctx["name"])
+        result = remove_dataset().with_commit_message(self.ctx["commit_message"]).build().execute(name=self.ctx["name"])
         return result.output
 
     def to_response(self):

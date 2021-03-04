@@ -35,8 +35,8 @@ def user_project_clone(cache, user_data, project_data):
         project_clone_command()
         .build()
         .execute(
-            project_data["url_with_auth"],
-            project.abs_path,
+            url=project_data["url_with_auth"],
+            path=project.abs_path,
             depth=project_data["depth"] if project_data["depth"] != 0 else None,
             raise_git_except=True,
             config={"user.name": project_data["fullname"], "user.email": project_data["email"],},

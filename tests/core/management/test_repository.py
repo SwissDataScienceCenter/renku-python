@@ -28,7 +28,7 @@ def test_latest_version(project):
     """Test returning the latest version of `SoftwareAgent`."""
     from renku import __version__
 
-    create_dataset().build().execute("ds1", title="", description="", creators=[])
+    create_dataset().build().execute(name="ds1", title="", description="", creators=[])
 
     agent_version = LocalClient(project).latest_agent
     assert __version__ == agent_version
@@ -40,7 +40,7 @@ def test_latest_version_user_commits(project):
 
     from renku import __version__
 
-    create_dataset().build().execute("ds1", title="", description="", creators=[])
+    create_dataset().build().execute(name="ds1", title="", description="", creators=[])
 
     myfile = Path("myfile")
     myfile.write_text("123")

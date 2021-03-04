@@ -162,15 +162,15 @@ def test_dataset_serialization(client_with_datasets):
 
 def test_create_dataset_custom_message(project):
     """Test create dataset custom message."""
-    create_dataset().with_commit_message("my dataset").build().execute("ds1", title="", description="", creators=[])
+    create_dataset().with_commit_message("dataset-1").build().execute(name="ds1", title="", description="", creators=[])
 
     last_commit = Repo(".").head.commit
-    assert "my dataset" == last_commit.message
+    assert "dataset-1" == last_commit.message
 
 
 def test_list_datasets_default(project):
     """Test a default dataset listing."""
-    create_dataset().with_commit_message("my dataset").build().execute("ds1", title="", description="", creators=[])
+    create_dataset().with_commit_message("dataset-1").build().execute(name="ds1", title="", description="", creators=[])
 
     datasets = list_datasets().build().execute().output
 
@@ -180,11 +180,11 @@ def test_list_datasets_default(project):
 
 def test_list_files_default(project, tmpdir):
     """Test a default file listing."""
-    create_dataset().with_commit_message("my dataset").build().execute("ds1", title="", description="", creators=[])
+    create_dataset().with_commit_message("dataset-1").build().execute(name="ds1", title="", description="", creators=[])
     data_file = tmpdir / Path("some-file")
     data_file.write_text("1,2,3", encoding="utf-8")
 
-    add_to_dataset().build().execute([str(data_file)], "ds1")
+    add_to_dataset().build().execute(urls=[str(data_file)], name="ds1")
     files = list_files().build().execute(datasets=["ds1"]).output
 
     assert isinstance(files, list)
@@ -194,11 +194,11 @@ def test_list_files_default(project, tmpdir):
 def test_unlink_default(directory_tree, client):
     """Test unlink default behaviour."""
     with chdir(client.path):
-        create_dataset().build().execute("dataset")
-        add_to_dataset().build().execute([str(directory_tree / "dir1")], "dataset")
+        create_dataset().build().execute(name="dataset")
+        add_to_dataset().build().execute(urls=[str(directory_tree / "dir1")], name="dataset")
 
     with pytest.raises(ParameterError):
-        file_unlink().build().execute("dataset", (), ())
+        file_unlink().build().execute(name="dataset", include=(), exclude=())
 
 
 def test_mutate(client):

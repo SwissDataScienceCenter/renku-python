@@ -54,7 +54,7 @@ def githooks():
 def install(force):
     """Install Git hooks."""
     communicator = ClickCallback()
-    install_githooks_command().with_communicator(communicator).build().execute(force)
+    install_githooks_command().with_communicator(communicator).build().execute(force=force)
     click.secho("OK", fg="green")
 
 

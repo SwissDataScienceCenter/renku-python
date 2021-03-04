@@ -105,7 +105,7 @@ class Command:
         if result.error:
             raise result.error
 
-    def execute(self, *args, **kwargs):
+    def execute(self, **kwargs):
         """Execute the wrapped operation.
 
         First executes `pre_hooks` in ascending `order`, passing a read/write context between them.
@@ -121,14 +121,14 @@ class Command:
 
             for o in order:
                 for hook in self.pre_hooks[o]:
-                    hook(self, context, *args, **kwargs)
+                    hook(self, context, **kwargs)
 
         output = None
         error = None
 
         try:
             with context["stack"]:
-                output = context["click_context"].invoke(self._operation, context["client"], *args, **kwargs)
+                output = context["click_context"].invoke(self._operation, context["client"], **kwargs)
         except errors.RenkuException as e:
             error = e
 
@@ -139,7 +139,7 @@ class Command:
 
             for o in order:
                 for hook in self.post_hooks[o]:
-                    hook(self, context, result, *args, **kwargs)
+                    hook(self, context, result, **kwargs)
 
         return result
 

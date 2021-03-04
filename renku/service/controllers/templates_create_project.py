@@ -135,17 +135,17 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
 
         with click_context(new_project_path, "create_from_template"):
             create_from_template_local_command().build().execute(
-                source_path,
-                self.ctx["project_name"],
-                provided_parameters,
-                self.default_metadata,
-                self.template_version,
-                self.template.get("immutable_template_files", []),
-                self.template.get("allow_template_update", False),
-                self.git_user,
-                self.ctx["url"],
-                self.ctx["ref"],
-                "service",
+                template_path=source_path,
+                name=self.ctx["project_name"],
+                metadata=provided_parameters,
+                default_metadata=self.default_metadata,
+                template_version=self.template_version,
+                immutable_template_files=self.template.get("immutable_template_files", []),
+                automated_template_update=self.template.get("allow_template_update", False),
+                user=self.git_user,
+                source=self.ctx["url"],
+                ref=self.ctx["ref"],
+                invoked_from="service",
             )
 
         self.new_project_push(new_project_path)

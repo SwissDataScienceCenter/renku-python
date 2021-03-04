@@ -47,7 +47,9 @@ def dataset_import(
             communicator = ServiceCallback(user_job=user_job)
 
             command = import_dataset().with_commit_message(f"service: dataset import {dataset_uri}")
-            command.with_communicator(communicator).build().execute(dataset_uri, name, extract, yes=True)
+            command.with_communicator(communicator).build().execute(
+                uri=dataset_uri, name=name, extract=extract, yes=True
+            )
 
             worker_log.debug("operation successful - syncing with remote")
             _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")

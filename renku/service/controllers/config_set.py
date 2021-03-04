@@ -42,7 +42,7 @@ class SetConfigCtrl(ServiceCtrl, ReadWithSyncOperation):
     def renku_op(self):
         """Renku operation for the controller."""
         update_config_command = update_multiple_config().build()
-        update_config_command.execute(self.ctx["config"])
+        update_config_command.execute(values=self.ctx["config"])
 
         return {}
 

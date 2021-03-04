@@ -154,7 +154,7 @@ def show(key, local_only, global_only, default_only):
     elif default_only:
         config_filter = ConfigFilter.DEFAULT_ONLY
 
-    value = read_config().build().execute(key, config_filter=config_filter)
+    value = read_config().build().execute(key=key, config_filter=config_filter)
     click.secho(value.output)
 
 
@@ -167,7 +167,7 @@ def set_(key, value, global_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
-    update_config().build().execute(key, value=value, global_only=global_only)
+    update_config().build().execute(key=key, value=value, global_only=global_only)
     click.secho("OK", fg="green")
 
 
@@ -179,5 +179,5 @@ def remove(key, global_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
-    update_config().build().execute(key, remove=True, global_only=global_only)
+    update_config().build().execute(key=key, remove=True, global_only=global_only)
     click.secho("OK", fg="green")

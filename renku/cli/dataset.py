@@ -591,7 +591,11 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 )
 def ls_files(names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    result = list_files().build().execute(names, creators, include, exclude, format, columns)
+    result = (
+        list_files()
+        .build()
+        .execute(datasets=names, creators=creators, include=include, exclude=exclude, format=format, columns=columns)
+    )
     click.echo(result.output)
 
 
@@ -611,7 +615,7 @@ def unlink(name, include, exclude, yes):
 @click.argument("name")
 def remove(name):
     """Delete a dataset."""
-    remove_dataset().build().execute(name)
+    remove_dataset().build().execute(name=name)
     click.secho("OK", fg="green")
 
 
@@ -622,7 +626,7 @@ def remove(name):
 @click.option("--force", is_flag=True, help="Allow overwriting existing tags.")
 def tag(name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset().build().execute(name, tag, description, force)
+    tag_dataset().build().execute(name=name, tag=tag, description=description, force=force)
     click.secho("OK", fg="green")
 
 
@@ -631,7 +635,7 @@ def tag(name, tag, description, force):
 @click.argument("tags", nargs=-1)
 def remove_tags(name, tags):
     """Remove tags from a dataset."""
-    remove_dataset_tags().build().execute(name, tags)
+    remove_dataset_tags().build().execute(name=name, tags=tags)
     click.secho("OK", fg="green")
 
 
@@ -640,7 +644,7 @@ def remove_tags(name, tags):
 @click.option("--format", type=click.Choice(DATASET_TAGS_FORMATS), default="tabular", help="Choose an output format.")
 def ls_tags(name, format):
     """List all tags of a dataset."""
-    result = list_tags().build().execute(name, format)
+    result = list_tags().build().execute(name=name, format=format)
     click.echo(result.output)
 
 

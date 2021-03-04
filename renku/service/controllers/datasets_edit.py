@@ -53,10 +53,10 @@ class DatasetsEditCtrl(ServiceCtrl, ReadWithSyncOperation):
             .with_commit_message(self.ctx["commit_message"])
             .build()
             .execute(
-                self.ctx["name"],
-                self.ctx.get("title"),
-                self.ctx.get("description"),
-                self.ctx.get("creators"),
+                name=self.ctx["name"],
+                title=self.ctx.get("title"),
+                description=self.ctx.get("description"),
+                creators=self.ctx.get("creators"),
                 keywords=self.ctx.get("keywords"),
                 images=self.ctx.get("images"),
                 safe_image_paths=[user_cache_dir],

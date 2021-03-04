@@ -34,11 +34,11 @@ def test_dataset_add_command(project, tmp_path):
         .build()
     )
 
-    create_dataset().with_commit_message("my dataset").build().execute("ds1", title="", description="", creators=[])
+    create_dataset().with_commit_message("dataset-1").build().execute(name="ds1", title="", description="", creators=[])
     data_file = tmp_path / "some-file"
     data_file.write_text("1,2,3", encoding="utf-8")
 
-    result = add_to_dataset.execute([str(data_file)], "ds1")
+    result = add_to_dataset.execute(urls=[str(data_file)], name="ds1")
     assert result.status == CommandResult.SUCCESS
     assert not result.error
 

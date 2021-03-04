@@ -157,4 +157,4 @@ def migrate(migrate_all, paths):
         if not click.confirm("The following files will be moved to Git LFS:\n\t" + "\n\t".join(lfs_paths)):
             exit(0)
 
-    fix_lfs_command().build().execute(paths)
+    fix_lfs_command().build().execute(paths=paths)
