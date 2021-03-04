@@ -46,11 +46,11 @@ def test_config_view_show(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_config_view_show_remote(svc_client_with_repo, it_remote_repo):
+def test_config_view_show_remote(svc_client_with_repo, it_remote_repo_url):
     """Check config show view."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    params = dict(git_url=it_remote_repo)
+    params = dict(git_url=it_remote_repo_url)
 
     response = svc_client.get("/config.show", query_string=params, headers=headers,)
 

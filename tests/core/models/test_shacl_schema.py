@@ -26,11 +26,11 @@ from renku.core.utils.shacl import validate_graph
 
 def test_dataset_shacl(tmpdir, runner, project, client):
     """Test dataset metadata structure."""
-    force_dataset_path = Path(__file__).parent.parent.parent / "fixtures" / "force_dataset_shacl.json"
+    force_dataset_path = Path(__file__).parent.parent.parent / "data" / "force_dataset_shacl.json"
 
-    force_datasetfile_path = Path(__file__).parent.parent.parent / "fixtures" / "force_datasetfile_shacl.json"
+    force_datasetfile_path = Path(__file__).parent.parent.parent / "data" / "force_datasetfile_shacl.json"
 
-    force_datasettag_path = Path(__file__).parent.parent.parent / "fixtures" / "force_datasettag_shacl.json"
+    force_datasettag_path = Path(__file__).parent.parent.parent / "data" / "force_datasettag_shacl.json"
 
     runner.invoke(cli, ["dataset", "create", "dataset"])
 
@@ -70,7 +70,7 @@ def test_project_shacl(project, client):
     """Test project metadata structure."""
     from renku.core.models.provenance.agents import Person
 
-    path = Path(__file__).parent.parent.parent / "fixtures" / "force_project_shacl.json"
+    path = Path(__file__).parent.parent.parent / "data" / "force_project_shacl.json"
 
     project = client.project
     project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
