@@ -19,6 +19,7 @@
 import functools
 import shutil
 import sys
+import traceback
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict
@@ -43,7 +44,7 @@ from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
 from renku.core.utils.contexts import measure
-from renku.core.utils.migrate import read_project_version_from_yaml
+from renku.core.utils.migrate import MigrationType, read_project_version_from_yaml
 from renku.core.utils.scm import git_unicode_unescape
 from renku.core.utils.shacl import validate_graph
 
@@ -60,8 +61,8 @@ def generate_graph():
     return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
 
 
-def _generate_graph(client, force):
-    """Generate graph metadata."""
+def _generate_graph(client, force=False):
+    """Generate graph and dataset provenance metadata."""
 
     def process_workflows(commit, provenance_graph):
         for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.yaml"):
@@ -82,6 +83,7 @@ def _generate_graph(client, force):
     def process_datasets(commit):
         files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
         paths = [git_unicode_unescape(f.a_path) for f in files_diff]
+        paths = [p for p in paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
         deleted_paths = [git_unicode_unescape(f.a_path) for f in files_diff if f.change_type == "A"]
 
         datasets, deleted_datasets = _fetch_datasets(client, commit.hexsha, paths=paths, deleted_paths=deleted_paths)
@@ -112,8 +114,15 @@ def _generate_graph(client, force):
     for n, commit in enumerate(commits, start=1):
         communication.echo(f"Processing commits {n}/{n_commits}", end="\r")
 
-        process_workflows(commit, provenance_graph)
-        process_datasets(commit)
+        try:
+            process_workflows(commit, provenance_graph)
+            process_datasets(commit)
+        except errors.MigrationError:
+            communication.echo("")
+            communication.warn(f"Cannot process commit '{commit.hexsha}' - Migration failed: {traceback.format_exc()}")
+        except Exception:
+            communication.echo("")
+            communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
     client.dependency_graph.to_json()
     provenance_graph.to_json()
@@ -294,8 +303,11 @@ def _fetch_datasets(client, revision, paths, deleted_paths):
         try:
             project_version = read_project_version()
             client.set_temporary_datasets_path(datasets_path)
+            communication.disable()
+            client.migration_type = MigrationType.DATASETS
             migrate(client, project_version=project_version, skip_template_update=True, skip_docker_update=True)
         finally:
+            communication.enable()
             client.clear_temporary_datasets_path()
 
         return existing, deleted

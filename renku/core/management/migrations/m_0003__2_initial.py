@@ -106,10 +106,14 @@ def _migrate_broken_dataset_paths(client):
             ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True)
             ref.set_reference(expected_path / client.METADATA)
 
-            if not expected_path.exists():
-                old_dataset_path = dataset.path
+        if not expected_path.exists():
+            old_dataset_path = dataset.path
+            if not client.is_using_temporary_datasets_path():
                 expected_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(old_dataset_path, expected_path)
+            else:
+                expected_path.mkdir(parents=True, exist_ok=True)
+                shutil.copy(Path(old_dataset_path) / client.METADATA, expected_path)
 
         dataset.path = os.path.relpath(expected_path, client.path)
 

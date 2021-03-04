@@ -19,10 +19,11 @@
 
 import pathlib
 import uuid
+from pathlib import Path
 from typing import List, Union
 from urllib.parse import quote, urljoin, urlparse
 
-from git import GitCommandError
+from git import Git, GitCommandError
 from marshmallow import EXCLUDE
 
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
@@ -265,9 +266,22 @@ def _get_object_hash(revision, path, client):
     try:
         return client.repo.git.rev_parse(f"{revision}:{str(path)}")
     except GitCommandError:
-        # NOTE: Either the file was not there when the command ran but was there when workflows were migrated (this
-        # can happen only for Usage) or the project is broken. We assume the former here.
-        return None
+        # NOTE: The file can be in a submodule or it was not there when the command ran but was there when workflows
+        # were migrated (this can happen only for Usage); the project might be broken too.
+        return _get_object_hash_from_submodules(path, client)
+
+
+def _get_object_hash_from_submodules(path, client):
+    for submodule in client.repo.submodules:
+        try:
+            path_in_submodule = Path(path).relative_to(submodule.path)
+        except ValueError:
+            continue
+        else:
+            try:
+                return Git(submodule.abspath).rev_parse(f"HEAD:{str(path_in_submodule)}")
+            except GitCommandError:
+                pass
 
 
 def _extract_commit_sha(entity_id: str):
