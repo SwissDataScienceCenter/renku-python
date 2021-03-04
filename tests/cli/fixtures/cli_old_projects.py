@@ -44,7 +44,6 @@ def clone_compressed_repository(base_path, name):
 @pytest.fixture(
     params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git"]
 )
-@pytest.mark.usefixtures("request", "tmp_path")
 def old_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
     from renku.core.utils.contexts import chdir
@@ -83,7 +82,6 @@ def old_project(request, tmp_path):
         },
     ],
 )
-@pytest.mark.usefixtures("request", "tmp_path")
 def old_workflow_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
     from renku.core.utils.contexts import chdir
@@ -103,7 +101,6 @@ def old_workflow_project(request, tmp_path):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("tmp_path")
 def old_dataset_project(tmp_path):
     """Prepares a testing repo created by old version of renku."""
     from renku import LocalClient
@@ -118,7 +115,6 @@ def old_dataset_project(tmp_path):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("request", "tmp_path")
 def old_repository_with_submodules(request, tmp_path):
     """Prepares a testing repo that has datasets using git submodules."""
     import tarfile
@@ -140,7 +136,6 @@ def old_repository_with_submodules(request, tmp_path):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("client")
 def unsupported_project(client):
     """A client with a newer project version."""
     with client.with_metadata() as project:

@@ -45,7 +45,6 @@ def _isolated_filesystem(tmpdir, name=None, delete=True):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("tmpdir")
 def renku_path(tmpdir):
     """Temporary instance path."""
     path = str(tmpdir.mkdir("renku"))
@@ -54,7 +53,6 @@ def renku_path(tmpdir):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("renku_path", "monkeypatch")
 def instance_path(renku_path, monkeypatch):
     """Temporary instance path."""
     with monkeypatch.context() as m:
@@ -63,7 +61,6 @@ def instance_path(renku_path, monkeypatch):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("tmpdir")
 def repository(tmpdir):
     """Yield a Renku repository."""
     from click.testing import CliRunner
@@ -79,7 +76,6 @@ def repository(tmpdir):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("repository")
 def project(repository):
     """Create a test project."""
     from click.testing import CliRunner
@@ -105,7 +101,6 @@ def project(repository):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("project")
 def client(project):
     """Return a Renku repository."""
     from renku.core.management import LocalClient

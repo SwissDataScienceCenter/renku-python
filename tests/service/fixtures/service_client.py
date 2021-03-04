@@ -36,7 +36,6 @@ def real_sync():
 
 
 @pytest.fixture(scope="module")
-@pytest.mark.usefixtures("mock_redis")
 def svc_client(mock_redis):
     """Renku service client."""
     from renku.service.entrypoint import create_app
@@ -55,8 +54,6 @@ def svc_client(mock_redis):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("mock_redis")
-@pytest.mark.usefixtures("identity_headers")
 def svc_client_cache(mock_redis, identity_headers):
     """Service jobs fixture."""
     from renku.service.entrypoint import create_app
@@ -124,7 +121,6 @@ def authentication_headers_raw():
 
 
 @pytest.fixture(scope="module")
-@pytest.mark.usefixtures("authentication_headers_raw")
 def authentication_headers(authentication_headers_raw):
     """Get authentication headers."""
     identification = {
@@ -137,7 +133,6 @@ def authentication_headers(authentication_headers_raw):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_client_cache")
 def svc_client_with_user(svc_client_cache):
     """Service client with a predefined user."""
     from werkzeug.utils import secure_filename
@@ -153,14 +148,12 @@ def svc_client_with_user(svc_client_cache):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_client_with_user", "real_sync")
 def svc_synced_client(svc_client_with_user, real_sync):
     """Renku service client with remote sync."""
     yield svc_client_with_user
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_client", "mock_redis", "identity_headers", "template")
 def svc_client_with_templates(svc_client, mock_redis, identity_headers, template):
     """Setup and teardown steps for templates tests."""
 
@@ -168,7 +161,6 @@ def svc_client_with_templates(svc_client, mock_redis, identity_headers, template
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_client_with_templates")
 def svc_client_templates_creation(svc_client_with_templates):
     """Setup and teardown steps for templates tests."""
     from renku.core.utils.requests import retry

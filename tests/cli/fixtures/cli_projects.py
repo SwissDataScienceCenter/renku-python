@@ -36,7 +36,6 @@ def sleep_after():
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("client", "tmpdir")
 def client_with_remote(client, tmpdir):
     """Return a client with a (local) remote set."""
     # create remote
@@ -54,7 +53,6 @@ def client_with_remote(client, tmpdir):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("client")
 def no_lfs_warning(client):
     """Sets show_lfs_message to False.
 
@@ -67,7 +65,6 @@ def no_lfs_warning(client):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("project")
 def client_with_lfs_warning(project):
     """Return a Renku repository with lfs warnings active."""
     from renku.core.management import LocalClient
@@ -82,7 +79,6 @@ def client_with_lfs_warning(project):
 
 
 @pytest.fixture(params=[".", "some/sub/directory"])
-@pytest.mark.usefixtures("project", "request")
 def subdirectory(project, request):
     """Runs tests in root directory and a subdirectory."""
     from renku.core.utils.contexts import chdir

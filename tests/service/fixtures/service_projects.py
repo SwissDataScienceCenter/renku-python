@@ -23,7 +23,6 @@ import pytest
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("project")
 def project_metadata(project):
     """Create project with metadata."""
     metadata = {

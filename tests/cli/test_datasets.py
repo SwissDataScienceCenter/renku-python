@@ -1959,7 +1959,6 @@ def test_datasets_provenance_add_file(runner, client_with_new_graph, directory_t
     assert {"file1", "file2", "file3"} == {f.filename for f in dataset.files}
 
 
-@pytest.mark.usefixtures("mock_kg", "client", "runner")
 @pytest.mark.serial
 def test_unauthorized_import(mock_kg, client, runner):
     """Test importing without a valid token."""
@@ -1974,7 +1973,6 @@ def test_unauthorized_import(mock_kg, client, runner):
     assert "renku login renku.ch" in result.output
 
 
-@pytest.mark.usefixtures("mock_kg", "client", "runner")
 @pytest.mark.serial
 def test_authorized_import(mock_kg, client, runner):
     """Test importing with a valid token.

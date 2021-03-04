@@ -35,7 +35,6 @@ from tests.service.views.test_dataset_views import assert_rpc_response
 
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/428c3626-1c56-463d-8753-336470cc6917/"])
 @pytest.mark.integration
-@pytest.mark.usefixtures("svc_client_with_repo")
 @flaky(max_runs=30, min_passes=1)
 def test_dataset_url_import_job(url, svc_client_with_repo):
     """Test dataset import via url."""

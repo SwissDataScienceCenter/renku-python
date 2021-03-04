@@ -32,7 +32,6 @@ def local_client():
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_client", "mock_redis")
 def reset_environment(svc_client, mock_redis):
     """Restore environment variable to their values before test execution."""
     current_environment = os.environ.copy()

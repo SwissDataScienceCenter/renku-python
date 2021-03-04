@@ -21,7 +21,6 @@ import pytest
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("client", "run")
 def renku_cli(client, run):
     """Return a callable Renku CLI.
 

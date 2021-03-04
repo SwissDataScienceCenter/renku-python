@@ -24,7 +24,6 @@ import pytest
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("directory_tree")
 def datapack_zip(directory_tree):
     """Returns dummy data folder as a zip archive."""
     from renku.core.utils.contexts import chdir
@@ -37,7 +36,6 @@ def datapack_zip(directory_tree):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("directory_tree")
 def datapack_tar(directory_tree):
     """Returns dummy data folder as a tar archive."""
     from renku.core.utils.contexts import chdir
@@ -50,7 +48,6 @@ def datapack_tar(directory_tree):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("directory_tree")
 def datapack_gz(directory_tree):
     """Returns dummy data folder as a tar archive."""
     from renku.core.utils.contexts import chdir

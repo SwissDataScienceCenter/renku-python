@@ -28,7 +28,6 @@ import requests
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("client")
 def zenodo_sandbox(client):
     """Configure environment to use Zenodo sandbox environment."""
     os.environ["ZENODO_USE_SANDBOX"] = "true"
@@ -41,7 +40,6 @@ def zenodo_sandbox(client):
 
 
 @pytest.fixture(scope="module")
-@pytest.mark.usefixtures("request")
 def dataverse_demo_cleanup(request):
     """Delete all Dataverse datasets at the end of the test session."""
     from renku.core.utils.requests import retry
@@ -79,7 +77,6 @@ def dataverse_demo_cleanup(request):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("client", "dataverse_demo_cleanup")
 def dataverse_demo(client, dataverse_demo_cleanup):
     """Configure environment to use Dataverse demo environment."""
     access_token = os.getenv("DATAVERSE_ACCESS_TOKEN", "")

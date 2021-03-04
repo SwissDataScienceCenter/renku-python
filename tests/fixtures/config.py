@@ -35,7 +35,6 @@ IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("monkeypatch", "tmpdir")
 def global_config_dir(monkeypatch, tmpdir):
     """Create a temporary renku config directory."""
     from renku.core.management.config import ConfigManagerMixin

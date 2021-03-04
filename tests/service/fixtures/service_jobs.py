@@ -22,7 +22,6 @@ import pytest
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_client", "mock_redis")
 def service_job(svc_client, mock_redis):
     """Ensure correct environment during testing of service jobs."""
     old_environ = dict(os.environ)

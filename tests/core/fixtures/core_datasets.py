@@ -40,7 +40,6 @@ def dataset_responses():
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("client", "directory_tree")
 def client_with_datasets(client, directory_tree):
     """A client with datasets."""
     from renku.core.models.provenance.agents import Person

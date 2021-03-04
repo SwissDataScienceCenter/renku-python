@@ -63,7 +63,6 @@ def integration_repo(headers, project_id, url_components):
 
 
 @pytest.fixture(scope="module")
-@pytest.mark.usefixtures("svc_client", "mock_redis", "identity_headers", "it_remote_repo_url")
 def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_repo_url):
     """Setup and teardown steps for integration tests."""
     from renku.core.models.git import GitURL
@@ -92,7 +91,6 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_re
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("integration_lifecycle")
 def svc_client_setup(integration_lifecycle):
     """Service client setup."""
     svc_client, headers, project_id, url_components = integration_lifecycle
@@ -113,7 +111,6 @@ def svc_client_setup(integration_lifecycle):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_client_setup")
 def svc_client_with_repo(svc_client_setup):
     """Service client with a remote repository."""
     svc_client, headers, project_id, url_components = svc_client_setup
@@ -127,7 +124,6 @@ def svc_client_with_repo(svc_client_setup):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_client", "identity_headers", "it_protected_repo_url")
 def svc_protected_repo(svc_client, identity_headers, it_protected_repo_url):
     """Service client with migrated remote protected repository."""
     payload = {
@@ -148,7 +144,6 @@ def svc_protected_repo(svc_client, identity_headers, it_protected_repo_url):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_synced_client", "it_protected_repo_url")
 def svc_protected_old_repo(svc_synced_client, it_protected_repo_url):
     """Service client with remote protected repository."""
     svc_client, identity_headers, cache, user = svc_synced_client

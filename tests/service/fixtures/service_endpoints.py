@@ -61,7 +61,6 @@ import pytest
         },
     ]
 )
-@pytest.mark.usefixtures("request", "svc_client", "mock_redis")
 def service_allowed_endpoint(request, svc_client, mock_redis):
     """Ensure allowed methods and correct headers."""
     methods = {
@@ -79,7 +78,6 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("svc_client_with_repo")
 def unlink_file_setup(svc_client_with_repo):
     """Setup for testing of unlinking of a file."""
     from tests.utils import make_dataset_add_payload
