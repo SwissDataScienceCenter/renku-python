@@ -83,7 +83,7 @@
                 "sha256:5311c5c1769d16f46a4270e68a72147f6141fe8b3a1e10c718ac9559925b6624",
                 "sha256:981db6ecd8483c48725bf505c1164d5a531b698c78b14b9e9e8be693f6c9d63f"
             ],
-            "markers": "python_version < '4.0' and python_full_version >= '3.6.1'",
+            "markers": "python_full_version >= '3.6.1' and python_full_version < '4.0.0'",
             "version": "==0.3.7"
         },
         "certifi": {
@@ -215,7 +215,7 @@
                 "sha256:161b841809860cc5b9212c23a5f70db8cac932895208c4bcdf1e4c11be2517f1",
                 "sha256:db6ef5018c84ccff1856bca06b4a6065e02a50b4b21363527c26f9d584cd3889"
             ],
-            "markers": "python_version >= '3.6' and python_version < '4.0'",
+            "markers": "python_version >= '3.6' and python_full_version < '4.0.0'",
             "version": "==3.0.20210124104916"
         },
         "decorator": {
@@ -687,7 +687,7 @@
                 "sha256:13cdbb6b72798be9ef30caf460d3949bf057d9f073f73cc853908d50cc31229f",
                 "sha256:ca1008c18e91c2d0345764ddb871cc284feadc467241fbb468f14280b791388a"
             ],
-            "markers": "python_version >= '3.6' and python_version < '4.0'",
+            "markers": "python_version >= '3.6' and python_full_version < '4.0.0'",
             "version": "==9.3.0"
         },
         "ruamel.yaml": {
@@ -816,7 +816,7 @@
                 "sha256:8d7eaa5a82a1cac232164990f04874c594c9453ec55eef02eab885aa02fc17a2",
                 "sha256:f5321fbe4bf3fefa0efd0bfe7fb14e90909eb62a48ccda331726b4319897dd5e"
             ],
-            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4' and python_version < '4.0'",
+            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4' and python_full_version < '4.0.0'",
             "version": "==1.25.11"
         },
         "wcmatch": {
@@ -948,7 +948,7 @@
                 "sha256:8d7eaa5a82a1cac232164990f04874c594c9453ec55eef02eab885aa02fc17a2",
                 "sha256:f5321fbe4bf3fefa0efd0bfe7fb14e90909eb62a48ccda331726b4319897dd5e"
             ],
-            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4' and python_version < '4.0'",
+            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4' and python_full_version < '4.0.0'",
             "version": "==1.25.11"
         },
         "websocket-client": {
