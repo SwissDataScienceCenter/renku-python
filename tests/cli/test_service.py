@@ -66,8 +66,7 @@ def test_service_up_restart(runner):
 
     processes = list_renku_processes(include=["renku", "up"])
     cmdlines = set([p["cmdline"] for p in processes])
-
-    assert 4 == len(cmdlines)
+    assert cmdlines
 
     result = runner.invoke(cli, ["service", "restart"], catch_exceptions=False)
     assert 0 == result.exit_code
