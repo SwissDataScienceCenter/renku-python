@@ -95,6 +95,28 @@ def check_cmdline(cmdline, include=None):
     return False
 
 
+def is_renku_process(process, include):
+    """Return true if this is a renku process."""
+    process_name = process.name().lower()
+    if process_name == "renku":
+        return True
+    elif process_name != "python":
+        return False
+
+    try:
+        command_line = process.cmdline()
+        if not check_cmdline(command_line, include):
+            return False
+
+        for line in command_line:
+            if line.endswith("renku"):
+                return True
+    except (psutil.AccessDenied, psutil.NoSuchProcess):
+        pass
+
+    return False
+
+
 def list_renku_processes(include=None):
     """List renku processes."""
     include = include or []
@@ -110,15 +132,7 @@ def list_renku_processes(include=None):
         except psutil.NoSuchProcess:
             continue
 
-    renku_processes = []
-    for proc in processes:
-        try:
-            if check_cmdline(proc.cmdline(), include) and (
-                proc.name() == "renku" or check_cmdline(proc.cmdline(), ["renku"])
-            ):
-                renku_processes.append(proc)
-        except (psutil.AccessDenied, psutil.NoSuchProcess):
-            pass
+    renku_processes = [proc for proc in processes if is_renku_process(proc, include)]
 
     renku_proc_info = sorted(
         [
