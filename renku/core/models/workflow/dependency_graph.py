@@ -58,7 +58,8 @@ class DependencyGraph:
         assert not any([p for p in self._plans if p.id_ == plan.id_]), f"Identifier exists {plan.id_}"
         self._add_helper(plan)
 
-        assert networkx.algorithms.dag.is_directed_acyclic_graph(self._graph)
+        # FIXME some existing projects have cyclic dependency; make this check outside this model.
+        # assert networkx.algorithms.dag.is_directed_acyclic_graph(self._graph)
 
         return plan
 
