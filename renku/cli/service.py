@@ -98,6 +98,7 @@ def check_cmdline(cmdline, include=None):
 def is_renku_process(process, include):
     """Return true if this is a renku process."""
     process_name = process.name().lower()
+
     if process_name == "renku":
         return True
     elif process_name != "python":
@@ -121,18 +122,9 @@ def list_renku_processes(include=None):
     """List renku processes."""
     include = include or []
 
-    processes = []
-    for pid in sorted(psutil.pids()):
-        try:
-            process = psutil.Process(pid)
-            processes.append(process)
-        except psutil.ZombieProcess:
-            os.kill(pid, signal.SIGKILL)
-            continue
-        except psutil.NoSuchProcess:
-            continue
-
-    renku_processes = [proc for proc in processes if is_renku_process(proc, include)]
+    renku_processes = [
+        proc for proc in [psutil.Process(pid) for pid in sorted(psutil.pids())] if is_renku_process(proc, include)
+    ]
 
     renku_proc_info = sorted(
         [
@@ -144,7 +136,6 @@ def list_renku_processes(include=None):
                 "mem_perct": proc.memory_percent(),
                 "cpu_perct": proc.cpu_percent(),
                 "num_threads": proc.num_threads(),
-                "num_fds": proc.num_fds(),
             }
             for proc in renku_processes
         ],
