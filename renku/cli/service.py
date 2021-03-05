@@ -35,6 +35,8 @@ from renku.core.utils.contexts import chdir
 RENKU_DAEMON_LOG_FILE = "renku.log"
 RENKU_DAEMON_ERR_FILE = "renku.err"
 
+SERVICE_COMPONENT_TAGS = ["api", "scheduler", "worker"]
+
 
 def run_api(addr="0.0.0.0", port=8080, timeout=600, is_debug=False):
     """Run service JSON-RPC API."""
@@ -86,7 +88,7 @@ def run_worker(queues):
 def check_cmdline(cmdline, include=None):
     """Check `cmdline` command of a process."""
     include = include or []
-    service_components = include + ["api", "scheduler", "worker"]
+    service_components = include + SERVICE_COMPONENT_TAGS
 
     for cmd in service_components:
         if cmd in cmdline:
@@ -99,7 +101,7 @@ def is_renku_process(process, include):
     """Return true if this is a renku process."""
     process_name = process.name().lower()
 
-    if process_name == "renku":
+    if process_name == "renku" and check_cmdline(process.cmdline(), include):
         return True
     elif process_name != "python":
         return False
@@ -112,6 +114,7 @@ def is_renku_process(process, include):
         for line in command_line:
             if line.endswith("renku"):
                 return True
+
     except (psutil.AccessDenied, psutil.NoSuchProcess):
         pass
 
@@ -122,9 +125,15 @@ def list_renku_processes(include=None):
     """List renku processes."""
     include = include or []
 
-    renku_processes = [
-        proc for proc in [psutil.Process(pid) for pid in sorted(psutil.pids())] if is_renku_process(proc, include)
-    ]
+    renku_processes_all = []
+    for pid in sorted(psutil.pids()):
+        try:
+            proc = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            continue
+
+        if is_renku_process(proc, include) and proc.status() != "zombie":
+            renku_processes_all.append(proc)
 
     renku_proc_info = sorted(
         [
@@ -137,7 +146,7 @@ def list_renku_processes(include=None):
                 "cpu_perct": proc.cpu_percent(),
                 "num_threads": proc.num_threads(),
             }
-            for proc in renku_processes
+            for proc in renku_processes_all
         ],
         key=lambda k: k["cmdline"],
     )
