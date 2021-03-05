@@ -24,7 +24,7 @@ from flaky import flaky
 from renku.cli import cli
 from renku.cli.service import list_renku_processes
 
-SVC_COMPONENTS_EXPECTED_BOOT_TIME = 5
+SVC_COMPONENTS_EXPECTED_BOOT_TIME = 15
 
 
 @pytest.mark.serial
@@ -53,7 +53,7 @@ def test_service_up_down(runner):
     assert 0 == len(processes)
 
 
-# @flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_service_up_restart(runner):
     """Check bringing service components up in daemon mode and restarting them."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
