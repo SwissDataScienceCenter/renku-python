@@ -27,4 +27,10 @@ def migrate(client):
 
 def _fix_dataset_metadata(client):
     for dataset in get_client_datasets(client):
+        dataset.files = _get_unique_files(dataset.files)
         dataset.to_yaml()
+
+
+def _get_unique_files(files):
+    mapping = {f.path: f for f in files}
+    return list(mapping.values())
