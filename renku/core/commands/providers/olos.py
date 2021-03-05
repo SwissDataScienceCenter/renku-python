@@ -56,7 +56,7 @@ class OLOSProvider(ProviderApi):
     def export_parameters():
         """Returns parameters that can be set for export."""
         return {
-            "olos-server": ("OLOS server base url.", str),
+            "dlcm-server": ("DLCM server base url.", str),
         }
 
     def find_record(self, uri, client=None):
@@ -67,7 +67,7 @@ class OLOSProvider(ProviderApi):
         """Create export manager for given dataset."""
         return OLOSExporter(dataset=dataset, access_token=access_token, server_url=self._server_url)
 
-    def set_parameters(self, client, *, olos_server=None, **kwargs):
+    def set_parameters(self, client, *, dlcm_server=None, **kwargs):
         """Set and validate required parameters for a provider."""
         CONFIG_BASE_URL = "server_url"
 
@@ -75,15 +75,15 @@ class OLOSProvider(ProviderApi):
             self._server_url = OLOS_SANDBOX_URL
             return
 
-        if not olos_server:
-            olos_server = client.get_value("olos", CONFIG_BASE_URL)
+        if not dlcm_server:
+            dlcm_server = client.get_value("olos", CONFIG_BASE_URL)
         else:
-            client.set_value("olos", CONFIG_BASE_URL, olos_server, global_only=True)
+            client.set_value("olos", CONFIG_BASE_URL, dlcm_server, global_only=True)
 
-        if not olos_server:
+        if not dlcm_server:
             raise errors.ParameterError("OLOS server URL is required.")
 
-        self._server_url = olos_server
+        self._server_url = dlcm_server
 
 
 @attr.s
@@ -150,13 +150,31 @@ class _OLOSDeposition:
     dataset_pid = attr.ib(kw_only=True, default=None)
     deposited_at = attr.ib(kw_only=True, default=None)
 
-    ORGANIZATIONAL_UNIT_PATH = "administration/admin/authorized-organizational-units"
-    DATASET_CREATE_PATH = "ingestion/preingest/deposits"
-    FILE_UPLOAD_PATH = "ingestion/preingest/deposits/{deposit_id}/upload"
+    deposition_base_url = attr.ib(kw_only=True, default=None)
+    admin_base_url = attr.ib(kw_only=True, default=None)
+
+    ORGANIZATIONAL_UNIT_PATH = "/authorized-organizational-units"
+    DATASET_CREATE_PATH = "/deposits"
+    FILE_UPLOAD_PATH = "/deposits/{deposit_id}/upload"
+    MODULES_PATH = "administration/preservation-planning/modules"
+
+    def __attrs_post_init__(self):
+        """Post init code."""
+        self._get_base_urls()
+
+    def _get_base_urls(self):
+        """Get base urls for different endpoints."""
+        url = self._make_url(self.server_url, api_path=self.MODULES_PATH)
+        response = self._get(url=url)
+        self._check_response(response)
+
+        response_data = response.json()
+        self.deposition_base_url = response_data["preingest"]
+        self.admin_base_url = response_data["admin"]
 
     def get_org_unit(self):
         """Get the org units of the user."""
-        url = self._make_url(api_path=self.ORGANIZATIONAL_UNIT_PATH)
+        url = self.admin_base_url + self.ORGANIZATIONAL_UNIT_PATH
 
         response = self._get(url=url)
         self._check_response(response)
@@ -179,7 +197,7 @@ class _OLOSDeposition:
 
     def create_dataset(self, metadata):
         """Create a dataset in OLOS."""
-        url = self._make_url(api_path=self.DATASET_CREATE_PATH)
+        url = self.deposition_base_url + self.DATASET_CREATE_PATH
 
         response = self._post(url=url, json=metadata)
         self._check_response(response)
@@ -196,7 +214,7 @@ class _OLOSDeposition:
         if self.dataset_pid is None:
             raise errors.ExportError("Dataset not created.")
 
-        url = self._make_url(self.FILE_UPLOAD_PATH.format(deposit_id=self.dataset_pid))
+        url = self.deposition_base_url + self.FILE_UPLOAD_PATH.format(deposit_id=self.dataset_pid)
 
         location = str(path_in_dataset.parent)
 
@@ -212,9 +230,9 @@ class _OLOSDeposition:
 
         return response
 
-    def _make_url(self, api_path, **query_params):
+    def _make_url(self, server_url, api_path, **query_params):
         """Create URL for creating a dataset."""
-        url_parts = urlparse.urlparse(self.server_url)
+        url_parts = urlparse.urlparse(server_url)
 
         query_params = urllib.parse.urlencode(query_params)
         url_parts = url_parts._replace(path=api_path, query=query_params)
