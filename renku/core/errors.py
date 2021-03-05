@@ -462,3 +462,23 @@ class RenkuSaveError(RenkuException):
 
 class DatasetImageError(RenkuException):
     """Raised when a local dataset image is not accessible."""
+
+
+class DatasetLockError(RenkuException):
+    """Raised when a dataset cannot be locked."""
+
+    def __init__(self, names):
+        if isinstance(names, str):
+            names = f": {names}"
+        else:
+            names = "s: " + ", ".join(names)
+        msg = f"Cannot acquire lock on dataset{names}\nWait for other Renku processes to finish and then try again."
+        super().__init__(msg)
+
+
+class RebaseError(RenkuException):
+    """Raised when an isolated worktree branch cannot be rebased on the main branch."""
+
+    def __init__(self, branch):
+        msg = f"Cannot rebase changes from '{branch}' onto the main branch."
+        super().__init__(msg)

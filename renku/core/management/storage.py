@@ -213,8 +213,26 @@ class StorageApiMixin(RepositoryApiMixin):
                     raise errors.GitLFSError(f"Error executing 'git lfs track: \n {result.stdout}")
             except (KeyboardInterrupt, OSError) as e:
                 raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
-            return track_paths
-        return []
+
+        self._add_merge_attribute()
+
+        return track_paths
+
+    def _add_merge_attribute(self):
+        attributes_path = self.path / ".gitattributes"
+        line = ".gitattributes merge=union"
+        try:
+            content = attributes_path.read_text()
+        except FileNotFoundError:
+            has_union_merge = False
+        else:
+            has_union_merge = line in content
+
+        if has_union_merge:
+            return
+
+        with open(attributes_path, "a+") as f:
+            f.write(f"{line}\n")
 
     @check_external_storage_wrapper
     def untrack_paths_from_storage(self, *paths):

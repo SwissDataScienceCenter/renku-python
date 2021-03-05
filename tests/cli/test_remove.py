@@ -27,7 +27,7 @@ def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory):
 
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "testing"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, result.output
     assert "OK" in result.output
 
     source = tmpdir.join("remove_dataset.file")

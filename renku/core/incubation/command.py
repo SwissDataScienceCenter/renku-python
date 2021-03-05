@@ -19,15 +19,18 @@
 
 import contextlib
 import functools
+import uuid
 from collections import defaultdict
 
 import click
+import filelock
 
 from renku.core import errors
 from renku.core.management import LocalClient
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import check_for_migration
 from renku.core.management.repository import default_path
+from renku.core.models.datasets import get_slug
 from renku.core.utils import communication
 
 
@@ -237,9 +240,9 @@ class Command:
         return ProjectLock(self)
 
     @check_finalized
-    def lock_dataset(self):
+    def lock_dataset(self, kwargs_name=None, all=False):
         """Acquire a lock for a dataset."""
-        return DatasetLock(self)
+        return DatasetLock(self, kwargs_name, all)
 
     @check_finalized
     def require_migration(self):
@@ -260,7 +263,7 @@ class Command:
 class Commit(Command):
     """Builder for commands that create a commit."""
 
-    DEFAULT_ORDER = 3
+    DEFAULT_ORDER = 5
 
     def __init__(self, builder, message=None, commit_if_empty=False, raise_if_empty=False, commit_only=None):
         """__init__ of Commit.
@@ -385,11 +388,13 @@ class ProjectLock(Command):
 class DatasetLock(Command):
     """Builder to lock on a dataset."""
 
-    DEFAULT_ORDER = 5
+    DEFAULT_ORDER = 4
 
-    def __init__(self, builder):
+    def __init__(self, builder, kwargs_name, all):
         """__init__ of DatasetLock."""
         self._builder = builder
+        self._kwargs_name = kwargs_name
+        self._all = all
 
     def _pre_hook(self, builder, context, *args, **kwargs):
         if "client" not in context:
@@ -397,7 +402,32 @@ class DatasetLock(Command):
         if "stack" not in context:
             raise ValueError("Commit builder needs a stack to be set.")
 
-        context["stack"].enter_context(context["client"].lock)
+        client = context["client"]
+        name = None
+
+        if self._kwargs_name:
+            if self._kwargs_name not in kwargs:
+                raise errors.OperationError(f"Cannot find '{self._kwargs_name}' in {list(kwargs)}.")
+
+            name = kwargs[self._kwargs_name]
+            if not name:
+                # NOTE: There is still no dataset name set (e.g. import); lock all to be safe.
+                self._all = True
+
+        dataset_names = [d.name for d in client.datasets.values()] if self._all else [name]
+
+        def lock_dataset(name):
+            path = client.renku_dataset_locks_path / f".{get_slug(name)}{client.LOCK_SUFFIX}"
+            return filelock.FileLock(str(path), timeout=0)
+
+        for name in dataset_names:
+            try:
+                context["stack"].enter_context(lock_dataset(name))
+            except filelock.Timeout:
+                raise errors.DatasetLockError(name)
+        worktree_path = client.worktree_path / str(uuid.uuid4())
+        client = context["stack"].enter_context(client.worktree(rebase=True, path=worktree_path, delete=True))
+        context["client"] = client
 
     @check_finalized
     def build(self):

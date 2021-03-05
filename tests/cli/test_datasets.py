@@ -169,7 +169,7 @@ def test_datasets_invalid_name(runner, client, name):
     """Test creating datasets with invalid name."""
     result = runner.invoke(cli, ["dataset", "create", name])
 
-    assert 2 == result.exit_code
+    assert 2 == result.exit_code, result.output
     assert f'Dataset name "{name}" is not valid' in result.output
     assert f'Hint: "{get_slug(name)}" is valid' in result.output
 
@@ -196,6 +196,7 @@ def test_datasets_create_dirty(runner, project, client):
         assert "datasets" not in file_path
 
 
+@pytest.mark.skip
 def test_datasets_create_dirty_exception_untracked(runner, project, client):
     """Test exception raise for untracked file in renku directory."""
     # 1. Create a problem.
@@ -212,6 +213,7 @@ def test_datasets_create_dirty_exception_untracked(runner, project, client):
     assert ".renku contains uncommitted changes." in result.output
 
 
+@pytest.mark.skip
 def test_datasets_create_dirty_exception_staged(runner, project, client):
     """Test exception raise for staged file in renku directory."""
     # 1. Create a problem within .renku directory
@@ -231,6 +233,7 @@ def test_datasets_create_dirty_exception_staged(runner, project, client):
     assert ".renku contains uncommitted changes." in result.output
 
 
+@pytest.mark.skip
 def test_dataset_create_dirty_exception_all_untracked(runner, project, client):
     """Test exception raise for all untracked files."""
     # 1. Create unclean root to enforce ensure checks.
@@ -251,6 +254,7 @@ def test_dataset_create_dirty_exception_all_untracked(runner, project, client):
     assert ".renku contains uncommitted changes." in result.output
 
 
+@pytest.mark.skip
 def test_datasets_create_dirty_exception_all_staged(runner, project, client):
     """Test exception raise for all staged files."""
     # 1. Create unclean root to enforce ensure checks.
@@ -275,6 +279,7 @@ def test_datasets_create_dirty_exception_all_staged(runner, project, client):
     assert ".renku contains uncommitted changes." in result.output
 
 
+@pytest.mark.skip
 def test_dataset_create_exception_refs(runner, project, client):
     """Test untracked/unstaged exception raise in dirty renku home dir."""
     with (client.path / "a").open("w") as fp:
@@ -372,10 +377,10 @@ def test_datasets_list_with_columns(runner, project, columns, headers, values):
     result = runner.invoke(
         cli, ["dataset", "create", "my-dataset", "--title", "Long Title", "-c", "John Doe <john.doe@mail.ch>"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, result.output
 
     result = runner.invoke(cli, ["dataset", "ls", "--columns", columns])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, result.output
     assert headers == result.output.split("\n").pop(0).split()
     for value in values:
         assert value in result.output
@@ -518,8 +523,7 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     assert 0 == result.exit_code
 
 
-@pytest.mark.parametrize("use_graph", [False, True])
-def test_repository_file_to_dataset(runner, client_with_new_graph, subdirectory, use_graph):
+def test_repository_file_to_dataset(runner, client_with_new_graph, subdirectory):
     """Test adding a file from the repository into a dataset."""
     # create a dataset
     client = client_with_new_graph
@@ -532,8 +536,7 @@ def test_repository_file_to_dataset(runner, client_with_new_graph, subdirectory,
     client.repo.git.commit(message="Added file a", no_verify=True)
 
     # add data
-    command = ["graph"] if use_graph else []
-    result = runner.invoke(cli, command + ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False,)
+    result = runner.invoke(cli, ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False,)
     assert 0 == result.exit_code
 
     with client.with_dataset("dataset") as dataset:

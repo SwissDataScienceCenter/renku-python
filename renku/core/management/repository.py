@@ -96,6 +96,9 @@ class RepositoryApiMixin(GitCore):
     )
     """Define a name of the folder for storing datasets."""
 
+    main_worktree_path = attr.ib(default=None, kw_only=True)
+    """Path to main worktree."""
+
     METADATA = "metadata.yml"
     """Default name of Renku config file."""
 
@@ -118,6 +121,10 @@ class RepositoryApiMixin(GitCore):
     """Name of the Dockerfile in the repo."""
 
     TEMPLATE_CHECKSUMS = "template_checksums.json"
+
+    TMP = "tmp"
+
+    WORKTREE = "worktree"
 
     RENKU_PROTECTED_PATHS = [
         "\\.renku/.*",
@@ -166,6 +173,9 @@ class RepositoryApiMixin(GitCore):
             except subprocess.CalledProcessError:
                 pass
 
+        if not self.main_worktree_path:
+            self.main_worktree_path = self.path
+
     @property
     def latest_agent(self):
         """Returns latest agent version used in the repository."""
@@ -212,6 +222,11 @@ class RepositoryApiMixin(GitCore):
     def docker_path(self):
         """Path to the Dockerfile."""
         return self.path / self.DOCKERFILE
+
+    @property
+    def worktree_path(self):
+        """Path for project work trees."""
+        return self.path / self.TMP / self.WORKTREE
 
     @property
     def template_checksums(self):

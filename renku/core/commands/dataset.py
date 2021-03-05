@@ -91,7 +91,7 @@ def create_dataset_helper(
 
 def create_dataset():
     """Return a command for creating an empty dataset in the current repo."""
-    command = Command().command(create_dataset_helper).lock_dataset()
+    command = Command().command(create_dataset_helper).lock_dataset("name")
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
@@ -137,7 +137,7 @@ def _edit_dataset(
 
 def edit_dataset():
     """Command for editing dataset metadata."""
-    command = Command().command(_edit_dataset).lock_dataset()
+    command = Command().command(_edit_dataset).lock_dataset("name")
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
@@ -248,7 +248,7 @@ def _add_to_dataset(
 
                 dataset.update_metadata_from(with_metadata)
 
-        client.update_datasets_provenance(dataset)
+        # client.update_datasets_provenance(dataset)
     except DatasetNotFound:
         raise DatasetNotFound(
             message='Dataset "{0}" does not exist.\n'
@@ -262,7 +262,7 @@ def _add_to_dataset(
 
 def add_to_dataset():
     """Create a command for adding data to datasets."""
-    command = Command().command(_add_to_dataset).lock_dataset()
+    command = Command().command(_add_to_dataset).lock_dataset("name")
     return command.require_migration().with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
 
 
@@ -329,7 +329,7 @@ def _file_unlink(client, name, include, exclude, yes=False):
 
 def file_unlink():
     """Command for removing matching files from a dataset."""
-    command = Command().command(_file_unlink).lock_dataset()
+    command = Command().command(_file_unlink).lock_dataset("name")
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
@@ -356,7 +356,7 @@ def _remove_dataset(client, name):
 
 def remove_dataset():
     """Command for deleting a dataset."""
-    command = Command().command(_remove_dataset).lock_dataset()
+    command = Command().command(_remove_dataset).lock_dataset("name")
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
@@ -440,7 +440,7 @@ def _export_dataset(
 
 def export_dataset():
     """Command for exporting a dataset to 3rd party provider."""
-    command = Command().command(_export_dataset).lock_dataset()
+    command = Command().command(_export_dataset).lock_dataset("name")
     return command.require_migration().require_clean()
 
 
@@ -555,7 +555,7 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
 
 def import_dataset():
     """Create a command for importing datasets."""
-    command = Command().command(_import_dataset).lock_dataset()
+    command = Command().command(_import_dataset).lock_dataset("name")
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
@@ -680,7 +680,7 @@ def _update_datasets(
 
 def update_datasets():
     """Command for updating datasets."""
-    command = Command().command(_update_datasets).lock_dataset()
+    command = Command().command(_update_datasets).lock_dataset(all=True)
     return command.require_migration().require_clean().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
@@ -761,7 +761,7 @@ def _tag_dataset(client, name, tag, description, force=False):
 
 def tag_dataset():
     """Command for creating a new tag for a dataset."""
-    command = Command().command(_tag_dataset).lock_dataset()
+    command = Command().command(_tag_dataset).lock_dataset("name")
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
@@ -780,7 +780,7 @@ def _remove_dataset_tags(client, name, tags):
 
 def remove_dataset_tags():
     """Command for removing tags from a dataset."""
-    command = Command().command(_remove_dataset_tags).lock_dataset()
+    command = Command().command(_remove_dataset_tags).lock_dataset("name")
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
@@ -795,7 +795,7 @@ def _list_tags(client, name, format):
 
 def list_tags():
     """Command for listing a dataset's tags."""
-    return Command().command(_list_tags).lock_dataset()
+    return Command().command(_list_tags).lock_dataset("name")
 
 
 def _prompt_access_token(exporter):

@@ -80,6 +80,9 @@ class DatasetsApiMixin(object):
     DATASETS_PROVENANCE = "dataset.json"
     """File for storing datasets' provenance."""
 
+    LOCKS = "locks"
+    """Directory for dataset locks."""
+
     _temporary_datasets_path = None
     _datasets_provenance = None
 
@@ -90,6 +93,18 @@ class DatasetsApiMixin(object):
             return self._temporary_datasets_path
 
         return self.path / self.renku_home / self.DATASETS
+
+    @property
+    def renku_dataset_locks_path(self):
+        """Return a ``Path`` instance of Renku locks directory."""
+        if self._temporary_datasets_path:
+            path = self._temporary_datasets_path / self.LOCKS
+        else:
+            path = self.path / self.renku_home / "tmp" / self.LOCKS
+
+        path.mkdir(parents=True, exist_ok=True)
+
+        return path
 
     @property
     def renku_dataset_images_path(self):
@@ -652,7 +667,7 @@ class DatasetsApiMixin(object):
         return [
             {
                 "path": dst.relative_to(self.path),
-                "source": os.path.relpath(str(src), str(self.path)),
+                "source": os.path.relpath(str(src), str(self.main_worktree_path)),
                 "parent": self,
                 "operation": (src, dst, action),
             }

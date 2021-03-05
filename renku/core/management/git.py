@@ -33,6 +33,7 @@ import attr
 import git
 
 from renku.core import errors
+from renku.core.utils.contexts import chdir
 from renku.core.utils.git import split_paths
 from renku.core.utils.scm import git_unicode_unescape, shorten_message
 from renku.core.utils.urls import remove_credentials
@@ -369,15 +370,14 @@ class GitCore:
             yield self
 
     @contextmanager
-    def worktree(
-        self, path=None, branch_name=None, commit=None, merge_args=("--ff-only",),
-    ):
+    def worktree(self, path=None, branch_name=None, commit=None, merge_args=("--ff-only",), rebase=False, delete=None):
         """Create new worktree."""
         from git import NULL_TREE, GitCommandError
 
         from renku.core.utils.contexts import Isolation
 
-        delete = path is None
+        if delete is None:
+            delete = path is None
         path = path or tempfile.mkdtemp()
         branch_name = branch_name or "renku/run/isolation/" + uuid.uuid4().hex
 
@@ -400,6 +400,7 @@ class GitCore:
             new_branch = True
 
         client.repo.config_reader = self.repo.config_reader
+        client.main_worktree_path = self.path
 
         # Keep current directory relative to repository root.
         relative = Path(".").resolve().relative_to(self.path)
@@ -422,19 +423,36 @@ class GitCore:
         new_cwd = Path(path) / relative
         new_cwd.mkdir(parents=True, exist_ok=True)
 
-        with Isolation(cwd=str(new_cwd), **mapped_std):
-            yield client
-
         try:
-            self.repo.git.merge(branch_name, *merge_args)
-        except GitCommandError:
-            raise errors.FailedMerge(self.repo, branch_name, merge_args)
+            with Isolation(cwd=str(new_cwd), **mapped_std):
+                yield client
 
-        if delete:
-            self.repo.git.worktree("remove", path)
+            if rebase:
+                active_branch = self.repo.active_branch
+                with chdir(path):
+                    try:
+                        print("PATH****", os.getcwd(), path, self.repo.active_branch)
+                        self.repo.git.rebase(active_branch, branch_name)
+                    except GitCommandError:
+                        try:
+                            self.repo.git.rebase("--abort")
+                        except GitCommandError:
+                            pass
+                        raise errors.RebaseError(branch_name)
+                    finally:
+                        self.repo.git.checkout(active_branch)
 
-            if new_branch:
-                # delete the created temporary branch
-                self.repo.git.branch("-d", branch_name)
+            try:
+                self.repo.git.merge(branch_name, *merge_args)
+            except GitCommandError:
+                raise errors.FailedMerge(self.repo, branch_name, merge_args)
+        finally:
+            if delete:
+                self.repo.git.worktree("remove", path, "--force")
 
-        self.checkout_paths_from_storage()
+                if new_branch:
+                    try:
+                        # delete the created temporary branch
+                        self.repo.git.branch("-d", branch_name)
+                    except GitCommandError:
+                        pass
