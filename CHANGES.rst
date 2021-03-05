@@ -18,6 +18,62 @@
 Changes
 =======
 
+`0.14.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.13.0...v0.14.0>`__ (2021-03-05)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** call git commands for batches of files to prevent hitting argument length limits
+   (`#1893 <https://github.com/SwissDataScienceCenter/renku-python/issues/1893>`__)
+   (`deaf055 <https://github.com/SwissDataScienceCenter/renku-python/commit/deaf055ced01a3e2d354234336d961b8dc226418>`__)
+-  **dataset:** change renku dataset import to move temporary files and become more resilient to errors
+   (`#1894 <https://github.com/SwissDataScienceCenter/renku-python/issues/1894>`__)
+   (`279407e <https://github.com/SwissDataScienceCenter/renku-python/commit/279407e97e9491ba537eb9fe5536897c277cca93>`__)
+-  **service** correctly address HTTP server errors
+   (`#1872 <https://github.com/SwissDataScienceCenter/renku-python/issues/1872>`__)
+   (`2fd5052 <https://github.com/SwissDataScienceCenter/renku-python/commit/2fd5052b6c2dd07e644961d6a9384292e0a6e89e>`__)
+-  **service** correctly handle ref on project.clone
+   (`#1888 <https://github.com/SwissDataScienceCenter/renku-python/issues/1888>`__)
+   (`7f30404 <https://github.com/SwissDataScienceCenter/renku-python/commit/7f30404979f4a934264c87cc404aa0a7523b8688>`__)
+-  **service** use project_id as part of project filesystem path
+   (`#1754 <https://github.com/SwissDataScienceCenter/renku-python/issues/1754>`__)
+   (`391a14a <https://github.com/SwissDataScienceCenter/renku-python/commit/391a14a560f10e232b776e5b310f6608d548168f>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** add renku storage migrate command to migrate git files to lfs
+   (`#1869 <https://github.com/SwissDataScienceCenter/renku-python/issues/1869>`__)
+   (`bed1358 <https://github.com/SwissDataScienceCenter/renku-python/commit/bed1358740531898b0b19aaf9c7f0b7effdd7de6>`__)
+-  **cli:** add service component management commands
+   (`#1867 <https://github.com/SwissDataScienceCenter/renku-python/issues/1867>`__)
+   (`928baf9 <https://github.com/SwissDataScienceCenter/renku-python/commit/928baf9a4caa18354917bfc25e7f83d2243b47d8>`__)
+-  **core:** exclude renku metadata from being added to git lfs
+   (`#1898 <https://github.com/SwissDataScienceCenter/renku-python/issues/1898>`__)
+   (`8046edb <https://github.com/SwissDataScienceCenter/renku-python/commit/8046edbfa0236a45c9e79e8754dac3014768c41e>`__)
+-  **core:** add oauth authentication for KG access
+   (`#1881 <https://github.com/SwissDataScienceCenter/renku-python/issues/1881>`__)
+   (`a568d31 <https://github.com/SwissDataScienceCenter/renku-python/commit/a568d3168b67edabf4632861bf26ca68926accba>`__)
+-  **dataset:** improve naming for imported datasets
+   (`#1900 <https://github.com/SwissDataScienceCenter/renku-python/issues/1900>`__)
+   (`9beb654 <https://github.com/SwissDataScienceCenter/renku-python/commit/9beb6549716ca4561ff55d53bec2d7fe4f411ef1>`__)
+-  **service:** add build graph endpoint
+   (`#1571 <https://github.com/SwissDataScienceCenter/renku-python/issues/1571>`__)
+   (`a7bfe3d <https://github.com/SwissDataScienceCenter/renku-python/commit/a7bfe3d4b2b34100286fe461830d277ffd13d5e1>`__)
+-  **service:** add renku config endpoints
+   (`#1834 <https://github.com/SwissDataScienceCenter/renku-python/issues/1834>`__)
+   (`c09ca6b <https://github.com/SwissDataScienceCenter/renku-python/commit/c09ca6b0f86c32b61a0232a7d69bde1c5c87420d>`__)
+-  **service:** add helm 3 values schema to chart
+   (`#1835 <https://github.com/SwissDataScienceCenter/renku-python/issues/1835>`__)
+   (`57f6aee <https://github.com/SwissDataScienceCenter/renku-python/commit/57f6aee24818d9465e5f79ceeb0cecc40df61073>`__)
+-  **service** add root redirect to swagger docs
+   (`#1871 <https://github.com/SwissDataScienceCenter/renku-python/issues/1871>`__)
+   (`1abd4f6 <https://github.com/SwissDataScienceCenter/renku-python/commit/1abd4f6e4ee54c52ec16e177e6432e06434f0ac3>`__)
+-  **service:** add support for adding images to datasets
+   (`#1850 <https://github.com/SwissDataScienceCenter/renku-python/issues/1850>`__)
+   (`c3caafd <https://github.com/SwissDataScienceCenter/renku-python/commit/c3caafd71c08b36f15de70eb733f20d482e8ad28>`__)
+
 `0.13.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.12.3...v0.13.0>`__ (2021-01-29)
 ----------------------------------------------------------------------------------------------------------
 
