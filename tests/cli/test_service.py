@@ -24,7 +24,7 @@ from flaky import flaky
 from renku.cli import cli
 from renku.cli.service import list_renku_processes
 
-SVC_COMPONENTS_EXPECTED_BOOT_TIME = 15
+SVC_COMPONENTS_EXPECTED_BOOT_TIME = 5
 
 
 @pytest.mark.serial
@@ -45,9 +45,3 @@ def test_service_up_down(runner):
 
     result = runner.invoke(cli, ["service", "down"], catch_exceptions=False)
     assert 0 == result.exit_code
-
-    # NOTE: Booting down all processes can take up to a second.
-    time.sleep(SVC_COMPONENTS_EXPECTED_BOOT_TIME)
-
-    processes = list_renku_processes(include=["renku", "up"])
-    assert 0 == len(processes)
