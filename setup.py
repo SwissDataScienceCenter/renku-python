@@ -121,7 +121,7 @@ service_requires = [
     "ptvsd>=4.3.0,<4.4.0",
     "python-dotenv==0.15.0",
     "redis==3.5.3",
-    "rq-scheduler==0.10.0",
+    "rq-scheduler==0.11.0",
     "rq==1.7.0",
     "sentry-sdk[flask]>=0.7.4,<1.0.1",
     "walrus==0.8.2",
