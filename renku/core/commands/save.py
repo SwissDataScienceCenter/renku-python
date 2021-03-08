@@ -24,6 +24,7 @@ import git
 
 from renku.core import errors
 from renku.core.incubation.command import Command
+from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
 
@@ -124,13 +125,36 @@ def repo_sync(repo, message=None, remote=None, paths=None):
 
     try:
         # NOTE: Push local changes to remote branch.
-        if origin.refs and repo.active_branch in origin.refs:
+        merge_conflict = False
+        if origin.refs and repo.active_branch.tracking_branch() and repo.active_branch.tracking_branch() in origin.refs:
             origin.fetch()
-            origin.pull(repo.active_branch)
+            try:
+                origin.pull(repo.active_branch)
+            except git.exc.GitCommandError:
+                # NOTE: Couldn't pull, probably due to conflicts, try a merge.
+                # NOTE: the error sadly doesn't tell any details.
+                unmerged_blobs = repo.index.unmerged_blobs().values()
+                conflicts = (stage != 0 for blobs in unmerged_blobs for stage, _ in blobs)
+                if any(conflicts):
+                    merge_conflict = True
 
-        result = origin.push(repo.active_branch)
+                    if communication.confirm(
+                        "There were conflicts when updating the local data with remote changes,"
+                        " do you want to resolve them (if not, a new remote branch will be created)?",
+                        warning=True,
+                    ):
+                        repo.git.mergetool("-g")
+                        repo.git.commit("--no-edit")
+                        merge_conflict = False
+                    else:
+                        repo.head.reset(index=True, working_tree=True)
+                else:
+                    raise
 
-        if result and "[remote rejected] (pre-receive hook declined)" in result[0].summary:
+        if not merge_conflict:
+            result = origin.push(repo.active_branch)
+
+        if merge_conflict or (result and "[remote rejected] (pre-receive hook declined)" in result[0].summary):
             # NOTE: Push to new remote branch if original one is protected and reset the cache.
             old_pushed_branch = pushed_branch
             old_active_branch = repo.active_branch
@@ -143,6 +167,10 @@ def repo_sync(repo, message=None, remote=None, paths=None):
                 repo.git.checkout(old_active_branch)
                 ref = f"{origin}/{old_pushed_branch}"
                 repo.index.reset(commit=ref, head=True, working_tree=True)
+        elif result and " failed to push some refs" in result[0].summary:
+            # NOTE: Couldn't push for some reason
+            msg = result[0].summary
+            raise errors.GitError(f"Couldn't push changes. Reason:\n{msg}")
 
     except git.exc.GitCommandError as e:
         raise errors.GitError("Cannot push changes") from e

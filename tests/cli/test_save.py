@@ -58,6 +58,34 @@ def test_save_with_remote(runner, project, client_with_remote, tmpdir_factory):
     assert "save changes" in client.repo.head.commit.message
 
 
+def test_save_with_merge_conflict(runner, project, client_with_remote, tmpdir_factory):
+    """Test saving local changes."""
+    client = client_with_remote["client"]
+    with (client.path / "tracked").open("w") as fp:
+        fp.write("tracked file")
+
+    result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], catch_exceptions=False)
+
+    assert 0 == result.exit_code
+    assert "tracked" in result.output
+    assert "save changes" in client.repo.head.commit.message
+
+    with (client.path / "tracked").open("w") as fp:
+        fp.write("local changes")
+    client.repo.index.add([str(client.path / "tracked")])
+    client.repo.git.commit("--amend", m="amended commit")
+
+    with (client.path / "tracked").open("w") as fp:
+        fp.write("new version")
+
+    result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], input="n", catch_exceptions=False)
+
+    assert 0 == result.exit_code
+    assert "There were conflicts when updating the local data" in result.output
+    assert "Successfully saved to remote branch" in result.output
+    assert "save changes" in client.repo.head.commit.message
+
+
 def test_save_with_staged(runner, project, client_with_remote, tmpdir_factory):
     """Test saving local changes."""
     client = client_with_remote["client"]
