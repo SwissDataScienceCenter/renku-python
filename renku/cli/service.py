@@ -101,7 +101,7 @@ def is_renku_process(process, include):
     """Return true if this is a renku process."""
     process_name = process.name().lower()
 
-    if process_name == "renku" and check_cmdline(process.cmdline(), include):
+    if process_name == "renku":
         return True
     elif process_name != "python":
         return False
