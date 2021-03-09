@@ -33,7 +33,6 @@ import attr
 import git
 
 from renku.core import errors
-from renku.core.utils.contexts import chdir
 from renku.core.utils.git import split_paths
 from renku.core.utils.scm import git_unicode_unescape, shorten_message
 from renku.core.utils.urls import remove_credentials
@@ -426,21 +425,6 @@ class GitCore:
         try:
             with Isolation(cwd=str(new_cwd), **mapped_std):
                 yield client
-
-            if rebase:
-                active_branch = self.repo.active_branch
-                with chdir(path):
-                    try:
-                        print("PATH****", os.getcwd(), path, self.repo.active_branch)
-                        self.repo.git.rebase(active_branch, branch_name)
-                    except GitCommandError:
-                        try:
-                            self.repo.git.rebase("--abort")
-                        except GitCommandError:
-                            pass
-                        raise errors.RebaseError(branch_name)
-                    finally:
-                        self.repo.git.checkout(active_branch)
 
             try:
                 self.repo.git.merge(branch_name, *merge_args)
