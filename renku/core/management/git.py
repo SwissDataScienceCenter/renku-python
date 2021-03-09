@@ -265,10 +265,10 @@ class GitCore:
                 if STARTED_AT - int(Path(file_).stat().st_ctime * 1e3) >= 1e3
             }
 
-        # if isinstance(commit_only, list):
-        #     for path_ in commit_only:
-        #         self.ensure_untracked(str(path_))
-        #         self.ensure_unstaged(str(path_))
+        if isinstance(commit_only, list):
+            for path_ in commit_only:
+                self.ensure_untracked(str(path_))
+                self.ensure_unstaged(str(path_))
 
         project_metadata_path = str(self.renku_metadata_path)
 
@@ -278,70 +278,69 @@ class GitCore:
 
         change_types = {}
 
-        with self.repository_lock():
-            if commit_only == COMMIT_DIFF_STRATEGY:
-                # Get diff generated in command.
-                change_types = {git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff(None)}
-                staged_after = set(change_types.keys())
+        if commit_only == COMMIT_DIFF_STRATEGY:
+            # Get diff generated in command.
+            change_types = {git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff(None)}
+            staged_after = set(change_types.keys())
 
-                modified_after_change_types = {
-                    git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff("HEAD")
-                }
+            modified_after_change_types = {
+                git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff("HEAD")
+            }
 
-                modified_after = set(modified_after_change_types.keys())
+            modified_after = set(modified_after_change_types.keys())
 
-                change_types.update(modified_after_change_types)
+            change_types.update(modified_after_change_types)
 
-                diff_after = set(self.repo.untracked_files).union(staged_after).union(modified_after)
+            diff_after = set(self.repo.untracked_files).union(staged_after).union(modified_after)
 
-                # Remove files not touched in command.
-                commit_only = list(diff_after - diff_before)
+            # Remove files not touched in command.
+            commit_only = list(diff_after - diff_before)
 
-            if isinstance(commit_only, list):
-                for path_ in commit_only:
-                    p = self.path / path_
-                    if p.exists() or change_types.get(path_) == "D":
-                        self.repo.git.add(path_)
+        if isinstance(commit_only, list):
+            for path_ in commit_only:
+                p = self.path / path_
+                if p.exists() or change_types.get(path_) == "D":
+                    self.repo.git.add(path_)
 
-            if not commit_only:
-                self.repo.git.add("--all")
+        if not commit_only:
+            self.repo.git.add("--all")
 
-            diffs = []
-            try:
-                diffs = [git_unicode_unescape(d.a_path) for d in self.repo.index.diff("HEAD")]
-                if project_metadata_path in diffs:
-                    diffs.remove(project_metadata_path)
-            except git.exc.BadName:
-                pass
+        diffs = []
+        try:
+            diffs = [git_unicode_unescape(d.a_path) for d in self.repo.index.diff("HEAD")]
+            if project_metadata_path in diffs:
+                diffs.remove(project_metadata_path)
+        except git.exc.BadName:
+            pass
 
-            if not commit_empty and not diffs:
-                if raise_if_empty:
-                    raise errors.NothingToCommit()
-                return
+        if not commit_empty and not diffs:
+            if raise_if_empty:
+                raise errors.NothingToCommit()
+            return
 
-            if commit_message and not isinstance(commit_message, str):
-                raise errors.CommitMessageEmpty()
+        if commit_message and not isinstance(commit_message, str):
+            raise errors.CommitMessageEmpty()
 
-            elif not commit_message:
-                argv = [os.path.basename(sys.argv[0])] + [remove_credentials(arg) for arg in sys.argv[1:]]
+        elif not commit_message:
+            argv = [os.path.basename(sys.argv[0])] + [remove_credentials(arg) for arg in sys.argv[1:]]
 
-                commit_message = " ".join(argv)
+            commit_message = " ".join(argv)
 
-            if abbreviate_message:
-                commit_message = shorten_message(commit_message)
+        if abbreviate_message:
+            commit_message = shorten_message(commit_message)
 
-            try:
-                project = self.project
-                if project:
-                    project.to_yaml()
-                    self.repo.index.add(project_metadata_path)
-            except ValueError:
-                pass
+        try:
+            project = self.project
+            if project:
+                project.to_yaml()
+                self.repo.index.add(project_metadata_path)
+        except ValueError:
+            pass
 
-            # Ignore pre-commit hooks since we have already done everything.
-            self.repo.index.commit(
-                commit_message, committer=committer, skip_hooks=True,
-            )
+        # Ignore pre-commit hooks since we have already done everything.
+        self.repo.index.commit(
+            commit_message, committer=committer, skip_hooks=True,
+        )
 
     @contextmanager
     def transaction(
