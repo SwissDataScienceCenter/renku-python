@@ -33,6 +33,7 @@ from urllib import error, parse
 from urllib.parse import ParseResult, urlparse
 
 import attr
+import filelock
 import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
@@ -582,16 +583,11 @@ class DatasetsApiMixin(object):
                     )
                 )
 
-        # Force-add to include possible ignored files
-        add_to_git(self.repo.git, *files_to_commit, force=True)
-        self.repo.git.add(self.renku_pointers_path, force=True)
+        message = f"renku dataset: committing {len(files_to_commit)} newly added files"
+        skip_hooks = not self.external_storage_requested
 
-        staged_files = self.repo.index.diff("HEAD")
-        if staged_files:
-            msg = "renku dataset: committing {} newly added files".format(len(files_to_commit))
-            skip_hooks = not self.external_storage_requested
-            self.repo.index.commit(msg, skip_hooks=skip_hooks)
-        else:
+        new_files = self.add_and_commit(message, skip_hooks, *files_to_commit, self.renku_pointers_path)
+        if not new_files:
             communication.warn("No new file was added to project")
 
         # Generate the DatasetFiles
@@ -606,6 +602,27 @@ class DatasetsApiMixin(object):
             dataset_files.append(dataset_file)
 
         dataset.update_files(dataset_files)
+
+    def add_and_commit(self, message, skip_hooks, *paths):
+        """Atomic commit of paths."""
+        with self.repository_lock():
+            # Force-add to include possible ignored files
+            add_to_git(self.repo.git, *paths, force=True)
+
+            import sys
+            import click
+            if not click.confirm("Continue " + os.getcwd(), abort=False):
+                sys.exit(1)
+
+            staged_files = self.repo.index.diff("HEAD")
+            if staged_files:
+                self.repo.index.commit(message, skip_hooks=skip_hooks)
+            return bool(staged_files)
+
+    def repository_lock(self, timeout=-1):
+        """Put a global lock on repository."""
+        lock_path = self.path / ".repository.lock"
+        return filelock.FileLock(str(lock_path), timeout=timeout)
 
     def _check_protected_path(self, path):
         """Checks if a path is a protected path."""

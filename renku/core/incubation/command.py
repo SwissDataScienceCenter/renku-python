@@ -425,9 +425,6 @@ class DatasetLock(Command):
                 context["stack"].enter_context(lock_dataset(name))
             except filelock.Timeout:
                 raise errors.DatasetLockError(name)
-        worktree_path = client.worktree_path / str(uuid.uuid4())
-        client = context["stack"].enter_context(client.worktree(path=worktree_path, delete=True, merge_args=[]))
-        context["client"] = client
 
     @check_finalized
     def build(self):
