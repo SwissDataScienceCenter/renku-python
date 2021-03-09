@@ -54,6 +54,7 @@ def mock_kg():
             status_code = 404 if authorization == "Bearer renku-token" else 401
             return status_code, {"Content-Type": "application/json"}, ""
 
+        response.add_passthru("https://pypi.org/")
         response.add_callback(
             responses.GET, re.compile("http(s)*://renku.ch/knowledge-graph/datasets/.*"), callback=callback
         )
