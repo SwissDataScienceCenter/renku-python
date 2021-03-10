@@ -402,9 +402,8 @@ class DatasetsApiMixin(object):
                     raise errors.DatasetImageError(f"Dataset image with url {content_url} couldn't be mirrored") from e
 
                 image_type = imghdr.what(path)
-                if not image_type:
-                    raise errors.DatasetImageError(f"Dataset image with url {content_url} is not a valid image type")
-                image_type = f".{image_type}"
+                if image_type:
+                    image_type = f".{image_type}"
 
                 content_url = path
                 safe_image_paths.append(Path(path).parent)

@@ -239,20 +239,7 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
         "title": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
-        "images": [{"content_url": "https://renkulab.io", "position": 1, "mirror_locally": True},],
-    }
-
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
-    assert response
-    assert {"error"} == response.json.keys()
-
-    payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-        "title": "my little dataset",
-        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
-        "description": "my little description",
-        "images": [{"content_url": "https://renkulab.io/doesnt_exist.png", "position": 1, "mirror_locally": True},],
+        "images": [{"content_url": "https://renkulab.io/api/doesnt_exist.png", "position": 1, "mirror_locally": True},],
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
