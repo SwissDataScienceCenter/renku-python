@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku service migrate project controller."""
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.project import execute_migration, migrate_job
 from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
@@ -25,7 +25,7 @@ from renku.service.serializers.cache import ProjectMigrateRequest, ProjectMigrat
 from renku.service.views import result_response
 
 
-class MigrateProjectCtrl(ServiceCtrl, ReadWithSyncOperation):
+class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for migrating project endpoint."""
 
     REQUEST_SERIALIZER = ProjectMigrateRequest()

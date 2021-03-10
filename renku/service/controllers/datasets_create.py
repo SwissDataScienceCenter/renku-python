@@ -19,12 +19,12 @@
 from renku.core.commands.dataset import create_dataset
 from renku.service.config import CACHE_UPLOADS_PATH
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetCreateRequest, DatasetCreateResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets create endpoint."""
 
     REQUEST_SERIALIZER = DatasetCreateRequest()

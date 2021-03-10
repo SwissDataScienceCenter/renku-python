@@ -19,7 +19,7 @@
 import os
 
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
@@ -27,7 +27,7 @@ from renku.service.serializers.datasets import DatasetImportRequest, DatasetImpo
 from renku.service.views import result_response
 
 
-class DatasetsImportCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets import endpoint."""
 
     REQUEST_SERIALIZER = DatasetImportRequest()

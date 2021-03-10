@@ -18,12 +18,12 @@
 """Renku service datasets remove controller."""
 from renku.core.commands.dataset import remove_dataset
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetRemoveRequest, DatasetRemoveResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsRemoveCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsRemoveCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets remove endpoint."""
 
     REQUEST_SERIALIZER = DatasetRemoveRequest()

@@ -19,12 +19,12 @@
 from renku.core.commands.dataset import edit_dataset
 from renku.service.config import CACHE_UPLOADS_PATH
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetEditRequest, DatasetEditResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsEditCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets edit endpoint."""
 
     REQUEST_SERIALIZER = DatasetEditRequest()

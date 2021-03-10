@@ -18,12 +18,12 @@
 """Renku service datasets unlink controller."""
 from renku.core.commands.dataset import file_unlink
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetUnlinkRequest, DatasetUnlinkResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsUnlinkCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets unlink endpoint."""
 
     REQUEST_SERIALIZER = DatasetUnlinkRequest()

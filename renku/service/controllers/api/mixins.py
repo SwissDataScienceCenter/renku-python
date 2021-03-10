@@ -212,7 +212,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             return self.renku_op()
 
 
-class ReadWithSyncOperation(RenkuOperationMixin, metaclass=ABCMeta):
+class RenkuOpSyncMixin(RenkuOperationMixin, metaclass=ABCMeta):
     """Sync operation mixin."""
 
     def sync(self, remote="origin"):

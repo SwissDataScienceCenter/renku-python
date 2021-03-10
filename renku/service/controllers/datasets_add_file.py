@@ -23,7 +23,7 @@ from pathlib import Path
 from renku.core.commands.dataset import add_to_dataset
 from renku.core.errors import RenkuException
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_add_remote_file
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
@@ -31,7 +31,7 @@ from renku.service.serializers.datasets import DatasetAddRequest, DatasetAddResp
 from renku.service.views import result_response
 
 
-class DatasetsAddFileCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets add endpoint."""
 
     REQUEST_SERIALIZER = DatasetAddRequest()
