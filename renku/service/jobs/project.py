@@ -93,8 +93,8 @@ def migrate_job(
         worker_log.debug("job completed")
     except (HTTPError, ParameterError, GitCommandError, RenkuException) as exp:
         user_job.update_extras("error", str(exp))
-        user_job.fail_job()
+        user_job.fail_job(exp)
 
-        # Reraise exception, so we see trace in job metadata
+        # NOTE: Re-raise exception, so we see trace in job metadata
         # and in metrics as failed job.
         raise exp

@@ -23,7 +23,7 @@ from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
 from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
 from renku.core.models.datasets import ImageObjectJson as ImageObject
 from renku.core.models.datasets import ImageObjectRequestJson as ImageObjectRequest
-from renku.service.serializers.common import RenkuSyncSchema
+from renku.service.serializers.common import RenkuSyncSchema, RepositoryContext
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -33,12 +33,8 @@ class DatasetDetailsRequest(DatasetDetails):
     images = marshmallow.fields.List(marshmallow.fields.Nested(ImageObjectRequest))
 
 
-class DatasetCreateRequest(DatasetDetailsRequest):
+class DatasetCreateRequest(RepositoryContext, DatasetDetailsRequest):
     """Request schema for a dataset create view."""
-
-    project_id = fields.String(required=True)
-
-    commit_message = fields.String()
 
     @pre_load()
     def default_commit_message(self, data, **kwargs):

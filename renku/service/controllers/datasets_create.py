@@ -30,14 +30,14 @@ class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
     REQUEST_SERIALIZER = DatasetCreateRequest()
     RESPONSE_SERIALIZER = DatasetCreateResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets create controller."""
         self.ctx = DatasetsCreateCtrl.REQUEST_SERIALIZER.load(request_data)
 
         if self.ctx.get("commit_message") is None:
             self.ctx["commit_message"] = "service: dataset create {0}".format(self.ctx["name"])
 
-        super(DatasetsCreateCtrl, self).__init__(cache, user_data, request_data)
+        super(DatasetsCreateCtrl, self).__init__(cache, user_data, request_data, migrate_project)
 
     @property
     def context(self):
@@ -73,9 +73,11 @@ class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        _, remote_branch = self.execute_and_sync()
+        response, remote_branch = self.execute_and_sync()
+
+        if not remote_branch:
+            return result_response(DatasetsCreateCtrl.JOB_RESPONSE_SERIALIZER, response)
 
         response = self.ctx
         response["remote_branch"] = remote_branch
-
         return result_response(DatasetsCreateCtrl.RESPONSE_SERIALIZER, response)

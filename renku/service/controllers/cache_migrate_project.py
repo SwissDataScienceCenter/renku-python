@@ -21,11 +21,7 @@ from renku.service.controllers.api.mixins import ReadWithSyncOperation
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.project import execute_migration, migrate_job
 from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
-from renku.service.serializers.cache import (
-    ProjectMigrateAsyncResponseRPC,
-    ProjectMigrateRequest,
-    ProjectMigrateResponseRPC,
-)
+from renku.service.serializers.cache import ProjectMigrateRequest, ProjectMigrateResponseRPC
 from renku.service.views import result_response
 
 
@@ -34,7 +30,6 @@ class MigrateProjectCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     REQUEST_SERIALIZER = ProjectMigrateRequest()
     RESPONSE_SERIALIZER = ProjectMigrateResponseRPC()
-    JOB_RESPONSE_SERIALIZER = ProjectMigrateAsyncResponseRPC()
 
     def __init__(self, cache, user_data, request_data):
         """Construct controller."""

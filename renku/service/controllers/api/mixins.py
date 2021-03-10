@@ -26,9 +26,15 @@ from renku.core.errors import RenkuException, UninitializedProject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.utils.contexts import click_context
+from renku.service.cache.models.job import Job
+from renku.service.cache.models.project import Project
 from renku.service.cache.models.user import User
+from renku.service.config import PROJECT_CLONE_NO_DEPTH
 from renku.service.controllers.utils.remote_project import RemoteProject
 from renku.service.errors import AuthenticationTokenMissing, IdentificationError, OperationNotSupported
+from renku.service.jobs.contexts import enqueue_retry
+from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+from renku.service.serializers.common import DelayedResponseRPC
 
 
 def local_identity(method):
@@ -45,10 +51,12 @@ def local_identity(method):
     return _impl
 
 
-class ReadOperationMixin(metaclass=ABCMeta):
+class RenkuOperationMixin(metaclass=ABCMeta):
     """Read operation mixin."""
 
-    def __init__(self, cache, user_data, request_data):
+    JOB_RESPONSE_SERIALIZER = DelayedResponseRPC()
+
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Read operation mixin for controllers."""
         if user_data and "user_id" in user_data and cache is not None:
             self.user = cache.ensure_user(user_data)
@@ -56,6 +64,8 @@ class ReadOperationMixin(metaclass=ABCMeta):
         self.cache = cache
         self.user_data = user_data
         self.request_data = request_data
+
+        self.migrate_project = migrate_project
 
         # NOTE: This is absolute project path and its set before invocation of `renku_op`,
         # so its safe to use it in controller operations. Its type will always be `pathlib.Path`.
@@ -72,12 +82,83 @@ class ReadOperationMixin(metaclass=ABCMeta):
         """Implements operation for the controller."""
         raise NotImplementedError
 
+    def ensure_migrated(self, project_id):
+        """Ensure that project is migrated."""
+        if not self.migrate_project:
+            return
+
+        from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
+
+        migrate_context = {
+            "project_id": project_id,
+            "skip_docker_update": True,
+            "skip_template_update": True,
+        }
+        migration_response = MigrateProjectCtrl(self.cache, self.user_data, migrate_context).to_response()
+
+        return migration_response
+
     def execute_op(self):
         """Execute renku operation which controller implements."""
+        ctrl_cls = {
+            "renku_module": self.__class__.__module__,
+            "renku_ctrl": self.__class__.__name__,
+        }
+
+        if self.context.get("is_delayed", False) and "user_id" in self.user_data:
+            # NOTE: After pushing the controller to delayed execution,
+            # its important to remove the delayed mark,
+            # otherwise job will keep recursively enqueuing itself.
+            self.context.pop("is_delayed")
+
+            job = self.cache.make_job(self.user, job_data={"ctrl_context": {**self.context, **ctrl_cls}})
+
+            with enqueue_retry(f"delayed.ctrl.{ctrl_cls['renku_ctrl']}") as queue:
+                queue.enqueue(
+                    delayed_ctrl_job, self.context, self.user_data, job.job_id, **ctrl_cls,
+                )
+
+            return job
+
         if "project_id" in self.context:
             return self.local()
-        elif "git_url" in self.context:
+
+        elif "git_url" in self.context and "user_id" not in self.user_data:
+            # NOTE: Anonymous session support.
             return self.remote()
+
+        elif "git_url" in self.context and "user_id" in self.user_data:
+            try:
+                project = Project.get(
+                    (Project.user_id == self.user_data["user_id"]) & (Project.git_url == self.context["git_url"])
+                )
+            except ValueError:
+                from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
+
+                clone_context = {
+                    "git_url": self.request_data["git_url"],
+                }
+
+                if "ref" in self.request_data:
+                    clone_context["ref"] = self.request_data["ref"]
+
+                # NOTE: If we want to migrate project, then we need to do full clone.
+                # This operation can take very long time, and as such is expected
+                # only to be executed from delayed tasks.
+                if self.migrate_project:
+                    clone_context["depth"] = PROJECT_CLONE_NO_DEPTH
+
+                project = ProjectCloneCtrl(self.cache, self.user_data, clone_context).project_clone()
+
+                if not project.initialized:
+                    raise UninitializedProject(project.abs_path)
+
+                if self.migrate_project:
+                    self.ensure_migrated(project.project_id)
+
+            self.context["project_id"] = project.project_id
+            return self.local()
+
         else:
             raise RenkuException("context does not contain `project_id` or `git_url`")
 
@@ -105,6 +186,9 @@ class ReadOperationMixin(metaclass=ABCMeta):
         if not project.initialized:
             raise UninitializedProject(project.abs_path)
 
+        if self.migrate_project:
+            self.ensure_migrated(project.project_id)
+
         self.project_path = project.abs_path
 
         self.reset_local_repo(project)
@@ -128,7 +212,7 @@ class ReadOperationMixin(metaclass=ABCMeta):
             return self.renku_op()
 
 
-class ReadWithSyncOperation(ReadOperationMixin, metaclass=ABCMeta):
+class ReadWithSyncOperation(RenkuOperationMixin, metaclass=ABCMeta):
     """Sync operation mixin."""
 
     def sync(self, remote="origin"):
@@ -138,10 +222,19 @@ class ReadWithSyncOperation(ReadOperationMixin, metaclass=ABCMeta):
         if self.project_path is None:
             raise RenkuException("unable to sync with remote since no operation has been executed")
 
-        _, remote_branch = repo_sync(Repo(self.project_path), remote=remote)
+        bla, remote_branch = repo_sync(Repo(self.project_path), remote=remote)
+
         return remote_branch
 
     def execute_and_sync(self, remote="origin"):
         """Execute operation which controller implements and sync with the remote."""
         # NOTE: This will return the operation result as well as name of the branch to which it has been pushed.
-        return self.execute_op(), self.sync(remote=remote)
+        result = self.execute_op()
+
+        if isinstance(result, Job):
+            return result, None
+
+        if hasattr(result, "output"):
+            result = result.output
+
+        return result, self.sync(remote=remote)

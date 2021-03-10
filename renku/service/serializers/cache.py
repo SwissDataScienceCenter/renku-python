@@ -130,18 +130,6 @@ class ProjectCloneContext(ProjectCloneRequest):
         except ConfigurationError as e:
             raise ValidationError("Invalid `git_url`") from e
 
-        return value
-
-    @post_load()
-    def format_url(self, data, **kwargs):
-        """Format URL with a username and password."""
-        git_url = urlparse(data["git_url"])
-
-        url = "oauth2:{0}@{1}".format(data["token"], git_url.netloc)
-        data["url_with_auth"] = git_url._replace(netloc=url).geturl()
-
-        return data
-
     @pre_load()
     def set_owner_name(self, data, **kwargs):
         """Set owner and name fields."""
@@ -159,6 +147,30 @@ class ProjectCloneContext(ProjectCloneRequest):
         if git_url.name is None:
             raise ValidationError("Invalid `git_url`")
         data["name"] = git_url.name
+
+        return data
+
+    @post_load
+    def finalize_data(self, data, **kwargs):
+        """Finalize data."""
+        git_url = urlparse(data["git_url"])
+
+        url = "oauth2:{0}@{1}".format(data["token"], git_url.netloc)
+        data["url_with_auth"] = git_url._replace(netloc=url).geturl()
+
+        if not data["depth"]:
+            # NOTE: In case of `depth=None` or `depth=0` we set to default depth.
+            data["depth"] = PROJECT_CLONE_DEPTH_DEFAULT
+
+        try:
+            depth = int(data["depth"])
+
+            if depth < 0:
+                # NOTE: In case of `depth<0` we remove the depth limit.
+                data["depth"] = None
+
+        except ValueError:
+            data["depth"] = PROJECT_CLONE_DEPTH_DEFAULT
 
         return data
 
@@ -223,19 +235,6 @@ class ProjectMigrateResponseRPC(JsonRPCResponse):
     """RPC response schema for project migrate."""
 
     result = fields.Nested(ProjectMigrateResponse)
-
-
-class ProjectMigrateJobResponse(Schema):
-    """Response schema for enqueued job of project migration."""
-
-    job_id = fields.String()
-    created_at = fields.DateTime()
-
-
-class ProjectMigrateAsyncResponseRPC(JsonRPCResponse):
-    """RPC response schema for project migrate."""
-
-    result = fields.Nested(ProjectMigrateJobResponse)
 
 
 class ProjectMigrationCheckRequest(Schema):

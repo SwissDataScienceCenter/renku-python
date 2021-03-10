@@ -37,7 +37,7 @@ class Project(Model):
     user_id = TextField(index=True)
 
     clone_depth = IntegerField()
-    git_url = TextField()
+    git_url = TextField(index=True)
 
     name = TextField()
     fullname = TextField()

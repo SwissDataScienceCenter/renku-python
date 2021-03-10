@@ -95,7 +95,7 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_re
 
     url_components = GitURL.parse(it_remote_repo_url)
 
-    payload = {"git_url": it_remote_repo_url, "depth": 0}
+    payload = {"git_url": it_remote_repo_url, "depth": -1}
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 

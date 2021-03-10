@@ -19,12 +19,12 @@
 import itertools
 
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.cache import ProjectListResponseRPC
 from renku.service.views import result_response
 
 
-class ListProjectsCtrl(ServiceCtrl, ReadOperationMixin):
+class ListProjectsCtrl(ServiceCtrl, RenkuOperationMixin):
     """Controller for listing cached projects endpoint."""
 
     RESPONSE_SERIALIZER = ProjectListResponseRPC()

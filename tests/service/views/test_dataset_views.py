@@ -59,12 +59,49 @@ def test_create_dataset_view(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
-
     assert response
     assert_rpc_response(response)
 
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
+    """Create a new dataset successfully."""
+    svc_client, headers, cache = svc_client_cache
+
+    payload = {
+        "git_url": it_remote_repo_url,
+        "name": "{0}".format(uuid.uuid4().hex),
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    assert response
+    assert_rpc_response(response, with_key="error")
+    assert {"code", "migration_required", "reason"} == set(response.json["error"].keys())
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_delay_create_dataset_view(svc_client_cache, it_remote_repo_url):
+    """Create a new dataset successfully."""
+    svc_client, headers, cache = svc_client_cache
+
+    payload = {
+        "git_url": it_remote_repo_url,
+        "name": "{0}".format(uuid.uuid4().hex),
+        "is_delayed": True,
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+
+    assert response
+    assert_rpc_response(response, with_key="result")
+    assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
 
 @pytest.mark.service
@@ -1478,8 +1515,8 @@ def test_protected_branch(svc_protected_repo):
 def test_unlink_file(unlink_file_setup):
     """Check unlinking of a file from a dataset."""
     svc_client, headers, unlink_payload = unlink_file_setup
+    response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers)
 
-    response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers,)
     assert_rpc_response(response, with_key="result")
 
     assert {"unlinked", "remote_branch"} == set(response.json["result"].keys())

@@ -16,10 +16,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service parent serializers."""
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, pre_load
+
+from renku.service.serializers.rpc import JsonRPCResponse
 
 
 class RenkuSyncSchema(Schema):
     """Parent schema for all Renku write operations."""
 
     remote_branch = fields.String()
+
+
+class RepositoryContext(Schema):
+    """Parent schema for Renku repository support."""
+
+    project_id = fields.String()
+    git_url = fields.String()
+
+    ref = fields.String()
+    commit_message = fields.String()
+
+    is_delayed = fields.Boolean()
+
+
+class JobDetailsResponse(Schema):
+    """Response schema for enqueued job."""
+
+    job_id = fields.String()
+    created_at = fields.DateTime()
+
+
+class DelayedResponseRPC(JsonRPCResponse):
+    """RPC response schema for project migrate."""
+
+    result = fields.Nested(JobDetailsResponse)

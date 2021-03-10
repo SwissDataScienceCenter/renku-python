@@ -110,6 +110,16 @@ def identity_headers():
 
 
 @pytest.fixture(scope="module")
+def view_user_data(identity_headers):
+    """View user data object."""
+    from renku.service.serializers.headers import RequiredIdentityHeaders
+
+    user_data = RequiredIdentityHeaders().load(identity_headers)
+
+    return user_data
+
+
+@pytest.fixture(scope="module")
 def authentication_headers_raw():
     """Get authentication headers without renku user identification."""
     headers = {

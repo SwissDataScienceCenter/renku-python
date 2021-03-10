@@ -69,7 +69,7 @@ def clone(
         if checkout_rev in remote_refs:
             repo.git.checkout(checkout_rev)
         elif checkout_rev:
-            repo.git.checkout(checkout_rev, b=checkout_rev)
+            repo.git.checkout(b=checkout_rev)
     except GitCommandError as e:
         msg = str(e)
         if "is not a commit and a branch" in msg and "cannot be created from it" in msg:

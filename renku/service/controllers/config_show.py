@@ -19,12 +19,12 @@
 from renku.core.commands.config import read_config
 from renku.core.models.enums import ConfigFilter
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.config import ConfigShowRequest, ConfigShowResponseRPC
 from renku.service.views import result_response
 
 
-class ShowConfigCtrl(ServiceCtrl, ReadOperationMixin):
+class ShowConfigCtrl(ServiceCtrl, RenkuOperationMixin):
     """Controller for listing cached projects endpoint."""
 
     REQUEST_SERIALIZER = ConfigShowRequest()
