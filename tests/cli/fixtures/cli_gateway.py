@@ -35,7 +35,7 @@ def mock_login():
 
             def callback(token):
                 def func(request):
-                    if request.params.get("user_code") == "valid_user_code":
+                    if request.params.get("server_nonce") == "valid_user_code":
                         return 200, {"Content-Type": "application/json"}, json.dumps({"access_token": token})
 
                     return 404, {"Content-Type": "application/json"}, ""
@@ -43,10 +43,10 @@ def mock_login():
                 return func
 
             requests_mock.add_callback(
-                responses.GET, "https://renku.deployment.ch/api/auth/info", callback=callback("jwt-token")
+                responses.GET, "https://renku.deployment.ch/api/auth/cli-token", callback=callback("jwt-token")
             )
             requests_mock.add_callback(
-                responses.GET, "https://other.deployment/api/auth/info", callback=callback("other-token")
+                responses.GET, "https://other.deployment/api/auth/cli-token", callback=callback("other-token")
             )
 
             yield requests_mock

@@ -41,15 +41,15 @@ def login_command():
 
 def _login(client, endpoint):
     parsed_endpoint = _parse_endpoint(client, endpoint)
-    cli_token = str(uuid.uuid4())
+    cli_nonce = str(uuid.uuid4())
 
     communication.echo(f"Please log in at {parsed_endpoint.geturl()} on your browser.")
 
-    login_url = _get_url(parsed_endpoint, "/api/auth/login", cli_token=cli_token)
+    login_url = _get_url(parsed_endpoint, "/api/auth/login", cli_nonce=cli_nonce)
     webbrowser.open_new_tab(login_url)
 
-    user_code = communication.prompt("Once completed, enter the security code that you receive at the end")
-    info_url = _get_url(parsed_endpoint, "/api/auth/info", cli_token=cli_token, user_code=user_code)
+    server_nonce = communication.prompt("Once completed, enter the security code that you receive at the end")
+    info_url = _get_url(parsed_endpoint, "/api/auth/cli-token", cli_nonce=cli_nonce, server_nonce=server_nonce)
 
     try:
         response = requests.get(info_url)
