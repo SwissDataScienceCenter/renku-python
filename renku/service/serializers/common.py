@@ -30,8 +30,8 @@ class RenkuSyncSchema(Schema):
 class RepositoryContext(Schema):
     """Parent schema for Renku repository support."""
 
-    project_id = fields.String()
     git_url = fields.String()
+    project_id = fields.String()
 
     ref = fields.String()
     commit_message = fields.String()
