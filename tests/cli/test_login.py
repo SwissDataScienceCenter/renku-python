@@ -40,6 +40,15 @@ def test_login_no_endpoint(runner, client, mock_login):
     assert "Parameter 'endpoint' is missing." in result.output
 
 
+def test_login_no_endpoint_and_remote(runner, client, mock_login):
+    """Test login command with no endpoint and with project remote."""
+    client.repo.create_remote("test_remote", url="https://example.com/")
+    result = runner.invoke(cli, ["login"], input="invalid_user_code")
+
+    assert 2 == result.exit_code, result.output
+    assert "Parameter 'endpoint' is missing." in result.output
+
+
 def test_login_invalid_endpoint(runner, client, mock_login):
     """Test login with and invalid endpoint."""
     result = runner.invoke(cli, ["login", "http: //example.com"])

@@ -187,7 +187,7 @@ class RenkuProvider(ProviderApi):
     def _read_renku_token(self, client, uri):
         """Read renku token from renku config file."""
         try:
-            parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=uri)
+            parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=uri, use_remote=True)
         except errors.ParameterError:
             return
         self._authentication_endpoint = parsed_endpoint.netloc
