@@ -189,6 +189,24 @@ To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
 reference in the remote Git repository.
 
+Uploading files to JupyterLab and creating a dataset:
+
+You can use the ``renku dataset`` command to also create a dataset with data
+that is already present in your JupyterLab or RStudio environment or with 
+data that is on your local computer. For example, you can drag and drop files 
+from your computer into the JupyterLab window to upload them and then 
+use the ``renku dataset`` command to create a dataset, add the files to the 
+dataset and also check them in git with LFS. Assuming that you have uploaded 
+three files at the root of your repository named ``file1.csv``, ``file2.csv``
+and ``file3.csv``, you can run the following command to create a dataset from them:
+
+.. code-block:: console
+
+    renku dataset add --create my-new-dataset file1.csv file2.csv file3.csv
+
+In addition, you can use shell-like wildcards (e.g. *, **, ?) when specifying paths to be
+added instead of explicitly naming every file.
+
 Adding external data to the dataset:
 
 Sometimes you might want to add data to your dataset without copying the
