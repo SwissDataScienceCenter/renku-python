@@ -71,7 +71,8 @@ You can also specify which paths to save:
 
 import click
 
-from renku.core.commands.save import save_and_push
+from renku.cli.utils.callback import ClickCallback
+from renku.core.commands.save import save_and_push_command
 
 
 @click.command(name="save")
@@ -85,14 +86,19 @@ from renku.core.commands.save import save_and_push
     ),
 )
 @click.argument("paths", type=click.Path(exists=False, dir_okay=True), nargs=-1)
-@click.pass_context
-def save(ctx, message, destination, paths):
+def save(message, destination, paths):
     """Save and push local changes."""
-
-    saved_paths, branch = save_and_push(message=message, remote=destination, paths=paths)
+    communicator = ClickCallback()
+    saved_paths, branch = (
+        save_and_push_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(message=message, remote=destination, paths=paths)
+        .output
+    )
 
     if saved_paths:
-        click.echo("Successfully saved to branch {}: \n\t{}".format(branch, "\n\t".join(saved_paths)))
+        click.echo("Successfully saved to remote branch {}: \n\t{}".format(branch, "\n\t".join(saved_paths)))
     else:
         click.echo("There were no changes to save.")
 

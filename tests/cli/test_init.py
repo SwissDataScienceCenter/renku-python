@@ -23,8 +23,9 @@ import git
 import pytest
 
 from renku.cli import cli
-from renku.cli.init import create_template_sentence, parse_parameters
+from renku.cli.init import parse_parameters
 from renku.core import errors
+from renku.core.commands.init import create_template_sentence
 from tests.utils import raises
 
 
@@ -341,7 +342,7 @@ def test_init_with_invalid_data_dir(isolated_runner, data_dir, project_init):
 
 def test_default_init_parameters(isolated_runner, mocker, project_init, template):
     """Test that the default parameters are set in template initialisation."""
-    create_from_template = mocker.patch("renku.cli.init.create_from_template")
+    create_from_template = mocker.patch("renku.core.commands.init.create_from_template")
     mocker.patch("renku.cli.githooks.install")
 
     data, commands = project_init

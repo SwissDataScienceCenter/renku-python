@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,16 +15,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Dataset metadata migrations."""
-
-from renku.core.management.migrations.models.v8 import get_client_datasets
-
-
-def migrate(client):
-    """Migration function."""
-    _fix_dataset_metadata(client)
-
-
-def _fix_dataset_metadata(client):
-    for dataset in get_client_datasets(client):
-        dataset.to_yaml()
+"""Renku service fixtures."""

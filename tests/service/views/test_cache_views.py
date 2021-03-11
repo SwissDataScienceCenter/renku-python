@@ -26,7 +26,6 @@ import pytest
 from flaky import flaky
 from git import Repo
 
-from conftest import IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
@@ -228,10 +227,10 @@ def test_file_upload_with_users(svc_client, identity_headers):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_no_auth(svc_client, identity_headers):
+def test_clone_projects_no_auth(svc_client, identity_headers, it_remote_repo_url):
     """Check error on cloning of remote repository."""
     payload = {
-        "git_url": IT_REMOTE_REPO_URL,
+        "git_url": it_remote_repo_url,
     }
 
     response = svc_client.post(
@@ -252,10 +251,10 @@ def test_clone_projects_no_auth(svc_client, identity_headers):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_with_auth(svc_client, identity_headers):
+def test_clone_projects_with_auth(svc_client, identity_headers, it_remote_repo_url):
     """Check cloning of remote repository."""
     payload = {
-        "git_url": IT_REMOTE_REPO_URL,
+        "git_url": it_remote_repo_url,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
@@ -268,12 +267,12 @@ def test_clone_projects_with_auth(svc_client, identity_headers):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_multiple(svc_client, identity_headers):
+def test_clone_projects_multiple(svc_client, identity_headers, it_remote_repo_url):
     """Check multiple cloning of remote repository."""
     project_ids = []
 
     payload = {
-        "git_url": IT_REMOTE_REPO_URL,
+        "git_url": it_remote_repo_url,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
@@ -315,10 +314,10 @@ def test_clone_projects_multiple(svc_client, identity_headers):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_list_view_errors(svc_client, identity_headers):
+def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote_repo_url):
     """Check cache state of cloned projects with no headers."""
     payload = {
-        "git_url": IT_REMOTE_REPO_URL,
+        "git_url": it_remote_repo_url,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
@@ -350,10 +349,10 @@ def test_clone_projects_list_view_errors(svc_client, identity_headers):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_invalid_headers(svc_client, identity_headers):
+def test_clone_projects_invalid_headers(svc_client, identity_headers, it_remote_repo_url):
     """Check cache state of cloned projects with invalid headers."""
     payload = {
-        "git_url": IT_REMOTE_REPO_URL,
+        "git_url": it_remote_repo_url,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
@@ -649,11 +648,11 @@ def test_check_migrations_local(svc_client_setup):
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_migrations_remote(svc_client_setup, it_remote_repo):
+def test_check_migrations_remote(svc_client_setup, it_remote_repo_url):
     """Check if migrations are required for a remote project."""
     svc_client, headers, _, _ = svc_client_setup
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=it_remote_repo), headers=headers)
+    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=headers)
     assert 200 == response.status_code
 
     assert response.json["result"]["migration_required"]

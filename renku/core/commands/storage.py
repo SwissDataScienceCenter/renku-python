@@ -18,14 +18,20 @@
 """Renku storage command."""
 
 from renku.core.incubation.command import Command
+from renku.core.utils import communication
 
 
 def _check_lfs(client, everything=False):
     """Check if large files are not in lfs."""
-    return client.check_lfs_migrate_info(everything)
+    files = client.check_lfs_migrate_info(everything)
+
+    if files:
+        communication.warn("Git history contains large files\n\t" + "\n\t".join(files))
+
+    return files
 
 
-def check_lfs():
+def check_lfs_command():
     """Check lfs command."""
     return Command().command(_check_lfs)
 
@@ -35,6 +41,48 @@ def _fix_lfs(client, paths):
     client.migrate_files_to_lfs(paths)
 
 
-def fix_lfs():
+def fix_lfs_command():
     """Fix lfs command."""
     return Command().command(_fix_lfs).require_clean().with_commit(commit_if_empty=False)
+
+
+def _pull(client, paths):
+    """Pull the specified paths from external storage."""
+    client.pull_paths_from_storage(*paths)
+
+
+def pull_command():
+    """Command to pull the specified paths from external storage."""
+    return Command().command(_pull)
+
+
+def _clean(client, paths):
+    """Remove files from lfs cache/turn them back into pointer files."""
+    untracked_paths, local_only_paths = client.clean_storage_cache(*paths)
+
+    if untracked_paths:
+        communication.warn(
+            "These paths were ignored as they are not tracked"
+            + " in git LFS:\n\t{}\n".format("\n\t".join(untracked_paths))
+        )
+
+    if local_only_paths:
+        communication.warn(
+            "These paths were ignored as they are not pushed to "
+            + "a remote with git LFS:\n\t{}\n".format("\n\t".join(local_only_paths))
+        )
+
+
+def clean_command():
+    """Command to remove files from lfs cache/turn them back into pointer files."""
+    return Command().command(_clean)
+
+
+def _check_lfs_hook(client, paths):
+    """Pull the specified paths from external storage."""
+    return client.check_requires_tracking(*paths)
+
+
+def check_lfs_hook_command():
+    """Command to pull the specified paths from external storage."""
+    return Command().command(_check_lfs_hook)
