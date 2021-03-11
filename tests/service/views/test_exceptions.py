@@ -70,7 +70,7 @@ def test_migration_required_flag(svc_client_setup):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
@@ -98,7 +98,7 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)
@@ -129,7 +129,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)
