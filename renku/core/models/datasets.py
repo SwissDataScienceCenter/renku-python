@@ -995,6 +995,7 @@ class ImageObjectRequestJson(marshmallow.Schema):
     file_id = marshmallow.fields.String()
     content_url = marshmallow.fields.String()
     position = marshmallow.fields.Integer()
+    mirror_locally = marshmallow.fields.Bool(default=False)
 
 
 class DatasetCreatorsJson(marshmallow.Schema):
