@@ -59,6 +59,7 @@ from urllib.parse import urlencode
 
 import click
 import filelock
+import portalocker
 
 from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
 
@@ -121,7 +122,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
             result = super().main(*args, **kwargs)
             return result
 
-        except filelock.Timeout:
+        except (filelock.Timeout, portalocker.LockException, portalocker.AlreadyLocked):
             click.echo(
                 (
                     click.style("Unable to acquire lock.\n", fg="red",) + "Hint: Please wait for another renku "

@@ -23,7 +23,7 @@ from pathlib import Path
 
 import attr
 import click
-import filelock
+import portalocker
 from pkg_resources import resource_filename
 
 from renku.core.models.enums import ConfigFilter
@@ -70,15 +70,14 @@ class ConfigManagerMixin:
         return str(self.renku_path / self.CONFIG_NAME)
 
     @property
-    def global_config_lock(self):
-        """Create a user-level config lock."""
-        lock_file = f"{self.global_config_path}.lock"
+    def global_config_read_lock(self):
+        """Create a user-level config read lock."""
+        return portalocker.Lock(self.global_config_path, timeout=0, flags=portalocker.LOCK_SH | portalocker.LOCK_NB)
 
-        import logging
-
-        logging.getLogger("filelock").setLevel(logging.ERROR)
-
-        return filelock.FileLock(lock_file, timeout=0)
+    @property
+    def global_config_write_lock(self):
+        """Create a user-level config write lock."""
+        return portalocker.Lock(self.global_config_path, timeout=0, flags=portalocker.LOCK_EX | portalocker.LOCK_NB)
 
     def load_config(self, config_filter=ConfigFilter.ALL):
         """Loads local, global or both configuration object."""
@@ -93,7 +92,7 @@ class ConfigManagerMixin:
             config_files += [self.global_config_path, self.local_config_path]
 
         if config_filter != ConfigFilter.LOCAL_ONLY:
-            with self.global_config_lock:
+            with self.global_config_read_lock:
                 config.read(config_files)
         else:
             config.read(config_files)
@@ -118,9 +117,9 @@ class ConfigManagerMixin:
         filepath = self.global_config_path if global_only else self.local_config_path
 
         if global_only:
-            os.umask(0)
-            fd = os.open(filepath, os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600)
-            with self.global_config_lock:
+            with self.global_config_write_lock:
+                os.umask(0)
+                fd = os.open(filepath, os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600)
                 with open(fd, "w+") as file:
                     config.write(file)
         else:
