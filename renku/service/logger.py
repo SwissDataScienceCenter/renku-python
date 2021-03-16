@@ -36,4 +36,5 @@ __all__ = [
     "service_log",
     "worker_log",
     "scheduler_log",
+    "DEPLOYMENT_LOG_LEVEL",
 ]

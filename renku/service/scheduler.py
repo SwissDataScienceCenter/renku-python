@@ -21,7 +21,6 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from rq_scheduler import Scheduler
-from rq_scheduler.utils import setup_loghandlers
 
 from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
 from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, CLEANUP_QUEUE_PROJECTS, WorkerQueues
@@ -31,33 +30,20 @@ from renku.service.logger import DEPLOYMENT_LOG_LEVEL, scheduler_log
 @contextmanager
 def schedule():
     """Creates scheduler object."""
-    setup_loghandlers(level=DEPLOYMENT_LOG_LEVEL)
-
-    build_scheduler = Scheduler(connection=WorkerQueues.connection)
-
-    scheduler_log.info("scheduler created")
-
     cleanup_interval = int(os.getenv("RENKU_SVC_CLEANUP_INTERVAL", 60))
-    scheduler_log.info("cleanup interval set to {}".format(cleanup_interval))
+    scheduler_log.info(f"cleanup interval set to {cleanup_interval}")
 
-    def requeue(*args, **kwargs):
-        """Inverval check for scheduled jobs."""
-        job = args[0]
-
-        queue = Scheduler.get_queue_for_job(build_scheduler, job)
-        scheduler_log.info(f"job {job.id}:{job.func_name} re/queued to {queue.name}")
-
-        return queue
-
-    # NOTE: Patch scheduler to have requeing information on INFO log level.
-    build_scheduler.get_queue_for_job = requeue
+    build_scheduler = Scheduler(connection=WorkerQueues.connection, interval=cleanup_interval)
+    build_scheduler.log = scheduler_log
+    build_scheduler.log.debug = build_scheduler.log.info
+    scheduler_log.info("scheduler created")
 
     build_scheduler.schedule(
         scheduled_time=datetime.utcnow(),
         queue_name=CLEANUP_QUEUE_FILES,
         func=cache_files_cleanup,
         interval=cleanup_interval,
-        result_ttl=cleanup_interval + 1,
+        result_ttl=cleanup_interval * 2,
     )
 
     build_scheduler.schedule(
@@ -65,7 +51,7 @@ def schedule():
         queue_name=CLEANUP_QUEUE_PROJECTS,
         func=cache_project_cleanup,
         interval=cleanup_interval,
-        result_ttl=cleanup_interval + 1,
+        result_ttl=cleanup_interval * 2,
     )
 
     scheduler_log.info(f"log level set to {DEPLOYMENT_LOG_LEVEL}")
