@@ -70,7 +70,7 @@ def test_migration_required_flag(svc_client_setup):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
@@ -81,9 +81,9 @@ def test_migration_required_flag(svc_client_setup):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_project_uninitialized(svc_client, it_remote_non_renku_repo, identity_headers):
+def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_headers):
     """Check migration required failure."""
-    payload = {"git_url": it_remote_non_renku_repo}
+    payload = {"git_url": it_non_renku_repo_url}
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
@@ -98,7 +98,7 @@ def test_project_uninitialized(svc_client, it_remote_non_renku_repo, identity_he
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)
@@ -112,9 +112,9 @@ def test_project_uninitialized(svc_client, it_remote_non_renku_repo, identity_he
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_project_no_commits(svc_client, it_remote_no_commits_repo, identity_headers):
+def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers):
     """Check migration required failure."""
-    payload = {"git_url": it_remote_no_commits_repo}
+    payload = {"git_url": it_no_commit_repo_url}
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
@@ -129,7 +129,7 @@ def test_project_no_commits(svc_client, it_remote_no_commits_repo, identity_head
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)

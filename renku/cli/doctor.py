@@ -20,7 +20,7 @@ import textwrap
 
 import click
 
-from renku.core.commands.doctor import DOCTOR_INFO, doctor_check
+from renku.core.commands.doctor import DOCTOR_INFO, doctor_check_command
 
 
 @click.command()
@@ -28,7 +28,7 @@ from renku.core.commands.doctor import DOCTOR_INFO, doctor_check
 def doctor(ctx):
     """Check your system and repository for potential problems."""
     click.secho("\n".join(textwrap.wrap(DOCTOR_INFO)) + "\n", bold=True)
-    is_ok, problems = doctor_check()
+    is_ok, problems = doctor_check_command().build().execute().output
 
     if is_ok:
         click.secho("Everything seems to be ok.", fg="green")

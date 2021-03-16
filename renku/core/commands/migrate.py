@@ -95,3 +95,17 @@ def _check_project(client):
         return UNSUPPORTED_PROJECT
 
     return SUPPORTED_RENKU_PROJECT
+
+
+def _check_immutable_template_files(client, paths):
+    """Check paths and return a list of those that are marked immutable in the project template."""
+    if not client.project.immutable_template_files:
+        return []
+
+    immutable_template_files = client.project.immutable_template_files or []
+    return [p for p in paths if str(p) in immutable_template_files]
+
+
+def check_immutable_template_files_command():
+    """Command for checking immutable template files."""
+    return Command().command(_check_immutable_template_files)

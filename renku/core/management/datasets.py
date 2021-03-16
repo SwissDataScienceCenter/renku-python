@@ -18,6 +18,7 @@
 """Client for handling datasets."""
 
 import concurrent.futures
+import imghdr
 import os
 import re
 import shlex
@@ -31,6 +32,7 @@ from pathlib import Path
 from subprocess import PIPE, SubprocessError
 from urllib import error, parse
 from urllib.parse import ParseResult, urlparse
+from urllib.request import urlretrieve
 
 import attr
 import patoolib
@@ -48,6 +50,7 @@ from renku.core.models.datasets import (
     DatasetTag,
     ImageObject,
     generate_dataset_file_url,
+    get_slug,
     is_dataset_name_valid,
 )
 from renku.core.models.git import GitURL
@@ -305,7 +308,8 @@ class DatasetsApiMixin(object):
             raise errors.ParameterError("Dataset name must be provided.")
 
         if not is_dataset_name_valid(name):
-            raise errors.ParameterError('Dataset name "{}" is not valid.'.format(name))
+            valid_name = get_slug(name)
+            raise errors.ParameterError(f'Dataset name "{name}" is not valid (Hint: "{valid_name}" is valid).')
 
         if self.load_dataset(name=name):
             raise errors.DatasetExistsError('Dataset exists: "{}".'.format(name))
@@ -381,12 +385,28 @@ class DatasetsApiMixin(object):
             if existing:
                 dataset.images.append(existing)
                 continue
-
+            image_type = None
             if urlparse(content_url).netloc:
                 # NOTE: absolute url
-                dataset.images.append(ImageObject(content_url, position, id=ImageObject.generate_id(dataset, position)))
-                images_updated = True
-                continue
+                if not img.get("mirror_locally", False):
+                    dataset.images.append(
+                        ImageObject(content_url, position, id=ImageObject.generate_id(dataset, position))
+                    )
+                    images_updated = True
+                    continue
+
+                # NOTE: mirror the image locally
+                try:
+                    path, _ = urlretrieve(content_url)
+                except error.URLError as e:
+                    raise errors.DatasetImageError(f"Dataset image with url {content_url} couldn't be mirrored") from e
+
+                image_type = imghdr.what(path)
+                if image_type:
+                    image_type = f".{image_type}"
+
+                content_url = path
+                safe_image_paths.append(Path(path).parent)
 
             path = content_url
             if not os.path.isabs(path):
@@ -400,7 +420,11 @@ class DatasetsApiMixin(object):
 
             if not path.startswith(str(image_folder)):
                 # NOTE: only copy dataset image if it's not in .renku/datasets/<id>/images/ already
-                _, ext = os.path.splitext(content_url)
+                if image_type:
+                    ext = image_type
+                else:
+                    _, ext = os.path.splitext(content_url)
+
                 img_path = image_folder / f"{position}{ext}"
                 shutil.copy(path, img_path)
 

@@ -25,7 +25,7 @@ from requests import RequestException
 from sentry_sdk import capture_exception
 
 from renku.core.commands.format.graph import jsonld
-from renku.core.commands.graph import build_graph
+from renku.core.commands.graph import build_graph_command
 from renku.core.commands.migrate import migrate_project
 from renku.core.errors import MigrationError, RenkuException
 from renku.core.utils.contexts import chdir
@@ -97,7 +97,7 @@ def _build_and_report(callback_payload, callback_url, ctx):
                 result, _, _ = result.output
 
                 if result:
-                    graph = build_graph()
+                    graph = build_graph_command().build().execute().output
                     graph_payload = {"payload": jsonld(graph, strict=True, to_stdout=False)}
                 else:
                     report_unrecoverable(callback_payload, MigrationError("migration failed"), callback_url)

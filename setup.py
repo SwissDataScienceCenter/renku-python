@@ -170,6 +170,7 @@ install_requires = [
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
     "pluggy==0.13.1",
+    "portalocker>=2.2.1,<2.3",
     "psutil>=5.4.7,<5.8.1",
     "pyasn1>=0.4.5,<=0.4.8",
     "pyjwt==2.0.1",

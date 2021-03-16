@@ -55,8 +55,32 @@ class CommunicationCallback:
     def has_prompt(self):
         """Return True if communicator provides a direct prompt to users."""
 
-    def prompt(self, msg, type=None, default=None):
+    def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt."""
+
+
+def lock_communication(method):
+    """Ensure communicator is locked."""
+
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """Implementation of method wrapper."""
+        with CommunicationCallback.lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
+
+
+def ensure_communication(method):
+    """Ensure communicator is enabled."""
+
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """Implementation of method wrapper."""
+        if self._enabled:
+            return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 class _CommunicationManger(CommunicationCallback):
@@ -65,87 +89,105 @@ class _CommunicationManger(CommunicationCallback):
     def __init__(self):
         super().__init__()
         self._listeners = []
+        self._enabled = True
 
     @property
+    @lock_communication
     def listeners(self):
         """Return subscribed listeners."""
-        with CommunicationCallback.lock:
-            return self._listeners.copy()
+        return self._listeners.copy()
 
+    @lock_communication
     def subscribe(self, listener):
         """Add a new listener for communications."""
-        with CommunicationCallback.lock:
-            if listener not in self._listeners:
-                self._listeners.append(listener)
+        if listener not in self._listeners:
+            self._listeners.append(listener)
 
+    @lock_communication
     def unsubscribe(self, listener):
         """Remove a communication listener."""
-        with CommunicationCallback.lock:
-            if listener in self._listeners:
-                self._listeners.remove(listener)
+        if listener in self._listeners:
+            self._listeners.remove(listener)
 
+    @lock_communication
+    @ensure_communication
     def echo(self, msg, end="\n"):
         """Write a message."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                listener.echo(msg, end=end)
+        for listener in self._listeners:
+            listener.echo(msg, end=end)
 
+    @lock_communication
+    @ensure_communication
     def info(self, msg):
         """Write an info message."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                listener.info(msg)
+        for listener in self._listeners:
+            listener.info(msg)
 
+    @lock_communication
+    @ensure_communication
     def warn(self, msg):
         """Write a warning message."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                listener.warn(msg)
+        for listener in self._listeners:
+            listener.warn(msg)
 
+    @lock_communication
+    @ensure_communication
     def error(self, msg):
         """Write an error message."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                listener.error(msg)
+        for listener in self._listeners:
+            listener.error(msg)
 
+    @lock_communication
     def has_prompt(self):
         """Return True if any communicator provides a direct prompt to users."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                if listener.has_prompt():
-                    return True
+        for listener in self._listeners:
+            if listener.has_prompt():
+                return True
 
+    @lock_communication
     def confirm(self, msg, abort=False, warning=False):
         """Get confirmation for an action."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                if listener.has_prompt():
-                    return listener.confirm(msg, abort, warning)
+        for listener in self._listeners:
+            if listener.has_prompt():
+                return listener.confirm(msg, abort, warning)
 
-    def prompt(self, msg, type=None, default=None):
+    @lock_communication
+    def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt from the first callback that has a prompt."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                if listener.has_prompt():
-                    return listener.prompt(msg, type, default)
+        for listener in self._listeners:
+            if listener.has_prompt():
+                return listener.prompt(msg, type, default, **kwargs)
 
+    @lock_communication
+    @ensure_communication
     def start_progress(self, name, total, **kwargs):
         """Create a new progress tracker."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                listener.start_progress(name, total, **kwargs)
+        for listener in self._listeners:
+            listener.start_progress(name, total, **kwargs)
 
+    @lock_communication
+    @ensure_communication
     def update_progress(self, name, amount):
         """Update a progress tracker."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                listener.update_progress(name, amount)
+        for listener in self._listeners:
+            listener.update_progress(name, amount)
 
+    @lock_communication
+    @ensure_communication
     def finalize_progress(self, name):
         """End a progress tracker."""
-        with CommunicationCallback.lock:
-            for listener in self._listeners:
-                listener.finalize_progress(name)
+        for listener in self._listeners:
+            listener.finalize_progress(name)
+
+    @lock_communication
+    def disable(self):
+        """Disable all outputs; by default everything is enabled."""
+        self._enabled = False
+
+    @lock_communication
+    def enable(self):
+        """Enable all outputs."""
+        self._enabled = True
 
 
 _thread_local = Local()
@@ -213,9 +255,9 @@ def confirm(msg, abort=False, warning=False):
 
 
 @ensure_manager
-def prompt(msg, type=None, default=None):
+def prompt(msg, type=None, default=None, **kwargs):
     """Show a message prompt."""
-    return _thread_local.communication_manager.prompt(msg, type, default)
+    return _thread_local.communication_manager.prompt(msg, type, default, **kwargs)
 
 
 @ensure_manager
@@ -242,6 +284,18 @@ def get_listeners():
     return _thread_local.communication_manager.listeners
 
 
+@ensure_manager
+def disable():
+    """Disable all outputs; by default everything is enabled."""
+    return _thread_local.communication_manager.disable()
+
+
+@ensure_manager
+def enable():
+    """Enable all outputs."""
+    return _thread_local.communication_manager.enable()
+
+
 __all__ = [
     "CommunicationCallback",
     "subscribe",
@@ -255,4 +309,6 @@ __all__ = [
     "start_progress",
     "update_progress",
     "finalize_progress",
+    "disable",
+    "enable",
 ]

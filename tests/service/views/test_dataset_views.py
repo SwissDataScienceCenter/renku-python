@@ -28,7 +28,6 @@ import pytest
 from flaky import flaky
 from werkzeug.utils import secure_filename
 
-from conftest import IT_REMOTE_REPO_URL
 from renku.service.config import (
     GIT_ACCESS_DENIED_ERROR_CODE,
     INVALID_HEADERS_ERROR_CODE,
@@ -56,7 +55,7 @@ def test_create_dataset_view(svc_client_with_repo):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
@@ -77,7 +76,7 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
 
     payload = {
         "project_id": "ref does not exist",
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
@@ -94,7 +93,7 @@ def test_remove_dataset_view(svc_client_with_repo):
     svc_client, headers, project_id, _ = svc_client_with_repo
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     svc_client.post(
@@ -123,7 +122,7 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
         "title": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
@@ -164,7 +163,7 @@ def test_create_dataset_with_images(svc_client_with_repo):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
         "title": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
@@ -181,7 +180,7 @@ def test_create_dataset_with_images(svc_client_with_repo):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
         "title": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
@@ -220,6 +219,63 @@ def test_create_dataset_with_images(svc_client_with_repo):
     assert img1["content_url"] == "https://example.com/image1.jpg"
     assert img2["content_url"].startswith(".renku/dataset_images/")
     assert img2["content_url"].endswith("/2.png")
+
+
+@pytest.mark.parametrize(
+    "img_url",
+    ["https://raw.githubusercontent.com/SwissDataScienceCenter/calamus/master/docs/reed.png", "https://bit.ly/2ZoutNn"],
+)
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
+    """Create a new dataset with metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = {
+        "project_id": project_id,
+        "name": uuid.uuid4().hex,
+        "title": "my little dataset",
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "description": "my little description",
+        "images": [{"content_url": "https://renkulab.io/api/doesnt_exist.png", "position": 1, "mirror_locally": True},],
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    assert response
+    assert {"error"} == response.json.keys()
+
+    payload = {
+        "project_id": project_id,
+        "name": uuid.uuid4().hex,
+        "title": "my little dataset",
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "description": "my little description",
+        "images": [{"content_url": img_url, "position": 1, "mirror_locally": True,},],
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params = {
+        "project_id": project_id,
+    }
+    response = svc_client.get("/datasets.list", query_string=params, headers=headers,)
+
+    assert response
+    assert_rpc_response(response)
+
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    assert len(ds["images"]) == 1
+    img1 = next(img for img in ds["images"] if img["position"] == 1)
+
+    assert img1["content_url"].startswith(".renku/dataset_images/")
+    assert img1["content_url"].endswith("/1.png")
 
 
 @pytest.mark.service
@@ -267,7 +323,7 @@ def test_create_dataset_with_uploaded_images(svc_client_with_repo):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
         "title": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
@@ -315,7 +371,7 @@ def test_create_dataset_invalid_creator(svc_client_with_repo):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
         "title": "my little dataset",
         "creators": [{"name": None, "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
@@ -337,7 +393,7 @@ def test_create_dataset_commit_msg(svc_client_with_repo):
     """Create a new dataset successfully with custom commit message."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    payload = {"project_id": project_id, "name": "{0}".format(uuid.uuid4().hex), "commit_message": "my awesome dataset"}
+    payload = {"project_id": project_id, "name": uuid.uuid4().hex, "commit_message": "my awesome dataset"}
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
 
@@ -474,7 +530,7 @@ def test_add_file_view(svc_client_with_repo):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
         "create_dataset": True,
         "files": [{"file_id": file_id,},],
     }
@@ -512,7 +568,7 @@ def test_add_file_commit_msg(svc_client_with_repo):
     payload = {
         "commit_message": "my awesome data file",
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
         "create_dataset": True,
         "files": [{"file_id": file_id,},],
     }
@@ -549,7 +605,7 @@ def test_add_file_failure(svc_client_with_repo):
     payload = {
         "commit_message": "my awesome data file",
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
         "create_dataset": True,
         "files": [{"file_id": file_id,}, {"file_path": "my problem right here"}],
     }
@@ -598,7 +654,7 @@ def test_list_datasets_view(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_list_datasets_anonymous(svc_client_with_repo):
+def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing datasets."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
@@ -615,7 +671,7 @@ def test_list_datasets_anonymous(svc_client_with_repo):
     assert expected_reason == response.json["error"]["reason"]
 
     params = {
-        "git_url": IT_REMOTE_REPO_URL,
+        "git_url": it_remote_repo_url,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers={})
     assert_rpc_response(response, with_key="error")
@@ -638,11 +694,11 @@ def test_list_datasets_anonymous(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo):
+def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing datasets."""
     svc_client, headers, _, _ = svc_client_with_repo
 
-    params = dict(git_url=it_remote_repo)
+    params = dict(git_url=it_remote_repo_url)
 
     response = svc_client.get("/datasets.list", query_string=params, headers=headers,)
 
@@ -685,7 +741,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_list_dataset_files_anonymous(svc_client_with_repo):
+def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing dataset files."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
@@ -698,7 +754,7 @@ def test_list_dataset_files_anonymous(svc_client_with_repo):
     expected_reason = "Cannot execute user operation while anonymous - user identification is missing."
     assert expected_reason == response.json["error"]["reason"]
 
-    params = {"git_url": IT_REMOTE_REPO_URL, "name": "ds1"}
+    params = {"git_url": it_remote_repo_url, "name": "ds1"}
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
     assert_rpc_response(response, with_key="error")
     assert {"code", "reason"} == set(response.json["error"].keys())
@@ -719,11 +775,11 @@ def test_list_dataset_files_anonymous(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo):
+def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing dataset files."""
     svc_client, headers, _, _ = svc_client_with_repo
 
-    params = dict(git_url=it_remote_repo, name="ds1")
+    params = dict(git_url=it_remote_repo_url, name="ds1")
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers,)
 
@@ -745,7 +801,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
@@ -788,7 +844,7 @@ def test_list_dataset_files(svc_client_with_repo):
     svc_client, headers, project_id, _ = svc_client_with_repo
     content_type = headers.pop("Content-Type")
 
-    file_name = "{0}".format(uuid.uuid4().hex)
+    file_name = uuid.uuid4().hex
     response = svc_client.post(
         "/cache.files_upload",
         data=dict(file=(io.BytesIO(b"this is a test"), file_name),),
@@ -868,7 +924,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     file_ = mm["file2"]
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     headers["Content-Type"] = content_type
@@ -942,7 +998,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     headers["Content-Type"] = content_type
@@ -992,7 +1048,7 @@ def test_add_existing_file(svc_client_with_repo):
     svc_client, headers, project_id, _ = svc_client_with_repo
     payload = {
         "project_id": project_id,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
@@ -1177,7 +1233,7 @@ def test_add_remote_and_local_file(svc_client_with_repo):
 def test_edit_datasets_view(svc_client_with_repo):
     """Test editing dataset metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
-    name = "{0}".format(uuid.uuid4().hex)
+    name = uuid.uuid4().hex
 
     payload = {
         "project_id": project_id,
@@ -1227,7 +1283,7 @@ def test_edit_datasets_view(svc_client_with_repo):
 def test_edit_datasets_view_without_modification(svc_client_with_repo):
     """Test editing dataset metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
-    name = "{0}".format(uuid.uuid4().hex)
+    name = uuid.uuid4().hex
 
     payload = {
         "project_id": project_id,
@@ -1291,7 +1347,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     """Edit images of a dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    name = "{0}".format(uuid.uuid4().hex)
+    name = uuid.uuid4().hex
 
     payload = {
         "project_id": project_id,
