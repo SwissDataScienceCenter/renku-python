@@ -370,10 +370,10 @@ def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2",])
 def test_dataset_import_renku_missing_project(runner, client, missing_kg_project_responses, url):
-    """Test dataset import fails if cannot clone repo."""
+    """Test dataset import fails if cannot find project in KG."""
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
     assert 1 == result.exit_code
-    assert "Cannot find these projects in the knowledge graph" in result.output
+    assert "Resource not found in knowledge graph" in result.output
 
 
 @pytest.mark.integration

@@ -31,6 +31,7 @@ from renku.core.commands.providers.api import ProviderApi
 from renku.core.management.migrate import is_project_unsupported, migrate
 from renku.core.models.datasets import Url
 from renku.core.models.enums import ConfigFilter
+from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.urls import parse_authentication_endpoint, remove_credentials
 
@@ -62,52 +63,25 @@ class RenkuProvider(ProviderApi):
 
         self._prepare_authentication(client, uri)
 
-        same_as, initial_identifier, kg_urls = self._get_dataset_info(uri)
+        dataset_name, kg_url = self._get_dataset_info(uri)
+
+        urls = self._get_project_urls(kg_url)
 
         project_url = None
-        failed_urls = []
-        missing_urls = []
+        repo_path = None
 
-        for kg_url in kg_urls:
+        # Clone the project
+        for url in urls:
             try:
-                project_datasets_kg_url, ssh_url, https_url = self._get_project_urls(kg_url)
-            except errors.ProjectNotFound:
-                missing_urls.append(kg_url)
-                continue
-
-            datasets = self._query_knowledge_graph(project_datasets_kg_url)
-
-            dataset_name = next(
-                (ds["name"] for ds in datasets if ds["versions"].get("initial") == initial_identifier), None
-            )
-            if not dataset_name and same_as:
-                dataset_name = next((ds["name"] for ds in datasets if ds.get("sameAs") == same_as), None)
-
-            if not dataset_name:
-                continue
-
-            # Check if we can clone the project
-            for url in (ssh_url, https_url):
-                try:
-                    repo, repo_path = client.prepare_git_repo(url)
-                except errors.GitError:
-                    failed_urls.append(url)
-                else:
-                    project_url = url
-                    break
-            if project_url is not None:
+                repo, repo_path = client.prepare_git_repo(url)
+            except errors.GitError:
+                pass
+            else:
+                project_url = url
                 break
 
-        if project_url is None:
-            if failed_urls:
-                message = "Cannot clone remote projects:\n\t" + "\n\t".join(failed_urls)
-            elif missing_urls:
-                missing = "\n\t".join(missing_urls)
-                raise errors.ProjectNotFound(f"Cannot find these projects in the knowledge graph:\n\t{missing}")
-            else:
-                message = f"Cannot find any project for the dataset: {uri}"
-
-            raise errors.ParameterError(message, param_hint=uri)
+        if not project_url:
+            raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=uri)
 
         remote_client = LocalClient(repo_path)
         self._migrate_project(remote_client)
@@ -139,36 +113,40 @@ class RenkuProvider(ProviderApi):
             return
         # NOTE: We are not interested in migrating workflows when importing datasets
         client.migration_type = ~MigrationType.WORKFLOWS
-        migrate(client, skip_template_update=True, skip_docker_update=True)
+        try:
+            communication.disable()
+            migrate(client, skip_template_update=True, skip_docker_update=True)
+        finally:
+            communication.enable()
 
     def _get_dataset_info(self, uri):
         """Return initial dataset identifier and urls of all projects that contain the dataset."""
         parsed_url = urllib.parse.urlparse(uri)
+
+        # TODO make import work with https://<host>/projects/:namespace/:name/datasets/:dataset-name
 
         project_id, dataset_id = RenkuProvider._extract_project_and_dataset_ids(parsed_url)
         kg_path = f"/knowledge-graph/{dataset_id.strip('/')}"
         kg_url = parsed_url._replace(path=kg_path).geturl()
 
         response = self._query_knowledge_graph(kg_url)
-        initial_identifier = response.get("versions", {}).get("initial")
-        same_as = response.get("sameAs")
+        name = response.get("name")
 
         if project_id:
             kg_path = f"/knowledge-graph/{project_id.strip('/')}"
-            kg_urls = [parsed_url._replace(path=kg_path).geturl()]
+            kg_url = parsed_url._replace(path=kg_path).geturl()
         else:
+            kg_url = ""
+            project = response.get("project", {})
+            links = project.get("_links", [])
+            for link in links:
+                if link.get("rel") == "project-details":
+                    kg_url = link.get("href", "")
 
-            def get_project_link(project):
-                links = project.get("_links", [])
-                for link in links:
-                    if link.get("rel") == "project-details":
-                        return link.get("href", "")
+            if not kg_url:
+                raise errors.ParameterError("Cannot find KG URL from URI", param_hint=uri)
 
-            projects = response.get("isPartOf", {})
-            kg_urls = [get_project_link(p) for p in projects]
-            kg_urls = [u for u in kg_urls if u]
-
-        return same_as, initial_identifier, kg_urls
+        return name, kg_url
 
     @staticmethod
     def _extract_project_and_dataset_ids(parsed_url):
@@ -186,7 +164,7 @@ class RenkuProvider(ProviderApi):
             raise errors.OperationError(f"Cannot access knowledge graph: {url}") from e
 
         if response.status_code == 404:
-            raise errors.ProjectNotFound(f"Resource not found in knowledge graph: {url}")
+            raise errors.NotFound(f"Resource not found in knowledge graph: {url}")
         elif response.status_code in [401, 403]:
             raise errors.OperationError(
                 f"Unauthorized access to knowledge graph: Run 'renku login {self._authentication_endpoint}'"
@@ -200,14 +178,8 @@ class RenkuProvider(ProviderApi):
         json = self._query_knowledge_graph(project_kg_url)
         urls = json.get("urls", {})
 
-        project_datasets_kg_url = None
-        links = json.get("_links", [])
-        for link in links:
-            if link["rel"] == "datasets":
-                project_datasets_kg_url = link["href"]
-                break
-
-        return project_datasets_kg_url, urls.get("ssh"), urls.get("http")
+        # NOTE: Return ssh-based url first so that users don't need to enter credentials
+        return urls.get("ssh"), urls.get("http")
 
     def _prepare_authentication(self, client, uri):
         token = self._read_renku_token(client, uri)
