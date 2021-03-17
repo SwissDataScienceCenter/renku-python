@@ -28,12 +28,12 @@ from renku.service.logger import DEPLOYMENT_LOG_LEVEL, scheduler_log
 
 
 @contextmanager
-def schedule():
+def schedule(connection=None):
     """Creates scheduler object."""
     cleanup_interval = int(os.getenv("RENKU_SVC_CLEANUP_INTERVAL", 60))
     scheduler_log.info(f"cleanup interval set to {cleanup_interval}")
 
-    build_scheduler = Scheduler(connection=WorkerQueues.connection, interval=cleanup_interval)
+    build_scheduler = Scheduler(connection=connection or WorkerQueues.connection, interval=cleanup_interval)
     build_scheduler.log = scheduler_log
     build_scheduler.log.debug = build_scheduler.log.info
     scheduler_log.info("scheduler created")
@@ -58,9 +58,9 @@ def schedule():
     yield build_scheduler
 
 
-def start_scheduler():
+def start_scheduler(connection=None):
     """Build and start scheduler."""
-    with schedule() as scheduler:
+    with schedule(connection=connection) as scheduler:
         scheduler_log.info("running scheduler")
         scheduler.run()
 
