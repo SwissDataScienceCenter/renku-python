@@ -81,6 +81,19 @@ class ReadOperationMixin(metaclass=ABCMeta):
         else:
             raise RenkuException("context does not contain `project_id` or `git_url`")
 
+    def reset_local_repo(self, project):
+        """Reset the local repo to be up to date with the remote."""
+        repo = git.Repo(self.project_path)
+        origin = None
+        if repo.active_branch.tracking_branch():
+            origin = repo.remotes[repo.active_branch.tracking_branch().remote_name]
+        elif repo.remotes and len(repo.remotes) == 1:
+            origin = repo.remotes[0]
+
+        if origin:
+            origin.fetch(depth=project.clone_depth)
+            repo.git.reset("--hard", origin)
+
     @local_identity
     def local(self):
         """Execute renku operation against service cache."""
@@ -94,18 +107,7 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
         self.project_path = project.abs_path
 
-        # reset local repo to remote state
-        repo = git.Repo(self.project_path)
-        origin = None
-        if repo.active_branch.tracking_branch():
-            origin = repo.remotes[repo.active_branch.tracking_branch().remote_name]
-        elif repo.remotes and len(repo.remotes) == 1:
-            origin = repo.remotes[0]
-
-        if origin:
-            origin.fetch(depth=project.clone_depth)
-            breakpoint()
-            repo.git.reset("--hard", origin)
+        self.reset_local_repo(project)
 
         with click_context(self.project_path, "renku_op"):
             return self.renku_op()

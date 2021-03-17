@@ -601,7 +601,7 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 @pytest.mark.integration
 def test_execute_migrations(svc_client_setup):
     """Check execution of all migrations."""
-    svc_client, headers, project_id, _ = svc_client_setup
+    svc_client, headers, project_id, _, _ = svc_client_setup
 
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
@@ -618,7 +618,7 @@ def test_execute_migrations(svc_client_setup):
 @pytest.mark.integration
 def test_execute_migrations_job(svc_client_setup):
     """Check execution of all migrations."""
-    svc_client, headers, project_id, _ = svc_client_setup
+    svc_client, headers, project_id, _, _ = svc_client_setup
 
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, is_delayed=True)), headers=headers
@@ -633,7 +633,7 @@ def test_execute_migrations_job(svc_client_setup):
 @pytest.mark.integration
 def test_check_migrations_local(svc_client_setup):
     """Check if migrations are required for a local project."""
-    svc_client, headers, project_id, _ = svc_client_setup
+    svc_client, headers, project_id, _, _ = svc_client_setup
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
@@ -729,3 +729,45 @@ def test_migrating_protected_branch(svc_protected_old_repo):
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
     assert response.json["result"]["migration_required"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@pytest.mark.serial
+@flaky(max_runs=10, min_passes=1)
+def test_cache_gets_synchronized(local_remote_repository, directory_tree):
+    """Test that the cache stays synchronized with the remote repo."""
+    from renku.core.management.client import LocalClient
+    from renku.core.models.provenance.agents import Person
+
+    svc_client, identity_headers, project_id, remote_repo = local_remote_repository
+
+    client = LocalClient(str(remote_repo))
+
+    with client.commit(commit_message="Create dataset"):
+        with client.with_dataset("dataset", create=True) as dataset:
+            dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
+
+    params = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params, headers=identity_headers,)
+
+    assert response
+    assert 200 == response.status_code
+
+    assert {"datasets"} == set(response.json["result"].keys())
+    assert 0 != len(response.json["result"]["datasets"])
+
+    assert {
+        "version",
+        "description",
+        "identifier",
+        "images",
+        "created_at",
+        "name",
+        "title",
+        "creators",
+        "keywords",
+    } == set(response.json["result"]["datasets"][0].keys())
