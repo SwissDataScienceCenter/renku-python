@@ -111,7 +111,7 @@ def test_service_logs(runner):
     for pid in pids:
         assert str(pid) in result.output
 
-    time.sleep(2)
+    time.sleep(5)
     result = runner.invoke(cli, ["service", "logs"], catch_exceptions=False)
     assert 0 == result.exit_code
     assert result.output
