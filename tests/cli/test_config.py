@@ -16,7 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``config`` command."""
+import subprocess
+import sys
+
 import pytest
+from flaky import flaky
 
 from renku.cli import cli
 
@@ -168,3 +172,60 @@ def test_readonly_config(client, runner, project, config_key):
     result = runner.invoke(cli, ["config", "remove", config_key])
     assert 2 == result.exit_code
     assert f"Configuration {config_key} cannot be modified." in result.output
+
+
+def test_config_read_concurrency(runner, project, client, run):
+    """Test config can be read concurrently."""
+    result = runner.invoke(cli, ["config", "set", "test", "value"])
+    assert 0 == result.exit_code
+
+    command = [
+        "nice",  # NOTE: Set low priority to increase chance of concurrency issues happening
+        "-n",
+        "19",
+        sys.executable,
+        "-m",
+        "renku.cli",
+        "config",
+        "show",
+        "test",
+    ]
+
+    processes = []
+
+    for _ in range(20):
+        processes.append(subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+    assert all(p.wait() == 0 for p in processes)
+    assert all(p.stdout.read().decode("utf8") == "value\n" for p in processes)
+
+
+@flaky(max_runs=10, min_passes=1)
+def test_config_write_concurrency(runner, project, client, run):
+    """Test config can be read concurrently."""
+    result = runner.invoke(cli, ["config", "set", "test", "value"])
+    assert 0 == result.exit_code
+
+    write_command = [
+        "nice",  # NOTE: Set low priority to increase chance of concurrency issues happening
+        "-n",
+        "19",
+        sys.executable,
+        "-m",
+        "renku.cli",
+        "config",
+        "set",
+        "--global",
+        "test2",
+        "other_value",
+    ]
+
+    processes = []
+
+    for _ in range(20):
+        processes.append(subprocess.Popen(write_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.Popen(write_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+    assert all(p.wait() == 0 for p in processes)
+    outputs = [p.communicate() for p in processes]
+    assert any("Unable to acquire lock" in o[0].decode("utf8") for o in outputs)
