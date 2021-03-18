@@ -51,7 +51,7 @@ _RE_PATHNAME_WITH_GITLAB = (
     r"(?P<name>[\w\-\.]+)(\.git)?)?)"
 )
 
-_RE_UNIXPATH = r"(file\://)?(?P<pathname>\/$|((?=\/)|\.|\.\.)(\/(?=[^/\0])[^/\0]+)*\/?(?P<owner>([\w\-\.]+/)*[\w\-\.]+)/)?(?P<name>[\w\-\.]+)(\.git)?"
+_RE_UNIXPATH = r"(file\://)?(?P<pathname>\/$|((?=\/)|\.|\.\.)(\/(?=[^/\0])[^/\0]+)*\/?)"
 
 
 def _build(*parts):

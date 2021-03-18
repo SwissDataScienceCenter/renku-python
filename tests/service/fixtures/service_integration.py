@@ -24,7 +24,27 @@ import uuid
 from copy import deepcopy
 
 import pytest
-from git import GitCommandError, Repo
+from git import GitCommandError
+
+
+@contextlib.contextmanager
+def _mock_cache_sync(repo):
+    # mock sync reset
+    from renku.service.controllers.api import mixins
+
+    current_head = repo.head.ref
+
+    def _mocked_repo_reset(self, project):
+        """Mock repo reset to work with mocked renku save."""
+        repo.git.reset("--hard", current_head)
+
+    reset_repo_function = mixins.ReadOperationMixin.reset_local_repo
+    mixins.ReadOperationMixin.reset_local_repo = _mocked_repo_reset
+
+    try:
+        yield
+    finally:
+        mixins.ReadOperationMixin.reset_local_repo = reset_repo_function
 
 
 def integration_repo_path(headers, project_id, url_components):
@@ -104,7 +124,8 @@ def svc_client_setup(integration_lifecycle):
         current = repo.create_head(new_branch)
         current.checkout()
 
-        yield svc_client, deepcopy(headers), project_id, url_components, repo
+        with _mock_cache_sync(repo):
+            yield svc_client, deepcopy(headers), project_id, url_components, repo
 
         if integration_repo_path(headers, project_id, url_components).exists():
             # NOTE: Some tests delete the repo
@@ -122,27 +143,15 @@ def svc_client_with_repo(svc_client_setup):
     )
     assert response.json["result"]
 
-    # mock sync reset
-    from renku.service.controllers.api import mixins
-
-    head_after_migration = repo.head.ref
-
-    def _mocked_repo_reset(self, project):
-        """Mock repo reset to work with mocked renku save."""
-        repo.git.reset("--hard", head_after_migration)
-
-    reset_repo_function = mixins.ReadOperationMixin.reset_local_repo
-    mixins.ReadOperationMixin.reset_local_repo = _mocked_repo_reset
-
-    try:
+    with _mock_cache_sync(repo):
         yield svc_client, deepcopy(headers), project_id, url_components
-    finally:
-        mixins.ReadOperationMixin.reset_local_repo = reset_repo_function
 
 
 @pytest.fixture
 def svc_protected_repo(svc_client, identity_headers, it_protected_repo_url):
     """Service client with migrated remote protected repository."""
+    from renku.core.models.git import GitURL
+
     payload = {
         "git_url": it_protected_repo_url,
         "depth": 0,
@@ -157,7 +166,11 @@ def svc_protected_repo(svc_client, identity_headers, it_protected_repo_url):
     }
     svc_client.post("/cache.migrate", data=json.dumps(data), headers=identity_headers)
 
-    yield svc_client, identity_headers, payload, response
+    url_components = GitURL.parse(it_protected_repo_url)
+
+    with integration_repo(identity_headers, response.json["result"]["project_id"], url_components) as repo:
+        with _mock_cache_sync(repo):
+            yield svc_client, identity_headers, payload, response
 
 
 @pytest.fixture
@@ -181,12 +194,13 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     """Client with a local remote to test pushes."""
     from click.testing import CliRunner
     from git.config import GitConfigParser, get_config_path
-    from marshmallow import post_load
+    from marshmallow import post_load, pre_load
 
     from renku.cli import cli
     from renku.core.utils.contexts import chdir
     from renku.service.serializers import cache
 
+    # NOTE: prevent service from adding an auth token as it doesn't work with local repos
     def _no_auth_format(self, data, **kwargs):
         data["url_with_auth"] = data["git_url"]
         return data
@@ -194,6 +208,18 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     orig_format_url = cache.ProjectCloneContext.format_url
 
     cache.ProjectCloneContext.format_url = post_load(_no_auth_format)
+
+    # NOTE: mock owner/project so service is happy
+    def _mock_owner(self, data, **kwargs):
+        data["owner"] = "dummy"
+
+        data["name"] = "project"
+
+        return data
+
+    orig_set_owner = cache.ProjectCloneContext.set_owner_name
+
+    cache.ProjectCloneContext.set_owner_name = pre_load(_mock_owner)
 
     remote_repo = tmp_path / "remote_repo"
     remote_repo.mkdir()
@@ -212,31 +238,36 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             global_config.set_value("user", "name", "Renku @ SDSC")
             global_config.set_value("user", "email", "renku@datascience.ch")
 
+        # NOTE: init "remote" repo
         runner = CliRunner()
         with chdir(remote_repo):
             result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
             assert 0 == result.exit_code
 
-        payload = {"git_url": f"file://{remote_repo}", "depth": 0}
-
-        response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
-
-        assert response
-        assert {"result"} == set(response.json.keys())
-
-        project_id = response.json["result"]["project_id"]
-        assert isinstance(uuid.UUID(project_id), uuid.UUID)
-
-        yield svc_client, identity_headers, project_id, remote_repo
     finally:
-        cache.ProjectCloneContext.format_url = orig_format_url
-
         os.environ["HOME"] = old_home
         os.environ["XDG_CONFIG_HOME"] = old_xdg_home
         try:
             shutil.rmtree(home)
         except OSError:  # noqa: B014
             pass
+
+        payload = {"git_url": f"file://{remote_repo}", "depth": 0}
+
+        response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
+
+        assert response
+
+        assert {"result"} == set(response.json.keys())
+
+        project_id = response.json["result"]["project_id"]
+        assert isinstance(uuid.UUID(project_id), uuid.UUID)
+
+    try:
+        yield svc_client, identity_headers, project_id, remote_repo
+    finally:
+        cache.ProjectCloneContext.format_url = orig_format_url
+        cache.ProjectCloneContext.set_owner_name = orig_set_owner
 
         try:
             shutil.rmtree(remote_repo)
