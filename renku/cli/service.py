@@ -101,9 +101,9 @@ def is_renku_process(process, include):
     """Return true if this is a renku process."""
     process_name = process.name().lower()
 
-    if process_name == "renku" and check_cmdline(process.cmdline(), include):
+    if process_name == "renku":
         return True
-    elif process_name != "python":
+    elif "python" not in process_name:
         return False
 
     try:
@@ -129,11 +129,12 @@ def list_renku_processes(include=None):
     for pid in sorted(psutil.pids()):
         try:
             proc = psutil.Process(pid)
-        except psutil.NoSuchProcess:
-            continue
 
-        if is_renku_process(proc, include) and proc.status() != "zombie":
-            renku_processes_all.append(proc)
+            if is_renku_process(proc, include) and proc.status() != "zombie":
+                renku_processes_all.append(proc)
+
+        except (psutil.NoSuchProcess, psutil.ZombieProcess):
+            continue
 
     renku_proc_info = sorted(
         [
