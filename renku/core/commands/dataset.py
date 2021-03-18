@@ -597,6 +597,8 @@ def _update_datasets(
                 continue
 
             uri = dataset.same_as.url
+            if isinstance(uri, dict):
+                uri = uri.get("@id")
             provider, err = ProviderFactory.from_uri(uri)
 
             if not provider:
