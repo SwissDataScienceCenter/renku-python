@@ -93,7 +93,7 @@ tests_require = [
     "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.4.6",
-    "flake8>=3.8,<3.9",
+    "flake8>=3.8,<3.10",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
     "isort>=5.3.2,<5.8.0",
