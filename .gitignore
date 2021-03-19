@@ -62,8 +62,10 @@ coverage.xml
 # Translations
 *.mo
 
-# Django stuff:
+# Ignore logs and local usages
 *.log
+.renku.lock
+renku.err
 
 # Sphinx documentation
 docs/_build/

@@ -44,6 +44,11 @@ def tabulate(collection, headers, datetime_fmt="%Y-%m-%d %H:%M:%S", **kwargs):
         names = [key if value is None else value for key, value in headers.items()]
     else:
         attrs = names = headers
+
+    if collection and isinstance(collection[0], dict):
+        return tblte(collection, headers="keys", **kwargs)
+
+    # NOTE: Convert instance attributes to a collection of formatted cells.
     table = [
         (format_cell(cell, datetime_fmt=datetime_fmt) for cell in _to_list(attrgetter(*attrs)(c))) for c in collection
     ]
@@ -51,6 +56,8 @@ def tabulate(collection, headers, datetime_fmt="%Y-%m-%d %H:%M:%S", **kwargs):
 
 
 def _to_list(value):
+    """Wrap value to a collection type."""
     if isinstance(value, (list, tuple)):
         return value
+
     return [value]
