@@ -734,19 +734,24 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @pytest.mark.serial
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=1, min_passes=1)
 def test_cache_gets_synchronized(local_remote_repository, directory_tree):
     """Test that the cache stays synchronized with the remote repo."""
     from renku.core.management.client import LocalClient
     from renku.core.models.provenance.agents import Person
 
-    svc_client, identity_headers, project_id, remote_repo = local_remote_repository
+    svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
 
-    client = LocalClient(str(remote_repo))
+    remote_name = remote_repo_checkout.active_branch.tracking_branch().remote_name
+    remote = remote_repo_checkout.remotes[remote_name]
+
+    client = LocalClient(remote_repo_checkout.working_dir)
 
     with client.commit(commit_message="Create dataset"):
-        with client.with_dataset("dataset", create=True) as dataset:
+        with client.with_dataset("my_dataset", create=True) as dataset:
             dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
+
+    remote.push()
 
     params = {
         "project_id": project_id,
@@ -758,16 +763,23 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree):
     assert 200 == response.status_code
 
     assert {"datasets"} == set(response.json["result"].keys())
-    assert 0 != len(response.json["result"]["datasets"])
+    assert 1 == len(response.json["result"]["datasets"])
 
-    assert {
-        "version",
-        "description",
-        "identifier",
-        "images",
-        "created_at",
-        "name",
-        "title",
-        "creators",
-        "keywords",
-    } == set(response.json["result"]["datasets"][0].keys())
+    payload = {
+        "project_id": project_id,
+        "name": uuid.uuid4().hex,
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)
+
+    assert response
+    assert 200 == response.status_code
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+
+    remote.pull()
+
+    datasets = client.datasets.values()
+    assert 2 == len(datasets)
+
+    assert any(d.name == "my_dataset" for d in datasets)
+    assert any(d.name == payload["name"] for d in datasets)

@@ -20,7 +20,7 @@ from abc import ABCMeta, abstractmethod
 from functools import wraps
 from pathlib import Path
 
-import git
+from git import Repo
 
 from renku.core.errors import RenkuException, UninitializedProject
 from renku.core.management.config import RENKU_HOME
@@ -83,7 +83,7 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
     def reset_local_repo(self, project):
         """Reset the local repo to be up to date with the remote."""
-        repo = git.Repo(self.project_path)
+        repo = Repo(self.project_path)
         origin = None
         if repo.active_branch.tracking_branch():
             origin = repo.remotes[repo.active_branch.tracking_branch().remote_name]
@@ -138,7 +138,7 @@ class ReadWithSyncOperation(ReadOperationMixin, metaclass=ABCMeta):
         if self.project_path is None:
             raise RenkuException("unable to sync with remote since no operation has been executed")
 
-        _, remote_branch = repo_sync(git.Repo(self.project_path), remote=remote)
+        _, remote_branch = repo_sync(Repo(self.project_path), remote=remote)
         return remote_branch
 
     def execute_and_sync(self, remote="origin"):

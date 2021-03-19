@@ -24,12 +24,16 @@ import uuid
 from copy import deepcopy
 
 import pytest
-from git import GitCommandError
+from git import GitCommandError, Repo
 
 
 @contextlib.contextmanager
 def _mock_cache_sync(repo):
-    # mock sync reset
+    """Mocks the resetting of the cache since other fixtures perform migrations on the cache without pushing.
+
+    We don't want to undo that temporary migration with an actual cache sync, as it would break tests with
+    repeat service calls, if the migration was just done locally in the fixture.
+    """
     from renku.service.controllers.api import mixins
 
     current_head = repo.head.ref
@@ -221,8 +225,15 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 
     cache.ProjectCloneContext.set_owner_name = pre_load(_mock_owner)
 
-    remote_repo = tmp_path / "remote_repo"
-    remote_repo.mkdir()
+    remote_repo_path = tmp_path / "remote_repo"
+    remote_repo_path.mkdir()
+
+    remote_repo = Repo.init(remote_repo_path, bare=True)
+
+    remote_repo_checkout_path = tmp_path / "remote_repo_checkout"
+    remote_repo_checkout_path.mkdir()
+
+    remote_repo_checkout = remote_repo.clone(str(remote_repo_checkout_path))
 
     home = tmp_path / "user_home"
     home.mkdir()
@@ -240,10 +251,16 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 
         # NOTE: init "remote" repo
         runner = CliRunner()
-        with chdir(remote_repo):
-            result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
+        with chdir(remote_repo_checkout_path):
+
+            result = runner.invoke(
+                cli, ["init", ".", "--template-id", "python-minimal", "--force"], "\n", catch_exceptions=False
+            )
             assert 0 == result.exit_code
 
+            remote_name = remote_repo_checkout.active_branch.tracking_branch().remote_name
+            remote = remote_repo_checkout.remotes[remote_name]
+            result = remote.push()
     finally:
         os.environ["HOME"] = old_home
         os.environ["XDG_CONFIG_HOME"] = old_xdg_home
@@ -252,24 +269,28 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
         except OSError:  # noqa: B014
             pass
 
-        payload = {"git_url": f"file://{remote_repo}", "depth": 0}
+        payload = {"git_url": f"file://{remote_repo_path}", "depth": 0}
 
         response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
         assert response
-
         assert {"result"} == set(response.json.keys())
 
         project_id = response.json["result"]["project_id"]
         assert isinstance(uuid.UUID(project_id), uuid.UUID)
 
     try:
-        yield svc_client, identity_headers, project_id, remote_repo
+        yield svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout
     finally:
         cache.ProjectCloneContext.format_url = orig_format_url
         cache.ProjectCloneContext.set_owner_name = orig_set_owner
 
         try:
-            shutil.rmtree(remote_repo)
+            shutil.rmtree(remote_repo_path)
+        except OSError:  # noqa: B014
+            pass
+
+        try:
+            shutil.rmtree(remote_repo_checkout_path)
         except OSError:  # noqa: B014
             pass
