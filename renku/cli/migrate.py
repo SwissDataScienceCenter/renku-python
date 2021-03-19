@@ -57,7 +57,7 @@ def migrate(check, no_commit):
     command = migrate_project().with_communicator(communicator)
     if not no_commit:
         command = command.with_commit()
-    result = command.build().execute(skip_template_update=True, skip_docker_update=True)
+    result = command.build().execute(skip_template_update=False, skip_docker_update=False, force_template_update=True)
 
     result, _, _ = result.output
 
