@@ -91,7 +91,7 @@ class ReadOperationMixin(metaclass=ABCMeta):
             origin = repo.remotes[0]
 
         if origin:
-            origin.fetch(depth=project.clone_depth)
+            origin.fetch()
             repo.git.reset("--hard", origin)
 
     @local_identity
