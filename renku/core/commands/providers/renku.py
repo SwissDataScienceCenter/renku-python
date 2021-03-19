@@ -26,10 +26,10 @@ from subprocess import PIPE, SubprocessError, run
 import attr
 import requests
 
+from renku import LocalClient
 from renku.core import errors
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.management.migrate import is_project_unsupported, migrate
-from renku.core.models.datasets import Url
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
@@ -100,28 +100,31 @@ class RenkuProvider(ProviderApi):
         dataset_kg_url = parsed_url._replace(path=kg_path).geturl()
 
         try:
-            response = self._query_knowledge_graph(dataset_kg_url)
+            dataset_info = self._query_knowledge_graph(dataset_kg_url)
         except errors.NotFound:
             # NOTE: If URI is not found we assume that it contains dataset's name instead of its id
             dataset_name = dataset_name_or_id
-            response = None
+            identifier = None
+            dataset_info = None
         else:
-            dataset_name = response.get("name")
+            dataset_name = dataset_info.get("name")
+            identifier = dataset_info["identifier"]
 
         if project_id:
             kg_path = f"/knowledge-graph/projects/{project_id}"
             project_kg_url = parsed_url._replace(path=kg_path).geturl()
-        elif not response:
+        elif not dataset_info:
             raise errors.NotFound(f"Resource not found in knowledge graph: {uri}")
         else:
-            project = response.get("project", {})
+            project = dataset_info.get("project", {})
             links = project.get("_links", [])
             project_kg_url = next((link["href"] for link in links if link["rel"] == "project-details"), None)
 
             if not project_kg_url:
                 raise errors.ParameterError("Cannot find project's KG URL from URI", param_hint=uri)
 
-        identifier, latest_version_uri = self._fetch_dataset_info_from_project(project_kg_url, dataset_name)
+        latest_identifier, latest_version_uri = self._fetch_dataset_info_from_project(project_kg_url, dataset_name)
+        identifier = identifier or latest_identifier
 
         return dataset_name, identifier, latest_version_uri, project_kg_url
 
@@ -131,7 +134,7 @@ class RenkuProvider(ProviderApi):
 
         dataset = next((d for d in response if d.get("name") == dataset_name), None)
         if not dataset:
-            raise errors.OperationError(f"Cannot fetch dataset '{dataset_name}' from '{project_kg_url}'")
+            raise errors.OperationError(f"Cannot fetch dataset with name '{dataset_name}' from '{project_kg_url}'")
 
         links = dataset.get("_links", [])
         latest_version_uri = next((link["href"] for link in links if link["rel"] == "details"), None)
@@ -145,7 +148,7 @@ class RenkuProvider(ProviderApi):
         # https://<host>/projects/:namespace/:0-or-more-subgroups/:name/datasets/:dataset-name
         # https://<host>/projects/:namespace/:0-or-more-subgroups/:name/datasets/:id
         # https://<host>/datasets/:id
-        match = re.match(r"(?:/projects/((?:[^/]+/)+[^/]+))?/datasets/([^/]+)$", parsed_url.path)
+        match = re.match(r"(?:/projects/((?:[^/]+/)+[^/]+))?/datasets/([^/]+)/?$", parsed_url.path)
         project_id, dataset_id = match.groups() if match else (None, None)
         return project_id, dataset_id
 
@@ -245,8 +248,6 @@ class _RenkuRecordSerializer:
     def as_dataset(self, client):
         """Return encapsulated dataset instance."""
         self._fetch_dataset(client)
-
-        self._dataset.same_as = Url(url_id=self.latest_uri)
         return self._dataset
 
     def import_images(self, client, dataset):
@@ -297,8 +298,6 @@ class _RenkuRecordSerializer:
         return (self._remote_client.path / self._dataset.data_dir).exists()
 
     def _fetch_dataset(self, client):
-        from renku import LocalClient
-
         repo_path = None
 
         urls = (self._project_url_ssh, self._project_url_http)

@@ -202,6 +202,7 @@ def _add_to_dataset(
     all_at_once=False,
     destination_names=None,
     total_size=None,
+    immutable=False,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -227,7 +228,7 @@ def _add_to_dataset(
         raise OperationError(message)
 
     try:
-        with client.with_dataset(name=name, create=create) as dataset:
+        with client.with_dataset(name=name, create=create, immutable=immutable) as dataset:
             client.add_data_to_dataset(
                 dataset,
                 urls=urls,
@@ -295,8 +296,8 @@ def _file_unlink(client, name, include, exclude, yes=False):
         raise ParameterError(
             (
                 "include or exclude filters not found.\n"
-                "Check available filters with `renku dataset unlink --help`\n"
-                "Hint: `renku dataset unlink my-dataset -I path`"
+                "Check available filters with 'renku dataset unlink --help'\n"
+                "Hint: 'renku dataset unlink my-dataset -I path'"
             )
         )
 
@@ -448,7 +449,7 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
     """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
-        raise ParameterError("Could not process {0}.\n{1}".format(uri, err))
+        raise ParameterError(f"Could not process '{uri}'.\n{err}")
 
     try:
         record = provider.find_record(uri, client)
@@ -469,7 +470,7 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
 
             text_prompt = "Do you wish to download this version?"
             if not record.is_last_version(uri):
-                text_prompt = "Newer version found at {}\n".format(record.links.get("latest_html")) + text_prompt
+                text_prompt = f"Newer version found at {record.latest_uri}\n{text_prompt}"
 
             communication.confirm(text_prompt, abort=True, warning=True)
 
@@ -480,13 +481,12 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
             total_size *= 2 ** 20
 
     except KeyError as e:
-        raise ParameterError(("Could not process {0}.\n" "Unable to fetch metadata due to {1}".format(uri, e)))
-
+        raise ParameterError(f"Could not process '{uri}'.\nUnable to fetch metadata: {e}")
     except LookupError as e:
-        raise ParameterError(("Could not process {0}.\n" "Reason: {1}".format(uri, str(e))))
+        raise ParameterError(f"Could not process '{uri}'.\nReason: {e}")
 
     if not files:
-        raise ParameterError("Dataset {} has no files.".format(uri))
+        raise ParameterError(f"Dataset '{uri}' has no files.")
 
     new_files = list(dataset.files)
 
@@ -511,6 +511,8 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
             all_at_once=True,
             destination_names=names,
             total_size=total_size,
+            overwrite=True,
+            immutable=True,
         )
 
         if previous_dataset:
@@ -521,6 +523,8 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
             _tag_dataset(client, name, tag_name, "Tag {} created by renku import".format(dataset.version))
     else:
         name = name or dataset.name
+
+        dataset.same_as = Url(url_id=record.latest_uri)
 
         if not dataset.data_dir:
             raise OperationError(f"Data directory for dataset must be set: {dataset.name}")
@@ -543,6 +547,8 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
             sources=sources,
             with_metadata=dataset,
             create=not previous_dataset,
+            overwrite=True,
+            immutable=True,
         )
 
         if previous_dataset:
@@ -573,20 +579,18 @@ def _update_previous_dataset(client, new_dataset, current_dataset, new_files, de
         if delete:
             client.remove_file(client.path / f.path)
 
+    # NOTE: Disable mutation when updating an existing dataset
+    current_dataset.immutable = True
     current_dataset.to_yaml()
     return current_dataset
 
 
-def _update_datasets(
-    client, names, creators, include, exclude, ref, delete, external=False,
-):
+def _update_datasets(client, names, creators, include, exclude, ref, delete, external=False):
     """Update files from a remote Git repo."""
     ignored_datasets = []
 
     if (include or exclude) and names and any(d.same_as for d in client.datasets.values() if d.name in names):
-        raise errors.UsageError(
-            "--include/--exclude is incompatible with datasets created by" " `renku dataset import`"
-        )
+        raise errors.UsageError("--include/--exclude is incompatible with datasets created by 'renku dataset import'")
 
     names_provided = bool(names)
 
@@ -626,7 +630,7 @@ def _update_datasets(
                 client, uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
             )
 
-            communication.echo(f"Updated dataset {dataset.name} from remote provider")
+            communication.echo(f"Updated dataset '{dataset.name}' from remote provider")
 
             if names:
                 names.remove(dataset.name)
@@ -636,11 +640,12 @@ def _update_datasets(
 
     if names_provided and not names:
         return
-    records = _filter(
-        client, names=names, creators=creators, include=include, exclude=exclude, ignore=ignored_datasets,
-    )
+
+    records = _filter(client, names=names, creators=creators, include=include, exclude=exclude, ignore=ignored_datasets)
 
     if not records:
+        if ignored_datasets:
+            return
         raise ParameterError("No files matched the criteria.")
 
     possible_updates = []
@@ -656,9 +661,8 @@ def _update_datasets(
 
     if ref and len(unique_remotes) > 1:
         raise ParameterError(
-            'Cannot use "--ref" with more than one Git repository.\n'
-            "Limit list of files to be updated to one repository. See"
-            '"renku dataset update -h" for more information.'
+            "Cannot use '--ref' with more than one Git repository.\n"
+            "Limit list of files to be updated to one repository. See 'renku dataset update -h' for more information."
         )
 
     if external_files:
@@ -675,7 +679,7 @@ def _update_datasets(
     if deleted_files and not delete:
         communication.echo(
             "Some files are deleted from remote. To also delete them locally "
-            "run update command with `--delete` flag."
+            "run update command with '--delete' flag."
         )
     communication.echo("Updated {} files".format(len(updated_files)))
 
