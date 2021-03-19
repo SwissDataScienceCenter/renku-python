@@ -38,6 +38,9 @@ class RepositoryContext(Schema):
 
     is_delayed = fields.Boolean()
 
+    # NOTE: Migration execution is always false by default, unless explicitly asked by a client.
+    with_migrations = fields.Boolean(default=False, missing=False)
+
 
 class JobDetailsResponse(Schema):
     """Response schema for enqueued job."""

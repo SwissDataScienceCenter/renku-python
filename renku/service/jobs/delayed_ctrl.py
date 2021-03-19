@@ -37,16 +37,14 @@ def to_ctrl(cache, context, user_data, renku_module, renku_ctrl):
     ctrl_module = importlib.import_module(renku_module)
     cls = getattr(ctrl_module, renku_ctrl)
 
-    return cls(cache, user_data, context, migrate_project=True)
+    _ = context.pop("is_delayed")  # NOTE: Prevent recursive invocation.
+    migrate_project = context.pop("migrate_project", False)
+    return cls(cache, user_data, context, migrate_project=migrate_project)
 
 
 @requires_cache
 def delayed_ctrl_job(cache, context, user_data, job_id, renku_module, renku_ctrl):
     """Delayed controller job."""
-    if isinstance(context, dict) and context.get("is_delayed", False):
-        # NOTE: Prevent recursive invocation.
-        context.pop("is_delayed")
-
     ctrl = to_ctrl(cache, context, user_data, renku_module, renku_ctrl)
     result = ctrl.to_response().json
 

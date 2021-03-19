@@ -64,8 +64,13 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         self.cache = cache
         self.user_data = user_data
         self.request_data = request_data
-
         self.migrate_project = migrate_project
+
+        # NOTE: Manually set `migrate_project` flag takes higher precedence
+        # than `with_migrations` flag from the request. Reason for this is
+        # because we reuse view controllers in the delayed renku operation jobs.
+        if not self.migrate_project and isinstance(self.request_data, dict):
+            self.migrate_project = self.request_data.get("with_migrations", False)
 
         # NOTE: This is absolute project path and its set before invocation of `renku_op`,
         # so its safe to use it in controller operations. Its type will always be `pathlib.Path`.

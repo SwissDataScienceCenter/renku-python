@@ -88,7 +88,7 @@ def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
 def test_delay_create_dataset_view(svc_client_cache, it_remote_repo_url):
-    """Create a new dataset successfully."""
+    """Create a new job for dataset create operation."""
     svc_client, headers, cache = svc_client_cache
 
     payload = {
@@ -119,7 +119,9 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
 
     assert response
-    assert {"error": {"code": -32100, "reason": 'project_id "ref does not exist" not found'}} == response.json
+    assert {
+        "error": {"code": RENKU_EXCEPTION_ERROR_CODE, "reason": 'project_id "ref does not exist" not found'}
+    } == response.json
 
 
 @pytest.mark.service
@@ -1547,4 +1549,6 @@ def test_unlink_file_exclude(unlink_file_setup):
 
     response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers,)
 
-    assert {"error": {"code": -32100, "reason": "Invalid parameter value - No records found."}} == response.json
+    assert {
+        "error": {"code": RENKU_EXCEPTION_ERROR_CODE, "reason": "Invalid parameter value - No records found."}
+    } == response.json
