@@ -71,6 +71,19 @@ knows how to handle PyPI packages. Our recommendation is to use `:code:pipx
    We recommend using the Windows Subsystem for Linux (WSL) to use Renku
    on Windows.
 
+Prerequisites
+~~~~~~~~~~~~~
+
+Renku depends on Git under the hood, so make sure that you have Git
+`installed on your system <https://git-scm.com/downloads>`_.
+
+Renku also offers support to store large files in `Git LFS
+<https://git-lfs.github.com/>`_, which is used by default and should be
+installed on your system. If you do not wish to use Git LFS, you can run
+Renku commands with the `-S` flag, as in `renku -S <command>`.  More
+information on Git LFS usage in renku can be found in the `Data in Renku
+<https://renku.readthedocs.io/en/latest/user/data.html>`_ section of the docs.
+
 
 .. _pipx-before-reference:
 
