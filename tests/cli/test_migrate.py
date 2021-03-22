@@ -72,6 +72,9 @@ def test_migration_check(isolated_runner, project):
         "template_update_possible",
         "current_template_version",
         "latest_template_version",
+        "template_source",
+        "template_ref",
+        "template_id",
         "automated_update",
         "docker_update_possible",
     }
