@@ -1321,7 +1321,7 @@ class DatasetsApiMixin(object):
     def _get_commit_sha_from_label(dataset_file):
         label = dataset_file._label
         if "@" in label:
-            return label.split("@")[1]
+            return label.rsplit("@", maxsplit=1)[-1]
         return label
 
     def _download(self, url, filename, extract, chunk_size=16384):
