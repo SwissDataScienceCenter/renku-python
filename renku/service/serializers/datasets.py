@@ -95,7 +95,7 @@ class DatasetAddFile(Schema):
     job_id = fields.String()
 
 
-class DatasetAddRequest(Schema):
+class DatasetAddRequest(RepositoryContext):
     """Request schema for a dataset add file view."""
 
     name = fields.String(required=True)
@@ -104,8 +104,6 @@ class DatasetAddRequest(Schema):
     create_dataset = fields.Boolean(missing=False)
     force = fields.Boolean(missing=False)
 
-    project_id = fields.String(required=True)
-    commit_message = fields.String()
     client_extras = fields.String()
 
     @post_load()

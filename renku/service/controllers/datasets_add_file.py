@@ -37,14 +37,14 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
     REQUEST_SERIALIZER = DatasetAddRequest()
     RESPONSE_SERIALIZER = DatasetAddResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets add controller."""
         self.ctx = DatasetsAddFileCtrl.REQUEST_SERIALIZER.load(request_data)
 
         if not self.ctx["commit_message"]:
             self.ctx["commit_message"] = "service: dataset add {0}".format(self.ctx["name"])
 
-        super(DatasetsAddFileCtrl, self).__init__(cache, user_data, request_data)
+        super(DatasetsAddFileCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):

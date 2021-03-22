@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service dataset jobs tests."""
 import json
+import tempfile
 import uuid
 
 import jwt
@@ -263,6 +264,82 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     assert commit_message == new_commit.message
 
 
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_delay_add_file_job(svc_client_cache, it_remote_repo_url, view_user_data):
+    """Add a file to a new dataset on a remote repository."""
+    from renku.service.serializers.datasets import DatasetAddRequest
+
+    _, _, cache = svc_client_cache
+    user = cache.ensure_user(view_user_data)
+    renku_module = "renku.service.controllers.datasets_add_file"
+    renku_ctrl = "DatasetsAddFileCtrl"
+
+    context = DatasetAddRequest().load(
+        {
+            "git_url": it_remote_repo_url,
+            "ref": uuid.uuid4().hex,
+            "name": uuid.uuid4().hex,
+            # NOTE: We test with this only to check that recursive invocation is being prevented.
+            "is_delayed": True,
+            "migrate_project": True,
+            "create_dataset": True,
+            "files": [{"file_url": "https://tinyurl.com/y6gne4ct"}],
+        }
+    )
+
+    job = cache.make_job(
+        user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
+    )
+
+    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+
+    updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+
+    assert updated_job
+    assert {"remote_branch", "project_id", "files", "name"} == updated_job.ctrl_result["result"].keys()
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url, view_user_data):
+    """Add a file to a new dataset on a remote repository."""
+    from renku.service.serializers.datasets import DatasetAddRequest
+
+    _, _, cache = svc_client_cache
+    user = cache.ensure_user(view_user_data)
+    renku_module = "renku.service.controllers.datasets_add_file"
+    renku_ctrl = "DatasetsAddFileCtrl"
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_file.write(b"data123")
+    temp_file.close()
+
+    context = DatasetAddRequest().load(
+        {
+            "git_url": it_remote_repo_url,
+            "ref": uuid.uuid4().hex,
+            "name": uuid.uuid4().hex,
+            # NOTE: We test with this only to check that recursive invocation is being prevented.
+            "is_delayed": True,
+            "migrate_project": False,
+            "create_dataset": True,
+            "files": [{"file_path": temp_file.name}],
+        }
+    )
+
+    job = cache.make_job(
+        user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
+    )
+
+    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+
+    with pytest.raises(MigrationRequired):
+        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+
+
 @pytest.mark.parametrize("doi", ["10.5281/zenodo.3761586",])
 @pytest.mark.integration
 @pytest.mark.service
@@ -309,7 +386,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url, view_use
             "name": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
-            "with_migrations": True,
+            "migrate_project": True,
         }
     )
 

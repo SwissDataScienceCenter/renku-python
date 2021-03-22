@@ -67,10 +67,10 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         self.migrate_project = migrate_project
 
         # NOTE: Manually set `migrate_project` flag takes higher precedence
-        # than `with_migrations` flag from the request. Reason for this is
+        # than `migrate_project` flag from the request. Reason for this is
         # because we reuse view controllers in the delayed renku operation jobs.
         if not self.migrate_project and isinstance(self.request_data, dict):
-            self.migrate_project = self.request_data.get("with_migrations", False)
+            self.migrate_project = self.request_data.get("migrate_project", False)
 
         # NOTE: This is absolute project path and its set before invocation of `renku_op`,
         # so its safe to use it in controller operations. Its type will always be `pathlib.Path`.
@@ -169,7 +169,11 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
     def reset_local_repo(self, project):
         """Reset the local repo to be up to date with the remote."""
+        if not self.project_path:
+            return
+
         repo = Repo(self.project_path)
+        breakpoint()
         origin = None
         if repo.active_branch.tracking_branch():
             origin = repo.remotes[repo.active_branch.tracking_branch().remote_name]
@@ -191,12 +195,11 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         if not project.initialized:
             raise UninitializedProject(project.abs_path)
 
+        self.reset_local_repo(project)
         if self.migrate_project:
             self.ensure_migrated(project.project_id)
 
         self.project_path = project.abs_path
-
-        self.reset_local_repo(project)
 
         with click_context(self.project_path, "renku_op"):
             return self.renku_op()

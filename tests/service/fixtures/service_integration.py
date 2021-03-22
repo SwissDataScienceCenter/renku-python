@@ -42,13 +42,13 @@ def _mock_cache_sync(repo):
         """Mock repo reset to work with mocked renku save."""
         repo.git.reset("--hard", current_head)
 
-    reset_repo_function = mixins.ReadOperationMixin.reset_local_repo
-    mixins.ReadOperationMixin.reset_local_repo = _mocked_repo_reset
+    reset_repo_function = mixins.RenkuOperationMixin.reset_local_repo
+    mixins.RenkuOperationMixin.reset_local_repo = _mocked_repo_reset
 
     try:
         yield
     finally:
-        mixins.ReadOperationMixin.reset_local_repo = reset_repo_function
+        mixins.RenkuOperationMixin.reset_local_repo = reset_repo_function
 
 
 def integration_repo_path(headers, project_id, url_components):
