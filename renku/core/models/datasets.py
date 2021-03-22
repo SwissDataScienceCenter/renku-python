@@ -700,9 +700,9 @@ class Dataset(Entity, CreatorMixin):
         schema_class = schema_class or DatasetSchema
         return schema_class(client=client, commit=commit, flattened=True).load(data)
 
-    def to_yaml(self, path=None):
+    def to_yaml(self, path=None, immutable=False):
         """Write an instance to the referenced YAML file."""
-        if self._modified and not self.immutable:
+        if self._modified and not (immutable or self.immutable):
             self.mutate()
 
         self._metadata_path = path or self._metadata_path

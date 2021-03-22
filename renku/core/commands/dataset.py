@@ -202,7 +202,6 @@ def _add_to_dataset(
     all_at_once=False,
     destination_names=None,
     total_size=None,
-    immutable=False,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -228,7 +227,7 @@ def _add_to_dataset(
         raise OperationError(message)
 
     try:
-        with client.with_dataset(name=name, create=create, immutable=immutable) as dataset:
+        with client.with_dataset(name=name, create=create) as dataset:
             client.add_data_to_dataset(
                 dataset,
                 urls=urls,
@@ -250,6 +249,7 @@ def _add_to_dataset(
                 dataset.update_metadata_from(with_metadata)
 
         client.update_datasets_provenance(dataset)
+        return dataset
     except DatasetNotFound:
         raise DatasetNotFound(
             message='Dataset "{0}" does not exist.\n'
@@ -500,7 +500,7 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
 
         urls, names = zip(*[(f.source, f.filename) for f in files])
 
-        _add_to_dataset(
+        new_dataset = _add_to_dataset(
             client,
             urls=urls,
             name=name,
@@ -512,11 +512,10 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
             destination_names=names,
             total_size=total_size,
             overwrite=True,
-            immutable=True,
         )
 
         if previous_dataset:
-            dataset = _update_previous_dataset(client, dataset, previous_dataset, new_files, delete)
+            dataset = _update_metadata(client, new_dataset, previous_dataset, new_files, delete, dataset.same_as)
 
         if dataset.version:
             tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", dataset.version)
@@ -540,7 +539,7 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
             except ValueError:  # Files that are not in dataset's data directory
                 sources.append(file_.path)
 
-        _add_to_dataset(
+        new_dataset = _add_to_dataset(
             client,
             urls=[record.project_url],
             name=name,
@@ -548,11 +547,10 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
             with_metadata=dataset,
             create=not previous_dataset,
             overwrite=True,
-            immutable=True,
         )
 
         if previous_dataset:
-            _update_previous_dataset(client, dataset, previous_dataset, new_files, delete)
+            _update_metadata(client, new_dataset, previous_dataset, new_files, delete, dataset.same_as)
 
     if provider.supports_images:
         with client.with_dataset(name=name):
@@ -565,24 +563,27 @@ def import_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _update_previous_dataset(client, new_dataset, current_dataset, new_files, delete=False):
-    """Update ``previous_dataset`` with changes made to ``new_dataset``."""
-    current_dataset.update_metadata_from(new_dataset)
-    current_files = set(f.path for f in new_files)
+def _update_metadata(client, new_dataset, previous_dataset, new_files, delete, same_as):
+    """Update metadata and remove files that exists in ``previous_dataset`` but not in ``new_dataset``."""
+    current_paths = set(str(f.path) for f in new_files)
+
     # NOTE: remove files not present in the dataset anymore
-    for f in current_dataset.files:
-        if f.path in current_files:
+    for f in previous_dataset.files:
+        if str(f.path) in current_paths:
             continue
 
-        current_dataset.unlink_file(f.path)
+        new_dataset.unlink_file(f.path)
 
         if delete:
             client.remove_file(client.path / f.path)
 
-    # NOTE: Disable mutation when updating an existing dataset
-    current_dataset.immutable = True
-    current_dataset.to_yaml()
-    return current_dataset
+    new_dataset.same_as = same_as
+    # NOTE: Remove derived_from because this is an updated and imported dataset
+    new_dataset.derived_from = None
+
+    # NOTE: Disable mutation because dataset is already mutated after the update
+    new_dataset.to_yaml(immutable=True)
+    return new_dataset
 
 
 def _update_datasets(client, names, creators, include, exclude, ref, delete, external=False):

@@ -974,7 +974,7 @@ def test_dataset_update(client, runner, params):
 @pytest.mark.integration
 @pytest.mark.parametrize("doi", ["10.5281/zenodo.2658634"])
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_update_external_provider(client, runner, doi):
+def test_dataset_update_zenodo(client, runner, doi):
     """Test updating datasets from external providers."""
     result = runner.invoke(
         cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
@@ -988,8 +988,9 @@ def test_dataset_update_external_provider(client, runner, doi):
 
     after_dataset = client.load_dataset("imported_dataset")
     assert after_dataset.version != before_dataset.version
-    assert after_dataset._id == before_dataset._id
+    assert after_dataset._id != before_dataset._id
     assert after_dataset.derived_from is None
+    assert after_dataset.same_as is not None
     assert after_dataset.same_as != before_dataset.same_as
 
 
@@ -1021,8 +1022,9 @@ def test_dataset_update_dataverse(client, runner, doi):
 
     after_dataset = client.load_dataset("imported_dataset")
     assert after_dataset.version != before_dataset.version
-    assert after_dataset._id == before_dataset._id
+    assert after_dataset._id != before_dataset._id
     assert after_dataset.derived_from is None
+    assert after_dataset.same_as is not None
 
 
 @pytest.mark.integration
@@ -1046,7 +1048,7 @@ def test_dataset_update_renku(client, runner):
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
     after_dataset = client.load_dataset("remote-dataset")
-    assert after_dataset._id == before_dataset._id
+    assert after_dataset._id != before_dataset._id
     assert after_dataset.derived_from is None
     latest_uri = "https://dev.renku.ch/datasets/e55070d9-95b3-4b9b-a319-c6e66f883f00"
     assert latest_uri == after_dataset.same_as.url["@id"]
@@ -1557,4 +1559,4 @@ def test_datasets_provenance_after_external_provider_update(client_with_new_grap
     dataset = client_with_new_graph.load_dataset("my-data")
     current_version = client_with_new_graph.datasets_provenance.get(dataset.identifier)
 
-    assert current_version.identifier == current_version.original_identifier
+    assert current_version.identifier != current_version.original_identifier
