@@ -25,7 +25,7 @@ from flaky import flaky
 from git import Repo
 from werkzeug.utils import secure_filename
 
-from renku.core.errors import DatasetExistsError, ParameterError, MigrationRequired
+from renku.core.errors import DatasetExistsError, MigrationRequired, ParameterError
 from renku.service.jobs.cleanup import cache_project_cleanup
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
