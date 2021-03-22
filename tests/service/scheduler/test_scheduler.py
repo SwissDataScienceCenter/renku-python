@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,26 +15,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Service logger."""
-import logging.config
-import os
+"""Renku service tests for scheduler management."""
+from rq import Queue
 
-import yaml
 
-from renku.service.config import LOGGER_CONFIG_FILE
+def test_enqueue_jobs(with_scheduler):
+    """Enqueue jobs at a interval."""
+    queues = Queue.all()
+    assert queues
 
-DEPLOYMENT_LOG_LEVEL = os.getenv("DEPLOYMENT_LOG_LEVEL", "INFO")
-
-config = yaml.safe_load(LOGGER_CONFIG_FILE.read_text())
-logging.config.dictConfig(config)
-
-service_log = logging.getLogger("renku.service")
-worker_log = logging.getLogger("renku.worker")
-scheduler_log = logging.getLogger("renku.scheduler")
-
-__all__ = [
-    "service_log",
-    "worker_log",
-    "scheduler_log",
-    "DEPLOYMENT_LOG_LEVEL",
-]
+    assert 2 == len(queues)
+    for q in queues:
+        assert 1 == q.count
