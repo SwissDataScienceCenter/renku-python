@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,26 +15,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Service logger."""
-import logging.config
-import os
+"""Renku service fixtures for scheduler management."""
+import pytest
 
-import yaml
 
-from renku.service.config import LOGGER_CONFIG_FILE
+@pytest.fixture
+def with_scheduler(mock_redis):
+    """Scheduler fixture."""
+    from renku.service.jobs.queues import WorkerQueues
+    from renku.service.scheduler import start_scheduler
+    from renku.service.utils.timeout import timeout
 
-DEPLOYMENT_LOG_LEVEL = os.getenv("DEPLOYMENT_LOG_LEVEL", "INFO")
+    timeout(start_scheduler, fn_kwargs={"connection": WorkerQueues.connection}, timeout_duration=5)
 
-config = yaml.safe_load(LOGGER_CONFIG_FILE.read_text())
-logging.config.dictConfig(config)
+    from rq import Connection
 
-service_log = logging.getLogger("renku.service")
-worker_log = logging.getLogger("renku.worker")
-scheduler_log = logging.getLogger("renku.scheduler")
-
-__all__ = [
-    "service_log",
-    "worker_log",
-    "scheduler_log",
-    "DEPLOYMENT_LOG_LEVEL",
-]
+    with Connection(WorkerQueues.connection):
+        yield
