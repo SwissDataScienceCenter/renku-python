@@ -149,8 +149,8 @@ class RenkuProvider(ProviderApi):
         # https://<host>/projects/:namespace/:0-or-more-subgroups/:name/datasets/:id
         # https://<host>/datasets/:id
         match = re.match(r"(?:/projects/((?:[^/]+/)+[^/]+))?/datasets/([^/]+)/?$", parsed_url.path)
-        project_id, dataset_id = match.groups() if match else (None, None)
-        return project_id, dataset_id
+        project_id, dataset_name_or_id = match.groups() if match else (None, None)
+        return project_id, dataset_name_or_id
 
     def _query_knowledge_graph(self, url):
         try:
@@ -324,7 +324,7 @@ class _RenkuRecordSerializer:
 
         for file_ in self._dataset.files:
             file_.checksum = self._remote_client.repo.git.hash_object(file_.path)
-            file_.filesize = self._get_file_size(self._remote_client, file_.path)
+            file_.filesize = _RenkuRecordSerializer._get_file_size(self._remote_client, file_.path)
             file_.filetype = Path(file_.path).suffix.replace(".", "")
 
     @staticmethod
