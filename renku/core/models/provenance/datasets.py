@@ -587,7 +587,7 @@ class NewDatasetSchema(JsonLDSchema):
     files = Nested(schema.hasPart, NewDatasetFileSchema, many=True)
     id = fields.Id(missing=None)
     identifier = fields.String(schema.identifier)
-    images = fields.Nested(schema.image, ImageObjectSchema, missing=None, allow_none=True)
+    images = fields.Nested(schema.image, ImageObjectSchema, missing=None, allow_none=True, many=True)
     in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
     keywords = fields.List(schema.keywords, fields.String(), missing=None, allow_none=True)
     license = Uri(schema.license, missing=None, allow_none=True)

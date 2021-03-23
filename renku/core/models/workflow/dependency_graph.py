@@ -166,7 +166,7 @@ class DependencyGraph:
         else:
             self = DependencyGraph(plans=[])
 
-        self._path = path
+        self._path = Path(path)
 
         return self
 

@@ -224,7 +224,7 @@ class DatasetsApiMixin(object):
         return dataset
 
     @contextmanager
-    def with_dataset(self, name=None, create=False):
+    def with_dataset(self, name=None, create=False, immutable=False):
         """Yield an editable metadata object for a dataset."""
         dataset = self.load_dataset(name=name)
         clean_up_required = False
@@ -240,6 +240,7 @@ class DatasetsApiMixin(object):
         elif create:
             raise errors.DatasetExistsError('Dataset exists: "{}".'.format(name))
 
+        dataset.immutable = immutable or create
         dataset_path = self.path / self.data_dir / dataset.name
         dataset_path.mkdir(parents=True, exist_ok=True)
 

@@ -22,9 +22,9 @@ import os
 from marshmallow import EXCLUDE
 
 from renku.core.models import jsonld
-from renku.core.models.calamus import fields, renku, schema
+from renku.core.models.calamus import fields, prov, renku, schema
 
-from .v3 import Base, DatasetFileSchemaV3, DatasetSchemaV3
+from .v3 import Base, DatasetFileSchemaV3, DatasetSchemaV3, UrlSchemaV3
 
 
 class Dataset(Base):
@@ -64,6 +64,7 @@ class DatasetSchemaV7(DatasetSchemaV3):
         model = Dataset
         unknown = EXCLUDE
 
+    derived_from = fields.Nested(prov.wasDerivedFrom, UrlSchemaV3, missing=None)
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV7, many=True)
 
 

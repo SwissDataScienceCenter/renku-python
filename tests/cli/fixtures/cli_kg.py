@@ -55,8 +55,6 @@ def mock_kg():
             return status_code, {"Content-Type": "application/json"}, ""
 
         response.add_passthru("https://pypi.org/")
-        response.add_callback(
-            responses.GET, re.compile("http(s)*://renku.ch/knowledge-graph/datasets/.*"), callback=callback
-        )
+        response.add_callback(responses.GET, re.compile("http(s)*://renku.ch/knowledge-graph/.*"), callback=callback)
 
         yield response
