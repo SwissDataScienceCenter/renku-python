@@ -27,7 +27,7 @@ from werkzeug.utils import secure_filename
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
-from renku.service.serializers.common import RenkuSyncSchema
+from renku.service.serializers.common import RenkuSyncSchema, RepositoryContext
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -205,17 +205,13 @@ class ProjectListResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectListResponse)
 
 
-class ProjectMigrateRequest(Schema):
+class ProjectMigrateRequest(RepositoryContext):
     """Request schema for project migrate."""
 
-    project_id = fields.String(required=True)
     force_template_update = fields.Boolean(default=False)
     skip_template_update = fields.Boolean(default=False)
     skip_docker_update = fields.Boolean(default=False)
     skip_migrations = fields.Boolean(default=False)
-    is_delayed = fields.Boolean(default=False)
-    client_extras = fields.String()
-    commit_message = fields.String()
 
     @pre_load()
     def default_commit_message(self, data, **kwargs):

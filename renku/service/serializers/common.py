@@ -35,6 +35,7 @@ class RepositoryContext(Schema):
 
     ref = fields.String()
     commit_message = fields.String()
+    client_extras = fields.String()
 
     is_delayed = fields.Boolean()
 

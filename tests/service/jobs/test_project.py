@@ -16,41 +16,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project related job tests."""
-import json
+import uuid
 
-import jwt
 import pytest
-from werkzeug.utils import secure_filename
+from flaky import flaky
 
-from renku.service.jobs.project import migrate_job
-from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
+from renku.core.errors import MigrationRequired
 
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_migrations_job(svc_client_setup):
-    """Check migrations job for successful execution of migrations."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+@flaky(max_runs=30, min_passes=1)
+def test_delay_migration_job(svc_client_cache, it_remote_repo_url, view_user_data):
+    """Unlink a file from a dataset failure."""
+    from renku.service.serializers.cache import ProjectMigrateRequest
 
-    decoded = jwt.decode(headers["Renku-User"], JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku",)
-    user_data = {
-        "fullname": decoded["name"],
-        "email": decoded["email"],
-        "user_id": encode_b64(secure_filename(decoded["sub"])),
-        "token": headers["Authorization"].split("Bearer ")[-1],
-    }
-
-    response = svc_client.post(
-        "/cache.migrate", data=json.dumps(dict(project_id=project_id, is_delayed=True)), headers=headers
+    context = ProjectMigrateRequest().load(
+        {"git_url": it_remote_repo_url, "ref": uuid.uuid4().hex, "skip_docker_update": True}
     )
 
-    assert 200 == response.status_code
-    job_id = response.json["result"]["job_id"]
+    _, _, cache = svc_client_cache
+    renku_module = "renku.service.controllers.cache_migrate_project"
+    renku_ctrl = "MigrateProjectCtrl"
 
-    assert migrate_job(user_data, project_id, job_id, False, True, True, False, "my migrate commit") is None
+    user = cache.ensure_user(view_user_data)
+    job = cache.make_job(
+        user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
+    )
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    assert 200 == response.status_code
-    assert not response.json["result"]["migration_required"]
-    assert response.json["result"]["project_supported"]
+    updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+    assert updated_job
+    assert {
+        "docker_migrated",
+        "was_migrated",
+        "template_migrated",
+        "messages",
+        "remote_branch",
+    } == updated_job.ctrl_result["result"].keys()

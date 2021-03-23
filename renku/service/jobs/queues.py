@@ -29,8 +29,6 @@ DATASETS_JOB_QUEUE = "datasets.jobs"
 MIGRATIONS_JOB_QUEUE = "project.migrations"
 GRAPH_JOB_QUEUE = "graph.jobs"
 
-DELAYED_DATASETS_CREATE_CTRL = "delayed.ctrl.DatasetsCreateCtrl"
-
 
 QUEUES = [
     CLEANUP_QUEUE_FILES,
@@ -38,7 +36,6 @@ QUEUES = [
     DATASETS_JOB_QUEUE,
     MIGRATIONS_JOB_QUEUE,
     GRAPH_JOB_QUEUE,
-    DELAYED_DATASETS_CREATE_CTRL,
 ]
 
 
