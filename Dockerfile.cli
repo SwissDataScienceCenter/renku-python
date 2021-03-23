@@ -5,7 +5,7 @@ RUN apk add --no-cache git && \
 
 FROM base as builder
 
-ENV BUILD_DEPS "alpine-sdk g++ gcc linux-headers libxslt-dev zeromq-dev libffi-dev openssl-dev"
+ENV BUILD_DEPS "alpine-sdk g++ gcc linux-headers libxslt-dev zeromq-dev libffi-dev openssl-dev rust cargo"
 RUN apk add --no-cache $BUILD_DEPS
 
 COPY . /code/renku
