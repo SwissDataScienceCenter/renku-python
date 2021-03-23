@@ -61,6 +61,7 @@ import click
 import filelock
 import portalocker
 
+from renku.core.commands.echo import ERROR
 from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
 
 _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=True,)
@@ -87,7 +88,7 @@ class RenkuExceptionsHandler(click.Group):
         try:
             return super().main(*args, **kwargs)
         except RenkuException as e:
-            click.echo(f"Error: {e}", err=True)
+            click.echo(ERROR + str(e), err=True)
             if e.__cause__ is not None:
                 click.echo(f"\n{traceback.format_exc()}")
             exit_code = 1

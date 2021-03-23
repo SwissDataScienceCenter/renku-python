@@ -121,14 +121,18 @@ class RepositoryApiMixin(GitCore):
     TEMPLATE_CHECKSUMS = "template_checksums.json"
 
     RENKU_PROTECTED_PATHS = [
-        "\\.renku/.*",
+        ".dockerignore",
+        ".git",
+        ".git/*",
+        ".gitattributes",
+        ".gitignore",
+        ".gitlab-ci.yml",
+        ".renku",
+        ".renku/*",
+        ".renkulfsignore",
         "Dockerfile",
-        "\\.dockerignore",
-        "\\.gitignore",
-        "\\.gitattributes",
-        "\\.gitlab-ci\\.yml",
-        "environment\\.yml",
-        "requirements\\.txt",
+        "environment.yml",
+        "requirements.txt",
     ]
 
     _commit_activity_cache = attr.ib(factory=dict)
