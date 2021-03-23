@@ -30,14 +30,14 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
     REQUEST_SERIALIZER = DatasetEditRequest()
     RESPONSE_SERIALIZER = DatasetEditResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets edit list controller."""
         self.ctx = DatasetsEditCtrl.REQUEST_SERIALIZER.load(request_data)
 
         if self.ctx.get("commit_message") is None:
             self.ctx["commit_message"] = "service: dataset edit {0}".format(self.ctx["name"])
 
-        super(DatasetsEditCtrl, self).__init__(cache, user_data, request_data)
+        super(DatasetsEditCtrl, self).__init__(cache, user_data, request_data, migrate_project)
 
     @property
     def context(self):

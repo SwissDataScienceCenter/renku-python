@@ -219,7 +219,7 @@ class DatasetImportResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetImportResponse)
 
 
-class DatasetEditRequest(Schema):
+class DatasetEditRequest(RepositoryContext):
     """Dataset edit metadata request."""
 
     name = fields.String(required=True)
@@ -228,10 +228,6 @@ class DatasetEditRequest(Schema):
     creators = fields.List(fields.Nested(DatasetCreators))
     keywords = fields.List(fields.String())
     images = fields.List(fields.Nested(ImageObjectRequest))
-
-    project_id = fields.String()
-    git_url = fields.String()
-    commit_message = fields.String()
 
 
 class DatasetEditResponse(RenkuSyncSchema):

@@ -20,7 +20,7 @@ from abc import ABCMeta, abstractmethod
 from functools import wraps
 from pathlib import Path
 
-from git import Repo, GitCommandError
+from git import GitCommandError, Repo
 
 from renku.core.errors import RenkuException, UninitializedProject
 from renku.core.management.config import RENKU_HOME

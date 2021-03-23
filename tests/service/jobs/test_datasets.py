@@ -503,3 +503,40 @@ def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url, 
 
     with pytest.raises(MigrationRequired):
         delayed_ctrl_job(context, view_user_data, delete_job.job_id, renku_module, renku_ctrl)
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url, view_user_data):
+    """Edit a dataset successfully."""
+    from renku.service.serializers.datasets import DatasetEditRequest
+
+    context = DatasetEditRequest().load(
+        {
+            "git_url": it_remote_repo_url,
+            "ref": uuid.uuid4().hex,
+            "name": "mydata",
+            "title": f"new title => {uuid.uuid4().hex}",
+            # NOTE: We test with this only to check that recursive invocation is being prevented.
+            "is_delayed": True,
+            "migrate_project": True,
+        }
+    )
+
+    _, _, cache = svc_client_cache
+    renku_module = "renku.service.controllers.datasets_edit"
+    renku_ctrl = "DatasetsEditCtrl"
+
+    user = cache.ensure_user(view_user_data)
+    job = cache.make_job(
+        user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
+    )
+
+    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+
+    updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+
+    assert updated_job
+    assert {"warnings", "remote_branch", "edited"} == updated_job.ctrl_result["result"].keys()
+    assert {"title"} == updated_job.ctrl_result["result"]["edited"].keys()
