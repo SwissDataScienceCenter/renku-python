@@ -226,8 +226,8 @@ def _update_template(client, check_only=False):
                 if destination.exists():
                     current_hash = client._content_hash(destination)
 
-                local_changes = current_hash != checksums[str(rel_path)]
-                remote_changes = new_template_hash != checksums[str(rel_path)]
+                local_changes = str(rel_path) not in checksums or current_hash != checksums[str(rel_path)]
+                remote_changes = str(rel_path) not in checksums or new_template_hash != checksums[str(rel_path)]
 
             if local_changes:
                 if remote_changes and str(rel_path) in project.immutable_template_files:
