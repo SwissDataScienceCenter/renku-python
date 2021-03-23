@@ -182,6 +182,10 @@ def service(ctx, env):
         import rq  # noqa: F401
         from dotenv import load_dotenv
 
+        from renku.service.cache.base import BaseCache
+
+        BaseCache.cache.ping()
+
         load_dotenv(dotenv_path=env)
     except ImportError:
         # NOTE: Service dependency is missing.
@@ -190,6 +194,13 @@ def service(ctx, env):
             ERROR + "Dependency not found! "
             "Please install `pip install renku[service]` to enable service component control."
         )
+
+        ctx.exit(1)
+
+    except redis.exceptions.ConnectionError:
+        # NOTE: Cannot connect to the service dependencies, ie. Redis.
+
+        click.echo(ERROR + "Cannot connect to Redis")
 
         ctx.exit(1)
 
