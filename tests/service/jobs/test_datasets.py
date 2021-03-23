@@ -309,6 +309,8 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url, view_u
     from renku.service.serializers.datasets import DatasetAddRequest
 
     _, _, cache = svc_client_cache
+
+    view_user_data["user_id"] = uuid.uuid4().hex
     user = cache.ensure_user(view_user_data)
     renku_module = "renku.service.controllers.datasets_add_file"
     renku_ctrl = "DatasetsAddFileCtrl"
@@ -428,6 +430,7 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url, view
     renku_module = "renku.service.controllers.datasets_create"
     renku_ctrl = "DatasetsCreateCtrl"
 
+    view_user_data["user_id"] = uuid.uuid4().hex
     user = cache.ensure_user(view_user_data)
     job = cache.make_job(
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
@@ -437,3 +440,66 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url, view
 
     with pytest.raises(MigrationRequired):
         delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url, view_user_data):
+    """Create a dataset was removed successfully."""
+    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.service.serializers.datasets import DatasetRemoveRequest
+
+    _, _, cache = svc_client_cache
+    user = cache.ensure_user(view_user_data)
+
+    request_payload = {
+        "git_url": it_remote_repo_url,
+        "ref": uuid.uuid4().hex,
+        "name": "mydata",
+        "migrate_project": True,
+    }
+
+    context = DatasetRemoveRequest().load(request_payload)
+    renku_module = "renku.service.controllers.datasets_remove"
+    renku_ctrl = "DatasetsRemoveCtrl"
+
+    delete_job = cache.make_job(
+        user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
+    )
+
+    updated_job = delayed_ctrl_job(context, view_user_data, delete_job.job_id, renku_module, renku_ctrl)
+
+    assert updated_job
+    assert {"name", "remote_branch"} == updated_job.ctrl_result["result"].keys()
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url, view_user_data):
+    """Create a dataset was removed successfully."""
+    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.service.serializers.datasets import DatasetRemoveRequest
+
+    _, _, cache = svc_client_cache
+    user = cache.ensure_user(view_user_data)
+    ref = uuid.uuid4().hex
+    dataset_name = uuid.uuid4().hex
+
+    request_payload = {
+        "git_url": it_remote_repo_url,
+        "ref": ref,
+        "name": dataset_name,
+    }
+
+    context = DatasetRemoveRequest().load(request_payload)
+    renku_module = "renku.service.controllers.datasets_remove"
+    renku_ctrl = "DatasetsRemoveCtrl"
+
+    delete_job = cache.make_job(
+        user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
+    )
+
+    with pytest.raises(MigrationRequired):
+        delayed_ctrl_job(context, view_user_data, delete_job.job_id, renku_module, renku_ctrl)

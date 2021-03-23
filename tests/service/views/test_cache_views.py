@@ -753,13 +753,11 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree):
             dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote.push()
-
     params = {
         "project_id": project_id,
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers=identity_headers,)
-
     assert response
     assert 200 == response.status_code
 

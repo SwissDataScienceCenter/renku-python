@@ -20,7 +20,7 @@ from abc import ABCMeta, abstractmethod
 from functools import wraps
 from pathlib import Path
 
-from git import Repo
+from git import Repo, GitCommandError
 
 from renku.core.errors import RenkuException, UninitializedProject
 from renku.core.management.config import RENKU_HOME
@@ -137,6 +137,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 project = Project.get(
                     (Project.user_id == self.user_data["user_id"]) & (Project.git_url == self.context["git_url"])
                 )
+                self.reset_local_repo(project)
             except ValueError:
                 from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
 
@@ -169,11 +170,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
     def reset_local_repo(self, project):
         """Reset the local repo to be up to date with the remote."""
-        if not self.project_path:
-            return
-
-        repo = Repo(self.project_path)
-        breakpoint()
+        repo = Repo(project.abs_path)
         origin = None
         if repo.active_branch.tracking_branch():
             origin = repo.remotes[repo.active_branch.tracking_branch().remote_name]
@@ -181,7 +178,11 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             origin = repo.remotes[0]
 
         if origin:
-            origin.fetch()
+            try:
+                origin.fetch("--unshallow")
+            except GitCommandError:
+                origin.fetch()
+
             repo.git.reset("--hard", origin)
 
     @local_identity
@@ -230,7 +231,7 @@ class RenkuOpSyncMixin(RenkuOperationMixin, metaclass=ABCMeta):
         if self.project_path is None:
             raise RenkuException("unable to sync with remote since no operation has been executed")
 
-        bla, remote_branch = repo_sync(Repo(self.project_path), remote=remote)
+        _, remote_branch = repo_sync(Repo(self.project_path), remote=remote)
 
         return remote_branch
 

@@ -150,13 +150,17 @@ class ProjectCloneContext(ProjectCloneRequest):
 
         return data
 
-    @post_load
-    def finalize_data(self, data, **kwargs):
-        """Finalize data."""
+    def format_url(self, data):
+        """Format url with auth."""
         git_url = urlparse(data["git_url"])
 
         url = "oauth2:{0}@{1}".format(data["token"], git_url.netloc)
-        data["url_with_auth"] = git_url._replace(netloc=url).geturl()
+        return git_url._replace(netloc=url).geturl()
+
+    @post_load
+    def finalize_data(self, data, **kwargs):
+        """Finalize data."""
+        data["url_with_auth"] = self.format_url(data)
 
         if not data["depth"]:
             # NOTE: In case of `depth=None` or `depth=0` we set to default depth.

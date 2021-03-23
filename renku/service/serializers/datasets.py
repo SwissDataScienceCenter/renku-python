@@ -57,19 +57,16 @@ class DatasetCreateResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetCreateResponse)
 
 
-class DatasetRemoveRequest(DatasetDetails):
-    """Request schema for a dataset create view."""
+class DatasetRemoveRequest(RepositoryContext):
+    """Request schema for a dataset remove."""
 
-    project_id = fields.String(required=True)
     name = fields.String(required=True)
-
-    commit_message = fields.String()
 
     @pre_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
         if not data.get("commit_message"):
-            data["commit_message"] = "service: dataset delete {0}".format(data["name"])
+            data["commit_message"] = "service: dataset remove {0}".format(data["name"])
 
         return data
 

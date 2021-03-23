@@ -26,6 +26,8 @@ from copy import deepcopy
 import pytest
 from git import GitCommandError, Repo
 
+from renku.service.config import PROJECT_CLONE_NO_DEPTH
+
 
 @contextlib.contextmanager
 def _mock_cache_sync(repo):
@@ -206,12 +208,10 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 
     # NOTE: prevent service from adding an auth token as it doesn't work with local repos
     def _no_auth_format(self, data, **kwargs):
-        data["url_with_auth"] = data["git_url"]
-        return data
+        return data["git_url"]
 
     orig_format_url = cache.ProjectCloneContext.format_url
-
-    cache.ProjectCloneContext.format_url = post_load(_no_auth_format)
+    cache.ProjectCloneContext.format_url = _no_auth_format
 
     # NOTE: mock owner/project so service is happy
     def _mock_owner(self, data, **kwargs):
@@ -222,14 +222,12 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
         return data
 
     orig_set_owner = cache.ProjectCloneContext.set_owner_name
-
     cache.ProjectCloneContext.set_owner_name = pre_load(_mock_owner)
 
     remote_repo_path = tmp_path / "remote_repo"
     remote_repo_path.mkdir()
 
     remote_repo = Repo.init(remote_repo_path, bare=True)
-
     remote_repo_checkout_path = tmp_path / "remote_repo_checkout"
     remote_repo_checkout_path.mkdir()
 
@@ -269,8 +267,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
         except OSError:  # noqa: B014
             pass
 
-        payload = {"git_url": f"file://{remote_repo_path}", "depth": 0}
-
+        payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH, "ref": "main"}
         response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
         assert response
