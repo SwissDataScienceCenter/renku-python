@@ -29,7 +29,7 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
     REQUEST_SERIALIZER = DatasetUnlinkRequest()
     RESPONSE_SERIALIZER = DatasetUnlinkResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets unlink list controller."""
         self.ctx = DatasetsUnlinkCtrl.REQUEST_SERIALIZER.load(request_data)
 
@@ -46,7 +46,7 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
             self.ctx["commit_message"] = "service: unlink dataset {0} {1}".format(self.ctx["name"], filters)
 
-        super(DatasetsUnlinkCtrl, self).__init__(cache, user_data, request_data)
+        super(DatasetsUnlinkCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):

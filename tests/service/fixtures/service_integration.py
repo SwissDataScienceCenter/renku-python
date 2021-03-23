@@ -200,7 +200,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     """Client with a local remote to test pushes."""
     from click.testing import CliRunner
     from git.config import GitConfigParser, get_config_path
-    from marshmallow import post_load, pre_load
+    from marshmallow import pre_load
 
     from renku.cli import cli
     from renku.core.utils.contexts import chdir

@@ -243,16 +243,12 @@ class DatasetEditResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetEditResponse)
 
 
-class DatasetUnlinkRequest(Schema):
+class DatasetUnlinkRequest(RepositoryContext):
     """Dataset unlink file request."""
 
     name = fields.String(required=True)
     include_filters = fields.List(fields.String())
     exclude_filters = fields.List(fields.String())
-
-    project_id = fields.String()
-    git_url = fields.String()
-    commit_message = fields.String()
 
     @post_load()
     def check_filters(self, data, **kwargs):

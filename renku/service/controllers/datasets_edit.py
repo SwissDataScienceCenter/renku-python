@@ -37,7 +37,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         if self.ctx.get("commit_message") is None:
             self.ctx["commit_message"] = "service: dataset edit {0}".format(self.ctx["name"])
 
-        super(DatasetsEditCtrl, self).__init__(cache, user_data, request_data, migrate_project)
+        super(DatasetsEditCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):
