@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets remove controller."""
 from renku.core.commands.dataset import remove_dataset
+from renku.service.cache.models.job import Job
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetRemoveRequest, DatasetRemoveResponseRPC
@@ -50,7 +51,10 @@ class DatasetsRemoveCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        _, remote_branch = self.execute_and_sync()
+        op_result, remote_branch = self.execute_and_sync()
+
+        if isinstance(op_result, Job):
+            return result_response(DatasetsRemoveCtrl.JOB_RESPONSE_SERIALIZER, op_result)
 
         response = self.ctx
         response["remote_branch"] = remote_branch

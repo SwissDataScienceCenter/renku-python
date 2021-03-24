@@ -640,7 +640,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url, 
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url, view_user_data):
     """Unlink a file from a dataset successfully."""
     from renku.service.serializers.datasets import DatasetUnlinkRequest
 
@@ -650,8 +650,6 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url, view_use
             "ref": uuid.uuid4().hex,
             "name": "ds1",
             "include_filters": ["data1"],
-            # NOTE: We test with this only to check that recursive invocation is being prevented.
-            "is_delayed": True,
             "migrate_project": True,
         }
     )

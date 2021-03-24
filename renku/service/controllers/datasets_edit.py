@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets edit controller."""
 from renku.core.commands.dataset import edit_dataset
+from renku.service.cache.models.job import Job
 from renku.service.config import CACHE_UPLOADS_PATH
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
@@ -69,8 +70,11 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def to_response(self):
         """Execute controller flow and serialize to service response."""
         op_result, remote_branch = self.execute_and_sync()
-        edited, warnings = op_result
 
+        if isinstance(op_result, Job):
+            return result_response(DatasetsEditCtrl.JOB_RESPONSE_SERIALIZER, op_result)
+
+        edited, warnings = op_result
         response = {
             "edited": edited,
             "warnings": warnings,

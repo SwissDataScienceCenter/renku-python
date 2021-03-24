@@ -23,7 +23,7 @@ from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
 from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
 from renku.core.models.datasets import ImageObjectJson as ImageObject
 from renku.core.models.datasets import ImageObjectRequestJson as ImageObjectRequest
-from renku.service.serializers.common import RenkuSyncSchema, RepositoryContext
+from renku.service.serializers.common import JobDetailsResponse, RenkuSyncSchema, RepositoryContext
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -196,27 +196,18 @@ class DatasetFilesListResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetFilesListResponse)
 
 
-class DatasetImportRequest(Schema):
+class DatasetImportRequest(RepositoryContext):
     """Dataset import request."""
 
-    project_id = fields.String(required=True)
     dataset_uri = fields.String(required=True)
     name = fields.String()
     extract = fields.Boolean()
-    client_extras = fields.String()
-
-
-class DatasetImportResponse(Schema):
-    """Dataset import response."""
-
-    job_id = fields.String(required=True)
-    created_at = fields.DateTime()
 
 
 class DatasetImportResponseRPC(JsonRPCResponse):
     """RPC schema for a dataset import."""
 
-    result = fields.Nested(DatasetImportResponse)
+    result = fields.Nested(JobDetailsResponse)
 
 
 class DatasetEditRequest(RepositoryContext):

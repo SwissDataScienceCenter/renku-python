@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service cache list cached projects controller."""
 from renku.core.commands.config import update_multiple_config
+from renku.service.cache.models.job import Job
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.config import ConfigSetRequest, ConfigSetResponseRPC
@@ -29,10 +30,10 @@ class SetConfigCtrl(ServiceCtrl, RenkuOpSyncMixin):
     REQUEST_SERIALIZER = ConfigSetRequest()
     RESPONSE_SERIALIZER = ConfigSetResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct controller."""
         self.ctx = SetConfigCtrl.REQUEST_SERIALIZER.load(request_data)
-        super(SetConfigCtrl, self).__init__(cache, user_data, request_data)
+        super(SetConfigCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):
@@ -44,8 +45,14 @@ class SetConfigCtrl(ServiceCtrl, RenkuOpSyncMixin):
         update_config_command = update_multiple_config().build()
         update_config_command.execute(self.ctx["config"])
 
-        return {}
+        return self.context
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(SetConfigCtrl.RESPONSE_SERIALIZER, self.execute_and_sync())
+        op_result, remote_branch = self.execute_and_sync()
+
+        if isinstance(op_result, Job):
+            return result_response(SetConfigCtrl.JOB_RESPONSE_SERIALIZER, op_result)
+
+        op_result["remote_branch"] = remote_branch
+        return result_response(SetConfigCtrl.RESPONSE_SERIALIZER, op_result)

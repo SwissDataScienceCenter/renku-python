@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets unlink controller."""
 from renku.core.commands.dataset import file_unlink
+from renku.service.cache.models.job import Job
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetUnlinkRequest, DatasetUnlinkResponseRPC
@@ -72,6 +73,9 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def to_response(self):
         """Execute controller flow and serialize to service response."""
         op_result, remote_branch = self.execute_and_sync()
+
+        if isinstance(op_result, Job):
+            return result_response(DatasetsUnlinkCtrl.JOB_RESPONSE_SERIALIZER, op_result)
 
         response = {
             "unlinked": [record.path for record in op_result],

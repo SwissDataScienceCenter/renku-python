@@ -21,8 +21,6 @@ import uuid
 import pytest
 from flaky import flaky
 
-from renku.core.errors import MigrationRequired
-
 
 @pytest.mark.service
 @pytest.mark.integration

@@ -152,6 +152,22 @@ def test_remove_dataset_view(svc_client_with_repo):
     assert payload["name"] not in datasets
 
 
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_remote_remove_view(svc_client, it_remote_repo_url, identity_headers):
+    """Test creating a delayed remove."""
+    response = svc_client.post(
+        "/datasets.remove",
+        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, name="mydata")),
+        headers=identity_headers,
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["created_at"]
+    assert response.json["result"]["job_id"]
+
+
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
@@ -571,7 +587,7 @@ def test_add_file_view(svc_client_with_repo):
         "project_id": project_id,
         "name": uuid.uuid4().hex,
         "create_dataset": True,
-        "files": [{"file_id": file_id,},],
+        "files": [{"file_id": file_id}],
     }
     headers["Content-Type"] = content_type
 
@@ -623,6 +639,24 @@ def test_add_file_commit_msg(svc_client_with_repo):
     assert file_id == response.json["result"]["files"][0]["file_id"]
 
 
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_remote_add_view(svc_client, it_remote_repo_url, identity_headers):
+    """Test creating a delayed add."""
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(
+            dict(git_url=it_remote_repo_url, is_delayed=True, name="mydata", files=[{"file_path": "somefile.txt"}])
+        ),
+        headers=identity_headers,
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["created_at"]
+    assert response.json["result"]["job_id"]
+
+
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
@@ -646,7 +680,7 @@ def test_add_file_failure(svc_client_with_repo):
         "project_id": project_id,
         "name": uuid.uuid4().hex,
         "create_dataset": True,
-        "files": [{"file_id": file_id,}, {"file_path": "my problem right here"}],
+        "files": [{"file_id": file_id}, {"file_path": "my problem right here"}],
     }
     headers["Content-Type"] = content_type
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
@@ -829,6 +863,22 @@ def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo_url):
 
     assert 0 != len(response.json["result"]["files"])
     assert "ds1" == response.json["result"]["name"]
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_remote_create_view(svc_client, it_remote_repo_url, identity_headers):
+    """Test creating a delayed dataset create."""
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, name=uuid.uuid4().hex,)),
+        headers=identity_headers,
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["created_at"]
+    assert response.json["result"]["job_id"]
 
 
 @pytest.mark.service
@@ -1125,7 +1175,7 @@ def test_add_existing_file(svc_client_with_repo):
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
-def test_import_dataset_job_enqueue(doi, svc_client_cache, project):
+def test_cached_import_dataset_job(doi, svc_client_cache, project):
     """Test import a dataset."""
     client, headers, cache = svc_client_cache
 
@@ -1152,7 +1202,7 @@ def test_import_dataset_job_enqueue(doi, svc_client_cache, project):
 
     response = client.post(
         "/datasets.import",
-        data=json.dumps({"project_id": project_meta["project_id"], "dataset_uri": doi,}),
+        data=json.dumps({"project_id": project_meta["project_id"], "dataset_uri": doi}),
         headers=headers,
     )
 
@@ -1167,6 +1217,25 @@ def test_import_dataset_job_enqueue(doi, svc_client_cache, project):
     assert response.json["result"]["jobs"]
 
     assert user_job.job_id in [job["job_id"] for job in response.json["result"]["jobs"]]
+
+
+@pytest.mark.parametrize(
+    "doi", ["10.5281/zenodo.3239980",],
+)
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_remote_import_dataset_job(doi, svc_client, it_remote_repo_url, identity_headers):
+    """Test creating a delayed import of a dataset."""
+    response = svc_client.post(
+        "/datasets.import",
+        data=json.dumps(dict(git_url=it_remote_repo_url, dataset_uri=doi, is_delayed=True,)),
+        headers=identity_headers,
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["created_at"]
+    assert response.json["result"]["job_id"]
 
 
 @pytest.mark.parametrize("url", ["https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3"])
@@ -1491,6 +1560,22 @@ def test_edit_dataset_with_images(svc_client_with_repo):
 
 
 @pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
+    """Test creating a delayed edit."""
+    response = svc_client.post(
+        "/datasets.edit",
+        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, name="mydata")),
+        headers=identity_headers,
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["created_at"]
+    assert response.json["result"]["job_id"]
+
+
+@pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 def test_protected_branch(svc_protected_repo):
     """Test adding a file to protected branch."""
@@ -1523,6 +1608,22 @@ def test_unlink_file(unlink_file_setup):
 
     assert {"unlinked", "remote_branch"} == set(response.json["result"].keys())
     assert ["README.md"] == response.json["result"]["unlinked"]
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_remote_unlink_view(svc_client, it_remote_repo_url, identity_headers):
+    """Test creating a delayed unlink."""
+    response = svc_client.post(
+        "/datasets.unlink",
+        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, name="mydata", include_filters=["data1"])),
+        headers=identity_headers,
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["created_at"]
+    assert response.json["result"]["job_id"]
 
 
 @pytest.mark.integration

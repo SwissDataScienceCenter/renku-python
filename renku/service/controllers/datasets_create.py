@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets create controller."""
 from renku.core.commands.dataset import create_dataset
+from renku.service.cache.models.job import Job
 from renku.service.config import CACHE_UPLOADS_PATH
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
@@ -73,11 +74,12 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        response, remote_branch = self.execute_and_sync()
+        op_result, remote_branch = self.execute_and_sync()
 
-        if not remote_branch:
-            return result_response(DatasetsCreateCtrl.JOB_RESPONSE_SERIALIZER, response)
+        if isinstance(op_result, Job):
+            return result_response(DatasetsCreateCtrl.JOB_RESPONSE_SERIALIZER, op_result)
 
-        response = self.ctx
-        response["remote_branch"] = remote_branch
-        return result_response(DatasetsCreateCtrl.RESPONSE_SERIALIZER, response)
+        op_result = self.ctx
+        op_result["remote_branch"] = remote_branch
+
+        return result_response(DatasetsCreateCtrl.RESPONSE_SERIALIZER, op_result)

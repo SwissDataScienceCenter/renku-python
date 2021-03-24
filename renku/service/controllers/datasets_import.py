@@ -33,14 +33,14 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
     REQUEST_SERIALIZER = DatasetImportRequest()
     RESPONSE_SERIALIZER = DatasetImportResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets import controller."""
         self.ctx = DatasetsImportCtrl.REQUEST_SERIALIZER.load(request_data)
 
         if self.ctx.get("commit_message") is None:
             self.ctx["commit_message"] = "service: dataset import of {0}".format(self.ctx["dataset_uri"])
 
-        super(DatasetsImportCtrl, self).__init__(cache, user_data, request_data)
+        super(DatasetsImportCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):

@@ -22,6 +22,7 @@ from pathlib import Path
 
 from renku.core.commands.dataset import add_to_dataset
 from renku.core.errors import RenkuException
+from renku.service.cache.models.job import Job
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.jobs.contexts import enqueue_retry
@@ -119,9 +120,14 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def to_response(self):
         """Execute controller flow and serialize to service response."""
         op_result, remote_branch = self.execute_and_sync()
-        local_paths, enqueued_paths = op_result
 
-        response = self.ctx
-        response["remote_branch"] = remote_branch
+        if isinstance(op_result, Job):
+            return result_response(DatasetsAddFileCtrl.JOB_RESPONSE_SERIALIZER, op_result)
+
+        local_paths, enqueued_paths = op_result
+        response = {
+            **self.ctx,
+            **{"local_paths": local_paths, "enqueued_paths": enqueued_paths, "remote_branch": remote_branch},
+        }
 
         return result_response(DatasetsAddFileCtrl.RESPONSE_SERIALIZER, response)
