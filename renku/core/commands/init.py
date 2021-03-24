@@ -22,6 +22,7 @@ import tempfile
 from collections import OrderedDict, namedtuple
 from pathlib import Path
 from tempfile import mkdtemp
+from uuid import uuid4
 
 import attr
 import click
@@ -33,6 +34,7 @@ from renku.core import errors
 from renku.core.commands.git import set_git_home
 from renku.core.incubation.command import Command
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
 
@@ -100,6 +102,126 @@ def is_path_empty(path):
     return not any(gen)
 
 
+def select_template_from_manifest(
+    template_manifest, template_id=None, template_index=None, describe=False, prompt=True
+):
+    """Select a template from a template manifest."""
+    repeat = False
+    template_data = None
+    if template_id:
+        if template_index:
+            raise errors.ParameterError("Use either --template-id or --template-index, not both", '"--template-index"')
+        template_filtered = [
+            template_elem for template_elem in template_manifest if template_elem["folder"] == template_id
+        ]
+        if len(template_filtered) == 1:
+            template_data = template_filtered[0]
+        else:
+            communication.echo(f'The template with id "{template_id}" is not available.')
+            repeat = True
+
+    if template_index is not None:
+        if template_index > 0 and template_index <= len(template_manifest):
+            template_data = template_manifest[template_index - 1]
+        else:
+            communication.echo(f"The template at index {template_index} is not available.")
+            repeat = True
+
+    # NOTE: prompt user in case of wrong or missing selection criteria
+    if prompt and (repeat or not (template_id or template_index)):
+        templates = [template_elem for template_elem in template_manifest]
+        if len(templates) == 1:
+            template_data = templates[0]
+        else:
+            template_index = communication.prompt(
+                msg=create_template_sentence(templates, describe=describe, instructions=True),
+                type=click.IntRange(1, len(templates)),
+                show_default=False,
+                show_choices=False,
+            )
+            template_data = templates[template_index - 1]
+
+        template_id = template_data["folder"]
+
+    return template_data, template_id
+
+
+def verify_template_variables(template_data, metadata):
+    """Verifies that template variables are correcly set."""
+    template_variables = template_data.get("variables", {})
+    template_variables_keys = set(template_variables.keys())
+    input_parameters_keys = set(metadata.keys())
+    for key in template_variables_keys - input_parameters_keys:
+        value = communication.prompt(
+            msg=(f'The template requires a value for "{key}" ' f"({template_variables[key]})"),
+            default="",
+            show_default=False,
+        )
+        metadata[key] = value
+    useless_variables = input_parameters_keys - template_variables_keys
+    if len(useless_variables) > 0:
+        communication.info(
+            "These parameters are not used by the template and were "
+            "ignored:\n\t{}".format("\n\t".join(useless_variables))
+        )
+        for key in useless_variables:
+            del metadata[key]
+
+    return metadata
+
+
+def get_existing_template_files(client, template_path, metadata, force=False):
+    """Gets files in the template that already exists in the repo."""
+    template_files = list(client.get_template_files(template_path, metadata))
+
+    existing = []
+
+    for rel_path in template_files:
+        destination = client.path / rel_path
+
+        if destination.exists():
+            existing.append(str(rel_path))
+
+    return existing
+
+
+def create_backup_branch(client, path):
+    """Creates a backup branch of the repo."""
+    branch_name = None
+    if not is_path_empty(path):
+        from git import GitCommandError
+
+        try:
+            if client.repo.head.is_valid():
+                commit = client.find_previous_commit("*")
+
+                hexsha = commit.hexsha[:7]
+
+                branch_name = f"pre_renku_init_{hexsha}"
+
+                branch_exists = False
+                for ref in client.repo.references:
+                    if branch_name == ref.name:
+                        branch_exists = True
+                        break
+
+                if branch_exists:
+                    branch_name = f"pre_renku_init_{hexsha}_{uuid4().hexsha}"
+
+                with client.worktree(
+                    branch_name=branch_name,
+                    commit=commit,
+                    merge_args=["--no-ff", "-s", "recursive", "-X", "ours", "--allow-unrelated-histories"],
+                ):
+                    communication.warn("Saving current data in branch {0}".format(branch_name))
+        except AttributeError:
+            communication.echo("Warning! Overwriting non-empty folder.")
+        except GitCommandError as e:
+            raise errors.GitError(e)
+
+    return branch_name
+
+
 def _init(
     client,
     ctx,
@@ -121,27 +243,9 @@ def _init(
         template_source, template_ref
     )
 
-    # select specific template
-    repeat = False
-    template_data = None
-    if template_id:
-        if template_index:
-            raise errors.ParameterError("Use either --template-id or --template-index, not both", '"--template-index"')
-        template_filtered = [
-            template_elem for template_elem in template_manifest if template_elem["folder"] == template_id
-        ]
-        if len(template_filtered) == 1:
-            template_data = template_filtered[0]
-        else:
-            communication.echo(f'The template with id "{template_id}" is not available.')
-            repeat = True
-
-    if template_index or template_index == 0:
-        if template_index > 0 and template_index <= len(template_manifest):
-            template_data = template_manifest[template_index - 1]
-        else:
-            communication.echo(f"The template at index {template_index} is not available.")
-            repeat = True
+    template_data, template_id = select_template_from_manifest(
+        template_manifest, template_id, template_index, describe, prompt=not list_templates
+    )
 
     if list_templates:
         if template_data:
@@ -150,40 +254,7 @@ def _init(
             communication.echo(create_template_sentence(template_manifest, describe=describe))
         return
 
-    if repeat or not (template_id or template_index):
-        templates = [template_elem for template_elem in template_manifest]
-        if len(templates) == 1:
-            template_data = templates[0]
-        else:
-            template_index = communication.prompt(
-                msg=create_template_sentence(templates, describe=describe, instructions=True),
-                type=click.IntRange(1, len(templates)),
-                show_default=False,
-                show_choices=False,
-            )
-            template_data = templates[template_index - 1]
-
-        template_id = template_data["folder"]
-
-    # verify variables have been passed
-    template_variables = template_data.get("variables", {})
-    template_variables_keys = set(template_variables.keys())
-    input_parameters_keys = set(metadata.keys())
-    for key in template_variables_keys - input_parameters_keys:
-        value = communication.prompt(
-            msg=(f'The template requires a value for "{key}" ' f"({template_variables[key]})"),
-            default="",
-            show_default=False,
-        )
-        metadata[key] = value
-    useless_variables = input_parameters_keys - template_variables_keys
-    if len(useless_variables) > 0:
-        communication.info(
-            "These parameters are not used by the template and were "
-            "ignored:\n\t{}".format("\n\t".join(useless_variables))
-        )
-        for key in useless_variables:
-            del metadata[key]
+    metadata = verify_template_variables(template_data, metadata)
 
     # set local path and storage
     store_directory(path)
@@ -192,23 +263,9 @@ def _init(
     ctx.obj = client = attr.evolve(
         client, path=path, data_dir=data_dir, external_storage_requested=external_storage_requested
     )
-    if not is_path_empty(path):
-        from git import GitCommandError
 
-        try:
-            commit = client.find_previous_commit("*")
-            branch_name = "pre_renku_init_{0}".format(commit.hexsha[:7])
-            with client.worktree(
-                path=path,
-                branch_name=branch_name,
-                commit=commit,
-                merge_args=["--no-ff", "-s", "recursive", "-X", "ours", "--allow-unrelated-histories"],
-            ):
-                communication.echo("Saving current data in branch {0}".format(branch_name))
-        except AttributeError:
-            communication.echo("Warning! Overwriting non-empty folder.")
-        except GitCommandError as e:
-            errors.GitError(e)
+    communication.echo("Initializing Git repository...")
+    client.init_repository(force, None)
 
     # supply additional metadata
     metadata["__template_source__"] = template_source
@@ -218,10 +275,34 @@ def _init(
     metadata["__sanitized_project_name__"] = ""
     metadata["__repository__"] = ""
     metadata["__project_slug__"] = ""
+    metadata["name"] = name
+
+    template_path = template_folder / template_data["folder"]
+
+    existing = get_existing_template_files(client, template_path, metadata, force)
+
+    append = list(filter(lambda x: x.lower() in INIT_APPEND_FILES, existing))
+    existing = list(filter(lambda x: x.lower() not in INIT_APPEND_FILES + INIT_KEEP_FILES, existing))
+
+    if (existing or append) and not force:
+        message = ""
+
+        if existing:
+            existing_paths = "\n\t".join(existing)
+            message += f"The following files exist in the directory and will be overwritten:\n\t{existing_paths}\n"
+
+        if append:
+            append_paths = "\n\t".join(append)
+            message += f"The following files exist in the directory and will be appended to:\n\t{append_paths}\n"
+
+        communication.confirm(
+            f"{message}Proceed?", abort=True, warning=True,
+        )
+
+    branch_name = create_backup_branch(client, path)
 
     # clone the repo
-    template_path = template_folder / template_data["folder"]
-    communication.echo("Initializing new Renku repository... ", end="")
+    communication.echo("Initializing new Renku repository... ")
     with client.lock:
         try:
             create_from_template(
@@ -237,6 +318,14 @@ def _init(
             )
         except FileExistsError as e:
             raise errors.InvalidFileOperation(e)
+    if branch_name:
+        communication.echo(
+            "Project initialized.\n"
+            f"You can undo this command by running 'git reset --hard {branch_name}'\n"
+            f"You can see changes made by running 'git diff {branch_name} {client.repo.head.ref.name}'"
+        )
+    else:
+        communication.echo("Project initialized.")
 
 
 def init_command():
@@ -386,9 +475,15 @@ def create_from_template(
     commit_message=None,
 ):
     """Initialize a new project from a template."""
-    with client.commit(commit_message=commit_message):
-        client.init_repository(force, user)
+
+    template_files = list(client.get_template_files(template_path, metadata))
+
+    commit_only = [f"{RENKU_HOME}/"] + template_files
+
+    if "name" not in metadata:
         metadata["name"] = name
+
+    with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
         with client.with_metadata(name=name) as project:
             project.template_source = metadata["__template_source__"]
             project.template_ref = metadata["__template_ref__"]
@@ -397,6 +492,7 @@ def create_from_template(
             project.immutable_template_files = immutable_template_files
             project.automated_update = automated_update
             project.template_metadata = json.dumps(metadata)
+
             client.import_from_template(template_path, metadata, force)
 
         if data_dir:
@@ -430,6 +526,8 @@ def _create_from_template_local(
     commit_message = f"{prefix}{command}{parameters}"
 
     metadata = {**default_metadata, **metadata}
+
+    client.init_repository(False, None)
 
     create_from_template(
         template_path=template_path,

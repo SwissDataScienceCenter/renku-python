@@ -111,24 +111,56 @@ Update an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are situations when the required structure of a Renku project needs
-to be recreated or you have an **existing** Git repository. You can solve
-these situation by simply adding the ``--force`` option.
+to be recreated or you have an **existing** Git repository for folder that
+you wish to turn into a Renku project. In these cases, Renku will warn you
+if there are any files that need to be overwritten. ``README.md`` and
+``README.rst`` will never be overwritten. ``.gitignore`` will be appended to
+to prevent files accidentally getting committed. Files that are not present
+in the template used will be left untouched by the command
 
 .. code-block:: console
 
-    $ git init .
     $ echo "# Example\nThis is a README." > README.md
-    $ git add README.md
-    $ git commit -m 'Example readme file'
-    # renku init would fail because there is a git repository
-    $ renku init --force
+    $ echo "FROM python:3.7-alpine" > Dockerfile
+    $ renku init
+
+    INDEX  ID              PARAMETERS
+    -------  --------------  ------------
+        1  python-minimal  description
+        2  R-minimal       description
+        3  bioc-minimal    description
+        4  julia-minimal   description
+        5  minimal
+    Please choose a template by typing the index: 1
+    The template requires a value for "description": Test Project
+    Initializing Git repository...
+    Warning: The following files exist in the directory and will be overwritten:
+            Dockerfile
+    Proceed? [y/N]: y
+    Initializing new Renku repository...
+    Initializing file .dockerignore ...
+    Initializing file .gitignore ...
+    Initializing file .gitlab-ci.yml ...
+    Initializing file .renku/renku.ini ...
+    Initializing file .renkulfsignore ...
+    Overwriting file Dockerfile ...
+    Initializing file data/.gitkeep ...
+    Initializing file environment.yml ...
+    Initializing file notebooks/.gitkeep ...
+    Initializing file requirements.txt ...
+    Project initialized.
+    OK
+
+If you initialize in an existing git repository, Renku will create a backup
+branch before overwriting any files and will print commands to revert the
+changes done and to see what changes were made.
 
 You can also enable the external storage system for output files, if it
 was not installed previously.
 
 .. code-block:: console
 
-    $ renku init --force --external-storage
+    $ renku init --external-storage
 
 """
 
@@ -142,7 +174,7 @@ from git import Repo
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
-from renku.core.commands.init import init_command, is_path_empty
+from renku.core.commands.init import init_command
 from renku.core.commands.options import option_external_storage_requested
 
 _GITLAB_CI = ".gitlab-ci.yml"
@@ -259,16 +291,6 @@ def init(
     data_dir,
 ):
     """Initialize a project in PATH. Default is the current path."""
-    # verify dirty path
-    if not is_path_empty(path) and not force and not list_templates:
-        existing_paths = [str(p.relative_to(path)) for p in Path(path).iterdir()]
-        existing_paths.sort()
-        raise errors.InvalidFileOperation(
-            f'Folder "{str(path)}" is not empty and contains the following files/directories:'
-            + "".join((f"\n\t{e}" for e in existing_paths))
-            + "\nPlease add --force flag to transform it into a Renku repository."
-        )
-
     data_dir = resolve_data_directory(data_dir, path)
 
     if not check_git_user_config():
