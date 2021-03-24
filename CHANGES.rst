@@ -18,6 +18,42 @@
 Changes
 =======
 
+`0.14.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.14.0...v0.14.1>`__ (2021-03-24)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Add error handling if push of temporary branch fails
+   (`#1979 <https://github.com/SwissDataScienceCenter/renku-python/issues/1979>`__)
+   (`f8d7285 <https://github.com/SwissDataScienceCenter/renku-python/commit/f8d7285ddf45f153785d5a5f552184e045d84006>`__)
+-  **core:** fix handling of '@' in filenames
+   (`#1982 <https://github.com/SwissDataScienceCenter/renku-python/issues/1982>`__)
+   (`41316b4 <https://github.com/SwissDataScienceCenter/renku-python/commit/41316b477547b5d414e590decd3e2703635730b3>`__)
+-  **core:** fix template update if same filename was added locally
+   (`#1974 <https://github.com/SwissDataScienceCenter/renku-python/issues/1974>`__)
+   (`5b47ddc <https://github.com/SwissDataScienceCenter/renku-python/commit/5b47ddc92972baa8f3b295b57b93028cf5ac8af4>`__)
+-  **core:** fixes save and push to correctly handle merge conflicts
+   (`#1925 <https://github.com/SwissDataScienceCenter/renku-python/issues/1925>`__)
+   (`fdac171 <https://github.com/SwissDataScienceCenter/renku-python/commit/fdac1711c0aa29d091e947c4d158c25d8b5332ef>`__)
+-  **service:** sync service cache with remote before operations to prevent
+   cache getting out of sync
+   (`#1972 <https://github.com/SwissDataScienceCenter/renku-python/issues/1972>`__)
+   (`34ec5d6 <https://github.com/SwissDataScienceCenter/renku-python/commit/34ec5d6f1098161fc2483c86f4eb6d8d5299a79e>`__)
+
+Features
+~~~~~~~~
+
+-  **dataset:** dataset import enhancements
+   (`#1970 <https://github.com/SwissDataScienceCenter/renku-python/issues/1970>`__)
+   (`b3df7b8 <https://github.com/SwissDataScienceCenter/renku-python/commit/b3df7b838ad676176d5da50599a5c6e55622b28f>`__)
+-  **service:** renku service up/down/ps/restart/logs commands
+   (`#1899 <https://github.com/SwissDataScienceCenter/renku-python/issues/1899>`__)
+   (`d9e49ae <https://github.com/SwissDataScienceCenter/renku-python/commit/d9e49aee19ce89efacf516b1d6426124c38f6a7b>`__)
+-  **service:** add support for storing remote dataset images in the repo
+   (`#1878 <https://github.com/SwissDataScienceCenter/renku-python/issues/1878>`__)
+   (`3862c2e <https://github.com/SwissDataScienceCenter/renku-python/commit/3862c2e5089d6420fc243a1cded3aaa92b72859f>`__)
+
 `0.14.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.13.0...v0.14.0>`__ (2021-03-05)
 ----------------------------------------------------------------------------------------------------------
 
