@@ -64,7 +64,9 @@ class JsonLDSchema(CalamusJsonLDSchema):
                 and "@" in data["_label"]
             ):
                 try:
-                    self._add_field_to_data(data, "commit", self._client.repo.commit(data["_label"].rsplit("@")[-1]))
+                    self._add_field_to_data(
+                        data, "commit", self._client.repo.commit(data["_label"].rsplit("@", maxsplit=1)[-1])
+                    )
                 except ValueError as e:
                     if "could not be resolved, git returned" not in str(e):
                         raise
