@@ -96,7 +96,7 @@ def test_service_ps(runner, svc_client_cache):
     assert not {p["pid"] for p in processes}
 
 
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=20, min_passes=1)
 def test_service_logs(runner, svc_client_cache):
     """Check service component logs."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
@@ -111,7 +111,7 @@ def test_service_logs(runner, svc_client_cache):
     for pid in pids:
         assert str(pid) in result.output
 
-    time.sleep(5)
+    time.sleep(10)
     result = runner.invoke(cli, ["service", "logs"], catch_exceptions=False)
     assert 0 == result.exit_code
     assert result.output

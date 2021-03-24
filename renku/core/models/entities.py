@@ -146,7 +146,7 @@ class Entity(CommitMixin):
     def entities(self):
         """Yield itself."""
         if self.client and not self.commit and self._label and "@UNCOMMITTED" not in self._label:
-            self.commit = self.client.repo.commit(self._label.rsplit("@")[1])
+            self.commit = self.client.repo.commit(self._label.rsplit("@", maxsplit=1)[-1])
 
         yield self
 
@@ -192,7 +192,7 @@ class Collection(Entity):
             yield from member.entities
 
         if self.client and not self.commit and self._label and "@UNCOMMITTED" not in self._label:
-            self.commit = self.client.repo.commit(self._label.rsplit("@")[1])
+            self.commit = self.client.repo.commit(self._label.rsplit("@", maxsplit=1)[-1])
 
         yield self
 

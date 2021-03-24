@@ -964,7 +964,7 @@ def test_dataset_update(client, runner, params):
     assert after.based_on.path == before.based_on.path
     assert after.based_on.source == url
     assert after.based_on.url == url
-    commit_sha = after.based_on._label.split("@")[0]
+    commit_sha = after.based_on._label.rsplit("@", maxsplit=1)[-1]
     assert commit_sha in after.based_on._id
 
     result = runner.invoke(cli, ["doctor"])
