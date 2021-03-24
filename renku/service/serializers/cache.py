@@ -251,8 +251,12 @@ class ProjectMigrationCheckResponse(Schema):
 
     migration_required = fields.Boolean()
     template_update_possible = fields.Boolean()
+    automated_template_update = fields.Boolean()
     current_template_version = fields.String(allow_none=True)
     latest_template_version = fields.String(allow_none=True)
+    template_source = fields.String()
+    template_ref = fields.String()
+    template_id = fields.String()
     docker_update_possible = fields.Boolean()
     project_supported = fields.Boolean()
     project_version = fields.String()

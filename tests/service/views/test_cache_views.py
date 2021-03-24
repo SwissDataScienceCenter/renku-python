@@ -644,6 +644,10 @@ def test_check_migrations_local(svc_client_setup):
     assert response.json["result"]["project_supported"]
     assert response.json["result"]["project_version"]
     assert response.json["result"]["latest_version"]
+    assert "template_source" in response.json["result"]
+    assert "template_ref" in response.json["result"]
+    assert "template_id" in response.json["result"]
+    assert "automated_template_update" in response.json["result"]
 
 
 @pytest.mark.service
