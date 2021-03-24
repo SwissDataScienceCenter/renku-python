@@ -202,8 +202,8 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 
     from renku.cli import cli
     from renku.core.utils.contexts import chdir
-    from renku.service.serializers import cache
     from renku.service.config import PROJECT_CLONE_NO_DEPTH
+    from renku.service.serializers import cache
 
     # NOTE: prevent service from adding an auth token as it doesn't work with local repos
     def _no_auth_format(self, data, **kwargs):
