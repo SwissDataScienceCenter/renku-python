@@ -22,16 +22,6 @@ from renku.service.logger import worker_log
 from renku.service.views.decorators import requires_cache
 
 
-def ensure_project(ctrl):
-    """Ensure project is cached."""
-    pass
-
-
-def ensure_project_synced(ctrl):
-    """Ensure project is in sync with remote."""
-    pass
-
-
 def to_ctrl(cache, context, user_data, renku_module, renku_ctrl):
     """Based on renku operation return valid controller."""
     ctrl_module = importlib.import_module(renku_module)
