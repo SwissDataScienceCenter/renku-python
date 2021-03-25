@@ -266,7 +266,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
         except OSError:  # noqa: B014
             pass
 
-        payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH, "ref": "main"}
+        payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH}
         response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
         assert response
