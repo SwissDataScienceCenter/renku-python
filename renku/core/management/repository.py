@@ -42,6 +42,7 @@ from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.utils.migrate import MigrationType
+from renku.core.utils.scm import git_unicode_unescape
 
 from .git import GitCore
 
@@ -319,7 +320,8 @@ class RepositoryApiMixin(GitCore):
 
         if not path:
             # search for activities a file could have been a part of
-            activities = self.activities_for_paths(commit.stats.files.keys(), file_commit=commit, revision="HEAD")
+            paths = [git_unicode_unescape(p) for p in commit.stats.files.keys()]
+            activities = self.activities_for_paths(paths, file_commit=commit, revision="HEAD")
             if len(activities) > 1:
                 raise errors.CommitProcessingError(
                     "Found multiple activities that produced the same entity at commit {}".format(commit)

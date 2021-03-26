@@ -20,6 +20,7 @@
 import os
 import shutil
 import sys
+from urllib.parse import unquote
 
 import click
 
@@ -71,8 +72,8 @@ def execute(client, output_file, output_paths=None):
 
     def remove_prefix(location, prefix="file://"):
         if location.startswith(prefix):
-            return location[len(prefix) :]
-        return location
+            return unquote(location[len(prefix) :])
+        return unquote(location)
 
     locations = {remove_prefix(output["location"]) for output in outputs.values()}
     # make sure to not move an output if it's containing directory gets moved

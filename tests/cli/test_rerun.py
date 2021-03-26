@@ -30,13 +30,25 @@ from click.testing import CliRunner
 from renku.cli import cli
 
 
-def test_simple_rerun(runner, project, run, no_lfs_warning):
+@pytest.mark.parametrize(
+    "source,selected",
+    [
+        ("coffee-orders-☕-by-locationtest.csv", "😍works.txt"),
+        ("source.txt", "selected.txt"),
+        ("test-愛", "成功"),
+        ("그래프", "성공"),
+        ("يحاول", "نجاح.txt"),
+        ("график.txt", "успех.txt"),
+        ("𒁃.c", "𒁏.txt"),
+    ],
+)
+def test_simple_rerun(runner, project, run, no_lfs_warning, source, selected):
     """Test simple file recreation."""
     greetings = {"hello", "hola", "ahoj"}
 
     cwd = Path(project)
-    source = cwd / "source.txt"
-    selected = cwd / "selected.txt"
+    source = cwd / source
+    selected = cwd / selected
 
     repo = git.Repo(project)
 
