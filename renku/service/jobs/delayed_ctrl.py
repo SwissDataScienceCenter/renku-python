@@ -27,7 +27,7 @@ def to_ctrl(cache, context, user_data, renku_module, renku_ctrl):
     ctrl_module = importlib.import_module(renku_module)
     cls = getattr(ctrl_module, renku_ctrl)
 
-    _ = context.pop("is_delayed", None)  # NOTE: Prevent recursive invocation.
+    context.pop("is_delayed", None)  # NOTE: Prevent recursive invocation.
     migrate_project = context.pop("migrate_project", False)
     return cls(cache, user_data, context, migrate_project=migrate_project)
 

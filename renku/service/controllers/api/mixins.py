@@ -160,9 +160,6 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 if not project.initialized:
                     raise UninitializedProject(project.abs_path)
 
-                if self.migrate_project:
-                    self.ensure_migrated(project.project_id)
-
             self.context["project_id"] = project.project_id
             return self.local()
 
