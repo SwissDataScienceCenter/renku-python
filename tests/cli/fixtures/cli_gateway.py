@@ -42,6 +42,8 @@ def mock_login():
 
                 return func
 
+            requests_mock.add_passthru("https://pypi.org/")
+
             requests_mock.add_callback(
                 responses.GET, "https://renku.deployment.ch/api/auth/cli-token", callback=callback("jwt-token")
             )

@@ -158,6 +158,9 @@ class RenkuProvider(ProviderApi):
         return project_id, dataset_name_or_id
 
     def _query_knowledge_graph(self, url):
+        if self._authorization_header:
+            # NOTE: Authorization requires going through the gateway route
+            url = url.replace("/knowledge-graph/", "/api/kg/")
         try:
             response = requests.get(url, headers=self._authorization_header)
         except urllib.error.HTTPError as e:
