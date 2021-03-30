@@ -113,6 +113,7 @@ tests_require = [
 
 service_requires = [
     "apispec>=4.0.0,<4.4.0",
+    "circus==0.17.1",
     "flask-apispec==0.11.0",
     "flask-swagger-ui==3.36.0",
     "flask==1.1.2",
@@ -129,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<2.11.4", "Sphinx>=1.6.3,<3.5.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<3.5.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -160,12 +161,12 @@ install_requires = [
     "click>=7.0,<=7.1.2",
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
-    "cwltool>=3.0.20210124104916,<3.1",
+    "cwltool>=3.0.20210319143721,<3.1",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
     "humanize>=2.5.0,<3.3.0",
-    "jinja2>=2.10.3,<2.11.4",
+    "jinja2>=2.10.3,<=2.11.4",
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",

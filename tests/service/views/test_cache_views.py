@@ -601,7 +601,7 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 @pytest.mark.integration
 def test_execute_migrations(svc_client_setup):
     """Check execution of all migrations."""
-    svc_client, headers, project_id, _ = svc_client_setup
+    svc_client, headers, project_id, _, _ = svc_client_setup
 
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
@@ -618,7 +618,7 @@ def test_execute_migrations(svc_client_setup):
 @pytest.mark.integration
 def test_execute_migrations_job(svc_client_setup):
     """Check execution of all migrations."""
-    svc_client, headers, project_id, _ = svc_client_setup
+    svc_client, headers, project_id, _, _ = svc_client_setup
 
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, is_delayed=True)), headers=headers
@@ -633,7 +633,7 @@ def test_execute_migrations_job(svc_client_setup):
 @pytest.mark.integration
 def test_check_migrations_local(svc_client_setup):
     """Check if migrations are required for a local project."""
-    svc_client, headers, project_id, _ = svc_client_setup
+    svc_client, headers, project_id, _, _ = svc_client_setup
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
@@ -644,13 +644,17 @@ def test_check_migrations_local(svc_client_setup):
     assert response.json["result"]["project_supported"]
     assert response.json["result"]["project_version"]
     assert response.json["result"]["latest_version"]
+    assert "template_source" in response.json["result"]
+    assert "template_ref" in response.json["result"]
+    assert "template_id" in response.json["result"]
+    assert "automated_template_update" in response.json["result"]
 
 
 @pytest.mark.service
 @pytest.mark.integration
 def test_check_migrations_remote(svc_client_setup, it_remote_repo_url):
     """Check if migrations are required for a remote project."""
-    svc_client, headers, _, _ = svc_client_setup
+    svc_client, headers, _, _, _ = svc_client_setup
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=headers)
     assert 200 == response.status_code
@@ -729,3 +733,57 @@ def test_migrating_protected_branch(svc_protected_old_repo):
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
     assert response.json["result"]["migration_required"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@pytest.mark.serial
+@flaky(max_runs=1, min_passes=1)
+def test_cache_gets_synchronized(local_remote_repository, directory_tree):
+    """Test that the cache stays synchronized with the remote repo."""
+    from renku.core.management.client import LocalClient
+    from renku.core.models.provenance.agents import Person
+
+    svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
+
+    remote_name = remote_repo_checkout.active_branch.tracking_branch().remote_name
+    remote = remote_repo_checkout.remotes[remote_name]
+
+    client = LocalClient(remote_repo_checkout.working_dir)
+
+    with client.commit(commit_message="Create dataset"):
+        with client.with_dataset("my_dataset", create=True) as dataset:
+            dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
+
+    remote.push()
+
+    params = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params, headers=identity_headers,)
+
+    assert response
+    assert 200 == response.status_code
+
+    assert {"datasets"} == set(response.json["result"].keys())
+    assert 1 == len(response.json["result"]["datasets"])
+
+    payload = {
+        "project_id": project_id,
+        "name": uuid.uuid4().hex,
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)
+
+    assert response
+    assert 200 == response.status_code
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+
+    remote.pull()
+
+    datasets = client.datasets.values()
+    assert 2 == len(datasets)
+
+    assert any(d.name == "my_dataset" for d in datasets)
+    assert any(d.name == payload["name"] for d in datasets)

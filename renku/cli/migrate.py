@@ -79,6 +79,9 @@ def migrationscheck():
         template_update_possible,
         current_template_version,
         latest_template_version,
+        template_source,
+        template_ref,
+        template_id,
         automated_update,
         docker_update_possible,
     ) = (migrations_check().build().execute().output)
@@ -93,6 +96,9 @@ def migrationscheck():
                 "template_update_possible": template_update_possible,
                 "current_template_version": str(current_template_version),
                 "latest_template_version": str(latest_template_version),
+                "template_source": template_source,
+                "template_ref": template_ref,
+                "template_id": template_id,
                 "automated_update": automated_update,
                 "docker_update_possible": docker_update_possible,
             }

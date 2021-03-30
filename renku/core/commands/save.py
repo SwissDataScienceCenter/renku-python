@@ -151,8 +151,19 @@ def repo_sync(repo, message=None, remote=None, paths=None):
                 else:
                     raise
 
+        result = None
+        failed_push = None
+
         if not merge_conflict:
             result = origin.push(repo.active_branch)
+            failed_push = [
+                push_info
+                for push_info in result
+                if push_info.flags & git.PushInfo.ERROR
+                or push_info.flags & git.PushInfo.REJECTED
+                or push_info.flags & git.PushInfo.REMOTE_REJECTED
+                or push_info.flags & git.PushInfo.REMOTE_FAILURE
+            ]
 
         if merge_conflict or (result and "[remote rejected] (pre-receive hook declined)" in result[0].summary):
             # NOTE: Push to new remote branch if original one is protected and reset the cache.
@@ -161,15 +172,24 @@ def repo_sync(repo, message=None, remote=None, paths=None):
             pushed_branch = uuid4().hex
             try:
                 repo.create_head(pushed_branch)
-                repo.remote().push(pushed_branch)
+                result = repo.remote().push(pushed_branch)
+                failed_push = [
+                    push_info
+                    for push_info in result
+                    if push_info.flags & git.PushInfo.ERROR
+                    or push_info.flags & git.PushInfo.REJECTED
+                    or push_info.flags & git.PushInfo.REMOTE_REJECTED
+                    or push_info.flags & git.PushInfo.REMOTE_FAILURE
+                ]
             finally:
                 # Reset cache
                 repo.git.checkout(old_active_branch)
                 ref = f"{origin}/{old_pushed_branch}"
                 repo.index.reset(commit=ref, head=True, working_tree=True)
-        elif result and " failed to push some refs" in result[0].summary:
+
+        if result and failed_push:
             # NOTE: Couldn't push for some reason
-            msg = result[0].summary
+            msg = "\n".join(info.summary for info in failed_push)
             raise errors.GitError(f"Couldn't push changes. Reason:\n{msg}")
 
     except git.exc.GitCommandError as e:

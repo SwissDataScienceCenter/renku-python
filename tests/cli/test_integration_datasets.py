@@ -30,6 +30,7 @@ from flaky import flaky
 from renku.cli import cli
 from renku.core import errors
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.models.datasets import Url
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
 from tests.utils import assert_dataset_is_mutated
@@ -279,27 +280,57 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "url",
+    "uri",
     [
-        "https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2",
-        "https://dev.renku.ch/projects/renku-testing/project-9/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2/",
+        "https://dev.renku.ch/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0",
+        "https://dev.renku.ch/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0/",
+        "https://dev.renku.ch/projects/renku-test-projects/dataset-import/datasets/"
+        "860f6b5b-4636-4c83-b6a9-b38ef198bcc0",
+        "https://dev.renku.ch/projects/renku-test-projects/dataset-import/datasets/remote-dataset/",
     ],
 )
-def test_dataset_import_renkulab_dataset(runner, project, client, url):
-    """Test dataset import from Renkulab projects."""
-    result = runner.invoke(cli, ["dataset", "import", url], input="y")
-    assert 0 == result.exit_code
-    assert "47316f93d5381e69c0b2ee0e28576e0b38a1f218" in result.output
+def test_dataset_import_renku_provider(runner, client, uri):
+    """Test dataset import from Renku datasets."""
+    result = runner.invoke(cli, ["dataset", "import", "--name", "my-dataset", uri], input="y")
 
-    assert "1.10" in result.output
+    assert 0 == result.exit_code
+    assert "d66d5e766eeaa69bee06b96e061e3bfc23978b11" in result.output
+    assert "business-employment-data-december-2020-quarter-csv.zip" in result.output
     assert "OK" in result.output
 
-    result = runner.invoke(cli, ["dataset", "ls-files"])
-    assert 0 == result.exit_code
-    assert "ie_data_with_TRCAPE.xls" in result.output
+    dataset = client.load_dataset("my-dataset")
 
-    dataset = [d for d in client.datasets.values()][0]
-    assert dataset.same_as.url["@id"] == url
+    assert "business-employment-data-december-2020-quarter-csv.zip" in [f.name for f in dataset.files]
+
+    # NOTE: Check that schema:sameAs is always set to canonical dataset URI regardless of import URI
+    canonical_uri = "https://dev.renku.ch/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0"
+    assert dataset.same_as.url["@id"] == canonical_uri
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https://dev.renku.ch/projects/renku-test-projects/test-subgroup-1/dataset-import-in-sub-groups/datasets/"
+        "b13b7293-3068-4b86-9741-760c7c5b5e83",
+        "https://dev.renku.ch/projects/renku-test-projects/test-subgroup-1/dataset-import-in-sub-groups/datasets/"
+        "remote-dataset",
+    ],
+)
+def test_dataset_import_renku_provider_with_subgroups(runner, client, uri):
+    """Test dataset import from Renku datasets in projects within subgroups."""
+    result = runner.invoke(cli, ["dataset", "import", "--name", "my-dataset", uri], input="y")
+
+    assert 0 == result.exit_code
+
+    dataset = client.load_dataset("my-dataset")
+
+    assert "business-employment-data-december-2020-quarter-csv.zip" in [f.name for f in dataset.files]
+
+    # NOTE: Check that schema:sameAs is always set to canonical dataset URI regardless of import URI
+    canonical_uri = "https://dev.renku.ch/datasets/b13b7293-3068-4b86-9741-760c7c5b5e83"
+    assert dataset.same_as.url["@id"] == canonical_uri
 
 
 @pytest.mark.integration
@@ -370,10 +401,10 @@ def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2",])
 def test_dataset_import_renku_missing_project(runner, client, missing_kg_project_responses, url):
-    """Test dataset import fails if cannot clone repo."""
+    """Test dataset import fails if cannot find project in KG."""
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
     assert 1 == result.exit_code
-    assert "Cannot find these projects in the knowledge graph" in result.output
+    assert "Resource not found in knowledge graph" in result.output
 
 
 @pytest.mark.integration
@@ -392,6 +423,31 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
 
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize(
+    "uri, name",
+    [
+        (
+            "https://dev.renku.ch/projects/renku-test-projects/dataset-import/datasets/non-existing-dataset",
+            "non-existing-dataset",
+        ),
+        (
+            "https://dev.renku.ch/projects/invalid/project-path/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0",
+            "remote-dataset",
+        ),
+    ],
+)
+def test_dataset_import_renku_provider_errors(runner, project, uri, name):
+    """Test errors in Renku dataset import due to invalid project or dataset name."""
+    result = runner.invoke(cli, ["dataset", "import", uri])
+
+    assert 1 == result.exit_code
+    assert f"Cannot fetch dataset with name '{name}'" in result.output
+
+    assert 0 == runner.invoke(cli, ["dataset", "ls"]).exit_code
 
 
 @pytest.mark.integration
@@ -908,7 +964,7 @@ def test_dataset_update(client, runner, params):
     assert after.based_on.path == before.based_on.path
     assert after.based_on.source == url
     assert after.based_on.url == url
-    commit_sha = after.based_on._label.split("@")[0]
+    commit_sha = after.based_on._label.rsplit("@", maxsplit=1)[-1]
     assert commit_sha in after.based_on._id
 
     result = runner.invoke(cli, ["doctor"])
@@ -918,7 +974,7 @@ def test_dataset_update(client, runner, params):
 @pytest.mark.integration
 @pytest.mark.parametrize("doi", ["10.5281/zenodo.2658634"])
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_update_external_provider(client, runner, doi):
+def test_dataset_update_zenodo(client, runner, doi):
     """Test updating datasets from external providers."""
     result = runner.invoke(
         cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
@@ -932,7 +988,10 @@ def test_dataset_update_external_provider(client, runner, doi):
 
     after_dataset = client.load_dataset("imported_dataset")
     assert after_dataset.version != before_dataset.version
-    assert after_dataset.derived_from.url_id == before_dataset._id
+    assert after_dataset._id != before_dataset._id
+    assert after_dataset.derived_from is None
+    assert after_dataset.same_as is not None
+    assert after_dataset.same_as != before_dataset.same_as
 
 
 @pytest.mark.integration
@@ -963,7 +1022,39 @@ def test_dataset_update_dataverse(client, runner, doi):
 
     after_dataset = client.load_dataset("imported_dataset")
     assert after_dataset.version != before_dataset.version
-    assert after_dataset.derived_from.url_id == before_dataset._id
+    assert after_dataset._id != before_dataset._id
+    assert after_dataset.derived_from is None
+    assert after_dataset.same_as is not None
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_dataset_update_renku(client, runner):
+    """Test updating datasets from renku provider."""
+    uri = "https://dev.renku.ch/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0"
+    assert 0 == runner.invoke(cli, ["dataset", "import", "--name", "remote-dataset", uri], input="y").exit_code
+
+    with client.with_dataset("remote-dataset", immutable=True) as dataset:
+        # NOTE: To mock an update we schema:sameAs to a dataset that has an update
+        update_uri = "https://dev.renku.ch/datasets/04b463b0-1b51-4833-b236-186a941f6259"
+        dataset.same_as = Url(url_id=update_uri)
+
+    client.repo.git.add(update=True)
+    client.repo.index.commit("metadata updated")
+
+    before_dataset = client.load_dataset("remote-dataset")
+
+    result = runner.invoke(cli, ["dataset", "update"])
+    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+
+    after_dataset = client.load_dataset("remote-dataset")
+    assert after_dataset._id != before_dataset._id
+    assert after_dataset.derived_from is None
+    latest_uri = "https://dev.renku.ch/datasets/e55070d9-95b3-4b9b-a319-c6e66f883f00"
+    assert latest_uri == after_dataset.same_as.url["@id"]
+
+    assert "electronic-card-transactions-february-2021-csv.zip" not in [f.name for f in before_dataset.files]
+    assert "electronic-card-transactions-february-2021-csv.zip" in [f.name for f in after_dataset.files]
 
 
 @pytest.mark.integration
@@ -1253,7 +1344,7 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
     # update data to a later version
     result = runner.invoke(cli, ["dataset", "update", "--ref", "any-value"])
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert 'Cannot use "--ref" with more than one Git repo' in result.output
+    assert "Cannot use '--ref' with more than one Git repo" in result.output
 
 
 @pytest.mark.integration
@@ -1459,7 +1550,7 @@ def test_datasets_provenance_after_git_update(client_with_new_graph, runner):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 def test_datasets_provenance_after_external_provider_update(client_with_new_graph, runner):
-    """Test dataset provenance is updated after an update from an external provider."""
+    """Test dataset provenance is not updated after an update from an external provider."""
     doi = "10.5281/zenodo.2658634"
     assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-data", doi]).exit_code
 

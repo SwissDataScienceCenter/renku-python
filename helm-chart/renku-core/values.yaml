@@ -5,7 +5,7 @@
 replicaCount: 1
 
 cacheDirectory: /svc/cache
-cleanupInterval: 3600
+cleanupInterval: 60  # NOTE: This needs to be a divisor of, and less than cleanupFilesTTL|cleanupProjectsTTL.
 projectCloneDepth: 1
 templateCloneDepth: 1
 
