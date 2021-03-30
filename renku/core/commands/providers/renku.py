@@ -26,13 +26,14 @@ from subprocess import PIPE, SubprocessError, run
 import attr
 import requests
 
+from renku import LocalClient
 from renku.core import errors
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.management.migrate import is_project_unsupported, migrate
-from renku.core.models.datasets import Url
 from renku.core.models.enums import ConfigFilter
+from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
-from renku.core.utils.urls import parse_authentication_endpoint, remove_credentials
+from renku.core.utils.urls import parse_authentication_endpoint
 
 
 @attr.s
@@ -59,70 +60,24 @@ class RenkuProvider(ProviderApi):
     def find_record(self, uri, client=None):
         """Retrieves a dataset from Renku.
 
-        :raises: ``ParameterError``, ``ProjectNotFound``
+        :raises: ``NotFound``, ``OperationError``, ``ParameterError``
         :param uri: URL
         :return: ``_RenkuRecordSerializer``
         """
-        from renku.core.management import LocalClient
-
         self._prepare_authentication(client, uri)
 
-        same_as, initial_identifier, kg_urls = self._get_dataset_info(uri)
+        name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(uri)
 
-        project_url = None
-        failed_urls = []
-        missing_urls = []
+        project_url_ssh, project_url_http = self._get_project_urls(kg_url)
 
-        for kg_url in kg_urls:
-            try:
-                project_datasets_kg_url, ssh_url, https_url = self._get_project_urls(kg_url)
-            except errors.ProjectNotFound:
-                missing_urls.append(kg_url)
-                continue
-
-            datasets = self._query_knowledge_graph(project_datasets_kg_url)
-
-            dataset_name = next(
-                (ds["name"] for ds in datasets if ds["versions"].get("initial") == initial_identifier), None
-            )
-            if not dataset_name and same_as:
-                dataset_name = next((ds["name"] for ds in datasets if ds.get("sameAs") == same_as), None)
-
-            if not dataset_name:
-                continue
-
-            # Check if we can clone the project
-            for url in (ssh_url, https_url):
-                try:
-                    repo, repo_path = client.prepare_git_repo(url)
-                except errors.GitError:
-                    failed_urls.append(url)
-                else:
-                    project_url = url
-                    break
-            if project_url is not None:
-                break
-
-        if project_url is None:
-            if failed_urls:
-                message = "Cannot clone remote projects:\n\t" + "\n\t".join(failed_urls)
-            elif missing_urls:
-                missing = "\n\t".join(missing_urls)
-                raise errors.ProjectNotFound(f"Cannot find these projects in the knowledge graph:\n\t{missing}")
-            else:
-                message = f"Cannot find any project for the dataset: {uri}"
-
-            raise errors.ParameterError(message, param_hint=uri)
-
-        remote_client = LocalClient(repo_path)
-        self._migrate_project(remote_client)
-
-        dataset = remote_client.load_dataset(dataset_name)
-
-        if not dataset:
-            raise errors.ParameterError(f"Cannot find dataset with name '{dataset_name}' in project '{project_url}'")
-
-        return _RenkuRecordSerializer(dataset, project_url, remote_client, uri=uri)
+        return _RenkuRecordSerializer(
+            uri=uri,
+            name=name,
+            identifier=identifier,
+            latest_version_uri=latest_version_uri,
+            project_url_ssh=project_url_ssh,
+            project_url_http=project_url_http,
+        )
 
     def get_exporter(self, dataset, access_token):
         """Create export manager for given dataset."""
@@ -138,51 +93,69 @@ class RenkuProvider(ProviderApi):
         """True if provider is a git repository."""
         return True
 
-    @staticmethod
-    def _migrate_project(client):
-        if is_project_unsupported(client):
-            return
-        # NOTE: We are not interested in migrating workflows when importing datasets
-        client.migration_type = ~MigrationType.WORKFLOWS
-        migrate(client, skip_template_update=True, skip_docker_update=True)
-
-    def _get_dataset_info(self, uri):
+    def _fetch_dataset_info(self, uri):
         """Return initial dataset identifier and urls of all projects that contain the dataset."""
         parsed_url = urllib.parse.urlparse(uri)
 
-        project_id, dataset_id = RenkuProvider._extract_project_and_dataset_ids(parsed_url)
-        kg_path = f"/knowledge-graph/{dataset_id.strip('/')}"
-        kg_url = parsed_url._replace(path=kg_path).geturl()
+        project_id, dataset_name_or_id = RenkuProvider._extract_project_and_dataset_ids(parsed_url)
+        if not project_id and not dataset_name_or_id:
+            raise errors.ParameterError("Invalid URI", param_hint=uri)
 
-        response = self._query_knowledge_graph(kg_url)
-        initial_identifier = response.get("versions", {}).get("initial")
-        same_as = response.get("sameAs")
+        kg_path = f"/knowledge-graph/datasets/{dataset_name_or_id}"
+        dataset_kg_url = parsed_url._replace(path=kg_path).geturl()
+
+        try:
+            dataset_info = self._query_knowledge_graph(dataset_kg_url)
+        except errors.NotFound:
+            # NOTE: If URI is not found we assume that it contains dataset's name instead of its id
+            dataset_name = dataset_name_or_id
+            identifier = None
+            dataset_info = None
+        else:
+            dataset_name = dataset_info.get("name")
+            identifier = dataset_info["identifier"]
 
         if project_id:
-            kg_path = f"/knowledge-graph/{project_id.strip('/')}"
-            kg_urls = [parsed_url._replace(path=kg_path).geturl()]
+            kg_path = f"/knowledge-graph/projects/{project_id}"
+            project_kg_url = parsed_url._replace(path=kg_path).geturl()
+        elif not dataset_info:
+            raise errors.NotFound(f"Resource not found in knowledge graph: {uri}")
         else:
+            project = dataset_info.get("project", {})
+            links = project.get("_links", [])
+            project_kg_url = next((link["href"] for link in links if link["rel"] == "project-details"), None)
 
-            def get_project_link(project):
-                links = project.get("_links", [])
-                for link in links:
-                    if link.get("rel") == "project-details":
-                        return link.get("href", "")
+            if not project_kg_url:
+                raise errors.ParameterError("Cannot find project's KG URL from URI", param_hint=uri)
 
-            projects = response.get("isPartOf", {})
-            kg_urls = [get_project_link(p) for p in projects]
-            kg_urls = [u for u in kg_urls if u]
+        latest_identifier, latest_version_uri = self._fetch_dataset_info_from_project(project_kg_url, dataset_name)
+        identifier = identifier or latest_identifier
 
-        return same_as, initial_identifier, kg_urls
+        return dataset_name, identifier, latest_version_uri, project_kg_url
+
+    def _fetch_dataset_info_from_project(self, project_kg_url, dataset_name):
+        datasets_kg_url = f"{project_kg_url}/datasets"
+        response = self._query_knowledge_graph(datasets_kg_url)
+
+        dataset = next((d for d in response if d.get("name") == dataset_name), None)
+        if not dataset:
+            raise errors.OperationError(f"Cannot fetch dataset with name '{dataset_name}' from '{project_kg_url}'")
+
+        links = dataset.get("_links", [])
+        latest_version_uri = next((link["href"] for link in links if link["rel"] == "details"), None)
+        if latest_version_uri:
+            latest_version_uri = latest_version_uri.replace("/knowledge-graph", "")
+
+        return dataset["identifier"], latest_version_uri
 
     @staticmethod
     def _extract_project_and_dataset_ids(parsed_url):
-        # https://<host>/projects/:namespace/:name/datasets/:id
+        # https://<host>/projects/:namespace/:0-or-more-subgroups/:name/datasets/:dataset-name
+        # https://<host>/projects/:namespace/:0-or-more-subgroups/:name/datasets/:id
         # https://<host>/datasets/:id
-        path = parsed_url.path.rstrip("/")
-        match = re.match(r"(/projects/(?:[^?/]+/)+[^?/]+)?(/datasets/[^?/]+)$", path)
-        project_id, dataset_id = match.groups() if match else (None, None)
-        return project_id, dataset_id
+        match = re.match(r"(?:/projects/((?:[^/]+/)+[^/]+))?/datasets/([^/]+)/?$", parsed_url.path)
+        project_id, dataset_name_or_id = match.groups() if match else (None, None)
+        return project_id, dataset_name_or_id
 
     def _query_knowledge_graph(self, url):
         try:
@@ -191,7 +164,7 @@ class RenkuProvider(ProviderApi):
             raise errors.OperationError(f"Cannot access knowledge graph: {url}") from e
 
         if response.status_code == 404:
-            raise errors.ProjectNotFound(f"Resource not found in knowledge graph: {url}")
+            raise errors.NotFound(f"Resource not found in knowledge graph: {url}")
         elif response.status_code in [401, 403]:
             raise errors.OperationError(
                 f"Unauthorized access to knowledge graph: Run 'renku login {self._authentication_endpoint}'"
@@ -205,14 +178,7 @@ class RenkuProvider(ProviderApi):
         json = self._query_knowledge_graph(project_kg_url)
         urls = json.get("urls", {})
 
-        project_datasets_kg_url = None
-        links = json.get("_links", [])
-        for link in links:
-            if link["rel"] == "datasets":
-                project_datasets_kg_url = link["href"]
-                break
-
-        return project_datasets_kg_url, urls.get("ssh"), urls.get("http")
+        return urls.get("ssh"), urls.get("http")
 
     def _prepare_authentication(self, client, uri):
         token = self._read_renku_token(client, uri)
@@ -231,19 +197,21 @@ class RenkuProvider(ProviderApi):
 class _RenkuRecordSerializer:
     """Renku record Serializer."""
 
-    def __init__(self, dataset, project_url, remote_client, uri):
+    def __init__(self, uri, identifier, name, latest_version_uri, project_url_ssh, project_url_http):
         """Create a _RenkuRecordSerializer from a Dataset."""
-        self._dataset = dataset
-        self._project_url = project_url
         self._uri = uri
-        self.remote_client = remote_client
+        self._identifier = identifier
+        self._name = name
+        self._latest_version_uri = latest_version_uri
+        self._project_url_ssh = project_url_ssh
+        self._project_url_http = project_url_http
 
-        for file_ in dataset.files:
-            file_.checksum = remote_client.repo.git.hash_object(file_.path)
-            file_.filesize = self._get_file_size(remote_client, file_.path)
-            file_.filetype = Path(file_.path).suffix.replace(".", "")
+        self._dataset = None
+        self._project_url = None
+        self._remote_client = None
 
-    def _get_file_size(self, remote_client, path):
+    @staticmethod
+    def _get_file_size(remote_client, path):
         # Try to get file size from Git LFS
         try:
             lfs_run = run(
@@ -284,9 +252,7 @@ class _RenkuRecordSerializer:
 
     def as_dataset(self, client):
         """Return encapsulated dataset instance."""
-        original_id = self._extract_dataset_id(self._uri)
-        same_as = self._uri.replace(original_id, self._dataset.identifier)
-        self._dataset.same_as = Url(url_id=remove_credentials(same_as))
+        self._fetch_dataset(client)
         return self._dataset
 
     def import_images(self, client, dataset):
@@ -298,7 +264,7 @@ class _RenkuRecordSerializer:
             if img.is_absolute:
                 continue
 
-            remote_image_path = self.remote_client.path / img.content_url
+            remote_image_path = self._remote_client.path / img.content_url
             local_image_path = client.path / img.content_url
             local_image_path.parent.mkdir(exist_ok=True, parents=True)
 
@@ -308,7 +274,7 @@ class _RenkuRecordSerializer:
 
     def is_last_version(self, uri):
         """Check if dataset is at last possible version."""
-        return True
+        return self.latest_uri.endswith(self._identifier)
 
     @property
     def project_url(self):
@@ -324,15 +290,56 @@ class _RenkuRecordSerializer:
     @property
     def version(self):
         """Get record version."""
-        return self._dataset.version
+        return self._dataset.version if self._dataset else None
 
     @property
     def latest_uri(self):
-        """Get uri of latest version."""
-        return self._dataset._id
+        """Get uri of the latest version."""
+        return self._latest_version_uri
 
     @property
     def datadir_exists(self):
         """Whether the dataset datadir exists (might be missing in git if empty)."""
+        return (self._remote_client.path / self._dataset.data_dir).exists()
 
-        return (self.remote_client.path / self._dataset.data_dir).exists()
+    def _fetch_dataset(self, client):
+        repo_path = None
+
+        urls = (self._project_url_ssh, self._project_url_http)
+        # Clone the project
+        for url in urls:
+            try:
+                repo, repo_path = client.prepare_git_repo(url)
+            except errors.GitError:
+                pass
+            else:
+                self._project_url = url
+                break
+
+        if not self._project_url:
+            raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
+
+        self._remote_client = LocalClient(repo_path)
+        self._migrate_project(self._remote_client)
+
+        self._dataset = self._remote_client.load_dataset(self._name)
+
+        if not self._dataset:
+            raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
+
+        for file_ in self._dataset.files:
+            file_.checksum = self._remote_client.repo.git.hash_object(file_.path)
+            file_.filesize = _RenkuRecordSerializer._get_file_size(self._remote_client, file_.path)
+            file_.filetype = Path(file_.path).suffix.replace(".", "")
+
+    @staticmethod
+    def _migrate_project(client):
+        if is_project_unsupported(client):
+            return
+        # NOTE: We are not interested in migrating workflows when importing datasets
+        client.migration_type = ~MigrationType.WORKFLOWS
+        try:
+            communication.disable()
+            migrate(client, skip_template_update=True, skip_docker_update=True)
+        finally:
+            communication.enable()

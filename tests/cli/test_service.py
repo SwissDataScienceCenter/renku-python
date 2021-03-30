@@ -27,7 +27,7 @@ from renku.cli.service import list_renku_processes
 
 @pytest.mark.serial
 @flaky(max_runs=10, min_passes=1)
-def test_service_up_down(runner):
+def test_service_up_down(runner, svc_client_cache):
     """Check bringing service components up and down in daemon mode."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
 
@@ -46,7 +46,7 @@ def test_service_up_down(runner):
 
 
 @flaky(max_runs=10, min_passes=1)
-def test_service_up_restart(runner):
+def test_service_up_restart(runner, svc_client_cache):
     """Check bringing service components up in daemon mode and restarting them."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
     assert 0 == result.exit_code
@@ -75,7 +75,7 @@ def test_service_up_restart(runner):
 
 
 @flaky(max_runs=10, min_passes=1)
-def test_service_ps(runner):
+def test_service_ps(runner, svc_client_cache):
     """Check bringing service components up and listing them."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
     assert 0 == result.exit_code
@@ -96,8 +96,8 @@ def test_service_ps(runner):
     assert not {p["pid"] for p in processes}
 
 
-@flaky(max_runs=10, min_passes=1)
-def test_service_logs(runner):
+@flaky(max_runs=20, min_passes=1)
+def test_service_logs(runner, svc_client_cache):
     """Check service component logs."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
     assert 0 == result.exit_code
@@ -111,7 +111,7 @@ def test_service_logs(runner):
     for pid in pids:
         assert str(pid) in result.output
 
-    time.sleep(5)
+    time.sleep(10)
     result = runner.invoke(cli, ["service", "logs"], catch_exceptions=False)
     assert 0 == result.exit_code
     assert result.output

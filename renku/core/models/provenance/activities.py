@@ -82,7 +82,7 @@ def _set_entity_client_commit(entity, client, commit):
     if not entity.commit:
         revision = "UNCOMMITTED"
         if entity._label:
-            revision = entity._label.rsplit("@")[1]
+            revision = entity._label.rsplit("@", maxsplit=1)[-1]
         if revision == "UNCOMMITTED":
             commit = commit
         elif client:
@@ -459,7 +459,7 @@ class ProcessRun(Activity):
                     if not usage.client:
                         usage.entity.set_client(self.client)
                     if not usage.commit:
-                        revision = usage._label.rsplit("@")[1]
+                        revision = usage._label.rsplit("@", maxsplit=1)[-1]
                         usage.entity.commit = self.client.repo.commit(revision)
 
                     usages.append(usage)

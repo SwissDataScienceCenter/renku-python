@@ -130,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.4.4", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<3.4.4", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -162,12 +162,12 @@ install_requires = [
     "click>=7.0,<=7.1.2",
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
-    "cwltool>=3.0.20210124104916,<3.1",
+    "cwltool>=3.0.20210319143721,<3.1",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.12",
     "humanize>=2.5.0,<2.7.0",
-    "jinja2>=2.10.3,<=2.11.2",
+    "jinja2>=2.11.3,<=2.11.4",
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
@@ -181,7 +181,7 @@ install_requires = [
     "pyshacl==0.11.3.post1",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
-    "PyYAML>=3.12,<=5.3.1",
+    "PyYAML>=5.4,<=5.4.1",
     "rdflib-jsonld>=0.5.0,<0.6.0",
     "rdflib>=5.0.0,<5.1",
     "requests>=2.23.0,<=2.24.0",

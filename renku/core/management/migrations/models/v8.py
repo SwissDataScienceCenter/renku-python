@@ -23,7 +23,7 @@ from pathlib import Path
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core.models import jsonld
-from renku.core.models.calamus import Uri, fields, schema
+from renku.core.models.calamus import Uri, fields, prov, schema
 from renku.core.models.entities import generate_file_id
 
 from .v3 import CreatorMixinSchemaV3, DatasetTagSchemaV3, EntitySchemaV3, LanguageSchemaV3, PersonSchemaV3, UrlSchemaV3
@@ -92,6 +92,7 @@ class DatasetSchemaV8(CreatorMixinSchemaV3, EntitySchemaV3):
     creators = fields.Nested(schema.creator, PersonSchemaV3, many=True)
     date_created = fields.DateTime(schema.dateCreated, missing=None)
     date_published = fields.DateTime(schema.datePublished, missing=None)
+    derived_from = fields.Nested(prov.wasDerivedFrom, UrlSchemaV3, missing=None)
     description = fields.String(schema.description, missing=None)
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV8, many=True)
     identifier = fields.String(schema.identifier)

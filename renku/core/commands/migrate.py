@@ -46,6 +46,9 @@ def _migrations_check(client):
         template_update_possible,
         current_version,
         new_version,
+        client.project.template_source,
+        client.project.template_ref,
+        client.project.template_id,
         bool(client.project.automated_update),
         is_docker_update_possible(client),
     )

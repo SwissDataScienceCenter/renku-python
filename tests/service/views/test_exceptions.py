@@ -66,7 +66,7 @@ def test_auth_headers_exc(service_allowed_endpoint):
 @flaky(max_runs=30, min_passes=1)
 def test_migration_required_flag(svc_client_setup):
     """Check migration required failure."""
-    svc_client, headers, project_id, _ = svc_client_setup
+    svc_client, headers, project_id, _, _ = svc_client_setup
 
     payload = {
         "project_id": project_id,

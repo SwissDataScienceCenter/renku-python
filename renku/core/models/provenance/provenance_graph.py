@@ -84,7 +84,7 @@ class ProvenanceGraph:
             self = ProvenanceGraph(activities=[])
             self._loaded = True
 
-        self._path = path
+        self._path = Path(path)
 
         return self
 
