@@ -572,21 +572,18 @@ def test_dataset_export_upload_tag(
     assert 0 == result.exit_code
     assert "Exported to:" in result.output
     assert output in result.output
-    assert "2/2" in result.output, result.output
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "1.0"] + params)
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
-    assert "1/1" in result.output
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="1")  # HEAD
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
-    assert "2/2" in result.output
 
 
 @pytest.mark.integration
