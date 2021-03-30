@@ -180,7 +180,7 @@ install_requires = [
     "pyshacl==0.11.3.post1",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
-    "PyYAML>=3.12,<=5.3.1",
+    "PyYAML>=5.4,<=5.4.1",
     "rdflib-jsonld>=0.5.0,<0.6.0",
     "rdflib>=5.0.0,<5.1",
     "requests>=2.23.0,<=2.24.0",
