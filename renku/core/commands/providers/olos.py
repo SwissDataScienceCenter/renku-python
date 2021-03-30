@@ -18,7 +18,6 @@
 """OLOS API integration."""
 
 import datetime
-import os
 import urllib
 from pathlib import Path
 from urllib import parse as urlparse
@@ -26,14 +25,11 @@ from uuid import UUID, uuid4
 
 import attr
 import requests
-from tqdm import tqdm
 
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.utils import communication
 from renku.core.utils.requests import retry
-
-OLOS_SANDBOX_URL = "https://sandbox.dlcm.ch/"
 
 
 @attr.s
@@ -69,16 +65,12 @@ class OLOSProvider(ProviderApi):
 
     def set_parameters(self, client, *, dlcm_server=None, **kwargs):
         """Set and validate required parameters for a provider."""
-        CONFIG_BASE_URL = "server_url"
-
-        if "OLOS_USE_SANDBOX" in os.environ:
-            self._server_url = OLOS_SANDBOX_URL
-            return
+        config_base_url = "server_url"
 
         if not dlcm_server:
-            dlcm_server = client.get_value("olos", CONFIG_BASE_URL)
+            dlcm_server = client.get_value("olos", config_base_url)
         else:
-            client.set_value("olos", CONFIG_BASE_URL, dlcm_server, global_only=True)
+            client.set_value("olos", config_base_url, dlcm_server, global_only=True)
 
         if not dlcm_server:
             raise errors.ParameterError("OLOS server URL is required.")
@@ -112,14 +104,19 @@ class OLOSExporter(ExporterApi):
         metadata["organizationalUnitId"] = deposition.get_org_unit()
         deposition.create_dataset(metadata=metadata)
 
-        with tqdm(total=len(self.dataset.files)) as progressbar:
+        progress_text = "Uploading files"
+        communication.start_progress(progress_text, total=len(self.dataset.files))
+
+        try:
             for file_ in self.dataset.files:
                 try:
                     path = Path(file_.path).relative_to(self.dataset.data_dir)
                 except ValueError:
                     path = Path(file_.path)
                 deposition.upload_file(full_path=file_.full_path, path_in_dataset=path)
-                progressbar.update(1)
+                communication.update_progress(progress_text, amount=1)
+        finally:
+            communication.finalize_progress(progress_text)
 
         return deposition.deposited_at
 

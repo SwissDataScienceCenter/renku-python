@@ -42,7 +42,6 @@ def zenodo_sandbox(client):
 @pytest.fixture
 def olos_sandbox(client):
     """Configure environment to use Zenodo sandbox environment."""
-    os.environ["OLOS_USE_SANDBOX"] = "true"
     access_token = os.getenv("OLOS_ACCESS_TOKEN", "")
     client.set_value("olos", "access_token", access_token)
     client.repo.git.add(".renku/renku.ini")

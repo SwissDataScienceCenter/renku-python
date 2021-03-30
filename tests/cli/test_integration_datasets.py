@@ -420,13 +420,13 @@ def test_renku_dataset_import_missing_lfs_objects(runner, project):
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=1, min_passes=1)
 @pytest.mark.parametrize(
     "provider,params,output",
     [
         ("zenodo", [], "zenodo.org/deposit"),
         ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
-        ("olos", [], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
     ],
 )
 def test_dataset_export_upload_file(
@@ -468,7 +468,7 @@ def test_dataset_export_upload_file(
     [
         ("zenodo", [], "zenodo.org/deposit"),
         ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
-        ("olos", [], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
     ],
 )
 def test_dataset_export_upload_tag(
@@ -540,7 +540,7 @@ def test_dataset_export_upload_tag(
     [
         ("zenodo", [], "zenodo.org/deposit"),
         ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
-        ("olos", [], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
     ],
 )
 def test_dataset_export_upload_multiple(
@@ -676,7 +676,12 @@ def test_dataset_export(runner, client, project, provider):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "provider,params", [("zenodo", []), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"]), ("olos", [])]
+    "provider,params",
+    [
+        ("zenodo", []),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"]),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"]),
+    ],
 )
 def test_export_dataset_unauthorized(
     runner, project, client, tmpdir, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params
