@@ -112,7 +112,7 @@ def test_move_to_ignored_file(runner, client):
     result = runner.invoke(cli, ["mv", "README.md", "ignored.so"])
 
     assert 0 == result.exit_code
-    assert "The following renamed path match .gitignore" in result.output
+    assert "The following moved path match .gitignore" in result.output
     assert "ignored.so" in result.output
 
 
