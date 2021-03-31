@@ -427,7 +427,7 @@ def dataset():
     show_default=True,
 )
 def list_dataset(revision, format, columns):
-    """Handle datasets."""
+    """List datasets."""
     result = list_datasets().build().execute(revision=revision, format=format, columns=columns)
     click.echo(result.output)
 
@@ -513,7 +513,7 @@ def edit(name, title, description, creators, keyword):
 @dataset.command("show")
 @click.argument("name")
 def show(name):
-    """Handle datasets."""
+    """Show metadata of a dataset."""
     result = show_dataset().build().execute(name=name)
     ds = result.output
 

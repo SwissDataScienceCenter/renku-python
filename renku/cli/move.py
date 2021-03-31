@@ -17,10 +17,24 @@
 # limitations under the License.
 """Move or rename a file, a directory, or a symlink.
 
-Moving a file that belongs to a dataset will update its metadata. It also
-will attempt to update tracking information for files stored in an external
-storage (using Git LFS). Finally it makes sure that all relative symlinks work
-after the move.
+Moving a file that belongs to a dataset will update its metadata to include its
+new path and commit. Moreover, tracking information in an external storage
+(e.g. Git LFS) will be updated. Move operation fails if a destination already
+exists in the repo; use ``--force`` flag to overwrite them.
+
+If you want to move files to another dataset use ``--to-dataset`` along with
+destination's dataset name. This removes source paths from all datasets'
+metadata that include them (if any) and adds them to the destination's dataset
+metadata.
+
+The following command moves ``data/src`` and ``README`` to ``data/dst``
+directory and adds them to ``target-dataset``'s metadata. If the source files
+belong to one or more datasets then they will be removed from their metadata.
+
+.. code-block:: console
+
+    $ renku mv data/src README data/dst --to-dataset target-dataset
+
 """
 
 import click
@@ -32,9 +46,12 @@ from renku.core.commands.move import move_command
 @click.command(name="mv")
 @click.argument("sources", type=click.Path(exists=True), nargs=-1)
 @click.argument("destination", type=click.Path(), nargs=1)
-def move(sources, destination):
+@click.option("-f", "--force", is_flag=True, help="Override existing files.")
+@click.option("-v", "--verbose", is_flag=True, help="Show move sources and destinations.")
+@click.option("--to-dataset", type=str, default=None, nargs=1, help="A target dataset to move files to.")
+def move(sources, destination, force, verbose, to_dataset):
     """Move files and check repository for potential problems."""
     communicator = ClickCallback()
     move_command().with_communicator(communicator).build().execute(
-        sources=sources, destination=destination, edit_command=click.edit
+        sources=sources, destination=destination, force=force, verbose=verbose, to_dataset=to_dataset,
     )

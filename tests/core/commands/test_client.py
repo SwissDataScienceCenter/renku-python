@@ -37,7 +37,7 @@ def test_local_client(tmpdir):
     (
         ([".renku.lock"], [".renku.lock"]),
         (["not ignored", "lib/foo", "build/html"], ["lib/foo", "build/html"]),
-        (["not ignored"], None),
+        (["not ignored"], []),
     ),
 )
 def test_ignored_paths(paths, ignored, client):
