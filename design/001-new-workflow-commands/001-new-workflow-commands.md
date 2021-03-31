@@ -152,6 +152,10 @@ Keeps existing behavior. Status checks are based on Provenance graph information
 
 ![run metadata](run-metadata.svg)
 
+### renku:GroupedRun
+
+![grouped run metadata](grouped-run-metadata.svg)
+
 ### Example Use-Cases
 
 ## Drawbacks
