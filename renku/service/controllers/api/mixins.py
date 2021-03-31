@@ -52,7 +52,11 @@ def local_identity(method):
 
 
 class RenkuOperationMixin(metaclass=ABCMeta):
-    """Read operation mixin."""
+    """Renku operation execution mixin.
+
+    It's responsible for setting up all dependencies for an execution of a Renku operation. This includes cloning of
+    project repository, syncing with remote state, delaying write operations and returning job identifier.
+    """
 
     JOB_RESPONSE_SERIALIZER = DelayedResponseRPC()
 
@@ -175,8 +179,14 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         elif repo.remotes and len(repo.remotes) == 1:
             origin = repo.remotes[0]
 
-        if origin:
+        if origin and not self.migrate_project:
+            origin.fetch()
+            repo.git.reset("--hard", origin)
+
+        elif origin and self.migrate_project:
             try:
+                # NOTE: It could happen that repository is already un-shallowed,
+                # in this case we don't want to leak git exception, but still want to fetch.
                 origin.fetch("--unshallow")
             except GitCommandError:
                 origin.fetch()
@@ -220,7 +230,11 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
 
 class RenkuOpSyncMixin(RenkuOperationMixin, metaclass=ABCMeta):
-    """Sync operation mixin."""
+    """Sync operation mixin.
+
+    Extension of `RenkuOperationMixin` responsible for syncing all write operation with the remote. In case sync fails,
+    it will create a new branch and push newly created branch to the remote and return the branch name to the client.
+    """
 
     def sync(self, remote="origin"):
         """Sync with remote."""
