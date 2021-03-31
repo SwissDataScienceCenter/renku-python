@@ -107,22 +107,11 @@ class Url:
         return UrlSchema().dump(self)
 
 
-def _convert_creators(value):
-    """Convert creators."""
-    if isinstance(value, dict):  # compatibility with previous versions
-        return [Person.from_jsonld(value)]
-
-    if isinstance(value, list):
-        return [Person.from_jsonld(v) for v in value]
-
-    return value
-
-
 @attr.s
 class CreatorMixin:
     """Mixin for handling creators container."""
 
-    creators = attr.ib(kw_only=True, converter=_convert_creators)
+    creators = attr.ib(kw_only=True)
 
     @property
     def creators_csv(self):

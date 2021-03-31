@@ -25,8 +25,9 @@ from typing import List, Tuple, Union
 import networkx
 from marshmallow import EXCLUDE
 
+from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
-from renku.core.models.workflow.plan import Plan, PlanSchema
+from renku.core.models.workflow.plan import Plan, PlanJsonSchema, PlanSchema
 
 
 class DependencyGraph:
@@ -34,9 +35,9 @@ class DependencyGraph:
 
     # TODO: dependency graph can have cycles in it because up until now there was no check to prevent this
 
-    def __init__(self, plans=None):
+    def __init__(self, plans=None, _plans=None):
         """Initialized."""
-        self._plans = plans or []
+        self._plans = plans or _plans or []
         self._path = None
 
         self._graph = networkx.DiGraph()
@@ -162,18 +163,33 @@ class DependencyGraph:
         return sorted_nodes, list(nodes_with_deleted_inputs)
 
     @classmethod
-    def from_json(cls, path):
+    def from_file(cls, path, format="jsonld"):
         """Create an instance from a file."""
+        custom.assert_valid_format(format)
+
         if Path(path).exists():
             with open(path) as file_:
                 data = json.load(file_)
-                self = cls.from_jsonld(data=data) if data else DependencyGraph(plans=[])
+                if data:
+                    self = cls.from_json(data=data) if format == "json" else cls.from_jsonld(data=data)
+                else:
+                    self = DependencyGraph(plans=[])
         else:
             self = DependencyGraph(plans=[])
 
         self._path = Path(path)
 
         return self
+
+    @classmethod
+    def from_json(cls, data):
+        """Create an instance from JSON data."""
+        if isinstance(data, cls):
+            return data
+        elif not isinstance(data, list):
+            raise ValueError(data)
+
+        return DependencyGraphJsonSchema().load(data)
 
     @classmethod
     def from_jsonld(cls, data):
@@ -185,14 +201,20 @@ class DependencyGraph:
 
         return DependencyGraphSchema(flattened=True).load(data)
 
+    def to_json(self):
+        """Create JSON-LD."""
+        return DependencyGraphJsonSchema().dump(self)
+
     def to_jsonld(self):
         """Create JSON-LD."""
         return DependencyGraphSchema(flattened=True).dump(self)
 
-    def to_json(self, path=None):
+    def to_file(self, path=None, format="jsonld"):
         """Write to file."""
+        custom.assert_valid_format(format)
+
         path = path or self._path
-        data = self.to_jsonld()
+        data = self.to_json() if format == "json" else self.to_jsonld()
         with open(path, "w", encoding="utf-8") as file_:
             json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
@@ -208,3 +230,11 @@ class DependencyGraphSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     _plans = Nested(schema.hasPart, PlanSchema, init_name="plans", many=True, missing=None)
+
+
+class DependencyGraphJsonSchema(custom.JsonSchema):
+    """DependencyGraph schema."""
+
+    __model__ = DependencyGraph
+
+    _plans = custom.Nested(PlanJsonSchema, many=True, missing=None)

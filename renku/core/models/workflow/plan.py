@@ -27,16 +27,20 @@ from typing import Sequence
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
+from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.entities import Entity
 from renku.core.models.workflow.parameters import (
     CommandArgument,
+    CommandArgumentJsonSchema,
     CommandArgumentSchema,
     CommandInput,
     CommandInputTemplate,
+    CommandInputTemplateJsonSchema,
     CommandInputTemplateSchema,
     CommandOutput,
     CommandOutputTemplate,
+    CommandOutputTemplateJsonSchema,
     CommandOutputTemplateSchema,
 )
 from renku.core.models.workflow.run import Run
@@ -50,7 +54,8 @@ class Plan:
 
     def __init__(
         self,
-        id_,
+        id_=None,
+        id=None,
         arguments=None,
         command=None,
         description=None,
@@ -64,7 +69,7 @@ class Plan:
         self.arguments: Sequence[CommandArgument] = arguments or []
         self.command = command
         self.description = description
-        self.id_ = id_
+        self.id_ = id_ or id
         self.inputs: Sequence[CommandInputTemplate] = inputs or []
         self.keywords = keywords or []
         self.name = name or f"{secure_filename(self.command)}-{uuid.uuid4().hex}"
@@ -74,6 +79,16 @@ class Plan:
     def __repr__(self):
         """String representation."""
         return self.name
+
+    @classmethod
+    def from_json(cls, data):
+        """Create an instance from JSON data."""
+        if isinstance(data, cls):
+            return data
+        elif not isinstance(data, dict):
+            raise ValueError(data)
+
+        return PlanJsonSchema().load(data)
 
     @classmethod
     def from_jsonld(cls, data):
@@ -141,6 +156,10 @@ class Plan:
     def _extract_uuid(self):
         path_start = self.id_.find("/plans/")
         return self.id_[path_start + len("/plans/") :]
+
+    def to_json(self):
+        """Create JSON."""
+        return PlanJsonSchema().dump(self)
 
     def to_jsonld(self):
         """Create JSON-LD."""
@@ -277,3 +296,17 @@ class PlanSchema(JsonLDSchema):
     name = fields.String(schema.name, missing=None)
     outputs = Nested(renku.hasOutputs, CommandOutputTemplateSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
+
+
+class PlanJsonSchema(custom.JsonSchema):
+    """Plan schema."""
+
+    __model__ = Plan
+
+    arguments = custom.Nested(CommandArgumentJsonSchema, many=True, missing=None)
+    command = custom.fields.String(missing=None)
+    id_ = custom.fields.Id()
+    inputs = custom.Nested(CommandInputTemplateJsonSchema, many=True, missing=None)
+    name = custom.fields.String(missing=None)
+    outputs = custom.Nested(CommandOutputTemplateJsonSchema, many=True, missing=None)
+    success_codes = custom.fields.List(custom.fields.Integer(), missing=[0])

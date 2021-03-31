@@ -27,18 +27,27 @@ from urllib.parse import quote, urljoin, urlparse
 from git import Git, GitCommandError
 from marshmallow import EXCLUDE
 
+from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
-from renku.core.models.cwl.annotation import AnnotationSchema
-from renku.core.models.entities import Collection, Entity, EntitySchema
+from renku.core.models.cwl.annotation import AnnotationJsonSchema, AnnotationSchema
+from renku.core.models.entities import Collection, Entity, EntityJsonSchema, EntitySchema
 from renku.core.models.provenance.activities import Activity as ActivityRun
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
-from renku.core.models.provenance.agents import PersonSchema, SoftwareAgentSchema
+from renku.core.models.provenance.agents import (
+    PersonJsonSchema,
+    PersonSchema,
+    SoftwareAgentJsonSchema,
+    SoftwareAgentSchema,
+)
 from renku.core.models.provenance.qualified import (
     Association,
+    AssociationJsonSchema,
     AssociationSchema,
     Generation,
+    GenerationJsonSchema,
     GenerationSchema,
     Usage,
+    UsageJsonSchema,
     UsageSchema,
 )
 from renku.core.models.workflow.dependency_graph import DependencyGraph
@@ -51,7 +60,8 @@ class Activity:
 
     def __init__(
         self,
-        id_,
+        id_=None,
+        id=None,
         agents=None,
         association=None,
         ended_at_time=None,
@@ -68,7 +78,7 @@ class Activity:
         self.association = association
         self.ended_at_time = ended_at_time
         self.generated = generated
-        self.id_ = id_
+        self.id_ = id_ or id
         self.invalidated = invalidated
         self.order = order
         # self.project = project
@@ -119,6 +129,16 @@ class Activity:
         return urljoin(f"https://{host}", pathlib.posixpath.join("activities", str(uuid.uuid4())))
 
     @classmethod
+    def from_json(cls, data):
+        """Create an instance from JSON."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, list):
+            raise ValueError(data)
+
+        return ActivityJsonSchema().load(data)
+
+    @classmethod
     def from_jsonld(cls, data):
         """Create an instance from JSON-LD."""
         if isinstance(data, cls):
@@ -127,6 +147,10 @@ class Activity:
             raise ValueError(data)
 
         return ActivitySchema(flattened=True).load(data)
+
+    def to_json(self):
+        """Create JSON."""
+        return ActivityJsonSchema().dump(self)
 
     def to_jsonld(self):
         """Create JSON-LD."""
@@ -303,8 +327,9 @@ def _extract_commit_sha(entity_id: str):
 class ActivityCollection:
     """Equivalent of a workflow file."""
 
-    def __init__(self, activities=None):
+    def __init__(self, activities=None, id=None):
         """Initialize."""
+        # FIXME remove id from signature
         self._activities = activities or []
         self._path = None
 
@@ -364,23 +389,40 @@ class ActivityCollection:
         self._activities.append(activity)
 
     @classmethod
-    def from_json(cls, path):
+    def from_file(cls, path, format="jsonld"):
         """Return an instance from a file."""
+        custom.assert_valid_format(format)
+
         with open(path) as file_:
             data = json.load(file_)
-            self = cls.from_jsonld(data=data)
+            self = cls.from_json(data=data) if format == "json" else cls.from_jsonld(data=data)
             self._path = path
 
             return self
 
-    def to_json(self, path=None):
+    def to_file(self, path=None, format="jsonld"):
         """Write to file."""
+        custom.assert_valid_format(format)
+
         path = path or self._path
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
-        data = self.to_jsonld()
+        data = self.to_json() if format == "json" else self.to_jsonld()
         with open(path, "w", encoding="utf-8") as file_:
             json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
+
+    @classmethod
+    def from_json(cls, data):
+        """Create an instance from JSON data."""
+        if isinstance(data, cls):
+            return data
+        elif not isinstance(data, list):
+            raise ValueError(data)
+
+        self = ActivityCollectionJsonSchema().load(data, flattened=True)
+        self._activities.sort(key=lambda a: a.order)
+
+        return self
 
     @classmethod
     def from_jsonld(cls, data):
@@ -394,6 +436,10 @@ class ActivityCollection:
         self._activities.sort(key=lambda a: a.order)
 
         return self
+
+    def to_json(self):
+        """Create JSON-LD."""
+        return ActivityCollectionJsonSchema().dump(self, flattened=True)
 
     def to_jsonld(self):
         """Create JSON-LD."""
@@ -423,6 +469,24 @@ class ActivitySchema(JsonLDSchema):
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
 
 
+class ActivityJsonSchema(custom.JsonSchema):
+    """Activity schema."""
+
+    __model__ = Activity
+
+    agents = custom.Nested([PersonJsonSchema, SoftwareAgentJsonSchema], many=True)
+    association = custom.Nested(AssociationJsonSchema)
+    ended_at_time = custom.fields.DateTime()
+    generated = custom.Nested(GenerationJsonSchema, many=True, missing=None)
+    id_ = custom.fields.Id()
+    invalidated = custom.Nested(EntityJsonSchema, many=True, missing=None)
+    order = custom.fields.Integer()
+    path = custom.fields.String()
+    qualified_usage = custom.Nested(UsageJsonSchema, many=True)
+    started_at_time = custom.fields.DateTime()
+    annotations = custom.Nested(AnnotationJsonSchema, many=True, missing=None)
+
+
 class ActivityCollectionSchema(JsonLDSchema):
     """Activity schema."""
 
@@ -434,3 +498,11 @@ class ActivityCollectionSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     _activities = Nested(schema.hasPart, ActivitySchema, init_name="activities", many=True)
+
+
+class ActivityCollectionJsonSchema(custom.JsonSchema):
+    """Activity schema."""
+
+    __model__ = ActivityCollection
+
+    _activities = custom.Nested(ActivityJsonSchema, data_key="activities", many=True)

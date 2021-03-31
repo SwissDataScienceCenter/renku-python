@@ -547,9 +547,9 @@ class StorageApiMixin(RepositoryApiMixin):
                     _map_checksum(member, checksum_mapping)
 
         # NOTE: Update workflow provenance
-        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+        provenance_graph = ProvenanceGraph.from_file(self.provenance_graph_path)
 
-        for _, activity in provenance_graph.activities.items():
+        for activity in provenance_graph.activities:
             if activity.generated:
                 for generation in activity.generated:
                     entity = generation.entity
@@ -566,13 +566,13 @@ class StorageApiMixin(RepositoryApiMixin):
                 for entity in activity.invalidated:
                     _map_checksum(entity, sha_mapping)
 
-        provenance_graph.to_json()
+        provenance_graph.to_file()
 
         # NOTE: Update datasets provenance
-        datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
+        datasets_provenance = DatasetProvenance.from_file(self.datasets_provenance_path)
 
         for dataset in datasets_provenance.datasets:
             for file_ in dataset.files:
                 _map_checksum(file_.entity, sha_mapping)
 
-        datasets_provenance.to_json()
+        datasets_provenance.to_file()

@@ -26,16 +26,17 @@ from typing import Union
 from marshmallow import EXCLUDE
 from rdflib import ConjunctiveGraph
 
+from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
-from renku.core.models.provenance.activity import Activity, ActivityCollection, ActivitySchema
+from renku.core.models.provenance.activity import Activity, ActivityCollection, ActivityJsonSchema, ActivitySchema
 
 
 class ProvenanceGraph:
     """A graph of all executions (Activities)."""
 
-    def __init__(self, activities=None):
+    def __init__(self, activities=None, _activities=None, id=None):  # FIXME: remove id
         """Set uninitialized properties."""
-        self._activities = activities or []
+        self._activities = activities or _activities or []
         self._path = None
         self._order = 0 if len(self._activities) == 0 else max([a.order for a in self._activities])
         self._graph = None
@@ -84,13 +85,18 @@ class ProvenanceGraph:
             self._activities.append(activity)
 
     @classmethod
-    def from_json(cls, path, lazy=False):
+    def from_file(cls, path, lazy=False, format="jsonld"):
         """Return an instance from a JSON file."""
+        custom.assert_valid_format(format)
+
         if Path(path).exists():
             if not lazy:
                 with open(path) as file_:
                     data = json.load(file_)
-                    self = cls.from_jsonld(data=data) if data else ProvenanceGraph(activities=[])
+                    if data:
+                        self = cls.from_json(data=data) if format == "json" else cls.from_jsonld(data=data)
+                    else:
+                        self = ProvenanceGraph(activities=[])
                     self._activities.sort(key=lambda e: e.order)
                     self._loaded = True
             else:
@@ -105,13 +111,15 @@ class ProvenanceGraph:
         return self
 
     @classmethod
-    def from_provenance_paths(cls, paths, lazy=False):
+    def from_provenance_paths(cls, paths, lazy=False, format="jsonld"):
         """Return an instance from a set of ActivityCollection JSON file."""
+        custom.assert_valid_format(format)
+
         if paths:
             if not lazy:
                 activities = []
                 for path in paths:
-                    activity_collection = ActivityCollection.from_json(path)
+                    activity_collection = ActivityCollection.from_file(path, format=format)
                     activities.extend(activity_collection.activities)
 
                 self = ProvenanceGraph(activities=activities)
@@ -130,6 +138,19 @@ class ProvenanceGraph:
         return self
 
     @classmethod
+    def from_json(cls, data):
+        """Create an instance from JSON data."""
+        if isinstance(data, cls):
+            return data
+        elif not isinstance(data, list):
+            raise ValueError(data)
+
+        self = ProvenanceGraphJsonSchema().load(data, flattened=True)
+        self._loaded = True
+
+        return self
+
+    @classmethod
     def from_jsonld(cls, data):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
@@ -142,17 +163,23 @@ class ProvenanceGraph:
 
         return self
 
+    def to_json(self):
+        """Create JSON."""
+        return ProvenanceGraphJsonSchema().dump(self, flattened=True)
+
     def to_jsonld(self):
         """Create JSON-LD."""
         return ProvenanceGraphSchema(flattened=True).dump(self)
 
-    def to_json(self, path=None):
+    def to_file(self, path=None, format="jsonld"):
         """Write an instance to file."""
+        custom.assert_valid_format(format)
+
         if self._split_load and not path:
             raise RuntimeError("No path provided to write a split provenance graph.")
 
         path = path or self._path
-        data = self.to_jsonld()
+        data = self.to_json() if format == "json" else self.to_jsonld()
         with open(path, "w", encoding="utf-8") as file_:
             json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
@@ -271,6 +298,14 @@ class ProvenanceGraphSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     _activities = Nested(schema.hasPart, ActivitySchema, init_name="activities", many=True, missing=None)
+
+
+class ProvenanceGraphJsonSchema(custom.JsonSchema):
+    """ProvenanceGraph schema."""
+
+    __model__ = ProvenanceGraph
+
+    _activities = custom.Nested(ActivityJsonSchema, many=True, missing=None)
 
 
 LATEST_PLAN_EXECUTION_ORDER = """

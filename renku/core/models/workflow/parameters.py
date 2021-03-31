@@ -25,6 +25,7 @@ import uuid
 import attr
 from marshmallow import EXCLUDE
 
+from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
 from renku.core.models.entities import CollectionSchema, EntitySchema
 
@@ -63,20 +64,6 @@ class MappedIOStream(object):
             self._id = self.default_id()
         if not self._label:
             self._label = self.default_label()
-
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return MappedIOStreamSchema().load(data)
-
-    def as_jsonld(self):
-        """Create JSON-LD."""
-        return MappedIOStreamSchema().dump(self)
 
 
 @attr.s(eq=False, order=False)
@@ -216,6 +203,7 @@ class CommandInputTemplate(CommandParameter):
     """Template for inputs of a Plan."""
 
     mapped_to = attr.ib(default=None, kw_only=True)
+    consumes = attr.ib(default=None, kw_only=True)
 
     @staticmethod
     def generate_id(plan_id, position=None, id_=None):
@@ -243,20 +231,8 @@ class CommandInputTemplate(CommandParameter):
         """Post-init hook."""
         if not self._label:
             self._label = self.default_label()
-
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return CommandInputTemplateSchema().load(data)
-
-    def as_jsonld(self):
-        """Create JSON-LD."""
-        return CommandInputTemplateSchema().dump(self)
+        if not self.default_value:
+            self.default_value = self.consumes
 
 
 @attr.s(eq=False, order=False)
@@ -309,20 +285,6 @@ class CommandOutput(CommandParameter):
         if not self._label:
             self._label = self.default_label()
 
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return CommandOutputSchema().load(data)
-
-    def as_jsonld(self):
-        """Create JSON-LD."""
-        return CommandOutputSchema().dump(self)
-
 
 @attr.s(eq=False, order=False)
 class RunParameter:
@@ -356,20 +318,6 @@ class RunParameter:
         if not self.type:
             self.type = type(self.value).__name__
 
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return RunParameterSchema().load(data)
-
-    def as_jsonld(self):
-        """Create JSON-LD."""
-        return RunParameterSchema().dump(self)
-
 
 @attr.s(eq=False, order=False)
 class CommandOutputTemplate(CommandParameter):
@@ -377,6 +325,7 @@ class CommandOutputTemplate(CommandParameter):
 
     create_folder = attr.ib(default=False, kw_only=True, type=bool)
     mapped_to = attr.ib(default=None, kw_only=True)
+    produces = attr.ib(default=None, kw_only=True)
 
     @staticmethod
     def generate_id(plan_id, position=None, id_=None):
@@ -407,20 +356,8 @@ class CommandOutputTemplate(CommandParameter):
         """Post-init hook."""
         if not self._label:
             self._label = self.default_label()
-
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return CommandOutputTemplateSchema().load(data)
-
-    def as_jsonld(self):
-        """Create JSON-LD."""
-        return CommandOutputTemplateSchema().dump(self)
+        if not self.default_value:
+            self.default_value = self.produces
 
 
 class MappedIOStreamSchema(JsonLDSchema):
@@ -436,6 +373,16 @@ class MappedIOStreamSchema(JsonLDSchema):
     _id = fields.Id(init_name="id")
     _label = fields.String(rdfs.label, init_name="label")
     stream_type = fields.String(renku.streamType)
+
+
+class MappedIOStreamJsonSchema(custom.JsonSchema):
+    """MappedIOStream schema."""
+
+    __model__ = MappedIOStream
+
+    _id = custom.fields.Id()
+    _label = custom.fields.String(data_key="label")
+    stream_type = custom.fields.String()
 
 
 class CommandParameterSchema(JsonLDSchema):
@@ -455,6 +402,17 @@ class CommandParameterSchema(JsonLDSchema):
     default_value = fields.Raw(schema.defaultValue, missing=None)
 
 
+class CommandParameterJsonSchema(custom.JsonSchema):
+    """CommandParameter schema."""
+
+    __model__ = CommandParameter
+
+    _id = custom.fields.Id()
+    _label = custom.fields.String(data_key="label")
+    position = custom.fields.Integer(missing=None)
+    prefix = custom.fields.String(missing=None)
+
+
 class CommandArgumentSchema(CommandParameterSchema):
     """CommandArgument schema."""
 
@@ -466,6 +424,14 @@ class CommandArgumentSchema(CommandParameterSchema):
         unknown = EXCLUDE
 
     value = fields.String(renku.value)
+
+
+class CommandArgumentJsonSchema(CommandParameterJsonSchema):
+    """CommandArgument schema."""
+
+    __model__ = CommandArgument
+
+    value = custom.fields.String()
 
 
 class CommandInputSchema(CommandParameterSchema):
@@ -495,6 +461,15 @@ class CommandInputTemplateSchema(CommandParameterSchema):
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
 
 
+class CommandInputTemplateJsonSchema(CommandParameterJsonSchema):
+    """CommandInputTemplateSchema schema."""
+
+    __model__ = CommandInputTemplate
+
+    consumes = custom.fields.String()
+    mapped_to = custom.Nested(MappedIOStreamJsonSchema, missing=None)
+
+
 class CommandOutputSchema(CommandParameterSchema):
     """CommandArgument schema."""
 
@@ -522,6 +497,16 @@ class CommandOutputTemplateSchema(CommandParameterSchema):
 
     create_folder = fields.Boolean(renku.createFolder)
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
+
+
+class CommandOutputTemplateJsonSchema(CommandParameterJsonSchema):
+    """CommandOutputTemplateSchema schema."""
+
+    __model__ = CommandOutputTemplate
+
+    create_folder = custom.fields.Boolean()
+    mapped_to = custom.Nested(MappedIOStreamJsonSchema, missing=None)
+    produces = custom.fields.String()
 
 
 class RunParameterSchema(JsonLDSchema):

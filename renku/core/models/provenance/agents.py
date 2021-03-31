@@ -29,6 +29,7 @@ from attr.validators import instance_of
 from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE
 
+from renku.core.models import custom
 from renku.core.models.calamus import StringList, fields, prov, rdfs, schema, wfprov
 from renku.core.models.git import get_user_info
 from renku.version import __version__, version_url
@@ -111,16 +112,6 @@ class Person:
         """Create and instance from a dictionary."""
         return cls(**obj)
 
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return PersonSchema().load(data)
-
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set
@@ -147,6 +138,19 @@ class PersonSchema(JsonLDSchema):
     affiliation = StringList(schema.affiliation, missing=None)
     alternate_name = StringList(schema.alternateName, missing=None)
     _id = fields.Id(init_name="id")
+
+
+class PersonJsonSchema(custom.JsonSchema):
+    """Person schema."""
+
+    __model__ = Person
+
+    name = custom.fields.String(missing=None)
+    email = custom.fields.String(missing=None)
+    label = custom.fields.String(missing=None)
+    affiliation = custom.fields.String(missing=None)
+    alternate_name = custom.fields.String(missing=None)
+    _id = custom.fields.Id()
 
 
 @attr.s(
@@ -216,3 +220,12 @@ class SoftwareAgentSchema(JsonLDSchema):
 
     label = fields.String(rdfs.label)
     _id = fields.Id(init_name="id")
+
+
+class SoftwareAgentJsonSchema(custom.JsonSchema):
+    """SoftwareAgent schema."""
+
+    __model__ = SoftwareAgent
+
+    label = custom.fields.String()
+    _id = custom.fields.Id()

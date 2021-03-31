@@ -132,7 +132,7 @@ class DatasetsApiMixin(object):
         if not self.has_datasets_provenance():
             return
         if not self._datasets_provenance:
-            self._datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
+            self._datasets_provenance = DatasetProvenance.from_file(self.datasets_provenance_path)
 
         return self._datasets_provenance
 
@@ -146,7 +146,7 @@ class DatasetsApiMixin(object):
         else:
             self.datasets_provenance.update_dataset(dataset=dataset, client=self)
 
-        self.datasets_provenance.to_json()
+        self.datasets_provenance.to_file()
 
     def has_datasets_provenance(self):
         """Return true if dataset provenance exists."""

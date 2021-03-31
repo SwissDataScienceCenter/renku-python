@@ -46,7 +46,6 @@ from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
 
-from ..utils.scm import git_unicode_unescape
 from .git import GitCore
 
 DEFAULT_DATA_DIR = "data"
@@ -259,7 +258,7 @@ class RepositoryApiMixin(GitCore):
         if not self.has_graph_files():
             return
         if not self._dependency_graph:
-            self._dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
+            self._dependency_graph = DependencyGraph.from_file(self.dependency_graph_path)
 
         return self._dependency_graph
 
@@ -504,8 +503,8 @@ class RepositoryApiMixin(GitCore):
         if not self.has_graph_files():
             return
 
-        dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
-        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+        dependency_graph = DependencyGraph.from_file(self.dependency_graph_path)
+        provenance_graph = ProvenanceGraph.from_file(self.provenance_graph_path)
 
         activity_collection = ActivityCollection.from_activity_run(activity_run, dependency_graph, self)
 
@@ -514,10 +513,10 @@ class RepositoryApiMixin(GitCore):
         activity_collection_path = self.provenance_path / f"{Path(activity_run_path).stem}.json"
         # NOTE: we serialize activity_collection after adding it to the provenance graph so that its activities have
         # their order set
-        activity_collection.to_json(path=activity_collection_path)
+        activity_collection.to_file(path=activity_collection_path)
 
-        dependency_graph.to_json()
-        provenance_graph.to_json()
+        dependency_graph.to_file()
+        provenance_graph.to_file()
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""

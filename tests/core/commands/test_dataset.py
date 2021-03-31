@@ -100,28 +100,6 @@ def test_git_repo_import(client_with_datasets, data_repository):
     assert {path2, path3} == {f.path for f in dataset.files}
 
 
-@pytest.mark.parametrize(
-    "creators",
-    [
-        [Person(name="me", email="me@example.com")],
-        [{"http://schema.org/name": "me", "http://schema.org/email": "me@example.com",}],
-    ],
-)
-def test_creator_parse(creators):
-    """Test that different options for specifying creators work."""
-    dataset = Dataset(name="dataset", creators=creators)
-    creator = Person(name="me", email="me@example.com")
-    assert creator in dataset.creators
-
-    # email check
-    with pytest.raises(ValueError):
-        Person(name="me", email="meexample.com")
-
-    # creators must be a set or list of dicts or Person
-    with pytest.raises(ValueError):
-        Dataset(name="dataset", creators=["name"])
-
-
 def test_creators_with_same_email(tmp_path):
     """Test creators with different names and same email address."""
     creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]

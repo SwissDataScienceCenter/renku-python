@@ -24,6 +24,7 @@ from urllib.parse import quote, urljoin
 
 import attr
 
+from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, rdfs, renku, schema, wfprov
 from renku.core.models.projects import Project, ProjectSchema
 
@@ -228,6 +229,17 @@ class CommitMixinSchema(JsonLDSchema):
     _project = Nested(schema.isPartOf, ProjectSchema, init_name="project", missing=None)
 
 
+class CommitMixinJsonSchema(custom.JsonSchema):
+    """CommitMixin schema."""
+
+    __model__ = CommitMixin
+
+    path = custom.fields.String()
+    _id = custom.fields.Id()
+    # _label = custom.fields.String(data_key="label", missing=None)
+    # NOTE: We don't serialize project
+
+
 class EntitySchema(CommitMixinSchema):
     """Entity Schema."""
 
@@ -240,6 +252,14 @@ class EntitySchema(CommitMixinSchema):
     checksum = fields.String(renku.checksum, missing=None)
 
 
+class EntityJsonSchema(CommitMixinJsonSchema):
+    """Entity Schema."""
+
+    __model__ = Entity
+
+    checksum = custom.fields.String(missing=None)
+
+
 class CollectionSchema(EntitySchema):
     """Entity Schema."""
 
@@ -250,6 +270,14 @@ class CollectionSchema(EntitySchema):
         model = Collection
 
     members = Nested(prov.hadMember, [EntitySchema, "CollectionSchema"], many=True)
+
+
+class CollectionJsonSchema(EntityJsonSchema):
+    """Entity Schema."""
+
+    __model__ = Collection
+
+    members = custom.Nested([EntityJsonSchema, lambda: CollectionJsonSchema], many=True)
 
 
 def generate_label(path, hexsha):

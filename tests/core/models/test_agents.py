@@ -51,3 +51,10 @@ def test_construct_person(value, has_name, has_email, has_affiliation):
         assert "Some Affiliation" == p.affiliation
     else:
         assert p.affiliation is None
+
+
+def test_creator_parse():
+    """Test that parsing raises proper error."""
+    # email check
+    with pytest.raises(ValueError):
+        Person(name="me", email="meexample.com")

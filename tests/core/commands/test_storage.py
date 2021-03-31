@@ -123,7 +123,7 @@ def test_lfs_migrate(runner, project, client):
     previous_head = client.repo.head.commit.hexsha
 
     result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, result.output
     assert "dataset_file" in result.output
     assert "workflow_file" in result.output
     assert "regular_file" in result.output

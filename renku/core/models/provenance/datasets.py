@@ -505,7 +505,7 @@ class DatasetProvenance:
         current_dataset.date_deleted = date
 
     @classmethod
-    def from_json(cls, path):
+    def from_file(cls, path):
         """Return an instance from a file."""
         if Path(path).exists():
             with open(path) as file_:
@@ -528,7 +528,7 @@ class DatasetProvenance:
 
         return DatasetProvenanceSchema(flattened=True).load(data)
 
-    def to_json(self, path=None):
+    def to_file(self, path=None):
         """Write to file."""
         path = path or self._path
         data = self.to_jsonld()

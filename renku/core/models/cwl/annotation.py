@@ -20,6 +20,7 @@
 import attr
 from marshmallow import EXCLUDE
 
+from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, dcterms, fields, oa
 
 
@@ -61,3 +62,13 @@ class AnnotationSchema(JsonLDSchema):
     _id = fields.Id(init_name="id")
     body = fields.RawJsonLD(oa.hasBody)
     source = fields.Raw(dcterms.creator)
+
+
+class AnnotationJsonSchema(custom.JsonSchema):
+    """Annotation schema."""
+
+    __model__ = Annotation
+
+    _id = custom.fields.Id()
+    body = custom.fields.Raw()
+    source = custom.fields.Raw()

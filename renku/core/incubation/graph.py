@@ -36,6 +36,7 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DATASET_METADATA_PATHS, DatasetsApiMixin
 from renku.core.management.migrate import migrate
 from renku.core.management.repository import RepositoryApiMixin
+from renku.core.models import custom
 from renku.core.models.entities import Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.activities import Activity as ActivityRun
@@ -62,8 +63,9 @@ def generate_graph():
     return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
 
 
-def _generate_graph(client, force=False):
+def _generate_graph(client, force=False, format="jsonld"):
     """Generate graph and dataset provenance metadata."""
+    custom.assert_valid_format(format)
 
     def process_workflows(commit, provenance_graph):
         for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.yaml"):
@@ -88,7 +90,7 @@ def _generate_graph(client, force=False):
             # NOTE: we serialize activity_collection after adding it to the provenance graph so that its activities have
             # their order set
             new_path = client.provenance_path / f"{Path(path).stem}.json"
-            activity_collection.to_json(new_path)
+            activity_collection.to_file(new_path, format=format)
 
     def process_datasets(commit):
         files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
@@ -119,14 +121,15 @@ def _generate_graph(client, force=False):
     client.initialize_graph()
     client.initialize_datasets_provenance()
 
-    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
+    provenance_graph = ProvenanceGraph.from_file(client.provenance_graph_path)
 
     for n, commit in enumerate(commits, start=1):
         communication.echo(f"Processing commits {n}/{n_commits}", end="\r")
 
         try:
             process_workflows(commit, provenance_graph)
-            process_datasets(commit)
+            if format in ["jsonld", "json-ld"]:
+                process_datasets(commit)
         except errors.MigrationError:
             communication.echo("")
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Migration failed: {traceback.format_exc()}")
@@ -134,9 +137,9 @@ def _generate_graph(client, force=False):
             communication.echo("")
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
-    client.dependency_graph.to_json()
-    provenance_graph.to_json()
-    client.datasets_provenance.to_json()
+    client.dependency_graph.to_file(format=format)
+    provenance_graph.to_file(format=format)
+    client.datasets_provenance.to_file()
 
 
 def status():
@@ -147,7 +150,7 @@ def status():
 def _status(client):
     """Get status of workflows."""
     with measure("BUILD AND QUERY GRAPH"):
-        pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
+        pg = ProvenanceGraph.from_file(client.provenance_graph_path, lazy=True)
         plans_usages = pg.get_latest_plans_usages()
 
     if client.has_external_files():
@@ -189,7 +192,7 @@ def update():
 def _update(client, dry_run):
     """Update outdated outputs."""
     with measure("BUILD AND QUERY GRAPH"):
-        pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
+        pg = ProvenanceGraph.from_file(client.provenance_graph_path, lazy=True)
         plans_usages = pg.get_latest_plans_usages()
 
     with measure("CALCULATE MODIFIED"):
@@ -235,12 +238,11 @@ def _export_graph(client, format, workflows_only, strict):
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
 
-    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
     format = format.lower()
     if strict and format not in ["json-ld", "jsonld"]:
         raise errors.SHACLValidationError(f"'--strict' not supported for '{format}'")
 
-    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
+    pg = ProvenanceGraph.from_file(client.provenance_graph_path, lazy=True)
 
     if not workflows_only:
         pg.rdf_graph.parse(location=str(client.datasets_provenance_path), format="json-ld")

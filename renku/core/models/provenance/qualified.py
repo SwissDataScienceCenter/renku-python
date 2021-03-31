@@ -23,11 +23,17 @@ from urllib.parse import quote
 import attr
 from marshmallow import EXCLUDE
 
+from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov
 from renku.core.models.datasets import DatasetFileSchema, DatasetSchema
-from renku.core.models.entities import CollectionSchema, EntitySchema
-from renku.core.models.provenance.agents import PersonSchema, SoftwareAgentSchema
-from renku.core.models.workflow.plan import PlanSchema
+from renku.core.models.entities import CollectionJsonSchema, CollectionSchema, EntityJsonSchema, EntitySchema
+from renku.core.models.provenance.agents import (
+    PersonJsonSchema,
+    PersonSchema,
+    SoftwareAgentJsonSchema,
+    SoftwareAgentSchema,
+)
+from renku.core.models.workflow.plan import PlanJsonSchema, PlanSchema
 from renku.core.models.workflow.run import RunSchema
 
 
@@ -169,6 +175,16 @@ class AssociationSchema(JsonLDSchema):
     agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
 
 
+class AssociationJsonSchema(custom.JsonSchema):
+    """Association schema."""
+
+    __model__ = Association
+
+    _id = custom.fields.Id()
+    plan = custom.Nested(PlanJsonSchema)  # NOTE: We don't use RunSchema in the new graph
+    agent = custom.Nested([SoftwareAgentJsonSchema, PersonJsonSchema])
+
+
 class UsageSchema(JsonLDSchema):
     """Usage schema."""
 
@@ -182,6 +198,16 @@ class UsageSchema(JsonLDSchema):
     _id = fields.Id(init_name="id")
     entity = Nested(prov.entity, [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema])
     role = fields.String(prov.hadRole, missing=None)
+
+
+class UsageJsonSchema(custom.JsonSchema):
+    """Usage schema."""
+
+    __model__ = Usage
+
+    _id = custom.fields.Id()
+    entity = custom.Nested([EntityJsonSchema, CollectionJsonSchema])  # TODO: Add DatasetSchema, DatasetFileSchema
+    role = custom.fields.String(missing=None)
 
 
 class GenerationSchema(JsonLDSchema):
@@ -199,3 +225,13 @@ class GenerationSchema(JsonLDSchema):
         prov.qualifiedGeneration, [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema], reverse=True
     )
     role = fields.String(prov.hadRole, missing=None)
+
+
+class GenerationJsonSchema(custom.JsonSchema):
+    """Generation schema."""
+
+    __model__ = Generation
+
+    _id = custom.fields.Id()
+    entity = custom.Nested([EntityJsonSchema, CollectionJsonSchema])  # TODO: Add DatasetSchema, DatasetFileSchema
+    role = custom.fields.String(missing=None)
