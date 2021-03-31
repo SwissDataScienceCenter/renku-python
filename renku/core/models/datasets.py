@@ -245,8 +245,6 @@ class DatasetFile(Entity):
 
     source = attr.ib(default=None, kw_only=True)
 
-    is_lfs = attr.ib(default=False, kw_only=True)
-
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
@@ -301,6 +299,14 @@ class DatasetFile(Entity):
         self.commit = commit
         self._id = self.default_id()
         self._label = self.default_label()
+
+    def update_metadata(self, path, commit):
+        """Update files metadata."""
+        self.path = str((self.client.path / path).relative_to(self.client.path))
+        self.update_commit(commit)
+        self.filename = self.default_filename()
+        self.url = self.default_url()
+        self.added = self._now()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -523,6 +529,9 @@ class Dataset(Entity, CreatorMixin):
 
     def update_files(self, files):
         """Update files with collection of DatasetFile objects."""
+        if isinstance(files, DatasetFile):
+            files = (files,)
+
         new_files = []
 
         for new_file in files:
@@ -539,22 +548,7 @@ class Dataset(Entity, CreatorMixin):
         self._modified = True
         self.files += new_files
 
-        self._update_files_metadata()
-
-    def rename_files(self, rename):
-        """Rename files using the path mapping function."""
-        files = []
-
-        for file_ in self.files:
-            self._modified = True
-            new_path = rename(file_.path)
-            new_file = attr.evolve(file_, path=new_path)
-            if not self.find_file(new_file.path):
-                files.append(new_file)
-            else:
-                raise errors.InvalidFileOperation(f"Destination file already exists: {new_file.path}")
-
-        self.files = files
+        self._update_files_metadata(new_files)
 
     def unlink_file(self, path, missing_ok=False):
         """Unlink a file from dataset.
@@ -653,24 +647,18 @@ class Dataset(Entity, CreatorMixin):
         if not self.name:
             self.name = generate_default_name(self.title, self.version)
 
-    def _update_files_metadata(self):
-        if not self.files or not self.client:
+    def _update_files_metadata(self, files=None):
+        files = files or self.files
+
+        if not files or not self.client:
             return
 
-        paths = [f.path for f in self.files]
-        attrs = self.client.find_attr(*paths)
-
-        for file_ in self.files:
-            path = Path(file_.path)
-            file_exists = path.exists() or (path.is_symlink() and os.path.lexists(path))
+        for file_ in files:
+            path = self.client.path / file_.path
+            file_exists = path.exists() or path.is_symlink()
 
             if not file_exists:
                 continue
-
-            if attrs.get(str(path), {}).get("filter") == "lfs":
-                file_.is_lfs = True
-            else:
-                file_.is_lfs = False
 
             if file_.client is None:
                 client, _, _ = self.client.resolve_in_submodules(

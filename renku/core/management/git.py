@@ -90,7 +90,7 @@ def _expand_directories(paths):
     """Expand directory with all files it contains."""
     processed_paths = set()
     for path in paths:
-        for matched_path in glob.glob(path, recursive=True):
+        for matched_path in glob.iglob(str(path), recursive=True):
             if matched_path in processed_paths:
                 continue
             path_ = Path(matched_path)
@@ -147,11 +147,14 @@ class GitCore:
         """Return ignored paths matching ``.gitignore`` file."""
         from git.exc import GitCommandError
 
+        ignored = []
         for batch in split_paths(*paths):
             try:
-                return self.repo.git.check_ignore(*batch).split()
+                ignored.extend(self.repo.git.check_ignore(*batch).split(os.linesep))
             except GitCommandError:
                 pass
+
+        return ignored
 
     def find_attr(self, *paths):
         """Return map with path and its attributes."""

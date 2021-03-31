@@ -35,6 +35,7 @@ from renku.core import errors
 from renku.core.models.provenance.activities import Collection
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+from renku.core.utils import communication
 from renku.core.utils.file_size import parse_file_size
 from renku.core.utils.git import add_to_git, run_command
 
@@ -213,8 +214,16 @@ class StorageApiMixin(RepositoryApiMixin):
                     raise errors.GitLFSError(f"Error executing 'git lfs track: \n {result.stdout}")
             except (KeyboardInterrupt, OSError) as e:
                 raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
-            return track_paths
-        return []
+
+        show_message = self.get_value("renku", "show_lfs_message")
+        if track_paths and (show_message is None or show_message == "True"):
+            files_list = "\n\t".join(track_paths)
+            communication.info(
+                f"Adding these files to Git LFS:\n\t{files_list}"
+                "\nTo disable this message in the future, run:\n\trenku config set show_lfs_message False"
+            )
+
+        return track_paths
 
     @check_external_storage_wrapper
     def untrack_paths_from_storage(self, *paths):

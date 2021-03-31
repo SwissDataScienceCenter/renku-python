@@ -18,6 +18,8 @@
 """Client for handling datasets."""
 
 import concurrent.futures
+import copy
+import fnmatch
 import imghdr
 import os
 import re
@@ -578,17 +580,7 @@ class DatasetsApiMixin(object):
 
         # Track non-symlinks in LFS
         if self.check_external_storage():
-            lfs_paths = self.track_paths_in_storage(*files_to_commit)
-            show_message = self.get_value("renku", "show_lfs_message")
-            if lfs_paths and (show_message is None or show_message == "True"):
-                communication.info(
-                    (
-                        "Adding these files to Git LFS:\n"
-                        + "\t{}".format("\n\t".join(lfs_paths))
-                        + "\nTo disable this message in the future, run:"
-                        + "\n\trenku config set show_lfs_message False"
-                    )
-                )
+            self.track_paths_in_storage(*files_to_commit)
 
         # Force-add to include possible ignored files
         add_to_git(self.repo.git, *files_to_commit, force=True)
@@ -615,16 +607,15 @@ class DatasetsApiMixin(object):
 
         dataset.update_files(dataset_files)
 
-    def _check_protected_path(self, path):
+    def is_protected_path(self, path):
         """Checks if a path is a protected path."""
         try:
-            path_in_repo = path.relative_to(self.path)
+            path_in_repo = str(path.relative_to(self.path))
         except ValueError:
             return False
 
         for protected_path in self.RENKU_PROTECTED_PATHS:
-            str_path = str(path_in_repo)
-            if re.match("^{}$".format(protected_path), str_path):
+            if fnmatch.fnmatch(path_in_repo, protected_path):
                 return True
 
         return False
@@ -645,7 +636,7 @@ class DatasetsApiMixin(object):
             if src == (self.path / dataset.data_dir).resolve():
                 raise errors.ParameterError(f"Cannot add dataset's data directory recursively: {path}")
 
-            if self._check_protected_path(src):
+            if self.is_protected_path(src):
                 raise errors.ProtectedFiles([src])
 
             files = []
@@ -665,7 +656,7 @@ class DatasetsApiMixin(object):
                 except ValueError:
                     pass
                 else:
-                    if self._check_protected_path(src):
+                    if self.is_protected_path(src):
                         raise errors.ProtectedFiles([src])
 
             if path_in_repo:
@@ -1013,6 +1004,47 @@ class DatasetsApiMixin(object):
         if len(not_found) > 0:
             raise errors.ParameterError("Tags {} not found".format(", ".join(not_found)))
         dataset.tags = [t for t in dataset.tags if t.name not in tags]
+
+    def move_files(self, files, to_dataset, commit):
+        """Move files and their metadata from one or more datasets to a target dataset."""
+        datasets = list(self.datasets.values())
+        if to_dataset:
+            # NOTE: Use the same dataset object or otherwise a race happens if dataset is in both source and destination
+            to_dataset = next(d for d in datasets if d.name == to_dataset)
+        modified_datasets = {}
+
+        progress_name = "Updating dataset metadata"
+        communication.start_progress(progress_name, total=len(files))
+        try:
+            for src, dst in files.items():
+                src = src.relative_to(self.path)
+                dst = dst.relative_to(self.path)
+                for dataset in datasets:
+                    removed = dataset.unlink_file(src, missing_ok=True)
+                    if removed:
+                        modified_datasets[dataset.name] = dataset
+                        new_file = copy.copy(removed)
+                        new_file.update_metadata(path=dst, commit=commit)
+                        destination_dataset = to_dataset if to_dataset else dataset
+                        destination_dataset.update_files(new_file)
+
+                    # NOTE: Update dataset if it contains a destination that is being overwritten
+                    modified = dataset.find_file(dst)
+                    if modified:
+                        modified_datasets[dataset.name] = dataset
+                        modified = copy.copy(modified)
+                        modified.update_metadata(path=dst, commit=commit)
+                        modified.external = self._is_external_file(self.path / dst)
+                        dataset.update_files(modified)
+
+                communication.update_progress(progress_name, amount=1)
+        finally:
+            communication.finalize_progress(progress_name)
+
+        for dataset in modified_datasets.values():
+            dataset.to_yaml()
+        if to_dataset:
+            to_dataset.to_yaml()
 
     def update_dataset_git_files(self, files, ref, delete=False):
         """Update files and dataset metadata according to their remotes.
