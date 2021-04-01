@@ -148,13 +148,29 @@ Keeps existing behavior. Status checks are based on Provenance graph information
 
 ### Metadata Changes
 
+The green parts of the following graphs show additions to the metadata
+
 #### prov:ProcessRun and renku:Run Additions
 
 ![run metadata](run-metadata.svg)
 
-### renku:GroupedRun
+On the provenance side, we add `renku:ParameterValue` with two child types `PathParameterValue` and `renku:VariableParameterValue` for files/directories and simple values, respectively.
+
+On the dependency graph side, we remove the use of `prov:Entity` and instead add `schema:defaultValue` to `renku:CommandParameter`, which will be set to the values used on first execution. The `renku:ParameterValue` entries mentioned above map to the `renku:CommandParameter` classes as a way to show which value of an execution maps to which value of the template. In addition, `renku:Run` and the `renku:CommandParameter` types get `schema:name` and `schema:description` fields to allow annotating them with meaningful information.
+
+*The `renku:CommandInput` and `renku:CommandOutput` types also get extended with `schema:encodingFormat` to store MIME-type information in the case of files (Not used for folders). * [Does this make sense? Should this rather be on the provenance side?]
+
+#### renku:GroupedRun
 
 ![grouped run metadata](grouped-run-metadata.svg)
+
+A new type `renku:GroupedRun` is introduced to keep track of workflos composed of steps. Instead of `renku:CommandParameter` entries, this has `renku:ParameterMapping` entries that expose parameter of child steps on the grouped run.
+
+#### looped runs
+
+![looped run metadata](looped-run-metadata.svg)
+
+For loopped workflows, no addition is needed on the dependency side of things, as the workflow is merely called repeatedly. On the provenance side, a new node `renku:LoopParameters` is introduced that groups `renku:ParameterValue` entries by the loop they were used in.
 
 ### Example Use-Cases
 
