@@ -30,7 +30,7 @@ def test_delay_migration_job(svc_client_cache, it_remote_repo_url, view_user_dat
     from renku.service.serializers.cache import ProjectMigrateRequest
 
     context = ProjectMigrateRequest().load(
-        {"git_url": it_remote_repo_url, "ref": uuid.uuid4().hex, "skip_docker_update": True}
+        {"git_url": it_remote_repo_url, "migrate_project": True, "ref": uuid.uuid4().hex, "skip_docker_update": True}
     )
 
     _, _, cache = svc_client_cache
@@ -46,10 +46,6 @@ def test_delay_migration_job(svc_client_cache, it_remote_repo_url, view_user_dat
 
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
     assert updated_job
-    assert {
-        "docker_migrated",
-        "was_migrated",
-        "template_migrated",
-        "messages",
-        "remote_branch",
-    } == updated_job.ctrl_result["result"].keys()
+    assert {"docker_migrated", "was_migrated", "template_migrated", "messages",} == updated_job.ctrl_result[
+        "result"
+    ].keys()
