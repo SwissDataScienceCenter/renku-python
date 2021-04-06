@@ -10,11 +10,11 @@ enable advanced workflow use-cases.
 
 ## Motivation
 
-So far, renku has been mostly restricted to provenance tracking of executions, which is supported well by `renku run` (and `renku rerun`/`renku update`). We have dabbled in workflow execution/workflow management a bit, with rerun/update allowing re-execution of workflows in a very limited fashion.
+So far, Renku has been mostly restricted to provenance tracking of executions, which is supported well by `renku run` (and `renku rerun`/`renku update`). We have dabbled in workflow execution/workflow management a bit, with rerun/update allowing re-execution of workflows in a very limited fashion.
 
 This has opened up many requests for more features in this direction, like changing parameters for re-execution, importing/exporting workflows between projects, having recurrent workflows with changing output paths (e.g. daily data fetch tasks), running workflows in parallel, re-executing workflows on remote HPC clusters, to just name a few.
 
-Renku's approach to dealing with workflows differs from regular workflow systems in that we take a more simplistic view of workflows, but we allows users to implement workflows by trying to work as normal and recording their steps as they go, as opposed to a declarative workflow language where users have to write workflow files which they can then execute. We also differ from most workflow management software in that provenance/reproducibility is at the core of our approach and not just something tacked after the fact. Additionally we (could) support provenance and workflows spanning the larger renkulab ecosystem in the form of multi-project workflows and multi-project provenance, which traditional workflow systems don't support (they're rarely tied to a platform and any glue has to be added manually by a user).
+Renku's approach to dealing with workflows differs from regular workflow systems in that we take a more simplistic view of workflows, but we allows users to implement workflows by trying to work as normal and recording their steps as they go, as opposed to a declarative workflow language where users have to write workflow files which they can then execute. We also differ from most workflow management software in that provenance/reproducibility is at the core of our approach and not just something tacked after the fact. Additionally we (could) support provenance and workflows spanning the larger Renkulab ecosystem in the form of multi-project workflows and multi-project provenance, which traditional workflow systems don't support (they're rarely tied to a platform and any glue has to be added manually by a user).
 
 I think we should add more workflow language level features following our approach, rather than producing yet another workflow language and that these differences to regular workflow languages do set us apart and bring something valuable to the table that isn't covered by another tool already.
 
@@ -70,7 +70,7 @@ Parameter mapping can be done like `renku workflow group  --map learning_rate=st
 
 Additionally, `--map-all-inputs`, `--map-all-outputs` and `--auto-map-steps` flags would make sense, to expose all child inputs, outputs on the group, and to map inputs/outputs between steps automatically (creating a DAG).
 
-To differentiate this from a `renku:Run`, it'could be a `renku:GroupedRun` node inheriting from `renku:Run`
+To differentiate this from a `renku:Run`, it has node type `renku:GroupedRun` inheriting from `renku:Run`
 
 Since grouped runs also have a name, they can be used instead of a single step in workflow commands. As such, groups can be nested arbitrarily.
 
@@ -121,7 +121,7 @@ Provider can be something like `cwl` or `snakemake` or `argo`. Config can be som
 
 This command should support adding new providers via plugins.
 
-Provider config can also be stored in renku.ini (similar to kube-context for k8s) or be a separate file. It contains configuration necessary for a provider (e.g. cluster ip for remote execution). input/output mapping should map filepaths/globs or parameters to inputs/outputs of steps (see next section).
+Provider config can also be stored in renku.ini (similar to kube-context for k8s) or be a separate file. It contains configuration necessary for a provider (e.g. cluster ip for remote execution). Input/output mapping should map filepaths/globs or parameters to inputs/outputs of steps (see next section).
 
 ##### Detailed Parameter Description
 
@@ -249,7 +249,7 @@ renku workflow export [<options>] <name or uuid>
 
 <name or uuid>              The name of a workflow or its id
 
---format                    Workflow language to export (cwl, snamkemake, etc.)
+--format                    Workflow language to export (cwl, snakemake, etc.)
 
 -o|--output <path>          Save to <path> instead of printing to terminal
 ```
@@ -259,7 +259,26 @@ renku workflow export [<options>] <name or uuid>
 
 `renku run` remains the basic unit of execution of the workflows. It is left mostly as is, with the addition of `--name` and `--description` parameter and some additional functionality outlaid further down in regards to explicit parameters. If no name is supplied, we should try and auto-generate a sensible one.
 
-One feature that we might consider is allowing to "edit" a workflow template by adding a `--replace` flag to renku run, that allows replacing an earlier workflow template with a modified version. The modified version would still be part of any workflow groups in the same way as its predecessor. We would have to flag workflows that become invalid after such a change and prompt the user to update them accordingly. In addition, the original template has to be kept around (in a soft-delete state) to keep the provenance side of things working.
+One feature that we might consider is allowing to "edit" a workflow template by adding a `--replace` flag to `renku run`, that allows replacing an earlier workflow template with a modified version. The modified version would still be part of any workflow groups in the same way as its predecessor. We would have to flag workflows that become invalid after such a change and prompt the user to update them accordingly. In addition, the original template has to be kept around (in a soft-delete state) to keep the provenance side of things working.
+
+##### Detailed Parameter Description
+
+```
+renku run [<options>] -- command args...
+
+--name "name"                    Name of the workflow
+
+--description "description"      Description of the workflow
+
+-i|--input <param>=<path>        Associate name with a path/explicit input
+
+-o|--output <param>=<path>       Associate name with a path/explicit output
+
+-m|--map <param>="<value or expression>"    Set an output parameter
+
+--replace                        Replace a workflow with the same name
+
+```
 
 #### renku rerun
 
@@ -297,7 +316,7 @@ steps:
                 language: en
 ```
 
-At the top level, it specifies the parameter values of the workflow (run or grouped run) to be executed. It can also contain values for steps contained in a grouped run, by specifying the name of the step and setting parameters for that step. In case of the grouped run mapping its values to child steps, setting values for childsteps directly overwrites those values for the step and all its (potential) children.
+At the top level, it specifies the parameter values of the workflow (run or grouped run) to be executed. It can also contain values for steps contained in a grouped run, by specifying the name of the step and setting parameters for that step. In case of the grouped run mapping its values to child steps, setting values for child steps directly overwrites those values for the step and all its (potential) children.
 
 For `renku workflow loop` the values file looks like:
 
@@ -305,7 +324,7 @@ For `renku workflow loop` the values file looks like:
 parameters:
     learning_rate: 0.9
     dataset_input: dataset.csv
-    chart_output: mychart.{loop}.png
+    chart_output: mychart.{loop_index}.png
 looped_parameters:
     - alpha: 0.1
       beta: 0.7
@@ -332,9 +351,21 @@ On the commandline, values can be specified with `--set learning_rate=0.9 --set 
 
 Parameter values can contain one of several templated values or glob patterns:
 
-- `{loop}`: Loop index in the case of a `renku workflow loop` call.
+- `{loop_index}`: Loop index in the case of a `renku workflow loop` call.
 - `{%m-%d-%Y_%H-%M-%S}`: Current date/time (Following python date formatting).
 - `a*b?`: Glob/`fnmatch` patterns for paths.
+
+In addition, values can be set based on the content of output files, if those files' contents are json formatted:
+
+- `{$stdout.data.entries[-1].name}` would use JSONPath against stdout, if stdout looks like `{'data': {'entries': [..., {'name': 'John'}]}}` where `$stdout` and `$stderr` are reserved names pointing to the respective standard streams, or by pointing to a file output directly like `{my_output_file.data.entries[0].name}`
+
+JSONPath matching can only be used to set output parameter values.
+
+#### Temporary Files
+
+Sometimes we don't want to commit a file to git or track it in the provenance graph. For these cases, it can be marked as temporary. It will still be tracked in the dependency graph.
+
+In these cases, a path can be wrapped in `tmp()` on the original `renku run`, either as an explicit input or output, like `renku run -i myoutput=tmp(output.txt) -- python ...`
 
 ### Metadata Changes
 
@@ -354,13 +385,13 @@ On the dependency graph side, we remove the use of `prov:Entity` and instead add
 
 ![grouped run metadata](grouped-run-metadata.svg)
 
-A new type `renku:GroupedRun` is introduced to keep track of workflos composed of steps. Instead of `renku:CommandParameter` entries, this has `renku:ParameterMapping` entries that expose parameter of child steps on the grouped run. A `renku:ParameterMapping` can point to multiple mapped parameters, but can only be pointed to by one `renku:GroupedRun`.
+A new type `renku:GroupedRun` is introduced to keep track of workflows composed of steps. Instead of `renku:CommandParameter` entries, this has `renku:ParameterMapping` entries that expose parameter of child steps on the grouped run. A `renku:ParameterMapping` can point to multiple mapped parameters, but can only be pointed to by one `renku:GroupedRun`.
 
 #### looped runs
 
 ![looped run metadata](looped-run-metadata.svg)
 
-For loopped workflows, no addition is needed on the dependency side of things, as the workflow is merely called repeatedly. On the provenance side, a new node `renku:LoopParameters` is introduced that groups `renku:ParameterValue` entries by the loop they were used in.
+For looped workflows, no addition is needed on the dependency side of things, as the workflow is merely called repeatedly. On the provenance side, a new node `renku:LoopParameters` is introduced that groups `renku:ParameterValue` entries by the loop they were used in.
 
 ### Example Use-Cases
 
@@ -403,7 +434,7 @@ The following outputs were produced:
 Do a hyperparameter gridsearch
 
 ```Shell
-$ renku run --name train_model --description "train a model" --output stdout=tmp(stdout) --output accuracy="$stdout.epochs[-1:].test.accuracy" --output f1="$stdout.epochs[-1:].test.f1" -- python train.py train.csv test.csv --batch-size 32 --lr 0.9 --epochs 5 > stdout
+$ renku run --name train_model --description "train a model" --output output_file=tmp(out.txt) --map accuracy="{$stdout.epochs[-1:].test.accuracy}" --map f1="$stdout.epochs[-1:].test.f1" -- python train.py train.csv test.csv --batch-size 32 --lr 0.9 --epochs 5 > out.txt
 Workflow recorded and executed in 2.3s.
 Id: b5a9d99a-0870-48ab-8ede-d22bde502684
 Name: train_model
@@ -425,13 +456,13 @@ Inputs:
     lr (number): 0.9
     epochs (number): 5
 Outputs:
-    stdout (file): tmp(stdout)
+    output_file (file): tmp(out.txt)
     accuracy (number): 66.7
     f1 (number): 23.5
 $ echo "
 static:
   epochs: 200
-  stdout: result.{run_number}.json
+  output_file: result.{loop_index}.json
 variable:
 - lr:0.1
   batch-size: 32
@@ -472,6 +503,7 @@ Results:
 #### Train-Eval-Test
 
 Regular ml workflow with train-, eval- and testsets
+
 ```Shell
 $ renku run --name train_model --description "train a model" -- python run_model.py --mode train train.csv
 Workflow recorded and executed in 2.3s.
@@ -502,7 +534,7 @@ It's not clear if remapping an output like this if it's not part of the command 
 #### Recurring data import
 
 ```Shell
-$ renku run --name download-data --description "Downloads the daily data csv" --output datafile="data.*.csv" -- bash download.sh
+$ renku run --name download-data --description "Downloads the daily data csv" --output datafile="data.{%Y-%m-%d}.csv" -- bash download.sh
 Workflow recorded and executed in 2.3s.
 Id: b5a9d99a-0870-48ab-8ede-d22bde502684
 Name: download-data
@@ -531,11 +563,11 @@ The following outputs were produced:
 
 ## Rationale and Alternatives
 
-Since we want to use different workflow backends, it makes sense to have a common denominator language that can be mapped to those languages. And it makes sense to have this live in the Knowledge Graph, so it can easily be acessed and processed in our application. Having CLI commands to achieve this should help usability and support users that might not be familiar with workflow languages.
+Since we want to use different workflow backends, it makes sense to have a common denominator language that can be mapped to those languages. And it makes sense to have this live in the Knowledge Graph, so it can easily be accessed and processed in our application. Having CLI commands to achieve this should help usability and support users that might not be familiar with workflow languages.
 
-An alternative would be to pick an existing workflow language and just embed that in our graph. Users would then have to write workflows in that language and renku would just have support for tracking executions done in that language. We would still need to represent this in the KG or have e.g. the UI parse those workflow files to display them to users. We already tried this approach to some extent with how we used CWL in the past, but having to parse the files and not having the metadata stored in an easily accessible format was cumbersome.
+An alternative would be to pick an existing workflow language and just embed that in our graph. Users would then have to write workflows in that language and Renku would just have support for tracking executions done in that language. We would still need to represent this in the KG or have e.g. the UI parse those workflow files to display them to users. We already tried this approach to some extent with how we used CWL in the past, but having to parse the files and not having the metadata stored in an easily accessible format was cumbersome.
 
-Not doing this and leaving `renku run/rerun/update` as is would severly limit use-cases that have repeatedly been brought up users and also limits Renku's usefulness for tracking provenance, possibly discouraging users from using the feature alltogether.
+Not doing this and leaving `renku run/rerun/update` as is would severely limit use-cases that have repeatedly been brought up users and also limits Renku's usefulness for tracking provenance, possibly discouraging users from using the feature altogether.
 
 ## Unresolved questions
 
