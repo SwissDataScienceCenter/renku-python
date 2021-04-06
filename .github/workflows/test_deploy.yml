@@ -572,7 +572,7 @@ jobs:
     - name: Push chart and images
       uses: SwissDataScienceCenter/renku/actions/publish-chart@master
       env:
-        CHART_PATH: helm-chart/renku-core
+        CHART_NAME: renku-core
         GITHUB_TOKEN: ${{ secrets.RENKU_CI_TOKEN }}
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
