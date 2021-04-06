@@ -32,19 +32,41 @@ However, we should keep things as simple as possible. This to me means that:
 
 #### renku workflow edit
 
-A command to edit the metadata of an existing workflow, such as name and description like `renku workflow edit <uuid or name> --name <new name> -- description <new description> `. This should also allow naming the last executed workflow (in case a user forgot).
+A command to edit the metadata of an existing workflow, such as name and description like `renku workflow edit <name or uuid> --name <new name> -- description <new description> `. This should also allow naming the last executed workflow (in case a user forgot).
 
 In addition, it should allow naming inputs/output/parameters and changing default values.
 
 This would only edit the dependency graph side, the provenance side should not be editable (Or only support limited editing in the form of pruning the provenance graph).
 
+##### Detailed Parameter Description
+
+```
+renku workflow edit [<options>]  <name or uuid>
+
+<name or uuid>              The name of a workflow or its id
+
+--name                      New name of the workflow
+
+--description               New description of the workflow
+
+--set <parameter>=<value>   Set default <value> for a <parameter>/add new parameter
+
+--map <parameter>=<parameter or expression> Maps the value of a parameter to the value of another
+                                            parameter or an expression. Leaving the right hand
+                                            side empty removes the mapping
+
+--rename-param <parameter>="name"   Changes the name of a parameter
+
+--describe-param <parameter>="description"  Adds a description to a parameter
+```
+
 #### renku workflow group
 
-Allows grouping multiple steps into a virtual workflow. Syntax would be `renku workflow group mygroup step1...stepN`, `renku workflow group --from inputfile --to outputfile mygroup`, `renku workflow group --from-step <starting-step> --to-step <end-step> mygroup`.
+Allows grouping multiple steps into a virtual workflow. Syntax would be `renku workflow group mygroup step1...stepN`, `renku workflow group --from inputfile mygroup outputfile`.
 
 We have to ensure that all commands properly differentiate between a workflow steps and grouped workflows in naming things.
 
-Parameter mapping can be done like `renku workflow group  --map-input learning_rate=step1.lr,step3.learning_rate --map-output log_file=mystep.log_file,step2.log_file,step3.log_file --map-step step1.resultfile=step3.input2 -- mygroupedwf step1 step2 step3`
+Parameter mapping can be done like `renku workflow group  --map learning_rate=step1.lr,step3.learning_rate --map log_file=mystep.log_file --map log_file=step2.log_file,step3.log_file --map step1.resultfile=step3.input2 -- mygroupedwf step1 step2 step3`
 
 Additionally, `--map-all-inputs`, `--map-all-outputs` and `--auto-map-steps` flags would make sense, to expose all child inputs, outputs on the group, and to map inputs/outputs between steps automatically (creating a DAG).
 
@@ -53,6 +75,33 @@ To differentiate this from a `renku:Run`, it'could be a `renku:GroupedRun` node 
 Since grouped runs also have a name, they can be used instead of a single step in workflow commands. As such, groups can be nested arbitrarily.
 
 If a parameter is not specified when doing a `renku workflow execute`, the value that was originally used when running that step is used. In a case like `--map-input learning_rate=step1.lr,step3.learning_rate` this would mean if `learning_rate` is not set for the group when executing, the original values are used for step1 and step3, i.e. they could differ. More specific paths override more generic paths, so `--set learning_rate=0.3 --set step1.lr=0.1` would mean everything mapped to `learning_rate` gets the value of 0.3 except for `step1.lr`, which gets set to 0.1 . The order of the `--set` doesn't matter.
+
+##### Detailed Parameter Description
+
+```
+renku workflow group [<options>] <name> [steps...]      Create a new grouped workflow containing
+                                                        <steps>
+renku workflow group [<options>] <name> [paths...]      Create a new workflow creating <paths>
+
+--description               Description of the GroupedRun
+
+--set <parameter>=<value>   Set default <value> for a <parameter>/add new parameter
+
+--map <parameter>=<parameter or expression> Maps the value of a parameter to the value of another parameter or an expression
+
+--describe-param <parameter>="description"  Adds a description to a parameter
+
+--map-inputs                Exposes all child inputs as inputs on the GroupedRun
+
+--map-outputs               Exposes all child outputs as outputs on the GroupedRun
+
+--map-params                Exposes all child parameters as parameters on the GroupedRun
+
+--map-all                   Combination of --map-inputs, --map-outputs, --map-params
+
+--from                      File/Folder to start the DAG from. Only valid when specifying
+                            <paths>
+```
 
 #### renku workflow execute
 
@@ -69,6 +118,8 @@ Provider can be something like `cwl` or `snakemake` or `argo`. Config can be som
 This command should support adding new providers via plugins.
 
 Provider config can also be stored in renku.ini (similar to kube-context for k8s) or be a separate file. It contains configuration necessary for a provider (e.g. cluster ip for remote execution). input/output mapping should map filepaths/globs or parameters to inputs/outputs of steps (see next section).
+
+##### Detailed Parameter Description
 
 #### renku workflow loop
 
@@ -146,6 +197,32 @@ Keeps existing behavior. Needs to be changed to work with new proposed metadata.
 
 Keeps existing behavior. Status checks are based on Provenance graph information, not on template default values.
 
+### Input/Output/Argument Mappings
+
+Various new commands allow mapping values to parameters or parameters to other parameters. These mappings can be specified on the command line directly or by passing a file that specifies them.
+
+In case of passing a file, the structure of the yaml file looks like
+
+```
+parameters:
+    learning_rate: 0.9
+    dataset_input: dataset.csv
+    chart_output: mychart.png
+steps:
+    myworkflow:
+        parameters:
+            lr: 0.8
+            lookuptable: lookup.xml
+    steps:
+        myotherworkflow:
+            parameters:
+                language: en
+```
+
+At the top level, it specifies the parameter values of the workflow (run or grouped run) to be executed. It can also contain values for steps contained in a grouped run, by specifying the name of the step and setting parameters for that step. In case of the grouped run mapping its values to child steps, setting values for childsteps directly overwrites those values for the step and all its (potential) children.
+
+On the commandline, values can be specified with `--set learning_rate=0.9 --set myworkflow.lr=0.8`.
+
 ### Metadata Changes
 
 The green parts of the following graphs show additions to the metadata
@@ -164,7 +241,7 @@ On the dependency graph side, we remove the use of `prov:Entity` and instead add
 
 ![grouped run metadata](grouped-run-metadata.svg)
 
-A new type `renku:GroupedRun` is introduced to keep track of workflos composed of steps. Instead of `renku:CommandParameter` entries, this has `renku:ParameterMapping` entries that expose parameter of child steps on the grouped run.
+A new type `renku:GroupedRun` is introduced to keep track of workflos composed of steps. Instead of `renku:CommandParameter` entries, this has `renku:ParameterMapping` entries that expose parameter of child steps on the grouped run. A `renku:ParameterMapping` can point to multiple mapped parameters, but can only be pointed to by one `renku:GroupedRun`.
 
 #### looped runs
 
@@ -174,25 +251,183 @@ For loopped workflows, no addition is needed on the dependency side of things, a
 
 ### Example Use-Cases
 
+#### Remote Execution
+
+Execute a workflow on a large dataset on an HPC cluster
+
+```Shell
+$ renku run --name SlowDatasetAnalysis --description "very slow analysis on a huge dataset" -- python analysis.py --dataset small_dataset.csv --batch-size 32 --output results.csv
+Workflow recorded and executed in 0.2s.
+Id: b5a9d99a-0870-48ab-8ede-d22bde502684
+Name: SlowDatasetAnalysis
+The following outputs were produced:
+    output (file): results.csv
+$ renku workflow show SlowDatasetAnalysis
+Id: b5a9d99a-0870-48ab-8ede-d22bde502684
+Name: SlowDatasetAnalysis
+Description: very slow analysis on a huge dataset
+Command: python
+Inputs:
+    input_file1(file): analysis.py
+    dataset (file): small_dataset.csv
+    batch-size (number): 32
+Outputs:
+    output (file): results.csv
+
+$ renku workflow execute SlowDatasetAnalysis --provider slurm --config slurm-cluster.config --set dataset=large_dataset.csv --set output=final_results.csv --set batch-size=128
+Connecting to cluster...
+Preparing environment....
+Executing workflow...
+Gathering results...
+Finished in 51m32s
+The following outputs were produced:
+    output (file): final_results.csv
+
+```
+
+#### Grid Search
+
+Do a hyperparameter gridsearch
+
+```Shell
+$ renku run --name train_model --description "train a model" --output stdout=tmp(stdout) --output accuracy="$stdout.epochs[-1:].test.accuracy" --output f1="$stdout.epochs[-1:].test.f1" -- python train.py train.csv test.csv --batch-size 32 --lr 0.9 --epochs 5 > stdout
+Workflow recorded and executed in 2.3s.
+Id: b5a9d99a-0870-48ab-8ede-d22bde502684
+Name: train_model
+The following outputs were produced:
+    stdout (file): tmp(stdout)
+    accuracy (number): 66.7
+    f1 (number): 23.5
+OK
+$ renku workflow show train_model
+Id: b5a9d99a-0870-48ab-8ede-d22bde502684
+Name: train_model
+Description: train a model
+Command: python
+Inputs:
+    input_file1(file): train.py
+    input_file2 (file): train.csv
+    input_file3 (file): test.csv
+    batch-size (number): 32
+    lr (number): 0.9
+    epochs (number): 5
+Outputs:
+    stdout (file): tmp(stdout)
+    accuracy (number): 66.7
+    f1 (number): 23.5
+$ echo "
+static:
+  epochs: 200
+  stdout: result.{run_number}.json
+variable:
+- lr:0.1
+  batch-size: 32
+- lr:0.2
+  batch-size: 64
+- lr:0.5
+  batch-size: 128
+- lr:1.0
+  batch-size: 1024
+" > mapping.yaml
+$ renku workflow loop --provider cwl --mapping mapping.yaml train_model
+Preparing environment....
+Executing workflows
+Run 1...
+Run 2...
+Run 3...
+Run 4...
+Finished in 21m11s
+Results:
+    Run 1:
+        stdout (file): result.1.json
+        accuracy (number): 34.4
+        f1 (number): 9.4
+    Run 2:
+        stdout (file): result.2.json
+        accuracy (number): 96.2
+        f1 (number): 77.0
+    Run 3:
+        stdout (file): result.3.json
+        accuracy (number): 10.1
+        f1 (number): 2.3
+    Run 4:
+        stdout (file): result.4.json
+        accuracy (number): 91.2
+        f1 (number): 81.3
+```
+
+#### Train-Eval-Test
+
+Regular ml workflow with train-, eval- and testsets
+```Shell
+$ renku run --name train_model --description "train a model" -- python run_model.py --mode train train.csv
+Workflow recorded and executed in 2.3s.
+Id: b5a9d99a-0870-48ab-8ede-d22bde502684
+Name: train_model
+The following outputs were produced:
+    output_file1 (file): results.txt
+$ renku workflow show train_model
+Id: b5a9d99a-0870-48ab-8ede-d22bde502684
+Name: train_model
+Description: train a model
+Command: python
+Inputs:
+    input_file1(file): run_model.py
+    input_file2 (file): train.csv
+    mode (string): train
+    epochs (number): 5
+Outputs:
+    output_file1 (file): results.txt
+$ renku workflow edit train_model --rename-param dataset=input_file2 --rename-param result=output_file1
+$ renku workflow execute train_model --set mode=test --set dataset=test.csv --set result=test.txt
+[...]
+$ renku workflow execute train_model --set mode=test --set dataset=eval.csv --set result=eval.txt
+[...]
+```
+It's not clear if remapping an output like this if it's not part of the command is something we can/should do. It would mean that the output is still under `results.txt` and we have to move it to e.g. `test.txt`, since `results.txt` would be hardcoded in the script in this case.
+
+#### Recurring data import
+
+```Shell
+$ renku run --name download-data --description "Downloads the daily data csv" --output datafile="data.*.csv" -- bash download.sh
+Workflow recorded and executed in 2.3s.
+Id: b5a9d99a-0870-48ab-8ede-d22bde502684
+Name: download-data
+The following outputs were produced:
+    datafile (file): data.*.csv
+        Matching:
+            data.2021-02-23.csv
+[... one day later...]
+$ renku workflow execute download-data
+Preparing environment....
+Executing workflow...
+Gathering results...
+Finished in 1.4s
+The following outputs were produced:
+    datafile (file): data.*.csv
+        Matching:
+            data.2021-02-23.csv
+            data.2021-02-24.csv
+```
+
 ## Drawbacks
 
-> Why should we *not* do this? Please consider the impact on users,
-on the integration of this change with other existing and planned features etc.
-
-> There are tradeoffs to choosing any path, please attempt to identify them here.
+- Makes workflows more complicated and more difficult to reason about.
+- Makes graph queries more complex.
+- Duplicates functionality that's already available in workflow languages
 
 ## Rationale and Alternatives
 
-> Why is this design the best in the space of possible designs?
+Since we want to use different workflow backends, it makes sense to have a common denominator language that can be mapped to those languages. And it makes sense to have this live in the Knowledge Graph, so it can easily be acessed and processed in our application. Having CLI commands to achieve this should help usability and support users that might not be familiar with workflow languages.
 
-> What other designs have been considered and what is the rationale for not choosing them?
+An alternative would be to pick an existing workflow language and just embed that in our graph. Users would then have to write workflows in that language and renku would just have support for tracking executions done in that language. We would still need to represent this in the KG or have e.g. the UI parse those workflow files to display them to users. We already tried this approach to some extent with how we used CWL in the past, but having to parse the files and not having the metadata stored in an easily accessible format was cumbersome.
 
-> What is the impact of not doing this?
+Not doing this and leaving `renku run/rerun/update` as is would severly limit use-cases that have repeatedly been brought up users and also limits Renku's usefulness for tracking provenance, possibly discouraging users from using the feature alltogether.
 
 ## Unresolved questions
 
-> What parts of the design do you expect to resolve through the RFC process before this gets merged?
+This RFC should specify commands and metadata needed for workflow support in Renku.
 
-> What parts of the design do you expect to resolve through the implementation of this feature before stabilisation?
+Minor changes to the metadata and commands can come up during the implementation phase, but the RFC should be complete enough that this isn't necessary.
 
-> What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?
+This RFC does not deal with asynchronous execution nor does it deal with importing workflows from other projects. Both of these should be done in follow-up RFCs.
