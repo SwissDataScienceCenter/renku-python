@@ -42,6 +42,7 @@ from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.utils.migrate import MigrationType
+from renku.core.utils.scm import git_unicode_unescape
 
 from .git import GitCore
 
@@ -120,14 +121,18 @@ class RepositoryApiMixin(GitCore):
     TEMPLATE_CHECKSUMS = "template_checksums.json"
 
     RENKU_PROTECTED_PATHS = [
-        "\\.renku/.*",
+        ".dockerignore",
+        ".git",
+        ".git/*",
+        ".gitattributes",
+        ".gitignore",
+        ".gitlab-ci.yml",
+        ".renku",
+        ".renku/*",
+        ".renkulfsignore",
         "Dockerfile",
-        "\\.dockerignore",
-        "\\.gitignore",
-        "\\.gitattributes",
-        "\\.gitlab-ci\\.yml",
-        "environment\\.yml",
-        "requirements\\.txt",
+        "environment.yml",
+        "requirements.txt",
     ]
 
     _commit_activity_cache = attr.ib(factory=dict)
@@ -319,7 +324,8 @@ class RepositoryApiMixin(GitCore):
 
         if not path:
             # search for activities a file could have been a part of
-            activities = self.activities_for_paths(commit.stats.files.keys(), file_commit=commit, revision="HEAD")
+            paths = [git_unicode_unescape(p) for p in commit.stats.files.keys()]
+            activities = self.activities_for_paths(paths, file_commit=commit, revision="HEAD")
             if len(activities) > 1:
                 raise errors.CommitProcessingError(
                     "Found multiple activities that produced the same entity at commit {}".format(commit)

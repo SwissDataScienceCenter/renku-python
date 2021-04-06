@@ -16,23 +16,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku common fixtures."""
+
+import os
 import shutil
 from pathlib import Path
 
 import pytest
 
 
+@pytest.fixture
+def directory_tree_files():
+    """List of files for ``directory_tree`` fixture."""
+    return ["file1", os.path.join("dir1", "file2"), os.path.join("dir1", "file3")]
+
+
 @pytest.fixture()
-def directory_tree(tmp_path):
+def directory_tree(tmp_path, directory_tree_files):
     """Create a test directory tree."""
     # initialize
-    p = tmp_path / "directory_tree"
-    p.mkdir()
-    p.joinpath("file1").write_text("123")
-    p.joinpath("dir1").mkdir()
-    p.joinpath("dir1/file2").write_text("456")
-    p.joinpath("dir1/file3").write_text("789")
-    return p
+    base = tmp_path / "directory_tree"
+    for path in directory_tree_files:
+        path = base / path
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        if str(path).endswith("file1"):
+            path.write_text("123")
+        elif str(path).endswith("file2"):
+            path.write_text("456")
+        elif str(path).endswith("file3"):
+            path.write_text("789")
+
+    return base
 
 
 @pytest.fixture

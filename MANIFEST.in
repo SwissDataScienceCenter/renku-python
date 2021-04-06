@@ -46,6 +46,7 @@ include renku/data/defaults.ini
 include snap/snapcraft.yaml
 prune .env
 prune .github
+prune design
 recursive-include helm-chart .helmignore *.yaml *.lock *.tpl *.rst *.tgz *.json
 recursive-include .github CODEOWNERS
 recursive-include .travis *.sh
