@@ -97,7 +97,7 @@ tests_require = [
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
     "isort>=5.3.2,<5.8.0",
-    "pydocstyle>=3.0.0,<5.1.2",
+    "pydocstyle>=3.0.0,<6.0.1",
     "pytest-black>=0.3.10,<0.3.13",
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<2.12.0",
@@ -107,7 +107,7 @@ tests_require = [
     "pytest-timeout==1.4.2",
     "pytest-xdist>=1.34.0,<2.3.0",
     "pytest>=4.0.0,<6.2.3",
-    "responses>=0.7.0,<0.12.2",
+    "responses>=0.7.0,<0.13.3",
 ]
 
 
@@ -130,14 +130,14 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<3.5.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<3.5.4", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
     "service": service_requires,
 }
 
-setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<5.0.3", "wheel"]
+setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<6.0.2", "wheel"]
 
 
 extras_require["all"] = list(setup_requires)
@@ -185,7 +185,7 @@ install_requires = [
     "rdflib>=5.0.0,<5.1",
     "requests>=2.23.0,<=2.24.0",
     "rich>=9.3.0,<9.13.0",
-    "setuptools_scm>=3.1.0,<5.0.3",
+    "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<=4.48.2",
     "wcmatch>=6.0.0,<8.2",
