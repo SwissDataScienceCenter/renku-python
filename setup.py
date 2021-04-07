@@ -107,7 +107,7 @@ tests_require = [
     "pytest-timeout==1.4.2",
     "pytest-xdist>=1.34.0,<2.3.0",
     "pytest>=4.0.0,<6.2.3",
-    "responses>=0.7.0,<0.12.2",
+    "responses>=0.7.0,<0.13.3",
 ]
 
 
