@@ -53,29 +53,51 @@ def clone(
         os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
 
     try:
-        repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress)
+        kwargs = {}
+
+        if checkout_rev:
+            kwargs["branch"] = checkout_rev
+
+        repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress, **kwargs)
     except GitCommandError as e:
-        if not raise_git_except:
-            lines = progress.other_lines + progress.error_lines if progress else []
-            error = "".join([f"\n\t{line}" for line in lines if line.strip()])
-            message = f"Cannot clone remote Renku project: Git exited with code {e.status} and error message:\n {error}"
-            raise errors.GitError(message)
+        # NOTE: clone without rev in case it was not a branch
+        if not checkout_rev:
+            if not raise_git_except:
+                lines = progress.other_lines + progress.error_lines if progress else []
+                error = "".join([f"\n\t{line}" for line in lines if line.strip()])
+                message = (
+                    f"Cannot clone remote Renku project: Git exited with code {e.status} and error message:\n {error}"
+                )
+                raise errors.GitError(message)
 
-        raise e
+            raise e
+        try:
+            repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress)
+        except GitCommandError as e:
+            if not raise_git_except:
+                lines = progress.other_lines + progress.error_lines if progress else []
+                error = "".join([f"\n\t{line}" for line in lines if line.strip()])
+                message = (
+                    f"Cannot clone remote Renku project: Git exited with code {e.status} and error message:\n {error}"
+                )
+                raise errors.GitError(message)
 
-    remote_refs = [Path(ref.abspath).name for ref in repo.remote().refs]
+            raise e
+
+        try:
+            repo.git.checkout(checkout_rev)
+        except GitCommandError as e:
+            msg = str(e)
+            if "is not a commit and a branch" in msg and "cannot be created from it" in msg:
+                return repo, False  # NOTE: Project has no commits to check out
+
+            raise
 
     try:
-        if checkout_rev in remote_refs:
-            repo.git.checkout(checkout_rev)
-        elif checkout_rev:
-            repo.git.checkout(checkout_rev, b=checkout_rev)
-    except GitCommandError as e:
-        msg = str(e)
-        if "is not a commit and a branch" in msg and "cannot be created from it" in msg:
-            return repo, False  # NOTE: Project has no commits to check out
-
-        raise
+        repo.head.commit
+    except ValueError:
+        # NOTE: git repo has no head commit
+        return repo, False
 
     if config:
         config_writer = repo.config_writer()
