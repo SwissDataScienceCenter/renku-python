@@ -118,7 +118,7 @@ service_requires = [
     "flask-swagger-ui==3.36.0",
     "flask==1.1.2",
     "gunicorn",
-    "marshmallow==3.10.0",
+    "marshmallow==3.11.1",
     "ptvsd>=4.3.0,<4.4.0",
     "python-dotenv==0.15.0",
     "redis==3.5.3",
