@@ -154,9 +154,9 @@ class StorageApiMixin(RepositoryApiMixin):
         except (KeyboardInterrupt, OSError) as e:
             raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
 
-    def init_repository(self, force=False, user=None):
+    def init_repository(self, force=False, user=None, initial_branch=None):
         """Initialize a local Renku repository."""
-        result = super().init_repository(force=force, user=user)
+        result = super().init_repository(force=force, user=user, initial_branch=initial_branch)
 
         # initialize LFS if it is requested and installed
         if self.external_storage_requested and self.storage_installed:

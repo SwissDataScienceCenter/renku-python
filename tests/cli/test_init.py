@@ -148,6 +148,24 @@ def test_init(isolated_runner, project_init):
     assert "Use either --template-id or --template-index, not both" in result.output
 
 
+def test_init_initial_branch(isolated_runner, project_init):
+    """Test project initialization from template."""
+    data, commands = project_init
+
+    # create the project
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["initial_branch_main"], commands["confirm"]
+    )
+    assert 0 == result.exit_code
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert git.Repo(str(new_project)).active_branch.name == data["main_branch"]
+
+
 @pytest.mark.parametrize(
     "remote",
     [

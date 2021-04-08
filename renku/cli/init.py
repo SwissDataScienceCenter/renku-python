@@ -273,6 +273,7 @@ def check_git_user_config():
 @click.option("-l", "--list-templates", is_flag=True, help="List templates available in the template-source.")
 @click.option("-d", "--describe", is_flag=True, help="Show description for templates and parameters")
 @click.option("--force", is_flag=True, help="Override target path.")
+@click.option("--initial-branch", help="Initial git branch to create.")
 @option_external_storage_requested
 @click.pass_context
 def init(
@@ -289,6 +290,7 @@ def init(
     force,
     describe,
     data_dir,
+    initial_branch,
 ):
     """Initialize a project in PATH. Default is the current path."""
     data_dir = resolve_data_directory(data_dir, path)
@@ -316,6 +318,7 @@ def init(
         force=force,
         describe=describe,
         data_dir=data_dir,
+        initial_branch=initial_branch,
     )
 
     if list_templates:

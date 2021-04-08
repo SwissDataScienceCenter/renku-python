@@ -543,15 +543,20 @@ class RepositoryApiMixin(GitCore):
         except FileNotFoundError:
             pass
 
-    def init_repository(self, force=False, user=None):
+    def init_repository(self, force=False, user=None, initial_branch=None):
         """Initialize an empty Renku repository."""
         from git import Repo
 
         from renku.core.models.provenance.agents import Person
 
         # initialize repo and set user data
+        kwargs = {}
+
+        if initial_branch:
+            kwargs["initial-branch"] = initial_branch
+
         path = self.path.absolute()
-        self.repo = Repo.init(str(path))
+        self.repo = Repo.init(str(path), **kwargs)
         if user:
             config_writer = self.repo.config_writer()
             for key, value in user.items():

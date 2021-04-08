@@ -50,6 +50,7 @@ def project_init(template):
     data = {
         "test_project": "test-new-project",
         "test_project_alt": "test-new-project-2",
+        "main_branch": "main",
     }
 
     commands = {
@@ -64,6 +65,7 @@ def project_init(template):
         "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
         "parameters_equal_missing": ["--parameter", "p3:v3"],
         "parameters_equal_early": ["--parameter", "=p4v3"],
+        "initial_branch_main": ["--initial-branch", "main"],
         "confirm": len(set(template["metadata"].keys())) * "\n",
     }
 

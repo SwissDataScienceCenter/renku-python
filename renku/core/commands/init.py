@@ -237,6 +237,7 @@ def _init(
     force,
     describe,
     data_dir,
+    initial_branch,
 ):
     """Initialize a renku project."""
     template_manifest, template_folder, template_source, template_version = fetch_template(
@@ -265,7 +266,7 @@ def _init(
     )
 
     communication.echo("Initializing Git repository...")
-    client.init_repository(force, None)
+    client.init_repository(force, None, initial_branch=initial_branch)
 
     # supply additional metadata
     metadata["__template_source__"] = template_source
@@ -515,6 +516,7 @@ def _create_from_template_local(
     source=None,
     ref=None,
     invoked_from=None,
+    initial_branch=None,
 ):
     """Initialize a new project from a template.
 
@@ -527,7 +529,7 @@ def _create_from_template_local(
 
     metadata = {**default_metadata, **metadata}
 
-    client.init_repository(False, None)
+    client.init_repository(False, None, initial_branch=initial_branch)
 
     create_from_template(
         template_path=template_path,
