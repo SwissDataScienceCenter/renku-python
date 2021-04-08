@@ -137,7 +137,7 @@ extras_require = {
     "service": service_requires,
 }
 
-setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<5.0.3", "wheel"]
+setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<6.0.2", "wheel"]
 
 
 extras_require["all"] = list(setup_requires)
@@ -185,7 +185,7 @@ install_requires = [
     "rdflib>=5.0.0,<5.1",
     "requests>=2.23.0,<=2.24.0",
     "rich>=9.3.0,<9.13.0",
-    "setuptools_scm>=3.1.0,<5.0.3",
+    "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<=4.48.2",
     "wcmatch>=6.0.0,<8.2",
