@@ -120,7 +120,7 @@ service_requires = [
     "gunicorn",
     "marshmallow==3.11.1",
     "ptvsd>=4.3.0,<4.4.0",
-    "python-dotenv==0.15.0",
+    "python-dotenv==0.17.0",
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
     "rq==1.7.0",
