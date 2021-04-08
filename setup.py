@@ -112,15 +112,15 @@ tests_require = [
 
 
 service_requires = [
-    "apispec>=4.0.0,<4.4.0",
+    "apispec>=4.0.0,<4.5.0",
     "circus==0.17.1",
     "flask-apispec==0.11.0",
     "flask-swagger-ui==3.36.0",
     "flask==1.1.2",
     "gunicorn",
-    "marshmallow==3.10.0",
+    "marshmallow==3.11.1",
     "ptvsd>=4.3.0,<4.4.0",
-    "python-dotenv==0.15.0",
+    "python-dotenv==0.17.0",
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
     "rq==1.7.0",
@@ -165,7 +165,7 @@ install_requires = [
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
-    "humanize>=2.5.0,<3.3.0",
+    "humanize>=2.5.0,<3.4.0",
     "jinja2>=2.10.3,<=2.11.4",
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.7.0,<=0.8.0",
