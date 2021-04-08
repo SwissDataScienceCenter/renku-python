@@ -112,7 +112,7 @@ tests_require = [
 
 
 service_requires = [
-    "apispec>=4.0.0,<4.4.0",
+    "apispec>=4.0.0,<4.5.0",
     "circus==0.17.1",
     "flask-apispec==0.11.0",
     "flask-swagger-ui==3.36.0",
