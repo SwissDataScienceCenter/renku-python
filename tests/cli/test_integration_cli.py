@@ -93,7 +93,7 @@ def test_renku_clone_checkout_rev(tmp_path, url):
             )
         ).output
 
-        assert "97f907e1a3f992d4acdc97a35df73b8affc917a6" == str(repo.active_branch)
+        assert "97f907e1a3f992d4acdc97a35df73b8affc917a6" == str(repo.head.commit)
         reader = repo.config_reader()
         reader.values()
 
@@ -103,8 +103,8 @@ def test_renku_clone_checkout_rev(tmp_path, url):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-@pytest.mark.parametrize("rev", ["test-branch", "my-tag",])
-def test_renku_clone_checkout_revs(tmp_path, rev):
+@pytest.mark.parametrize("rev,detached", [("test-branch", False), ("my-tag", True),])
+def test_renku_clone_checkout_revs(tmp_path, rev, detached):
     """Test cloning of a Renku repo checking out a rev."""
     with chdir(tmp_path):
         repo, _ = (
@@ -113,7 +113,11 @@ def test_renku_clone_checkout_revs(tmp_path, rev):
             .execute("https://dev.renku.ch/gitlab/contact/no-renku.git", checkout_rev=rev,)
         ).output
 
-        assert rev == repo.active_branch.name
+        if detached:
+            # NOTE: cloning a tag sets head to the commit of the tag, get tag that the head commit points to
+            assert rev == repo.git.describe("--tags", repo.head.commit)
+        else:
+            assert rev == repo.head.ref.name
 
 
 @pytest.mark.integration

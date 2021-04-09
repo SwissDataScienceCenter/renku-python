@@ -103,7 +103,7 @@ class ProjectCloneRequest(Schema):
 
     git_url = fields.String(required=True)
     depth = fields.Integer(missing=PROJECT_CLONE_DEPTH_DEFAULT)
-    ref = fields.String(missing="master")
+    ref = fields.String(missing=None)
 
 
 class ProjectCloneContext(ProjectCloneRequest):
