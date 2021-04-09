@@ -27,6 +27,17 @@ from renku.core.management.githooks import install
 from renku.core.models.git import GitURL
 
 
+def _handle_git_exception(e, raise_git_except, progress):
+    """Handle git exceptions."""
+    if not raise_git_except:
+        lines = progress.other_lines + progress.error_lines if progress else []
+        error = "".join([f"\n\t{line}" for line in lines if line.strip()])
+        message = f"Cannot clone remote Renku project: Git exited with code {e.status} and error message:\n {error}"
+        raise errors.GitError(message)
+
+    raise e
+
+
 def clone(
     url,
     path=None,
@@ -53,38 +64,20 @@ def clone(
         os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
 
     try:
-        kwargs = {}
-
-        if checkout_rev:
-            kwargs["branch"] = checkout_rev
-
-        repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress, **kwargs)
+        # NOTE: Try to clone, assuming checkout_rev is a branch (if it is set)
+        repo = Repo.clone_from(url, path, branch=checkout_rev, recursive=recursive, depth=depth, progress=progress)
     except GitCommandError as e:
-        # NOTE: clone without rev in case it was not a branch
+        # NOTE: clone without branch set, in case checkout_rev was not a branch but a tag or commit
         if not checkout_rev:
-            if not raise_git_except:
-                lines = progress.other_lines + progress.error_lines if progress else []
-                error = "".join([f"\n\t{line}" for line in lines if line.strip()])
-                message = (
-                    f"Cannot clone remote Renku project: Git exited with code {e.status} and error message:\n {error}"
-                )
-                raise errors.GitError(message)
+            _handle_git_exception(e, raise_git_except, progress)
 
-            raise e
         try:
             repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress)
         except GitCommandError as e:
-            if not raise_git_except:
-                lines = progress.other_lines + progress.error_lines if progress else []
-                error = "".join([f"\n\t{line}" for line in lines if line.strip()])
-                message = (
-                    f"Cannot clone remote Renku project: Git exited with code {e.status} and error message:\n {error}"
-                )
-                raise errors.GitError(message)
-
-            raise e
+            _handle_git_exception(e, raise_git_except, progress)
 
         try:
+            # NOTE: Now that we cloned successfully, try to checkout the checkout_rev
             repo.git.checkout(checkout_rev)
         except GitCommandError as e:
             msg = str(e)
@@ -96,7 +89,7 @@ def clone(
     try:
         repo.head.commit
     except ValueError:
-        # NOTE: git repo has no head commit
+        # NOTE: git repo has no head commit, which means it is empty/not a renku project
         return repo, False
 
     if config:
