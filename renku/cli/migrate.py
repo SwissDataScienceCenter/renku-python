@@ -79,8 +79,8 @@ def migrate(check, no_commit, skip_template_update, skip_docker_update):
     if check:
         return
 
-    skip_docker_update = skip_docker_update or not template_update_possible
-    skip_template_update = skip_template_update or not docker_update_possible
+    skip_docker_update = skip_docker_update or not docker_update_possible
+    skip_template_update = skip_template_update or not template_update_possible
 
     communicator = ClickCallback()
 
