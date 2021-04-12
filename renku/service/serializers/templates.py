@@ -33,7 +33,7 @@ class ManifestTemplatesRequest(ProjectCloneContext):
     """Request schema for listing manifest templates."""
 
     url = fields.String(required=True)
-    ref = fields.String(missing="master")
+    ref = fields.String(missing=None)
     depth = fields.Integer(missing=TEMPLATE_CLONE_DEPTH_DEFAULT)
 
     @pre_load()
