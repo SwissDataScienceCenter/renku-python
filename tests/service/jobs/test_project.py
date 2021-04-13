@@ -16,8 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project related job tests."""
-import uuid
-
 import pytest
 from flaky import flaky
 
@@ -25,12 +23,14 @@ from flaky import flaky
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_migration_job(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_migration_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset failure."""
     from renku.service.serializers.cache import ProjectMigrateRequest
 
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
+
     context = ProjectMigrateRequest().load(
-        {"git_url": it_remote_repo_url, "migrate_project": True, "ref": uuid.uuid4().hex, "skip_docker_update": True}
+        {"git_url": it_remote_repo_url, "migrate_project": True, "ref": branch, "skip_docker_update": True}
     )
 
     _, _, cache = svc_client_cache

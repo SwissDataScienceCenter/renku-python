@@ -304,10 +304,11 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url, view_user_data
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Add a file to a new dataset on a remote repository."""
     from renku.service.serializers.datasets import DatasetAddRequest
 
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
     _, _, cache = svc_client_cache
 
     view_user_data["user_id"] = uuid.uuid4().hex
@@ -322,7 +323,7 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url, view_u
     context = DatasetAddRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": uuid.uuid4().hex,
+            "ref": branch,
             "name": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -377,14 +378,16 @@ def test_dataset_project_lock(doi, svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a new dataset successfully."""
     from renku.service.serializers.datasets import DatasetCreateRequest
+
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetCreateRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": uuid.uuid4().hex,
+            "ref": branch,
             "name": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -412,14 +415,16 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url, view_use
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a new dataset successfully."""
     from renku.service.serializers.datasets import DatasetCreateRequest
+
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetCreateRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": uuid.uuid4().hex,
+            "ref": branch,
             "name": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -445,17 +450,18 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url, view
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a dataset was removed successfully."""
     from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
     from renku.service.serializers.datasets import DatasetRemoveRequest
 
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
     _, _, cache = svc_client_cache
     user = cache.ensure_user(view_user_data)
 
     request_payload = {
         "git_url": it_remote_repo_url,
-        "ref": uuid.uuid4().hex,
+        "ref": branch,
         "name": "mydata",
         "migrate_project": True,
     }
@@ -477,14 +483,14 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url, view_use
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a dataset was removed successfully."""
     from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
     from renku.service.serializers.datasets import DatasetRemoveRequest
 
+    it_remote_repo_url, ref = it_remote_repo_url_temp_branch
     _, _, cache = svc_client_cache
     user = cache.ensure_user(view_user_data)
-    ref = uuid.uuid4().hex
     dataset_name = uuid.uuid4().hex
 
     request_payload = {
@@ -508,14 +514,16 @@ def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url, 
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Edit a dataset successfully."""
     from renku.service.serializers.datasets import DatasetEditRequest
+
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetEditRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": uuid.uuid4().hex,
+            "ref": branch,
             "name": "mydata",
             "title": f"new title => {uuid.uuid4().hex}",
             # NOTE: We test with this only to check that recursive invocation is being prevented.
@@ -544,15 +552,17 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url, view_user_
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
-def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url, view_user_data):
+@flaky(max_runs=1, min_passes=1)
+def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Edit a dataset with a failure."""
     from renku.service.serializers.datasets import DatasetEditRequest
+
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetEditRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": uuid.uuid4().hex,
+            "ref": branch,
             "name": "mydata",
             "title": f"new title => {uuid.uuid4().hex}",
             "migrate_project": False,
@@ -577,14 +587,16 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url, vi
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset successfully."""
     from renku.service.serializers.datasets import DatasetUnlinkRequest
+
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetUnlinkRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": uuid.uuid4().hex,
+            "ref": branch,
             "name": "ds1",
             "include_filters": ["data1"],
             # NOTE: We test with this only to check that recursive invocation is being prevented.
@@ -614,12 +626,14 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url, view_use
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset failure."""
     from renku.service.serializers.datasets import DatasetUnlinkRequest
 
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
+
     context = DatasetUnlinkRequest().load(
-        {"git_url": it_remote_repo_url, "ref": uuid.uuid4().hex, "name": "ds1", "include_filters": ["data1"],}
+        {"git_url": it_remote_repo_url, "ref": branch, "name": "ds1", "include_filters": ["data1"],}
     )
 
     _, _, cache = svc_client_cache
@@ -640,14 +654,16 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url, 
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset successfully."""
     from renku.service.serializers.datasets import DatasetUnlinkRequest
+
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetUnlinkRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": uuid.uuid4().hex,
+            "ref": branch,
             "name": "ds1",
             "include_filters": ["data1"],
             "migrate_project": True,

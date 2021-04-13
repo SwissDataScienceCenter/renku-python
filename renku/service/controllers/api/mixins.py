@@ -181,7 +181,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
         if origin and not self.migrate_project:
             origin.fetch()
-            repo.git.reset("--hard", origin)
+            repo.git.reset("--hard", f"{origin}/{repo.active_branch.name}")
 
         elif origin and self.migrate_project:
             try:
