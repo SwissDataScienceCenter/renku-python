@@ -267,9 +267,11 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
-def test_delay_add_file_job(svc_client_cache, it_remote_repo_url, view_user_data):
+def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Add a file to a new dataset on a remote repository."""
     from renku.service.serializers.datasets import DatasetAddRequest
+
+    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     _, _, cache = svc_client_cache
     user = cache.ensure_user(view_user_data)
@@ -279,7 +281,7 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url, view_user_data
     context = DatasetAddRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": uuid.uuid4().hex,
+            "ref": branch,
             "name": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -552,7 +554,7 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Edit a dataset with a failure."""
     from renku.service.serializers.datasets import DatasetEditRequest

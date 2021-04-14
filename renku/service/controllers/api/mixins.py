@@ -142,7 +142,6 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 project = Project.get(
                     (Project.user_id == self.user_data["user_id"]) & (Project.git_url == self.context["git_url"])
                 )
-                self.reset_local_repo(project)
             except ValueError:
                 from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
 
@@ -163,6 +162,38 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
                 if not project.initialized:
                     raise UninitializedProject(project.abs_path)
+            else:
+                ref = self.request_data.get("ref", None)
+
+                if ref:
+                    repo = Repo(project.abs_path)
+                    if ref != repo.active_branch.name:
+                        # NOTE: Command called for different branch than the one used in cache, change branch
+                        if not repo.remotes or len(repo.remotes) != 1:
+                            raise RenkuException("Couldn't find remote for project in cache.")
+                        origin = repo.remotes[0]
+                        remote_branch = f"{origin}/{ref}"
+
+                        # NOTE: Add new ref to remote branches
+                        repo.git.remote("set-branches", "--add", origin, ref)
+                        if self.migrate_project:
+                            repo.git.fetch(origin, ref)
+                        else:
+                            repo.git.fetch("--depth=1", origin, ref)
+
+                        # NOTE: Switch to new ref
+                        repo.git.checkout("--track", "-f", "-b", ref, remote_branch)
+
+                        # NOTE: cleanup remote branches in case a remote was deleted (fetch fails otherwise)
+                        repo.git.remote("prune", origin)
+
+                        for branch in repo.refs:
+                            if branch.tracking_branch() and not branch.tracking_branch().is_valid():
+                                repo.git.branch("-D", branch)
+                                # NOTE: Remove left-over refspec
+                                repo.git.config("--unset", f"remote.{origin}.fetch", f"origin.{branch}$")
+                else:
+                    self.reset_local_repo(project)
 
             self.context["project_id"] = project.project_id
             return self.local()
@@ -174,24 +205,25 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         """Reset the local repo to be up to date with the remote."""
         repo = Repo(project.abs_path)
         origin = None
-        if repo.active_branch.tracking_branch():
-            origin = repo.remotes[repo.active_branch.tracking_branch().remote_name]
+        tracking_branch = repo.active_branch.tracking_branch()
+        if tracking_branch:
+            origin = repo.remotes[tracking_branch.remote_name]
         elif repo.remotes and len(repo.remotes) == 1:
             origin = repo.remotes[0]
 
         if origin and not self.migrate_project:
-            origin.fetch()
+            origin.fetch(repo.active_branch)
             repo.git.reset("--hard", f"{origin}/{repo.active_branch.name}")
 
         elif origin and self.migrate_project:
             try:
                 # NOTE: It could happen that repository is already un-shallowed,
                 # in this case we don't want to leak git exception, but still want to fetch.
-                origin.fetch("--unshallow")
+                origin.fetch(repo.active_branch, unshallow=True)
             except GitCommandError:
-                origin.fetch()
+                origin.fetch(repo.active_branch)
 
-            repo.git.reset("--hard", origin)
+            repo.git.reset("--hard", f"{origin}/{repo.active_branch}")
 
     @local_identity
     def local(self):

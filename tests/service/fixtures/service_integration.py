@@ -184,7 +184,7 @@ def svc_protected_old_repo(svc_synced_client, it_protected_repo_url):
 
     payload = {
         "git_url": it_protected_repo_url,
-        "depth": 0,
+        "depth": 1,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)

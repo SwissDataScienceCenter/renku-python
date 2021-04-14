@@ -59,7 +59,7 @@ def it_remote_repo_url():
     return IT_REMOTE_REPO_URL
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def it_remote_repo_url_temp_branch(it_remote_repo_url):
     """Returns a remote path to integration test repository."""
 
@@ -74,10 +74,12 @@ def it_remote_repo_url_temp_branch(it_remote_repo_url):
         branch_name = uuid.uuid4().hex
         branch = repo.create_head(branch_name)
         repo.git.push("--set-upstream", origin, branch)
-
-        yield it_remote_repo_url, branch_name
-
-        repo.git.push("--delete", origin, branch)
+        try:
+            yield it_remote_repo_url, branch_name
+        finally:
+            # NOTE: delete remote branch
+            origin.push(f":{branch}")
+            repo.delete_head(branch)
 
 
 @pytest.fixture(scope="module")
