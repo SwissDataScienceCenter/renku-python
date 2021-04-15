@@ -39,6 +39,7 @@ SERVICE_NAME = "Renku Service"
 OPENAPI_VERSION = "2.0"
 API_VERSION = "v1"
 
+SERVICE_API_BASE_PATH = os.getenv("CORE_SERVICE_API_BASE_PATH", "")
 SWAGGER_URL = "/api/docs"
 API_SPEC_URL = os.getenv("RENKU_SVC_SWAGGER_URL", "/api/{0}/spec".format(API_VERSION))
 

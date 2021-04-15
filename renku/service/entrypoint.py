@@ -40,7 +40,9 @@ from renku.service.config import (
     CACHE_DIR,
     HTTP_SERVER_ERROR,
     OPENAPI_VERSION,
+    SERVICE_API_BASE_PATH,
     SERVICE_NAME,
+    SERVICE_PREFIX,
     SWAGGER_URL,
 )
 from renku.service.logger import service_log
@@ -105,7 +107,7 @@ def create_app():
 
     build_routes(app)
 
-    @app.route("/")
+    @app.route(SERVICE_PREFIX)
     def root():
         """Root redirect to docs."""
         return redirect(url_for("swagger_ui.show"))
@@ -120,12 +122,20 @@ def create_app():
     return app
 
 
+def _join_urls(*urls):
+    """Join URLs correctly to have a leading slash and single slashes as separators."""
+    return "/" + "/".join(url.strip("/") for url in urls)
+
+
 def build_routes(app):
     """Register routes to given app instance."""
     app.config.update(
         {
             "APISPEC_SPEC": APISpec(
-                title=SERVICE_NAME, openapi_version=OPENAPI_VERSION, version=API_VERSION, plugins=[MarshmallowPlugin()],
+                title=SERVICE_NAME,
+                openapi_version=OPENAPI_VERSION,
+                version=API_VERSION,
+                plugins=[MarshmallowPlugin()],
             ),
             "APISPEC_SWAGGER_URL": API_SPEC_URL,
         }
@@ -138,8 +148,13 @@ def build_routes(app):
     app.register_blueprint(templates_blueprint)
     app.register_blueprint(version_blueprint)
 
-    swaggerui_blueprint = get_swaggerui_blueprint(SWAGGER_URL, API_SPEC_URL, config={"app_name": "Renku Service"})
-    app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+    # TODO: #2029 properly handle the reverse proxy prefix (i.e. /api)
+    swaggerui_blueprint = get_swaggerui_blueprint(
+        _join_urls(SERVICE_API_BASE_PATH, SERVICE_PREFIX, "/docs"),
+        API_SPEC_URL,
+        config={"app_name": "Renku Service", "basePath": SERVICE_API_BASE_PATH},
+    )
+    app.register_blueprint(swaggerui_blueprint, url_prefix=_join_urls(SERVICE_PREFIX, "/docs"))
 
     docs = FlaskApiSpec(app)
 
@@ -229,8 +244,12 @@ def exceptions(e):
 
 app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
 
-if os.environ.get("DEBUG_MODE", "false") == "true":
+if app.debug:
     import ptvsd
+
+    service_log.debug("Registered routes:\n")
+    for rule in app.url_map.iter_rules():
+        service_log.debug(f"{rule}\n")
 
     ptvsd.enable_attach()
     app.logger.setLevel(logging.DEBUG)
