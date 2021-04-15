@@ -15,7 +15,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Migrate project to the latest Renku version."""
+"""Migrate project to the latest Renku version.
+
+When the way Renku stores metadata changes or there are other changes to the
+project structure or data that are needed for Renku to work, ``renku migrate``
+can be used to bring the project up to date with the current version of Renku.
+This does not usually affect how you use Renku and no data is lost.
+
+In addition, ``renku migrate`` will update your ``Dockerfile` to install the
+latest version of ``renku-python``, if supported, making sure your renku
+version is up to date in interactive environments as well.
+
+If you created your repository from a project template and the template has
+changed since you created the project, it will also update files with their
+newest version from the template, without overwriting local changes if there
+are any.
+
+You can check if a migration is necessary and what migrations are available
+by running
+
+.. code-block:: console
+
+    $ renku migrate -c
+
+"""
 import json
 import os
 
@@ -57,8 +80,8 @@ def migrate(check, no_commit, skip_template_update, skip_docker_update):
         if template_update_possible:
             click.secho(
                 INFO
-                + "The project template used to create this project has updates which can be applied to "
-                + "this project using 'renku migrate'."
+                + "The project template used to create this project has updates which can be applied "
+                + "using 'renku migrate'."
             )
         if docker_update_possible:
             click.secho(
