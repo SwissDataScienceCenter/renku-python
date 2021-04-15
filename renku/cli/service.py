@@ -48,6 +48,7 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600, is_debug=False):
     loading_opt = "--preload"
     if is_debug:
         loading_opt = "--reload"
+        svc_num_workers = "1"
 
     sys.argv = [
         "gunicorn",

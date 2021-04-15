@@ -66,6 +66,8 @@ spec:
               value: {{ .Values.templateCloneDepth | quote }}
             - name: CORE_SERVICE_PREFIX
               value: /renku
+            - name: CORE_SERVICE_API_BASE_PATH
+              value: {{ .Values.apiBasePath }}
             - name: RENKU_SVC_SWAGGER_URL
               value: /renku/openapi.json
             - name: SERVICE_LOG_LEVEL
