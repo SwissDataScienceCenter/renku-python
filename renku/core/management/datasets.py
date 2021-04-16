@@ -1409,15 +1409,22 @@ def _filename_from_headers(request):
 
     if not content_disposition:
         return None
+
     entries = content_disposition.split(";")
-    name_entries = [e.strip() for e in entries if e.strip().lower().startswith("filename*=")]
-    if name_entries:
-        name = name_entries[0].split("=", 1)[1].strip()
+    name_entry = next((e.strip() for e in entries if e.strip().lower().startswith("filename*=")), None)
+
+    if name_entry:
+        name = name_entry.split("=", 1)[1].strip()
         encoding, _, name = name.split("'")
         return unquote(name, encoding, errors="strict")
 
-    name_entries = [e.strip() for e in entries if e.strip().lower().startswith("filename=")]
-    filename = name_entries[0].split("=", 1)[1].strip()
+    name_entry = next((e.strip() for e in entries if e.strip().lower().startswith("filename=")), None)
+
+    if not name_entry:
+        return None
+
+    filename = name_entry.split("=", 1)[1].strip()
+
     if filename.startswith('"'):
         filename = filename[1:-1]
     return filename
