@@ -130,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<3.5.4", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<3.5.5", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -171,7 +171,7 @@ install_requires = [
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
     "pluggy==0.13.1",
-    "portalocker>=2.2.1,<2.3",
+    "portalocker>=2.2.1,<2.4",
     "psutil>=5.4.7,<5.8.1",
     "pyasn1>=0.4.5,<=0.4.8",
     "pyjwt==2.0.1",
