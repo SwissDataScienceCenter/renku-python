@@ -476,7 +476,7 @@ def test_renku_dataset_import_missing_lfs_objects(runner, project):
 
 
 @pytest.mark.integration
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "provider,params,output",
     [
