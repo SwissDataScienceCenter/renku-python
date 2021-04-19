@@ -28,6 +28,7 @@ from renku.core.incubation.command import Command
 from renku.core.management.git import get_mapped_std_streams
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 from renku.core.utils import communication
+from renku.core.utils.git import get_slug
 
 
 def run_command():
@@ -38,6 +39,8 @@ def run_command():
 def _run_command(
     client,
     name,
+    description,
+    keyword,
     explicit_inputs,
     explicit_outputs,
     no_output,
@@ -46,6 +49,12 @@ def _run_command(
     success_codes,
     command_line,
 ):
+    # NOTE: validate name as early as possible
+    if name:
+        valid_name = get_slug(name)
+        if name != valid_name:
+            raise errors.ParameterError(f"Invalid name: '{name}' (Hint: '{valid_name}' is valid).")
+
     paths = explicit_outputs if no_output_detection else client.candidate_paths
     mapped_std = get_mapped_std_streams(paths, streams=("stdout", "stderr"))
 
@@ -138,7 +147,9 @@ def _run_command(
             if return_code not in (success_codes or {0}):
                 raise errors.InvalidSuccessCode(return_code, success_codes=success_codes)
 
-        client.process_and_store_run(command_line_tool=tool, name=name, client=client)
+        client.process_and_store_run(
+            command_line_tool=tool, name=name, description=description, keywords=keyword, client=client
+        )
 
         if factory.messages:
             communication.echo(factory.messages)

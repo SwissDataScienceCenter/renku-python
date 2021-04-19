@@ -18,7 +18,12 @@
 """Git utility functions."""
 
 import math
+<<<<<<< HEAD
 import urllib
+=======
+import re
+import unicodedata
+>>>>>>> feat(workflow): workflow naming metadata
 from subprocess import SubprocessError, run
 
 from renku.core import errors
@@ -89,3 +94,16 @@ def have_same_remote(url1, url2):
     u2 = GitURL.parse(url2)
 
     return u1.hostname == u2.hostname and u1.pathname == u2.pathname
+
+
+def get_slug(name):
+    """Create a slug from name."""
+    lower_case = name.lower()
+    no_space = re.sub(r"\s+", "_", lower_case)
+    normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
+    no_invalid_characters = re.sub(r"[^a-zA-Z0-9._-]", "_", normalized)
+    no_duplicates = re.sub(r"([._-])[._-]+", r"\1", no_invalid_characters)
+    valid_start = re.sub(r"^[._-]", "", no_duplicates)
+    valid_end = re.sub(r"[._-]$", "", valid_start)
+    no_dot_lock_at_end = re.sub(r"\.lock$", "_lock", valid_end)
+    return no_dot_lock_at_end

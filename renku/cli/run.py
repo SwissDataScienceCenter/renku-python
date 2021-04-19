@@ -31,6 +31,11 @@ Tracking execution of your command line script is done by simply adding the
 .. note:: If there were uncommitted changes in the repository, then the
    ``renku run`` command fails. See :program:`git status` for details.
 
+.. warning:: If executed command/script has similar arguments to ``renku run``
+    (e.g. ``--input``) they will be treated as ``renku run`` arguments. To
+    avoid this, put a ``--`` separator between ``renku run`` and the
+    command/script.
+
 .. warning:: Input and output paths can only be detected if they are passed as
    arguments to ``renku run``.
 
@@ -208,6 +213,8 @@ from renku.core.commands.run import run_command
 
 @click.command(context_settings=dict(ignore_unknown_options=True,))
 @click.option("--name", help="A name for the workflow step.")
+@click.option("--description", help="Workflow step's description.")
+@click.option("--keyword", multiple=True, help="List of tags for the workflow.")
 @click.option("explicit_inputs", "--input", multiple=True, help="Force a path to be considered as an input.")
 @click.option("explicit_outputs", "--output", multiple=True, help="Force a path to be considered an output.")
 @click.option("--no-output", is_flag=True, default=False, help="Allow command without output files.")
@@ -225,6 +232,8 @@ from renku.core.commands.run import run_command
 @click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
 def run(
     name,
+    description,
+    keyword,
     explicit_inputs,
     explicit_outputs,
     no_output,
@@ -243,6 +252,8 @@ def run(
 
     command.with_communicator(communicator).build().execute(
         name=name,
+        description=description,
+        keyword=keyword,
         explicit_inputs=explicit_inputs,
         explicit_outputs=explicit_outputs,
         no_output=no_output,

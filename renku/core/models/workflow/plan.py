@@ -44,13 +44,26 @@ from renku.core.utils.urls import get_host
 class Plan:
     """Represent a `renku run` execution template."""
 
-    def __init__(self, id_, arguments=None, command=None, inputs=None, name=None, outputs=None, success_codes=None):
+    def __init__(
+        self,
+        id_,
+        arguments=None,
+        command=None,
+        description=None,
+        inputs=None,
+        keywords=None,
+        name=None,
+        outputs=None,
+        success_codes=None,
+    ):
         """Initialize."""
         self.arguments = arguments or []
         self.command = command
+        self.description = description
         self.id_ = id_
         self.inputs = inputs or []
-        self.name = name or "{}-{}".format(secure_filename(self.command), uuid.uuid4().hex)
+        self.keywords = keywords or []
+        self.name = name or f"{secure_filename(self.command)}-{uuid.uuid4().hex}"
         self.outputs = outputs or []
         self.success_codes = success_codes or []
 
@@ -69,7 +82,7 @@ class Plan:
         return PlanSchema(flattened=True).load(data)
 
     @classmethod
-    def from_run(cls, run: Run, name, client):
+    def from_run(cls, run: Run, client):
         """Create a Plan from a Run."""
         assert not run.subprocesses, f"Cannot create from a Run with subprocesses: {run._id}"
 
@@ -82,9 +95,11 @@ class Plan:
         return cls(
             arguments=run.arguments,
             command=run.command,
+            description=run.description,
             id_=plan_id,
             inputs=inputs,
-            name=name,
+            keywords=run.keywords,
+            name=run.name,
             outputs=outputs,
             success_codes=run.successcodes,
         )
@@ -235,14 +250,16 @@ class PlanSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Plan]
+        rdf_type = [prov.Plan, schema.Action]
         model = Plan
         unknown = EXCLUDE
 
     arguments = Nested(renku.hasArguments, CommandArgumentSchema, many=True, missing=None)
     command = fields.String(renku.command, missing=None)
+    description = fields.String(schema.description, missing=None)
     id_ = fields.Id()
     inputs = Nested(renku.hasInputs, CommandInputTemplateSchema, many=True, missing=None)
+    keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
     outputs = Nested(renku.hasOutputs, CommandOutputTemplateSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])

@@ -20,8 +20,6 @@
 import datetime
 import os
 import pathlib
-import re
-import unicodedata
 import uuid
 from pathlib import Path
 from urllib.parse import ParseResult, quote, urljoin, urlparse
@@ -39,6 +37,7 @@ from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
+from renku.core.utils.git import get_slug
 
 NoneType = type(None)
 
@@ -897,19 +896,6 @@ def generate_default_name(dataset_title, dataset_version=None):
         name = f"{name[:-(len(version_slug) + 1)]}_{version_slug}"
 
     return name
-
-
-def get_slug(name):
-    """Create a slug from name."""
-    lower_case = name.lower()
-    no_space = re.sub(r"\s+", "_", lower_case)
-    normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
-    no_invalid_characters = re.sub(r"[^a-zA-Z0-9._-]", "_", normalized)
-    no_duplicates = re.sub(r"([._-])[._-]+", r"\1", no_invalid_characters)
-    valid_start = re.sub(r"^[._-]", "", no_duplicates)
-    valid_end = re.sub(r"[._-]$", "", valid_start)
-    no_dot_lock_at_end = re.sub(r"\.lock$", "_lock", valid_end)
-    return no_dot_lock_at_end
 
 
 def generate_url_id(client, url_str, url_id):
