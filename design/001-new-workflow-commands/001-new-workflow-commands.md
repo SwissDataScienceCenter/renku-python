@@ -391,7 +391,7 @@ A new type `renku:GroupedRun` is introduced to keep track of workflows composed 
 
 ![looped run metadata](looped-run-metadata.svg)
 
-For looped workflows, no addition is needed on the dependency side of things, as the workflow is merely called repeatedly. On the provenance side, a new node `renku:LoopParameters` is introduced that groups `renku:ParameterValue` entries by the loop they were used in.
+For looped workflows, no addition is needed on the dependency side of things, as the workflow is merely called repeatedly. On the provenance side, a new node `renku:LoopedActivity` is introduced that groups `prov:Activity` entries by the loop they were used in.
 
 ### Example Use-Cases
 
@@ -576,3 +576,22 @@ This RFC should specify commands and metadata needed for workflow support in Ren
 Minor changes to the metadata and commands can come up during the implementation phase, but the RFC should be complete enough that this isn't necessary.
 
 This RFC does not deal with asynchronous execution nor does it deal with importing workflows from other projects. Both of these should be done in follow-up RFCs.
+
+
+## Implementation Plan
+
+- Enhance `renku run` to create new metadata (except grouped/looped runs) with `renku rerun` and `renku update` working as normal
+- Add basic new workflow commands
+  - Create `renku workflow edit`
+  - Create `renku workflow export`
+  - Create `renku workflow execute`
+- Add display commands
+  - `renku workflow show`
+  - `renku workflow visualize`
+  - `renku workflow history`
+- Add Grouped run functionality
+- Add Looped run functionality
+- Add Glob support
+- Add template support to values
+- Add JSONPath support
+- Add more providers
