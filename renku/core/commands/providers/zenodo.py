@@ -484,6 +484,16 @@ class ZenodoProvider(ProviderApi):
         return False
 
     @staticmethod
+    def supports_export():
+        """Whether this provider supports dataset export."""
+        return True
+
+    @staticmethod
+    def supports_import():
+        """Whether this provider supports dataset import."""
+        return True
+
+    @staticmethod
     def record_id(uri):
         """Extract record id from uri."""
         return urlparse(uri).path.split("/")[-1]

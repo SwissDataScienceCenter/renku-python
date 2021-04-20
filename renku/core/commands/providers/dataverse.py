@@ -161,6 +161,24 @@ class DataverseProvider(ProviderApi):
         return is_dataverse_uri or is_dataverse_doi
 
     @staticmethod
+    def supports_export():
+        """Whether this provider supports dataset export."""
+        return True
+
+    @staticmethod
+    def supports_import():
+        """Whether this provider supports dataset import."""
+        return True
+
+    @staticmethod
+    def export_parameters():
+        """Returns parameters that can be set for export."""
+        return {
+            "dataverse-server": ("Dataverse server URL.", str),
+            "dataverse-name": ("Dataverse name to export to.", str),
+        }
+
+    @staticmethod
     def record_id(uri):
         """Extract record id from uri."""
         parsed = urlparse.urlparse(uri)
@@ -207,22 +225,22 @@ class DataverseProvider(ProviderApi):
             dataset=dataset, access_token=access_token, server_url=self._server_url, dataverse_name=self._dataverse_name
         )
 
-    def set_parameters(self, client, *, dataverse_server_url, dataverse_name, **kwargs):
+    def set_parameters(self, client, *, dataverse_server, dataverse_name, **kwargs):
         """Set and validate required parameters for a provider."""
         CONFIG_BASE_URL = "server_url"
 
-        if not dataverse_server_url:
-            dataverse_server_url = client.get_value("dataverse", CONFIG_BASE_URL)
+        if not dataverse_server:
+            dataverse_server = client.get_value("dataverse", CONFIG_BASE_URL)
         else:
-            client.set_value("dataverse", CONFIG_BASE_URL, dataverse_server_url, global_only=True)
+            client.set_value("dataverse", CONFIG_BASE_URL, dataverse_server, global_only=True)
 
-        if not dataverse_server_url:
+        if not dataverse_server:
             raise errors.ParameterError("Dataverse server URL is required.")
 
         if not dataverse_name:
             raise errors.ParameterError("Dataverse name is required.")
 
-        self._server_url = dataverse_server_url
+        self._server_url = dataverse_server
         self._dataverse_name = dataverse_name
 
 
