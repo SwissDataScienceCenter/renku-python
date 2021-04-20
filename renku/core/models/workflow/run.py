@@ -68,7 +68,7 @@ def _convert_cmd_binding(binding, client, commit):
 
     id_ = CommandArgument.generate_id(base_id, binding.position)
 
-    return CommandArgument(id=id_, position=binding.position, value=binding.valueFrom)
+    return CommandArgument(id=id_, position=binding.position, value=binding.valueFrom, default_value=binding.valueFrom)
 
 
 def _convert_cmd_input(input, client, commit, run_id):
@@ -83,17 +83,21 @@ def _convert_cmd_input(input, client, commit, run_id):
             prefix = input.inputBinding.prefix
             if prefix and input.inputBinding.separate:
                 prefix += " "
+            entity = _entity_from_path(client, input.default.path, commit)
             return CommandInput(
                 id=CommandInput.generate_id(run_id, input.inputBinding.position),
                 position=input.inputBinding.position,
                 prefix=prefix,
-                consumes=_entity_from_path(client, input.default.path, commit),
+                consumes=entity,
+                default_value=str(entity.path),
             )
         else:
+            entity = _entity_from_path(client, input.default.path, commit)
             return CommandInput(
                 id=CommandInput.generate_id(run_id, "stdin" if input.id == "input_stdin" else None),
-                consumes=_entity_from_path(client, input.default.path, commit),
+                consumes=entity,
                 mapped_to=MappedIOStream(client=client, stream_type="stdin") if input.id == "input_stdin" else None,
+                default_value=str(entity.path),
             )
     else:
         prefix = input.inputBinding.prefix
@@ -104,6 +108,7 @@ def _convert_cmd_input(input, client, commit, run_id):
             position=input.inputBinding.position,
             value=val,
             prefix=prefix,
+            default_value=val,
         )
 
 
@@ -139,14 +144,16 @@ def _convert_cmd_output(output, factory, client, commit, run_id):
     ):
         create_folder = True
 
+    entity = _entity_from_path(client, path, commit)
     return (
         CommandOutput(
             id=CommandOutput.generate_id(run_id, position),
-            produces=_entity_from_path(client, path, commit),
+            produces=entity,
             mapped_to=mapped,
             position=position,
             prefix=prefix,
             create_folder=create_folder,
+            default_value=str(entity.path),
         ),
         input_to_remove,
     )

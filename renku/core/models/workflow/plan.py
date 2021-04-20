@@ -204,7 +204,7 @@ def _convert_command_input(input_: CommandInput, plan_id) -> CommandInputTemplat
 
     return CommandInputTemplate(
         id=CommandInputTemplate.generate_id(plan_id=plan_id, id_=Path(input_._id).name),
-        consumes=consumes,
+        default_value=consumes,
         mapped_to=input_.mapped_to,
         position=input_.position,
         prefix=input_.prefix,
@@ -221,7 +221,7 @@ def _convert_command_output(output: CommandOutput, plan_id) -> CommandOutputTemp
 
     return CommandOutputTemplate(
         id=CommandOutputTemplate.generate_id(plan_id=plan_id, id_=Path(output._id).name),
-        produces=produces,
+        default_value=produces,
         mapped_to=output.mapped_to,
         position=output.position,
         prefix=output.prefix,

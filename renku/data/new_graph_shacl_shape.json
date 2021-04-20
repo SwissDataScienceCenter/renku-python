@@ -943,6 +943,15 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 0,
+               "maxCount": 1
             }
          ]
       },
@@ -1026,17 +1035,18 @@
                }
             },
             {
-               "path": "renku:consume",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
                "path": "renku:mappedTo",
                "sh:class": {
                   "@id": "renku:IOStream"
+               },
+               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
                },
                "minCount": 0,
                "maxCount": 1
@@ -1091,7 +1101,8 @@
                "maxCount": 1
             },
             {
-               "path": "renku:produces",
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
                "datatype": {
                   "@id": "xsd:string"
                },

@@ -87,8 +87,8 @@ class DependencyGraph:
     def _connect_two_nodes(self, from_: Plan, to_: Plan):
         for o in from_.outputs:
             for i in to_.inputs:
-                if DependencyGraph._is_super_path(o.produces, i.consumes):
-                    self._graph.add_edge(from_, to_, name=o.produces)
+                if DependencyGraph._is_super_path(o.default_value, i.default_value):
+                    self._graph.add_edge(from_, to_, name=o.default_value)
 
     def visualize_graph(self):
         """Visualize graph using matplotlib."""
@@ -113,7 +113,7 @@ class DependencyGraph:
         nodes = deque()
         node: Plan
         for node in self._graph:
-            if plan_id == node.id_ and any(self._is_super_path(path, p.consumes) for p in node.inputs):
+            if plan_id == node.id_ and any(self._is_super_path(path, p.default_value) for p in node.inputs):
                 nodes.append(node)
 
         paths = set()
@@ -121,7 +121,7 @@ class DependencyGraph:
         # TODO: This loops infinitely if there is a cycle in the graph
         while nodes:
             node = nodes.popleft()
-            outputs_paths = [o.produces for o in node.outputs]
+            outputs_paths = [o.default_value for o in node.outputs]
             paths.update(outputs_paths)
 
             nodes.extend(self._graph.successors(node))
@@ -133,7 +133,7 @@ class DependencyGraph:
 
         def node_has_deleted_inputs(node_):
             for _, path_, _ in deleted_usages:
-                if any(self._is_super_path(path_, p.consumes) for p in node_.inputs):
+                if any(self._is_super_path(path_, p.default_value) for p in node_.inputs):
                     return True
             return False
 
@@ -142,7 +142,7 @@ class DependencyGraph:
         node: Plan
         for plan_id, path, _ in modified_usages:
             for node in self._graph:
-                if plan_id == node.id_ and any(self._is_super_path(path, p.consumes) for p in node.inputs):
+                if plan_id == node.id_ and any(self._is_super_path(path, p.default_value) for p in node.inputs):
                     nodes.add(node)
                     nodes.update(networkx.algorithms.dag.descendants(self._graph, node))
 
