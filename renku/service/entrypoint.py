@@ -38,12 +38,13 @@ from renku.service.config import (
     API_SPEC_URL,
     API_VERSION,
     CACHE_DIR,
+    HTTP_SCHEME,
     HTTP_SERVER_ERROR,
     OPENAPI_VERSION,
+    RENKU_DOMAIN,
     SERVICE_API_BASE_PATH,
     SERVICE_NAME,
     SERVICE_PREFIX,
-    SWAGGER_URL,
 )
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
@@ -124,7 +125,7 @@ def create_app():
 
 def _join_urls(*urls):
     """Join URLs correctly to have a leading slash and single slashes as separators."""
-    return "/" + "/".join(url.strip("/") for url in urls)
+    return "/" + "/".join(url.strip("/") for url in urls).lstrip("/")
 
 
 def build_routes(app):
@@ -136,6 +137,17 @@ def build_routes(app):
                 openapi_version=OPENAPI_VERSION,
                 version=API_VERSION,
                 plugins=[MarshmallowPlugin()],
+                # basePath here is the reverse-proxy prefix
+                basePath=SERVICE_API_BASE_PATH,
+                securityDefinitions={
+                    "oauth2": {
+                        "type": "oauth2",
+                        "authorizationUrl": "/auth/realms/Renku/protocol/openid-connect/auth",
+                        "flow": "implicit",
+                        "scopes": {"openid": "openid"},
+                    },
+                },
+                security={"oauth2": ["openid"]},
             ),
             "APISPEC_SWAGGER_URL": API_SPEC_URL,
         }
@@ -152,7 +164,11 @@ def build_routes(app):
     swaggerui_blueprint = get_swaggerui_blueprint(
         _join_urls(SERVICE_API_BASE_PATH, SERVICE_PREFIX, "/docs"),
         API_SPEC_URL,
-        config={"app_name": "Renku Service", "basePath": SERVICE_API_BASE_PATH},
+        config={
+            "app_name": "Renku Service",
+            "url": _join_urls(SERVICE_API_BASE_PATH, SERVICE_PREFIX, "spec.json"),
+            "oauth2RedirectUrl": f"{HTTP_SCHEME}://{RENKU_DOMAIN}{_join_urls(SERVICE_API_BASE_PATH, SERVICE_PREFIX, 'docs', 'oauth2-redirect.html')}",
+        },
     )
     app.register_blueprint(swaggerui_blueprint, url_prefix=_join_urls(SERVICE_PREFIX, "/docs"))
 
@@ -247,9 +263,9 @@ app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
 if app.debug:
     import ptvsd
 
-    service_log.debug("Registered routes:\n")
+    service_log.debug("Registered routes:")
     for rule in app.url_map.iter_rules():
-        service_log.debug(f"{rule}\n")
+        service_log.debug(rule)
 
     ptvsd.enable_attach()
     app.logger.setLevel(logging.DEBUG)

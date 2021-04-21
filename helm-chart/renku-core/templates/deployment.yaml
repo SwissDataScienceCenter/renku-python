@@ -43,7 +43,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{ if .Values.debug }}
-          command: ["api", "--debug"]
+          args: ["api", "--debug"]
           securityContext:
             runAsGroup: 2000
           {{ else }}
@@ -142,6 +142,8 @@ spec:
               value: {{ .Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ .Values.global.renku.domain }}
+            - name: HTTP_SCHEME
+              value: {{ .Values.httpScheme }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
