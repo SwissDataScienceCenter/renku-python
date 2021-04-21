@@ -7,6 +7,9 @@ replicaCount: 1
 # base path - this is the reverse proxy base path
 apiBasePath: /api
 
+# http or https
+httpScheme: https
+
 cacheDirectory: /svc/cache
 cleanupInterval: 60  # NOTE: This needs to be a divisor of, and less than cleanupFilesTTL|cleanupProjectsTTL.
 projectCloneDepth: 1
