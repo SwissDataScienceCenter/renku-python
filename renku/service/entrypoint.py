@@ -137,17 +137,25 @@ def build_routes(app):
                 openapi_version=OPENAPI_VERSION,
                 version=API_VERSION,
                 plugins=[MarshmallowPlugin()],
-                # basePath here is the reverse-proxy prefix
-                basePath=SERVICE_API_BASE_PATH,
-                securityDefinitions={
-                    "oauth2": {
-                        "type": "oauth2",
-                        "authorizationUrl": "/auth/realms/Renku/protocol/openid-connect/auth",
-                        "flow": "implicit",
-                        "scopes": {"openid": "openid"},
-                    },
+                servers=[{"url": SERVICE_API_BASE_PATH}],
+                components={
+                    "securitySchemes": {
+                        "oauth2": {
+                            "type": "oauth2",
+                            "flows": {
+                                "implicit": {
+                                    "authorizationUrl": "/auth/realms/Renku/protocol/openid-connect/auth",
+                                    "scopes": {"openid": "openid"},
+                                }
+                            },
+                        },
+                        "oidc": {
+                            "type": "openIdConnect",
+                            "openIdConnectUrl": "/auth/realms/Renku/.well-known/openid-configuration",
+                        },
+                    }
                 },
-                security={"oauth2": ["openid"]},
+                security=[{"oidc": []}, {"oauth2": ["openid"]}],
             ),
             "APISPEC_SWAGGER_URL": API_SPEC_URL,
         }
