@@ -34,6 +34,7 @@ jobs:
         DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+        OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
       run: pytest -m publish -v
 
   test-macos-integration:
@@ -65,4 +66,5 @@ jobs:
         DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+        OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
       run: pytest -m publish -v

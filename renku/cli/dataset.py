@@ -313,6 +313,14 @@ the name of the parent dataverse where the dataset will be exported to.
 Server's URL is stored in your Renku setting and you don't need to pass it
 every time.
 
+To export a dataset to OLOS you must pass the OLOS server's base URL and
+supply your access token when prompted for it. You must also choose which
+organizational unit to export the dataset to from the list shown during
+the export. The export does not map contributors from Renku to OLOS and
+also doesn't map License information. Additionally, all file categories
+default to Primary/Derived. This has to adjusted manually in the OLOS
+interface after the export is done.
+
 
 Listing all files in the project associated with a dataset.
 
@@ -407,6 +415,7 @@ from renku.core.commands.dataset import (
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
+from renku.core.commands.providers import ProviderFactory
 
 
 @click.group()
@@ -644,24 +653,60 @@ def ls_tags(name, format):
     click.echo(result.output)
 
 
+def export_provider_argument(*param_decls, **attrs):
+    """Sets dataset export provider argument on the dataset export command."""
+
+    def wrapper(f):
+        from click import argument
+
+        providers = [k.lower() for k, p in ProviderFactory.PROVIDERS.items() if p.supports_export]
+        f = argument("provider", type=click.Choice(providers))(f)
+        return f
+
+    return wrapper
+
+
+def export_provider_options(*param_decls, **attrs):
+    """Sets dataset export provider option groups on the dataset export command."""
+
+    def wrapper(f):
+        from click_option_group import optgroup
+
+        providers = [
+            (k, v) for k, v in ProviderFactory.PROVIDERS.items() if v.supports_export and v.export_parameters()
+        ]
+
+        for i, (name, provider) in enumerate(providers):
+            params = provider.export_parameters()
+
+            for j, (param_name, (param_description, param_type)) in enumerate(params.items()):
+                if j == 0:
+                    param_description = f"\b\n{param_description}\n "  # NOTE: add newline after a group
+                f = optgroup.option(f"--{param_name}", type=param_type, help=param_description)(f)
+
+            name = f"{name} configuration"
+            if i == len(providers) - 1:
+                name = "\n  " + name  # NOTE: add newline before first group
+
+            f = optgroup.group(name=name)(f)
+
+        return f
+
+    return wrapper
+
+
 @dataset.command("export")
 @click.argument("name")
-@click.argument("provider")
+@export_provider_argument()
 @click.option("-p", "--publish", is_flag=True, help="Automatically publish exported dataset.")
 @click.option("-t", "--tag", help="Dataset tag to export")
-@click.option("--dataverse-server", default=None, help="Dataverse server URL.")
-@click.option("--dataverse-name", default=None, help="Dataverse name to export to.")
-def export_(name, provider, publish, tag, dataverse_server, dataverse_name):
+@export_provider_options()
+def export_(name, provider, publish, tag, **kwargs):
     """Export data to 3rd party provider."""
     try:
         communicator = ClickCallback()
         export_dataset().with_communicator(communicator).build().execute(
-            name=name,
-            provider_name=provider,
-            publish=publish,
-            tag=tag,
-            dataverse_server_url=dataverse_server,
-            dataverse_name=dataverse_name,
+            name=name, provider_name=provider, publish=publish, tag=tag, **kwargs,
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, requests.HTTPError) as e:
         raise click.BadParameter(e)
