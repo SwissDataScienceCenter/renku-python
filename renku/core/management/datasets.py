@@ -33,7 +33,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from subprocess import PIPE, SubprocessError
 from urllib import error, parse
-from urllib.parse import ParseResult, urlparse
+from urllib.parse import ParseResult, unquote, urlparse
 from urllib.request import urlretrieve
 
 import attr
@@ -1377,6 +1377,9 @@ class DatasetsApiMixin(object):
             request.raise_for_status()
 
             if not filename:
+                filename = _filename_from_headers(request)
+
+            if not filename:
                 u = parse.urlparse(url)
                 filename = Path(u.path).name
                 if not filename:
@@ -1398,6 +1401,33 @@ class DatasetsApiMixin(object):
             return extract_dataset(download_to)
 
         return download_to.parent, [download_to]
+
+
+def _filename_from_headers(request):
+    """Extract filename fromcontent-disposition headers if available."""
+    content_disposition = request.headers.get("content-disposition", None)
+
+    if not content_disposition:
+        return None
+
+    entries = content_disposition.split(";")
+    name_entry = next((e.strip() for e in entries if e.strip().lower().startswith("filename*=")), None)
+
+    if name_entry:
+        name = name_entry.split("=", 1)[1].strip()
+        encoding, _, name = name.split("'")
+        return unquote(name, encoding, errors="strict")
+
+    name_entry = next((e.strip() for e in entries if e.strip().lower().startswith("filename=")), None)
+
+    if not name_entry:
+        return None
+
+    filename = name_entry.split("=", 1)[1].strip()
+
+    if filename.startswith('"'):
+        filename = filename[1:-1]
+    return filename
 
 
 def _check_url(url):
