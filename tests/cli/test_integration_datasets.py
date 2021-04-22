@@ -1404,6 +1404,40 @@ def test_add_removes_credentials(runner, client, url):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
+    "disposition,filename",
+    [
+        ("Attachment; filename=Example.html", "Example.html"),
+        ('INLINE; FILENAME= "an example.html"', "an example.html"),
+        ("attachment; filename*= UTF-8''%e2%82%ac%20rates.csv", "€ rates.csv"),
+        ("attachment;filename=\"EURO rates.csv\";filename*=utf-8''%e2%82%ac%20rates.csv", "€ rates.csv"),
+    ],
+)
+def test_add_with_content_disposition(runner, client, monkeypatch, disposition, filename):
+    """Check filename is read from content disposition."""
+    import renku.core.management.datasets
+
+    url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
+
+    with monkeypatch.context() as monkey:
+        # NOTE: mock requests headers
+        original_disposition = renku.core.management.datasets._filename_from_headers
+
+        def _fake_disposition(request):
+            request.headers["content-disposition"] = disposition
+            return original_disposition(request)
+
+        monkey.setattr(renku.core.management.datasets, "_filename_from_headers", _fake_disposition)
+        result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", url])
+        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+
+    with client.with_dataset("my-dataset") as dataset:
+        file_ = dataset.files[0]
+        assert file_.name == filename
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize(
     "url", ["https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"]
 )
 def test_check_disk_space(runner, client, monkeypatch, url):
