@@ -84,6 +84,11 @@ Renku commands with the `-S` flag, as in `renku -S <command>`.  More
 information on Git LFS usage in renku can be found in the `Data in Renku
 <https://renku.readthedocs.io/en/latest/user/data.html>`_ section of the docs.
 
+Renku uses CWL to execute recorded workflows when calling `renku update`
+or `renku rerun`. CWL depends on NodeJs to execute the workflows, so installing
+`NodeJs <https://nodejs.org/en/download/package-manager/>`_ is required if
+you want to use those features.
+
 
 .. _pipx-before-reference:
 
