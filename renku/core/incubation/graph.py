@@ -173,7 +173,7 @@ def _status(client):
 def update():
     """Return a command for generating the graph."""
     command = Command().command(_update).lock_project()
-    return command.require_migration().with_commit(commit_if_empty=False).require_clean()
+    return command.require_migration().with_commit(commit_if_empty=False).require_clean().require_nodejs()
 
 
 def _update(client, dry_run):
