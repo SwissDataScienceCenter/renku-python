@@ -39,6 +39,15 @@ def zenodo_sandbox(client):
     client.repo.index.commit("update renku.ini")
 
 
+@pytest.fixture
+def olos_sandbox(client):
+    """Configure environment to use Zenodo sandbox environment."""
+    access_token = os.getenv("OLOS_ACCESS_TOKEN", "")
+    client.set_value("olos", "access_token", access_token)
+    client.repo.git.add(".renku/renku.ini")
+    client.repo.index.commit("update renku.ini")
+
+
 @pytest.fixture(scope="module")
 def dataverse_demo_cleanup(request):
     """Delete all Dataverse datasets at the end of the test session."""
