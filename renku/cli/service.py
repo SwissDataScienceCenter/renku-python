@@ -398,3 +398,12 @@ def all_logs(ctx, follow, output_all, errors):
 
             for line in read_logs(stream.open(mode="r"), follow=follow, output_all=output_all):
                 click.echo(line)
+
+
+@service.command(name="apispec")
+def apispec():
+    """Return the api spec."""
+    from renku.service.entrypoint import app, get_apispec
+
+    with app.test_request_context():
+        click.echo(get_apispec().to_yaml())
