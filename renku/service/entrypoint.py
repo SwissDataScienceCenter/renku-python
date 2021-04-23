@@ -212,13 +212,7 @@ app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
 
 @app.route("/renku/openapi.json")
 def openapi():
-    import json
-
-    spec = app.config.get("APISPEC_SPEC")
-    spec.path(view=app.view_functions["cache.list_uploaded_files_view"])
-    # for rule in app.url_map.iter_rules():
-    #     spec.path(view=app.view_functions[rule.endpoint])
-    return jsonify(spec.to_dict())
+    return jsonify(get_apispec().to_dict())
 
 
 if app.debug:
@@ -238,3 +232,11 @@ if __name__ == "__main__":
 
     app.logger.handlers.extend(service_log.handlers)
     app.run()
+
+
+def get_apispec():
+    """Return the apispec."""
+    spec = app.config.get("APISPEC_SPEC")
+    for rule in app.url_map.iter_rules():
+        spec.path(view=app.view_functions[rule.endpoint])
+    return spec
