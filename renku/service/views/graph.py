@@ -17,20 +17,15 @@
 # limitations under the License.
 """Renku graph endpoints."""
 from flask import Blueprint, request
-from flask_apispec import marshal_with, use_kwargs
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.graph_build import GraphBuildCtrl
-from renku.service.serializers.graph import GraphBuildRequest, GraphBuildResponseRPC
-from renku.service.views.decorators import accepts_json, handle_common_except, header_doc, optional_identity
+from renku.service.views.decorators import accepts_json, handle_common_except, optional_identity
 
 GRAPH_BLUEPRINT_TAG = "graph"
 graph_blueprint = Blueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@use_kwargs(GraphBuildRequest)
-@marshal_with(GraphBuildResponseRPC)
-@header_doc("Build a graph", tags=(GRAPH_BLUEPRINT_TAG,))
 @graph_blueprint.route(
     "/graph.build", methods=["POST"], provide_automatic_options=False,
 )
@@ -38,5 +33,21 @@ graph_blueprint = Blueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PR
 @accepts_json
 @optional_identity
 def graph_build_view(identity):
-    """Graph build view."""
+    """Graph build view.
+    ---
+    post:
+      description: Build a graph for a given repository and revision.
+      requestBody:
+        content:
+          application/json:
+            schema: GraphBuildRequest
+      responses:
+        200:
+          description: "Status of the graph building"
+          content:
+            application/json:
+              schema: GraphBuildResponse
+      tags:
+        - graph
+    """
     return GraphBuildCtrl(identity, dict(request.json)).to_response()
