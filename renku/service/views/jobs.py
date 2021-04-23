@@ -28,7 +28,6 @@ JOBS_BLUEPRINT_TAG = "jobs"
 jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@header_doc(description="List user jobs.", tags=(JOBS_BLUEPRINT_TAG,))
 @jobs_blueprint.route(
     "/jobs", methods=["GET"], provide_automatic_options=False,
 )
@@ -36,7 +35,20 @@ jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 @requires_cache
 @requires_identity
 def list_jobs(user_data, cache):
-    """List user created jobs."""
+    """
+    User created jobs view.
+    ---
+    get:
+      description: Return a listing of jobs for the authenticated user.
+      responses:
+        200:
+          description: List of jobs for the authenticated user.
+          content:
+            application/json:
+              schema: JobListResponse
+      tags:
+        - jobs
+    """
     user = cache.ensure_user(user_data)
 
     jobs = []
@@ -60,7 +72,25 @@ def list_jobs(user_data, cache):
 @requires_cache
 @requires_identity
 def job_details(user_data, cache, job_id):
-    """Show details for a specific job."""
+    """
+    Show the details of a specific job.
+    ---
+    get:
+      description: Show the details of a specific job.
+      parameters:
+        - in: path
+          name: job_id
+          schema:
+            type: string
+      responses:
+        200:
+          description: Details of the job.
+          content:
+            application/json:
+              schema: JobDetailsResponseRPC
+      tags:
+        - jobs
+    """
     user = cache.ensure_user(user_data)
     job = cache.get_job(user, job_id)
 
