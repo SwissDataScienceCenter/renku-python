@@ -73,6 +73,17 @@ services:
       - "traefik.http.middlewares.stripprefix.stripprefix.prefixes=/api"
       - "traefik.http.routers.renku-svc.middlewares=stripprefix@docker"
 
+  swagger:
+    image: swaggerapi/swagger-ui
+    networks:
+      - net
+    environment:
+      - BASE_URL=/api/swagger
+      - URL=/api/renku/openapi.json
+    labels:
+      - traefik.http.routers.swagger.rule=PathPrefix(`/api/swagger`)
+      - traefik.http.services.my-service.loadbalancer.server.port=8080
+
   renku-scheduler:
     build:
       context: .
