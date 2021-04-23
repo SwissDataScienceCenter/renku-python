@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku service cache views."""
 from flask import Blueprint, request
-from flask_apispec import marshal_with, use_kwargs
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.cache_files_upload import UploadFilesCtrl
