@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku service datasets view."""
 from flask import Blueprint, request
-from flask_apispec import marshal_with, use_kwargs
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.datasets_add_file import DatasetsAddFileCtrl
@@ -28,28 +27,9 @@ from renku.service.controllers.datasets_import import DatasetsImportCtrl
 from renku.service.controllers.datasets_list import DatasetsListCtrl
 from renku.service.controllers.datasets_remove import DatasetsRemoveCtrl
 from renku.service.controllers.datasets_unlink import DatasetsUnlinkCtrl
-from renku.service.serializers.datasets import (
-    DatasetAddRequest,
-    DatasetAddResponseRPC,
-    DatasetCreateRequest,
-    DatasetCreateResponseRPC,
-    DatasetEditRequest,
-    DatasetEditResponseRPC,
-    DatasetFilesListRequest,
-    DatasetFilesListResponseRPC,
-    DatasetImportRequest,
-    DatasetImportResponseRPC,
-    DatasetListRequest,
-    DatasetListResponseRPC,
-    DatasetRemoveRequest,
-    DatasetRemoveResponseRPC,
-    DatasetUnlinkRequest,
-    DatasetUnlinkResponseRPC,
-)
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
-    header_doc,
     optional_identity,
     requires_cache,
     requires_identity,
@@ -59,9 +39,6 @@ DATASET_BLUEPRINT_TAG = "datasets"
 dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@use_kwargs(DatasetListRequest, location="query")
-@marshal_with(DatasetListResponseRPC)
-@header_doc("List all datasets in project.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
     "/datasets.list", methods=["GET"], provide_automatic_options=False,
 )
@@ -69,13 +46,22 @@ dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVIC
 @requires_cache
 @optional_identity
 def list_datasets_view(user_data, cache):
-    """List all datasets in project."""
+    """List all datasets in a project.
+    ---
+    get:
+      description: List all datasets in a project.
+      responses:
+        200:
+          description: Listing of all datasets in a project.
+          content:
+            application/json:
+              schema: DatasetListResponse
+      tags:
+        - datasets
+    """
     return DatasetsListCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@use_kwargs(DatasetFilesListRequest, location="query")
-@marshal_with(DatasetFilesListResponseRPC)
-@header_doc("List files in a dataset.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
     "/datasets.files_list", methods=["GET"], provide_automatic_options=False,
 )
@@ -83,13 +69,26 @@ def list_datasets_view(user_data, cache):
 @requires_cache
 @optional_identity
 def list_dataset_files_view(user_data, cache):
-    """List files in a dataset."""
+    """
+    List files in a dataset.
+    ---
+    get:
+      description: List files in a dataset.
+      parameters:
+        - in: query
+          schema: DatasetFilesListRequest
+      responses:
+        200:
+          description: Listing of all files in a dataset.
+          content:
+            application/json:
+              schema: DatasetFilesListResponse
+      tags:
+        - datasets
+    """
     return DatasetsFilesListCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@use_kwargs(DatasetAddRequest)
-@marshal_with(DatasetAddResponseRPC)
-@header_doc("Add an uploaded file to a cloned repository.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
     "/datasets.add", methods=["POST"], provide_automatic_options=False,
 )
@@ -98,13 +97,27 @@ def list_dataset_files_view(user_data, cache):
 @requires_cache
 @requires_identity
 def add_file_to_dataset_view(user_data, cache):
-    """Add the uploaded file to cloned repository."""
+    """
+    Add the uploaded file to a cloned repository.
+    ---
+    post:
+      description: Add the uploaded file to a cloned repository.
+      requestBody:
+        content:
+          application/json:
+            schema: DatasetAddRequest
+      responses:
+        200:
+          description: Details of the added files.
+          content:
+            application/json:
+              schema: DatasetAddResponse
+      tags:
+        - datasets
+    """
     return DatasetsAddFileCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@use_kwargs(DatasetCreateRequest)
-@marshal_with(DatasetCreateResponseRPC)
-@header_doc("Create a new dataset in a project.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
     "/datasets.create", methods=["POST"], provide_automatic_options=False,
 )
@@ -113,13 +126,27 @@ def add_file_to_dataset_view(user_data, cache):
 @requires_cache
 @requires_identity
 def create_dataset_view(user_data, cache):
-    """Create a new dataset in a project."""
+    """
+    Create a new dataset in a project.
+    ---
+    post:
+      description: Create a new dataset in a project.
+      requestBody:
+        content:
+          application/json:
+            schema: DatasetCreateRequest
+      responses:
+        200:
+          description: Properties of the created dataset.
+          content:
+            application/json:
+              schema: DatasetCreateResponse
+      tags:
+        - datasets
+    """
     return DatasetsCreateCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@use_kwargs(DatasetRemoveRequest)
-@marshal_with(DatasetRemoveResponseRPC)
-@header_doc("Remove a dataset from a project.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
     "/datasets.remove", methods=["POST"], provide_automatic_options=False,
 )
@@ -128,13 +155,27 @@ def create_dataset_view(user_data, cache):
 @requires_cache
 @requires_identity
 def remove_dataset_view(user_data, cache):
-    """Remove a dataset from a project."""
+    """
+    Remove a dataset from a project.
+    ---
+    post:
+      description: Remove a dataset from a project.
+      requestBody:
+        content:
+          application/json:
+            schema: DatasetRemoveRequest
+      responses:
+        200:
+          description: Details of the removed dataset.
+          content:
+            application/json:
+              schema: DatasetRemoveResponse
+      tags:
+        - datasets
+    """
     return DatasetsRemoveCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@use_kwargs(DatasetImportRequest)
-@marshal_with(DatasetImportResponseRPC)
-@header_doc("Import a dataset", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
     "/datasets.import", methods=["POST"], provide_automatic_options=False,
 )
@@ -143,13 +184,26 @@ def remove_dataset_view(user_data, cache):
 @requires_cache
 @requires_identity
 def import_dataset_view(user_data, cache):
-    """Import a dataset view."""
+    """Import a dataset view.
+    ---
+    post:
+      description: Import a dataset into a project.
+      requestBody:
+        content:
+          application/json:
+            schema: DatasetImportRequest
+      responses:
+        200:
+          description: Details of the dispatched import dataset job.
+          content:
+            application/json:
+              schema: DatasetImportResponse
+      tags:
+        - datasets
+    """
     return DatasetsImportCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@use_kwargs(DatasetEditRequest)
-@marshal_with(DatasetEditResponseRPC)
-@header_doc("Edit dataset metadata", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
     "/datasets.edit", methods=["POST"], provide_automatic_options=False,
 )
@@ -158,13 +212,26 @@ def import_dataset_view(user_data, cache):
 @requires_cache
 @requires_identity
 def edit_dataset_view(user_data, cache):
-    """Edit dataset metadata."""
+    """Edit dataset metadata view.
+    ---
+    post:
+      description: Edit dataset metadata.
+      requestBody:
+        content:
+          application/json:
+            schema: DatasetEditRequest
+      responses:
+        200:
+          description: Status of the requested dataset edits.
+          content:
+            application/json:
+              schema: DatasetEditResponse
+      tags:
+        - datasets
+    """
     return DatasetsEditCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@use_kwargs(DatasetUnlinkRequest)
-@marshal_with(DatasetUnlinkResponseRPC)
-@header_doc("Unlink a file from a dataset", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
     "/datasets.unlink", methods=["POST"], provide_automatic_options=False,
 )
@@ -173,5 +240,21 @@ def edit_dataset_view(user_data, cache):
 @requires_cache
 @requires_identity
 def unlink_file_view(user_data, cache):
-    """Unlink a file from a dataset."""
+    """Unlink a file from a dataset view.
+    ---
+    post:
+      description: Unlink a file from a dataset.
+      requestBody:
+        content:
+          application/json:
+            schema: DatasetUnlinkRequest
+      responses:
+        200:
+          description: Details of the unlinked files.
+          content:
+            application/json:
+              schema: DatasetUnlinkResponse
+      tags:
+        - datasets
+    """
     return DatasetsUnlinkCtrl(cache, user_data, dict(request.json)).to_response()
