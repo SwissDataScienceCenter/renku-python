@@ -324,22 +324,20 @@ def header_doc(description, tags=()):
     """Wrap additional OpenAPI header description for an endpoint."""
     return doc(
         description=description,
-        params={
-            "Authorization": {
-                "description": "Used for users git oauth2 access. For example: ```Bearer asdf-qwer-zxcv```",
-                "in": "header",
-                "type": "string",
-            },
-            "Renku-User": {
-                "description": (
-                    "JWT used for identification of the users. "
-                    "For example: "
-                    "```a9bd31fb.bfad4899b8bdf.d0908fab19d```"
-                ),
-                "in": "header",
-                "type": "string",
-            },
-        },
+        # params={
+        #     "Authorization": {
+        #         "description": "Used for users git oauth2 access. For example: ```Bearer asdf-qwer-zxcv```",
+        #         "in": "header",
+        #     },
+        #     "Renku-User": {
+        #         "description": (
+        #             "JWT used for identification of the users. "
+        #             "For example: "
+        #             "```a9bd31fb.bfad4899b8bdf.d0908fab19d```"
+        #         ),
+        #         "in": "header",
+        #     },
+        # },
         tags=list(tags),
     )
 

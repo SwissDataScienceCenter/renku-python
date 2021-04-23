@@ -24,9 +24,8 @@ import uuid
 import sentry_sdk
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
-from flask import Flask, redirect, request, url_for
-from flask_apispec import FlaskApiSpec
-from flask_swagger_ui import get_swaggerui_blueprint
+from apispec_webframeworks.flask import FlaskPlugin
+from flask import Flask, jsonify, redirect, request, url_for
 from jwt import InvalidTokenError
 from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -136,26 +135,17 @@ def build_routes(app):
                 title=SERVICE_NAME,
                 openapi_version=OPENAPI_VERSION,
                 version=API_VERSION,
-                plugins=[MarshmallowPlugin()],
+                plugins=[FlaskPlugin(), MarshmallowPlugin()],
                 servers=[{"url": SERVICE_API_BASE_PATH}],
                 components={
                     "securitySchemes": {
-                        "oauth2": {
-                            "type": "oauth2",
-                            "flows": {
-                                "implicit": {
-                                    "authorizationUrl": "/auth/realms/Renku/protocol/openid-connect/auth",
-                                    "scopes": {"openid": "openid"},
-                                }
-                            },
-                        },
                         "oidc": {
                             "type": "openIdConnect",
                             "openIdConnectUrl": "/auth/realms/Renku/.well-known/openid-configuration",
                         },
                     }
                 },
-                security=[{"oidc": []}, {"oauth2": ["openid"]}],
+                security=[{"oidc": []}],
             ),
             "APISPEC_SWAGGER_URL": API_SPEC_URL,
         }
@@ -167,55 +157,6 @@ def build_routes(app):
     app.register_blueprint(jobs_blueprint)
     app.register_blueprint(templates_blueprint)
     app.register_blueprint(version_blueprint)
-
-    # TODO: #2029 properly handle the reverse proxy prefix (i.e. /api)
-    swaggerui_blueprint = get_swaggerui_blueprint(
-        _join_urls(SERVICE_API_BASE_PATH, SERVICE_PREFIX, "/docs"),
-        API_SPEC_URL,
-        config={
-            "app_name": "Renku Service",
-            "url": _join_urls(SERVICE_API_BASE_PATH, SERVICE_PREFIX, "spec.json"),
-            "oauth2RedirectUrl": f"{HTTP_SCHEME}://{RENKU_DOMAIN}{_join_urls(SERVICE_API_BASE_PATH, SERVICE_PREFIX, 'docs', 'oauth2-redirect.html')}",
-        },
-    )
-    app.register_blueprint(swaggerui_blueprint, url_prefix=_join_urls(SERVICE_PREFIX, "/docs"))
-
-    docs = FlaskApiSpec(app)
-
-    # NOTE: Version endpoint
-    docs.register(version, blueprint=VERSION_BLUEPRINT_TAG)
-
-    # NOTE: Cache endpoints
-    docs.register(list_uploaded_files_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(upload_file_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(project_clone_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(list_projects_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(migrate_project_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(migration_check_project_view, blueprint=CACHE_BLUEPRINT_TAG)
-
-    # NOTE: Config endpoint
-    docs.register(show_config, blueprint=CONFIG_BLUEPRINT_TAG)
-    docs.register(set_config, blueprint=CONFIG_BLUEPRINT_TAG)
-
-    # NOTE: Dataset endpoints
-    docs.register(list_datasets_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(list_dataset_files_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(add_file_to_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(create_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(import_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(edit_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(remove_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(unlink_file_view, blueprint=DATASET_BLUEPRINT_TAG)
-
-    # NOTE: Graph endpoints
-    docs.register(graph_build_view, blueprint=GRAPH_BLUEPRINT_TAG)
-
-    # NOTE: User jobs endpoint
-    docs.register(list_jobs, blueprint=JOBS_BLUEPRINT_TAG)
-
-    # NOTE: Template endpoints
-    docs.register(read_manifest_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG)
-    docs.register(create_project_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG)
 
 
 app = create_app()
@@ -267,6 +208,18 @@ def exceptions(e):
 
 
 app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
+
+
+@app.route("/renku/openapi.json")
+def openapi():
+    import json
+
+    spec = app.config.get("APISPEC_SPEC")
+    spec.path(view=app.view_functions["cache.list_uploaded_files_view"])
+    # for rule in app.url_map.iter_rules():
+    #     spec.path(view=app.view_functions[rule.endpoint])
+    return jsonify(spec.to_dict())
+
 
 if app.debug:
     import ptvsd

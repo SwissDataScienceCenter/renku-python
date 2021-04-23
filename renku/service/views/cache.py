@@ -27,6 +27,7 @@ from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
 from renku.service.serializers.cache import (
+    FileListResponse,
     FileListResponseRPC,
     FileUploadRequest,
     FileUploadResponseRPC,
@@ -51,8 +52,8 @@ CACHE_BLUEPRINT_TAG = "cache"
 cache_blueprint = Blueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@marshal_with(FileListResponseRPC)
-@header_doc(description="List uploaded files.", tags=(CACHE_BLUEPRINT_TAG,))
+# @marshal_with(FileListResponseRPC)
+# @header_doc(description="List uploaded files.", tags=(CACHE_BLUEPRINT_TAG,))
 @cache_blueprint.route(
     "/cache.files_list", methods=["GET"], provide_automatic_options=False,
 )
@@ -60,7 +61,20 @@ cache_blueprint = Blueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 @requires_cache
 @requires_identity
 def list_uploaded_files_view(user_data, cache):
-    """List uploaded files ready to be added to projects."""
+    """
+    List uploaded files ready to be added to projects.
+    ---
+    get:
+      description: List uploaded files
+      responses:
+        200:
+          description: "Return a list of files."
+          content:
+            application/json:
+              schema: FileListResponse
+      tags:
+        - cache
+    """
     return ListUploadedFilesCtrl(cache, user_data).to_response()
 
 
