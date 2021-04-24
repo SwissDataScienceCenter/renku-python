@@ -78,10 +78,10 @@ services:
     networks:
       - net
     environment:
-      - BASE_URL=/api/swagger
+      - BASE_URL=/api/docs
       - URL=/api/renku/spec.json
     labels:
-      - traefik.http.routers.swagger.rule=PathPrefix(`/api/swagger`)
+      - traefik.http.routers.swagger.rule=PathPrefix(`/api/docs`)
       - traefik.http.services.my-service.loadbalancer.server.port=8080
 
   renku-scheduler:
