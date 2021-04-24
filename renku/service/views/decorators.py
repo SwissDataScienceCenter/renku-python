@@ -21,7 +21,6 @@ import re
 from functools import wraps
 
 from flask import jsonify, request
-from flask_apispec import doc
 from git import GitCommandError, GitError
 from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError

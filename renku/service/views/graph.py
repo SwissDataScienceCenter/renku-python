@@ -33,7 +33,9 @@ graph_blueprint = Blueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PR
 @accepts_json
 @optional_identity
 def graph_build_view(identity):
-    """Graph build view.
+    """
+    Graph build view.
+
     ---
     post:
       description: Build a graph for a given repository and revision.

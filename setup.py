@@ -115,7 +115,6 @@ service_requires = [
     "apispec>=4.0.0,<=4.1.0",
     "apispec-webframeworks==0.5.2",
     "circus==0.17.1",
-    "flask-apispec==0.11.0",
     "flask==1.1.2",
     "gunicorn",
     "marshmallow==3.10.0",

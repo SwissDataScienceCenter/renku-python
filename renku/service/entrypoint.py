@@ -182,6 +182,7 @@ app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
 
 @app.route("/renku/openapi.json")
 def openapi():
+    """Return the OpenAPI spec for this service."""
     return jsonify(get_apispec().to_dict())
 
 

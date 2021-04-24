@@ -37,6 +37,7 @@ jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 def list_jobs(user_data, cache):
     """
     User created jobs view.
+
     ---
     get:
       description: Return a listing of jobs for the authenticated user.
@@ -73,6 +74,7 @@ def list_jobs(user_data, cache):
 def job_details(user_data, cache, job_id):
     """
     Show the details of a specific job.
+
     ---
     get:
       description: Show the details of a specific job.

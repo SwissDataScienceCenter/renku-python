@@ -46,7 +46,9 @@ dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVIC
 @requires_cache
 @optional_identity
 def list_datasets_view(user_data, cache):
-    """List all datasets in a project.
+    """
+    List all datasets in a project.
+
     ---
     get:
       description: List all datasets in a project.
@@ -71,6 +73,7 @@ def list_datasets_view(user_data, cache):
 def list_dataset_files_view(user_data, cache):
     """
     List files in a dataset.
+
     ---
     get:
       description: List files in a dataset.
@@ -99,6 +102,7 @@ def list_dataset_files_view(user_data, cache):
 def add_file_to_dataset_view(user_data, cache):
     """
     Add the uploaded file to a cloned repository.
+
     ---
     post:
       description: Add the uploaded file to a cloned repository.
@@ -128,6 +132,7 @@ def add_file_to_dataset_view(user_data, cache):
 def create_dataset_view(user_data, cache):
     """
     Create a new dataset in a project.
+
     ---
     post:
       description: Create a new dataset in a project.
@@ -157,6 +162,7 @@ def create_dataset_view(user_data, cache):
 def remove_dataset_view(user_data, cache):
     """
     Remove a dataset from a project.
+
     ---
     post:
       description: Remove a dataset from a project.
@@ -184,7 +190,9 @@ def remove_dataset_view(user_data, cache):
 @requires_cache
 @requires_identity
 def import_dataset_view(user_data, cache):
-    """Import a dataset view.
+    """
+    Import a dataset view.
+
     ---
     post:
       description: Import a dataset into a project.
@@ -212,7 +220,9 @@ def import_dataset_view(user_data, cache):
 @requires_cache
 @requires_identity
 def edit_dataset_view(user_data, cache):
-    """Edit dataset metadata view.
+    """
+    Edit dataset metadata view.
+
     ---
     post:
       description: Edit dataset metadata.
@@ -240,7 +250,9 @@ def edit_dataset_view(user_data, cache):
 @requires_cache
 @requires_identity
 def unlink_file_view(user_data, cache):
-    """Unlink a file from a dataset view.
+    """
+    Unlink a file from a dataset view.
+
     ---
     post:
       description: Unlink a file from a dataset.
