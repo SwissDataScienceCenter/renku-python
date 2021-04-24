@@ -462,3 +462,15 @@ class RenkuSaveError(RenkuException):
 
 class DatasetImageError(RenkuException):
     """Raised when a local dataset image is not accessible."""
+
+
+class NodeNotFoundError(RenkuException):
+    """Raised when NodeJs is not installed on the system."""
+
+    def __init__(self):
+        """Build a custom message."""
+        msg = (
+            "NodeJs could not be found on this system\n"
+            "Please install it, for details see https://nodejs.org/en/download/package-manager/"
+        )
+        super(NodeNotFoundError, self).__init__(msg)

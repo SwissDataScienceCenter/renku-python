@@ -37,7 +37,7 @@ from renku.version import __version__, version_url
 
 def update_workflows():
     """Update existing files by rerunning their outdated workflow."""
-    return Command().command(_update_workflows).require_migration().require_clean().with_commit()
+    return Command().command(_update_workflows).require_migration().require_clean().with_commit().require_nodejs()
 
 
 def _update_workflows(client, revision, no_output, update_all, siblings, paths):
