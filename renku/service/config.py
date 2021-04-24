@@ -64,6 +64,6 @@ SERVICE_PREFIX = os.getenv("CORE_SERVICE_PREFIX", "/")
 # the reverse proxy prefix
 SERVICE_API_BASE_PATH = os.getenv("CORE_SERVICE_API_BASE_PATH", "/")
 # path to the swagger spec
-API_SPEC_URL = SERVICE_PREFIX + "/spec.json"
+API_SPEC_URL = SERVICE_PREFIX.lstrip("/") + "/spec.json"
 
 LOGGER_CONFIG_FILE = Path(pkg_resources.resource_filename("renku", "service/logging.yaml"))
