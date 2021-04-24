@@ -25,7 +25,6 @@ from renku.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
 from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
-
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
@@ -47,6 +46,7 @@ cache_blueprint = Blueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 def list_uploaded_files_view(user_data, cache):
     """
     List uploaded files.
+
     ---
     get:
       description: List uploaded files ready to be added to projects.
@@ -71,6 +71,7 @@ def list_uploaded_files_view(user_data, cache):
 def upload_file_view(user_data, cache):
     """
     Upload a file or archive of files.
+
     ---
     post:
       description: Upload a file or archive of files.
@@ -100,6 +101,7 @@ def upload_file_view(user_data, cache):
 def project_clone_view(user_data, cache):
     """
     Clone a remote project.
+
     ---
     post:
       description: Clone a remote project. If the project is cached already,
@@ -129,6 +131,7 @@ def project_clone_view(user_data, cache):
 def list_projects_view(user_data, cache):
     """
     List cached projects.
+
     ---
     get:
       description: List cached projects.
@@ -155,6 +158,7 @@ def list_projects_view(user_data, cache):
 def migrate_project_view(user_data, cache):
     """
     Migrate a project.
+
     ---
     post:
       description: Migrate a project.
@@ -184,6 +188,7 @@ def migrate_project_view(user_data, cache):
 def migration_check_project_view(user_data, cache):
     """
     Retrieve migration information for a project.
+
     ---
     get:
       description: Retrieve migration information for a project.

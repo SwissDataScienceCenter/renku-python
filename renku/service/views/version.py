@@ -29,7 +29,9 @@ version_blueprint = Blueprint("version", __name__, url_prefix=SERVICE_PREFIX)
 )
 @handle_validation_except
 def version():
-    """Version view.
+    """
+    Version view.
+
     ---
     get:
       description: Show the service version.

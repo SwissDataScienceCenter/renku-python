@@ -40,7 +40,9 @@ config_blueprint = Blueprint("config", __name__, url_prefix=SERVICE_PREFIX)
 @requires_cache
 @optional_identity
 def show_config(user_data, cache):
-    """Retrieve the renku config for a project.
+    """
+    Retrieve the renku config for a project.
+
     ---
     get:
       description: Retrieve the renku config for a project.
@@ -67,7 +69,9 @@ def show_config(user_data, cache):
 @requires_cache
 @requires_identity
 def set_config(user_data, cache):
-    """Set the renku config for a project.
+    """
+    Set the renku config for a project.
+
     ---
     post:
       description: Set the renku config for a project.

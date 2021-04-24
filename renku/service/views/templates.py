@@ -21,12 +21,7 @@ from flask import Blueprint, request
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
-from renku.service.views.decorators import (
-    accepts_json,
-    handle_common_except,
-    requires_cache,
-    requires_identity,
-)
+from renku.service.views.decorators import accepts_json, handle_common_except, requires_cache, requires_identity
 
 TEMPLATES_BLUEPRINT_TAG = "templates"
 templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
@@ -40,7 +35,9 @@ templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SE
 @requires_cache
 @requires_identity
 def read_manifest_from_template(user_data, cache):
-    """Read templates from the manifest file of a template repository.
+    """
+    Read templates from the manifest file of a template repository.
+
     ---
     get:
       description: Read templates from the manifest file of a template repository.
@@ -78,7 +75,9 @@ def read_manifest_from_template(user_data, cache):
 @requires_cache
 @requires_identity
 def create_project_from_template(user_data, cache):
-    """Create a new project starting using a remote template."
+    """
+    Create a new project starting using a remote template.
+
     ---
     post:
       description: Create a new project using a remote template.
