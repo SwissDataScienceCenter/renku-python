@@ -59,9 +59,6 @@ SUPPORTED_ARCHIVES = [
     GZ_ARCHIVE_CONTENT_TYPE,
 ]
 
-HTTP_SCHEME = os.getenv("HTTP_SCHEME", "http")
-RENKU_DOMAIN = os.getenv("RENKU_DOMAIN", "localhost")
-
 # the path prefix on the service
 SERVICE_PREFIX = os.getenv("CORE_SERVICE_PREFIX", "/")
 # the reverse proxy prefix
