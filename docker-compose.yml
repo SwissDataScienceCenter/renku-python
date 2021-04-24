@@ -79,7 +79,7 @@ services:
       - net
     environment:
       - BASE_URL=/api/swagger
-      - URL=/api/renku/openapi.json
+      - URL=/api/renku/spec.json
     labels:
       - traefik.http.routers.swagger.rule=PathPrefix(`/api/swagger`)
       - traefik.http.services.my-service.loadbalancer.server.port=8080

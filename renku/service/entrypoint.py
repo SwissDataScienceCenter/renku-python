@@ -34,7 +34,6 @@ from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.service.cache import cache
 from renku.service.config import (
-    API_SPEC_URL,
     API_VERSION,
     CACHE_DIR,
     HTTP_SERVER_ERROR,
@@ -92,34 +91,16 @@ def create_app():
 
         return "renku repository service version {}\n".format(renku.__version__)
 
+    @app.route(SERVICE_PREFIX.rstrip("/") + "/spec.json")
+    def openapi():
+        """Return the OpenAPI spec for this service."""
+        return jsonify(get_apispec(app).to_dict())
+
     return app
 
 
 def build_routes(app):
     """Register routes to given app instance."""
-    app.config.update(
-        {
-            "APISPEC_SPEC": APISpec(
-                title=SERVICE_NAME,
-                openapi_version=OPENAPI_VERSION,
-                version=API_VERSION,
-                plugins=[FlaskPlugin(), MarshmallowPlugin()],
-                servers=[{"url": SERVICE_API_BASE_PATH}],
-                components={
-                    "securitySchemes": {
-                        "oidc": {
-                            "type": "openIdConnect",
-                            "openIdConnectUrl": "/auth/realms/Renku/.well-known/openid-configuration",
-                        },
-                        "jwt": {"type": "apiKey", "name": "Renku-User", "in": "header"},
-                        "token": {"type": "apiKey", "name": "Authorization", "in": "header"},
-                    }
-                },
-                security=[{"oidc": []}, {"jwt": [], "token": []}],
-            ),
-            "APISPEC_SWAGGER_URL": API_SPEC_URL,
-        }
-    )
     app.register_blueprint(cache_blueprint)
     app.register_blueprint(config_blueprint)
     app.register_blueprint(dataset_blueprint)
@@ -179,13 +160,6 @@ def exceptions(e):
 
 app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
 
-
-@app.route("/renku/openapi.json")
-def openapi():
-    """Return the OpenAPI spec for this service."""
-    return jsonify(get_apispec().to_dict())
-
-
 if app.debug:
     import ptvsd
 
@@ -205,9 +179,26 @@ if __name__ == "__main__":
     app.run()
 
 
-def get_apispec():
+def get_apispec(app):
     """Return the apispec."""
-    spec = app.config.get("APISPEC_SPEC")
+    spec = APISpec(
+        title=SERVICE_NAME,
+        openapi_version=OPENAPI_VERSION,
+        version=API_VERSION,
+        plugins=[FlaskPlugin(), MarshmallowPlugin()],
+        servers=[{"url": SERVICE_API_BASE_PATH}],
+        components={
+            "securitySchemes": {
+                "oidc": {
+                    "type": "openIdConnect",
+                    "openIdConnectUrl": "/auth/realms/Renku/.well-known/openid-configuration",
+                },
+                "jwt": {"type": "apiKey", "name": "Renku-User", "in": "header"},
+                "token": {"type": "apiKey", "name": "Authorization", "in": "header"},
+            }
+        },
+        security=[{"oidc": []}, {"jwt": [], "token": []}],
+    )
     for rule in app.url_map.iter_rules():
         spec.path(view=app.view_functions[rule.endpoint])
     return spec
