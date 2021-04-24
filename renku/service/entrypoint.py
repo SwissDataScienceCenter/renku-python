@@ -111,9 +111,11 @@ def build_routes(app):
                             "type": "openIdConnect",
                             "openIdConnectUrl": "/auth/realms/Renku/.well-known/openid-configuration",
                         },
+                        "jwt": {"type": "apiKey", "name": "Renku-User", "in": "header"},
+                        "token": {"type": "apiKey", "name": "Authorization", "in": "header"},
                     }
                 },
-                security=[{"oidc": []}],
+                security=[{"oidc": []}, {"jwt": [], "token": []}],
             ),
             "APISPEC_SWAGGER_URL": API_SPEC_URL,
         }
