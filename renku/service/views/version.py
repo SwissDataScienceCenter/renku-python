@@ -24,11 +24,22 @@ VERSION_BLUEPRINT_TAG = "version"
 version_blueprint = Blueprint("version", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@header_doc(description="Display version of the service.", tags=(VERSION_BLUEPRINT_TAG,))
 @version_blueprint.route(
     "/version", methods=["GET"], provide_automatic_options=False,
 )
 @handle_validation_except
 def version():
-    """Version view."""
+    """Version view.
+    ---
+    get:
+      description: Show the service version.
+      responses:
+        200:
+          description: The service version.
+          content:
+            application/json:
+              schema: VersionResponse
+      tags:
+        - version
+    """
     return VersionCtrl().to_response()
