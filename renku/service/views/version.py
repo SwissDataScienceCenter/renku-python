@@ -18,7 +18,7 @@ from flask import Blueprint
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.version import VersionCtrl
-from renku.service.views.decorators import handle_validation_except, header_doc
+from renku.service.views.decorators import handle_validation_except
 
 VERSION_BLUEPRINT_TAG = "version"
 version_blueprint = Blueprint("version", __name__, url_prefix=SERVICE_PREFIX)
@@ -38,7 +38,7 @@ def version():
           description: The service version.
           content:
             application/json:
-              schema: VersionResponse
+              schema: VersionResponseRPC
       tags:
         - version
     """
