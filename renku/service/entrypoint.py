@@ -37,10 +37,8 @@ from renku.service.config import (
     API_SPEC_URL,
     API_VERSION,
     CACHE_DIR,
-    HTTP_SCHEME,
     HTTP_SERVER_ERROR,
     OPENAPI_VERSION,
-    RENKU_DOMAIN,
     SERVICE_API_BASE_PATH,
     SERVICE_NAME,
     SERVICE_PREFIX,
@@ -49,38 +47,13 @@ from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views import error_response
-from renku.service.views.cache import (
-    CACHE_BLUEPRINT_TAG,
-    cache_blueprint,
-    list_projects_view,
-    list_uploaded_files_view,
-    migrate_project_view,
-    migration_check_project_view,
-    project_clone_view,
-    upload_file_view,
-)
-from renku.service.views.config import CONFIG_BLUEPRINT_TAG, config_blueprint, set_config, show_config
-from renku.service.views.datasets import (
-    DATASET_BLUEPRINT_TAG,
-    add_file_to_dataset_view,
-    create_dataset_view,
-    dataset_blueprint,
-    edit_dataset_view,
-    import_dataset_view,
-    list_dataset_files_view,
-    list_datasets_view,
-    remove_dataset_view,
-    unlink_file_view,
-)
-from renku.service.views.graph import GRAPH_BLUEPRINT_TAG, graph_blueprint, graph_build_view
-from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, list_jobs
-from renku.service.views.templates import (
-    TEMPLATES_BLUEPRINT_TAG,
-    create_project_from_template,
-    read_manifest_from_template,
-    templates_blueprint,
-)
-from renku.service.views.version import VERSION_BLUEPRINT_TAG, version, version_blueprint
+from renku.service.views.cache import cache_blueprint
+from renku.service.views.config import config_blueprint
+from renku.service.views.datasets import dataset_blueprint
+from renku.service.views.graph import graph_blueprint
+from renku.service.views.jobs import jobs_blueprint
+from renku.service.views.templates import templates_blueprint
+from renku.service.views.version import version_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
 
@@ -110,7 +83,7 @@ def create_app():
     @app.route(SERVICE_PREFIX)
     def root():
         """Root redirect to docs."""
-        return redirect(url_for("swagger_ui.show"))
+        return redirect(url_for("health"))
 
     @app.route("/health")
     def health():
@@ -120,11 +93,6 @@ def create_app():
         return "renku repository service version {}\n".format(renku.__version__)
 
     return app
-
-
-def _join_urls(*urls):
-    """Join URLs correctly to have a leading slash and single slashes as separators."""
-    return "/" + "/".join(url.strip("/") for url in urls).lstrip("/")
 
 
 def build_routes(app):
