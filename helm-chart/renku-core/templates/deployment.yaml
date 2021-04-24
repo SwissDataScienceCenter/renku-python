@@ -90,8 +90,6 @@ spec:
               value: {{ .Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ .Values.global.renku.domain }}
-            - name: HTTP_SCHEME
-              value: {{ .Values.httpScheme }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}

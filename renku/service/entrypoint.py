@@ -193,11 +193,11 @@ def get_apispec(app):
                     "type": "openIdConnect",
                     "openIdConnectUrl": "/auth/realms/Renku/.well-known/openid-configuration",
                 },
-                "jwt": {"type": "apiKey", "name": "Renku-User", "in": "header"},
-                "token": {"type": "apiKey", "name": "Authorization", "in": "header"},
+                "JWT": {"type": "apiKey", "name": "Renku-User", "in": "header"},
+                "gitlab-token": {"type": "apiKey", "name": "Authorization", "in": "header"},
             }
         },
-        security=[{"oidc": []}, {"jwt": [], "token": []}],
+        security=[{"oidc": []}, {"JWT": [], "gitlab-token": []}],
     )
     for rule in app.url_map.iter_rules():
         spec.path(view=app.view_functions[rule.endpoint])
