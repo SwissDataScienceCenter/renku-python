@@ -17,21 +17,13 @@
 # limitations under the License.
 """Renku service templates view."""
 from flask import Blueprint, request
-from flask_apispec import marshal_with, use_kwargs
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
-from renku.service.serializers.templates import (
-    ManifestTemplatesRequest,
-    ManifestTemplatesResponseRPC,
-    ProjectTemplateRequest,
-    ProjectTemplateResponseRPC,
-)
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
-    header_doc,
     requires_cache,
     requires_identity,
 )
@@ -71,7 +63,7 @@ def read_manifest_from_template(user_data, cache):
           description: Listing of templates in the repository.
           content:
             application/json:
-              schema: ManifestTemplatesResponse
+              schema: ManifestTemplatesResponseRPC
       tags:
         - templates
     """
@@ -99,7 +91,7 @@ def create_project_from_template(user_data, cache):
           description: Details of the created project.
           content:
             application/json:
-              schema: ProjectTemplateResponse
+              schema: ProjectTemplateResponseRPC
       tags:
         - templates
     """

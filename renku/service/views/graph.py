@@ -46,7 +46,7 @@ def graph_build_view(identity):
           description: "Status of the graph building"
           content:
             application/json:
-              schema: GraphBuildResponse
+              schema: GraphBuildResponseRPC
       tags:
         - graph
     """

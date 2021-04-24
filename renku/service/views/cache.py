@@ -55,7 +55,7 @@ def list_uploaded_files_view(user_data, cache):
           description: "Return a list of files."
           content:
             application/json:
-              schema: FileListResponse
+              schema: FileListResponseRPC
       tags:
         - cache
     """
@@ -83,7 +83,7 @@ def upload_file_view(user_data, cache):
           description: List of uploaded files.
           content:
             application/json:
-              schema: FileUploadResponse
+              schema: FileUploadResponseRPC
       tags:
         - cache
     """
@@ -113,7 +113,7 @@ def project_clone_view(user_data, cache):
           description: Cloned project.
           content:
             application/json:
-              schema: ProjectCloneResponse
+              schema: ProjectCloneResponseRPC
       tags:
         - cache
     """
@@ -137,7 +137,7 @@ def list_projects_view(user_data, cache):
           description: List of cached projects.
           content:
             application/json:
-              schema: ProjectListResponse
+              schema: ProjectListResponseRPC
       tags:
         - cache
     """
@@ -167,7 +167,7 @@ def migrate_project_view(user_data, cache):
           description: Migration status.
           content:
             application/json:
-              schema: ProjectMigrateResponse
+              schema: ProjectMigrateResponseRPC
       tags:
         - cache
     """
@@ -192,7 +192,7 @@ def migration_check_project_view(user_data, cache):
           description: Information about required migrations for the project.
           content:
             application/json:
-              schema: ProjectMigrationCheckResponse
+              schema: ProjectMigrationCheckResponseRPC
       tags:
         - cache
     """

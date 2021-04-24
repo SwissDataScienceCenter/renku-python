@@ -45,7 +45,7 @@ def list_jobs(user_data, cache):
           description: List of jobs for the authenticated user.
           content:
             application/json:
-              schema: JobListResponse
+              schema: JobListResponseRPC
       tags:
         - jobs
     """

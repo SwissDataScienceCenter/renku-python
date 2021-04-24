@@ -52,7 +52,7 @@ def show_config(user_data, cache):
           description: Config of a renku project.
           content:
             application/json:
-              schema: ConfigShowResponse
+              schema: ConfigShowResponseRPC
       tags:
         - config
     """
@@ -80,7 +80,7 @@ def set_config(user_data, cache):
           description: User and default configuration options.
           content:
             application/json:
-              schema: ConfigSetResponse
+              schema: ConfigSetResponseRPC
       tags:
         - config
     """

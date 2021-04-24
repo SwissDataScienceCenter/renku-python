@@ -55,7 +55,7 @@ def list_datasets_view(user_data, cache):
           description: Listing of all datasets in a project.
           content:
             application/json:
-              schema: DatasetListResponse
+              schema: DatasetListResponseRPC
       tags:
         - datasets
     """
@@ -82,7 +82,7 @@ def list_dataset_files_view(user_data, cache):
           description: Listing of all files in a dataset.
           content:
             application/json:
-              schema: DatasetFilesListResponse
+              schema: DatasetFilesListResponseRPC
       tags:
         - datasets
     """
@@ -111,7 +111,7 @@ def add_file_to_dataset_view(user_data, cache):
           description: Details of the added files.
           content:
             application/json:
-              schema: DatasetAddResponse
+              schema: DatasetAddResponseRPC
       tags:
         - datasets
     """
@@ -140,7 +140,7 @@ def create_dataset_view(user_data, cache):
           description: Properties of the created dataset.
           content:
             application/json:
-              schema: DatasetCreateResponse
+              schema: DatasetCreateResponseRPC
       tags:
         - datasets
     """
@@ -169,7 +169,7 @@ def remove_dataset_view(user_data, cache):
           description: Details of the removed dataset.
           content:
             application/json:
-              schema: DatasetRemoveResponse
+              schema: DatasetRemoveResponseRPC
       tags:
         - datasets
     """
@@ -197,7 +197,7 @@ def import_dataset_view(user_data, cache):
           description: Details of the dispatched import dataset job.
           content:
             application/json:
-              schema: DatasetImportResponse
+              schema: DatasetImportResponseRPC
       tags:
         - datasets
     """
@@ -225,7 +225,7 @@ def edit_dataset_view(user_data, cache):
           description: Status of the requested dataset edits.
           content:
             application/json:
-              schema: DatasetEditResponse
+              schema: DatasetEditResponseRPC
       tags:
         - datasets
     """
@@ -253,7 +253,7 @@ def unlink_file_view(user_data, cache):
           description: Details of the unlinked files.
           content:
             application/json:
-              schema: DatasetUnlinkResponse
+              schema: DatasetUnlinkResponseRPC
       tags:
         - datasets
     """
