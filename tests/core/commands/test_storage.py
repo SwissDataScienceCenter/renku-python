@@ -38,7 +38,7 @@ def test_lfs_storage_clean_no_remote(runner, project, client):
 
 def test_lfs_storage_clean(runner, project, client_with_remote):
     """Test ``renku storage clean`` command."""
-    client = client_with_remote["client"]
+    client = client_with_remote
 
     with (client.path / "tracked").open("w") as fp:
         fp.write("tracked file")
@@ -83,13 +83,11 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
 
 def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
     """Test ``renku storage clean`` command for unpushed files."""
-    client = client_with_remote["client"]
-
-    with (client.path / "tracked").open("w") as fp:
+    with (client_with_remote.path / "tracked").open("w") as fp:
         fp.write("tracked file")
     subprocess.call(["git", "lfs", "track", "tracked"])
-    client.repo.git.add("*")
-    client.repo.index.commit("tracked file")
+    client_with_remote.repo.git.add("*")
+    client_with_remote.repo.index.commit("tracked file")
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
 

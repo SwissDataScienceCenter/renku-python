@@ -18,6 +18,7 @@
 """Git utility functions."""
 
 import math
+import pathlib
 import urllib
 from subprocess import SubprocessError, run
 
@@ -25,6 +26,7 @@ from renku.core import errors
 from renku.core.models.git import GitURL
 
 ARGUMENT_BATCH_SIZE = 100
+CLI_GITLAB_ENDPOINT = "repos"
 
 
 def run_command(command, *paths, separator=None, **kwargs):
@@ -89,3 +91,17 @@ def have_same_remote(url1, url2):
     u2 = GitURL.parse(url2)
 
     return u1.hostname == u2.hostname and u1.pathname == u2.pathname
+
+
+def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
+    """Return a repo url that can be authenticated by renku."""
+    parsed_remote = GitURL.parse(remote_url)
+    path = parsed_remote.pathname.strip("/")
+    if path.startswith("gitlab/"):
+        path = path.replace("gitlab/", "")
+    path = pathlib.posixpath.join(CLI_GITLAB_ENDPOINT, path)
+
+    credentials = f"renku:{access_token}@" if access_token else ""
+    hostname = deployment_hostname or parsed_remote.hostname
+
+    return urllib.parse.urljoin(f"https://{credentials}{hostname}", path)
