@@ -221,7 +221,7 @@ version_template = """\
 __version__ = {version!r}
 
 
-def _get_disribution_url():
+def _get_distribution_url():
     try:
         import pkg_resources
         d = pkg_resources.get_distribution('renku')
@@ -232,13 +232,22 @@ def _get_disribution_url():
         return 'N/A'
 
 
-version_url = '{{}}/tree/{{}}'.format(_get_disribution_url(), 'v' + __version__)
+version_url = '{{}}/tree/{{}}'.format(_get_distribution_url(), 'v' + __version__)
 """
+
+
+def renku_scheme(version):
+    if version.exact or version.node is None:
+        return version.format_choice("", "+dirty")
+    else:
+        return version.format_choice("+{node}", "+{node}+dirty")
+
 
 setup(
     name="renku",
     use_scm_version={
-        "local_scheme": "dirty-tag",
+        # "local_scheme": "dirty-tag",
+        "local_scheme": renku_scheme,
         "write_to": os.path.join("renku", "version.py"),
         "write_to_template": version_template,
     },
