@@ -75,6 +75,10 @@ def _generate_graph(client, force=False):
             if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
                 continue
 
+            if not (client.path / path).exists():
+                communication.warn(f"Workflow file does not exists: '{path}'")
+                continue
+
             workflow = ActivityRun.from_yaml(path=path, client=client)
             activity_collection = ActivityCollection.from_activity_run(workflow, client.dependency_graph, client)
 
