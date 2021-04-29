@@ -83,7 +83,8 @@ def create_app():
     def root():
         """Root shows basic service information."""
         import renku
-        return jsonify({"version": renku.__version__, {"spec"}: url_for("openapi")})
+
+        return jsonify({"service_version": renku.__version__, "spec_url": url_for("openapi")})
 
     @app.route("/health")
     def health():
