@@ -406,4 +406,4 @@ def apispec():
     from renku.service.entrypoint import app, get_apispec
 
     with app.test_request_context():
-        click.echo(get_apispec().to_yaml())
+        click.echo(get_apispec(app).to_yaml())

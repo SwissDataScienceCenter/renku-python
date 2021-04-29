@@ -81,8 +81,9 @@ def create_app():
 
     @app.route(SERVICE_PREFIX)
     def root():
-        """Root redirect to docs."""
-        return redirect(url_for("health"))
+        """Root shows basic service information."""
+        import renku
+        return jsonify({"version": renku.__version__, {"spec"}: url_for("openapi")})
 
     @app.route("/health")
     def health():
