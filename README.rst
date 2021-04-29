@@ -89,6 +89,8 @@ or `renku rerun`. CWL depends on NodeJs to execute the workflows, so installing
 `NodeJs <https://nodejs.org/en/download/package-manager/>`_ is required if
 you want to use those features.
 
+For development of the service, `Docker <https://docker.com>`_ is recommended.
+
 
 .. _pipx-before-reference:
 
