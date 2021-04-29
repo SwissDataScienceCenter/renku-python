@@ -21,9 +21,9 @@ from urllib.parse import urlparse
 
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates
 
-from renku.core.errors import ConfigurationError
-from renku.core.models.git import GitURL
+from renku.core.errors import ParameterError
 from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.urls import validate_url
 from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.cache import ProjectCloneContext
 from renku.service.serializers.rpc import JsonRPCResponse
@@ -72,11 +72,9 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
         try:
             project_name_stripped = normalize_to_ascii(data["project_name"])
             new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
-            _ = GitURL.parse(new_project_url)
-        except UnicodeError as e:
+            _ = validate_url(new_project_url)
+        except ParameterError as e:
             raise ValidationError("`git_url` contains unsupported characters") from e
-        except ConfigurationError as e:
-            raise ValidationError("Invalid `git_url`") from e
 
         project_slug = f"{data['project_namespace']}/{project_name_stripped}"
         data["new_project_url"] = new_project_url
@@ -89,8 +87,8 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     def validate_new_project_url(self, value):
         """Validates git url."""
         try:
-            GitURL.parse(value)
-        except ConfigurationError as e:
+            validate_url(value)
+        except ParameterError as e:
             raise ValidationError(str(e))
 
         return value

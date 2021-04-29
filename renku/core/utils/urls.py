@@ -24,7 +24,8 @@ import urllib
 from urllib.parse import ParseResult
 
 from renku.core import errors
-from renku.core.models.git import GitURL
+
+_URL_VALIDATOR = r"[^\w\-.~:/?#\[\]@!$&'\(\)\*\+,;=]+"
 
 
 def url_to_string(url):
@@ -76,7 +77,7 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
             remote_url = get_remote(client.repo)
             if not remote_url:
                 return
-            endpoint = f"https://{GitURL.parse(remote_url).hostname}/"
+            endpoint = f"https://{validate_url(remote_url).hostname}/"
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"
@@ -109,3 +110,10 @@ def get_slug(name):
     valid_end = re.sub(r"[._-]$", "", valid_start)
     no_dot_lock_at_end = re.sub(r"\.lock$", "_lock", valid_end)
     return no_dot_lock_at_end
+
+
+def validate_url(repo: str):
+    """Validates the supplied url and returns the parsed URL if valid."""
+    if re.search(_URL_VALIDATOR, repo, re.ASCII):
+        raise errors.ParameterError(f"Invalid url: `{repo}`")
+    return urllib.parse.urlparse(repo)

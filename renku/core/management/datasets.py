@@ -54,14 +54,13 @@ from renku.core.models.datasets import (
     generate_dataset_file_url,
     is_dataset_name_valid,
 )
-from renku.core.models.git import GitURL
 from renku.core.models.provenance.agents import Person
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git, get_oauth_url, have_same_remote, run_command
 from renku.core.utils.migrate import MigrationType
-from renku.core.utils.urls import get_slug, remove_credentials
+from renku.core.utils.urls import get_slug, remove_credentials, validate_url
 
 
 @attr.s
@@ -1327,7 +1326,7 @@ class DatasetsApiMixin(object):
 
         depth = 1 if not ref else None
         ref = ref or renku_branch
-        u = GitURL.parse(url)
+        u = validate_url(url)
         path = u.pathname
         if u.hostname == "localhost":
             path = Path(path).resolve()
