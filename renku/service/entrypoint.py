@@ -25,7 +25,7 @@ import sentry_sdk
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec_webframeworks.flask import FlaskPlugin
-from flask import Flask, jsonify, redirect, request, url_for
+from flask import Flask, jsonify, request, url_for
 from jwt import InvalidTokenError
 from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -83,7 +83,8 @@ def create_app():
     def root():
         """Root shows basic service information."""
         import renku
-        return jsonify({"version": renku.__version__, {"spec"}: url_for("openapi")})
+
+        return jsonify({"service_version": renku.__version__, "spec_url": url_for("openapi")})
 
     @app.route("/health")
     def health():

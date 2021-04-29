@@ -11,6 +11,7 @@ services:
     networks:
       - net
 
+  ## Commenting this out because the setup is broken and is missing the config file
   # prometheus:
   #   image: prom/prometheus
   #   ports:
@@ -65,8 +66,6 @@ services:
       - reverse-proxy
     ports:
       - "8080:8080"
-    volumes:
-      - /tmp/renku:/tmp/renku
     command: ["api", "--debug"]
     labels:
       - "traefik.http.routers.renku-svc.rule=PathPrefix(`/api/renku`)"
@@ -105,8 +104,6 @@ services:
     networks:
       - net
     env_file: .env
-    volumes:
-      - /tmp/renku:/tmp/renku
 
   reverse-proxy:
     image: traefik:v2.4
