@@ -92,7 +92,7 @@ tests_require = [
     "black==19.10b0",
     "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.6",
-    "fakeredis>=1.4.1,<1.4.6",
+    "fakeredis>=1.4.1,<1.5.1",
     "flake8>=3.8,<3.10",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
