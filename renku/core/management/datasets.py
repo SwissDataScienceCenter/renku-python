@@ -1327,7 +1327,7 @@ class DatasetsApiMixin(object):
         depth = 1 if not ref else None
         ref = ref or renku_branch
         u = validate_url(url)
-        path = u.pathname
+        path = u.path
         if u.hostname == "localhost":
             path = Path(path).resolve()
             git_url = str(path)
