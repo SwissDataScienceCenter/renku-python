@@ -62,7 +62,7 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
     REQUEST_SERIALIZER = ProjectMigrateRequest()
     RESPONSE_SERIALIZER = ProjectMigrateResponseRPC()
 
-    def __init__(self, cache, user_data, request_data, migrate_project=False):
+    def __init__(self, cache, user_data, request_data, migrate_project=False, skip_lock=False):
         """Construct controller."""
         self.ctx = MigrateProjectCtrl.REQUEST_SERIALIZER.load(request_data)
 
@@ -72,7 +72,9 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.skip_migrations = self.ctx.get("skip_migrations", False)
         self.commit_message = self.ctx.get("commit_message", None)
 
-        super(MigrateProjectCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
+        super(MigrateProjectCtrl, self).__init__(
+            cache, user_data, request_data, migrate_project=migrate_project, skip_lock=skip_lock
+        )
 
     @property
     def context(self):

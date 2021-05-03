@@ -20,10 +20,14 @@ import os
 import shutil
 from datetime import datetime
 
+import portalocker
 from walrus import BooleanField, DateTimeField, IntegerField, Model, TextField
 
 from renku.service.cache.base import BaseCache
 from renku.service.config import CACHE_PROJECTS_PATH
+
+MAX_CONCURRENT_PROJECT_REQUESTS = 10
+LOCK_TIMEOUT = 15
 
 
 class Project(Model):
@@ -32,6 +36,7 @@ class Project(Model):
     __database__ = BaseCache.model_db
 
     created_at = DateTimeField()
+    last_fetched_at = DateTimeField()
 
     project_id = TextField(primary_key=True, index=True)
     user_id = TextField(index=True)
@@ -51,12 +56,34 @@ class Project(Model):
         """Full path of cached project."""
         return CACHE_PROJECTS_PATH / self.user_id / self.project_id / self.owner / self.name
 
+    def read_lock(self):
+        """Shared read lock on the project."""
+        return portalocker.Lock(f"{self.abs_path}.lock", flags=portalocker.LOCK_SH, timeout=LOCK_TIMEOUT)
+
+    def write_lock(self):
+        """Exclusive write lock on the project."""
+        return portalocker.Lock(f"{self.abs_path}.lock", flags=portalocker.LOCK_EX, timeout=LOCK_TIMEOUT)
+
+    def concurrency_lock(self):
+        """Lock to limit concurrent operations on a project.
+
+        This serves as a "leaky bucket" type approach to prevent starvation with multiple
+        concurrent requests.
+        """
+        return portalocker.BoundedSemaphore(
+            MAX_CONCURRENT_PROJECT_REQUESTS, name=f"{self.name}_bounded_semaphore", directory=str(self.abs_path.parent)
+        )
+
     @property
     def age(self):
         """Returns project's age in seconds."""
         # NOTE: `created_at` field is aligned to UTC timezone.
-        age = int((datetime.utcnow() - self.created_at).total_seconds())
-        return age
+        return int((datetime.utcnow() - self.created_at).total_seconds())
+
+    @property
+    def fetch_age(self):
+        """Returns project's fetch age in seconds."""
+        return int((datetime.utcnow() - self.last_fetched_at).total_seconds())
 
     def exists(self):
         """Ensure a project exists on file system."""

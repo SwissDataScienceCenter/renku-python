@@ -20,6 +20,7 @@ import os
 import time
 import urllib
 import uuid
+from pathlib import Path
 
 import pytest
 
@@ -53,8 +54,27 @@ def svc_client(mock_redis):
     ctx.pop()
 
 
-@pytest.fixture
-def svc_client_cache(mock_redis, identity_headers):
+@pytest.fixture(scope="function")
+def svc_cache_dir(mocker, tmpdir):
+    """Mock temporary dir for cache."""
+    import renku.service.cache.models.project
+    import renku.service.config
+    import renku.service.utils
+
+    project_dir = Path(tmpdir.mkdir("projects"))
+    upload_dir = Path(tmpdir.mkdir("uploads"))
+
+    mocker.patch.object(renku.service.config, "CACHE_DIR", Path(tmpdir))
+    mocker.patch.object(renku.service.config, "CACHE_UPLOADS_PATH", upload_dir)
+    mocker.patch.object(renku.service.cache.models.project, "CACHE_PROJECTS_PATH", project_dir)
+    mocker.patch.object(renku.service.utils, "CACHE_PROJECTS_PATH", project_dir)
+    mocker.patch.object(renku.service.utils, "CACHE_UPLOADS_PATH", upload_dir)
+
+    yield
+
+
+@pytest.fixture(scope="function")
+def svc_client_cache(mock_redis, identity_headers, svc_cache_dir):
     """Service jobs fixture."""
     from renku.service.entrypoint import create_app
 
