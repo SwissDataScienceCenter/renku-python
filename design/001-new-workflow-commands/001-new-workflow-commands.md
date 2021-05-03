@@ -225,6 +225,7 @@ renku workflow history [<options>] <name or uuid>
 #### renku workflow remove
 
 Removes a workflow template. The template is soft-deleted (as it's still needed for provenance) and its name is freed up for reuse in a different template.
+Removal is tracked by setting `prov:invalidatedAtTime` on `renku:Run` and `renku:GroupedRun`.
 
 ##### Detailed Parameter Description
 
