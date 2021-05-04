@@ -77,7 +77,7 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
             remote_url = get_remote(client.repo)
             if not remote_url:
                 return
-            endpoint = f"https://{validate_url(remote_url).hostname}/"
+            endpoint = f"https://{validate_url(remote_url).netloc}/"
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"
@@ -112,7 +112,7 @@ def get_slug(name):
     return no_dot_lock_at_end
 
 
-def validate_url(repo: str):
+def validate_url(repo: str) -> ParseResult:
     """Validates the supplied url and returns the parsed URL if valid."""
     if re.search(_URL_VALIDATOR, repo, re.ASCII):
         raise errors.ParameterError(f"Invalid url: `{repo}`")
