@@ -62,6 +62,13 @@ Renku Command Line
 
 .. automodule:: renku.cli.log
 
+.. _cli-login:
+
+``renku login``
+---------------
+
+.. automodule:: renku.cli.login
+
 .. _cli-status:
 
 ``renku status``
