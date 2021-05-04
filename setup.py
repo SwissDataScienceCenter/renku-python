@@ -155,7 +155,7 @@ for name, reqs in extras_require.items():
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<=20.2.0",
-    "calamus>=0.3.7,<0.3.8",
+    "calamus>=0.3.8,<0.3.9",
     "click-completion>=0.5.0,<=0.5.3",
     "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",

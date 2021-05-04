@@ -59,5 +59,5 @@ class AnnotationSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     _id = fields.Id(init_name="id")
-    body = fields.Raw(oa.hasBody)
+    body = fields.RawJsonLD(oa.hasBody)
     source = fields.Raw(dcterms.creator)
