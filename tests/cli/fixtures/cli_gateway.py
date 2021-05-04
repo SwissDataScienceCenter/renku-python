@@ -22,6 +22,10 @@ import pytest
 import responses
 from _pytest.monkeypatch import MonkeyPatch
 
+ENDPOINT = "renku.deployment.ch"
+ACCESS_TOKEN = "jwt-token"
+USER_CODE = "valid_user_code"
+
 
 @pytest.fixture(scope="module")
 def mock_login():
@@ -35,7 +39,7 @@ def mock_login():
 
             def callback(token):
                 def func(request):
-                    if request.params.get("server_nonce") == "valid_user_code":
+                    if request.params.get("server_nonce") == USER_CODE:
                         return 200, {"Content-Type": "application/json"}, json.dumps({"access_token": token})
 
                     return 404, {"Content-Type": "application/json"}, ""
@@ -44,11 +48,14 @@ def mock_login():
 
             requests_mock.add_passthru("https://pypi.org/")
 
-            requests_mock.add_callback(
-                responses.GET, "https://renku.deployment.ch/api/auth/cli-token", callback=callback("jwt-token")
-            )
-            requests_mock.add_callback(
-                responses.GET, "https://other.deployment/api/auth/cli-token", callback=callback("other-token")
-            )
+            class RequestMockWrapper:
+                @staticmethod
+                def add_endpoint_token(endpoint, token):
+                    """Add a mocked endpoint and its access token."""
+                    requests_mock.add_callback(
+                        responses.GET, f"https://{endpoint}/api/auth/cli-token", callback=callback(token)
+                    )
 
-            yield requests_mock
+            RequestMockWrapper.add_endpoint_token(ENDPOINT, ACCESS_TOKEN)
+
+            yield RequestMockWrapper

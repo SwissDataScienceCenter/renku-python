@@ -70,7 +70,6 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
     if not endpoint:
         endpoint = client.get_value(section="renku", key="endpoint")
         if not endpoint:
-            print("NO ENDPOINT", use_remote)
             if not use_remote:
                 return
             remote_url = get_remote(client.repo)

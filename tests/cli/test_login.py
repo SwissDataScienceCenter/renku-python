@@ -19,9 +19,7 @@
 
 from renku.cli import cli
 from renku.core.commands.login import read_renku_token
-
-ENDPOINT = "renku.deployment.ch"
-USER_CODE = "valid_user_code"
+from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT, USER_CODE
 
 
 def test_login(runner, client, mock_login):
@@ -29,7 +27,7 @@ def test_login(runner, client, mock_login):
     result = runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE)
 
     assert 0 == result.exit_code
-    assert "jwt-token" == read_renku_token(client, ENDPOINT)
+    assert ACCESS_TOKEN == read_renku_token(client, ENDPOINT)
 
 
 def test_login_no_endpoint(runner, client, mock_login):
@@ -92,7 +90,7 @@ def test_repeated_login(runner, client, mock_login):
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
-    assert "jwt-token" == read_renku_token(client, ENDPOINT)
+    assert ACCESS_TOKEN == read_renku_token(client, ENDPOINT)
 
 
 def test_repeated_logout(runner, client, mock_login):
@@ -107,12 +105,15 @@ def test_repeated_logout(runner, client, mock_login):
 
 def test_login_to_multiple_endpoints(runner, client, mock_login):
     """Test login to multiple endpoints."""
+    second_endpoint, second_token = "second.endpoint", "second-token"
+    mock_login.add_endpoint_token(second_endpoint, second_token)
+
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
-    assert 0 == runner.invoke(cli, ["login", "other.deployment"], input=USER_CODE).exit_code
+    assert 0 == runner.invoke(cli, ["login", second_endpoint], input=USER_CODE).exit_code
 
-    assert "jwt-token" == read_renku_token(client, ENDPOINT)
-    assert "other-token" == read_renku_token(client, "other.deployment")
+    assert ACCESS_TOKEN == read_renku_token(client, ENDPOINT)
+    assert second_token == read_renku_token(client, second_endpoint)
 
 
 def test_logout_all(runner, client, mock_login):
