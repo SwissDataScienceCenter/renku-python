@@ -61,7 +61,7 @@ def get_host(client):
     return os.environ.get("RENKU_DOMAIN") or host
 
 
-def parse_authentication_endpoint(client, endpoint):
+def parse_authentication_endpoint(client, endpoint, use_remote=False):
     """Return a parsed url.
 
     If an endpoint is provided then use it, otherwise, look for a configured endpoint. If no configured endpoint exists
@@ -70,6 +70,8 @@ def parse_authentication_endpoint(client, endpoint):
     if not endpoint:
         endpoint = client.get_value(section="renku", key="endpoint")
         if not endpoint:
+            if not use_remote:
+                return
             remote_url = get_remote(client.repo)
             if not remote_url:
                 return
@@ -82,8 +84,7 @@ def parse_authentication_endpoint(client, endpoint):
     if not parsed_endpoint.netloc:
         raise errors.ParameterError(f"Invalid endpoint: `{endpoint}`.")
 
-    path = parsed_endpoint.path or "/"
-    return parsed_endpoint._replace(scheme="https", path=path, params="", query="", fragment="")
+    return parsed_endpoint._replace(scheme="https", path="/", params="", query="", fragment="")
 
 
 def get_remote(repo):
@@ -91,6 +92,6 @@ def get_remote(repo):
     if not repo or not repo.remotes:
         return
     elif len(repo.remotes) == 1:
-        return repo.remotes[0]
+        return repo.remotes[0].url
     elif repo.active_branch.tracking_branch():
-        return repo.remotes[repo.active_branch.tracking_branch().remote_name]
+        return repo.remotes[repo.active_branch.tracking_branch().remote_name].url
