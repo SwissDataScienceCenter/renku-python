@@ -158,22 +158,36 @@ class ConfigManagerMixin:
         self.store_config(config, global_only=global_only)
 
     def remove_value(self, section, key, global_only=False):
-        """Remove key from specified section."""
+        """Remove key from specified section or remove sections."""
         config_filter = ConfigFilter.GLOBAL_ONLY
 
         if not global_only:
             config_filter = ConfigFilter.LOCAL_ONLY
             self._check_config_is_not_readonly(section, key)
 
+        value = None
         config = self.load_config(config_filter=config_filter)
+        removed_sections = []
         if section in config:
-            value = config[section].pop(key, None)
+            if key == "*":
+                value = config.pop(section)
+            else:
+                value = config[section].pop(key, None)
 
-            if not config[section].keys():
-                config.pop(section)
+                if not config[section].keys():
+                    removed_sections.append(section)
+        elif section.endswith("*"):
+            section_prefix = section[:-1]
+            for section in config:
+                if section.startswith(section_prefix):
+                    value = config[section]
+                    removed_sections.append(section)
 
+        for section in removed_sections:
+            config.pop(section)
+        if value is not None:
             self.store_config(config, global_only=global_only)
-            return value
+        return value
 
     def _check_config_is_not_readonly(self, section, key):
         from renku.core import errors

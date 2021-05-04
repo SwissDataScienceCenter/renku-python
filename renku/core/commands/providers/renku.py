@@ -158,6 +158,9 @@ class RenkuProvider(ProviderApi):
         return project_id, dataset_name_or_id
 
     def _query_knowledge_graph(self, url):
+        if self._authorization_header:
+            # NOTE: Authorization requires going through the gateway route
+            url = url.replace("/knowledge-graph/", "/api/kg/")
         try:
             response = requests.get(url, headers=self._authorization_header)
         except urllib.error.HTTPError as e:
@@ -187,7 +190,7 @@ class RenkuProvider(ProviderApi):
     def _read_renku_token(self, client, uri):
         """Read renku token from renku config file."""
         try:
-            parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=uri)
+            parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=uri, use_remote=True)
         except errors.ParameterError:
             return
         self._authentication_endpoint = parsed_endpoint.netloc
