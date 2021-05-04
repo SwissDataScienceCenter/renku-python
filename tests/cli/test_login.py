@@ -107,7 +107,6 @@ def test_login_to_multiple_endpoints(runner, client, mock_login):
     """Test login to multiple endpoints."""
     second_endpoint, second_token = "second.endpoint", "second-token"
     mock_login.add_endpoint_token(second_endpoint, second_token)
-
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
     assert 0 == runner.invoke(cli, ["login", second_endpoint], input=USER_CODE).exit_code
@@ -118,24 +117,28 @@ def test_login_to_multiple_endpoints(runner, client, mock_login):
 
 def test_logout_all(runner, client, mock_login):
     """Test logout with no endpoint removes multiple credentials."""
+    second_endpoint, second_token = "second.endpoint", "second-token"
+    mock_login.add_endpoint_token(second_endpoint, second_token)
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
-    assert 0 == runner.invoke(cli, ["login", "other.deployment"], input=USER_CODE).exit_code
+    assert 0 == runner.invoke(cli, ["login", second_endpoint], input=USER_CODE).exit_code
 
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
     assert read_renku_token(client, ENDPOINT) is None
-    assert read_renku_token(client, "other.deployment") is None
+    assert read_renku_token(client, second_endpoint) is None
 
 
 def test_logout_one_endpoint(runner, client, mock_login):
     """Test logout from an endpoint removes credentials for that endpoint only."""
+    second_endpoint, second_token = "second.endpoint", "second-token"
+    mock_login.add_endpoint_token(second_endpoint, second_token)
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
-    assert 0 == runner.invoke(cli, ["login", "other.deployment"], input=USER_CODE).exit_code
+    assert 0 == runner.invoke(cli, ["login", second_endpoint], input=USER_CODE).exit_code
 
     assert 0 == runner.invoke(cli, ["logout", ENDPOINT]).exit_code
 
     assert read_renku_token(client, ENDPOINT) is None
-    assert read_renku_token(client, "other.deployment") is not None
+    assert second_token == read_renku_token(client, second_endpoint)
 
 
 def test_logout_non_existing_endpoint(runner, client, mock_login):
