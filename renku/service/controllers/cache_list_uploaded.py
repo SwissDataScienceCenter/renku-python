@@ -39,6 +39,7 @@ class ListUploadedFilesCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
+
         files = [f for f in self.cache.get_files(self.user) if f.exists()]
         return {"files": sorted(files, key=lambda rec: (rec.is_dir, rec.relative_path))}
 

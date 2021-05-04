@@ -88,7 +88,7 @@ def integration_repo(headers, project_id, url_components):
             repo.git.clean("-xdf")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_repo_url):
     """Setup and teardown steps for integration tests."""
     from renku.core.models.git import GitURL
