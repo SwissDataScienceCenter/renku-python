@@ -21,7 +21,7 @@ class ProviderApi(abc.ABC):
     """Interface defining provider methods."""
 
     @abc.abstractmethod
-    def find_record(self, uri, client=None):
+    def find_record(self, uri, client=None, **kwargs):
         """Find record by uri."""
         pass
 

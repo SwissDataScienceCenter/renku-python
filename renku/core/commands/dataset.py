@@ -443,14 +443,16 @@ def export_dataset():
     return command.require_migration().require_clean()
 
 
-def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False):
+def _import_dataset(
+    client, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False, gitlab_token=None
+):
     """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
         raise ParameterError(f"Could not process '{uri}'.\n{err}")
 
     try:
-        record = provider.find_record(uri, client)
+        record = provider.find_record(uri, client, gitlab_token=gitlab_token)
         dataset = record.as_dataset(client)
         files = dataset.files
         total_size = 0

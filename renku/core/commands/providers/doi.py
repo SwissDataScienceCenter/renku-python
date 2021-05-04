@@ -106,7 +106,7 @@ class DOIProvider(ProviderApi):
 
             return response
 
-    def find_record(self, uri, client=None):
+    def find_record(self, uri, client=None, **kwargs):
         """Finds DOI record."""
         response = self._query(uri).json()
         return DOIProvider._serialize(response)
