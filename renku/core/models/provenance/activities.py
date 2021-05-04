@@ -551,7 +551,6 @@ class ProcessRun(Activity):
 
         process_run.generated = generated
 
-        process_run.plugin_annotations()
         return process_run
 
     @property

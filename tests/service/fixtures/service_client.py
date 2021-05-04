@@ -36,7 +36,7 @@ def real_sync():
     importlib.reload(save)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def svc_client(mock_redis):
     """Renku service client."""
     from renku.service.entrypoint import create_app
