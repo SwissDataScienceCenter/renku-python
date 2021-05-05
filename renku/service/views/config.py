@@ -17,21 +17,13 @@
 # limitations under the License.
 """Renku service project config views."""
 from flask import Blueprint, request
-from flask_apispec import marshal_with, use_kwargs
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.config_set import SetConfigCtrl
 from renku.service.controllers.config_show import ShowConfigCtrl
-from renku.service.serializers.config import (
-    ConfigSetRequest,
-    ConfigSetResponseRPC,
-    ConfigShowRequest,
-    ConfigShowResponseRPC,
-)
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
-    header_doc,
     optional_identity,
     requires_cache,
     requires_identity,
@@ -41,9 +33,6 @@ CONFIG_BLUEPRINT_TAG = "config"
 config_blueprint = Blueprint("config", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@use_kwargs(ConfigShowRequest, location="query")
-@marshal_with(ConfigShowResponseRPC)
-@header_doc(description="Show renku config for a project.", tags=(CONFIG_BLUEPRINT_TAG,))
 @config_blueprint.route(
     "/config.show", methods=["GET"], provide_automatic_options=False,
 )
@@ -51,13 +40,27 @@ config_blueprint = Blueprint("config", __name__, url_prefix=SERVICE_PREFIX)
 @requires_cache
 @optional_identity
 def show_config(user_data, cache):
-    """Show renku config for a project."""
+    """
+    Retrieve the renku config for a project.
+
+    ---
+    get:
+      description: Retrieve the renku config for a project.
+      parameters:
+        - in: query
+          schema: ConfigShowRequest
+      responses:
+        200:
+          description: Config of a renku project.
+          content:
+            application/json:
+              schema: ConfigShowResponseRPC
+      tags:
+        - config
+    """
     return ShowConfigCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@use_kwargs(ConfigSetRequest)
-@marshal_with(ConfigSetResponseRPC)
-@header_doc(description="Set renku config for a project.", tags=(CONFIG_BLUEPRINT_TAG,))
 @config_blueprint.route(
     "/config.set", methods=["POST"], provide_automatic_options=False,
 )
@@ -66,5 +69,23 @@ def show_config(user_data, cache):
 @requires_cache
 @requires_identity
 def set_config(user_data, cache):
-    """Set renku config for a project."""
+    """
+    Set the renku config for a project.
+
+    ---
+    post:
+      description: Set the renku config for a project.
+      requestBody:
+        content:
+          application/json:
+            schema: ConfigSetRequest
+      responses:
+        200:
+          description: User and default configuration options.
+          content:
+            application/json:
+              schema: ConfigSetResponseRPC
+      tags:
+        - config
+    """
     return SetConfigCtrl(cache, user_data, dict(request.json)).to_response()

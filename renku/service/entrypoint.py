@@ -24,9 +24,8 @@ import uuid
 import sentry_sdk
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
-from flask import Flask, redirect, request, url_for
-from flask_apispec import FlaskApiSpec
-from flask_swagger_ui import get_swaggerui_blueprint
+from apispec_webframeworks.flask import FlaskPlugin
+from flask import Flask, jsonify, request, url_for
 from jwt import InvalidTokenError
 from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -35,50 +34,25 @@ from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.service.cache import cache
 from renku.service.config import (
-    API_SPEC_URL,
     API_VERSION,
     CACHE_DIR,
     HTTP_SERVER_ERROR,
     OPENAPI_VERSION,
+    SERVICE_API_BASE_PATH,
     SERVICE_NAME,
-    SWAGGER_URL,
+    SERVICE_PREFIX,
 )
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views import error_response
-from renku.service.views.cache import (
-    CACHE_BLUEPRINT_TAG,
-    cache_blueprint,
-    list_projects_view,
-    list_uploaded_files_view,
-    migrate_project_view,
-    migration_check_project_view,
-    project_clone_view,
-    upload_file_view,
-)
-from renku.service.views.config import CONFIG_BLUEPRINT_TAG, config_blueprint, set_config, show_config
-from renku.service.views.datasets import (
-    DATASET_BLUEPRINT_TAG,
-    add_file_to_dataset_view,
-    create_dataset_view,
-    dataset_blueprint,
-    edit_dataset_view,
-    import_dataset_view,
-    list_dataset_files_view,
-    list_datasets_view,
-    remove_dataset_view,
-    unlink_file_view,
-)
-from renku.service.views.graph import GRAPH_BLUEPRINT_TAG, graph_blueprint, graph_build_view
-from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, list_jobs
-from renku.service.views.templates import (
-    TEMPLATES_BLUEPRINT_TAG,
-    create_project_from_template,
-    read_manifest_from_template,
-    templates_blueprint,
-)
-from renku.service.views.version import VERSION_BLUEPRINT_TAG, version, version_blueprint
+from renku.service.views.cache import cache_blueprint
+from renku.service.views.config import config_blueprint
+from renku.service.views.datasets import dataset_blueprint
+from renku.service.views.graph import graph_blueprint
+from renku.service.views.jobs import jobs_blueprint
+from renku.service.views.templates import templates_blueprint
+from renku.service.views.version import version_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
 
@@ -105,10 +79,12 @@ def create_app():
 
     build_routes(app)
 
-    @app.route("/")
+    @app.route(SERVICE_PREFIX)
     def root():
-        """Root redirect to docs."""
-        return redirect(url_for("swagger_ui.show"))
+        """Root shows basic service information."""
+        import renku
+
+        return jsonify({"service_version": renku.__version__, "spec_url": url_for("openapi")})
 
     @app.route("/health")
     def health():
@@ -117,19 +93,16 @@ def create_app():
 
         return "renku repository service version {}\n".format(renku.__version__)
 
+    @app.route(SERVICE_PREFIX.rstrip("/") + "/spec.json")
+    def openapi():
+        """Return the OpenAPI spec for this service."""
+        return jsonify(get_apispec(app).to_dict())
+
     return app
 
 
 def build_routes(app):
     """Register routes to given app instance."""
-    app.config.update(
-        {
-            "APISPEC_SPEC": APISpec(
-                title=SERVICE_NAME, openapi_version=OPENAPI_VERSION, version=API_VERSION, plugins=[MarshmallowPlugin()],
-            ),
-            "APISPEC_SWAGGER_URL": API_SPEC_URL,
-        }
-    )
     app.register_blueprint(cache_blueprint)
     app.register_blueprint(config_blueprint)
     app.register_blueprint(dataset_blueprint)
@@ -137,46 +110,6 @@ def build_routes(app):
     app.register_blueprint(jobs_blueprint)
     app.register_blueprint(templates_blueprint)
     app.register_blueprint(version_blueprint)
-
-    swaggerui_blueprint = get_swaggerui_blueprint(SWAGGER_URL, API_SPEC_URL, config={"app_name": "Renku Service"})
-    app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
-
-    docs = FlaskApiSpec(app)
-
-    # NOTE: Version endpoint
-    docs.register(version, blueprint=VERSION_BLUEPRINT_TAG)
-
-    # NOTE: Cache endpoints
-    docs.register(list_uploaded_files_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(upload_file_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(project_clone_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(list_projects_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(migrate_project_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(migration_check_project_view, blueprint=CACHE_BLUEPRINT_TAG)
-
-    # NOTE: Config endpoint
-    docs.register(show_config, blueprint=CONFIG_BLUEPRINT_TAG)
-    docs.register(set_config, blueprint=CONFIG_BLUEPRINT_TAG)
-
-    # NOTE: Dataset endpoints
-    docs.register(list_datasets_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(list_dataset_files_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(add_file_to_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(create_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(import_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(edit_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(remove_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(unlink_file_view, blueprint=DATASET_BLUEPRINT_TAG)
-
-    # NOTE: Graph endpoints
-    docs.register(graph_build_view, blueprint=GRAPH_BLUEPRINT_TAG)
-
-    # NOTE: User jobs endpoint
-    docs.register(list_jobs, blueprint=JOBS_BLUEPRINT_TAG)
-
-    # NOTE: Template endpoints
-    docs.register(read_manifest_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG)
-    docs.register(create_project_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG)
 
 
 app = create_app()
@@ -229,8 +162,12 @@ def exceptions(e):
 
 app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
 
-if os.environ.get("DEBUG_MODE", "false") == "true":
+if app.debug:
     import ptvsd
+
+    service_log.debug("Registered routes:")
+    for rule in app.url_map.iter_rules():
+        service_log.debug(rule)
 
     ptvsd.enable_attach()
     app.logger.setLevel(logging.DEBUG)
@@ -242,3 +179,28 @@ if __name__ == "__main__":
 
     app.logger.handlers.extend(service_log.handlers)
     app.run()
+
+
+def get_apispec(app):
+    """Return the apispec."""
+    spec = APISpec(
+        title=SERVICE_NAME,
+        openapi_version=OPENAPI_VERSION,
+        version=API_VERSION,
+        plugins=[FlaskPlugin(), MarshmallowPlugin()],
+        servers=[{"url": SERVICE_API_BASE_PATH}],
+        components={
+            "securitySchemes": {
+                "oidc": {
+                    "type": "openIdConnect",
+                    "openIdConnectUrl": "/auth/realms/Renku/.well-known/openid-configuration",
+                },
+                "JWT": {"type": "apiKey", "name": "Renku-User", "in": "header"},
+                "gitlab-token": {"type": "apiKey", "name": "Authorization", "in": "header"},
+            }
+        },
+        security=[{"oidc": []}, {"JWT": [], "gitlab-token": []}],
+    )
+    for rule in app.url_map.iter_rules():
+        spec.path(view=app.view_functions[rule.endpoint])
+    return spec

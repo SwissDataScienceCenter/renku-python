@@ -11,16 +11,17 @@ services:
     networks:
       - net
 
-  prometheus:
-    image: prom/prometheus
-    ports:
-      - "9090:9090"
-    networks:
-      - net
-    volumes:
-      - ../prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
+  ## Commenting this out because the setup is broken and is missing the config file
+  # prometheus:
+  #   image: prom/prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   networks:
+  #     - net
+  #   volumes:
+  #     - ../prometheus.yml:/etc/prometheus/prometheus.yml
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
 
   grafana:
     image: grafana/grafana
@@ -62,16 +63,31 @@ services:
     env_file: .env
     depends_on:
       - redis
+      - reverse-proxy
     ports:
       - "8080:8080"
-    volumes:
-      - /tmp/renku:/tmp/renku
+    command: ["api", "--debug"]
+    labels:
+      - "traefik.http.routers.renku-svc.rule=PathPrefix(`/api/renku`)"
+      - "traefik.http.middlewares.stripprefix.stripprefix.prefixes=/api"
+      - "traefik.http.routers.renku-svc.middlewares=stripprefix@docker"
+
+  swagger:
+    image: swaggerapi/swagger-ui
+    networks:
+      - net
+    environment:
+      - BASE_URL=/api/docs
+      - URL=/api/renku/spec.json
+    labels:
+      - traefik.http.routers.swagger.rule=PathPrefix(`/api/docs`)
+      - traefik.http.services.my-service.loadbalancer.server.port=8080
 
   renku-scheduler:
     build:
       context: .
       dockerfile: Dockerfile.svc
-    entrypoint: ["renku", "service", "scheduler"]
+    command: "scheduler"
     depends_on:
       - redis
     networks:
@@ -82,11 +98,21 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.svc
-    entrypoint: ["renku", "service", "worker"]
+    command: "worker"
     depends_on:
       - redis
     networks:
       - net
     env_file: .env
+
+  reverse-proxy:
+    image: traefik:v2.4
+    command: --api.insecure=true --providers.docker
+    ports:
+      - "80:80"
+      # set the UI port to something other than 8080 since that's our service already
+      - "8088:8080"
     volumes:
-      - /tmp/renku:/tmp/renku
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - net
