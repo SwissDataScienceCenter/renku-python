@@ -255,7 +255,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
                     repo.git.reset("--hard", f"{origin}/{repo.active_branch}")
 
-                project.last_fetched_at = datetime.utcnow
+                project.last_fetched_at = datetime.utcnow()
                 project.save()
         except (portalocker.LockException, portalocker.AlreadyLocked) as e:
             raise RenkuServiceLockError() from e
@@ -278,15 +278,17 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         else:
             lock = project.read_lock()
         try:
-            with project.concurrency_lock(), lock:
+            with project.concurrency_lock():
                 self.reset_local_repo(project)
-                if self.migrate_project:
-                    self.ensure_migrated(project.project_id)
 
-                self.project_path = project.abs_path
+                with lock:
+                    if self.migrate_project:
+                        self.ensure_migrated(project.project_id)
 
-                with click_context(self.project_path, "renku_op"):
-                    return self.renku_op()
+                    self.project_path = project.abs_path
+
+                    with click_context(self.project_path, "renku_op"):
+                        return self.renku_op()
         except (portalocker.LockException, portalocker.AlreadyLocked) as e:
             raise RenkuServiceLockError() from e
 

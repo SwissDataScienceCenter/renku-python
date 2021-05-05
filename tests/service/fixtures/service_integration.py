@@ -290,3 +290,13 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             shutil.rmtree(remote_repo_checkout_path)
         except OSError:  # noqa: B014
             pass
+
+
+@pytest.fixture
+def quick_cache_synchronization(mocker):
+    """Forces cache to synchronize on every request."""
+    import renku.service.cache.models.project
+
+    mocker.patch.object(renku.service.cache.models.project.Project, "fetch_age", 10000)
+
+    yield

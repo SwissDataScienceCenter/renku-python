@@ -740,7 +740,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 @pytest.mark.integration
 @pytest.mark.serial
 @flaky(max_runs=10, min_passes=1)
-def test_cache_gets_synchronized(local_remote_repository, directory_tree):
+def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_cache_synchronization):
     """Test that the cache stays synchronized with the remote repo."""
     from renku.core.management.client import LocalClient
     from renku.core.models.provenance.agents import Person
