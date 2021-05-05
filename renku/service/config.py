@@ -36,11 +36,8 @@ HTTP_SERVER_ERROR = -32000
 
 
 SERVICE_NAME = "Renku Service"
-OPENAPI_VERSION = "2.0"
+OPENAPI_VERSION = "3.0.3"
 API_VERSION = "v1"
-
-SWAGGER_URL = "/api/docs"
-API_SPEC_URL = os.getenv("RENKU_SVC_SWAGGER_URL", "/api/{0}/spec".format(API_VERSION))
 
 PROJECT_CLONE_NO_DEPTH = -1
 PROJECT_CLONE_DEPTH_DEFAULT = int(os.getenv("PROJECT_CLONE_DEPTH_DEFAULT", 1))
@@ -63,5 +60,11 @@ SUPPORTED_ARCHIVES = [
     GZ_ARCHIVE_CONTENT_TYPE,
 ]
 
+# the path prefix on the service
 SERVICE_PREFIX = os.getenv("CORE_SERVICE_PREFIX", "/")
+# the reverse proxy prefix
+SERVICE_API_BASE_PATH = os.getenv("CORE_SERVICE_API_BASE_PATH", "/")
+# path to the swagger spec
+API_SPEC_URL = SERVICE_PREFIX.lstrip("/") + "/spec.json"
+
 LOGGER_CONFIG_FILE = Path(pkg_resources.resource_filename("renku", "service/logging.yaml"))

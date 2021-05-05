@@ -38,7 +38,7 @@ def test_serve_api_spec(svc_client):
         "Content-Type": "application/json",
         "accept": "application/json",
     }
-    response = svc_client.get("/api/v1/spec", headers=headers)
+    response = svc_client.get("/spec.json", headers=headers)
 
     assert 0 != len(response.json.keys())
     assert 200 == response.status_code

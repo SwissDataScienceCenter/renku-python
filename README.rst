@@ -89,6 +89,8 @@ or `renku rerun`. CWL depends on NodeJs to execute the workflows, so installing
 `NodeJs <https://nodejs.org/en/download/package-manager/>`_ is required if
 you want to use those features.
 
+For development of the service, `Docker <https://docker.com>`_ is recommended.
+
 
 .. _pipx-before-reference:
 
@@ -250,6 +252,46 @@ This repository includes a ``renku-core`` RPC service written as a `Flask
 the functionality of the Renku CLI. This is used to provide one of the backends
 for the `RenkuLab <https://renkulab.io>`_ web UI. The service can be deployed in
 production as a Helm chart (see `helm-chart <./helm-chart/README.rst>`_.
+
+
+Deploying locally
+-----------------
+
+To test the service functionality you can deploy it quickly and easily using
+``docker-compose up``. Make sure to make a copy of the ``renku/service/.env-example``
+file and configure it to your needs. The setup here is to expose the service behind
+a traefik reverse proxy to mimic an actual production deployment. You can access
+the proxied endpoints at ``http://localhost/api``. The service itself is exposed
+on port 8080 so its endpoints are available directly under ``http://localhost:8080``.
+
+
+API Documentation
+-----------------
+
+The renku core service implements the API documentation as an OpenAPI 3.0.x spec.
+You can retrieve the yaml of the specification itself with
+
+```
+$ renku service apispec
+```
+
+If deploying the service locally with ``docker-compose`` you can find the swagger-UI
+under ``localhost/api/swagger``. To send the proper authorization headers to the
+service endpoints, click the ``Authorize`` button and enter a valid JWT token and
+a gitlab token with read/write repository scopes. The JWT token can be obtained by
+logging in to a renku instance with ``renku login`` and retrieving it from your local
+renku configuration.
+
+In a live deployment, the swagger documentation is available under ``https://<renku-endpoint>/swagger``.
+You can authorize the API by clicking ``Authorize`` and authenticating with Keycloak.
+Note that this requires you to know the Keycloak ``renku`` client secret, which
+can be fetched with ``kubectl``:
+
+::
+
+    $ kubectl -n <namespace> get secret <namespace>-renku-gateway -ojson | jq -r .data.oidcClientSecret
+
+Make sure to base64 decode it before copy/pasting into the swagger UI dialog.
 
 
 Developing Renku
