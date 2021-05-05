@@ -113,9 +113,9 @@ tests_require = [
 
 service_requires = [
     "apispec>=4.0.0,<=4.1.0",
+    "apispec-webframeworks==0.5.2",
     "circus==0.17.1",
-    "flask-apispec==0.11.0",
-    "flask-swagger-ui==3.36.0",
+    "docker-compose==1.29.1",
     "flask==1.1.2",
     "gunicorn",
     "marshmallow==3.10.0",

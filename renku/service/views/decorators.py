@@ -21,7 +21,6 @@ import re
 from functools import wraps
 
 from flask import jsonify, request
-from flask_apispec import doc
 from git import GitCommandError, GitError
 from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
@@ -318,30 +317,6 @@ def handle_base_except(f):
             return error_response(INTERNAL_FAILURE_ERROR_CODE, internal_error)
 
     return decorated_function
-
-
-def header_doc(description, tags=()):
-    """Wrap additional OpenAPI header description for an endpoint."""
-    return doc(
-        description=description,
-        params={
-            "Authorization": {
-                "description": "Used for users git oauth2 access. For example: ```Bearer asdf-qwer-zxcv```",
-                "in": "header",
-                "type": "string",
-            },
-            "Renku-User": {
-                "description": (
-                    "JWT used for identification of the users. "
-                    "For example: "
-                    "```a9bd31fb.bfad4899b8bdf.d0908fab19d```"
-                ),
-                "in": "header",
-                "type": "string",
-            },
-        },
-        tags=list(tags),
-    )
 
 
 def handle_common_except(f):
