@@ -233,6 +233,10 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             lock = contextlib.suppress()
         try:
             with lock:
+                if project.fetch_age < PROJECT_FETCH_TIME:
+                    # NOTE: return immediately in case of multiple writers waiting
+                    return
+
                 repo = Repo(project.abs_path)
                 origin = None
                 tracking_branch = repo.active_branch.tracking_branch()
