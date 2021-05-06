@@ -385,7 +385,7 @@ def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
     from renku.core.management import LocalClient
 
-    def prepare_git_repo(*_):
+    def prepare_git_repo(*_, **__):
         raise errors.GitError
 
     with monkeypatch.context() as monkey:

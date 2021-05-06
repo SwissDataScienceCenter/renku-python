@@ -33,7 +33,13 @@ from renku.service.utils import make_project_path
 from tests.service.views.test_dataset_views import assert_rpc_response
 
 
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/428c3626-1c56-463d-8753-336470cc6917/"])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://dev.renku.ch/datasets/428c3626-1c56-463d-8753-336470cc6917/",
+        "https://dev.renku.ch/datasets/0d4630e5-6ee5-42b3-bb3a-b3222da811ec",
+    ],
+)
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
 def test_dataset_url_import_job(url, svc_client_with_repo):

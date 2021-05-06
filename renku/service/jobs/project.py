@@ -70,7 +70,7 @@ def migrate_job(
 ):
     """Execute migrations job."""
     user = cache.ensure_user(user_data)
-    worker_log.debug(f"executing dataset import job for {user.user_id}:{user.fullname}")
+    worker_log.debug(f"executing migrate job for {user.user_id}:{user.fullname}")
 
     user_job = cache.get_job(user, user_job_id)
 

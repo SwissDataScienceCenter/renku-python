@@ -44,6 +44,7 @@ class RenkuProvider(ProviderApi):
     _accept = attr.ib(default="application/json")
     _authorization_header = attr.ib(default=None)
     _authentication_endpoint = attr.ib(default="")
+    _use_gitlab_token = attr.ib(default=False)
 
     @staticmethod
     def supports(uri):
@@ -57,14 +58,16 @@ class RenkuProvider(ProviderApi):
         """Whether this provider supports dataset import."""
         return True
 
-    def find_record(self, uri, client=None):
+    def find_record(self, uri, client=None, **kwargs):
         """Retrieves a dataset from Renku.
 
         :raises: ``NotFound``, ``OperationError``, ``ParameterError``
         :param uri: URL
         :return: ``_RenkuRecordSerializer``
         """
-        self._prepare_authentication(client, uri)
+        gitlab_token = kwargs.get("gitlab_token")
+
+        self._prepare_authentication(client, uri, gitlab_token=gitlab_token)
 
         name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(uri)
 
@@ -77,6 +80,7 @@ class RenkuProvider(ProviderApi):
             latest_version_uri=latest_version_uri,
             project_url_ssh=project_url_ssh,
             project_url_http=project_url_http,
+            gitlab_token=gitlab_token,
         )
 
     def get_exporter(self, dataset, access_token):
@@ -158,9 +162,10 @@ class RenkuProvider(ProviderApi):
         return project_id, dataset_name_or_id
 
     def _query_knowledge_graph(self, url):
-        if self._authorization_header:
-            # NOTE: Authorization requires going through the gateway route
+        if self._authorization_header and not self._use_gitlab_token:
+            # NOTE: Authorization with renku token requires going through the gateway route
             url = url.replace("/knowledge-graph/", "/api/kg/")
+
         try:
             response = requests.get(url, headers=self._authorization_header)
         except urllib.error.HTTPError as e:
@@ -183,8 +188,13 @@ class RenkuProvider(ProviderApi):
 
         return urls.get("ssh"), urls.get("http")
 
-    def _prepare_authentication(self, client, uri):
-        token = self._read_renku_token(client, uri)
+    def _prepare_authentication(self, client, uri, gitlab_token):
+        if gitlab_token:
+            token = gitlab_token
+            self._use_gitlab_token = True
+        else:
+            token = self._read_renku_token(client, uri)
+
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
 
     def _read_renku_token(self, client, uri):
@@ -200,7 +210,7 @@ class RenkuProvider(ProviderApi):
 class _RenkuRecordSerializer:
     """Renku record Serializer."""
 
-    def __init__(self, uri, identifier, name, latest_version_uri, project_url_ssh, project_url_http):
+    def __init__(self, uri, identifier, name, latest_version_uri, project_url_ssh, project_url_http, gitlab_token):
         """Create a _RenkuRecordSerializer from a Dataset."""
         self._uri = uri
         self._identifier = identifier
@@ -208,6 +218,7 @@ class _RenkuRecordSerializer:
         self._latest_version_uri = latest_version_uri
         self._project_url_ssh = project_url_ssh
         self._project_url_http = project_url_http
+        self._gitlab_token = gitlab_token
 
         self._dataset = None
         self._project_url = None
@@ -255,7 +266,7 @@ class _RenkuRecordSerializer:
 
     def as_dataset(self, client):
         """Return encapsulated dataset instance."""
-        self._fetch_dataset(client)
+        self._fetch_dataset(client, gitlab_token=self._gitlab_token)
         return self._dataset
 
     def import_images(self, client, dataset):
@@ -305,14 +316,14 @@ class _RenkuRecordSerializer:
         """Whether the dataset datadir exists (might be missing in git if empty)."""
         return (self._remote_client.path / self._dataset.data_dir).exists()
 
-    def _fetch_dataset(self, client):
+    def _fetch_dataset(self, client, gitlab_token):
         repo_path = None
 
         urls = (self._project_url_ssh, self._project_url_http)
         # Clone the project
         for url in urls:
             try:
-                repo, repo_path = client.prepare_git_repo(url)
+                repo, repo_path = client.prepare_git_repo(url, gitlab_token=gitlab_token)
             except errors.GitError:
                 pass
             else:
