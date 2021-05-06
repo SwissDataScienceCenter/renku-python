@@ -55,7 +55,7 @@ class OLOSProvider(ProviderApi):
             "dlcm-server": ("DLCM server base url.", str),
         }
 
-    def find_record(self, uri, client=None):
+    def find_record(self, uri, client=None, **kwargs):
         """Find record by uri."""
         return None
 

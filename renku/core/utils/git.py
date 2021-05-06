@@ -18,9 +18,11 @@
 """Git utility functions."""
 
 import math
+import urllib
 from subprocess import SubprocessError, run
 
 from renku.core import errors
+from renku.core.models.git import GitURL
 
 ARGUMENT_BATCH_SIZE = 100
 
@@ -68,3 +70,22 @@ def split_paths(*paths):
 
     for index in range(batch_count):
         yield paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]
+
+
+def get_oauth_url(url, gitlab_token):
+    """Format URL with a username and password."""
+    parsed_url = urllib.parse.urlparse(url)
+
+    if not parsed_url.netloc:
+        raise ValueError(f"Invalid http git url: {url}")
+
+    netloc = f"oauth2:{gitlab_token}@{parsed_url.netloc}"
+    return parsed_url._replace(netloc=netloc).geturl()
+
+
+def have_same_remote(url1, url2):
+    """Checks if two git urls point to the same remote repo ignoring protocol and credentials."""
+    u1 = GitURL.parse(url1)
+    u2 = GitURL.parse(url2)
+
+    return u1.hostname == u2.hostname and u1.pathname == u2.pathname

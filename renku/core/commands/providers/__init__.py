@@ -28,7 +28,7 @@ from renku.core.utils.doi import is_doi
 class ProviderFactory:
     """Create a provider type from URI."""
 
-    PROVIDERS = {"Dataverse": DataverseProvider, "OLOS": OLOSProvider, "Renku": RenkuProvider, "Zenodo": ZenodoProvider}
+    PROVIDERS = {"OLOS": OLOSProvider, "Renku": RenkuProvider, "Zenodo": ZenodoProvider, "Dataverse": DataverseProvider}
 
     @staticmethod
     def from_uri(uri):
