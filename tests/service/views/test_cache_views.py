@@ -652,11 +652,12 @@ def test_check_migrations_local(svc_client_setup):
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_migrations_remote(svc_client_setup, it_remote_repo_url):
+def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_url):
     """Check if migrations are required for a remote project."""
-    svc_client, headers, _, _, _ = svc_client_setup
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+    )
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=headers)
     assert 200 == response.status_code
 
     assert response.json["result"]["migration_required"]
@@ -739,7 +740,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 @pytest.mark.integration
 @pytest.mark.serial
 @flaky(max_runs=10, min_passes=1)
-def test_cache_gets_synchronized(local_remote_repository, directory_tree):
+def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_cache_synchronization):
     """Test that the cache stays synchronized with the remote repo."""
     from renku.core.management.client import LocalClient
     from renku.core.models.provenance.agents import Person
@@ -756,13 +757,11 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree):
             dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote.push()
-
     params = {
         "project_id": project_id,
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers=identity_headers,)
-
     assert response
     assert 200 == response.status_code
 

@@ -19,6 +19,7 @@
 
 from marshmallow import Schema, fields
 
+from renku.service.serializers.common import RenkuSyncSchema, RepositoryContext
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -44,22 +45,17 @@ class ConfigShowResponseRPC(JsonRPCResponse):
     result = fields.Nested(ConfigShowResponse)
 
 
-class ConfigSetRequest(Schema):
+class ConfigSetRequest(RepositoryContext):
     """Request schema for config set."""
-
-    project_id = fields.String()
-
-    git_url = fields.String()
-    branch = fields.String()
 
     config = fields.Dict(required=True)
 
 
-class ConfigSetResponse(Schema):
+class ConfigSetResponse(RenkuSyncSchema):
     """Response schema for project config set."""
 
     config = fields.Dict(required=True)
-    default = fields.Dict(required=True)
+    default = fields.Dict()
 
 
 class ConfigSetResponseRPC(JsonRPCResponse):

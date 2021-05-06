@@ -17,19 +17,20 @@
 # limitations under the License.
 """Renku service datasets unlink controller."""
 from renku.core.commands.dataset import file_unlink
+from renku.service.cache.models.job import Job
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetUnlinkRequest, DatasetUnlinkResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsUnlinkCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets unlink endpoint."""
 
     REQUEST_SERIALIZER = DatasetUnlinkRequest()
     RESPONSE_SERIALIZER = DatasetUnlinkResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets unlink list controller."""
         self.ctx = DatasetsUnlinkCtrl.REQUEST_SERIALIZER.load(request_data)
 
@@ -46,7 +47,7 @@ class DatasetsUnlinkCtrl(ServiceCtrl, ReadWithSyncOperation):
 
             self.ctx["commit_message"] = "service: unlink dataset {0} {1}".format(self.ctx["name"], filters)
 
-        super(DatasetsUnlinkCtrl, self).__init__(cache, user_data, request_data)
+        super(DatasetsUnlinkCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):
@@ -72,6 +73,9 @@ class DatasetsUnlinkCtrl(ServiceCtrl, ReadWithSyncOperation):
     def to_response(self):
         """Execute controller flow and serialize to service response."""
         op_result, remote_branch = self.execute_and_sync()
+
+        if isinstance(op_result, Job):
+            return result_response(DatasetsUnlinkCtrl.JOB_RESPONSE_SERIALIZER, op_result)
 
         response = {
             "unlinked": [record.path for record in op_result],

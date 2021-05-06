@@ -23,7 +23,7 @@ from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
 from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
 from renku.core.models.datasets import ImageObjectJson as ImageObject
 from renku.core.models.datasets import ImageObjectRequestJson as ImageObjectRequest
-from renku.service.serializers.common import RenkuSyncSchema
+from renku.service.serializers.common import JobDetailsResponse, RenkuSyncSchema, RepositoryContext
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -33,12 +33,8 @@ class DatasetDetailsRequest(DatasetDetails):
     images = marshmallow.fields.List(marshmallow.fields.Nested(ImageObjectRequest))
 
 
-class DatasetCreateRequest(DatasetDetailsRequest):
+class DatasetCreateRequest(RepositoryContext, DatasetDetailsRequest):
     """Request schema for a dataset create view."""
-
-    project_id = fields.String(required=True)
-
-    commit_message = fields.String()
 
     @pre_load()
     def default_commit_message(self, data, **kwargs):
@@ -61,19 +57,16 @@ class DatasetCreateResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetCreateResponse)
 
 
-class DatasetRemoveRequest(DatasetDetails):
-    """Request schema for a dataset create view."""
+class DatasetRemoveRequest(RepositoryContext):
+    """Request schema for a dataset remove."""
 
-    project_id = fields.String(required=True)
     name = fields.String(required=True)
-
-    commit_message = fields.String()
 
     @pre_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
         if not data.get("commit_message"):
-            data["commit_message"] = "service: dataset delete {0}".format(data["name"])
+            data["commit_message"] = "service: dataset remove {0}".format(data["name"])
 
         return data
 
@@ -99,7 +92,7 @@ class DatasetAddFile(Schema):
     job_id = fields.String()
 
 
-class DatasetAddRequest(Schema):
+class DatasetAddRequest(RepositoryContext):
     """Request schema for a dataset add file view."""
 
     name = fields.String(required=True)
@@ -108,8 +101,6 @@ class DatasetAddRequest(Schema):
     create_dataset = fields.Boolean(missing=False)
     force = fields.Boolean(missing=False)
 
-    project_id = fields.String(required=True)
-    commit_message = fields.String()
     client_extras = fields.String()
 
     @post_load()
@@ -205,30 +196,21 @@ class DatasetFilesListResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetFilesListResponse)
 
 
-class DatasetImportRequest(Schema):
+class DatasetImportRequest(RepositoryContext):
     """Dataset import request."""
 
-    project_id = fields.String(required=True)
     dataset_uri = fields.String(required=True)
     name = fields.String()
     extract = fields.Boolean()
-    client_extras = fields.String()
-
-
-class DatasetImportResponse(Schema):
-    """Dataset import response."""
-
-    job_id = fields.String(required=True)
-    created_at = fields.DateTime()
 
 
 class DatasetImportResponseRPC(JsonRPCResponse):
     """RPC schema for a dataset import."""
 
-    result = fields.Nested(DatasetImportResponse)
+    result = fields.Nested(JobDetailsResponse)
 
 
-class DatasetEditRequest(Schema):
+class DatasetEditRequest(RepositoryContext):
     """Dataset edit metadata request."""
 
     name = fields.String(required=True)
@@ -237,10 +219,6 @@ class DatasetEditRequest(Schema):
     creators = fields.List(fields.Nested(DatasetCreators))
     keywords = fields.List(fields.String())
     images = fields.List(fields.Nested(ImageObjectRequest))
-
-    project_id = fields.String()
-    git_url = fields.String()
-    commit_message = fields.String()
 
 
 class DatasetEditResponse(RenkuSyncSchema):
@@ -256,16 +234,12 @@ class DatasetEditResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetEditResponse)
 
 
-class DatasetUnlinkRequest(Schema):
+class DatasetUnlinkRequest(RepositoryContext):
     """Dataset unlink file request."""
 
     name = fields.String(required=True)
     include_filters = fields.List(fields.String())
     exclude_filters = fields.List(fields.String())
-
-    project_id = fields.String()
-    git_url = fields.String()
-    commit_message = fields.String()
 
     @post_load()
     def check_filters(self, data, **kwargs):
