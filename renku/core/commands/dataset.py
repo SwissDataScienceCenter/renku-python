@@ -687,9 +687,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
         deleted_files.extend(deleted)
 
     if deleted_files and not delete:
-        communication.echo(
-            "Some files are deleted in the repo. To also delete them locally run update command with '--delete' flag."
-        )
+        communication.echo("Some files are deleted. To also delete them from datasets' metadata use '--delete' flag.")
 
     message = f"Updated {len(updated_files)} files"
     if delete:
