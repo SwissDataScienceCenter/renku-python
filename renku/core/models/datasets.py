@@ -37,7 +37,7 @@ from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
-from renku.core.utils.git import get_slug
+from renku.core.utils.urls import get_slug
 
 NoneType = type(None)
 

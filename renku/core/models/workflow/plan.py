@@ -40,6 +40,8 @@ from renku.core.models.workflow.parameters import (
 from renku.core.models.workflow.run import Run
 from renku.core.utils.urls import get_host
 
+MAX_GENERATED_NAME_LENGTH = 25
+
 
 class Plan:
     """Represent a `renku run` execution template."""
@@ -99,7 +101,7 @@ class Plan:
             id_=plan_id,
             inputs=inputs,
             keywords=run.keywords,
-            name=run.name,
+            name=run.name or cls._generate_name(run),
             outputs=outputs,
             success_codes=run.successcodes,
         )
@@ -110,6 +112,16 @@ class Plan:
         uuid_ = uuid_ or str(uuid.uuid4())
         host = get_host(client)
         return urllib.parse.urljoin(f"https://{host}", pathlib.posixpath.join("plans", uuid_))
+
+    @staticmethod
+    def _generate_name(run):
+        if not run:
+            return uuid.uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
+
+        name = "-".join(run.to_argv())
+        name = secure_filename(name)[:MAX_GENERATED_NAME_LENGTH]
+        rand_length = 5
+        return f"{name[:-rand_length-1]}-{uuid.uuid4().hex[:rand_length]}"
 
     def assign_new_id(self):
         """Assign a new UUID.

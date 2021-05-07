@@ -28,7 +28,7 @@ from renku.core.incubation.command import Command
 from renku.core.management.git import get_mapped_std_streams
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 from renku.core.utils import communication
-from renku.core.utils.git import get_slug
+from renku.core.utils.urls import get_slug
 
 
 def run_command():

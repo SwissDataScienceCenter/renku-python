@@ -33,7 +33,7 @@ from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.datasets import Dataset
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
-from renku.core.utils.git import get_slug
+from renku.core.utils.urls import get_slug
 from tests.utils import assert_dataset_is_mutated, raises
 
 

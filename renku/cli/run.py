@@ -214,7 +214,7 @@ from renku.core.commands.run import run_command
 @click.command(context_settings=dict(ignore_unknown_options=True,))
 @click.option("--name", help="A name for the workflow step.")
 @click.option("--description", help="Workflow step's description.")
-@click.option("--keyword", multiple=True, help="List of tags for the workflow.")
+@click.option("--keyword", multiple=True, help="List of keywords for the workflow.")
 @click.option("explicit_inputs", "--input", multiple=True, help="Force a path to be considered as an input.")
 @click.option("explicit_outputs", "--output", multiple=True, help="Force a path to be considered an output.")
 @click.option("--no-output", is_flag=True, default=False, help="Allow command without output files.")

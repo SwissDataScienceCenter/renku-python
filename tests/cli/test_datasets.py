@@ -35,7 +35,7 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.refs import LinkReference
-from renku.core.utils.git import get_slug
+from renku.core.utils.urls import get_slug
 from tests.utils import assert_dataset_is_mutated
 
 
