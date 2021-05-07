@@ -108,6 +108,15 @@ class DependencyGraph:
         child = Path(child).resolve()
         return parent == child or parent in child.parents
 
+    @property
+    def plans(self):
+        """Get all plans in graph."""
+        return self._plans  # TODO: filter deleted plans
+
+    def get_plan(self, name_or_id):
+        """Get a plan by name or id."""
+        return next((p for p in self._plans if p.id_ == name_or_id or p.name == name_or_id), None)
+
     def get_dependent_paths(self, plan_id, path):
         """Get a list of downstream paths."""
         nodes = deque()

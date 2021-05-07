@@ -18,13 +18,13 @@
 """Renku workflow commands."""
 
 
-from collections import defaultdict
 from pathlib import Path
 
+from renku.core import errors
+from renku.core.commands.format.workflows import WORKFLOWS_FORMATS
 from renku.core.commands.graph import Graph
 from renku.core.incubation.command import Command
 from renku.core.models.workflow.converters.cwl import CWLConverter
-from renku.core.utils import communication
 
 
 def _ref(name):
@@ -38,18 +38,17 @@ def _deref(ref):
     return ref[len("workflows/") :]
 
 
-def _list_workflows(client):
+def _list_workflows(client, format=None, columns=None):
     """List or manage workflows with subcommands."""
-    from renku.core.models.refs import LinkReference
+    plans = client.dependency_graph.plans
 
-    names = defaultdict(list)
-    for ref in LinkReference.iter_items(client, common_path="workflows"):
-        names[ref.reference.name].append(ref.name)
+    if format is None:
+        return list(plans)
 
-    for path in client.workflow_path.glob("*.yaml"):
-        communication.echo(
-            "{path}: {names}".format(path=path.name, names=", ".join(_deref(name) for name in names[path.name]),)
-        )
+    if format not in WORKFLOWS_FORMATS:
+        raise errors.UsageError("format not supported")
+
+    return WORKFLOWS_FORMATS[format](client, plans, columns=columns)
 
 
 def list_workflows_command():
@@ -91,6 +90,16 @@ def _remove_workflow(client, name):
 def remove_workflow_command():
     """Command that removes the remote named <name>."""
     return Command().command(_remove_workflow).require_clean().with_commit()
+
+
+def _show_workflow(client, name_or_id):
+    """Show the details of a workflow."""
+    return client.dependency_graph.get_plan(name_or_id)
+
+
+def show_workflow_command():
+    """Command that the details of a workflow."""
+    return Command().command(_show_workflow).require_migration()
 
 
 def _create_workflow(client, output_file, revision, paths):

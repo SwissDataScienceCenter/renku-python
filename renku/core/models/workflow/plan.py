@@ -58,6 +58,32 @@ class Plan:
         """String representation."""
         return self.name
 
+    @property
+    def full_command(self):
+        """Full command of this plan."""
+        argv = []
+
+        if self.command:
+            argv.extend(self.command.split(" "))
+
+        arguments = self.inputs + self.outputs + self.arguments
+
+        arguments = filter(lambda x: x.position, arguments)
+        arguments = sorted(arguments, key=lambda x: x.position)
+        argv.extend(e for a in arguments for e in a.to_argv())
+
+        stream_repr = []
+
+        for input_ in self.inputs:
+            if input_.mapped_to:
+                stream_repr.append(input_.to_stream_repr())
+
+        for output in self.outputs:
+            if output.mapped_to:
+                stream_repr.append(output.to_stream_repr())
+
+        return "".join(argv) + "".join(stream_repr)
+
     @classmethod
     def from_jsonld(cls, data):
         """Create an instance from JSON-LD data."""

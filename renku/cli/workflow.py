@@ -83,14 +83,18 @@ generate the workflow for. You can also export to a file directly with
 
 
 import click
+from rich.console import Console
+from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
+from renku.core.commands.format.workflows import WORKFLOWS_COLUMNS, WORKFLOWS_FORMATS
 from renku.core.commands.workflow import (
     create_workflow_command,
     list_workflows_command,
     remove_workflow_command,
     rename_workflow_command,
     set_workflow_name_command,
+    show_workflow_command,
 )
 
 
@@ -101,10 +105,21 @@ def workflow():
 
 
 @workflow.command("ls")
-def list_workflows():
+@click.option("--format", type=click.Choice(WORKFLOWS_FORMATS), default="tabular", help="Choose an output format.")
+@click.option(
+    "-c",
+    "--columns",
+    type=click.STRING,
+    default="id,name,description",
+    metavar="<columns>",
+    help="Comma-separated list of column to display: {}.".format(", ".join(WORKFLOWS_COLUMNS.keys())),
+    show_default=True,
+)
+def list_workflows(format, columns):
     """List or manage workflows with subcommands."""
     communicator = ClickCallback()
-    list_workflows_command().with_communicator(communicator).build().execute()
+    result = list_workflows_command().with_communicator(communicator).build().execute(format=format, columns=columns)
+    click.echo(result.output)
 
 
 def validate_path(ctx, param, value):
@@ -173,3 +188,86 @@ def create(output_file, revision, paths):
 
     if not output_file:
         click.echo(result.output)
+
+
+@workflow.command()
+@click.argument("name_or_id", metavar="<name_or_id>")
+def show(name_or_id):
+    """Show details for workflow <name_or_id>."""
+    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+
+    click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(plan.id_, bold=True))
+    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(plan.name, bold=True))
+    Console().print(Markdown(plan.description))
+    click.echo(click.style("Command: ", bold=True, fg="magenta") + click.style(plan.full_command, bold=True))
+    click.echo(click.style("Success Codes: ", bold=True, fg="magenta") + click.style(plan.success_codes, bold=True))
+
+    if plan.inputs:
+        click.echo(click.style("Inputs: ", bold=True, fg="magenta"))
+        for run_input in plan.inputs:
+            click.echo(click.style(f"\t- {run_input.name}:", bold=True))
+
+            if run_input.description:
+                click.echo(click.style(f"\t\t{run_input.description}"))
+
+            click.echo(
+                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                + click.style(run_input.defaultValue, bold=True)
+            )
+
+            if run_input.position:
+                click.echo(
+                    click.style("\t\tPosition: ", bold=True, fg="magenta") + click.style(run_input.position, bold=True)
+                )
+
+            if run_input.prefix:
+                click.echo(
+                    click.style("\t\tPrefix: ", bold=True, fg="magenta") + click.style(run_input.prefix, bold=True)
+                )
+
+    if plan.outputs:
+        click.echo(click.style("Outputs: ", bold=True, fg="magenta"))
+        for run_output in plan.outputs:
+            click.echo(click.style(f"\t- {run_output.name}:", bold=True))
+
+            if run_output.description:
+                click.echo(click.style(f"\t\t{run_output.description}"))
+
+            click.echo(
+                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                + click.style(run_output.defaultValue, bold=True)
+            )
+
+            if run_output.position:
+                click.echo(
+                    click.style("\t\tPosition: ", bold=True, fg="magenta") + click.style(run_output.position, bold=True)
+                )
+
+            if run_output.prefix:
+                click.echo(
+                    click.style("\t\tPrefix: ", bold=True, fg="magenta") + click.style(run_output.prefix, bold=True)
+                )
+
+    if plan.arguments:
+        click.echo(click.style("Outputs: ", bold=True, fg="magenta"))
+        for run_argument in plan.arguments:
+            click.echo(click.style(f"\t- {run_argument.name}:", bold=True))
+
+            if run_argument.description:
+                click.echo(click.style(f"\t\t{run_argument.description}"))
+
+            click.echo(
+                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                + click.style(run_argument.defaultValue, bold=True)
+            )
+
+            if run_argument.position:
+                click.echo(
+                    click.style("\t\tPosition: ", bold=True, fg="magenta")
+                    + click.style(run_argument.position, bold=True)
+                )
+
+            if run_argument.prefix:
+                click.echo(
+                    click.style("\t\tPrefix: ", bold=True, fg="magenta") + click.style(run_argument.prefix, bold=True)
+                )
