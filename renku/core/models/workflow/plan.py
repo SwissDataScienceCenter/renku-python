@@ -262,7 +262,7 @@ class PlanSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Plan, schema.Action]
+        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork]
         model = Plan
         unknown = EXCLUDE
 
