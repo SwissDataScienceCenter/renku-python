@@ -518,7 +518,7 @@ class ZenodoProvider(ProviderApi):
                 raise LookupError("record not found. Status: {}".format(response.status_code))
             return response
 
-    def find_record(self, uri, client=None):
+    def find_record(self, uri, client=None, **kwargs):
         """Retrieves a record from Zenodo.
 
         :raises: ``LookupError``

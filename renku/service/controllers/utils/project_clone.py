@@ -37,9 +37,9 @@ def user_project_clone(cache, user_data, project_data):
         .execute(
             project_data["url_with_auth"],
             project.abs_path,
-            depth=project_data["depth"] if project_data["depth"] != 0 else None,
+            depth=project_data["depth"],
             raise_git_except=True,
-            config={"user.name": project_data["fullname"], "user.email": project_data["email"],},
+            config={"user.name": project_data["fullname"], "user.email": project_data["email"]},
             checkout_rev=project_data["ref"],
         )
     ).output

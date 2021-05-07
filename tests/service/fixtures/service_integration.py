@@ -42,13 +42,13 @@ def _mock_cache_sync(repo):
         """Mock repo reset to work with mocked renku save."""
         repo.git.reset("--hard", current_head)
 
-    reset_repo_function = mixins.ReadOperationMixin.reset_local_repo
-    mixins.ReadOperationMixin.reset_local_repo = _mocked_repo_reset
+    reset_repo_function = mixins.RenkuOperationMixin.reset_local_repo
+    mixins.RenkuOperationMixin.reset_local_repo = _mocked_repo_reset
 
     try:
         yield
     finally:
-        mixins.ReadOperationMixin.reset_local_repo = reset_repo_function
+        mixins.RenkuOperationMixin.reset_local_repo = reset_repo_function
 
 
 def integration_repo_path(headers, project_id, url_components):
@@ -88,14 +88,14 @@ def integration_repo(headers, project_id, url_components):
             repo.git.clean("-xdf")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_repo_url):
     """Setup and teardown steps for integration tests."""
     from renku.core.models.git import GitURL
 
     url_components = GitURL.parse(it_remote_repo_url)
 
-    payload = {"git_url": it_remote_repo_url, "depth": 0}
+    payload = {"git_url": it_remote_repo_url, "depth": -1}
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
@@ -184,7 +184,7 @@ def svc_protected_old_repo(svc_synced_client, it_protected_repo_url):
 
     payload = {
         "git_url": it_protected_repo_url,
-        "depth": 0,
+        "depth": 1,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
@@ -198,20 +198,19 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     """Client with a local remote to test pushes."""
     from click.testing import CliRunner
     from git.config import GitConfigParser, get_config_path
-    from marshmallow import post_load, pre_load
+    from marshmallow import pre_load
 
     from renku.cli import cli
     from renku.core.utils.contexts import chdir
+    from renku.service.config import PROJECT_CLONE_NO_DEPTH
     from renku.service.serializers import cache
 
     # NOTE: prevent service from adding an auth token as it doesn't work with local repos
     def _no_auth_format(self, data, **kwargs):
-        data["url_with_auth"] = data["git_url"]
-        return data
+        return data["git_url"]
 
     orig_format_url = cache.ProjectCloneContext.format_url
-
-    cache.ProjectCloneContext.format_url = post_load(_no_auth_format)
+    cache.ProjectCloneContext.format_url = _no_auth_format
 
     # NOTE: mock owner/project so service is happy
     def _mock_owner(self, data, **kwargs):
@@ -222,14 +221,12 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
         return data
 
     orig_set_owner = cache.ProjectCloneContext.set_owner_name
-
     cache.ProjectCloneContext.set_owner_name = pre_load(_mock_owner)
 
     remote_repo_path = tmp_path / "remote_repo"
     remote_repo_path.mkdir()
 
     remote_repo = Repo.init(remote_repo_path, bare=True)
-
     remote_repo_checkout_path = tmp_path / "remote_repo_checkout"
     remote_repo_checkout_path.mkdir()
 
@@ -269,8 +266,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
         except OSError:  # noqa: B014
             pass
 
-        payload = {"git_url": f"file://{remote_repo_path}", "depth": 0}
-
+        payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH}
         response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
         assert response
@@ -294,3 +290,13 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             shutil.rmtree(remote_repo_checkout_path)
         except OSError:  # noqa: B014
             pass
+
+
+@pytest.fixture
+def quick_cache_synchronization(mocker):
+    """Forces cache to synchronize on every request."""
+    import renku.service.cache.models.project
+
+    mocker.patch.object(renku.service.cache.models.project.Project, "fetch_age", 10000)
+
+    yield

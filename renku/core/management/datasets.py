@@ -60,7 +60,7 @@ from renku.core.models.provenance.agents import Person
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
-from renku.core.utils.git import add_to_git, run_command
+from renku.core.utils.git import add_to_git, get_oauth_url, have_same_remote, run_command
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.urls import remove_credentials
 
@@ -304,7 +304,7 @@ class DatasetsApiMixin(object):
         return dataset
 
     def create_dataset(
-        self, name=None, title=None, description=None, creators=None, keywords=None, images=None, safe_image_paths=[]
+        self, name=None, title=None, description=None, creators=None, keywords=None, images=None, safe_image_paths=None
     ):
         """Create a dataset."""
         if not name:
@@ -349,6 +349,7 @@ class DatasetsApiMixin(object):
         )
 
         if images:
+            safe_image_paths = safe_image_paths or []
             safe_image_paths.append(self.path)
             self.set_dataset_images(dataset, images, safe_image_paths)
 
@@ -359,8 +360,9 @@ class DatasetsApiMixin(object):
 
         return dataset, metadata_path, dataset_ref
 
-    def set_dataset_images(self, dataset, images, safe_image_paths=[]):
+    def set_dataset_images(self, dataset, images, safe_image_paths=None):
         """Set the images on a dataset."""
+        safe_image_paths = safe_image_paths or []
 
         if not images:
             images = []
@@ -430,6 +432,8 @@ class DatasetsApiMixin(object):
 
                 img_path = image_folder / f"{position}{ext}"
                 shutil.copy(path, img_path)
+            else:
+                img_path = path
 
             dataset.images.append(
                 ImageObject(
@@ -1281,33 +1285,31 @@ class DatasetsApiMixin(object):
         else:
             return True
 
-    def prepare_git_repo(self, url, ref=None):
+    def prepare_git_repo(self, url, ref=None, gitlab_token=None):
         """Clone and cache a Git repo."""
         if not url:
             raise errors.GitError("Invalid URL.")
 
         renku_branch = "renku-default-branch"
 
-        def checkout(repo, ref):
-            try:
-                repo.git.checkout(ref)
-            except GitCommandError:
-                raise errors.ParameterError('Cannot find reference "{}" in Git repository: {}'.format(ref, url))
-
         depth = 1 if not ref else None
         ref = ref or renku_branch
         u = GitURL.parse(url)
         path = u.pathname
         if u.hostname == "localhost":
-            path = str(Path(path).resolve())
-            url = path
-        repo_name = os.path.splitext(os.path.basename(path))[0]
+            path = Path(path).resolve()
+            git_url = str(path)
+        elif "http" in u.protocol and gitlab_token:
+            git_url = get_oauth_url(url, gitlab_token)
+        else:
+            git_url = url
+
         path = os.path.dirname(path).lstrip("/")
-        repo_path = self.renku_path / self.CACHE / u.hostname / path / repo_name
+        repo_path = self.renku_path / self.CACHE / u.hostname / path / u.name
 
         if repo_path.exists():
             repo = Repo(str(repo_path))
-            if repo.remotes.origin.url == url:
+            if have_same_remote(repo.remotes.origin.url, git_url):
                 try:
                     repo.git.checkout(".")
                     repo.git.fetch(all=True)
@@ -1326,9 +1328,9 @@ class DatasetsApiMixin(object):
             try:
                 shutil.rmtree(str(repo_path))
             except PermissionError:
-                raise errors.InvalidFileOperation("Cannot delete files in {}: Permission denied".format(repo_path))
+                raise errors.InvalidFileOperation(f"Cannot delete files in {repo_path}: Permission denied")
 
-        repo, _ = clone(url, path=str(repo_path), install_githooks=False, depth=depth)
+        repo, _ = clone(git_url, path=str(repo_path), install_githooks=False, depth=depth)
 
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It
@@ -1336,11 +1338,15 @@ class DatasetsApiMixin(object):
         renku_ref = "refs/heads/" + renku_branch
         try:
             repo.git.execute(["git", "symbolic-ref", renku_ref, repo.head.reference.path])
-            checkout(repo, ref)
         except GitCommandError as e:
-            raise errors.GitError("Cannot clone remote Git repo: {}".format(url)) from e
-        else:
-            return repo, repo_path
+            raise errors.GitError(f"Cannot clone remote Git repo: {url}") from e
+
+        try:
+            repo.git.checkout(ref)
+        except GitCommandError:
+            raise errors.ParameterError(f"Cannot find reference '{ref}' in Git repository: {url}")
+
+        return repo, repo_path
 
     @staticmethod
     def _fetch_file_metadata(client, path):

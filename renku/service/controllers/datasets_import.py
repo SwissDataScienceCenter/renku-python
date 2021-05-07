@@ -19,7 +19,7 @@
 import os
 
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
@@ -27,20 +27,20 @@ from renku.service.serializers.datasets import DatasetImportRequest, DatasetImpo
 from renku.service.views import result_response
 
 
-class DatasetsImportCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets import endpoint."""
 
     REQUEST_SERIALIZER = DatasetImportRequest()
     RESPONSE_SERIALIZER = DatasetImportResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets import controller."""
         self.ctx = DatasetsImportCtrl.REQUEST_SERIALIZER.load(request_data)
 
         if self.ctx.get("commit_message") is None:
             self.ctx["commit_message"] = "service: dataset import of {0}".format(self.ctx["dataset_uri"])
 
-        super(DatasetsImportCtrl, self).__init__(cache, user_data, request_data)
+        super(DatasetsImportCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):

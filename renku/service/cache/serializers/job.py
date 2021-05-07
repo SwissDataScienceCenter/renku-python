@@ -39,6 +39,9 @@ class JobSchema(Schema):
     extras = fields.Dict(required=False)
     client_extras = fields.String(required=False, missing=None)
 
+    ctrl_result = fields.Dict(required=False)
+    ctrl_context = fields.Dict(required=False)
+
     @post_load
     def make_job(self, data, **options):
         """Construct job object."""

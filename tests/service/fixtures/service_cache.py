@@ -19,7 +19,7 @@
 import pytest
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from _pytest.monkeypatch import MonkeyPatch

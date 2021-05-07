@@ -27,7 +27,7 @@ from werkzeug.utils import secure_filename
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
-from renku.service.serializers.common import RenkuSyncSchema
+from renku.service.serializers.common import RenkuSyncSchema, RepositoryContext
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -130,18 +130,6 @@ class ProjectCloneContext(ProjectCloneRequest):
         except ConfigurationError as e:
             raise ValidationError("Invalid `git_url`") from e
 
-        return value
-
-    @post_load()
-    def format_url(self, data, **kwargs):
-        """Format URL with a username and password."""
-        git_url = urlparse(data["git_url"])
-
-        url = "oauth2:{0}@{1}".format(data["token"], git_url.netloc)
-        data["url_with_auth"] = git_url._replace(netloc=url).geturl()
-
-        return data
-
     @pre_load()
     def set_owner_name(self, data, **kwargs):
         """Set owner and name fields."""
@@ -159,6 +147,34 @@ class ProjectCloneContext(ProjectCloneRequest):
         if git_url.name is None:
             raise ValidationError("Invalid `git_url`")
         data["name"] = git_url.name
+
+        return data
+
+    def format_url(self, data):
+        """Format url with auth."""
+        git_url = urlparse(data["git_url"])
+
+        url = "oauth2:{0}@{1}".format(data["token"], git_url.netloc)
+        return git_url._replace(netloc=url).geturl()
+
+    @post_load
+    def finalize_data(self, data, **kwargs):
+        """Finalize data."""
+        data["url_with_auth"] = self.format_url(data)
+
+        if not data["depth"]:
+            # NOTE: In case of `depth=None` or `depth=0` we set to default depth.
+            data["depth"] = PROJECT_CLONE_DEPTH_DEFAULT
+
+        try:
+            depth = int(data["depth"])
+
+            if depth < 0:
+                # NOTE: In case of `depth<0` we remove the depth limit.
+                data["depth"] = None
+
+        except ValueError:
+            data["depth"] = PROJECT_CLONE_DEPTH_DEFAULT
 
         return data
 
@@ -189,17 +205,13 @@ class ProjectListResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectListResponse)
 
 
-class ProjectMigrateRequest(Schema):
+class ProjectMigrateRequest(RepositoryContext):
     """Request schema for project migrate."""
 
-    project_id = fields.String(required=True)
     force_template_update = fields.Boolean(default=False)
     skip_template_update = fields.Boolean(default=False)
     skip_docker_update = fields.Boolean(default=False)
     skip_migrations = fields.Boolean(default=False)
-    is_delayed = fields.Boolean(default=False)
-    client_extras = fields.String()
-    commit_message = fields.String()
 
     @pre_load()
     def default_commit_message(self, data, **kwargs):
@@ -223,19 +235,6 @@ class ProjectMigrateResponseRPC(JsonRPCResponse):
     """RPC response schema for project migrate."""
 
     result = fields.Nested(ProjectMigrateResponse)
-
-
-class ProjectMigrateJobResponse(Schema):
-    """Response schema for enqueued job of project migration."""
-
-    job_id = fields.String()
-    created_at = fields.DateTime()
-
-
-class ProjectMigrateAsyncResponseRPC(JsonRPCResponse):
-    """RPC response schema for project migrate."""
-
-    result = fields.Nested(ProjectMigrateJobResponse)
 
 
 class ProjectMigrationCheckRequest(Schema):

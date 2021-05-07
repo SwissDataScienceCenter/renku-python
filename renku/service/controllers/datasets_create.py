@@ -17,27 +17,28 @@
 # limitations under the License.
 """Renku service datasets create controller."""
 from renku.core.commands.dataset import create_dataset
+from renku.service.cache.models.job import Job
 from renku.service.config import CACHE_UPLOADS_PATH
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetCreateRequest, DatasetCreateResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets create endpoint."""
 
     REQUEST_SERIALIZER = DatasetCreateRequest()
     RESPONSE_SERIALIZER = DatasetCreateResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets create controller."""
         self.ctx = DatasetsCreateCtrl.REQUEST_SERIALIZER.load(request_data)
 
         if self.ctx.get("commit_message") is None:
             self.ctx["commit_message"] = "service: dataset create {0}".format(self.ctx["name"])
 
-        super(DatasetsCreateCtrl, self).__init__(cache, user_data, request_data)
+        super(DatasetsCreateCtrl, self).__init__(cache, user_data, request_data, migrate_project)
 
     @property
     def context(self):
@@ -73,9 +74,12 @@ class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        _, remote_branch = self.execute_and_sync()
+        op_result, remote_branch = self.execute_and_sync()
 
-        response = self.ctx
-        response["remote_branch"] = remote_branch
+        if isinstance(op_result, Job):
+            return result_response(DatasetsCreateCtrl.JOB_RESPONSE_SERIALIZER, op_result)
 
-        return result_response(DatasetsCreateCtrl.RESPONSE_SERIALIZER, response)
+        op_result = self.ctx
+        op_result["remote_branch"] = remote_branch
+
+        return result_response(DatasetsCreateCtrl.RESPONSE_SERIALIZER, op_result)
