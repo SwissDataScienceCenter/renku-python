@@ -29,7 +29,7 @@ from pathlib import Path
 import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.cwl.types import PATH_OBJECTS
 from renku.core.models.entities import Collection, CommitMixin, CommitMixinSchema, Entity
 from renku.core.models.workflow.parameters import (
@@ -177,6 +177,12 @@ class Run(CommitMixin):
 
     run_parameters = attr.ib(kw_only=True, factory=list)
 
+    name = attr.ib(default=None, kw_only=True, type=str)
+
+    description = attr.ib(default=None, kw_only=True, type=str)
+
+    keywords = attr.ib(kw_only=True, factory=list)
+
     _activity = attr.ib(kw_only=True, default=None)
 
     @staticmethod
@@ -196,7 +202,7 @@ class Run(CommitMixin):
         )
 
     @classmethod
-    def from_factory(cls, factory, client, commit, path):
+    def from_factory(cls, factory, client, commit, path, name, description, keywords):
         """Creates a ``Run`` from a ``CommandLineToolFactory``."""
         inputs = []
         arguments = []
@@ -235,6 +241,9 @@ class Run(CommitMixin):
             inputs=inputs,
             outputs=outputs,
             run_parameters=[_convert_run_parameter(a, run_id) for a in factory.run_parameters],
+            name=name,
+            description=description,
+            keywords=keywords,
         )
 
     @property
@@ -421,6 +430,9 @@ class RunSchema(CommitMixinSchema):
     inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
     run_parameters = Nested(renku.hasRunParameters, RunParameterSchema, many=True, missing=None)
+    name = fields.String(schema.name, missing=None)
+    description = fields.String(schema.description, missing=None)
+    keywords = fields.List(schema.keywords, fields.String(), missing=None)
 
 
 class OrderedSubprocessSchema(JsonLDSchema):

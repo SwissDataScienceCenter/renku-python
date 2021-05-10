@@ -52,7 +52,6 @@ from renku.core.models.datasets import (
     DatasetTag,
     ImageObject,
     generate_dataset_file_url,
-    get_slug,
     is_dataset_name_valid,
 )
 from renku.core.models.git import GitURL
@@ -62,7 +61,7 @@ from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git, get_oauth_url, have_same_remote, run_command
 from renku.core.utils.migrate import MigrationType
-from renku.core.utils.urls import remove_credentials
+from renku.core.utils.urls import get_slug, remove_credentials
 
 
 @attr.s
