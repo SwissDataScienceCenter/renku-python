@@ -1102,7 +1102,7 @@ def test_dataset_update_remove_file(client, runner):
 
     result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.5.0"], catch_exceptions=False)
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert "Some files are deleted in the repo." in result.output
+    assert "Some files are deleted." in result.output
     assert file_path.exists()
 
     result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.5.0", "--delete"], catch_exceptions=False)

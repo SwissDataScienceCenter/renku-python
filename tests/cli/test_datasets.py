@@ -2029,7 +2029,7 @@ def test_update_local_deleted_file(runner, client, directory_tree):
     result = runner.invoke(cli, ["dataset", "update", "my-data"])
 
     assert 0 == result.exit_code
-    assert "Some files are deleted in the repo." in result.output
+    assert "Some files are deleted." in result.output
     assert "Updated 0 files" in result.output
     assert commit_sha_after_file1_delete == client.repo.head.object.hexsha
     old_dataset = client.load_dataset("my-data")
