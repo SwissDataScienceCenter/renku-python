@@ -43,6 +43,11 @@ class DependencyGraph:
         self._graph.add_nodes_from(self._plans)
         self._connect_all_nodes()
 
+    @property
+    def plans(self):
+        """A list of all plans in the graph."""
+        return list(self._plans)
+
     def add(self, plan: Plan) -> Plan:
         """Add a plan to the graph if a similar plan does not exists."""
         existing_plan = self._find_similar_plan(plan)

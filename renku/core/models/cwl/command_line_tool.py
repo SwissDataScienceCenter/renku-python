@@ -115,12 +115,14 @@ class CommandLineToolFactory(object):
             for input in self.find_explicit_inputs():
                 self.inputs.append(input)
 
-    def generate_process_run(self, client, commit, path):
+    def generate_process_run(self, client, commit, path, name=None, description=None, keywords=None):
         """Return an instance of ``ProcessRun``."""
         from ..provenance.activities import ProcessRun
         from ..workflow.run import Run
 
-        run = Run.from_factory(factory=self, client=client, commit=commit, path=path,)
+        run = Run.from_factory(
+            factory=self, client=client, commit=commit, path=path, name=name, description=description, keywords=keywords
+        )
 
         process_run = ProcessRun.from_run(run, client, path, commit)
 
