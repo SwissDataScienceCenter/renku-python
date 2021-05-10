@@ -44,6 +44,9 @@ class Job(Model):
     extras = JSONField()
     client_extras = TextField()
 
+    ctrl_context = JSONField()
+    ctrl_result = JSONField()
+
     locked = SetField()
 
     def in_progress(self):

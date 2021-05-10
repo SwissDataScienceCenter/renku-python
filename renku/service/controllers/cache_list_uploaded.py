@@ -17,12 +17,12 @@
 # limitations under the License.
 """Renku service cache list uploaded files controller."""
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.cache import FileListResponseRPC
 from renku.service.views import result_response
 
 
-class ListUploadedFilesCtrl(ServiceCtrl, ReadOperationMixin):
+class ListUploadedFilesCtrl(ServiceCtrl, RenkuOperationMixin):
     """Controller for listing uploaded files endpoint."""
 
     RESPONSE_SERIALIZER = FileListResponseRPC()
@@ -39,6 +39,7 @@ class ListUploadedFilesCtrl(ServiceCtrl, ReadOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
+
         files = [f for f in self.cache.get_files(self.user) if f.exists()]
         return {"files": sorted(files, key=lambda rec: (rec.is_dir, rec.relative_path))}
 

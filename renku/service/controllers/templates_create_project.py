@@ -25,14 +25,14 @@ from renku.core.commands.init import create_from_template_local_command, read_te
 from renku.core.errors import RenkuException
 from renku.core.utils.contexts import click_context
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
 from renku.service.utils import new_repo_push
 from renku.service.views import result_response
 
 
-class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
+class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     """Template create project controller."""
 
     REQUEST_SERIALIZER = ProjectTemplateRequest()

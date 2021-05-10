@@ -30,7 +30,6 @@ import yaml
 from git import Actor
 
 from renku.core import errors
-from renku.core.commands.echo import INFO
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
@@ -220,17 +219,7 @@ class CommandLineToolFactory(object):
                 raise errors.OutputsNotFound(repo, inputs.values())
 
             if client.check_external_storage():
-                lfs_paths = client.track_paths_in_storage(*output_paths)
-
-                show_message = client.get_value("renku", "show_lfs_message")
-                if lfs_paths and (show_message is None or show_message == "True"):
-                    self.messages = (
-                        INFO
-                        + "Adding these files to Git LFS:\n"
-                        + "\t{}".format("\n\t".join(lfs_paths))
-                        + "\nTo disable this message in the future, run:"
-                        + "\n\trenku config set show_lfs_message False"
-                    )
+                client.track_paths_in_storage(*output_paths)
 
             add_to_git(repo.git, *output_paths)
 

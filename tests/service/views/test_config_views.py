@@ -111,3 +111,26 @@ def test_config_view_set(svc_client_with_repo):
     assert "/still_not_lab" == response.json["result"]["config"]["interactive.default_url"]
     assert "interactive.dummy" not in response.json["result"]["config"].keys()
     assert 200 == response.status_code
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_remote_config_set_view(svc_client, it_remote_repo_url, identity_headers):
+    """Test creating a delayed config set."""
+    config = {
+        "lfs_threshold": "1b",
+        "renku.autocommit_lfs": "true",
+        "interactive.default_url": "/not_lab",
+        "interactive.dummy": "dummy-value",
+    }
+
+    response = svc_client.post(
+        "/config.set",
+        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, config=config)),
+        headers=identity_headers,
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["created_at"]
+    assert response.json["result"]["job_id"]

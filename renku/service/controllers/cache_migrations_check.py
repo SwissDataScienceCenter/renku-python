@@ -19,12 +19,12 @@
 
 from renku.core.commands.migrate import migrations_check, migrations_versions
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.service.views import result_response
 
 
-class MigrationsCheckCtrl(ServiceCtrl, ReadOperationMixin):
+class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
     """Controller for migrations check endpoint."""
 
     REQUEST_SERIALIZER = ProjectMigrationCheckRequest()
@@ -43,6 +43,9 @@ class MigrationsCheckCtrl(ServiceCtrl, ReadOperationMixin):
     def renku_op(self):
         """Renku operation for the controller."""
         latest_version, project_version = migrations_versions().build().execute().output
+
+        # TODO: This API design should be improved. Next 2 lines could probably be combined to 1, ie.
+        # return migrations_check().build().execute().output
         (
             migration_required,
             project_supported,

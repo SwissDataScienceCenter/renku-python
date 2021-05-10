@@ -25,6 +25,7 @@ from renku.cli import cli
 from renku.cli.service import list_renku_processes
 
 
+@pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
 @pytest.mark.serial
 @flaky(max_runs=10, min_passes=1)
 def test_service_up_down(runner, svc_client_cache):
@@ -45,6 +46,7 @@ def test_service_up_down(runner, svc_client_cache):
     assert not {p["pid"] for p in processes}
 
 
+@pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
 @flaky(max_runs=10, min_passes=1)
 def test_service_up_restart(runner, svc_client_cache):
     """Check bringing service components up in daemon mode and restarting them."""
@@ -56,11 +58,13 @@ def test_service_up_restart(runner, svc_client_cache):
     assert pids
     assert 0 == result.exit_code
 
-    time.sleep(2)
+    time.sleep(1)
+
     result = runner.invoke(cli, ["service", "restart"], catch_exceptions=False)
     assert 0 == result.exit_code
 
-    time.sleep(2)
+    time.sleep(1)
+
     processes_after_restart = list_renku_processes(include=["renku", "up"])
 
     assert processes_after_restart
@@ -74,6 +78,7 @@ def test_service_up_restart(runner, svc_client_cache):
     assert not {p["pid"] for p in processes}
 
 
+@pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
 @flaky(max_runs=10, min_passes=1)
 def test_service_ps(runner, svc_client_cache):
     """Check bringing service components up and listing them."""
@@ -96,6 +101,7 @@ def test_service_ps(runner, svc_client_cache):
     assert not {p["pid"] for p in processes}
 
 
+@pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
 @flaky(max_runs=20, min_passes=1)
 def test_service_logs(runner, svc_client_cache):
     """Check service component logs."""
@@ -111,7 +117,8 @@ def test_service_logs(runner, svc_client_cache):
     for pid in pids:
         assert str(pid) in result.output
 
-    time.sleep(10)
+    time.sleep(0.5)
+
     result = runner.invoke(cli, ["service", "logs"], catch_exceptions=False)
     assert 0 == result.exit_code
     assert result.output

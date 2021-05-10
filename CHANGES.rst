@@ -18,6 +18,36 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.14.1...v0.14.2>`__ (2021-04-16)
+----------------------------------------------------------------------------------------------------
+
+Highlights
+~~~~~~~~~~
+
+- Ability to update local project from its template and to update the Dockerfile
+  to install the current version of renku-python using `renku migrate`.
+- Support for Unicode paths in `renku run` (including emojis).
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fix renku rerun/update with unicode input/output paths
+   (`#1963 <https://github.com/SwissDataScienceCenter/renku-python/issues/1963>`__)
+   (`9859b62 <https://github.com/SwissDataScienceCenter/renku-python/commit/9859b622e14c74a59964be67f5b2bcbe6e8e35f2>`__)
+-  **service:** fix project_clone with git ref specified
+   (`#2008 <https://github.com/SwissDataScienceCenter/renku-python/issues/2008>`__)
+   (`c072286 <https://github.com/SwissDataScienceCenter/renku-python/commit/c072286e029210a881765c686e589984385e4c36>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** support template and docker migration
+   (`#2019 <https://github.com/SwissDataScienceCenter/renku-python/issues/2019>`__)
+   (`ed87770 <https://github.com/SwissDataScienceCenter/renku-python/commit/ed87770eb79c346892a68d0a3b614c5cd597775d>`__)
+-  **dataset:** support moving files between datasets with renku mv
+   (`#1993 <https://github.com/SwissDataScienceCenter/renku-python/issues/1993>`__)
+   (`a715b70 <https://github.com/SwissDataScienceCenter/renku-python/commit/a715b709b3b63667963a7726629edb2670f7a13e>`__)
+
 `0.14.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.14.0...v0.14.1>`__ (2021-03-24)
 ----------------------------------------------------------------------------------------------------------
 

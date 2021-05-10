@@ -19,6 +19,7 @@
 
 import contextlib
 import functools
+import shutil
 from collections import defaultdict
 
 import click
@@ -252,6 +253,11 @@ class Command:
         return RequireClean(self)
 
     @check_finalized
+    def require_nodejs(self):
+        """Ensure nodejs is installed."""
+        return RequireNodeJs(self)
+
+    @check_finalized
     def with_communicator(self, communicator):
         """Create a communicator."""
         return Communicator(self, communicator)
@@ -398,6 +404,28 @@ class DatasetLock(Command):
             raise ValueError("Commit builder needs a stack to be set.")
 
         context["stack"].enter_context(context["client"].lock)
+
+    @check_finalized
+    def build(self):
+        """Build the command."""
+        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+
+        return self._builder.build()
+
+
+class RequireNodeJs(Command):
+    """Check that node.js is installed and available on the system."""
+
+    DEFAULT_ORDER = 3
+
+    def __init__(self, builder):
+        """__init__ of DatasetLock."""
+        self._builder = builder
+
+    def _pre_hook(self, builder, context, *args, **kwargs):
+        """Check node is available."""
+        if not shutil.which("nodejs") and not shutil.which("node"):
+            raise errors.NodeNotFoundError()
 
     @check_finalized
     def build(self):

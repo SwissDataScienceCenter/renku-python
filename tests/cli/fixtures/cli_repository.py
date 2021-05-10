@@ -121,7 +121,7 @@ def project(repository):
 
 
 @pytest.fixture
-def client(project):
+def client(project, global_config_dir):
     """Return a Renku repository."""
     from renku.core.management import LocalClient
     from renku.core.models.enums import ConfigFilter

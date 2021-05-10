@@ -385,7 +385,7 @@ def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
     from renku.core.management import LocalClient
 
-    def prepare_git_repo(*_):
+    def prepare_git_repo(*_, **__):
         raise errors.GitError
 
     with monkeypatch.context() as monkey:
@@ -479,10 +479,14 @@ def test_renku_dataset_import_missing_lfs_objects(runner, project):
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "provider,params,output",
-    [("zenodo", [], "zenodo.org/deposit"), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:")],
+    [
+        ("zenodo", [], "zenodo.org/deposit"),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+    ],
 )
 def test_dataset_export_upload_file(
-    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider, params, output
+    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params, output
 ):
     """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -517,10 +521,14 @@ def test_dataset_export_upload_file(
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "provider,params,output",
-    [("zenodo", [], "zenodo.org/deposit"), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:")],
+    [
+        ("zenodo", [], "zenodo.org/deposit"),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+    ],
 )
 def test_dataset_export_upload_tag(
-    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider, params, output
+    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params, output
 ):
     """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -564,31 +572,32 @@ def test_dataset_export_upload_tag(
     assert 0 == result.exit_code
     assert "Exported to:" in result.output
     assert output in result.output
-    assert "2/2" in result.output, result.output
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "1.0"] + params)
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
-    assert "1/1" in result.output
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="1")  # HEAD
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
-    assert "2/2" in result.output
 
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "provider,params,output",
-    [("zenodo", [], "zenodo.org/deposit"), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:")],
+    [
+        ("zenodo", [], "zenodo.org/deposit"),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+    ],
 )
 def test_dataset_export_upload_multiple(
-    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider, params, output
+    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params, output
 ):
     """Test successful uploading of a files to Zenodo deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -703,14 +712,15 @@ def test_export_dataset_wrong_provider(runner, project, tmpdir, client):
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", "unsupported-provider"])
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert "Unknown provider." in result.output
+    assert "invalid choice: unsupported-provider. (choose from " in result.output
 
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_export(runner, client, project):
+@pytest.mark.parametrize("provider", ["zenodo", "dataverse", "renku", "olos"])
+def test_dataset_export(runner, client, project, provider):
     """Check dataset not found exception raised."""
-    result = runner.invoke(cli, ["dataset", "export", "doesnotexists", "somewhere"])
+    result = runner.invoke(cli, ["dataset", "export", "doesnotexists", provider])
 
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
     assert 'Dataset "doesnotexists" is not found.' in result.output
@@ -719,9 +729,16 @@ def test_dataset_export(runner, client, project):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "provider,params", [("zenodo", []), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"])]
+    "provider,params",
+    [
+        ("zenodo", []),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"]),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"]),
+    ],
 )
-def test_export_dataset_unauthorized(runner, project, client, tmpdir, zenodo_sandbox, dataverse_demo, provider, params):
+def test_export_dataset_unauthorized(
+    runner, project, client, tmpdir, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params
+):
     """Test unauthorized exception raised."""
     client.set_value(provider, "access_token", "not-a-token")
     client.repo.git.add(".renku/renku.ini")
@@ -1382,6 +1399,40 @@ def test_add_removes_credentials(runner, client, url):
         file_ = dataset.files[0]
         url_obj = urlparse(url)
         assert file_.source == url_obj._replace(netloc=url_obj.hostname).geturl()
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize(
+    "disposition,filename",
+    [
+        ("Attachment; filename=Example.html", "Example.html"),
+        ('INLINE; FILENAME= "an example.html"', "an example.html"),
+        ("attachment; filename*= UTF-8''%e2%82%ac%20rates.csv", "€ rates.csv"),
+        ("attachment;filename=\"EURO rates.csv\";filename*=utf-8''%e2%82%ac%20rates.csv", "€ rates.csv"),
+    ],
+)
+def test_add_with_content_disposition(runner, client, monkeypatch, disposition, filename):
+    """Check filename is read from content disposition."""
+    import renku.core.management.datasets
+
+    url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
+
+    with monkeypatch.context() as monkey:
+        # NOTE: mock requests headers
+        original_disposition = renku.core.management.datasets._filename_from_headers
+
+        def _fake_disposition(request):
+            request.headers["content-disposition"] = disposition
+            return original_disposition(request)
+
+        monkey.setattr(renku.core.management.datasets, "_filename_from_headers", _fake_disposition)
+        result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", url])
+        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+
+    with client.with_dataset("my-dataset") as dataset:
+        file_ = dataset.files[0]
+        assert file_.name == filename
 
 
 @pytest.mark.integration

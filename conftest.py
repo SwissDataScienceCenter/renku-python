@@ -19,6 +19,7 @@
 import importlib
 
 CLI_FIXTURE_LOCATIONS = [
+    "tests.cli.fixtures.cli_gateway",
     "tests.cli.fixtures.cli_kg",
     "tests.cli.fixtures.cli_old_projects",
     "tests.cli.fixtures.cli_projects",

@@ -20,13 +20,13 @@ from marshmallow import EXCLUDE
 
 from renku.core.commands.init import read_template_manifest
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC
 from renku.service.views import result_response
 
 
-class TemplatesReadManifestCtrl(ServiceCtrl, ReadOperationMixin):
+class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
     """Template read manifest controller."""
 
     REQUEST_SERIALIZER = ManifestTemplatesRequest()

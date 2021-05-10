@@ -85,7 +85,8 @@ def unlink_file_setup(svc_client_with_repo):
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = make_dataset_add_payload(project_id, [("file_path", "README.md")],)
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
+
     assert 200 == response.status_code
 
     unlink_payload = {

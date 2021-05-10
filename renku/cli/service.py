@@ -48,6 +48,7 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600, is_debug=False):
     loading_opt = "--preload"
     if is_debug:
         loading_opt = "--reload"
+        svc_num_workers = "1"
 
     sys.argv = [
         "gunicorn",
@@ -397,3 +398,12 @@ def all_logs(ctx, follow, output_all, errors):
 
             for line in read_logs(stream.open(mode="r"), follow=follow, output_all=output_all):
                 click.echo(line)
+
+
+@service.command(name="apispec")
+def apispec():
+    """Return the api spec."""
+    from renku.service.entrypoint import app, get_apispec
+
+    with app.test_request_context():
+        click.echo(get_apispec(app).to_yaml())

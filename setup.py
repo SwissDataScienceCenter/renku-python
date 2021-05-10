@@ -113,9 +113,9 @@ tests_require = [
 
 service_requires = [
     "apispec>=4.0.0,<4.5.0",
+    "apispec-webframeworks>=0.5.2,<0.6",
     "circus==0.17.1",
-    "flask-apispec==0.11.0",
-    "flask-swagger-ui==3.36.0",
+    "docker-compose==1.29.1",
     "flask==1.1.2",
     "gunicorn",
     "marshmallow==3.11.1",
@@ -155,8 +155,9 @@ for name, reqs in extras_require.items():
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<20.4.0",
-    "calamus>=0.3.7,<0.3.8",
+    "calamus>=0.3.8,<0.3.9",
     "click-completion>=0.5.0,<=0.5.3",
+    "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",
     "click>=7.0,<=7.1.2",
     "cryptography>=3.4.1,<3.5",
@@ -180,7 +181,7 @@ install_requires = [
     "pyshacl==0.14.3",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
-    "PyYAML>=3.12,<5.4.2",
+    "PyYAML>=5.4,<=5.4.1",
     "rdflib-jsonld>=0.5.0,<0.6.0",
     "rdflib>=5.0.0,<5.1",
     "requests>=2.23.0,<=2.24.0",
@@ -220,7 +221,7 @@ version_template = """\
 __version__ = {version!r}
 
 
-def _get_disribution_url():
+def _get_distribution_url():
     try:
         import pkg_resources
         d = pkg_resources.get_distribution('renku')
@@ -231,13 +232,22 @@ def _get_disribution_url():
         return 'N/A'
 
 
-version_url = '{{}}/tree/{{}}'.format(_get_disribution_url(), 'v' + __version__)
+version_url = '{{}}/tree/{{}}'.format(_get_distribution_url(), 'v' + __version__)
 """
+
+
+def renku_scheme(version):
+    if version.exact or version.node is None:
+        return version.format_choice("", "+dirty")
+    else:
+        return version.format_choice("+{node}", "+{node}+dirty")
+
 
 setup(
     name="renku",
     use_scm_version={
-        "local_scheme": "dirty-tag",
+        # "local_scheme": "dirty-tag",
+        "local_scheme": renku_scheme,
         "write_to": os.path.join("renku", "version.py"),
         "write_to_template": version_template,
     },

@@ -26,12 +26,12 @@ from patoolib.util import PatoolError
 from renku.core.errors import RenkuException
 from renku.service.config import CACHE_UPLOADS_PATH, SUPPORTED_ARCHIVES
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.cache import FileUploadRequest, FileUploadResponseRPC, extract_file
 from renku.service.views import result_response
 
 
-class UploadFilesCtrl(ServiceCtrl, ReadOperationMixin):
+class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
     """Controller for upload files endpoint."""
 
     REQUEST_SERIALIZER = FileUploadRequest()
