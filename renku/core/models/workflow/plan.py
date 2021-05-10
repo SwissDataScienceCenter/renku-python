@@ -120,7 +120,7 @@ class Plan:
         if not run:
             return uuid.uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
-        name = "-".join(run.to_argv())
+        name = "-".join(str(a) for a in run.to_argv())
         name = secure_filename(name)
         rand_length = 5
         return f"{name[:MAX_GENERATED_NAME_LENGTH - rand_length -1]}-{uuid.uuid4().hex[:rand_length]}"
@@ -179,7 +179,9 @@ class Plan:
             return CommandInput(
                 id=input_._id.replace(self.id_, run_id),
                 consumes=entity,
+                description=input_.description,
                 mapped_to=input_.mapped_to,
+                name=input_.name,
                 position=input_.position,
                 prefix=input_.prefix,
             )
@@ -192,11 +194,13 @@ class Plan:
 
             return CommandOutput(
                 id=output._id.replace(self.id_, run_id),
-                produces=entity,
+                create_folder=output.create_folder,
+                description=output.description,
                 mapped_to=output.mapped_to,
+                name=output.name,
                 position=output.position,
                 prefix=output.prefix,
-                create_folder=output.create_folder,
+                produces=entity,
             )
 
         uuid_ = self._extract_uuid()
@@ -234,7 +238,9 @@ def _convert_command_input(input_: CommandInput, plan_id) -> CommandInputTemplat
     return CommandInputTemplate(
         id=CommandInputTemplate.generate_id(plan_id=plan_id, id_=Path(input_._id).name),
         default_value=consumes,
+        description=input_.description,
         mapped_to=input_.mapped_to,
+        name=input_.name,
         position=input_.position,
         prefix=input_.prefix,
     )
@@ -251,7 +257,9 @@ def _convert_command_output(output: CommandOutput, plan_id) -> CommandOutputTemp
     return CommandOutputTemplate(
         id=CommandOutputTemplate.generate_id(plan_id=plan_id, id_=Path(output._id).name),
         default_value=produces,
+        description=output.description,
         mapped_to=output.mapped_to,
+        name=output.name,
         position=output.position,
         prefix=output.prefix,
         create_folder=output.create_folder,

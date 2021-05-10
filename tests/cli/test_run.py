@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``run`` command."""
-from __future__ import absolute_import, print_function
 
 import os
 
@@ -117,3 +116,43 @@ def test_run_invalid_name(runner, client):
     assert 2 == result.exit_code
     assert not (client.path / "foo").exists()
     assert "Invalid name: 'invalid name' (Hint: 'invalid_name' is valid)." in result.output
+
+
+def test_command_argument_name(runner, client):
+    """Test names of a command's arguments."""
+    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
+
+    result = runner.invoke(
+        cli,
+        [
+            "run",
+            "--input",
+            "Dockerfile",
+            "--output",
+            "README.md",
+            "echo",
+            "-n",
+            "some message",
+            "--template",
+            "requirements.txt",
+            "--delta",
+            "42",
+        ],
+    )
+
+    assert 0 == result.exit_code
+    assert 1 == len(client.dependency_graph.plans)
+    plan = client.dependency_graph.plans[0]
+
+    assert 2 == len(plan.inputs)
+    plan.inputs.sort(key=lambda i: i.name)
+    assert plan.inputs[0].name.startswith("input-")
+    assert "template-2" == plan.inputs[1].name
+
+    assert 1 == len(plan.outputs)
+    assert plan.outputs[0].name.startswith("output-")
+
+    assert 2 == len(plan.arguments)
+    plan.arguments.sort(key=lambda i: i.name)
+    assert "delta-3" == plan.arguments[0].name
+    assert "n-1" == plan.arguments[1].name
