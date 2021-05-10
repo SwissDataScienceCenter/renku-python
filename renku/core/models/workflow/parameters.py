@@ -29,7 +29,6 @@ from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku,
 from renku.core.models.entities import CollectionSchema, EntitySchema
 from renku.core.utils.urls import get_slug
 
-
 RANDOM_ID_LENGTH = 4
 
 
@@ -94,7 +93,7 @@ class CommandParameter:
 
     description = attr.ib(default=None, kw_only=True,)
 
-    name = attr.ib(default=None, kw_only=True,)
+    name: str = attr.ib(default=None, kw_only=True)
 
     position = attr.ib(default=None, type=int, kw_only=True,)
 
@@ -106,6 +105,21 @@ class CommandParameter:
         if "/steps/" in self._id:
             return "/".join(self._id.split("/")[-4:])
         return "/".join(self._id.split("/")[-2:])
+
+    def default_label(self):
+        """Set default label."""
+        raise NotImplementedError
+
+    def default_name(self):
+        """Create a default name."""
+        raise NotImplementedError
+
+    def __attrs_post_init__(self):
+        """Post-init hook."""
+        if not self._label:
+            self._label = self.default_label()
+        if not self.name:
+            self.name = self.default_name()
 
 
 @attr.s(eq=False, order=False)
@@ -142,14 +156,10 @@ class CommandArgument(CommandParameter):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._label:
-            self._label = self.default_label()
+        super().__attrs_post_init__()
 
         if not self.default_value:
             self.default_value = self.value
-
-        if not self.name:
-            self.name = self.default_name()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -209,14 +219,10 @@ class CommandInput(CommandParameter):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._label:
-            self._label = self.default_label()
+        super().__attrs_post_init__()
 
         if not self.default_value:
             self.default_value = self.consumes.path
-
-        if not self.name:
-            self.name = self.default_name()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -264,14 +270,6 @@ class CommandInputTemplate(CommandParameter):
             return ""
 
         return " < {}".format(self.default_value)
-
-    def __attrs_post_init__(self):
-        """Post-init hook."""
-        if not self._label:
-            self._label = self.default_label()
-
-        if not self.name:
-            self.name = self.default_name()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -336,14 +334,10 @@ class CommandOutput(CommandParameter):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
+        super().__attrs_post_init__()
+
         if not self.default_value:
             self.default_value = self.produces.path
-
-        if not self._label:
-            self._label = self.default_label()
-
-        if not self.name:
-            self.name = self.default_name()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -442,14 +436,6 @@ class CommandOutputTemplate(CommandParameter):
             return " > {}".format(self.default_value)
 
         return " 2> {}".format(self.default_value)
-
-    def __attrs_post_init__(self):
-        """Post-init hook."""
-        if not self._label:
-            self._label = self.default_label()
-
-        if not self.name:
-            self.name = self.default_name()
 
     @classmethod
     def from_jsonld(cls, data):
