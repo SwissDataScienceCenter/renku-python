@@ -189,24 +189,18 @@ def create_backup_branch(client, path):
     """Creates a backup branch of the repo."""
     branch_name = None
     if not is_path_empty(path):
-        from git import GitCommandError
 
         try:
             if client.repo.head.is_valid():
-                commit = client.find_previous_commit("*")
-
+                commit = client.repo.head.commit.commit
                 hexsha = commit.hexsha[:7]
 
                 branch_name = f"pre_renku_init_{hexsha}"
 
-                branch_exists = False
                 for ref in client.repo.references:
                     if branch_name == ref.name:
-                        branch_exists = True
+                        branch_name = f"pre_renku_init_{hexsha}_{uuid4().hexsha}"
                         break
-
-                if branch_exists:
-                    branch_name = f"pre_renku_init_{hexsha}_{uuid4().hexsha}"
 
                 with client.worktree(
                     branch_name=branch_name,
@@ -216,7 +210,7 @@ def create_backup_branch(client, path):
                     communication.warn("Saving current data in branch {0}".format(branch_name))
         except AttributeError:
             communication.echo("Warning! Overwriting non-empty folder.")
-        except GitCommandError as e:
+        except git.exc.GitCommandError as e:
             raise errors.GitError(e)
 
     return branch_name
@@ -289,10 +283,12 @@ def _init(
         message = ""
 
         if existing:
+            existing = sorted(existing)
             existing_paths = "\n\t".join(existing)
             message += f"The following files exist in the directory and will be overwritten:\n\t{existing_paths}\n"
 
         if append:
+            append = sorted(append)
             append_paths = "\n\t".join(append)
             message += f"The following files exist in the directory and will be appended to:\n\t{append_paths}\n"
 

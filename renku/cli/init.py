@@ -116,7 +116,7 @@ you wish to turn into a Renku project. In these cases, Renku will warn you
 if there are any files that need to be overwritten. ``README.md`` and
 ``README.rst`` will never be overwritten. ``.gitignore`` will be appended to
 to prevent files accidentally getting committed. Files that are not present
-in the template used will be left untouched by the command
+in the template will be left untouched by the command.
 
 .. code-block:: console
 
