@@ -22,6 +22,7 @@ import pathlib
 import urllib.parse
 import uuid
 from pathlib import Path
+from typing import Sequence
 
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
@@ -29,6 +30,7 @@ from werkzeug.utils import secure_filename
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.entities import Entity
 from renku.core.models.workflow.parameters import (
+    CommandArgument,
     CommandArgumentSchema,
     CommandInput,
     CommandInputTemplate,
@@ -46,12 +48,12 @@ class Plan:
 
     def __init__(self, id_, arguments=None, command=None, inputs=None, name=None, outputs=None, success_codes=None):
         """Initialize."""
-        self.arguments = arguments or []
+        self.arguments: Sequence[CommandArgument] = arguments or []
         self.command = command
         self.id_ = id_
-        self.inputs = inputs or []
+        self.inputs: Sequence[CommandInputTemplate] = inputs or []
         self.name = name or "{}-{}".format(secure_filename(self.command), uuid.uuid4().hex)
-        self.outputs = outputs or []
+        self.outputs: Sequence[CommandOutputTemplate] = outputs or []
         self.success_codes = success_codes or []
 
     def __repr__(self):
@@ -117,16 +119,16 @@ class Plan:
         """Create JSON-LD."""
         return PlanSchema(flattened=True).dump(self)
 
-    def is_similar_to(self, other):
+    def is_similar_to(self, other) -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
 
-        def get_input_patterns(plan):
-            return {e.consumes for e in plan.inputs}
+        def get_input_patterns(plan: Plan):
+            return {e.default_value for e in plan.inputs}
 
-        def get_output_patterns(plan):
-            return {e.produces for e in plan.outputs}
+        def get_output_patterns(plan: Plan):
+            return {e.default_value for e in plan.outputs}
 
-        def get_arguments(plan):
+        def get_arguments(plan: Plan):
             return {(a.position, a.prefix, a.value) for a in plan.arguments}
 
         # TODO: Check order of inputs/outputs/parameters as well after sorting by position
@@ -138,14 +140,14 @@ class Plan:
             and get_arguments(self) == get_arguments(other)
         )
 
-    def to_run(self, client, entities_cache):
+    def to_run(self, client, entities_cache) -> Run:
         """Create a Run."""
 
         def convert_input(input_: CommandInputTemplate) -> CommandInput:
-            entity = entities_cache.get(input_.consumes)
+            entity = entities_cache.get(input_.default_value)
             if not entity:
-                entity = Entity.from_revision(client=client, path=input_.consumes, revision="HEAD")
-                entities_cache[input_.consumes] = entity
+                entity = Entity.from_revision(client=client, path=input_.default_value, revision="HEAD")
+                entities_cache[input_.default_value] = entity
 
             return CommandInput(
                 id=input_._id.replace(self.id_, run_id),
@@ -156,10 +158,10 @@ class Plan:
             )
 
         def convert_output(output: CommandOutputTemplate) -> CommandOutput:
-            entity = entities_cache.get(output.produces)
+            entity = entities_cache.get(output.default_value)
             if not entity:
-                entity = Entity.from_revision(client=client, path=output.produces, revision="HEAD")
-                entities_cache[output.produces] = entity
+                entity = Entity.from_revision(client=client, path=output.default_value, revision="HEAD")
+                entities_cache[output.default_value] = entity
 
             return CommandOutput(
                 id=output._id.replace(self.id_, run_id),

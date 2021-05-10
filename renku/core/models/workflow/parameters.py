@@ -492,7 +492,6 @@ class CommandInputTemplateSchema(CommandParameterSchema):
         model = CommandInputTemplate
         unknown = EXCLUDE
 
-    consumes = fields.String(renku.consume)
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
 
 
@@ -523,7 +522,6 @@ class CommandOutputTemplateSchema(CommandParameterSchema):
 
     create_folder = fields.Boolean(renku.createFolder)
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
-    produces = fields.String(renku.produces)
 
 
 class RunParameterSchema(JsonLDSchema):
