@@ -92,6 +92,24 @@ def test_run_metadata(renku_cli, client_with_new_graph):
     assert {"key1", "key2"} == set(plan.keywords)
 
 
+@pytest.mark.parametrize(
+    "command, name",
+    [
+        (["echo", "-n", "some value"], "echo--n-some_value-"),
+        (["echo", "-n", "some long value"], "echo--n-some_long_v-"),
+    ],
+)
+def test_generated_run_name(runner, client, command, name):
+    """Test generated run name."""
+    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
+
+    result = runner.invoke(cli, ["run", "--no-output"] + command)
+
+    assert 0 == result.exit_code
+    assert 1 == len(client.dependency_graph.plans)
+    assert name == client.dependency_graph.plans[0].name[:-5]
+
+
 def test_run_invalid_name(runner, client):
     """Test run with invalid name."""
     result = runner.invoke(cli, ["run", "--name", "invalid name", "touch", "foo"])

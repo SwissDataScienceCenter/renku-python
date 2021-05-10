@@ -119,9 +119,9 @@ class Plan:
             return uuid.uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
         name = "-".join(run.to_argv())
-        name = secure_filename(name)[:MAX_GENERATED_NAME_LENGTH]
+        name = secure_filename(name)
         rand_length = 5
-        return f"{name[:-rand_length-1]}-{uuid.uuid4().hex[:rand_length]}"
+        return f"{name[:MAX_GENERATED_NAME_LENGTH - rand_length -1]}-{uuid.uuid4().hex[:rand_length]}"
 
     def assign_new_id(self):
         """Assign a new UUID.
