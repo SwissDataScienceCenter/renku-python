@@ -1,20 +1,31 @@
-.cache
-.pytest_cache
-.venv
-.vscode
-__pycache__
+# .cache
+# .pytest_cache
+# .venv
+# .vscode
+# __pycache__
 
-build
-dist
+# build
+# dist
 
-*.mo
-*.pyc
-*.swp
-*.swo
-*.~
+# *.mo
+# *.pyc
+# *.swp
+# *.swo
+# *.~
 
-*.egg
-*.egg-info
-.eggs
+# *.egg
+# *.egg-info
+# .eggs
 
-Procfile*
+# Procfile*
+# Dockerfile*
+# docker-compose*
+# chartpress.yaml
+
+.*
+**
+!renku/**
+!setup.py
+!*.rst
+!entrypoint-svc.sh
+!.git
