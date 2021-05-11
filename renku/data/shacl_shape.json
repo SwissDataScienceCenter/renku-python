@@ -1101,6 +1101,13 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       },
@@ -1148,6 +1155,13 @@
                },
                "minCount": 1,
                "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       },
@@ -1198,6 +1212,13 @@
                },
                "minCount": 0,
                "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       },
@@ -1254,6 +1275,13 @@
                "path": "renku:createFolder",
                "datatype": {
                   "@id": "xsd:boolean"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
                }
             }
          ]
