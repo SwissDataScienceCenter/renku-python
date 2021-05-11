@@ -27,7 +27,7 @@ from marshmallow import EXCLUDE
 
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
-from renku.service.serializers.templates import ManifestTemplatesRequest
+from renku.service.serializers.templates import ProjectTemplateRequest
 from tests.service.views.test_dataset_views import assert_rpc_response
 
 
@@ -206,12 +206,15 @@ def test_project_cleanup_success(svc_client_cache):
         "token": "None",
     }
     project_data = {
-        "name": "renku-project-template",
+        "project_name": "deadbeef",
+        "project_repository": "https://dev.renku.ch",
+        "project_namespace": "gitlab/renku-qa",
+        "identifier": "0xdeadbeef",
         "depth": 1,
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
         "owner": "SwissDataScienceCenter",
     }
-    project_data = ManifestTemplatesRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
+    project_data = ProjectTemplateRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
     assert "user_id" not in project_data.keys()
     project_one = user_project_clone(user_data, project_data)
 
@@ -227,7 +230,7 @@ def test_project_cleanup_success(svc_client_cache):
 
     cache_project_cleanup()
 
-    project_data = ManifestTemplatesRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
+    project_data = ProjectTemplateRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
     assert "user_id" not in project_data.keys()
     user = cache.get_user(user_data["user_id"])
     projects = cache.get_projects(user)

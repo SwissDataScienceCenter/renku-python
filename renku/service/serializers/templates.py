@@ -25,11 +25,11 @@ from renku.core.errors import ParameterError
 from renku.core.utils.scm import normalize_to_ascii
 from renku.core.utils.urls import validate_url
 from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
-from renku.service.serializers.cache import ProjectCloneContext
+from renku.service.serializers.cache import ProjectCloneContext, RepositoryCloneContext
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class ManifestTemplatesRequest(ProjectCloneContext):
+class ManifestTemplatesRequest(RepositoryCloneContext):
     """Request schema for listing manifest templates."""
 
     url = fields.String(required=True)
@@ -50,7 +50,7 @@ class TemplateParameterSchema(Schema):
     value = fields.String(missing="")
 
 
-class ProjectTemplateRequest(ManifestTemplatesRequest):
+class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     """Request schema for listing manifest templates."""
 
     identifier = fields.String(required=True)

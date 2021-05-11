@@ -99,15 +99,29 @@ class FileListResponseRPC(JsonRPCResponse):
     result = fields.Nested(FileListResponse)
 
 
-class ProjectCloneRequest(Schema):
-    """Request schema for project clone."""
+class RepositoryCloneRequest(Schema):
+    """Request schema for repository clone."""
 
     git_url = fields.String(required=True)
     depth = fields.Integer(missing=PROJECT_CLONE_DEPTH_DEFAULT)
     ref = fields.String(missing=None)
 
 
-class ProjectCloneContext(ProjectCloneRequest):
+class RepositoryCloneContext(RepositoryCloneRequest):
+    """Context schema for a git repository clone."""
+
+    @validates("git_url")
+    def validate_git_url(self, value):
+        """Validates git url."""
+        try:
+            validate_url(value)
+        except ParameterError as e:
+            raise ValidationError("`git_url` contains unsupported characters") from e
+
+        return value
+
+
+class ProjectCloneContext(RepositoryCloneContext):
     """Context schema for project clone."""
 
     project_id = fields.String(missing=lambda: uuid.uuid4().hex)
@@ -120,14 +134,6 @@ class ProjectCloneContext(ProjectCloneRequest):
     email = fields.String()
     owner = fields.String()
     token = fields.String()
-
-    @validates("git_url")
-    def validate_git_url(self, value):
-        """Validates git url."""
-        try:
-            validate_url(value)
-        except ParameterError as e:
-            raise ValidationError("`git_url` contains unsupported characters") from e
 
     @pre_load()
     def set_owner_name(self, data, **kwargs):
