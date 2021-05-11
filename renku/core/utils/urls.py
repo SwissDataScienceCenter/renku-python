@@ -18,6 +18,8 @@
 """Helpers utils for handling URLs."""
 
 import os
+import re
+import unicodedata
 import urllib
 from urllib.parse import ParseResult
 
@@ -95,3 +97,16 @@ def get_remote(repo):
         return repo.remotes[0].url
     elif repo.active_branch.tracking_branch():
         return repo.remotes[repo.active_branch.tracking_branch().remote_name].url
+
+
+def get_slug(name):
+    """Create a slug from name."""
+    lower_case = name.lower()
+    no_space = re.sub(r"\s+", "_", lower_case)
+    normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
+    no_invalid_characters = re.sub(r"[^a-zA-Z0-9._-]", "_", normalized)
+    no_duplicates = re.sub(r"([._-])[._-]+", r"\1", no_invalid_characters)
+    valid_start = re.sub(r"^[._-]", "", no_duplicates)
+    valid_end = re.sub(r"[._-]$", "", valid_start)
+    no_dot_lock_at_end = re.sub(r"\.lock$", "_lock", valid_end)
+    return no_dot_lock_at_end

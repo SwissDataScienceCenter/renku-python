@@ -473,28 +473,7 @@ class RepositoryApiMixin(GitCore):
         if not read_only:
             metadata.to_yaml(path=metadata_path)
 
-    @contextmanager
-    def with_workflow_storage(self):
-        """Yield a workflow storage."""
-        from renku.core.models.cwl.workflow import Workflow
-
-        workflow = Workflow()
-        yield workflow
-
-        for step in workflow.steps:
-            step_name = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(step.run.baseCommand)),)
-
-            workflow_path = self.workflow_path
-            if not workflow_path.exists():
-                workflow_path.mkdir()
-
-            path = workflow_path / step_name
-
-            run = step.run.generate_process_run(client=self, commit=self.repo.head.commit, path=path,)
-            run.to_yaml(path=path)
-            self.add_to_activity_index(run)
-
-    def process_and_store_run(self, command_line_tool, name, client):
+    def process_and_store_run(self, command_line_tool, name, description, keywords, client):
         """Create Plan and Activity from CommandLineTool and store them."""
         filename = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(command_line_tool.baseCommand)))
 
@@ -502,7 +481,9 @@ class RepositoryApiMixin(GitCore):
         self.workflow_path.mkdir(exist_ok=True)
         path = self.workflow_path / filename
 
-        process_run = command_line_tool.generate_process_run(client=self, commit=self.repo.head.commit, path=path)
+        process_run = command_line_tool.generate_process_run(
+            client=self, commit=self.repo.head.commit, path=path, name=name, description=description, keywords=keywords
+        )
         process_run.to_yaml(path=path)
         self.add_to_activity_index(process_run)
 
