@@ -1987,3 +1987,65 @@ def test_authorized_import(mock_kg, client, runner):
     assert 1 == result.exit_code
     assert "Unauthorized access to knowledge graph" not in result.output
     assert "Resource not found in knowledge graph" in result.output
+
+
+def test_update_local_file(runner, client, directory_tree):
+    """Check updating local files."""
+    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
+
+    file1 = Path(DATA_DIR) / "my-data" / directory_tree.name / "file1"
+    file1.write_text("some updates")
+    client.repo.git.add("--all")
+    client.repo.index.commit("file1")
+    commit_sha_after_file1 = client.repo.head.object.hexsha
+
+    file2 = Path(DATA_DIR) / "my-data" / directory_tree.name / "dir1" / "file2"
+    file2.write_text("some updates")
+    client.repo.git.add("--all")
+    client.repo.index.commit("file2")
+    commit_sha_after_file2 = client.repo.head.object.hexsha
+
+    old_dataset = client.load_dataset("my-data")
+
+    result = runner.invoke(cli, ["dataset", "update", "my-data"])
+
+    assert 0 == result.exit_code
+    dataset = client.load_dataset("my-data")
+    assert commit_sha_after_file1 in dataset.find_file(file1)._label
+    assert commit_sha_after_file2 in dataset.find_file(file2)._label
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+def test_update_local_deleted_file(runner, client, directory_tree):
+    """Check updating local deleted files."""
+    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
+
+    file1 = Path(DATA_DIR) / "my-data" / directory_tree.name / "file1"
+    file1.unlink()
+    client.repo.git.add("--all")
+    client.repo.index.commit("deleted file1")
+    commit_sha_after_file1_delete = client.repo.head.object.hexsha
+
+    result = runner.invoke(cli, ["dataset", "update", "my-data"])
+
+    assert 0 == result.exit_code
+    assert "Some files are deleted." in result.output
+    assert "Updated 0 files" in result.output
+    assert commit_sha_after_file1_delete == client.repo.head.object.hexsha
+    old_dataset = client.load_dataset("my-data")
+    assert old_dataset.find_file(file1)
+
+    # NOTE: Update with `--delete`
+    result = runner.invoke(cli, ["dataset", "update", "--delete", "my-data"])
+
+    assert 0 == result.exit_code
+    assert "Updated 0 files and deleted 1 files" in result.output
+    assert commit_sha_after_file1_delete != client.repo.head.object.hexsha
+    dataset = client.load_dataset("my-data")
+    assert dataset.find_file(file1) is None
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+    result = runner.invoke(cli, ["dataset", "update", "--delete", "my-data"])
+
+    assert 0 == result.exit_code
+    assert "Updated 0 files and deleted 0 files" in result.output

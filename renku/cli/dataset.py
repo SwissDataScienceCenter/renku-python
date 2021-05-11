@@ -217,6 +217,9 @@ this limitation, the ``--include`` and ``--exclude`` flags are not compatible
 with those datasets. Modifying those datasets locally will prevent them from
 being updated.
 
+The update command also checks for file changes in the project and updates
+datasets' metadata accordingly.
+
 You can limit the scope of updated files by specifying dataset names, using
 ``--include`` and ``--exclude`` to filter based on file names, or using
 ``--creators`` to filter based on creators. For example, the following command
