@@ -21,7 +21,7 @@ import functools
 
 import click
 
-from renku.core.errors import SHACLValidationError
+from renku.core.errors import OperationError, SHACLValidationError
 from renku.core.utils.shacl import validate_graph
 
 
@@ -100,7 +100,7 @@ def _rdf2dot_simple(g, stream, graph=None):
     from itertools import chain
 
     path_re = re.compile(
-        r"(?P<prefix>https://\w+/\w+/|https://\w+/){0,1}(?P<type>[a-zA-Z]+)/" r"(?P<commit>\w+)" r"(?P<path>.+)?"
+        r"(?P<prefix>https://[\w\.]+/\w+/|https://[\w\.]+/){0,1}(?P<type>[a-zA-Z]+)/(?P<commit>[a-f0-9]+)(?P<path>.+)?"
     )
 
     inputs = g.query(
@@ -138,8 +138,17 @@ def _rdf2dot_simple(g, stream, graph=None):
     artifact_nodes = {}
     for source, role, target, comment, in chain(inputs, outputs):
         # extract the pieces of the process URI
-        src_path = path_re.match(source).groupdict()
-        tgt_path = path_re.match(target).groupdict()
+        src_match = path_re.match(source)
+        tgt_match = path_re.match(target)
+
+        if not src_match:
+            raise OperationError(f"Could not extract path from id {source}")
+
+        if not tgt_match:
+            raise OperationError(f"Could not extract path from id {target}")
+
+        src_path = src_match.groupdict()
+        tgt_path = tgt_match.groupdict()
 
         # write the edge
         stream.write(
