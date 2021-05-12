@@ -75,10 +75,18 @@ def upload_file_view(user_data, cache):
     ---
     post:
       description: Upload a file or archive of files.
+      parameters:
+        - in: query
+          schema: FileUploadRequest
       requestBody:
         content:
-          application/json:
-            schema: FileUploadRequest
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
       responses:
         200:
           description: List of uploaded files.
