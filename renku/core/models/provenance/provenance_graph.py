@@ -19,10 +19,16 @@
 
 import json
 import os
+import uuid
 from collections import deque
 from pathlib import Path
 from typing import Union
 
+import BTrees.OOBTree
+import DirectoryStorage.Storage as DirStorage
+import transaction
+import zc.zlibstorage
+import ZODB
 from marshmallow import EXCLUDE
 from rdflib import ConjunctiveGraph
 
@@ -115,6 +121,26 @@ class ProvenanceGraph:
         """Return an instance from a set of ActivityCollection JSON file."""
         custom.assert_valid_format(format)
 
+        if format == "zodb":
+            storage = zc.zlibstorage.ZlibStorage(DirStorage.Storage("./dirstore"))
+
+            db = ZODB.DB(storage)
+            connection = db.open()
+            root = connection.root
+
+            if "activity_collections" not in connection.root():
+                root.activity_collections = BTrees.OOBTree.BTree()
+            activities = []
+            for collection in root.activity_collections:
+                activities.extend(root.activity_collections[collection].activities)
+            connection.close()
+
+            self = ProvenanceGraph(activities=activities)
+            self._activities.sort(key=lambda e: e.order)
+            self._loaded = True
+
+            return self
+
         if paths:
             if not lazy:
                 activities = []
@@ -179,6 +205,21 @@ class ProvenanceGraph:
             raise RuntimeError("No path provided to write a split provenance graph.")
 
         path = path or self._path
+
+        if format == "zodb":
+            storage = DirStorage.Storage("./dirstore")
+
+            db = ZODB.DB(storage)
+            connection = db.open()
+            root = connection.root
+
+            if "activity_collections" not in connection.root():
+                root.activity_collections = BTrees.OOBTree.BTree()
+
+            root.activity_collections[uuid.uuid4().hex]
+            transaction.commit()
+            return
+
         data = self.to_json() if format == "json" else self.to_jsonld()
         with open(path, "w", encoding="utf-8") as file_:
             json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)

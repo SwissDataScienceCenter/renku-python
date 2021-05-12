@@ -22,7 +22,11 @@ from collections import deque
 from pathlib import Path
 from typing import List, Tuple, Union
 
+import DirectoryStorage.Storage as DirStorage
 import networkx
+import persistent
+import transaction
+import ZODB
 from marshmallow import EXCLUDE
 
 from renku.core.models import custom
@@ -30,7 +34,7 @@ from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.workflow.plan import Plan, PlanJsonSchema, PlanSchema
 
 
-class DependencyGraph:
+class DependencyGraph(persistent.Persistent):
     """A graph of all execution templates (Plans)."""
 
     # TODO: dependency graph can have cycles in it because up until now there was no check to prevent this
@@ -167,6 +171,20 @@ class DependencyGraph:
         """Create an instance from a file."""
         custom.assert_valid_format(format)
 
+        if format == "zodb":
+            storage = DirStorage.Storage("./dirstore")
+
+            db = ZODB.DB(storage)
+            connection = db.open()
+            root = connection.root
+
+            if "dependency_graph" not in connection.root():
+                self = DependencyGraph(plans=[])
+            else:
+                self = root.dependency_graph
+
+            return self
+
         if Path(path).exists():
             with open(path) as file_:
                 data = json.load(file_)
@@ -212,6 +230,16 @@ class DependencyGraph:
     def to_file(self, path=None, format="jsonld"):
         """Write to file."""
         custom.assert_valid_format(format)
+        if format == "zodb":
+            storage = DirStorage.Storage("./dirstore")
+
+            db = ZODB.DB(storage)
+            connection = db.open()
+            root = connection.root
+
+            root.dependency_graph = self
+            transaction.commit()
+            return
 
         path = path or self._path
         data = self.to_json() if format == "json" else self.to_jsonld()

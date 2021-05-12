@@ -25,7 +25,7 @@ import marshmallow
 from marshmallow import INCLUDE, fields
 from marshmallow.utils import is_collection
 
-VALID_FORMATS = ["json", "jsonld", "json-ld"]
+VALID_FORMATS = ["json", "jsonld", "json-ld", "zodb"]
 
 object_registry = {}
 

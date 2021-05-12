@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import List, Union
 from urllib.parse import quote, urljoin, urlparse
 
+import BTrees.OOBTree
+import persistent
 from git import Git, GitCommandError
 from marshmallow import EXCLUDE
 
@@ -324,7 +326,7 @@ def _extract_commit_sha(entity_id: str):
     return commit_sha
 
 
-class ActivityCollection:
+class ActivityCollection(persistent.Persistent):
     """Equivalent of a workflow file."""
 
     def __init__(self, activities=None, id=None):
@@ -400,9 +402,13 @@ class ActivityCollection:
 
             return self
 
-    def to_file(self, path=None, format="jsonld"):
+    def to_file(self, path=None, format="jsonld", **kwargs):
         """Write to file."""
         custom.assert_valid_format(format)
+
+        if format == "zodb":
+            self.to_zodb(**kwargs)
+            return
 
         path = path or self._path
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -436,6 +442,47 @@ class ActivityCollection:
         self._activities.sort(key=lambda a: a.order)
 
         return self
+
+    def to_zodb(self, **kwargs):
+        """Create zodb DirStorage file."""
+        connection = kwargs["connection"]
+        root = connection.root
+
+        if "activity_collections" not in connection.root():
+            root.activity_collections = BTrees.OOBTree.BTree()
+
+        self._remove_weak_references()
+
+        root.activity_collections[uuid.uuid4().hex] = self
+
+    def _remove_weak_references(self):
+        for a in self.activities:
+            for g in a.generated:
+                del g._activity  # weakref not supported
+
+                if isinstance(g.entity, Collection):
+                    entities = [g.entity]
+
+                    while len(entities) > 0:
+                        entity = entities.pop()
+                        for m in entity.members:
+                            if isinstance(m, Collection):
+                                entities.append(m)
+                            if hasattr(m, "_parent"):
+                                del m._parent
+
+            for u in a.qualified_usage:
+
+                if isinstance(u.entity, Collection):
+                    entities = [u.entity]
+
+                    while len(entities) > 0:
+                        entity = entities.pop()
+                        for m in entity.members:
+                            if isinstance(m, Collection):
+                                entities.append(m)
+                            if hasattr(m, "_parent"):
+                                del m._parent
 
     def to_json(self):
         """Create JSON-LD."""

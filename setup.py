@@ -191,6 +191,9 @@ install_requires = [
     "tqdm>=4.48.1,<4.60.1",
     "wcmatch>=6.0.0,<8.2",
     "werkzeug>=0.15.5,<=1.0.1",
+    "ZODB==5.6.0",
+    "DirectoryStorage @ git+https://github.com/Panaetius/DirectoryStorage.git#egg=DirectoryStorage",
+    "zc.zlibstorage==1.2.0",
 ]
 
 
