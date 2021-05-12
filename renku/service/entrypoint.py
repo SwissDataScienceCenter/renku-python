@@ -37,6 +37,7 @@ from renku.service.config import (
     API_VERSION,
     CACHE_DIR,
     HTTP_SERVER_ERROR,
+    OIDC_URL,
     OPENAPI_VERSION,
     SERVICE_API_BASE_PATH,
     SERVICE_NAME,
@@ -193,7 +194,7 @@ def get_apispec(app):
             "securitySchemes": {
                 "oidc": {
                     "type": "openIdConnect",
-                    "openIdConnectUrl": "/auth/realms/Renku/.well-known/openid-configuration",
+                    "openIdConnectUrl": OIDC_URL,
                 },
                 "JWT": {"type": "apiKey", "name": "Renku-User", "in": "header"},
                 "gitlab-token": {"type": "apiKey", "name": "Authorization", "in": "header"},
