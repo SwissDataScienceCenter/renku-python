@@ -403,7 +403,8 @@ def all_logs(ctx, follow, output_all, errors):
 @service.command(name="apispec")
 def apispec():
     """Return the api spec."""
-    from renku.service.entrypoint import app, get_apispec
+    from renku.service.entrypoint import app
+    from renku.service.views.apispec import get_apispec
 
     with app.test_request_context():
         click.echo(get_apispec(app).to_yaml())
