@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent a run."""
-
+import gzip
 import json
 import pathlib
 import uuid
@@ -32,6 +32,7 @@ from ZODB import DB, FileStorage
 
 from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
+from renku.core.models.custom import deserialize
 from renku.core.models.cwl.annotation import AnnotationJsonSchema, AnnotationSchema
 from renku.core.models.entities import Collection, Entity, EntityJsonSchema, EntitySchema
 from renku.core.models.provenance.activities import Activity as ActivityRun
@@ -398,13 +399,13 @@ class ActivityCollection(persistent.Persistent):
 
         if format == "zope":
             self = cls.from_zope(path)
+        elif format == "custom":
+            self = cls.from_custom(path=path)
         else:
             with open(path) as file_:
                 data = json.load(file_)
                 if format == "json":
                     self = cls.from_json(data=data)
-                elif format == "custom":
-                    self = cls.from_custom(data=data)
                 else:
                     self = cls.from_jsonld(data=data)
 
@@ -424,8 +425,10 @@ class ActivityCollection(persistent.Persistent):
             self.to_zodb(**kwargs)
         elif format == "zope":
             self.to_zope(path)
+        elif format == "custom":
+            self.to_custom(path=path)
         else:
-            data = self.to_jsonld() if format in ["jsonld", "json-ld"] else self.to_json()
+            data = self.to_json() if format == "json" else self.to_jsonld()
             with open(path, "w", encoding="utf-8") as file_:
                 json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
@@ -438,7 +441,6 @@ class ActivityCollection(persistent.Persistent):
             raise ValueError(data)
 
         self = ActivityCollectionJsonSchema().load(data, flattened=True)
-        self._activities.sort(key=lambda a: a.order)
 
         return self
 
@@ -451,7 +453,6 @@ class ActivityCollection(persistent.Persistent):
             raise ValueError(data)
 
         self = ActivityCollectionSchema(flattened=True).load(data)
-        self._activities.sort(key=lambda a: a.order)
 
         return self
 
@@ -533,6 +534,26 @@ class ActivityCollection(persistent.Persistent):
         connection.close()
         db.close()
         storage.close()
+
+    @classmethod
+    def from_custom(cls, path):
+        """Create an instance from JSON using custom deserializer."""
+        try:
+            with gzip.open(path) as file:
+                data = json.load(file)
+        except OSError:  # Not a gzip file
+            with open(path) as file:
+                data = json.load(file)
+
+        self = deserialize(data, cls.__name__, flattened=True)
+
+        return self
+
+    def to_custom(self, path):
+        """Create gzipped JSON format."""
+        with gzip.open(path, "wt") as file:
+            data = self.to_json()
+            json.dump(data, file, ensure_ascii=False, sort_keys=True, indent=2)
 
 
 class ActivitySchema(JsonLDSchema):

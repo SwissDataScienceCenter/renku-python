@@ -23,11 +23,15 @@ import uuid
 
 import marshmallow
 from marshmallow import INCLUDE, fields
-from marshmallow.utils import is_collection
 
-VALID_FORMATS = ["json", "jsonld", "json-ld", "zodb", "zope"]
+VALID_FORMATS = ["custom", "json", "jsonld", "json-ld", "zodb", "zope"]
 
 object_registry = {}
+
+
+def is_collection(obj):
+    """A faster replacement for marshmallow.utils.is_collection."""
+    return isinstance(obj, (list, tuple))
 
 
 def assert_valid_format(format):
@@ -216,6 +220,7 @@ def _flatten_helper(data, mappings):
             if is_collection(value):
                 raise ValueError(f"Collection within collection: {data}")
             if not isinstance(value, dict):
+                # FIXME This value is lost
                 continue
             id = _flatten_helper(value, mappings)
             if id:
@@ -277,6 +282,118 @@ def _unflatten_helper(data, mappings, nested):
         return values
     else:
         return data
+
+
+models = {}
+
+
+def deserialize(data, schema_type, flattened=False):
+    """Deserialize data to python objects."""
+    global models
+    if not models:
+        models = _get_models()
+
+    if flattened:
+        data = _unflatten(data, schema_type)
+
+    return _deserialize_helper(data)
+
+
+def _deserialize_helper(data):
+    if not data:
+        return
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            if not is_collection(value) and not isinstance(value, dict):
+                continue
+
+            instance = _deserialize_helper(value)
+            data[key] = instance
+
+        return _instantiate(data)
+    elif is_collection(data):
+        instances = []
+        # TODO: Check either all elements have id or none has
+        for value in data:
+            if is_collection(value):
+                raise ValueError(f"Collection within collection: {data}")
+            elif not isinstance(value, dict):  # A primitive type
+                instances.append(value)
+            else:  # A dict
+                instances.append(_deserialize_helper(value))
+
+        return instances
+
+
+def _instantiate(data):
+    id = data.pop("@id", None) or data.pop("_id", None) or data.pop("id_", None) or data.pop("id", None)
+    if not id:
+        raise ValueError(f"Data has no '@id' field: {data}")
+
+    # NOTE: Set proper name for id field in the data so that objects can find it
+    # NOTE: data can be used in multiple places after unfalttening; do not destroy it
+    data["id"] = id
+
+    instance = object_registry.get(id)
+    if instance:
+        # TODO: Check if data is the same as instance's data
+        return instance
+
+    data.pop("@version", 1)
+    model_type = data.pop("@type", None)
+
+    if not model_type:
+        return data
+
+    instance = models.get(model_type)(**data)
+
+    if id:
+        object_registry[id] = instance
+
+    return instance
+
+
+def _get_models():
+    from renku.core.models.cwl.annotation import Annotation
+    from renku.core.models.entities import Collection, CommitMixin, Entity
+    from renku.core.models.provenance.activity import Activity, ActivityCollection
+    from renku.core.models.provenance.agents import Person, SoftwareAgent
+    from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+    from renku.core.models.provenance.qualified import Association, Generation, Usage
+    from renku.core.models.workflow.dependency_graph import DependencyGraph
+    from renku.core.models.workflow.parameters import (
+        CommandArgument,
+        CommandInputTemplate,
+        CommandOutputTemplate,
+        CommandParameter,
+        MappedIOStream,
+    )
+    from renku.core.models.workflow.plan import Plan
+
+    return {
+        m.__name__: m
+        for m in [
+            Activity,
+            ActivityCollection,
+            Annotation,
+            Association,
+            Collection,
+            CommandArgument,
+            CommandInputTemplate,
+            CommandOutputTemplate,
+            CommandParameter,
+            CommitMixin,
+            DependencyGraph,
+            Entity,
+            Generation,
+            MappedIOStream,
+            Person,
+            Plan,
+            ProvenanceGraph,
+            SoftwareAgent,
+            Usage,
+        ]
+    }
 
 
 class Id(fields.String):
