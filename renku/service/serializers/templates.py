@@ -64,6 +64,8 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     new_project_url = fields.String(required=True)
     project_name_stripped = fields.String(required=True)
 
+    initial_branch = fields.String(missing=None)
+
     @pre_load()
     def create_new_project_url(self, data, **kwargs):
         """Set owner and name fields."""
