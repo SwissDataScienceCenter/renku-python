@@ -49,9 +49,10 @@ from renku.core.utils.scm import git_unicode_unescape
 from renku.core.utils.shacl import validate_graph
 
 GRAPH_METADATA_PATHS = [
-    Path(RENKU_HOME) / Path(RepositoryApiMixin.DEPENDENCY_GRAPH),
-    Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE_GRAPH),
-    Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS_PROVENANCE),
+    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,
+    Path(RENKU_HOME) / RepositoryApiMixin.DEPENDENCY_GRAPH,
+    Path(RENKU_HOME) / RepositoryApiMixin.PROVENANCE_GRAPH,
+    Path(RENKU_HOME) / RepositoryApiMixin.PROVENANCE,
 ]
 
 
@@ -83,6 +84,11 @@ def _generate_graph(client, force=False):
             activity_collection = ActivityCollection.from_activity_run(workflow, client.dependency_graph, client)
 
             provenance_graph.add(activity_collection)
+
+            # NOTE: we serialize activity_collection after adding it to the provenance graph so that its activities have
+            # their order set
+            new_path = client.provenance_path / f"{Path(path).stem}.json"
+            activity_collection.to_json(new_path)
 
     def process_datasets(commit):
         files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))

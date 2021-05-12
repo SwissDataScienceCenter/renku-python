@@ -109,7 +109,7 @@ def execute_workflow(client, workflow, output_paths, command_name, update_commit
     run.to_yaml(path=path)
     client.add_to_activity_index(run)
 
-    client.update_graphs(run)
+    client.update_graphs(run, activity_run_path=path)
 
 
 def _update_run_parameters(run, working_dir):

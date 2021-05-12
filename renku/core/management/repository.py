@@ -29,6 +29,7 @@ from subprocess import check_output
 import attr
 import filelock
 import yaml
+from git import NULL_TREE
 from jinja2 import Template
 from werkzeug.utils import cached_property, secure_filename
 
@@ -45,6 +46,7 @@ from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
 
+from ..utils.scm import git_unicode_unescape
 from .git import GitCore
 
 DEFAULT_DATA_DIR = "data"
@@ -115,6 +117,9 @@ class RepositoryApiMixin(GitCore):
 
     PROVENANCE_GRAPH = "provenance.json"
     """File for storing ProvenanceGraph."""
+
+    PROVENANCE = "provenance"
+    """Path to store split ProvenanceGraph files."""
 
     ACTIVITY_INDEX = "activity_index.yaml"
     """Caches activities that generated a path."""
@@ -228,14 +233,19 @@ class RepositoryApiMixin(GitCore):
         return self.renku_path / self.TEMPLATE_CHECKSUMS
 
     @property
+    def dependency_graph_path(self):
+        """Path to the dependency graph file."""
+        return self.renku_path / self.DEPENDENCY_GRAPH
+
+    @property
     def provenance_graph_path(self):
         """Path to store activity files."""
         return self.renku_path / self.PROVENANCE_GRAPH
 
     @property
-    def dependency_graph_path(self):
-        """Path to the dependency graph file."""
-        return self.renku_path / self.DEPENDENCY_GRAPH
+    def provenance_path(self):
+        """Path to store split activity files."""
+        return self.renku_path / self.PROVENANCE
 
     @cached_property
     def cwl_prefix(self):
@@ -487,9 +497,9 @@ class RepositoryApiMixin(GitCore):
         process_run.to_yaml(path=path)
         self.add_to_activity_index(process_run)
 
-        self.update_graphs(process_run)
+        self.update_graphs(process_run, activity_run_path=path)
 
-    def update_graphs(self, activity_run):
+    def update_graphs(self, activity_run, activity_run_path):
         """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
         if not self.has_graph_files():
             return
@@ -501,17 +511,44 @@ class RepositoryApiMixin(GitCore):
 
         provenance_graph.add(activity_collection)
 
+        activity_collection_path = self.provenance_path / f"{Path(activity_run_path).stem}.json"
+        # NOTE: we serialize activity_collection after adding it to the provenance graph so that its activities have
+        # their order set
+        activity_collection.to_json(path=activity_collection_path)
+
         dependency_graph.to_json()
         provenance_graph.to_json()
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""
-        return self.dependency_graph_path.exists() or self.provenance_graph_path.exists()
+        return (
+            self.dependency_graph_path.exists() or self.provenance_graph_path.exists() or self.provenance_path.exists()
+        )
+
+    def get_provenance_paths(self, revision):
+        """Return list of provenance files in the provenance directory within a revision."""
+        if not revision or not self.provenance_path.exists():
+            return None
+
+        paths = f"{self.provenance_path}/*.json"
+        provenance_paths = []
+
+        for commit in self.repo.iter_commits(paths=paths, rev=revision):
+            for file_ in commit.diff(commit.parents or NULL_TREE, paths=paths):
+                # Ignore deleted files (they appear as ADDED in this backwards diff)
+                if file_.change_type == "A":
+                    continue
+
+                path: str = git_unicode_unescape(file_.a_path)
+                provenance_paths.append(str(self.path / path))
+
+        return provenance_paths
 
     def initialize_graph(self):
         """Create empty graph files."""
         self.dependency_graph_path.write_text("[]")
         self.provenance_graph_path.write_text("[]")
+        self.provenance_path.mkdir(parents=True, exist_ok=True)
 
     def remove_graph_files(self):
         """Remove all graph files."""
@@ -521,6 +558,10 @@ class RepositoryApiMixin(GitCore):
             pass
         try:
             self.provenance_graph_path.unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            shutil.rmtree(self.provenance_path)
         except FileNotFoundError:
             pass
 
