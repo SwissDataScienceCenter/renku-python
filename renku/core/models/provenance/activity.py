@@ -28,6 +28,7 @@ import BTrees.OOBTree
 import persistent
 from git import Git, GitCommandError
 from marshmallow import EXCLUDE
+from ZODB import DB, FileStorage
 
 from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
@@ -395,27 +396,38 @@ class ActivityCollection(persistent.Persistent):
         """Return an instance from a file."""
         custom.assert_valid_format(format)
 
-        with open(path) as file_:
-            data = json.load(file_)
-            self = cls.from_json(data=data) if format == "json" else cls.from_jsonld(data=data)
-            self._path = path
+        if format == "zope":
+            self = cls.from_zope(path)
+        else:
+            with open(path) as file_:
+                data = json.load(file_)
+                if format == "json":
+                    self = cls.from_json(data=data)
+                elif format == "custom":
+                    self = cls.from_custom(data=data)
+                else:
+                    self = cls.from_jsonld(data=data)
 
-            return self
+        self._activities.sort(key=lambda a: a.order)
+        self._path = path
+
+        return self
 
     def to_file(self, path=None, format="jsonld", **kwargs):
         """Write to file."""
         custom.assert_valid_format(format)
 
-        if format == "zodb":
-            self.to_zodb(**kwargs)
-            return
-
         path = path or self._path
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
-        data = self.to_json() if format == "json" else self.to_jsonld()
-        with open(path, "w", encoding="utf-8") as file_:
-            json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
+        if format == "zodb":
+            self.to_zodb(**kwargs)
+        elif format == "zope":
+            self.to_zope(path)
+        else:
+            data = self.to_jsonld() if format in ["jsonld", "json-ld"] else self.to_json()
+            with open(path, "w", encoding="utf-8") as file_:
+                json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
     @classmethod
     def from_json(cls, data):
@@ -491,6 +503,36 @@ class ActivityCollection(persistent.Persistent):
     def to_jsonld(self):
         """Create JSON-LD."""
         return ActivityCollectionSchema(flattened=True).dump(self)
+
+    @classmethod
+    def from_zope(cls, path):
+        """Create ZODB file."""
+        storage = FileStorage.FileStorage(str(path))
+        db = DB(storage)
+        connection = db.open()
+        root = connection.root()
+        self = root["ActivityCollection"]
+        connection.close()
+        db.close()
+        storage.close()
+        return self
+
+    def to_zope(self, path):
+        """Create an instance from ZODB file."""
+        import transaction
+
+        storage = FileStorage.FileStorage(str(path))
+        db = DB(storage)
+        connection = db.open()
+        root = connection.root()
+
+        self._remove_weak_references()
+
+        root["ActivityCollection"] = self
+        transaction.commit()
+        connection.close()
+        db.close()
+        storage.close()
 
 
 class ActivitySchema(JsonLDSchema):
