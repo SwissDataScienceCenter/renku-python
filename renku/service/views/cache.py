@@ -200,6 +200,9 @@ def migration_check_project_view(user_data, cache):
     ---
     get:
       description: Retrieve migration information for a project.
+      parameters:
+        - in: query
+          schema: ProjectMigrationCheckRequest
       responses:
         200:
           description: Information about required migrations for the project.
