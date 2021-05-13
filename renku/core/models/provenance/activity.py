@@ -497,9 +497,9 @@ class ActivityCollection(persistent.Persistent):
                             if hasattr(m, "_parent"):
                                 del m._parent
 
-    def to_json(self):
+    def to_json(self, flattened=True):
         """Create JSON-LD."""
-        return ActivityCollectionJsonSchema().dump(self, flattened=True)
+        return ActivityCollectionJsonSchema().dump(self, flattened=flattened)
 
     def to_jsonld(self):
         """Create JSON-LD."""
@@ -545,14 +545,14 @@ class ActivityCollection(persistent.Persistent):
             with open(path) as file:
                 data = json.load(file)
 
-        self = deserialize(data, cls.__name__, flattened=True)
+        self = deserialize(data, cls.__name__, flattened=False)
 
         return self
 
     def to_custom(self, path):
         """Create gzipped JSON format."""
         with gzip.open(path, "wt") as file:
-            data = self.to_json()
+            data = self.to_json(flattened=False)
             json.dump(data, file, ensure_ascii=False, sort_keys=True, indent=2)
 
 
