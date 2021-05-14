@@ -29,6 +29,7 @@ from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
 from renku.service.serializers.templates import ProjectTemplateRequest
 from tests.service.views.test_dataset_views import assert_rpc_response
+from tests.utils import modified_environ
 
 
 @pytest.mark.service
@@ -222,13 +223,13 @@ def test_project_cleanup_success(svc_client_cache):
     assert not project_one.ttl_expired()
     assert project_one.exists()
 
-    os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1"
-    time.sleep(1)
+    with modified_environ(RENKU_SVC_CLEANUP_TTL_PROJECTS="1"):
+        time.sleep(1)
 
-    assert project_one.age >= 1
-    assert project_one.ttl_expired()
+        assert project_one.age >= 1
+        assert project_one.ttl_expired()
 
-    cache_project_cleanup()
+        cache_project_cleanup()
 
     project_data = ProjectTemplateRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
     assert "user_id" not in project_data.keys()
@@ -237,10 +238,9 @@ def test_project_cleanup_success(svc_client_cache):
     assert [] == [p.project_id for p in projects]
 
     project_two = user_project_clone(user_data, project_data)
-    os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1800"
+    with modified_environ(RENKU_SVC_CLEANUP_TTL_PROJECTS="1800"):
+        assert project_two.age >= 0
+        assert not project_two.ttl_expired()
+        assert project_two.exists()
 
-    assert project_two.age >= 0
-    assert not project_two.ttl_expired()
-    assert project_two.exists()
-
-    assert project_one.project_id != project_two.project_id
+        assert project_one.project_id != project_two.project_id

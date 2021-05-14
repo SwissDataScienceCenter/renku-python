@@ -43,7 +43,8 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def template_manifest(self):
         """Reads template manifest."""
-        return fetch_template(self.ctx["git_url"], self.ctx["ref"])
+        template_manifest, _, _, _ = fetch_template(self.ctx["git_url"], self.ctx["ref"])
+        return template_manifest
 
     def renku_op(self):
         """Renku operation for the controller."""
@@ -52,6 +53,4 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(
-            TemplatesReadManifestCtrl.RESPONSE_SERIALIZER, {"templates": self.template_manifest()[0]}
-        )
+        return result_response(TemplatesReadManifestCtrl.RESPONSE_SERIALIZER, {"templates": self.template_manifest()})

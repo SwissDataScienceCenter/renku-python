@@ -23,6 +23,8 @@ import uuid
 
 import pytest
 
+from tests.utils import modified_environ
+
 
 def test_service_cache_ensure_user(svc_client_cache):
     """Test service cache user creation."""
@@ -263,7 +265,7 @@ def test_service_cache_make_project(svc_client_cache):
     assert project.age == 1
     assert not project.ttl_expired()
 
-    os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1"
-    time.sleep(1)
-    assert project.age == 2
-    assert project.ttl_expired()
+    with modified_environ(RENKU_SVC_CLEANUP_TTL_PROJECTS="1"):
+        time.sleep(1)
+        assert project.age == 2
+        assert project.ttl_expired()
