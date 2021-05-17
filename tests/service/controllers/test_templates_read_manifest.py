@@ -27,7 +27,7 @@ def test_template_read_manifest_ctrl(ctrl_init, svc_client_with_templates, mocke
     from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 
     cache, user_data = ctrl_init
-    _svc_client, _headers, template_params = svc_client_with_templates
+    _, _, template_params = svc_client_with_templates
 
     ctrl = TemplatesReadManifestCtrl(cache, user_data, template_params)
     ctrl_mock = mocker.patch.object(
