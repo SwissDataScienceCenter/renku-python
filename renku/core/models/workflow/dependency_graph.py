@@ -44,7 +44,7 @@ class DependencyGraph:
         self._connect_all_nodes()
 
     @property
-    def plans(self):
+    def plans(self) -> List[Plan]:
         """A list of all plans in the graph."""
         return list(self._plans)
 

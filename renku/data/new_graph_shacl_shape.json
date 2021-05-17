@@ -863,10 +863,25 @@
          "targetClass": "prov:Plan",
          "property": [
             {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
                "sh:class": {
                   "@id": "renku:CommandArgument"
                },
                "path": "renku:hasArguments"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:keywords",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             },
             {
                "nodeKind": "sh:Literal",
@@ -918,10 +933,27 @@
          "property": [
             {
                "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -1015,10 +1047,26 @@
          "property": [
             {
                "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -1066,10 +1114,26 @@
          "property": [
             {
                "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
