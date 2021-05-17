@@ -165,6 +165,8 @@ def test_create_from_template(local_client, template):
     It creates a renku projects from one of the local templates and it verifies
     the data are properly copied to the new renku project folder.
     """
+    local_client.init_repository()
+
     with TemporaryDirectory() as tempdir:
         temppath = Path(tempdir) / "local"
         shutil.copytree(str(template_local), str(temppath))
@@ -188,6 +190,8 @@ def test_create_from_template(local_client, template):
 def test_template_filename(local_client, template):
     """Test using a template with dynamic filenames.
     """
+    local_client.init_repository()
+
     with TemporaryDirectory() as tempdir:
         template_folder = Path(tempdir) / "first"
 
@@ -205,6 +209,8 @@ def test_template_filename(local_client, template):
 
 def test_update_from_template(local_client, template_update):
     """Test repository update from a template."""
+    local_client.init_repository()
+
     res = template_update()
     project_files = res["project_files"]
     template_files = res["template_files"]
@@ -228,6 +234,8 @@ def test_update_from_template(local_client, template_update):
 
 def test_update_from_template_with_modified_files(local_client, template_update):
     """Test repository update from a template with modified local files."""
+    local_client.init_repository()
+
     res = template_update()
     project_files = res["project_files"]
     template_files = res["template_files"]
@@ -268,6 +276,8 @@ def test_update_from_template_with_modified_files(local_client, template_update)
 
 def test_update_from_template_with_immutable_modified_files(local_client, mocker, template_update):
     """Test repository update from a template with modified local immutable files."""
+    local_client.init_repository()
+
     res = template_update(immutable_files=["README.md"])
     project_files = res["project_files"]
     template_files = res["template_files"]
@@ -290,6 +300,8 @@ def test_update_from_template_with_immutable_modified_files(local_client, mocker
 
 def test_update_from_template_with_immutable_deleted_files(local_client, mocker, template_update):
     """Test repository update from a template with deleted local immutable files."""
+    local_client.init_repository()
+
     res = template_update(immutable_files=["README.md"])
     project_files = res["project_files"]
     template_files = res["template_files"]
@@ -311,6 +323,8 @@ def test_update_from_template_with_immutable_deleted_files(local_client, mocker,
 
 def test_update_template_dockerfile(local_client, mocker, template_update):
     """Test repository Dockerfile update."""
+    local_client.init_repository()
+
     template_update(docker=True, after_template_version="0.0.1")
 
     import renku
@@ -325,6 +339,8 @@ def test_update_template_dockerfile(local_client, mocker, template_update):
 
 def test_update_from_template_with_new_variable(local_client, mocker, template_update):
     """Test repository update from a template with a new template variable required."""
+    local_client.init_repository()
+
     res = template_update()
     manifest = res["manifest"]
     manifest_path = res["manifest_path"]

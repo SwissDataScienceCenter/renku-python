@@ -73,3 +73,47 @@ def test_run_clean(runner, project, run_shell):
     assert "output" in result.output
     assert ".yaml" in result.output
     assert ".renku/workflow/" in result.output
+
+
+def test_run_metadata(renku_cli, client_with_new_graph):
+    """Test run with workflow metadata."""
+    exit_code, activity = renku_cli(
+        "run", "--name", "run-1", "--description", "first run", "--keyword", "key1", "--keyword", "key2", "touch", "foo"
+    )
+
+    assert 0 == exit_code
+    assert "run-1" == activity.name
+    assert "first run" == activity.description
+    assert {"key1", "key2"} == set(activity.keywords)
+
+    plan = client_with_new_graph.dependency_graph.plans[0]
+    assert "run-1" == plan.name
+    assert "first run" == plan.description
+    assert {"key1", "key2"} == set(plan.keywords)
+
+
+@pytest.mark.parametrize(
+    "command, name",
+    [
+        (["echo", "-n", "some value"], "echo--n-some_value-"),
+        (["echo", "-n", "some long value"], "echo--n-some_long_v-"),
+    ],
+)
+def test_generated_run_name(runner, client, command, name):
+    """Test generated run name."""
+    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
+
+    result = runner.invoke(cli, ["run", "--no-output"] + command)
+
+    assert 0 == result.exit_code
+    assert 1 == len(client.dependency_graph.plans)
+    assert name == client.dependency_graph.plans[0].name[:-5]
+
+
+def test_run_invalid_name(runner, client):
+    """Test run with invalid name."""
+    result = runner.invoke(cli, ["run", "--name", "invalid name", "touch", "foo"])
+
+    assert 2 == result.exit_code
+    assert not (client.path / "foo").exists()
+    assert "Invalid name: 'invalid name' (Hint: 'invalid_name' is valid)." in result.output

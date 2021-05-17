@@ -41,12 +41,16 @@ from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.dependency_graph import DependencyGraph
+from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
 
 from .git import GitCore
 
 DEFAULT_DATA_DIR = "data"
+
+INIT_APPEND_FILES = [".gitignore"]
+INIT_KEEP_FILES = ["readme.md", "readme.rst"]
 
 
 def default_path(path="."):
@@ -469,28 +473,7 @@ class RepositoryApiMixin(GitCore):
         if not read_only:
             metadata.to_yaml(path=metadata_path)
 
-    @contextmanager
-    def with_workflow_storage(self):
-        """Yield a workflow storage."""
-        from renku.core.models.cwl.workflow import Workflow
-
-        workflow = Workflow()
-        yield workflow
-
-        for step in workflow.steps:
-            step_name = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(step.run.baseCommand)),)
-
-            workflow_path = self.workflow_path
-            if not workflow_path.exists():
-                workflow_path.mkdir()
-
-            path = workflow_path / step_name
-
-            run = step.run.generate_process_run(client=self, commit=self.repo.head.commit, path=path,)
-            run.to_yaml(path=path)
-            self.add_to_activity_index(run)
-
-    def process_and_store_run(self, command_line_tool, name, client):
+    def process_and_store_run(self, command_line_tool, name, description, keywords, client):
         """Create Plan and Activity from CommandLineTool and store them."""
         filename = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(command_line_tool.baseCommand)))
 
@@ -498,7 +481,9 @@ class RepositoryApiMixin(GitCore):
         self.workflow_path.mkdir(exist_ok=True)
         path = self.workflow_path / filename
 
-        process_run = command_line_tool.generate_process_run(client=self, commit=self.repo.head.commit, path=path)
+        process_run = command_line_tool.generate_process_run(
+            client=self, commit=self.repo.head.commit, path=path, name=name, description=description, keywords=keywords
+        )
         process_run.to_yaml(path=path)
         self.add_to_activity_index(process_run)
 
@@ -539,21 +524,20 @@ class RepositoryApiMixin(GitCore):
         except FileNotFoundError:
             pass
 
-    def init_repository(self, force=False, user=None):
+    def init_repository(self, force=False, user=None, initial_branch=None):
         """Initialize an empty Renku repository."""
         from git import Repo
 
         from renku.core.models.provenance.agents import Person
 
-        # verify if folder is empty
-        if self.repo is not None and not force:
-            raise errors.InvalidFileOperation(
-                "Folder {0} already contains file. Use --force to overwrite".format(self.repo.git_dir)
-            )
-
         # initialize repo and set user data
+        kwargs = {}
+
+        if initial_branch:
+            kwargs["initial-branch"] = initial_branch
+
         path = self.path.absolute()
-        self.repo = Repo.init(str(path))
+        self.repo = Repo.init(str(path), **kwargs)
         if user:
             config_writer = self.repo.config_writer()
             for key, value in user.items():
@@ -643,12 +627,22 @@ class RepositoryApiMixin(GitCore):
 
         return list(result)
 
-    def import_from_template(self, template_path, metadata, force=False):
-        """Render template files from a template directory."""
-        checksums = {}
+    def get_template_files(self, template_path, metadata):
+        """Gets paths in a rendered renku template."""
         for file in template_path.glob("**/*"):
             rel_path = file.relative_to(template_path)
             destination = self.path / rel_path
+
+            destination = Path(Template(str(destination)).render(metadata))
+            yield destination.relative_to(self.path)
+
+    def import_from_template(self, template_path, metadata, force=False):
+        """Render template files from a template directory."""
+        checksums = {}
+        for file in sorted(template_path.glob("**/*")):
+            rel_path = file.relative_to(template_path)
+            destination = self.path / rel_path
+
             try:
                 # TODO: notify about the expected variables - code stub:
                 # with file.open() as fr:
@@ -663,7 +657,19 @@ class RepositoryApiMixin(GitCore):
                 rendered_content = template.render(metadata)
                 # NOTE: the path could contain template variables, we need to template it
                 destination = Path(Template(str(destination)).render(metadata))
-                destination.write_text(rendered_content)
+                templated_rel_path = destination.relative_to(self.path)
+
+                if destination.exists() and str(templated_rel_path).lower() in INIT_APPEND_FILES:
+                    communication.echo(f"Appending to file {templated_rel_path} ...")
+                    destination.write_text(destination.read_text() + "\n" + rendered_content)
+                elif not destination.exists() or str(templated_rel_path).lower() not in INIT_KEEP_FILES:
+                    if destination.exists():
+                        communication.echo(f"Overwriting file {templated_rel_path} ...")
+                    else:
+                        communication.echo(f"Initializing file {templated_rel_path} ...")
+
+                    destination.write_text(rendered_content)
+
                 checksums[str(rel_path)] = self._content_hash(destination)
             except IsADirectoryError:
                 destination.mkdir(parents=True, exist_ok=True)

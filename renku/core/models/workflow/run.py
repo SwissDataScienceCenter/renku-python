@@ -29,7 +29,7 @@ from pathlib import Path
 import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.cwl.types import PATH_OBJECTS
 from renku.core.models.entities import Collection, CommitMixin, CommitMixinSchema, Entity
 from renku.core.models.workflow.parameters import (
@@ -68,7 +68,7 @@ def _convert_cmd_binding(binding, client, commit):
 
     id_ = CommandArgument.generate_id(base_id, binding.position)
 
-    return CommandArgument(id=id_, position=binding.position, value=binding.valueFrom)
+    return CommandArgument(id=id_, position=binding.position, value=binding.valueFrom, default_value=binding.valueFrom)
 
 
 def _convert_cmd_input(input, client, commit, run_id):
@@ -83,17 +83,21 @@ def _convert_cmd_input(input, client, commit, run_id):
             prefix = input.inputBinding.prefix
             if prefix and input.inputBinding.separate:
                 prefix += " "
+            entity = _entity_from_path(client, input.default.path, commit)
             return CommandInput(
                 id=CommandInput.generate_id(run_id, input.inputBinding.position),
                 position=input.inputBinding.position,
                 prefix=prefix,
-                consumes=_entity_from_path(client, input.default.path, commit),
+                consumes=entity,
+                default_value=str(entity.path),
             )
         else:
+            entity = _entity_from_path(client, input.default.path, commit)
             return CommandInput(
                 id=CommandInput.generate_id(run_id, "stdin" if input.id == "input_stdin" else None),
-                consumes=_entity_from_path(client, input.default.path, commit),
+                consumes=entity,
                 mapped_to=MappedIOStream(client=client, stream_type="stdin") if input.id == "input_stdin" else None,
+                default_value=str(entity.path),
             )
     else:
         prefix = input.inputBinding.prefix
@@ -104,6 +108,7 @@ def _convert_cmd_input(input, client, commit, run_id):
             position=input.inputBinding.position,
             value=val,
             prefix=prefix,
+            default_value=val,
         )
 
 
@@ -139,14 +144,16 @@ def _convert_cmd_output(output, factory, client, commit, run_id):
     ):
         create_folder = True
 
+    entity = _entity_from_path(client, path, commit)
     return (
         CommandOutput(
             id=CommandOutput.generate_id(run_id, position),
-            produces=_entity_from_path(client, path, commit),
+            produces=entity,
             mapped_to=mapped,
             position=position,
             prefix=prefix,
             create_folder=create_folder,
+            default_value=str(entity.path),
         ),
         input_to_remove,
     )
@@ -177,6 +184,12 @@ class Run(CommitMixin):
 
     run_parameters = attr.ib(kw_only=True, factory=list)
 
+    name = attr.ib(default=None, kw_only=True, type=str)
+
+    description = attr.ib(default=None, kw_only=True, type=str)
+
+    keywords = attr.ib(kw_only=True, factory=list)
+
     _activity = attr.ib(kw_only=True, default=None)
 
     @staticmethod
@@ -196,7 +209,7 @@ class Run(CommitMixin):
         )
 
     @classmethod
-    def from_factory(cls, factory, client, commit, path):
+    def from_factory(cls, factory, client, commit, path, name, description, keywords):
         """Creates a ``Run`` from a ``CommandLineToolFactory``."""
         inputs = []
         arguments = []
@@ -235,6 +248,9 @@ class Run(CommitMixin):
             inputs=inputs,
             outputs=outputs,
             run_parameters=[_convert_run_parameter(a, run_id) for a in factory.run_parameters],
+            name=name,
+            description=description,
+            keywords=keywords,
         )
 
     @property
@@ -421,6 +437,9 @@ class RunSchema(CommitMixinSchema):
     inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
     run_parameters = Nested(renku.hasRunParameters, RunParameterSchema, many=True, missing=None)
+    name = fields.String(schema.name, missing=None)
+    description = fields.String(schema.description, missing=None)
+    keywords = fields.List(schema.keywords, fields.String(), missing=None)
 
 
 class OrderedSubprocessSchema(JsonLDSchema):

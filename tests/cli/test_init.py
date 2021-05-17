@@ -17,6 +17,7 @@
 # limitations under the License.
 """Test ``init`` command."""
 import os
+import shutil
 from pathlib import Path
 
 import git
@@ -147,6 +148,24 @@ def test_init(isolated_runner, project_init):
     assert "Use either --template-id or --template-index, not both" in result.output
 
 
+def test_init_initial_branch(isolated_runner, project_init):
+    """Test project initialization from template."""
+    data, commands = project_init
+
+    # create the project
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["initial_branch_main"], commands["confirm"]
+    )
+    assert 0 == result.exit_code
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert git.Repo(str(new_project)).active_branch.name == data["main_branch"]
+
+
 @pytest.mark.parametrize(
     "remote",
     [
@@ -212,16 +231,52 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     assert random_file.exists()
 
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    lines = result.output.split("\n")
+    assert 0 == result.exit_code
+    assert "Project initialized" in result.output
+
+    shutil.rmtree(new_project)
+
+    new_project.mkdir(parents=True)
+
+    dockerfile = new_project / "Dockerfile"
+    with dockerfile.open("w") as dest:
+        dest.writelines(["not a dockerfile"])
+    assert dockerfile.exists()
+
+    readme = new_project / "README.md"
+    with readme.open("w") as dest:
+        dest.writelines(["My first project!"])
+    assert readme.exists()
+
+    random_file = new_project / "random_file.txt"
+    with random_file.open("w") as dest:
+        dest.writelines(["random text"])
+    assert random_file.exists()
+
+    gitignore = new_project / ".gitignore"
+    with gitignore.open("w") as dest:
+        dest.writelines(["dummy text that's definitely not in the actual gitignore"])
+    assert gitignore.exists()
+
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
     assert 1 == result.exit_code
-    assert "is not empty" in lines[0]
-    assert "random_file.txt" in lines[1]
+    assert "The following files exist in the directory and will be overwritten" in result.output
+    assert "The following files exist in the directory and will be appended to" in result.output
+    assert "\tDockerfile\n" in result.output
+    assert "\t.gitignore\n" in result.output
 
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert random_file.exists()
     assert 0 == result.exit_code
+
+    assert random_file.exists()
+    assert dockerfile.exists()
+    assert "not a dockerfile" not in dockerfile.read_text()
+    assert gitignore.exists()
+    assert "dummy text that's definitely not in the actual gitignore" in gitignore.read_text()
+    assert readme.exists()
+    assert "My first project!" == readme.read_text()
 
 
 def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
@@ -236,12 +291,6 @@ def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
 
     # try to create in a dirty folder
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    assert 0 != result.exit_code
-
-    # force re-create in the same folder
-    result = isolated_runner.invoke(
-        cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
-    )
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / ".renku").exists()

@@ -22,6 +22,7 @@ import pathlib
 import urllib.parse
 import uuid
 from pathlib import Path
+from typing import Sequence
 
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
@@ -29,6 +30,7 @@ from werkzeug.utils import secure_filename
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.entities import Entity
 from renku.core.models.workflow.parameters import (
+    CommandArgument,
     CommandArgumentSchema,
     CommandInput,
     CommandInputTemplate,
@@ -40,18 +42,33 @@ from renku.core.models.workflow.parameters import (
 from renku.core.models.workflow.run import Run
 from renku.core.utils.urls import get_host
 
+MAX_GENERATED_NAME_LENGTH = 25
+
 
 class Plan:
     """Represent a `renku run` execution template."""
 
-    def __init__(self, id_, arguments=None, command=None, inputs=None, name=None, outputs=None, success_codes=None):
+    def __init__(
+        self,
+        id_,
+        arguments=None,
+        command=None,
+        description=None,
+        inputs=None,
+        keywords=None,
+        name=None,
+        outputs=None,
+        success_codes=None,
+    ):
         """Initialize."""
-        self.arguments = arguments or []
+        self.arguments: Sequence[CommandArgument] = arguments or []
         self.command = command
+        self.description = description
         self.id_ = id_
-        self.inputs = inputs or []
-        self.name = name or "{}-{}".format(secure_filename(self.command), uuid.uuid4().hex)
-        self.outputs = outputs or []
+        self.inputs: Sequence[CommandInputTemplate] = inputs or []
+        self.keywords = keywords or []
+        self.name = name or f"{secure_filename(self.command)}-{uuid.uuid4().hex}"
+        self.outputs: Sequence[CommandOutputTemplate] = outputs or []
         self.success_codes = success_codes or []
 
     def __repr__(self):
@@ -69,7 +86,7 @@ class Plan:
         return PlanSchema(flattened=True).load(data)
 
     @classmethod
-    def from_run(cls, run: Run, name, client):
+    def from_run(cls, run: Run, client):
         """Create a Plan from a Run."""
         assert not run.subprocesses, f"Cannot create from a Run with subprocesses: {run._id}"
 
@@ -82,9 +99,11 @@ class Plan:
         return cls(
             arguments=run.arguments,
             command=run.command,
+            description=run.description,
             id_=plan_id,
             inputs=inputs,
-            name=name,
+            keywords=run.keywords,
+            name=run.name or cls._generate_name(run),
             outputs=outputs,
             success_codes=run.successcodes,
         )
@@ -95,6 +114,16 @@ class Plan:
         uuid_ = uuid_ or str(uuid.uuid4())
         host = get_host(client)
         return urllib.parse.urljoin(f"https://{host}", pathlib.posixpath.join("plans", uuid_))
+
+    @staticmethod
+    def _generate_name(run):
+        if not run:
+            return uuid.uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
+
+        name = "-".join(run.to_argv())
+        name = secure_filename(name)
+        rand_length = 5
+        return f"{name[:MAX_GENERATED_NAME_LENGTH - rand_length -1]}-{uuid.uuid4().hex[:rand_length]}"
 
     def assign_new_id(self):
         """Assign a new UUID.
@@ -117,16 +146,16 @@ class Plan:
         """Create JSON-LD."""
         return PlanSchema(flattened=True).dump(self)
 
-    def is_similar_to(self, other):
+    def is_similar_to(self, other) -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
 
-        def get_input_patterns(plan):
-            return {e.consumes for e in plan.inputs}
+        def get_input_patterns(plan: Plan):
+            return {e.default_value for e in plan.inputs}
 
-        def get_output_patterns(plan):
-            return {e.produces for e in plan.outputs}
+        def get_output_patterns(plan: Plan):
+            return {e.default_value for e in plan.outputs}
 
-        def get_arguments(plan):
+        def get_arguments(plan: Plan):
             return {(a.position, a.prefix, a.value) for a in plan.arguments}
 
         # TODO: Check order of inputs/outputs/parameters as well after sorting by position
@@ -138,14 +167,14 @@ class Plan:
             and get_arguments(self) == get_arguments(other)
         )
 
-    def to_run(self, client, entities_cache):
+    def to_run(self, client, entities_cache) -> Run:
         """Create a Run."""
 
         def convert_input(input_: CommandInputTemplate) -> CommandInput:
-            entity = entities_cache.get(input_.consumes)
+            entity = entities_cache.get(input_.default_value)
             if not entity:
-                entity = Entity.from_revision(client=client, path=input_.consumes, revision="HEAD")
-                entities_cache[input_.consumes] = entity
+                entity = Entity.from_revision(client=client, path=input_.default_value, revision="HEAD")
+                entities_cache[input_.default_value] = entity
 
             return CommandInput(
                 id=input_._id.replace(self.id_, run_id),
@@ -156,10 +185,10 @@ class Plan:
             )
 
         def convert_output(output: CommandOutputTemplate) -> CommandOutput:
-            entity = entities_cache.get(output.produces)
+            entity = entities_cache.get(output.default_value)
             if not entity:
-                entity = Entity.from_revision(client=client, path=output.produces, revision="HEAD")
-                entities_cache[output.produces] = entity
+                entity = Entity.from_revision(client=client, path=output.default_value, revision="HEAD")
+                entities_cache[output.default_value] = entity
 
             return CommandOutput(
                 id=output._id.replace(self.id_, run_id),
@@ -204,7 +233,7 @@ def _convert_command_input(input_: CommandInput, plan_id) -> CommandInputTemplat
 
     return CommandInputTemplate(
         id=CommandInputTemplate.generate_id(plan_id=plan_id, id_=Path(input_._id).name),
-        consumes=consumes,
+        default_value=consumes,
         mapped_to=input_.mapped_to,
         position=input_.position,
         prefix=input_.prefix,
@@ -221,7 +250,7 @@ def _convert_command_output(output: CommandOutput, plan_id) -> CommandOutputTemp
 
     return CommandOutputTemplate(
         id=CommandOutputTemplate.generate_id(plan_id=plan_id, id_=Path(output._id).name),
-        produces=produces,
+        default_value=produces,
         mapped_to=output.mapped_to,
         position=output.position,
         prefix=output.prefix,
@@ -235,14 +264,16 @@ class PlanSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Plan]
+        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork]
         model = Plan
         unknown = EXCLUDE
 
     arguments = Nested(renku.hasArguments, CommandArgumentSchema, many=True, missing=None)
     command = fields.String(renku.command, missing=None)
+    description = fields.String(schema.description, missing=None)
     id_ = fields.Id()
     inputs = Nested(renku.hasInputs, CommandInputTemplateSchema, many=True, missing=None)
+    keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
     outputs = Nested(renku.hasOutputs, CommandOutputTemplateSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])

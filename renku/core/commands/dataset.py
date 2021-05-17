@@ -273,6 +273,7 @@ def _list_files(client, datasets=None, creators=None, include=None, exclude=None
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
+        record.dataset_id = record.dataset._id
         record.creators_csv = record.dataset.creators_csv
         record.creators_full_csv = record.dataset.creators_full_csv
 
@@ -652,6 +653,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
     possible_updates = []
     unique_remotes = set()
     external_files = []
+    local_files = []
 
     for file_ in records:
         if file_.based_on:
@@ -659,6 +661,8 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
             unique_remotes.add(file_.based_on.source)
         elif file_.external:
             external_files.append(file_)
+        else:
+            local_files.append(file_)
 
     if ref and len(unique_remotes) > 1:
         raise ParameterError(
@@ -672,17 +676,24 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
         else:
             communication.echo("To update external files run update command with '--external' flag.")
 
-    if not possible_updates:
-        return
+    updated_files = []
+    deleted_files = []
 
-    updated_files, deleted_files = client.update_dataset_git_files(files=possible_updates, ref=ref, delete=delete)
+    if possible_updates:
+        updated_files, deleted_files = client.update_dataset_git_files(files=possible_updates, ref=ref, delete=delete)
+
+    if local_files:
+        updated, deleted = client.update_dataset_local_files(records=local_files, delete=delete)
+        updated_files.extend(updated)
+        deleted_files.extend(deleted)
 
     if deleted_files and not delete:
-        communication.echo(
-            "Some files are deleted from remote. To also delete them locally "
-            "run update command with '--delete' flag."
-        )
-    communication.echo("Updated {} files".format(len(updated_files)))
+        communication.echo("Some files are deleted. To also delete them from datasets' metadata use '--delete' flag.")
+
+    message = f"Updated {len(updated_files)} files"
+    if delete:
+        message += f" and deleted {len(deleted_files)} files"
+    communication.echo(message)
 
 
 def update_datasets():
