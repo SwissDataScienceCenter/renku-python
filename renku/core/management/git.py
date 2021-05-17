@@ -212,7 +212,7 @@ class GitCore:
         untracked = self.repo.untracked_files
 
         for file_path in untracked:
-            is_parent = str(file_path).startswith(path)
+            is_parent = (self.path / file_path).parent == (self.path / path)
             is_equal = path == file_path
 
             if is_parent or is_equal:
@@ -244,7 +244,13 @@ class GitCore:
 
     @contextmanager
     def commit(
-        self, commit_only=None, commit_empty=True, raise_if_empty=False, commit_message=None, abbreviate_message=True
+        self,
+        commit_only=None,
+        commit_empty=True,
+        raise_if_empty=False,
+        commit_message=None,
+        abbreviate_message=True,
+        skip_dirty_checks=False,
     ):
         """Automatic commit."""
         from git import Actor
@@ -268,7 +274,7 @@ class GitCore:
                 if STARTED_AT - int(Path(file_).stat().st_ctime * 1e3) >= 1e3
             }
 
-        if isinstance(commit_only, list):
+        if isinstance(commit_only, list) and not skip_dirty_checks:
             for path_ in commit_only:
                 self.ensure_untracked(str(path_))
                 self.ensure_unstaged(str(path_))
@@ -405,7 +411,7 @@ class GitCore:
         client.repo.config_reader = self.repo.config_reader
 
         # Keep current directory relative to repository root.
-        relative = Path(".").resolve().relative_to(self.path)
+        relative = Path(os.path.relpath(Path(".").resolve(), self.path))
 
         # Reroute standard streams
         original_mapped_std = get_mapped_std_streams(self.candidate_paths)
@@ -439,5 +445,5 @@ class GitCore:
             if new_branch:
                 # delete the created temporary branch
                 self.repo.git.branch("-d", branch_name)
-
-        self.checkout_paths_from_storage()
+        if self.external_storage_requested:
+            self.checkout_paths_from_storage()

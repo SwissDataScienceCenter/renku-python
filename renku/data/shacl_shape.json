@@ -1030,6 +1030,29 @@
                   "@id": "renku:CommandOutput"
                },
                "path": "renku:hasOutputs"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:keywords",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       },
@@ -1108,6 +1131,22 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             }
          ]
       },
@@ -1219,6 +1258,22 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             }
          ]
       },
@@ -1283,6 +1338,22 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             }
          ]
       },

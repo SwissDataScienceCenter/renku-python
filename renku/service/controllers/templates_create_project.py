@@ -146,6 +146,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 self.ctx["url"],
                 self.ctx["ref"],
                 "service",
+                self.ctx["initial_branch"],
             )
 
         self.new_project_push(new_project_path)

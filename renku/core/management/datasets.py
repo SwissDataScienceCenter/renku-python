@@ -1049,6 +1049,58 @@ class DatasetsApiMixin(object):
         if to_dataset:
             to_dataset.to_yaml()
 
+    def update_dataset_local_files(self, records, delete=False):
+        """Update files metadata from the git history."""
+        updated_files = []
+        deleted_files = []
+        progress_text = "Checking for local updates"
+
+        try:
+            communication.start_progress(progress_text, len(records))
+            for file_ in records:
+                communication.update_progress(progress_text, 1)
+
+                if file_.based_on or file_.external:
+                    continue
+
+                if not Path(file_.path).exists():
+                    deleted_files.append(file_)
+                    continue
+
+                try:
+                    commit = self.find_previous_commit(file_.path)
+                except KeyError:
+                    deleted_files.append(file_)
+                else:
+                    if self._get_commit_sha_from_label(file_) != commit.hexsha:
+                        updated_files.append(file_)
+        finally:
+            communication.finalize_progress(progress_text)
+
+        if updated_files or (deleted_files and delete):
+            self._update_datasets_metadata(updated_files, deleted_files, delete)
+
+        return updated_files, deleted_files
+
+    def _update_datasets_metadata(self, updated_files, deleted_files, delete):
+        modified_datasets = {}
+
+        for file_ in updated_files:
+            new_file = DatasetFile.from_revision(
+                self, path=file_.path, based_on=file_.based_on, url=file_.url, source=file_.source
+            )
+            file_.dataset.update_files([new_file])
+            modified_datasets[file_.dataset.name] = file_.dataset
+
+        if delete:
+            for file_ in deleted_files:
+                file_.dataset.unlink_file(file_.path)
+                modified_datasets[file_.dataset.name] = file_.dataset
+
+        for dataset in modified_datasets.values():
+            dataset.to_yaml()
+            self.update_datasets_provenance(dataset)
+
     def update_dataset_git_files(self, files, ref, delete=False):
         """Update files and dataset metadata according to their remotes.
 
@@ -1133,25 +1185,7 @@ class DatasetsApiMixin(object):
             skip_hooks=skip_hooks,
         )
 
-        # Update datasets' metadata
-
-        modified_datasets = {}
-
-        for file_ in updated_files:
-            new_file = DatasetFile.from_revision(
-                self, path=file_.path, based_on=file_.based_on, url=file_.url, source=file_.source
-            )
-            file_.dataset.update_files([new_file])
-            modified_datasets[file_.dataset.name] = file_.dataset
-
-        if delete:
-            for file_ in deleted_files:
-                file_.dataset.unlink_file(file_.path)
-                modified_datasets[file_.dataset.name] = file_.dataset
-
-        for dataset in modified_datasets.values():
-            dataset.to_yaml()
-            self.update_datasets_provenance(dataset)
+        self._update_datasets_metadata(updated_files, deleted_files, delete)
 
         return updated_files, deleted_files
 
