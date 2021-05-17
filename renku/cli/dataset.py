@@ -80,6 +80,9 @@ comma-separated list of column names:
 
 Displayed results are sorted based on the value of the first column.
 
+You can specify output formats by passing ``--format`` with a value of ``tabular``,
+``json-ld`` or ``json``.
+
 To inspect the state of the dataset on a given commit we can use ``--revision``
 flag for it:
 
@@ -217,6 +220,9 @@ this limitation, the ``--include`` and ``--exclude`` flags are not compatible
 with those datasets. Modifying those datasets locally will prevent them from
 being updated.
 
+The update command also checks for file changes in the project and updates
+datasets' metadata accordingly.
+
 You can limit the scope of updated files by specifying dataset names, using
 ``--include`` and ``--exclude`` to filter based on file names, or using
 ``--creators`` to filter based on creators. For example, the following command
@@ -348,6 +354,9 @@ comma-separated list of column names:
     my-dataset           sam        data/my-dataset/weather/file3
 
 Displayed results are sorted based on the value of the first column.
+
+You can specify output formats by passing ``--format`` with a value of ``tabular``,
+``json-ld`` or ``json``.
 
 Sometimes you want to filter the files. For this we use ``--dataset``,
 ``--include`` and ``--exclude`` flags:

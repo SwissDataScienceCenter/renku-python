@@ -152,6 +152,8 @@ def template_update(tmpdir, local_client, mocker, template):
             dockerfile = dockerfile_path.read_text()
             dockerfile_path.write_text(f"ARG RENKU_VERSION=0.0.1\n{dockerfile}")
 
+        local_client.init_repository()
+
         # NOTE: init project from template
         create_from_template(
             template_path,

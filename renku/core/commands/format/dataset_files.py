@@ -21,6 +21,8 @@ from subprocess import PIPE, SubprocessError, run
 
 from humanize import naturalsize
 
+from renku.core.models.datasets import DatasetFileDetailsJson
+
 from .tabulate import tabulate
 
 
@@ -108,9 +110,28 @@ def jsonld(client, records, **kwargs):
     return dumps(data, indent=2)
 
 
+def json(client, records, **kwargs):
+    """Format dataset files as JSON.
+
+    :param client: LocalClient instance.
+    :param records: Filtered collection.
+    """
+    from renku.core.models.json import dumps
+
+    _get_lfs_file_sizes(client, records)
+    _get_lfs_tracking(client, records)
+
+    for record in records:
+        record.creators = record.dataset.creators
+
+    data = [DatasetFileDetailsJson().dump(record) for record in records]
+    return dumps(data, indent=2)
+
+
 DATASET_FILES_FORMATS = {
     "tabular": tabular,
     "json-ld": jsonld,
+    "json": json,
 }
 """Valid formatting options."""
 

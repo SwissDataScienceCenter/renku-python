@@ -992,3 +992,19 @@ class DatasetDetailsJson(marshmallow.Schema):
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     identifier = marshmallow.fields.String()
+
+
+class DatasetFileDetailsJson(marshmallow.Schema):
+    """Serialize dataset files to a response object."""
+
+    path = marshmallow.fields.String()
+    created = marshmallow.fields.DateTime()
+    added = marshmallow.fields.DateTime()
+
+    size = marshmallow.fields.String()
+    is_lfs = marshmallow.fields.Boolean()
+
+    dataset_id = marshmallow.fields.String()
+    dataset_name = marshmallow.fields.String()
+
+    creators = marshmallow.fields.List(marshmallow.fields.Nested(DatasetCreatorsJson))

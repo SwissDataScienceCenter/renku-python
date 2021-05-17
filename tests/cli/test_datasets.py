@@ -746,6 +746,50 @@ def test_datasets_ls_files_lfs(tmpdir, large_file, runner, project):
     assert file2_entry.endswith("*")
 
 
+def test_datasets_ls_files_json(tmpdir, large_file, runner, project):
+    """Test file listing lfs status."""
+    # NOTE: create a dataset
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    assert 0 == result.exit_code
+    assert "OK" in result.output
+
+    # NOTE: create some data
+    paths = []
+
+    new_file = tmpdir.join("file_1")
+    new_file.write(str(1))
+    paths.append(str(new_file))
+
+    paths.append(str(large_file))
+
+    # NOTE: add data to dataset
+    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
+    assert 0 == result.exit_code
+
+    # NOTE: check files
+    result = runner.invoke(cli, ["dataset", "ls-files", "--format", "json"])
+    assert 0 == result.exit_code
+
+    result = json.loads(result.output)
+
+    assert len(result) == 2
+    file1 = next((f for f in result if f["path"].endswith("file_1")))
+    file2 = next((f for f in result if f["path"].endswith(large_file.name)))
+
+    assert not file1["is_lfs"]
+    assert file2["is_lfs"]
+
+    assert file1["creators"]
+    assert file1["size"]
+    assert file1["dataset_name"]
+    assert file1["dataset_id"]
+
+    assert file2["creators"]
+    assert file2["size"]
+    assert file2["dataset_name"]
+    assert file2["dataset_id"]
+
+
 @pytest.mark.parametrize("column", DATASET_FILES_COLUMNS.keys())
 def test_datasets_ls_files_columns_correctly(runner, project, column, directory_tree):
     """Test file listing only shows requested columns."""
@@ -1987,3 +2031,65 @@ def test_authorized_import(mock_kg, client, runner):
     assert 1 == result.exit_code
     assert "Unauthorized access to knowledge graph" not in result.output
     assert "Resource not found in knowledge graph" in result.output
+
+
+def test_update_local_file(runner, client, directory_tree):
+    """Check updating local files."""
+    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
+
+    file1 = Path(DATA_DIR) / "my-data" / directory_tree.name / "file1"
+    file1.write_text("some updates")
+    client.repo.git.add("--all")
+    client.repo.index.commit("file1")
+    commit_sha_after_file1 = client.repo.head.object.hexsha
+
+    file2 = Path(DATA_DIR) / "my-data" / directory_tree.name / "dir1" / "file2"
+    file2.write_text("some updates")
+    client.repo.git.add("--all")
+    client.repo.index.commit("file2")
+    commit_sha_after_file2 = client.repo.head.object.hexsha
+
+    old_dataset = client.load_dataset("my-data")
+
+    result = runner.invoke(cli, ["dataset", "update", "my-data"])
+
+    assert 0 == result.exit_code
+    dataset = client.load_dataset("my-data")
+    assert commit_sha_after_file1 in dataset.find_file(file1)._label
+    assert commit_sha_after_file2 in dataset.find_file(file2)._label
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+def test_update_local_deleted_file(runner, client, directory_tree):
+    """Check updating local deleted files."""
+    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
+
+    file1 = Path(DATA_DIR) / "my-data" / directory_tree.name / "file1"
+    file1.unlink()
+    client.repo.git.add("--all")
+    client.repo.index.commit("deleted file1")
+    commit_sha_after_file1_delete = client.repo.head.object.hexsha
+
+    result = runner.invoke(cli, ["dataset", "update", "my-data"])
+
+    assert 0 == result.exit_code
+    assert "Some files are deleted." in result.output
+    assert "Updated 0 files" in result.output
+    assert commit_sha_after_file1_delete == client.repo.head.object.hexsha
+    old_dataset = client.load_dataset("my-data")
+    assert old_dataset.find_file(file1)
+
+    # NOTE: Update with `--delete`
+    result = runner.invoke(cli, ["dataset", "update", "--delete", "my-data"])
+
+    assert 0 == result.exit_code
+    assert "Updated 0 files and deleted 1 files" in result.output
+    assert commit_sha_after_file1_delete != client.repo.head.object.hexsha
+    dataset = client.load_dataset("my-data")
+    assert dataset.find_file(file1) is None
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+    result = runner.invoke(cli, ["dataset", "update", "--delete", "my-data"])
+
+    assert 0 == result.exit_code
+    assert "Updated 0 files and deleted 0 files" in result.output

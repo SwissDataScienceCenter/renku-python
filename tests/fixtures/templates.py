@@ -50,6 +50,7 @@ def project_init(template):
     data = {
         "test_project": "test-new-project",
         "test_project_alt": "test-new-project-2",
+        "main_branch": "main",
     }
 
     commands = {
@@ -64,6 +65,7 @@ def project_init(template):
         "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
         "parameters_equal_missing": ["--parameter", "p3:v3"],
         "parameters_equal_early": ["--parameter", "=p4v3"],
+        "initial_branch_main": ["--initial-branch", "main"],
         "confirm": len(set(template["metadata"].keys())) * "\n",
     }
 
@@ -99,6 +101,8 @@ def template_update(tmpdir, local_client, mocker, template):
             dockerfile_path = template_path / "Dockerfile"
             dockerfile = dockerfile_path.read_text()
             dockerfile_path.write_text(f"ARG RENKU_VERSION=0.0.1\n{dockerfile}")
+
+        local_client.init_repository()
 
         # NOTE: init project from template
         create_from_template(
