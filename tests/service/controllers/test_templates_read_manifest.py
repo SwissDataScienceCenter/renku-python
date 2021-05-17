@@ -44,7 +44,7 @@ def test_validation_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_clie
     from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 
     cache, user_data = ctrl_init
-    _svc_client, _headers, template_params = svc_client_with_templates
+    _, _, template_params = svc_client_with_templates
     template_params["url"] = git_url
 
     with pytest.raises(ValidationError):
@@ -59,7 +59,7 @@ def test_found_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_client_wi
     from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 
     cache, user_data = ctrl_init
-    _svc_client, _headers, template_params = svc_client_with_templates
+    _, _, template_params = svc_client_with_templates
     template_params["url"] = git_url
 
     ctrl = TemplatesReadManifestCtrl(cache, user_data, template_params)
