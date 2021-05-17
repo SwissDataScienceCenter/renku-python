@@ -18,6 +18,7 @@
 """Serializers for datasets."""
 import textwrap
 
+from renku.core.models.datasets import DatasetDetailsJson
 from renku.core.models.json import dumps
 
 from .tabulate import tabulate
@@ -45,9 +46,16 @@ def jsonld(client, datasets, **kwargs):
     return dumps(data, indent=2)
 
 
+def json(client, datasets, **kwargs):
+    """Format datasets as JSON."""
+    data = [DatasetDetailsJson().dump(dataset) for dataset in datasets]
+    return dumps(data, indent=2)
+
+
 DATASETS_FORMATS = {
     "tabular": tabular,
     "json-ld": jsonld,
+    "json": json,
 }
 """Valid formatting options."""
 

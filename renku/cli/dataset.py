@@ -80,6 +80,9 @@ comma-separated list of column names:
 
 Displayed results are sorted based on the value of the first column.
 
+You can specify output formats by passing ``--format`` with a value of ``tabular``,
+``json-ld`` or ``json``.
+
 To inspect the state of the dataset on a given commit we can use ``--revision``
 flag for it:
 
@@ -351,6 +354,9 @@ comma-separated list of column names:
     my-dataset           sam        data/my-dataset/weather/file3
 
 Displayed results are sorted based on the value of the first column.
+
+You can specify output formats by passing ``--format`` with a value of ``tabular``,
+``json-ld`` or ``json``.
 
 Sometimes you want to filter the files. For this we use ``--dataset``,
 ``--include`` and ``--exclude`` flags:

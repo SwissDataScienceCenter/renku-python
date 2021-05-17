@@ -746,6 +746,50 @@ def test_datasets_ls_files_lfs(tmpdir, large_file, runner, project):
     assert file2_entry.endswith("*")
 
 
+def test_datasets_ls_files_json(tmpdir, large_file, runner, project):
+    """Test file listing lfs status."""
+    # NOTE: create a dataset
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    assert 0 == result.exit_code
+    assert "OK" in result.output
+
+    # NOTE: create some data
+    paths = []
+
+    new_file = tmpdir.join("file_1")
+    new_file.write(str(1))
+    paths.append(str(new_file))
+
+    paths.append(str(large_file))
+
+    # NOTE: add data to dataset
+    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
+    assert 0 == result.exit_code
+
+    # NOTE: check files
+    result = runner.invoke(cli, ["dataset", "ls-files", "--format", "json"])
+    assert 0 == result.exit_code
+
+    result = json.loads(result.output)
+
+    assert len(result) == 2
+    file1 = next((f for f in result if f["path"].endswith("file_1")))
+    file2 = next((f for f in result if f["path"].endswith(large_file.name)))
+
+    assert not file1["is_lfs"]
+    assert file2["is_lfs"]
+
+    assert file1["creators"]
+    assert file1["size"]
+    assert file1["dataset_name"]
+    assert file1["dataset_id"]
+
+    assert file2["creators"]
+    assert file2["size"]
+    assert file2["dataset_name"]
+    assert file2["dataset_id"]
+
+
 @pytest.mark.parametrize("column", DATASET_FILES_COLUMNS.keys())
 def test_datasets_ls_files_columns_correctly(runner, project, column, directory_tree):
     """Test file listing only shows requested columns."""
