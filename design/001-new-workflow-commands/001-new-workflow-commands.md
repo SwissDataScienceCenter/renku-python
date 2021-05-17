@@ -372,11 +372,19 @@ In these cases, a path can be wrapped in `tmp()` on the original `renku run`, ei
 
 The green parts of the following graphs show additions to the metadata
 
+#### Changes to existing metadata
+
+- Remove `renku:produces` and `renku:consumes` in favor of `schema:defaultValue`
+- Remove `prov:hadRole` from Usages and Generations
+- `CommandArgument`, `CommandInput` and `CommandOutput`'s ids should extend the `Plan`s id.
+- Add `position` values to inputs/outputs mapped to stdin/out/err (stdin = max-position + 1, stdout = max-position + 2, stderr = max-position + 3)
+- Remove `isPartOf` from `Entity`. In general, move away from every object pointing to the project and instead only have top-level nodes (Dataset, Plan, Activity) link to the Project.
+
 #### prov:ProcessRun and renku:Run Additions
 
 ![run metadata](run-metadata.svg)
 
-On the provenance side, we add `renku:ParameterValue` with two child types `PathParameterValue` and `renku:VariableParameterValue` for files/directories and simple values, respectively.
+On the provenance side, we add `renku:ParameterValue` with two child types `PathParameterValue` and `renku:VariableParameterValue` for files/directories and simple values, respectively. `renku:ParameterValue`s are duplicated for each execution.
 
 On the dependency graph side, we remove the use of `prov:Entity` and instead add `schema:defaultValue` to `renku:CommandParameter`, which will be set to the values used on first execution. The `renku:ParameterValue` entries mentioned above map to the `renku:CommandParameter` classes as a way to show which value of an execution maps to which value of the template. In addition, `renku:Run` and the `renku:CommandParameter` types get `schema:name` and `schema:description` fields to allow annotating them with meaningful information.
 
