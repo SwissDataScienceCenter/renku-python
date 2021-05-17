@@ -155,4 +155,4 @@ def test_except_project_name_handler(project_name, ctrl_init, svc_client_templat
     with pytest.raises(ValidationError) as exc_info:
         TemplatesCreateProjectCtrl(cache, user_data, payload)
 
-    assert "Project name contontains only unsupported characters" in str(exc_info.value)
+    assert "Project name contains only unsupported characters" in str(exc_info.value)

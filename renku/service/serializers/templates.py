@@ -72,7 +72,7 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
         try:
             project_name_stripped = normalize_to_ascii(data["project_name"])
             if len(project_name_stripped) == 0:
-                raise ValidationError("Project name contontains only unsupported characters")
+                raise ValidationError("Project name contains only unsupported characters")
             new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
             _ = validate_url(new_project_url)
         except ParameterError as e:
