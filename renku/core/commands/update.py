@@ -105,11 +105,11 @@ def execute_workflow(client, workflow, output_paths, command_name, update_commit
         _update_run_parameters(run=workflow, working_dir=client.path)
 
     cls = WorkflowRun if workflow.subprocesses else ProcessRun
-    run = cls.from_run(run=workflow, client=client, path=path, update_commits=update_commits)
-    run.to_yaml(path=path)
-    client.add_to_activity_index(run)
+    activity = cls.from_run(run=workflow, client=client, path=path, update_commits=update_commits)
+    activity.to_yaml(path=path)
+    client.add_to_activity_index(activity)
 
-    client.update_graphs(run)
+    client.update_graphs(activity)
 
 
 def _update_run_parameters(run, working_dir):

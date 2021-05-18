@@ -15,11 +15,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Represent dependency graph."""
+"""Represent provenance graph."""
 
 import json
 from pathlib import Path
-from typing import Union
+from typing import Dict, List, Optional, Union
 
 from marshmallow import EXCLUDE
 from rdflib import ConjunctiveGraph
@@ -31,51 +31,46 @@ from renku.core.models.provenance.activity import Activity, ActivityCollection, 
 class ProvenanceGraph:
     """A graph of all executions (Activities)."""
 
-    def __init__(self, activities=None):
-        """Set uninitialized properties."""
-        self._activities = activities or []
-        self._path = None
-        self._order = 1 if len(self._activities) == 0 else max([a.order for a in self._activities]) + 1
-        self._graph = None
-        self._loaded = False
-        self._custom_bindings = {}
+    def __init__(self, activities: List[Activity] = None):
+        self.activities: List[Activity] = activities or []
+
+        self._custom_bindings: Dict[str, str] = {}
+        self._graph: Optional[ConjunctiveGraph] = None
+        self._loaded: bool = False
+        self._order: int = 1 if len(self.activities) == 0 else max([a.order for a in self.activities]) + 1
+        self._path: Optional[Path] = None
 
     @property
-    def activities(self):
-        """Return a map from order to activity."""
-        return {a.order: a for a in self._activities}
-
-    @property
-    def custom_bindings(self):
+    def custom_bindings(self) -> Dict[str, str]:
         """Return custom bindings."""
         return self._custom_bindings
 
     @custom_bindings.setter
-    def custom_bindings(self, custom_bindings):
+    def custom_bindings(self, custom_bindings: Dict[str, str]):
         """Set custom prefix to namespace bindings."""
         self._custom_bindings = custom_bindings
 
-    def add(self, node: Union[Activity, ActivityCollection]):
+    def add(self, node: Union[Activity, ActivityCollection]) -> None:
         """Add an Activity/ActivityCollection to the graph."""
         assert self._loaded
 
         activity_collection = node if isinstance(node, ActivityCollection) else ActivityCollection(activities=[node])
 
-        for activity in activity_collection._activities:
-            assert not any([a for a in self._activities if a.id_ == activity.id_]), f"Identifier exists {activity.id_}"
+        for activity in activity_collection.activities:
+            assert not any([a for a in self.activities if a.id == activity.id]), f"Identifier exists {activity.id}"
             activity.order = self._order
             self._order += 1
-            self._activities.append(activity)
+            self.activities.append(activity)
 
     @classmethod
-    def from_json(cls, path, lazy=False):
+    def from_json(cls, path: Union[Path, str], lazy: bool = False) -> "ProvenanceGraph":
         """Return an instance from a JSON file."""
         if Path(path).exists():
             if not lazy:
                 with open(path) as file_:
                     data = json.load(file_)
                     self = cls.from_jsonld(data=data) if data else ProvenanceGraph(activities=[])
-                    self._activities.sort(key=lambda e: e.order)
+                    self.activities.sort(key=lambda e: e.order)
                     self._loaded = True
             else:
                 self = ProvenanceGraph(activities=[])
@@ -89,7 +84,7 @@ class ProvenanceGraph:
         return self
 
     @classmethod
-    def from_jsonld(cls, data):
+    def from_jsonld(cls, data) -> "ProvenanceGraph":
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
             return data
@@ -165,7 +160,7 @@ class ProvenanceGraphSchema(JsonLDSchema):
         model = ProvenanceGraph
         unknown = EXCLUDE
 
-    _activities = Nested(schema.hasPart, ActivitySchema, init_name="activities", many=True, missing=None)
+    activities = Nested(schema.hasPart, ActivitySchema, many=True, missing=None)
 
 
 LATEST_PLAN_EXECUTION_ORDER = """
