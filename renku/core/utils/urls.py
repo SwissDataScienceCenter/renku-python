@@ -77,7 +77,7 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
             remote_url = get_remote(client.repo)
             if not remote_url:
                 return
-            endpoint = f"https://{validate_url(remote_url).netloc}/"
+            endpoint = f"https://{validate_url(remote_url, enforce_remote=True).netloc}/"
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"
@@ -112,8 +112,11 @@ def get_slug(name):
     return no_dot_lock_at_end
 
 
-def validate_url(repo: str) -> ParseResult:
+def validate_url(repo: str, enforce_remote: bool = False) -> ParseResult:
     """Validates the supplied url and returns the parsed URL if valid."""
     if re.search(_URL_VALIDATOR, repo, re.ASCII):
         raise errors.ParameterError(f"Invalid url: `{repo}`")
-    return urllib.parse.urlparse(repo)
+    parsed_url = urllib.parse.urlparse(repo)
+    if enforce_remote and len(parsed_url.netloc) == 0:
+        raise errors.ParameterError(f"Not a remote url: `{repo}`")
+    return parsed_url

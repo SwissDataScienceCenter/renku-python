@@ -1326,7 +1326,7 @@ class DatasetsApiMixin(object):
 
         depth = 1 if not ref else None
         ref = ref or renku_branch
-        u = validate_url(url)
+        u = validate_url(url, enforce_remote=True)
         path = u.path
         if u.netloc == "localhost":
             path = Path(path).resolve()
