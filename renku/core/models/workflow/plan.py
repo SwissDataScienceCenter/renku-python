@@ -22,22 +22,21 @@ import pathlib
 import urllib.parse
 import uuid
 from pathlib import Path
-from typing import Sequence
+from typing import List
 
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.entities import Entity
-from renku.core.models.workflow.parameters import (
+from renku.core.models.workflow import parameters as old
+from renku.core.models.workflow.parameter import (
     CommandArgument,
     CommandArgumentSchema,
     CommandInput,
-    CommandInputTemplate,
-    CommandInputTemplateSchema,
+    CommandInputSchema,
     CommandOutput,
-    CommandOutputTemplate,
-    CommandOutputTemplateSchema,
+    CommandOutputSchema,
 )
 from renku.core.models.workflow.run import Run
 from renku.core.utils.urls import get_host
@@ -61,14 +60,14 @@ class Plan:
         success_codes=None,
     ):
         """Initialize."""
-        self.arguments: Sequence[CommandArgument] = arguments or []
+        self.arguments: List[CommandArgument] = arguments or []
         self.command = command
         self.description = description
         self.id_ = id_
-        self.inputs: Sequence[CommandInputTemplate] = inputs or []
+        self.inputs: List[CommandInput] = inputs or []
         self.keywords = keywords or []
         self.name = name or f"{secure_filename(self.command)}-{uuid.uuid4().hex}"
-        self.outputs: Sequence[CommandOutputTemplate] = outputs or []
+        self.outputs: List[CommandOutput] = outputs or []
         self.success_codes = success_codes or []
 
     def __repr__(self):
@@ -156,7 +155,7 @@ class Plan:
             return {e.default_value for e in plan.outputs}
 
         def get_arguments(plan: Plan):
-            return {(a.position, a.prefix, a.value) for a in plan.arguments}
+            return {(a.position, a.prefix, a.default_value) for a in plan.arguments}
 
         # TODO: Check order of inputs/outputs/parameters as well after sorting by position
         return (
@@ -170,14 +169,14 @@ class Plan:
     def to_run(self, client, entities_cache) -> Run:
         """Create a Run."""
 
-        def convert_input(input_: CommandInputTemplate) -> CommandInput:
+        def convert_input(input_: CommandInput) -> old.CommandInput:
             entity = entities_cache.get(input_.default_value)
             if not entity:
                 entity = Entity.from_revision(client=client, path=input_.default_value, revision="HEAD")
                 entities_cache[input_.default_value] = entity
 
-            return CommandInput(
-                id=input_._id.replace(self.id_, run_id),
+            return old.CommandInput(
+                id=input_.id.replace(self.id_, run_id),
                 consumes=entity,
                 description=input_.description,
                 mapped_to=input_.mapped_to,
@@ -186,14 +185,14 @@ class Plan:
                 prefix=input_.prefix,
             )
 
-        def convert_output(output: CommandOutputTemplate) -> CommandOutput:
+        def convert_output(output: CommandOutput) -> old.CommandOutput:
             entity = entities_cache.get(output.default_value)
             if not entity:
                 entity = Entity.from_revision(client=client, path=output.default_value, revision="HEAD")
                 entities_cache[output.default_value] = entity
 
-            return CommandOutput(
-                id=output._id.replace(self.id_, run_id),
+            return old.CommandOutput(
+                id=output.id.replace(self.id_, run_id),
                 create_folder=output.create_folder,
                 description=output.description,
                 mapped_to=output.mapped_to,
@@ -227,16 +226,16 @@ def _extract_run_uuid(run_id) -> str:
     return parsed_url.path[len("/runs/") :]
 
 
-def _convert_command_input(input_: CommandInput, plan_id) -> CommandInputTemplate:
-    """Convert a CommandInput to CommandInputTemplate."""
-    assert isinstance(input_, CommandInput)
+def _convert_command_input(input_: old.CommandInput, plan_id) -> CommandInput:
+    """Convert an old CommandInput to new CommandInput."""
+    assert isinstance(input_, old.CommandInput)
 
     # TODO: add a '**' if this is a directory
     # TODO: For now this is always a fully qualified path; in future this might be a glob pattern.
     consumes = input_.consumes.path
 
-    return CommandInputTemplate(
-        id=CommandInputTemplate.generate_id(plan_id=plan_id, id_=Path(input_._id).name),
+    return CommandInput(
+        id=CommandInput.generate_id(plan_id=plan_id, postfix=Path(input_._id).name),
         default_value=consumes,
         description=input_.description,
         mapped_to=input_.mapped_to,
@@ -246,16 +245,16 @@ def _convert_command_input(input_: CommandInput, plan_id) -> CommandInputTemplat
     )
 
 
-def _convert_command_output(output: CommandOutput, plan_id) -> CommandOutputTemplate:
-    """Convert a CommandOutput to CommandOutputTemplate."""
-    assert isinstance(output, CommandOutput)
+def _convert_command_output(output: old.CommandOutput, plan_id) -> CommandOutput:
+    """Convert an old CommandOutput to a new CommandOutput."""
+    assert isinstance(output, old.CommandOutput)
 
     # TODO: add a '*' if this is a directory
     # TODO: For now this is always a fully qualified path; in future this might be glob pattern.
     produces = output.produces.path
 
-    return CommandOutputTemplate(
-        id=CommandOutputTemplate.generate_id(plan_id=plan_id, id_=Path(output._id).name),
+    return CommandOutput(
+        id=CommandOutput.generate_id(plan_id=plan_id, postfix=Path(output._id).name),
         default_value=produces,
         description=output.description,
         mapped_to=output.mapped_to,
@@ -280,8 +279,8 @@ class PlanSchema(JsonLDSchema):
     command = fields.String(renku.command, missing=None)
     description = fields.String(schema.description, missing=None)
     id_ = fields.Id()
-    inputs = Nested(renku.hasInputs, CommandInputTemplateSchema, many=True, missing=None)
+    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
-    outputs = Nested(renku.hasOutputs, CommandOutputTemplateSchema, many=True, missing=None)
+    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
