@@ -334,7 +334,7 @@ class ActivityCollection:
                 assert len(run.subprocesses) == 1, f"Run in ProcessRun has multiple steps: {run._id}"
                 run = run.subprocesses[0]
 
-            plan = Plan.from_run(run=run, client=client)
+            plan = Plan.from_run(run=run, hostname=get_host(client))
             plan = dependency_graph.add(plan)
 
             activity = Activity.from_process_run(process_run=process_run, plan=plan, client=client)

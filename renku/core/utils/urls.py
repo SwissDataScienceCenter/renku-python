@@ -56,10 +56,9 @@ def get_host(client):
     """
     host = "localhost"
 
-    if not client:
-        return host
+    if client:
+        host = client.remote.get("host") or host
 
-    host = client.remote.get("host") or host
     return os.environ.get("RENKU_DOMAIN") or host
 
 
