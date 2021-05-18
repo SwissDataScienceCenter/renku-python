@@ -525,7 +525,7 @@ def _create_from_template_local(
 
     metadata = {**default_metadata, **metadata}
 
-    client.init_repository(False, None, initial_branch=initial_branch)
+    client.init_repository(False, user, initial_branch=initial_branch)
 
     create_from_template(
         template_path=template_path,

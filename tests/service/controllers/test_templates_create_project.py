@@ -35,7 +35,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
 
     # Check response.
     assert {"result"} == response.json.keys()
-    assert {"url", "namespace", "name"} == response.json["result"].keys()
+    assert {"project_id", "url", "namespace", "name"} == response.json["result"].keys()
 
     # Check ctrl_mock.
     assert ctrl_mock.call_count == 1
@@ -139,7 +139,7 @@ def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client
 
     # Check response.
     assert {"result"} == response.json.keys()
-    assert {"url", "namespace", "name"} == response.json["result"].keys()
+    assert {"project_id", "url", "namespace", "name"} == response.json["result"].keys()
     assert expected_name == response.json["result"]["name"]
 
 
