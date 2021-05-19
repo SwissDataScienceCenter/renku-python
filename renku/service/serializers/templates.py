@@ -133,6 +133,7 @@ class ProjectTemplateResponse(Schema):
     url = fields.String(required=True)
     namespace = fields.String(required=True)
     name = fields.String(required=True)
+    project_id = fields.String(required=False, default=None)
 
 
 class ProjectTemplateResponseRPC(JsonRPCResponse):
