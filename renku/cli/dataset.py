@@ -446,7 +446,7 @@ def dataset():
 )
 def list_dataset(revision, format, columns):
     """List datasets."""
-    result = list_datasets().build().execute(revision=revision, format=format, columns=columns)
+    result = list_datasets().lock_dataset().build().execute(revision=revision, format=format, columns=columns)
     click.echo(result.output)
 
 
@@ -609,7 +609,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 )
 def ls_files(names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    result = list_files().build().execute(names, creators, include, exclude, format, columns)
+    result = list_files().lock_dataset().build().execute(names, creators, include, exclude, format, columns)
     click.echo(result.output)
 
 
@@ -658,7 +658,7 @@ def remove_tags(name, tags):
 @click.option("--format", type=click.Choice(DATASET_TAGS_FORMATS), default="tabular", help="Choose an output format.")
 def ls_tags(name, format):
     """List all tags of a dataset."""
-    result = list_tags().build().execute(name, format)
+    result = list_tags().lock_dataset().build().execute(name, format)
     click.echo(result.output)
 
 
@@ -714,7 +714,7 @@ def export_(name, provider, publish, tag, **kwargs):
     """Export data to 3rd party provider."""
     try:
         communicator = ClickCallback()
-        export_dataset().with_communicator(communicator).build().execute(
+        export_dataset().lock_dataset().with_communicator(communicator).build().execute(
             name=name, provider_name=provider, publish=publish, tag=tag, **kwargs,
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, requests.HTTPError) as e:
