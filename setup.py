@@ -162,7 +162,7 @@ install_requires = [
     "click>=7.0,<=7.1.2",
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
-    "cwltool>=3.0.20210319143721,<3.1",
+    "cwltool>=3.0.20210319143721,<3.2",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
