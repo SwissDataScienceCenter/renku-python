@@ -96,18 +96,18 @@ tests_require = [
     "flake8>=3.8,<3.10",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
-    "isort>=5.3.2,<5.8.0",
+    "isort>=5.3.2,<5.9.0",
     "pydocstyle>=3.0.0,<6.0.1",
     "pytest-black>=0.3.10,<0.3.13",
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<2.12.0",
     "pytest-flake8>=1.0.6,<1.0.8",
-    "pytest-mock>=3.2.0,<3.6.0",
+    "pytest-mock>=3.2.0,<3.7.0",
     "pytest-pep8==1.0.6",
     "pytest-timeout==1.4.2",
     "pytest-xdist>=1.34.0,<2.3.0",
     "pytest>=4.0.0,<6.2.4",
-    "responses>=0.7.0,<0.13.3",
+    "responses>=0.7.0,<0.13.4",
 ]
 
 
@@ -130,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<3.5.4", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -162,7 +162,7 @@ install_requires = [
     "click>=7.0,<=7.1.2",
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
-    "cwltool>=3.0.20210319143721,<3.1",
+    "cwltool>=3.0.20210319143721,<3.2",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
