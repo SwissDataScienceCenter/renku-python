@@ -87,7 +87,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "name": self.ctx["project_name_stripped"],
             "fullname": self.ctx["fullname"],
             "email": self.ctx["email"],
-            "owner": self.ctx["owner"],
+            "owner": self.ctx["project_namespace"],
             "token": self.ctx["token"],
             "initialized": True,
         }
@@ -155,6 +155,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "url": self.ctx["new_project_url"],
             "namespace": self.ctx["project_namespace"],
             "name": self.ctx["project_name_stripped"],
+            "project_id": new_project.project_id,
         }
 
     def renku_op(self):
