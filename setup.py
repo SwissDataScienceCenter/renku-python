@@ -96,7 +96,7 @@ tests_require = [
     "flake8>=3.8,<3.10",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
-    "isort>=5.3.2,<5.8.0",
+    "isort>=5.3.2,<5.9.0",
     "pydocstyle>=3.0.0,<6.0.1",
     "pytest-black>=0.3.10,<0.3.13",
     "pytest-cache==1.0",
@@ -107,7 +107,7 @@ tests_require = [
     "pytest-timeout==1.4.2",
     "pytest-xdist>=1.34.0,<2.3.0",
     "pytest>=4.0.0,<6.2.4",
-    "responses>=0.7.0,<0.13.3",
+    "responses>=0.7.0,<0.13.4",
 ]
 
 
@@ -130,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<3.5.4", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -162,7 +162,7 @@ install_requires = [
     "click>=7.0,<=7.1.2",
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
-    "cwltool>=3.0.20210319143721,<3.1",
+    "cwltool>=3.0.20210319143721,<3.2",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
@@ -185,7 +185,7 @@ install_requires = [
     "rdflib-jsonld>=0.5.0,<0.6.0",
     "rdflib>=5.0.0,<5.1",
     "requests>=2.23.0,<=2.24.0",
-    "rich>=9.3.0,<10.2.0",
+    "rich>=9.3.0,<10.3.0",
     "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.60.1",
