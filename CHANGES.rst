@@ -18,6 +18,19 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.15.0...v0.15.1>`__ (2021-05-20)
+----------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** remove locking from core read operations
+   (`#2099 <https://github.com/SwissDataScienceCenter/renku-python/issues/2099>`__)
+   (`4407808 <https://github.com/SwissDataScienceCenter/renku-python/commit/440780887983e8f949c6a2d909996f344ef24096>`__)
+-  **service:** fix service project creation
+   (`#2092 <https://github.com/SwissDataScienceCenter/renku-python/issues/2092>`__)
+   (`48d518f <https://github.com/SwissDataScienceCenter/renku-python/commit/48d518fda687003991852aad348a7edc99794e74>`__)
+
 ` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.14.2...v0.15.0>`__ (2021-05-17)
 ----------------------------------------------------------------------------------------------------
 
