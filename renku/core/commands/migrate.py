@@ -38,7 +38,7 @@ DOCKERFILE_UPDATE_POSSIBLE = 64
 
 def migrations_check():
     """Return a command for a migrations check."""
-    return Command().command(_migrations_check).lock_project()
+    return Command().command(_migrations_check)
 
 
 def _migrations_check(client):

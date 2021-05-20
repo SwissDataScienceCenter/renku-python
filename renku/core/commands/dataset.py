@@ -62,7 +62,7 @@ def _list_datasets(client, revision=None, format=None, columns=None):
 
 def list_datasets():
     """Command for listing datasets."""
-    return Command().command(_list_datasets).lock_dataset()
+    return Command().command(_list_datasets)
 
 
 def create_dataset_helper(
@@ -288,7 +288,7 @@ def _list_files(client, datasets=None, creators=None, include=None, exclude=None
 
 def list_files():
     """Command for listing dataset files."""
-    return Command().command(_list_files).lock_dataset()
+    return Command().command(_list_files)
 
 
 def _file_unlink(client, name, include, exclude, yes=False):
@@ -440,7 +440,7 @@ def _export_dataset(client, name, provider_name, publish, tag, **kwargs):
 
 def export_dataset():
     """Command for exporting a dataset to 3rd party provider."""
-    command = Command().command(_export_dataset).lock_dataset()
+    command = Command().command(_export_dataset)
     return command.require_migration().require_clean()
 
 
@@ -813,7 +813,7 @@ def _list_tags(client, name, format):
 
 def list_tags():
     """Command for listing a dataset's tags."""
-    return Command().command(_list_tags).lock_dataset()
+    return Command().command(_list_tags)
 
 
 def _prompt_access_token(exporter):
