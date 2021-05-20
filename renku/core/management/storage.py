@@ -553,13 +553,11 @@ class StorageApiMixin(RepositoryApiMixin):
             if activity.generations:
                 for generation in activity.generations:
                     entity = generation.entity
-                    generation._id = generation._id.replace(entity.checksum, sha_mapping[entity.checksum])
                     _map_checksum(entity, sha_mapping)
 
             if activity.usages:
                 for usage in activity.usages:
                     entity = usage.entity
-                    usage._id = usage._id.replace(entity.checksum, sha_mapping[entity.checksum])
                     _map_checksum(entity, sha_mapping)
 
             if activity.invalidations:

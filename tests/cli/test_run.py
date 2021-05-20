@@ -22,6 +22,7 @@ import os
 import pytest
 
 from renku.cli import cli
+from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 
 
 def test_run_simple(runner, project):
@@ -118,8 +119,8 @@ def test_run_invalid_name(runner, client):
     assert "Invalid name: 'invalid name' (Hint: 'invalid_name' is valid)." in result.output
 
 
-def test_command_argument_name(runner, client):
-    """Test names of a command's arguments."""
+def test_run_argument_parameters(runner, client):
+    """Test names and values of workflow/provenance arguments and parameters."""
     assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
 
     result = runner.invoke(
@@ -156,3 +157,20 @@ def test_command_argument_name(runner, client):
     plan.arguments.sort(key=lambda i: i.name)
     assert "delta-3" == plan.arguments[0].name
     assert "n-1" == plan.arguments[1].name
+
+    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
+    assert 1 == len(provenance_graph.activities)
+    activity = provenance_graph.activities[0]
+
+    assert 2 == len(activity.usages)
+    activity.usages.sort(key=lambda e: e.entity.path)
+    assert "Dockerfile" == activity.usages[0].entity.path
+    assert "requirements.txt" == activity.usages[1].entity.path
+
+    assert 5 == len(activity.parameters)
+    parameters_values = {p.parameter.default_value for p in activity.parameters}
+    assert {42, "Dockerfile", "README.md", "requirements.txt", "some message"} == parameters_values
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "jsonld", "--strict"])
+
+    assert 0 == result.exit_code, result.output

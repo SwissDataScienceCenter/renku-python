@@ -718,6 +718,21 @@
                },
                "minCount": 1,
                "maxCount": 1
+            },
+            {
+               "path": "renku:parameter",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "renku:PathParameterValue"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "renku:VariableParameterValue"
+                     }
+                  }
+               ]
             }
          ]
       },
@@ -979,10 +994,32 @@
             {
                "nodeKind": "sh:Literal",
                "path": "schema:defaultValue",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
+               "or": [
+                  {
+                     "datatype": {
+                        "@id": "xsd:decimal"
+                     }
+                  },
+                  {
+                     "datatype": {
+                        "@id": "xsd:integer"
+                     }
+                  },
+                  {
+                     "datatype": {
+                        "@id": "xsd:string"
+                     }
+                  }
+               ],
                "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "path": "schema:valueReference",
+               "sh:class": {
+                  "@id": "renku:VariableParameterValue"
+               },
+               "minCount": 1,
                "maxCount": 1
             }
          ]
@@ -1098,6 +1135,14 @@
                   "@id": "xsd:string"
                },
                "maxCount": 1
+            },
+            {
+               "path": "schema:valueReference",
+               "sh:class": {
+                  "@id": "renku:PathParameterValue"
+               },
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },
@@ -1174,6 +1219,14 @@
                   "@id": "xsd:string"
                },
                "maxCount": 1
+            },
+            {
+               "path": "schema:valueReference",
+               "sh:class": {
+                  "@id": "renku:PathParameterValue"
+               },
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },
@@ -1201,6 +1254,60 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuPathParameterValueShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:PathParameterValue",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:atLocation",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuVariableParameterValueShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:VariableParameterValue",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:value",
+               "or": [
+                  {
+                     "datatype": {
+                        "@id": "xsd:decimal"
+                     }
+                  },
+                  {
+                     "datatype": {
+                        "@id": "xsd:integer"
+                     }
+                  },
+                  {
+                     "datatype": {
+                        "@id": "xsd:string"
+                     }
+                  }
+               ]
             }
          ]
       }
