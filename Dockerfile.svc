@@ -19,7 +19,9 @@ WORKDIR /code/renku
 RUN requirements-builder -e service --level=pypi setup.py > /tmp/requirements.txt && \
     pip install -r /tmp/requirements.txt
 
-COPY . /code/renku
+COPY .git /code/renku/.git
+COPY renku /code/renku/renku
+
 # Set CLEAN_INSTALL to a non-null value to ensure that only a committed version of
 # renku-python is installed in the image. This is the default for chartpress builds.
 ARG CLEAN_INSTALL
@@ -36,4 +38,5 @@ USER shuhitsu
 ENV RENKU_SVC_NUM_WORKERS 4
 ENV RENKU_SVC_NUM_THREADS 8
 
-ENTRYPOINT ["renku", "service"]
+COPY entrypoint-svc.sh /code/renku/
+ENTRYPOINT ["./entrypoint-svc.sh"]
