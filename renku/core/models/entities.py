@@ -267,5 +267,6 @@ def generate_file_id(client, hexsha, path):
         host = client.remote.get("host") or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
+    # TODO: Use plural name for entity id: /blob/ -> /blobs/
     # always set the id by the identifier
     return urljoin(f"https://{host}", pathlib.posixpath.join(f"/blob/{hexsha}/{quote(str(path))}"))
