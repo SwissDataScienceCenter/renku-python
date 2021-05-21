@@ -31,7 +31,7 @@ from renku.core.utils.urls import get_slug
 RANDOM_ID_LENGTH = 4
 
 
-class CommandParameter:
+class CommandParameterBase:
     """Represents a parameter for a Plan."""
 
     def __init__(
@@ -95,7 +95,7 @@ class CommandParameter:
         raise NotImplementedError
 
 
-class CommandArgument(CommandParameter):
+class CommandParameter(CommandParameterBase):
     """An argument to a command that is neither input nor output."""
 
     def __init__(
@@ -121,18 +121,19 @@ class CommandArgument(CommandParameter):
 
     @staticmethod
     def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
-        """Generate an id for CommandArgument."""
-        return CommandParameter._generate_id(plan_id, parameter_type="arguments", position=position, postfix=postfix)
+        """Generate an id for CommandParameter."""
+        return CommandParameterBase._generate_id(
+            plan_id, parameter_type="parameters", position=position, postfix=postfix
+        )
 
     def _get_default_label(self) -> str:
-
-        return f"Command Argument '{self.default_value}'"
+        return f"Command Parameter '{self.default_value}'"
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="parameter")
 
 
-class CommandInput(CommandParameter):
+class CommandInput(CommandParameterBase):
     """An input to a command."""
 
     def __init__(
@@ -161,7 +162,7 @@ class CommandInput(CommandParameter):
     @staticmethod
     def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
         """Generate an id for CommandInput."""
-        return CommandParameter._generate_id(plan_id, parameter_type="inputs", position=position, postfix=postfix)
+        return CommandParameterBase._generate_id(plan_id, parameter_type="inputs", position=position, postfix=postfix)
 
     def to_stream_representation(self) -> str:
         """Input stream representation."""
@@ -174,7 +175,7 @@ class CommandInput(CommandParameter):
         return self._generate_name(base="input")
 
 
-class CommandOutput(CommandParameter):
+class CommandOutput(CommandParameterBase):
     """An output from a command."""
 
     def __init__(
@@ -205,7 +206,7 @@ class CommandOutput(CommandParameter):
     @staticmethod
     def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
         """Generate an id for CommandOutput."""
-        return CommandParameter._generate_id(plan_id, parameter_type="outputs", position=position, postfix=postfix)
+        return CommandParameterBase._generate_id(plan_id, parameter_type="outputs", position=position, postfix=postfix)
 
     def to_stream_representation(self) -> str:
         """Input stream representation."""
@@ -221,14 +222,14 @@ class CommandOutput(CommandParameter):
         return self._generate_name(base="output")
 
 
-class CommandParameterSchema(JsonLDSchema):
-    """CommandParameter schema."""
+class CommandParameterBaseSchema(JsonLDSchema):
+    """CommandParameterBase schema."""
 
     class Meta:
         """Meta class."""
 
-        rdf_type = [renku.CommandParameter, schema.Property]
-        model = CommandParameter
+        rdf_type = [renku.CommandParameterBase, schema.Property]
+        model = CommandParameterBase
         unknown = EXCLUDE
 
     default_value = fields.Raw(schema.defaultValue, missing=None)
@@ -240,18 +241,18 @@ class CommandParameterSchema(JsonLDSchema):
     prefix = fields.String(renku.prefix, missing=None)
 
 
-class CommandArgumentSchema(CommandParameterSchema):
-    """CommandArgument schema."""
+class CommandParameterSchema(CommandParameterBaseSchema):
+    """CommandParameter schema."""
 
     class Meta:
         """Meta class."""
 
-        rdf_type = [renku.CommandArgument]
-        model = CommandArgument
+        rdf_type = [renku.CommandParameter]
+        model = CommandParameter
         unknown = EXCLUDE
 
 
-class CommandInputSchema(CommandParameterSchema):
+class CommandInputSchema(CommandParameterBaseSchema):
     """CommandInput schema."""
 
     class Meta:
@@ -264,7 +265,7 @@ class CommandInputSchema(CommandParameterSchema):
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
 
 
-class CommandOutputSchema(CommandParameterSchema):
+class CommandOutputSchema(CommandParameterBaseSchema):
     """CommandOutput schema."""
 
     class Meta:

@@ -30,12 +30,12 @@ from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku,
 from renku.core.models.entities import Entity
 from renku.core.models.workflow import parameters as old_parameter
 from renku.core.models.workflow.parameter import (
-    CommandArgument,
-    CommandArgumentSchema,
     CommandInput,
     CommandInputSchema,
     CommandOutput,
     CommandOutputSchema,
+    CommandParameter,
+    CommandParameterSchema,
 )
 from renku.core.models.workflow.run import Run
 from renku.core.utils.urls import get_host
@@ -49,7 +49,7 @@ class Plan:
     def __init__(
         self,
         *,
-        arguments: List[CommandArgument] = None,
+        parameters: List[CommandParameter] = None,
         command: str = None,
         description: str = None,
         id: str,
@@ -59,14 +59,14 @@ class Plan:
         outputs: List[CommandOutput] = None,
         success_codes: List[int] = None,
     ):
-        self.id: str = id
-        self.arguments: List[CommandArgument] = arguments or []
         self.command: str = command
         self.description: str = description
+        self.id: str = id
         self.inputs: List[CommandInput] = inputs or []
         self.keywords: List[str] = keywords or []
         self.name: str = name
         self.outputs: List[CommandOutput] = outputs or []
+        self.parameters: List[CommandParameter] = parameters or []
         self.success_codes: List[int] = success_codes or []
 
         if not self.name:
@@ -87,14 +87,14 @@ class Plan:
         uuid = extract_run_uuid(run._id)
         plan_id = cls.generate_id(hostname=hostname, uuid=uuid)
 
-        def convert_argument(argument: old_parameter.CommandArgument) -> CommandArgument:
-            """Convert an old CommandArgument to a new CommandArgument."""
+        def convert_argument(argument: old_parameter.CommandArgument) -> CommandParameter:
+            """Convert an old CommandArgument to a new CommandParameter."""
             assert isinstance(argument, old_parameter.CommandArgument)
 
-            return CommandArgument(
+            return CommandParameter(
                 default_value=argument.value,
                 description=argument.description,
-                id=CommandArgument.generate_id(plan_id=plan_id, postfix=PurePosixPath(argument._id).name),
+                id=CommandParameter.generate_id(plan_id=plan_id, postfix=PurePosixPath(argument._id).name),
                 label=None,
                 name=argument.name,
                 position=argument.position,
@@ -133,7 +133,6 @@ class Plan:
             )
 
         return cls(
-            arguments=[convert_argument(a) for a in run.arguments],
             command=run.command,
             description=run.description,
             id=plan_id,
@@ -141,6 +140,7 @@ class Plan:
             keywords=run.keywords,
             name=run.name,
             outputs=[convert_output(o) for o in run.outputs],
+            parameters=[convert_argument(a) for a in run.arguments],
             success_codes=run.successcodes,
         )
 
@@ -162,13 +162,13 @@ class Plan:
     def assign_new_id(self):
         """Assign a new UUID.
 
-        This is required only when there is another plan which is exactly the same except the arguments list.
+        This is required only when there is another plan which is exactly the same except the parameters' list.
         """
         current_uuid = self._extract_uuid()
         new_uuid = str(uuid4())
         self.id = self.id.replace(current_uuid, new_uuid)
-        self.arguments = copy.deepcopy(self.arguments)
-        for a in self.arguments:
+        self.parameters = copy.deepcopy(self.parameters)
+        for a in self.parameters:
             a.id = a.id.replace(current_uuid, new_uuid)
 
     def _extract_uuid(self) -> str:
@@ -184,8 +184,8 @@ class Plan:
         def get_output_patterns(plan: Plan):
             return {e.default_value for e in plan.outputs}
 
-        def get_arguments(plan: Plan):
-            return {(a.position, a.prefix, a.default_value) for a in plan.arguments}
+        def get_parameters(plan: Plan):
+            return {(a.position, a.prefix, a.default_value) for a in plan.parameters}
 
         # TODO: Check order of inputs/outputs/parameters as well after sorting by position
         return (
@@ -193,12 +193,12 @@ class Plan:
             and set(self.success_codes) == set(other.success_codes)
             and get_input_patterns(self) == get_input_patterns(other)
             and get_output_patterns(self) == get_output_patterns(other)
-            and get_arguments(self) == get_arguments(other)
+            and get_parameters(self) == get_parameters(other)
         )
 
     def to_argv(self) -> List[Any]:
         """Convert a Plan into argv list."""
-        arguments = itertools.chain(self.inputs, self.outputs, self.arguments)
+        arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
         arguments = filter(lambda a: a.position is not None, arguments)
         arguments = sorted(arguments, key=lambda a: a.position)
 
@@ -221,7 +221,7 @@ class Plan:
                 entities_cache[path] = entity
             return entity
 
-        def convert_argument(argument: CommandArgument) -> old_parameter.CommandArgument:
+        def convert_parameter(argument: CommandParameter) -> old_parameter.CommandArgument:
             return old_parameter.CommandArgument(
                 description=argument.description,
                 id=argument.id.replace(self.id, run_id),
@@ -258,7 +258,7 @@ class Plan:
             )
 
         return Run(
-            arguments=[convert_argument(a) for a in self.arguments],
+            arguments=[convert_parameter(p) for p in self.parameters],
             command=self.command,
             id=run_id,
             inputs=[convert_input(i) for i in self.inputs],
@@ -277,7 +277,6 @@ class PlanSchema(JsonLDSchema):
         model = Plan
         unknown = EXCLUDE
 
-    arguments = Nested(renku.hasArguments, CommandArgumentSchema, many=True, missing=None)
     command = fields.String(renku.command, missing=None)
     description = fields.String(schema.description, missing=None)
     id = fields.Id()
@@ -285,4 +284,5 @@ class PlanSchema(JsonLDSchema):
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
+    parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])

@@ -25,12 +25,12 @@ from marshmallow import EXCLUDE
 
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.workflow.parameter import (
-    CommandArgument,
-    CommandArgumentSchema,
     CommandInput,
     CommandInputSchema,
     CommandOutput,
     CommandOutputSchema,
+    CommandParameter,
+    CommandParameterSchema,
 )
 
 
@@ -58,9 +58,9 @@ class PathParameterValue(ParameterValue):
 class VariableParameterValue(ParameterValue):
     """Value for a parameter in provenance."""
 
-    def __init__(self, *, id: str, parameter: CommandArgument, value: Any):
+    def __init__(self, *, id: str, parameter: CommandParameter, value: Any):
         super().__init__(id=id)
-        self.parameter: CommandArgument = parameter
+        self.parameter: CommandParameter = parameter
         self.value: Any = value
 
 
@@ -101,5 +101,5 @@ class VariableParameterValueSchema(ParameterValueSchema):
         model = VariableParameterValue
         unknown = EXCLUDE
 
-    parameter = Nested(schema.valueReference, CommandArgumentSchema, reverse=True)
+    parameter = Nested(schema.valueReference, CommandParameterSchema, reverse=True)
     value = fields.Raw(schema.value)

@@ -887,7 +887,7 @@
             },
             {
                "sh:class": {
-                  "@id": "renku:CommandArgument"
+                  "@id": "renku:CommandParameter"
                },
                "path": "renku:hasArguments"
             },
@@ -936,7 +936,7 @@
          ]
       },
       {
-         "@id": "_:renkuCommandArgumentShape",
+         "@id": "_:renkuCommandParameterShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
             {
@@ -944,7 +944,7 @@
             }
          ],
          "closed": true,
-         "targetClass": "renku:CommandArgument",
+         "targetClass": "renku:CommandParameter",
          "property": [
             {
                "nodeKind": "sh:Literal",

@@ -315,9 +315,9 @@ def _create_parameters(activity_id, plan: Plan, usages: List[Usage], generations
 
     assert not outputs, f"Not all outputs are converted: {outputs}"
 
-    for argument in plan.arguments:
+    for parameter in plan.parameters:
         id = VariableParameterValue.generate_id(activity_id)
-        parameters.append(VariableParameterValue(id=id, parameter=argument, value=argument.default_value))
+        parameters.append(VariableParameterValue(id=id, parameter=parameter, value=parameter.default_value))
 
     return parameters
 

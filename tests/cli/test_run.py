@@ -153,10 +153,10 @@ def test_run_argument_parameters(runner, client):
     assert 1 == len(plan.outputs)
     assert plan.outputs[0].name.startswith("output-")
 
-    assert 2 == len(plan.arguments)
-    plan.arguments.sort(key=lambda i: i.name)
-    assert "delta-3" == plan.arguments[0].name
-    assert "n-1" == plan.arguments[1].name
+    assert 2 == len(plan.parameters)
+    plan.parameters.sort(key=lambda i: i.name)
+    assert "delta-3" == plan.parameters[0].name
+    assert "n-1" == plan.parameters[1].name
 
     provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
     assert 1 == len(provenance_graph.activities)
