@@ -19,7 +19,7 @@
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec_webframeworks.flask import FlaskPlugin
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, current_app, jsonify
 
 from renku.service.config import (
     API_VERSION,
@@ -92,7 +92,7 @@ spec = APISpec(
     plugins=[FlaskPlugin(), MarshmallowPlugin()],
     servers=[{"url": SERVICE_API_BASE_PATH}],
     security=[{"oidc": []}, {"JWT": [], "gitlab-token": []}],
-    info={"description": TOP_LEVEL_DESCRIPTION}
+    info={"description": TOP_LEVEL_DESCRIPTION},
 )
 
 spec.components.security_scheme("oidc", oidc_scheme)

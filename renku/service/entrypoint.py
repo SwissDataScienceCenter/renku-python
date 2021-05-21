@@ -30,15 +30,12 @@ from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.service.cache import cache
-from renku.service.config import (
-    CACHE_DIR,
-    HTTP_SERVER_ERROR,
-    SERVICE_PREFIX,
-)
+from renku.service.config import CACHE_DIR, HTTP_SERVER_ERROR, SERVICE_PREFIX
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views import error_response
+from renku.service.views.apispec import apispec_blueprint
 from renku.service.views.cache import cache_blueprint
 from renku.service.views.config import config_blueprint
 from renku.service.views.datasets import dataset_blueprint
@@ -46,7 +43,6 @@ from renku.service.views.graph import graph_blueprint
 from renku.service.views.jobs import jobs_blueprint
 from renku.service.views.templates import templates_blueprint
 from renku.service.views.version import version_blueprint
-from renku.service.views.apispec import apispec_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
 
