@@ -60,7 +60,7 @@ def test_template_selection_helpers():
             "name": "Template R",
             "folder": "folder_R",
             "description": "Description R",
-            "variables": {"custom": "random data"},
+            "variables": {"custom": {"description": "random data"}},
         },
     ]
     instructions = "Please choose a template by typing the index"

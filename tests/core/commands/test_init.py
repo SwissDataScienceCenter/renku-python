@@ -105,7 +105,8 @@ def test_read_template_manifest():
         assert 1 == len(variables2)
         assert 1 == len(variables2.keys())
         assert "custom" in variables2.keys()
-        assert "Custom Value" == variables2["custom"]
+        assert "description" in variables2["custom"]
+        assert "Custom Value" == variables2["custom"]["description"]
 
         template_file.write_text("-\n" "  folder: first\n" "  description: Description 1\n")
         with raises(errors.InvalidTemplateError):

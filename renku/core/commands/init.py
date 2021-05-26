@@ -56,11 +56,17 @@ def create_template_sentence(templates, describe=False, instructions=False):
         return None
 
     def extract_variables(template_elem):
-        """Extract variables from tempalte manifest."""
+        """Extract variables from template manifest."""
         if describe:
-            return "\n".join(
-                [f"{variable[0]}: {variable[1]}" for variable in template_elem.get("variables", {}).items()]
-            )
+            descriptions = []
+            for name, variable in template_elem.get("variables", {}).items():
+                variable_type = f', type: {variable["type"]}' if "type" in variable else ""
+                enum_values = f', options: {variable["enum"]}' if "enum" in variable else ""
+                default_value = f', default: {variable["default_value"]}' if "default_value" in variable else ""
+                description = variable["description"]
+
+                descriptions.append(f"{name}: {description}{variable_type}{enum_values}{default_value}")
+            return "\n".join(descriptions)
 
         return ",".join(template_elem.get("variables", {}).keys())
 
@@ -146,18 +152,107 @@ def select_template_from_manifest(
     return template_data, template_id
 
 
+def validate_template_variable_value(name, template_variable, value):
+    """Validates template values by type."""
+    if "type" not in template_variable:
+        return True, None, value
+
+    variable_type = template_variable["type"]
+    valid = True
+
+    if variable_type == "string":
+        if not isinstance(value, str):
+            valid = False
+    elif variable_type == "number":
+        if type(value) != int and type(value) != float and not (type(value) == str and value.isnumeric()):
+            valid = False
+    elif variable_type == "boolean":
+        truthy = [True, 1, "1", "true", "True"]
+        falsy = [False, 0, "0", "false", "False"]
+        if value not in truthy and value not in falsy:
+            valid = False
+        else:
+            value = True if value in truthy else False
+    elif variable_type == "enum":
+        if "enum" not in template_variable:
+            raise errors.InvalidTemplateError(
+                f'Template contains variable {name} of type enum but does not provide a corresponding "enum" list.'
+            )
+        possible_values = template_variable["enum"]
+        if value not in possible_values:
+            return (
+                False,
+                f"Value {value} is not in list of possible values {possible_values} for template parameter {name}.",
+                value,
+            )
+    else:
+        raise errors.InvalidTemplateError(
+            f"Template contains variable {name} of type {variable_type} which is not supported."
+        )
+
+    if not valid:
+        return False, f"Value {value} is not of type {variable_type} required by {name}.", value
+
+    return True, None, value
+
+
+def prompt_for_value(name, template_variable):
+    """Prompt the user for a template value."""
+    valid = False
+    while not valid:
+        variable_type = f', type: {template_variable["type"]}' if "type" in template_variable else ""
+        enum_values = f', options: {template_variable["enum"]}' if "enum" in template_variable else ""
+        default_value = template_variable["default_value"] if "default_value" in template_variable else ""
+
+        value = communication.prompt(
+            msg=(
+                f'The template requires a value for "{name}" ({template_variable["description"]}'
+                f"{variable_type}{enum_values})"
+            ),
+            default=default_value,
+            show_default=False,
+        )
+
+        valid, msg, value = validate_template_variable_value(name, template_variable, value)
+
+        if msg:
+            communication.info(msg)
+
+    return value
+
+
 def verify_template_variables(template_data, metadata):
     """Verifies that template variables are correcly set."""
     template_variables = template_data.get("variables", {})
     template_variables_keys = set(template_variables.keys())
     input_parameters_keys = set(metadata.keys())
+
+    for key in template_variables:
+        if "description" not in template_variables[key]:
+            raise errors.InvalidTemplateError(f"Template parameter {key} does not contain a description.")
+
+    for key in template_variables_keys.intersection(input_parameters_keys):
+        valid, msg, value = validate_template_variable_value(key, template_variables[key], metadata[key])
+
+        if not valid:
+            communication.info(msg)
+
+            metadata[key] = prompt_for_value(key, template_variables[key])
+
     for key in template_variables_keys - input_parameters_keys:
-        value = communication.prompt(
-            msg=(f'The template requires a value for "{key}" ' f"({template_variables[key]})"),
-            default="",
-            show_default=False,
-        )
-        metadata[key] = value
+        if "default_value" in template_variables[key]:
+            default_value = template_variables[key]["default_value"]
+
+            if not validate_template_variable_value(key, template_variables[key], default_value)[0]:
+                raise errors.InvalidTemplateError(
+                    f"Default value {default_value} for template variable {key} does not match variable type."
+                )
+
+            metadata[key] = default_value
+            continue
+
+        metadata[key] = prompt_for_value(key, template_variables[key])
+
     useless_variables = input_parameters_keys - template_variables_keys
     if len(useless_variables) > 0:
         communication.info(
@@ -426,6 +521,12 @@ def validate_template_manifest(manifest):
                 raise errors.InvalidTemplateError(
                     ('Template "{0}" doesn\'t have a {1} attribute'.format(template["name"], attribute))
                 )
+
+        if "variables" in template:
+            for key, variable in template["variables"].items():
+                if isinstance(variable, str):
+                    # NOTE: Backwards compatibility
+                    template["variables"][key] = {"description": variable}
     return True
 
 
