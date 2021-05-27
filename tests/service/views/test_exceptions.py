@@ -146,7 +146,10 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
 @pytest.mark.parametrize(
     "git_url,expected",
     [
-        ("https://github.com", {"error": {"code": -32100, "reason": "Cannot clone repo from https://github.com"}}),
+        (
+            "https://github.com",
+            {"error": {"code": -32602, "reason": "Validation error: `git_url` - Invalid `git_url`"}},
+        ),
         (
             "https://github.com/SwissDataScienceCenter",
             {"error": {"code": -32100, "reason": "Cannot clone repo from https://github.com/SwissDataScienceCenter"}},

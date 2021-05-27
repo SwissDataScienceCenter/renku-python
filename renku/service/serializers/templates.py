@@ -20,10 +20,10 @@
 from urllib.parse import urlparse
 
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates
+from yagup import GitURL
+from yagup.exceptions import InvalidURL
 
-from renku.core.errors import ParameterError
 from renku.core.utils.scm import normalize_to_ascii
-from renku.core.utils.urls import validate_url
 from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.cache import ProjectCloneContext, RepositoryCloneContext
 from renku.service.serializers.rpc import JsonRPCResponse
@@ -74,8 +74,8 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
             if len(project_name_stripped) == 0:
                 raise ValidationError("Project name contains only unsupported characters")
             new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
-            _ = validate_url(new_project_url)
-        except ParameterError as e:
+            _ = GitURL.parse(new_project_url)
+        except InvalidURL as e:
             raise ValidationError("`git_url` contains unsupported characters") from e
 
         project_slug = f"{data['project_namespace']}/{project_name_stripped}"
@@ -89,8 +89,8 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     def validate_new_project_url(self, value):
         """Validates git url."""
         try:
-            validate_url(value)
-        except ParameterError as e:
+            GitURL.parse(value)
+        except InvalidURL as e:
             raise ValidationError(str(e))
 
         return value

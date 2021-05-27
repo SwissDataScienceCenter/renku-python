@@ -21,12 +21,12 @@ import uuid
 from datetime import datetime
 from urllib.parse import urlparse
 
+import yagup
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates
 from werkzeug.utils import secure_filename
 
-from renku.core.errors import ConfigurationError, ParameterError
+from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
-from renku.core.utils.urls import validate_url
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.common import RenkuSyncSchema, RepositoryContext
 from renku.service.serializers.rpc import JsonRPCResponse
@@ -114,9 +114,9 @@ class RepositoryCloneContext(RepositoryCloneRequest):
     def validate_git_url(self, value):
         """Validates git url."""
         try:
-            validate_url(value)
-        except ParameterError as e:
-            raise ValidationError("`git_url` contains unsupported characters") from e
+            yagup.parse(value)
+        except yagup.exceptions.InvalidURL as e:
+            raise ValidationError("Invalid `git_url`") from e
 
         return value
 

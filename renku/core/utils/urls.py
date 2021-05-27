@@ -23,15 +23,15 @@ import unicodedata
 import urllib
 from urllib.parse import ParseResult
 
-from renku.core import errors
+from yagup import GitURL
 
-_URL_VALIDATOR = r"[^\w\-.~:/?#\[\]@!$&'\(\)\*\+,;=]+"
+from renku.core import errors
 
 
 def url_to_string(url):
     """Convert url from ``list`` or ``ParseResult`` to string."""
     if isinstance(url, list):
-        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params=None, query=None, fragment=None,).geturl()
+        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params=None, query=None, fragment=None).geturl()
 
     if isinstance(url, ParseResult):
         return url.geturl()
@@ -77,7 +77,7 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
             remote_url = get_remote(client.repo)
             if not remote_url:
                 return
-            endpoint = f"https://{validate_url(remote_url, enforce_remote=True).netloc}/"
+            endpoint = f"https://{GitURL.parse(remote_url).host}/"
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"
@@ -110,13 +110,3 @@ def get_slug(name):
     valid_end = re.sub(r"[._-]$", "", valid_start)
     no_dot_lock_at_end = re.sub(r"\.lock$", "_lock", valid_end)
     return no_dot_lock_at_end
-
-
-def validate_url(repo: str, enforce_remote: bool = False) -> ParseResult:
-    """Validates the supplied url and returns the parsed URL if valid."""
-    if re.search(_URL_VALIDATOR, repo, re.ASCII):
-        raise errors.ParameterError(f"Invalid url: `{repo}`")
-    parsed_url = urllib.parse.urlparse(repo)
-    if enforce_remote and len(parsed_url.netloc) == 0:
-        raise errors.ParameterError(f"Not a remote url: `{repo}`")
-    return parsed_url
