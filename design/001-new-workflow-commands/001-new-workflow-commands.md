@@ -563,6 +563,8 @@ The following outputs were produced:
             data.2021-02-23.csv
             data.2021-02-24.csv
 ```
+#### Workflow execution with extensive parameter search
+See detailed user story to `renku run --map` [here](https://github.com/SwissDataScienceCenter/renku-python/edit/rfc-001-workflow-ux/design/001-new-workflow-commands/user-story-workflow-execution-with-extensive-parameter-space.md)
 
 ## Drawbacks
 
