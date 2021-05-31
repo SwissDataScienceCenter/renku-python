@@ -16,12 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``init`` command."""
+import json
 import os
 import shutil
 from pathlib import Path
+from urllib.parse import urlparse
 
 import git
 import pytest
+import yaml
 
 from renku.cli import cli
 from renku.cli.init import parse_parameters
@@ -314,6 +317,130 @@ def test_init_remote(isolated_runner, project_init):
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
     assert (new_project / ".renku" / "metadata.yml").exists()
+
+
+@pytest.mark.integration
+def test_init_new_metadata(isolated_runner, project_init):
+    """Test project initialization from a remote template."""
+    data, commands = project_init
+
+    # create the project using default values
+    description = ["--parameter", "description=some description"]
+    number_val = ["--parameter", "number_val=70.12"]
+
+    git_url = urlparse(commands["init_custom_template"])
+
+    url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+    git_url = git_url._replace(netloc=url).geturl()
+    template_source = ["--template-source", str(git_url)]
+
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli, commands["init_custom"] + template_source + description + number_val, commands["confirm"],
+    )
+    assert 0 == result.exit_code, result.output
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata.yml").exists()
+
+    metadata = json.loads(
+        yaml.load((new_project / ".renku" / "metadata.yml").read_text())[
+            "https://swissdatasciencecenter.github.io/renku-ontology#templateMetadata"
+        ]
+    )
+    assert metadata["bool_var"]
+    assert metadata["enum_var"] == "ask again"
+    assert metadata["description"] == "some description"
+    assert metadata["number_val"] == 70.12
+
+    shutil.rmtree(new_project)
+
+    # create project using wrong number
+    description = ["--parameter", "description=lalala"]
+    number_val = ["--parameter", "number_val=abcd"]
+    bool_val = ["--parameter", "bool_val=true"]
+    enum_val = ["--parameter", "enum_var=yes"]
+
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli, commands["init_custom"] + template_source + description + number_val + bool_val + enum_val, "42\n"
+    )
+    assert 0 == result.exit_code, result.output
+    assert "Info: Value 'abcd' is not of type number required by number_val" in result.output
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata.yml").exists()
+
+    metadata = json.loads(
+        yaml.load((new_project / ".renku" / "metadata.yml").read_text())[
+            "https://swissdatasciencecenter.github.io/renku-ontology#templateMetadata"
+        ]
+    )
+    assert metadata["bool_var"]
+    assert metadata["enum_var"] == "yes"
+    assert metadata["description"] == "lalala"
+    assert metadata["number_val"] == 42
+
+    shutil.rmtree(new_project)
+
+    # create project using wrong bool
+    description = ["--parameter", "description=lalala"]
+    number_val = ["--parameter", "number_val=0.999999"]
+    bool_val = ["--parameter", "bool_var=yay"]
+    enum_val = ["--parameter", "enum_var=yes"]
+
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli, commands["init_custom"] + template_source + description + number_val + bool_val + enum_val, "0\n"
+    )
+    assert 0 == result.exit_code, result.output
+    assert "Info: Value 'yay' is not of type boolean required by bool_var" in result.output
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata.yml").exists()
+
+    metadata = json.loads(
+        yaml.load((new_project / ".renku" / "metadata.yml").read_text())[
+            "https://swissdatasciencecenter.github.io/renku-ontology#templateMetadata"
+        ]
+    )
+    assert not metadata["bool_var"]
+    assert metadata["enum_var"] == "yes"
+    assert metadata["description"] == "lalala"
+    assert metadata["number_val"] == 0.999999
+
+    shutil.rmtree(new_project)
+
+    # create project using wrong enum
+    description = ["--parameter", "description=lalala"]
+    number_val = ["--parameter", "number_val=0.999999"]
+    bool_val = ["--parameter", "bool_var=1"]
+    enum_val = ["--parameter", "enum_var=what"]
+
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli, commands["init_custom"] + template_source + description + number_val + bool_val + enum_val, "ask again\n"
+    )
+    assert 0 == result.exit_code, result.output
+    assert "Info: Value 'what' is not in list of possible values ['yes', 'no', 'maybe', 'ask again']" in result.output
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata.yml").exists()
+
+    metadata = json.loads(
+        yaml.load((new_project / ".renku" / "metadata.yml").read_text())[
+            "https://swissdatasciencecenter.github.io/renku-ontology#templateMetadata"
+        ]
+    )
+    assert metadata["bool_var"]
+    assert metadata["enum_var"] == "ask again"
+    assert metadata["description"] == "lalala"
+    assert metadata["number_val"] == 0.999999
 
 
 def test_init_with_parameters(isolated_runner, project_init, template):

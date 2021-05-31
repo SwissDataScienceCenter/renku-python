@@ -44,7 +44,7 @@ def template():
     yield template
 
 
-@pytest.fixture
+@pytest.fixture()
 def project_init(template):
     """Yield template data."""
     data = {
@@ -57,6 +57,15 @@ def project_init(template):
         "init": ["init", "."],
         "init_test": ["init", data["test_project"]],
         "init_alt": ["init", data["test_project_alt"]],
+        "init_custom": [
+            "init",
+            "--template-ref",
+            template["ref"],
+            "--template-id",
+            "python-minimal",
+            data["test_project"],
+        ],
+        "init_custom_template": "https://dev.renku.ch/gitlab/renku-qa/core-it-template-variable-test-project",
         "remote": ["--template-source", template["url"], "--template-ref", template["ref"]],
         "id": ["--template-id", template["id"]],
         "index": ["--template-index", template["index"]],

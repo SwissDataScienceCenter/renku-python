@@ -164,7 +164,19 @@ def validate_template_variable_value(name, template_variable, value):
         if not isinstance(value, str):
             valid = False
     elif variable_type == "number":
-        if type(value) != int and type(value) != float and not (type(value) == str and value.isnumeric()):
+        try:
+            value = int(value)
+            is_int = True
+        except ValueError:
+            is_int = False
+
+        try:
+            value = float(value)
+            is_float = True
+        except ValueError:
+            is_float = False
+
+        if not is_float and not is_int:
             valid = False
     elif variable_type == "boolean":
         truthy = [True, 1, "1", "true", "True"]
@@ -182,7 +194,7 @@ def validate_template_variable_value(name, template_variable, value):
         if value not in possible_values:
             return (
                 False,
-                f"Value {value} is not in list of possible values {possible_values} for template parameter {name}.",
+                f"Value '{value}' is not in list of possible values {possible_values} for template parameter {name}.",
                 value,
             )
     else:
@@ -191,7 +203,7 @@ def validate_template_variable_value(name, template_variable, value):
         )
 
     if not valid:
-        return False, f"Value {value} is not of type {variable_type} required by {name}.", value
+        return False, f"Value '{value}' is not of type {variable_type} required by {name}.", value
 
     return True, None, value
 
@@ -210,7 +222,7 @@ def prompt_for_value(name, template_variable):
                 f"{variable_type}{enum_values})"
             ),
             default=default_value,
-            show_default=False,
+            show_default=bool(default_value),
         )
 
         valid, msg, value = validate_template_variable_value(name, template_variable, value)
@@ -231,8 +243,8 @@ def verify_template_variables(template_data, metadata):
         if "description" not in template_variables[key]:
             raise errors.InvalidTemplateError(f"Template parameter {key} does not contain a description.")
 
-    for key in template_variables_keys.intersection(input_parameters_keys):
-        valid, msg, value = validate_template_variable_value(key, template_variables[key], metadata[key])
+    for key in sorted(template_variables_keys.intersection(input_parameters_keys)):
+        valid, msg, metadata[key] = validate_template_variable_value(key, template_variables[key], metadata[key])
 
         if not valid:
             communication.info(msg)
