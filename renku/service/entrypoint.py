@@ -22,9 +22,6 @@ import traceback
 import uuid
 
 import sentry_sdk
-from apispec import APISpec
-from apispec.ext.marshmallow import MarshmallowPlugin
-from apispec_webframeworks.flask import FlaskPlugin
 from flask import Flask, jsonify, request, url_for
 from jwt import InvalidTokenError
 from sentry_sdk import capture_exception
@@ -33,19 +30,12 @@ from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.service.cache import cache
-from renku.service.config import (
-    API_VERSION,
-    CACHE_DIR,
-    HTTP_SERVER_ERROR,
-    OPENAPI_VERSION,
-    SERVICE_API_BASE_PATH,
-    SERVICE_NAME,
-    SERVICE_PREFIX,
-)
+from renku.service.config import CACHE_DIR, HTTP_SERVER_ERROR, SERVICE_PREFIX
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views import error_response
+from renku.service.views.apispec import apispec_blueprint
 from renku.service.views.cache import cache_blueprint
 from renku.service.views.config import config_blueprint
 from renku.service.views.datasets import dataset_blueprint
@@ -84,7 +74,7 @@ def create_app():
         """Root shows basic service information."""
         import renku
 
-        return jsonify({"service_version": renku.__version__, "spec_url": url_for("openapi")})
+        return jsonify({"service_version": renku.__version__, "spec_url": url_for("apispec.openapi")})
 
     @app.route("/health")
     def health():
@@ -92,11 +82,6 @@ def create_app():
         import renku
 
         return "renku repository service version {}\n".format(renku.__version__)
-
-    @app.route(SERVICE_PREFIX.rstrip("/") + "/spec.json")
-    def openapi():
-        """Return the OpenAPI spec for this service."""
-        return jsonify(get_apispec(app).to_dict())
 
     return app
 
@@ -110,6 +95,7 @@ def build_routes(app):
     app.register_blueprint(jobs_blueprint)
     app.register_blueprint(templates_blueprint)
     app.register_blueprint(version_blueprint)
+    app.register_blueprint(apispec_blueprint)
 
 
 app = create_app()
@@ -179,28 +165,3 @@ if __name__ == "__main__":
 
     app.logger.handlers.extend(service_log.handlers)
     app.run()
-
-
-def get_apispec(app):
-    """Return the apispec."""
-    spec = APISpec(
-        title=SERVICE_NAME,
-        openapi_version=OPENAPI_VERSION,
-        version=API_VERSION,
-        plugins=[FlaskPlugin(), MarshmallowPlugin()],
-        servers=[{"url": SERVICE_API_BASE_PATH}],
-        components={
-            "securitySchemes": {
-                "oidc": {
-                    "type": "openIdConnect",
-                    "openIdConnectUrl": "/auth/realms/Renku/.well-known/openid-configuration",
-                },
-                "JWT": {"type": "apiKey", "name": "Renku-User", "in": "header"},
-                "gitlab-token": {"type": "apiKey", "name": "Authorization", "in": "header"},
-            }
-        },
-        security=[{"oidc": []}, {"JWT": [], "gitlab-token": []}],
-    )
-    for rule in app.url_map.iter_rules():
-        spec.path(view=app.view_functions[rule.endpoint])
-    return spec
