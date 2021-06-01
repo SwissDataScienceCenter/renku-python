@@ -16,9 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service fixtures for project management."""
+import os
+import tempfile
 import uuid
 from pathlib import Path
+from urllib.parse import urlparse
 
+import git
 import pytest
 
 
@@ -53,6 +57,29 @@ def it_remote_repo_url():
     from tests.fixtures.config import IT_REMOTE_REPO_URL
 
     return IT_REMOTE_REPO_URL
+
+
+@pytest.fixture(scope="function")
+def it_remote_repo_url_temp_branch(it_remote_repo_url):
+    """Returns a remote path to integration test repository."""
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        # NOTE: create temporary branch and push it
+        git_url = urlparse(it_remote_repo_url)
+
+        url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+        git_url = git_url._replace(netloc=url).geturl()
+        repo = git.Repo.clone_from(git_url, tempdir)
+        origin = repo.remote("origin")
+        branch_name = uuid.uuid4().hex
+        branch = repo.create_head(branch_name)
+        repo.git.push("--set-upstream", origin, branch)
+        try:
+            yield it_remote_repo_url, branch_name
+        finally:
+            # NOTE: delete remote branch
+            origin.push(f":{branch}")
+            repo.delete_head(branch)
 
 
 @pytest.fixture(scope="module")

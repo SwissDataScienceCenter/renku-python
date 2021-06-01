@@ -288,8 +288,7 @@ def test_migrate_non_renku_repository(isolated_runner):
     result = isolated_runner.invoke(cli, ["migrate"])
 
     assert 0 == result.exit_code, result.output
-    assert "Warning: Not a renku project." in result.output
-    assert "No migrations required." in result.output
+    assert "Error: Not a renku project." in result.output
 
 
 @pytest.mark.migration
@@ -321,7 +320,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
     result = isolated_runner.invoke(cli, ["migrate", "--check"])
 
     assert 0 == result.exit_code, result.output
-    assert "Warning: Not a renku project." in result.output
+    assert "Error: Not a renku project." in result.output
 
 
 @pytest.mark.migration
@@ -369,7 +368,7 @@ def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_su
         ["doctor"],
         ["githooks", "install"],
         ["help"],
-        ["init"],
+        ["init", "-i", "1", "--force"],
         ["storage", "check"],
     ],
 )

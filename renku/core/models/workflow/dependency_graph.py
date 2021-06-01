@@ -20,7 +20,7 @@
 import json
 from collections import deque
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple
 
 import networkx
 from marshmallow import EXCLUDE
@@ -34,14 +34,19 @@ class DependencyGraph:
 
     # TODO: dependency graph can have cycles in it because up until now there was no check to prevent this
 
-    def __init__(self, plans=None):
+    def __init__(self, plans: List[Plan] = None):
         """Initialized."""
-        self._plans = plans or []
+        self._plans: List[Plan] = plans or []
         self._path = None
 
         self._graph = networkx.DiGraph()
         self._graph.add_nodes_from(self._plans)
         self._connect_all_nodes()
+
+    @property
+    def plans(self) -> List[Plan]:
+        """A list of all plans in the graph."""
+        return list(self._plans)
 
     def add(self, plan: Plan) -> Plan:
         """Add a plan to the graph if a similar plan does not exists."""
@@ -49,13 +54,13 @@ class DependencyGraph:
         if existing_plan:
             return existing_plan
 
-        assert not any([p for p in self._plans if p.name == plan.name]), f"Duplicate name {plan.id_}, {plan.name}"
+        assert not any([p for p in self._plans if p.name == plan.name]), f"Duplicate name {plan.id}, {plan.name}"
         # FIXME it's possible to have the same identifier but different list of arguments (e.g.
         # test_rerun_with_edited_inputs)
-        same_id_found = [p for p in self._plans if p.id_ == plan.id_]
+        same_id_found = [p for p in self._plans if p.id == plan.id]
         if same_id_found:
             plan.assign_new_id()
-        assert not any([p for p in self._plans if p.id_ == plan.id_]), f"Identifier exists {plan.id_}"
+        assert not any([p for p in self._plans if p.id == plan.id]), f"Identifier exists {plan.id}"
         self._add_helper(plan)
 
         # FIXME some existing projects have cyclic dependency; make this check outside this model.
@@ -63,7 +68,7 @@ class DependencyGraph:
 
         return plan
 
-    def _find_similar_plan(self, plan: Plan) -> Union[Plan, None]:
+    def _find_similar_plan(self, plan: Plan) -> Optional[Plan]:
         """Search for a similar plan and return it."""
         for p in self._plans:
             if p.is_similar_to(plan):
@@ -87,8 +92,8 @@ class DependencyGraph:
     def _connect_two_nodes(self, from_: Plan, to_: Plan):
         for o in from_.outputs:
             for i in to_.inputs:
-                if DependencyGraph._is_super_path(o.produces, i.consumes):
-                    self._graph.add_edge(from_, to_, name=o.produces)
+                if DependencyGraph._is_super_path(o.default_value, i.default_value):
+                    self._graph.add_edge(from_, to_, name=o.default_value)
 
     def visualize_graph(self):
         """Visualize graph using matplotlib."""
@@ -113,7 +118,7 @@ class DependencyGraph:
         nodes = deque()
         node: Plan
         for node in self._graph:
-            if plan_id == node.id_ and any(self._is_super_path(path, p.consumes) for p in node.inputs):
+            if plan_id == node.id and any(self._is_super_path(path, p.default_value) for p in node.inputs):
                 nodes.append(node)
 
         paths = set()
@@ -121,7 +126,7 @@ class DependencyGraph:
         # TODO: This loops infinitely if there is a cycle in the graph
         while nodes:
             node = nodes.popleft()
-            outputs_paths = [o.produces for o in node.outputs]
+            outputs_paths = [o.default_value for o in node.outputs]
             paths.update(outputs_paths)
 
             nodes.extend(self._graph.successors(node))
@@ -133,7 +138,7 @@ class DependencyGraph:
 
         def node_has_deleted_inputs(node_):
             for _, path_, _ in deleted_usages:
-                if any(self._is_super_path(path_, p.consumes) for p in node_.inputs):
+                if any(self._is_super_path(path_, p.default_value) for p in node_.inputs):
                     return True
             return False
 
@@ -142,7 +147,7 @@ class DependencyGraph:
         node: Plan
         for plan_id, path, _ in modified_usages:
             for node in self._graph:
-                if plan_id == node.id_ and any(self._is_super_path(path, p.consumes) for p in node.inputs):
+                if plan_id == node.id and any(self._is_super_path(path, p.default_value) for p in node.inputs):
                     nodes.add(node)
                     nodes.update(networkx.algorithms.dag.descendants(self._graph, node))
 

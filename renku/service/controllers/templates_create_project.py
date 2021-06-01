@@ -25,14 +25,14 @@ from renku.core.commands.init import create_from_template_local_command, read_te
 from renku.core.errors import RenkuException
 from renku.core.utils.contexts import click_context
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
 from renku.service.utils import new_repo_push
 from renku.service.views import result_response
 
 
-class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
+class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     """Template create project controller."""
 
     REQUEST_SERIALIZER = ProjectTemplateRequest()
@@ -87,7 +87,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
             "name": self.ctx["project_name_stripped"],
             "fullname": self.ctx["fullname"],
             "email": self.ctx["email"],
-            "owner": self.ctx["owner"],
+            "owner": self.ctx["project_namespace"],
             "token": self.ctx["token"],
             "initialized": True,
         }
@@ -146,14 +146,19 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
                 self.ctx["url"],
                 self.ctx["ref"],
                 "service",
+                self.ctx["initial_branch"],
             )
 
         self.new_project_push(new_project_path)
+
+        new_project.initialized = True
+        new_project.save()
 
         return {
             "url": self.ctx["new_project_url"],
             "namespace": self.ctx["project_namespace"],
             "name": self.ctx["project_name_stripped"],
+            "project_id": new_project.project_id,
         }
 
     def renku_op(self):

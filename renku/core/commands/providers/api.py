@@ -21,7 +21,7 @@ class ProviderApi(abc.ABC):
     """Interface defining provider methods."""
 
     @abc.abstractmethod
-    def find_record(self, uri, client=None):
+    def find_record(self, uri, client=None, **kwargs):
         """Find record by uri."""
         pass
 
@@ -39,6 +39,21 @@ class ProviderApi(abc.ABC):
     def supports(uri):
         """Whether or not this provider supports a given uri."""
         pass
+
+    @staticmethod
+    def supports_export():
+        """Whether this provider supports dataset export."""
+        return False
+
+    @staticmethod
+    def supports_import():
+        """Whether this provider supports dataset import."""
+        return False
+
+    @staticmethod
+    def export_parameters():
+        """Returns parameters that can be set for export."""
+        return {}
 
     @property
     def is_git_based(self):

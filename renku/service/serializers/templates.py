@@ -33,7 +33,7 @@ class ManifestTemplatesRequest(ProjectCloneContext):
     """Request schema for listing manifest templates."""
 
     url = fields.String(required=True)
-    ref = fields.String(missing="master")
+    ref = fields.String(missing=None)
     depth = fields.Integer(missing=TEMPLATE_CLONE_DEPTH_DEFAULT)
 
     @pre_load()
@@ -63,6 +63,8 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
 
     new_project_url = fields.String(required=True)
     project_name_stripped = fields.String(required=True)
+
+    initial_branch = fields.String(missing=None)
 
     @pre_load()
     def create_new_project_url(self, data, **kwargs):
@@ -131,6 +133,7 @@ class ProjectTemplateResponse(Schema):
     url = fields.String(required=True)
     namespace = fields.String(required=True)
     name = fields.String(required=True)
+    project_id = fields.String(required=False, default=None)
 
 
 class ProjectTemplateResponseRPC(JsonRPCResponse):

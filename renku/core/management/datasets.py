@@ -33,7 +33,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from subprocess import PIPE, SubprocessError
 from urllib import error, parse
-from urllib.parse import ParseResult, urlparse
+from urllib.parse import ParseResult, unquote, urlparse
 from urllib.request import urlretrieve
 
 import attr
@@ -52,7 +52,6 @@ from renku.core.models.datasets import (
     DatasetTag,
     ImageObject,
     generate_dataset_file_url,
-    get_slug,
     is_dataset_name_valid,
 )
 from renku.core.models.git import GitURL
@@ -60,9 +59,9 @@ from renku.core.models.provenance.agents import Person
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
-from renku.core.utils.git import add_to_git, run_command
+from renku.core.utils.git import add_to_git, get_oauth_url, have_same_remote, run_command
 from renku.core.utils.migrate import MigrationType
-from renku.core.utils.urls import remove_credentials
+from renku.core.utils.urls import get_slug, remove_credentials
 
 
 @attr.s
@@ -304,7 +303,7 @@ class DatasetsApiMixin(object):
         return dataset
 
     def create_dataset(
-        self, name=None, title=None, description=None, creators=None, keywords=None, images=None, safe_image_paths=[]
+        self, name=None, title=None, description=None, creators=None, keywords=None, images=None, safe_image_paths=None
     ):
         """Create a dataset."""
         if not name:
@@ -349,6 +348,7 @@ class DatasetsApiMixin(object):
         )
 
         if images:
+            safe_image_paths = safe_image_paths or []
             safe_image_paths.append(self.path)
             self.set_dataset_images(dataset, images, safe_image_paths)
 
@@ -359,8 +359,9 @@ class DatasetsApiMixin(object):
 
         return dataset, metadata_path, dataset_ref
 
-    def set_dataset_images(self, dataset, images, safe_image_paths=[]):
+    def set_dataset_images(self, dataset, images, safe_image_paths=None):
         """Set the images on a dataset."""
+        safe_image_paths = safe_image_paths or []
 
         if not images:
             images = []
@@ -430,6 +431,8 @@ class DatasetsApiMixin(object):
 
                 img_path = image_folder / f"{position}{ext}"
                 shutil.copy(path, img_path)
+            else:
+                img_path = path
 
             dataset.images.append(
                 ImageObject(
@@ -1046,6 +1049,58 @@ class DatasetsApiMixin(object):
         if to_dataset:
             to_dataset.to_yaml()
 
+    def update_dataset_local_files(self, records, delete=False):
+        """Update files metadata from the git history."""
+        updated_files = []
+        deleted_files = []
+        progress_text = "Checking for local updates"
+
+        try:
+            communication.start_progress(progress_text, len(records))
+            for file_ in records:
+                communication.update_progress(progress_text, 1)
+
+                if file_.based_on or file_.external:
+                    continue
+
+                if not Path(file_.path).exists():
+                    deleted_files.append(file_)
+                    continue
+
+                try:
+                    commit = self.find_previous_commit(file_.path)
+                except KeyError:
+                    deleted_files.append(file_)
+                else:
+                    if self._get_commit_sha_from_label(file_) != commit.hexsha:
+                        updated_files.append(file_)
+        finally:
+            communication.finalize_progress(progress_text)
+
+        if updated_files or (deleted_files and delete):
+            self._update_datasets_metadata(updated_files, deleted_files, delete)
+
+        return updated_files, deleted_files
+
+    def _update_datasets_metadata(self, updated_files, deleted_files, delete):
+        modified_datasets = {}
+
+        for file_ in updated_files:
+            new_file = DatasetFile.from_revision(
+                self, path=file_.path, based_on=file_.based_on, url=file_.url, source=file_.source
+            )
+            file_.dataset.update_files([new_file])
+            modified_datasets[file_.dataset.name] = file_.dataset
+
+        if delete:
+            for file_ in deleted_files:
+                file_.dataset.unlink_file(file_.path)
+                modified_datasets[file_.dataset.name] = file_.dataset
+
+        for dataset in modified_datasets.values():
+            dataset.to_yaml()
+            self.update_datasets_provenance(dataset)
+
     def update_dataset_git_files(self, files, ref, delete=False):
         """Update files and dataset metadata according to their remotes.
 
@@ -1130,25 +1185,7 @@ class DatasetsApiMixin(object):
             skip_hooks=skip_hooks,
         )
 
-        # Update datasets' metadata
-
-        modified_datasets = {}
-
-        for file_ in updated_files:
-            new_file = DatasetFile.from_revision(
-                self, path=file_.path, based_on=file_.based_on, url=file_.url, source=file_.source
-            )
-            file_.dataset.update_files([new_file])
-            modified_datasets[file_.dataset.name] = file_.dataset
-
-        if delete:
-            for file_ in deleted_files:
-                file_.dataset.unlink_file(file_.path)
-                modified_datasets[file_.dataset.name] = file_.dataset
-
-        for dataset in modified_datasets.values():
-            dataset.to_yaml()
-            self.update_datasets_provenance(dataset)
+        self._update_datasets_metadata(updated_files, deleted_files, delete)
 
         return updated_files, deleted_files
 
@@ -1281,33 +1318,31 @@ class DatasetsApiMixin(object):
         else:
             return True
 
-    def prepare_git_repo(self, url, ref=None):
+    def prepare_git_repo(self, url, ref=None, gitlab_token=None):
         """Clone and cache a Git repo."""
         if not url:
             raise errors.GitError("Invalid URL.")
 
         renku_branch = "renku-default-branch"
 
-        def checkout(repo, ref):
-            try:
-                repo.git.checkout(ref)
-            except GitCommandError:
-                raise errors.ParameterError('Cannot find reference "{}" in Git repository: {}'.format(ref, url))
-
         depth = 1 if not ref else None
         ref = ref or renku_branch
         u = GitURL.parse(url)
         path = u.pathname
         if u.hostname == "localhost":
-            path = str(Path(path).resolve())
-            url = path
-        repo_name = os.path.splitext(os.path.basename(path))[0]
+            path = Path(path).resolve()
+            git_url = str(path)
+        elif "http" in u.protocol and gitlab_token:
+            git_url = get_oauth_url(url, gitlab_token)
+        else:
+            git_url = url
+
         path = os.path.dirname(path).lstrip("/")
-        repo_path = self.renku_path / self.CACHE / u.hostname / path / repo_name
+        repo_path = self.renku_path / self.CACHE / u.hostname / path / u.name
 
         if repo_path.exists():
             repo = Repo(str(repo_path))
-            if repo.remotes.origin.url == url:
+            if have_same_remote(repo.remotes.origin.url, git_url):
                 try:
                     repo.git.checkout(".")
                     repo.git.fetch(all=True)
@@ -1326,9 +1361,9 @@ class DatasetsApiMixin(object):
             try:
                 shutil.rmtree(str(repo_path))
             except PermissionError:
-                raise errors.InvalidFileOperation("Cannot delete files in {}: Permission denied".format(repo_path))
+                raise errors.InvalidFileOperation(f"Cannot delete files in {repo_path}: Permission denied")
 
-        repo, _ = clone(url, path=str(repo_path), install_githooks=False, depth=depth)
+        repo, _ = clone(git_url, path=str(repo_path), install_githooks=False, depth=depth)
 
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It
@@ -1336,11 +1371,15 @@ class DatasetsApiMixin(object):
         renku_ref = "refs/heads/" + renku_branch
         try:
             repo.git.execute(["git", "symbolic-ref", renku_ref, repo.head.reference.path])
-            checkout(repo, ref)
         except GitCommandError as e:
-            raise errors.GitError("Cannot clone remote Git repo: {}".format(url)) from e
-        else:
-            return repo, repo_path
+            raise errors.GitError(f"Cannot clone remote Git repo: {url}") from e
+
+        try:
+            repo.git.checkout(ref)
+        except GitCommandError:
+            raise errors.ParameterError(f"Cannot find reference '{ref}' in Git repository: {url}")
+
+        return repo, repo_path
 
     @staticmethod
     def _fetch_file_metadata(client, path):
@@ -1377,6 +1416,9 @@ class DatasetsApiMixin(object):
             request.raise_for_status()
 
             if not filename:
+                filename = _filename_from_headers(request)
+
+            if not filename:
                 u = parse.urlparse(url)
                 filename = Path(u.path).name
                 if not filename:
@@ -1398,6 +1440,33 @@ class DatasetsApiMixin(object):
             return extract_dataset(download_to)
 
         return download_to.parent, [download_to]
+
+
+def _filename_from_headers(request):
+    """Extract filename fromcontent-disposition headers if available."""
+    content_disposition = request.headers.get("content-disposition", None)
+
+    if not content_disposition:
+        return None
+
+    entries = content_disposition.split(";")
+    name_entry = next((e.strip() for e in entries if e.strip().lower().startswith("filename*=")), None)
+
+    if name_entry:
+        name = name_entry.split("=", 1)[1].strip()
+        encoding, _, name = name.split("'")
+        return unquote(name, encoding, errors="strict")
+
+    name_entry = next((e.strip() for e in entries if e.strip().lower().startswith("filename=")), None)
+
+    if not name_entry:
+        return None
+
+    filename = name_entry.split("=", 1)[1].strip()
+
+    if filename.startswith('"'):
+        filename = filename[1:-1]
+    return filename
 
 
 def _check_url(url):

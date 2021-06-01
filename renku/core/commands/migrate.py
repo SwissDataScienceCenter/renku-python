@@ -27,15 +27,18 @@ from renku.core.management.migrate import (
     migrate,
 )
 
-SUPPORTED_RENKU_PROJECT = 0
-MIGRATION_REQUIRED = 1
-UNSUPPORTED_PROJECT = 2
-NON_RENKU_REPOSITORY = 3
+SUPPORTED_RENKU_PROJECT = 1
+MIGRATION_REQUIRED = 2
+UNSUPPORTED_PROJECT = 4
+NON_RENKU_REPOSITORY = 8
+TEMPLATE_UPDATE_POSSIBLE = 16
+AUTOMATED_TEMPLATE_UPDATE_SUPPORTED = 32
+DOCKERFILE_UPDATE_POSSIBLE = 64
 
 
 def migrations_check():
     """Return a command for a migrations check."""
-    return Command().command(_migrations_check).lock_project()
+    return Command().command(_migrations_check)
 
 
 def _migrations_check(client):
@@ -86,18 +89,28 @@ def _migrate_project(
 
 def check_project():
     """Return a command to check if repository is a renku project, unsupported, or requires migration."""
-    return Command().command(_check_project).lock_project()
+    return Command().command(_check_project)
 
 
 def _check_project(client):
     if not is_renku_project(client):
         return NON_RENKU_REPOSITORY
-    elif is_migration_required(client):
-        return MIGRATION_REQUIRED
     elif is_project_unsupported(client):
         return UNSUPPORTED_PROJECT
 
-    return SUPPORTED_RENKU_PROJECT
+    status = 0
+
+    if is_template_update_possible(client):
+        status |= TEMPLATE_UPDATE_POSSIBLE
+    if client.project.automated_update:
+        status |= AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
+    if is_docker_update_possible(client):
+        status |= DOCKERFILE_UPDATE_POSSIBLE
+
+    if is_migration_required(client):
+        return status | MIGRATION_REQUIRED
+
+    return status | SUPPORTED_RENKU_PROJECT
 
 
 def _check_immutable_template_files(client, paths):

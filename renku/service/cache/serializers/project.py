@@ -28,6 +28,7 @@ class ProjectSchema(Schema):
     """Context schema for project clone."""
 
     created_at = fields.DateTime(missing=datetime.utcnow)
+    last_fetched_at = fields.DateTime(missing=datetime.utcnow)
 
     project_id = fields.String(missing=lambda: uuid.uuid4().hex)
     user_id = fields.String(required=True)

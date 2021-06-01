@@ -170,6 +170,7 @@ class Activity(CommitMixin):
     def _get_activity_entity(self, path, deleted=False):
         """Gets the entity associated with this Activity and path."""
         client, commit, path = self.client.resolve_in_submodules(self.commit, path,)
+        path = str(path)
         output_path = client.path / path
         parents = list(output_path.relative_to(client.path).parents)
 
@@ -190,10 +191,10 @@ class Activity(CommitMixin):
             entity_cls = Collection
 
         # TODO: use a factory method to generate the entity
-        if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)) and not deleted:
+        if path.startswith(os.path.join(client.renku_home, client.DATASETS)) and not deleted and output_path.exists():
             entity = client.load_dataset_from_path(path, commit=commit)
         else:
-            entity = entity_cls(commit=commit, client=client, path=str(path), parent=collection,)
+            entity = entity_cls(commit=commit, client=client, path=path, parent=collection)
 
         if collection:
             collection.members.append(entity)
@@ -550,7 +551,6 @@ class ProcessRun(Activity):
 
         process_run.generated = generated
 
-        process_run.plugin_annotations()
         return process_run
 
     @property

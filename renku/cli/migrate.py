@@ -15,17 +15,43 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Migrate project to the latest Renku version."""
+"""Migrate project to the latest Renku version.
+
+When the way Renku stores metadata changes or there are other changes to the
+project structure or data that are needed for Renku to work, ``renku migrate``
+can be used to bring the project up to date with the current version of Renku.
+This does not usually affect how you use Renku and no data is lost.
+
+In addition, ``renku migrate`` will update your ``Dockerfile` to install the
+latest version of ``renku-python``, if supported, making sure your renku
+version is up to date in interactive environments as well.
+
+If you created your repository from a project template and the template has
+changed since you created the project, it will also update files with their
+newest version from the template, without overwriting local changes if there
+are any.
+
+You can check if a migration is necessary and what migrations are available
+by running
+
+.. code-block:: console
+
+    $ renku migrate -c
+
+"""
 import json
 import os
 
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.echo import WARNING
+from renku.core.commands.echo import ERROR, INFO
 from renku.core.commands.migrate import (
+    AUTOMATED_TEMPLATE_UPDATE_SUPPORTED,
+    DOCKERFILE_UPDATE_POSSIBLE,
     MIGRATION_REQUIRED,
     NON_RENKU_REPOSITORY,
+    TEMPLATE_UPDATE_POSSIBLE,
     UNSUPPORTED_PROJECT,
     check_immutable_template_files_command,
     check_project,
@@ -39,33 +65,58 @@ from renku.core.errors import MigrationRequired, ProjectNotSupported
 @click.command()
 @click.option("-c", "--check", is_flag=True, help="Check if migration is required and quit.")
 @click.option("--no-commit", is_flag=True, hidden=True, help="Do not commit changes after the migration.")
-def migrate(check, no_commit):
+@click.option("-t", "--skip-template-update", is_flag=True, hidden=True, help="Do not update project template files.")
+@click.option(
+    "-d", "--skip-docker-update", is_flag=True, hidden=True, help="Do not update Dockerfile to current renku version."
+)
+def migrate(check, no_commit, skip_template_update, skip_docker_update):
     """Check for migration and migrate to the latest Renku project version."""
-    if check:
-        status = check_project().build().execute().output
-        if status == MIGRATION_REQUIRED:
-            raise MigrationRequired
-        elif status == UNSUPPORTED_PROJECT:
-            raise ProjectNotSupported
-        elif status == NON_RENKU_REPOSITORY:
-            click.secho(WARNING + "Not a renku project.")
+    status = check_project().build().execute().output
 
+    template_update_possible = status & TEMPLATE_UPDATE_POSSIBLE and status & AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
+    docker_update_possible = status & DOCKERFILE_UPDATE_POSSIBLE
+
+    if check:
+        if template_update_possible:
+            click.secho(
+                INFO
+                + "The project template used to create this project has updates which can be applied "
+                + "using 'renku migrate'."
+            )
+        if docker_update_possible:
+            click.secho(
+                INFO
+                + "The Dockerfile refers to an older version of renku and can be updated "
+                + "using 'renku migrate'."
+            )
+
+        if status & MIGRATION_REQUIRED:
+            raise MigrationRequired
+
+    if status & UNSUPPORTED_PROJECT:
+        raise ProjectNotSupported
+    elif status & NON_RENKU_REPOSITORY:
+        click.secho(ERROR + "Not a renku project.")
         return
+
+    if check:
+        return
+
+    skip_docker_update = skip_docker_update or not docker_update_possible
+    skip_template_update = skip_template_update or not template_update_possible
 
     communicator = ClickCallback()
 
     command = migrate_project().with_communicator(communicator)
     if not no_commit:
         command = command.with_commit()
-    result = command.build().execute(skip_template_update=True, skip_docker_update=True)
+    result = command.build().execute(skip_template_update=skip_template_update, skip_docker_update=skip_docker_update)
 
     result, _, _ = result.output
 
     if result:
         click.secho("OK", fg="green")
     else:
-        if check_project().build().execute().output == NON_RENKU_REPOSITORY:
-            click.secho(WARNING + "Not a renku project.")
         click.secho("No migrations required.")
 
 
@@ -84,7 +135,7 @@ def migrationscheck():
         template_id,
         automated_update,
         docker_update_possible,
-    ) = (migrations_check().build().execute().output)
+    ) = (migrations_check().lock_project().build().execute().output)
 
     click.echo(
         json.dumps(

@@ -80,6 +80,9 @@ comma-separated list of column names:
 
 Displayed results are sorted based on the value of the first column.
 
+You can specify output formats by passing ``--format`` with a value of ``tabular``,
+``json-ld`` or ``json``.
+
 To inspect the state of the dataset on a given commit we can use ``--revision``
 flag for it:
 
@@ -217,6 +220,9 @@ this limitation, the ``--include`` and ``--exclude`` flags are not compatible
 with those datasets. Modifying those datasets locally will prevent them from
 being updated.
 
+The update command also checks for file changes in the project and updates
+datasets' metadata accordingly.
+
 You can limit the scope of updated files by specifying dataset names, using
 ``--include`` and ``--exclude`` to filter based on file names, or using
 ``--creators`` to filter based on creators. For example, the following command
@@ -313,6 +319,14 @@ the name of the parent dataverse where the dataset will be exported to.
 Server's URL is stored in your Renku setting and you don't need to pass it
 every time.
 
+To export a dataset to OLOS you must pass the OLOS server's base URL and
+supply your access token when prompted for it. You must also choose which
+organizational unit to export the dataset to from the list shown during
+the export. The export does not map contributors from Renku to OLOS and
+also doesn't map License information. Additionally, all file categories
+default to Primary/Derived. This has to adjusted manually in the OLOS
+interface after the export is done.
+
 
 Listing all files in the project associated with a dataset.
 
@@ -340,6 +354,9 @@ comma-separated list of column names:
     my-dataset           sam        data/my-dataset/weather/file3
 
 Displayed results are sorted based on the value of the first column.
+
+You can specify output formats by passing ``--format`` with a value of ``tabular``,
+``json-ld`` or ``json``.
 
 Sometimes you want to filter the files. For this we use ``--dataset``,
 ``--include`` and ``--exclude`` flags:
@@ -407,6 +424,7 @@ from renku.core.commands.dataset import (
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
+from renku.core.commands.providers import ProviderFactory
 
 
 @click.group()
@@ -428,7 +446,7 @@ def dataset():
 )
 def list_dataset(revision, format, columns):
     """List datasets."""
-    result = list_datasets().build().execute(revision=revision, format=format, columns=columns)
+    result = list_datasets().lock_dataset().build().execute(revision=revision, format=format, columns=columns)
     click.echo(result.output)
 
 
@@ -591,7 +609,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 )
 def ls_files(names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    result = list_files().build().execute(names, creators, include, exclude, format, columns)
+    result = list_files().lock_dataset().build().execute(names, creators, include, exclude, format, columns)
     click.echo(result.output)
 
 
@@ -640,28 +658,64 @@ def remove_tags(name, tags):
 @click.option("--format", type=click.Choice(DATASET_TAGS_FORMATS), default="tabular", help="Choose an output format.")
 def ls_tags(name, format):
     """List all tags of a dataset."""
-    result = list_tags().build().execute(name, format)
+    result = list_tags().lock_dataset().build().execute(name, format)
     click.echo(result.output)
+
+
+def export_provider_argument(*param_decls, **attrs):
+    """Sets dataset export provider argument on the dataset export command."""
+
+    def wrapper(f):
+        from click import argument
+
+        providers = [k.lower() for k, p in ProviderFactory.PROVIDERS.items() if p.supports_export]
+        f = argument("provider", type=click.Choice(providers))(f)
+        return f
+
+    return wrapper
+
+
+def export_provider_options(*param_decls, **attrs):
+    """Sets dataset export provider option groups on the dataset export command."""
+
+    def wrapper(f):
+        from click_option_group import optgroup
+
+        providers = [
+            (k, v) for k, v in ProviderFactory.PROVIDERS.items() if v.supports_export and v.export_parameters()
+        ]
+
+        for i, (name, provider) in enumerate(providers):
+            params = provider.export_parameters()
+
+            for j, (param_name, (param_description, param_type)) in enumerate(params.items()):
+                if j == 0:
+                    param_description = f"\b\n{param_description}\n "  # NOTE: add newline after a group
+                f = optgroup.option(f"--{param_name}", type=param_type, help=param_description)(f)
+
+            name = f"{name} configuration"
+            if i == len(providers) - 1:
+                name = "\n  " + name  # NOTE: add newline before first group
+
+            f = optgroup.group(name=name)(f)
+
+        return f
+
+    return wrapper
 
 
 @dataset.command("export")
 @click.argument("name")
-@click.argument("provider")
+@export_provider_argument()
 @click.option("-p", "--publish", is_flag=True, help="Automatically publish exported dataset.")
 @click.option("-t", "--tag", help="Dataset tag to export")
-@click.option("--dataverse-server", default=None, help="Dataverse server URL.")
-@click.option("--dataverse-name", default=None, help="Dataverse name to export to.")
-def export_(name, provider, publish, tag, dataverse_server, dataverse_name):
+@export_provider_options()
+def export_(name, provider, publish, tag, **kwargs):
     """Export data to 3rd party provider."""
     try:
         communicator = ClickCallback()
-        export_dataset().with_communicator(communicator).build().execute(
-            name=name,
-            provider_name=provider,
-            publish=publish,
-            tag=tag,
-            dataverse_server_url=dataverse_server,
-            dataverse_name=dataverse_name,
+        export_dataset().lock_dataset().with_communicator(communicator).build().execute(
+            name=name, provider_name=provider, publish=publish, tag=tag, **kwargs,
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, requests.HTTPError) as e:
         raise click.BadParameter(e)

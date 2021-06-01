@@ -20,6 +20,7 @@ import json
 from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from time import sleep
 
 import pytest
 from flaky import flaky
@@ -81,9 +82,14 @@ def test_compare_manifests(svc_client_with_templates):
 @flaky(max_runs=10, min_passes=1)
 def test_create_project_from_template(svc_client_templates_creation):
     """Check reading manifest template."""
+    from git import Repo
+
+    from renku.service.serializers.headers import RenkuHeaders
+    from renku.service.utils import CACHE_PROJECTS_PATH
+
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
 
-    # fail: remote authentication
+    # NOTE:  fail: remote authentication
     anonymous_headers = deepcopy(headers)
     anonymous_headers["Authorization"] = "Bearer None"
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=anonymous_headers)
@@ -92,7 +98,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert response.json["error"]
     assert "Cannot push changes" in response.json["error"]["reason"]
 
-    # fail: missing parameters
+    # NOTE:  fail: missing parameters
     if len(payload["parameters"]) > 0:
         payload_without_parameters = deepcopy(payload)
         payload_without_parameters["parameters"] = []
@@ -104,7 +110,7 @@ def test_create_project_from_template(svc_client_templates_creation):
         assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
         assert "missing parameter" in response.json["error"]["reason"]
 
-    # successfully push with proper authentication
+    # NOTE:  successfully push with proper authentication
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
     assert response
@@ -114,8 +120,23 @@ def test_create_project_from_template(svc_client_templates_creation):
     expected_url = "{0}/{1}/{2}".format(payload["project_repository"], payload["project_namespace"], stripped_name,)
     assert expected_url == response.json["result"]["url"]
 
-    # successfully re-use old name after cleanup
+    # NOTE: assert correct git user is set on new project
+    user_data = RenkuHeaders.decode_user(headers["Renku-User"])
+    project_path = (
+        CACHE_PROJECTS_PATH
+        / user_data["user_id"]
+        / response.json["result"]["project_id"]
+        / payload["project_namespace"]
+        / stripped_name
+    )
+    repo = Repo(project_path)
+    reader = repo.config_reader()
+    assert reader.get_value("user", "email") == user_data["email"]
+    assert reader.get_value("user", "name") == user_data["name"]
+
+    # NOTE:  successfully re-use old name after cleanup
     assert rm_remote() is True
+    sleep(1)  # NOTE: sleep to make sure remote isn't locked
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
     assert response
     assert {"result"} == set(response.json.keys())

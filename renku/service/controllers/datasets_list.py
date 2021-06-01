@@ -19,12 +19,12 @@
 
 from renku.core.commands.dataset import list_datasets
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.datasets import DatasetListRequest, DatasetListResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsListCtrl(ServiceCtrl, ReadOperationMixin):
+class DatasetsListCtrl(ServiceCtrl, RenkuOperationMixin):
     """Controller for datasets list endpoint."""
 
     REQUEST_SERIALIZER = DatasetListRequest()

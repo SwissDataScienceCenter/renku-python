@@ -17,26 +17,27 @@
 # limitations under the License.
 """Renku service datasets remove controller."""
 from renku.core.commands.dataset import remove_dataset
+from renku.service.cache.models.job import Job
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadWithSyncOperation
+from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetRemoveRequest, DatasetRemoveResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsRemoveCtrl(ServiceCtrl, ReadWithSyncOperation):
+class DatasetsRemoveCtrl(ServiceCtrl, RenkuOpSyncMixin):
     """Controller for datasets remove endpoint."""
 
     REQUEST_SERIALIZER = DatasetRemoveRequest()
     RESPONSE_SERIALIZER = DatasetRemoveResponseRPC()
 
-    def __init__(self, cache, user_data, request_data):
+    def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets remove controller."""
         self.ctx = DatasetsRemoveCtrl.REQUEST_SERIALIZER.load(request_data)
 
         if self.ctx.get("commit_message") is None:
             self.ctx["commit_message"] = "service: dataset remove {0}".format(self.ctx["name"])
 
-        super(DatasetsRemoveCtrl, self).__init__(cache, user_data, request_data)
+        super(DatasetsRemoveCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):
@@ -50,7 +51,10 @@ class DatasetsRemoveCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        _, remote_branch = self.execute_and_sync()
+        op_result, remote_branch = self.execute_and_sync()
+
+        if isinstance(op_result, Job):
+            return result_response(DatasetsRemoveCtrl.JOB_RESPONSE_SERIALIZER, op_result)
 
         response = self.ctx
         response["remote_branch"] = remote_branch

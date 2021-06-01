@@ -16,12 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset jobs."""
+import urllib
+
 from git import GitCommandError, Repo
 from urllib3.exceptions import HTTPError
 
 from renku.core.commands.dataset import add_to_dataset, import_dataset
 from renku.core.commands.save import repo_sync
 from renku.core.errors import ParameterError, RenkuException
+from renku.core.models.git import GitURL
 from renku.core.utils.contexts import click_context
 from renku.service.logger import worker_log
 from renku.service.utils.callback import ServiceCallback
@@ -46,8 +49,12 @@ def dataset_import(
             worker_log.debug(f"project found in cache - importing dataset {dataset_uri}")
             communicator = ServiceCallback(user_job=user_job)
 
+            gitlab_token = user.token if _is_safe_to_pass_gitlab_token(project.git_url, dataset_uri) else None
+
             command = import_dataset().with_commit_message(f"service: dataset import {dataset_uri}")
-            command.with_communicator(communicator).build().execute(dataset_uri, name, extract, yes=True)
+            command.with_communicator(communicator).build().execute(
+                dataset_uri, name, extract, yes=True, gitlab_token=gitlab_token
+            )
 
             worker_log.debug("operation successful - syncing with remote")
             _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
@@ -61,6 +68,14 @@ def dataset_import(
         # Reraise exception, so we see trace in job metadata
         # and in metrics as failed job.
         raise exp
+
+
+def _is_safe_to_pass_gitlab_token(project_git_url, dataset_uri):
+    """Passing token is safe if project and dataset belong to the same deployment."""
+    project_host = GitURL.parse(project_git_url).hostname
+    dataset_host = urllib.parse.urlparse(dataset_uri).netloc
+
+    return project_host == dataset_host
 
 
 @requires_cache

@@ -62,7 +62,7 @@ def _list_datasets(client, revision=None, format=None, columns=None):
 
 def list_datasets():
     """Command for listing datasets."""
-    return Command().command(_list_datasets).lock_dataset()
+    return Command().command(_list_datasets)
 
 
 def create_dataset_helper(
@@ -273,6 +273,7 @@ def _list_files(client, datasets=None, creators=None, include=None, exclude=None
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
+        record.dataset_id = record.dataset._id
         record.creators_csv = record.dataset.creators_csv
         record.creators_full_csv = record.dataset.creators_full_csv
 
@@ -287,7 +288,7 @@ def _list_files(client, datasets=None, creators=None, include=None, exclude=None
 
 def list_files():
     """Command for listing dataset files."""
-    return Command().command(_list_files).lock_dataset()
+    return Command().command(_list_files)
 
 
 def _file_unlink(client, name, include, exclude, yes=False):
@@ -361,9 +362,7 @@ def remove_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _export_dataset(
-    client, name, provider_name, publish, tag, dataverse_server_url=None, dataverse_name=None,
-):
+def _export_dataset(client, name, provider_name, publish, tag, **kwargs):
     """Export data to 3rd party provider.
 
     :raises: ``ValueError``, ``HTTPError``, ``InvalidAccessToken``,
@@ -381,7 +380,7 @@ def _export_dataset(
     except KeyError:
         raise ParameterError("Unknown provider.")
 
-    provider.set_parameters(client, dataverse_server_url=dataverse_server_url, dataverse_name=dataverse_name)
+    provider.set_parameters(client, **kwargs)
 
     selected_tag = None
     selected_commit = client.repo.head.commit
@@ -441,18 +440,20 @@ def _export_dataset(
 
 def export_dataset():
     """Command for exporting a dataset to 3rd party provider."""
-    command = Command().command(_export_dataset).lock_dataset()
+    command = Command().command(_export_dataset)
     return command.require_migration().require_clean()
 
 
-def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False):
+def _import_dataset(
+    client, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False, gitlab_token=None
+):
     """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
         raise ParameterError(f"Could not process '{uri}'.\n{err}")
 
     try:
-        record = provider.find_record(uri, client)
+        record = provider.find_record(uri, client, gitlab_token=gitlab_token)
         dataset = record.as_dataset(client)
         files = dataset.files
         total_size = 0
@@ -652,6 +653,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
     possible_updates = []
     unique_remotes = set()
     external_files = []
+    local_files = []
 
     for file_ in records:
         if file_.based_on:
@@ -659,6 +661,8 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
             unique_remotes.add(file_.based_on.source)
         elif file_.external:
             external_files.append(file_)
+        else:
+            local_files.append(file_)
 
     if ref and len(unique_remotes) > 1:
         raise ParameterError(
@@ -672,17 +676,24 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
         else:
             communication.echo("To update external files run update command with '--external' flag.")
 
-    if not possible_updates:
-        return
+    updated_files = []
+    deleted_files = []
 
-    updated_files, deleted_files = client.update_dataset_git_files(files=possible_updates, ref=ref, delete=delete)
+    if possible_updates:
+        updated_files, deleted_files = client.update_dataset_git_files(files=possible_updates, ref=ref, delete=delete)
+
+    if local_files:
+        updated, deleted = client.update_dataset_local_files(records=local_files, delete=delete)
+        updated_files.extend(updated)
+        deleted_files.extend(deleted)
 
     if deleted_files and not delete:
-        communication.echo(
-            "Some files are deleted from remote. To also delete them locally "
-            "run update command with '--delete' flag."
-        )
-    communication.echo("Updated {} files".format(len(updated_files)))
+        communication.echo("Some files are deleted. To also delete them from datasets' metadata use '--delete' flag.")
+
+    message = f"Updated {len(updated_files)} files"
+    if delete:
+        message += f" and deleted {len(deleted_files)} files"
+    communication.echo(message)
 
 
 def update_datasets():
@@ -802,7 +813,7 @@ def _list_tags(client, name, format):
 
 def list_tags():
     """Command for listing a dataset's tags."""
-    return Command().command(_list_tags).lock_dataset()
+    return Command().command(_list_tags)
 
 
 def _prompt_access_token(exporter):

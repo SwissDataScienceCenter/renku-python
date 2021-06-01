@@ -58,3 +58,11 @@ class RenkuOpTimeoutError(RenkuException):
     def __init__(self):
         message = "renku operation timed out"
         super(RenkuOpTimeoutError, self).__init__(message)
+
+
+class RenkuServiceLockError(RenkuException):
+    """Renku operation lock error."""
+
+    def __init__(self):
+        message = "renku operation couldn't get a lock on the project"
+        super(RenkuOpTimeoutError, self).__init__(message)

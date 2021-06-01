@@ -47,6 +47,8 @@ class JobDetails(Schema):
     extras = fields.Dict()
     client_extras = fields.String()
 
+    response = fields.Dict()
+
 
 class JobListResponse(Schema):
     """Response schema for job listing."""

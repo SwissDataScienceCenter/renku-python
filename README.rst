@@ -84,6 +84,13 @@ Renku commands with the `-S` flag, as in `renku -S <command>`.  More
 information on Git LFS usage in renku can be found in the `Data in Renku
 <https://renku.readthedocs.io/en/latest/user/data.html>`_ section of the docs.
 
+Renku uses CWL to execute recorded workflows when calling `renku update`
+or `renku rerun`. CWL depends on NodeJs to execute the workflows, so installing
+`NodeJs <https://nodejs.org/en/download/package-manager/>`_ is required if
+you want to use those features.
+
+For development of the service, `Docker <https://docker.com>`_ is recommended.
+
 
 .. _pipx-before-reference:
 
@@ -247,6 +254,46 @@ for the `RenkuLab <https://renkulab.io>`_ web UI. The service can be deployed in
 production as a Helm chart (see `helm-chart <./helm-chart/README.rst>`_.
 
 
+Deploying locally
+-----------------
+
+To test the service functionality you can deploy it quickly and easily using
+``docker-compose up``. Make sure to make a copy of the ``renku/service/.env-example``
+file and configure it to your needs. The setup here is to expose the service behind
+a traefik reverse proxy to mimic an actual production deployment. You can access
+the proxied endpoints at ``http://localhost/api``. The service itself is exposed
+on port 8080 so its endpoints are available directly under ``http://localhost:8080``.
+
+
+API Documentation
+-----------------
+
+The renku core service implements the API documentation as an OpenAPI 3.0.x spec.
+You can retrieve the yaml of the specification itself with
+
+```
+$ renku service apispec
+```
+
+If deploying the service locally with ``docker-compose`` you can find the swagger-UI
+under ``localhost/api/swagger``. To send the proper authorization headers to the
+service endpoints, click the ``Authorize`` button and enter a valid JWT token and
+a gitlab token with read/write repository scopes. The JWT token can be obtained by
+logging in to a renku instance with ``renku login`` and retrieving it from your local
+renku configuration.
+
+In a live deployment, the swagger documentation is available under ``https://<renku-endpoint>/swagger``.
+You can authorize the API by clicking ``Authorize`` and authenticating with Keycloak.
+Note that this requires you to know the Keycloak ``renku`` client secret, which
+can be fetched with ``kubectl``:
+
+::
+
+    $ kubectl -n <namespace> get secret <namespace>-renku-gateway -ojson | jq -r .data.oidcClientSecret
+
+Make sure to base64 decode it before copy/pasting into the swagger UI dialog.
+
+
 Developing Renku
 ================
 
@@ -261,6 +308,16 @@ in editable mode using ``pipx``. Clone the repository and then do:
         renku
 
 This will install all the extras for testing and debugging.
+
+
+Service
+-------
+
+Developing the service and testing its APIs can be done with ``docker compose`` (see
+"Deploying Locally" above). To enable live reloading of the code, set the environment
+variable ``DEBUG_MODE=true`` either in your shell or in the ``.env`` file. Note that in
+this case the local directory is mounted in the docker container and renku is re-installed
+so it may take a few minutes before the container is ready.
 
 
 Running tests

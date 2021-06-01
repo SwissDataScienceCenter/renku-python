@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku service cache views."""
 from flask import Blueprint, request
-from flask_apispec import marshal_with, use_kwargs
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.cache_files_upload import UploadFilesCtrl
@@ -26,23 +25,10 @@ from renku.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
 from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
-from renku.service.serializers.cache import (
-    FileListResponseRPC,
-    FileUploadRequest,
-    FileUploadResponseRPC,
-    ProjectCloneRequest,
-    ProjectCloneResponseRPC,
-    ProjectListResponseRPC,
-    ProjectMigrateRequest,
-    ProjectMigrateResponseRPC,
-    ProjectMigrationCheckRequest,
-    ProjectMigrationCheckResponseRPC,
-)
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
     handle_migration_except,
-    header_doc,
     requires_cache,
     requires_identity,
 )
@@ -51,8 +37,6 @@ CACHE_BLUEPRINT_TAG = "cache"
 cache_blueprint = Blueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@marshal_with(FileListResponseRPC)
-@header_doc(description="List uploaded files.", tags=(CACHE_BLUEPRINT_TAG,))
 @cache_blueprint.route(
     "/cache.files_list", methods=["GET"], provide_automatic_options=False,
 )
@@ -60,15 +44,24 @@ cache_blueprint = Blueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 @requires_cache
 @requires_identity
 def list_uploaded_files_view(user_data, cache):
-    """List uploaded files ready to be added to projects."""
+    """
+    List uploaded files.
+
+    ---
+    get:
+      description: List uploaded files ready to be added to projects.
+      responses:
+        200:
+          description: "Return a list of files."
+          content:
+            application/json:
+              schema: FileListResponseRPC
+      tags:
+        - cache
+    """
     return ListUploadedFilesCtrl(cache, user_data).to_response()
 
 
-@use_kwargs(FileUploadRequest)
-@marshal_with(FileUploadResponseRPC)
-@header_doc(
-    description="Upload file or archive of files.", tags=(CACHE_BLUEPRINT_TAG,),
-)
 @cache_blueprint.route(
     "/cache.files_upload", methods=["POST"], provide_automatic_options=False,
 )
@@ -76,17 +69,36 @@ def list_uploaded_files_view(user_data, cache):
 @requires_cache
 @requires_identity
 def upload_file_view(user_data, cache):
-    """Upload file or archive of files."""
+    """
+    Upload a file or archive of files.
+
+    ---
+    post:
+      description: Upload a file or archive of files.
+      parameters:
+        - in: query
+          schema: FileUploadRequest
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: List of uploaded files.
+          content:
+            application/json:
+              schema: FileUploadResponseRPC
+      tags:
+        - cache
+    """
     return UploadFilesCtrl(cache, user_data, request).to_response()
 
 
-@use_kwargs(ProjectCloneRequest)
-@marshal_with(ProjectCloneResponseRPC)
-@header_doc(
-    "Clone a remote project. If the project is cached already, "
-    "new clone operation will override the old cache state.",
-    tags=(CACHE_BLUEPRINT_TAG,),
-)
 @cache_blueprint.route(
     "/cache.project_clone", methods=["POST"], provide_automatic_options=False,
 )
@@ -95,14 +107,29 @@ def upload_file_view(user_data, cache):
 @requires_cache
 @requires_identity
 def project_clone_view(user_data, cache):
-    """Clone a remote repository."""
+    """
+    Clone a remote project.
+
+    ---
+    post:
+      description: Clone a remote project. If the project is cached already,
+        a new clone operation will override the old cache state.
+      requestBody:
+        content:
+          application/json:
+            schema: ProjectCloneRequest
+      responses:
+        200:
+          description: Cloned project.
+          content:
+            application/json:
+              schema: ProjectCloneResponseRPC
+      tags:
+        - cache
+    """
     return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@marshal_with(ProjectListResponseRPC)
-@header_doc(
-    "List cached projects.", tags=(CACHE_BLUEPRINT_TAG,),
-)
 @cache_blueprint.route(
     "/cache.project_list", methods=["GET"], provide_automatic_options=False,
 )
@@ -110,15 +137,24 @@ def project_clone_view(user_data, cache):
 @requires_cache
 @requires_identity
 def list_projects_view(user_data, cache):
-    """List cached projects."""
+    """
+    List cached projects.
+
+    ---
+    get:
+      description: List cached projects.
+      responses:
+        200:
+          description: List of cached projects.
+          content:
+            application/json:
+              schema: ProjectListResponseRPC
+      tags:
+        - cache
+    """
     return ListProjectsCtrl(cache, user_data).to_response()
 
 
-@use_kwargs(ProjectMigrateRequest)
-@marshal_with(ProjectMigrateResponseRPC)
-@header_doc(
-    "Migrate project to the latest version.", tags=(CACHE_BLUEPRINT_TAG,),
-)
 @cache_blueprint.route(
     "/cache.migrate", methods=["POST"], provide_automatic_options=False,
 )
@@ -128,15 +164,28 @@ def list_projects_view(user_data, cache):
 @requires_cache
 @requires_identity
 def migrate_project_view(user_data, cache):
-    """Migrate specified project."""
+    """
+    Migrate a project.
+
+    ---
+    post:
+      description: Migrate a project.
+      requestBody:
+        content:
+          application/json:
+            schema: ProjectMigrateRequest
+      responses:
+        200:
+          description: Migration status.
+          content:
+            application/json:
+              schema: ProjectMigrateResponseRPC
+      tags:
+        - cache
+    """
     return MigrateProjectCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@use_kwargs(ProjectMigrationCheckRequest)
-@marshal_with(ProjectMigrationCheckResponseRPC)
-@header_doc(
-    "Check if project requires migration.", tags=(CACHE_BLUEPRINT_TAG,),
-)
 @cache_blueprint.route(
     "/cache.migrations_check", methods=["GET"], provide_automatic_options=False,
 )
@@ -145,5 +194,22 @@ def migrate_project_view(user_data, cache):
 @requires_identity
 @accepts_json
 def migration_check_project_view(user_data, cache):
-    """Migrate specified project."""
+    """
+    Retrieve migration information for a project.
+
+    ---
+    get:
+      description: Retrieve migration information for a project.
+      parameters:
+        - in: query
+          schema: ProjectMigrationCheckRequest
+      responses:
+        200:
+          description: Information about required migrations for the project.
+          content:
+            application/json:
+              schema: ProjectMigrationCheckResponseRPC
+      tags:
+        - cache
+    """
     return MigrationsCheckCtrl(cache, user_data, dict(request.args)).to_response()

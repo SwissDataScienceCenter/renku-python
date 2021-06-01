@@ -484,6 +484,16 @@ class ZenodoProvider(ProviderApi):
         return False
 
     @staticmethod
+    def supports_export():
+        """Whether this provider supports dataset export."""
+        return True
+
+    @staticmethod
+    def supports_import():
+        """Whether this provider supports dataset import."""
+        return True
+
+    @staticmethod
     def record_id(uri):
         """Extract record id from uri."""
         return urlparse(uri).path.split("/")[-1]
@@ -508,7 +518,7 @@ class ZenodoProvider(ProviderApi):
                 raise LookupError("record not found. Status: {}".format(response.status_code))
             return response
 
-    def find_record(self, uri, client=None):
+    def find_record(self, uri, client=None, **kwargs):
         """Retrieves a record from Zenodo.
 
         :raises: ``LookupError``

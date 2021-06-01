@@ -19,13 +19,13 @@
 from marshmallow import EXCLUDE
 
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.serializers.cache import ProjectCloneContext, ProjectCloneRequest, ProjectCloneResponseRPC
 from renku.service.views import result_response
 
 
-class ProjectCloneCtrl(ServiceCtrl, ReadOperationMixin):
+class ProjectCloneCtrl(ServiceCtrl, RenkuOperationMixin):
     """Controller for cloning a project endpoint."""
 
     REQUEST_SERIALIZER = ProjectCloneRequest()

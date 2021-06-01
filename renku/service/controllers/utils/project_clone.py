@@ -31,19 +31,20 @@ def user_project_clone(cache, user_data, project_data):
     project = cache.make_project(user, project_data)
     project.abs_path.mkdir(parents=True, exist_ok=True)
 
-    repo, project.initialized = (
-        project_clone_command()
-        .build()
-        .execute(
-            project_data["url_with_auth"],
-            project.abs_path,
-            depth=project_data["depth"] if project_data["depth"] != 0 else None,
-            raise_git_except=True,
-            config={"user.name": project_data["fullname"], "user.email": project_data["email"],},
-            checkout_rev=project_data["ref"],
-        )
-    ).output
-    project.save()
+    with project.write_lock():
+        repo, project.initialized = (
+            project_clone_command()
+            .build()
+            .execute(
+                project_data["url_with_auth"],
+                project.abs_path,
+                depth=project_data["depth"],
+                raise_git_except=True,
+                config={"user.name": project_data["fullname"], "user.email": project_data["email"]},
+                checkout_rev=project_data["ref"],
+            )
+        ).output
+        project.save()
 
     service_log.debug(f"project successfully cloned: {repo}")
     service_log.debug(f"project folder exists: {project.exists()}")

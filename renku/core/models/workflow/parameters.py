@@ -27,6 +27,9 @@ from marshmallow import EXCLUDE
 
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
 from renku.core.models.entities import CollectionSchema, EntitySchema
+from renku.core.utils.urls import get_slug
+
+RANDOM_ID_LENGTH = 4
 
 
 @attr.s(eq=False, order=False)
@@ -80,11 +83,17 @@ class MappedIOStream(object):
 
 
 @attr.s(eq=False, order=False)
-class CommandParameter(object):
+class CommandParameter:
     """Represents a parameter for an execution template."""
 
     _id = attr.ib(default=None, kw_only=True)
     _label = attr.ib(default=None, kw_only=True)
+
+    default_value = attr.ib(default=None, kw_only=True,)
+
+    description = attr.ib(default=None, kw_only=True,)
+
+    name: str = attr.ib(default=None, kw_only=True)
 
     position = attr.ib(default=None, type=int, kw_only=True,)
 
@@ -96,6 +105,21 @@ class CommandParameter(object):
         if "/steps/" in self._id:
             return "/".join(self._id.split("/")[-4:])
         return "/".join(self._id.split("/")[-2:])
+
+    def default_label(self):
+        """Set default label."""
+        raise NotImplementedError
+
+    def default_name(self):
+        """Create a default name."""
+        raise NotImplementedError
+
+    def __attrs_post_init__(self):
+        """Post-init hook."""
+        if not self._label:
+            self._label = self.default_label()
+        if not self.name:
+            self.name = self.default_name()
 
 
 @attr.s(eq=False, order=False)
@@ -115,21 +139,27 @@ class CommandArgument(CommandParameter):
 
     def default_label(self):
         """Set default label."""
-        return 'Command Argument "{}"'.format(self.value)
+        return 'Command Argument "{}"'.format(self.default_value)
+
+    def default_name(self):
+        """Create a default name."""
+        return _generate_name(base="param", prefix=self.prefix, position=self.position)
 
     def to_argv(self):
         """String representation (sames as cmd argument)."""
         if self.prefix:
             if self.prefix.endswith(" "):
                 return [self.prefix[:-1], self.value]
-            return ["{}{}".format(self.prefix, self.value)]
+            return ["{}{}".format(self.prefix, self.default_value)]
 
         return [self.value]
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._label:
-            self._label = self.default_label()
+        super().__attrs_post_init__()
+
+        if not self.default_value:
+            self.default_value = self.value
 
     @classmethod
     def from_jsonld(cls, data):
@@ -165,28 +195,34 @@ class CommandInput(CommandParameter):
 
     def default_label(self):
         """Set default label."""
-        return 'Command Input "{}"'.format(self.consumes.path)
+        return 'Command Input "{}"'.format(self.default_value)
+
+    def default_name(self):
+        """Create a default name."""
+        return _generate_name(base="input", prefix=self.prefix, position=self.position)
 
     def to_argv(self):
         """String representation (sames as cmd argument)."""
         if self.prefix:
             if self.prefix.endswith(" "):
-                return [self.prefix[:-1], self.consumes.path]
-            return ["{}{}".format(self.prefix, self.consumes.path)]
+                return [self.prefix[:-1], self.default_value]
+            return ["{}{}".format(self.prefix, self.default_value)]
 
-        return [self.consumes.path]
+        return [self.default_value]
 
     def to_stream_repr(self):
         """Input stream representation."""
         if not self.mapped_to:
             return ""
 
-        return " < {}".format(self.consumes.path)
+        return " < {}".format(self.default_value)
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._label:
-            self._label = self.default_label()
+        super().__attrs_post_init__()
+
+        if not self.default_value:
+            self.default_value = self.consumes.path
 
     @classmethod
     def from_jsonld(cls, data):
@@ -201,55 +237,6 @@ class CommandInput(CommandParameter):
     def as_jsonld(self):
         """Create JSON-LD."""
         return CommandInputSchema().dump(self)
-
-
-@attr.s(eq=False, order=False)
-class CommandInputTemplate(CommandParameter):
-    """Template for inputs of a Plan."""
-
-    consumes = attr.ib(kw_only=True,)
-    mapped_to = attr.ib(default=None, kw_only=True)
-
-    @staticmethod
-    def generate_id(plan_id, position=None, id_=None):
-        """Generate an id for an argument."""
-        if not id_:
-            id_ = str(position) if position else uuid.uuid4().hex
-        return f"{plan_id}/inputs/{id_}"
-
-    def default_label(self):
-        """Set default label."""
-        return 'Command Input Template "{}"'.format(self.consumes)
-
-    def to_argv(self):
-        """String representation (sames as cmd argument)."""
-        raise RuntimeError("Cannot use CommandInputTemplate in a command.")
-
-    def to_stream_repr(self):
-        """Input stream representation."""
-        if not self.mapped_to:
-            return ""
-
-        return " < {}".format(self.consumes)
-
-    def __attrs_post_init__(self):
-        """Post-init hook."""
-        if not self._label:
-            self._label = self.default_label()
-
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return CommandInputTemplateSchema().load(data)
-
-    def as_jsonld(self):
-        """Create JSON-LD."""
-        return CommandInputTemplateSchema().dump(self)
 
 
 @attr.s(eq=False, order=False)
@@ -273,16 +260,20 @@ class CommandOutput(CommandParameter):
 
     def default_label(self):
         """Set default label."""
-        return 'Command Output "{}"'.format(self.produces.path)
+        return 'Command Output "{}"'.format(self.default_value)
+
+    def default_name(self):
+        """Create a default name."""
+        return _generate_name(base="output", prefix=self.prefix, position=self.position)
 
     def to_argv(self):
         """String representation (sames as cmd argument)."""
         if self.prefix:
             if self.prefix.endswith(" "):
-                return [self.prefix[:-1], self.produces.path]
-            return ["{}{}".format(self.prefix, self.produces.path)]
+                return [self.prefix[:-1], self.default_value]
+            return ["{}{}".format(self.prefix, self.default_value)]
 
-        return [self.produces.path]
+        return [self.default_value]
 
     def to_stream_repr(self):
         """Input stream representation."""
@@ -290,14 +281,16 @@ class CommandOutput(CommandParameter):
             return ""
 
         if self.mapped_to.stream_type == "stdout":
-            return " > {}".format(self.produces.path)
+            return " > {}".format(self.default_value)
 
-        return " 2> {}".format(self.produces.path)
+        return " 2> {}".format(self.default_value)
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._label:
-            self._label = self.default_label()
+        super().__attrs_post_init__()
+
+        if not self.default_value:
+            self.default_value = self.produces.path
 
     @classmethod
     def from_jsonld(cls, data):
@@ -361,59 +354,6 @@ class RunParameter:
         return RunParameterSchema().dump(self)
 
 
-@attr.s(eq=False, order=False)
-class CommandOutputTemplate(CommandParameter):
-    """Template for outputs of a Plan."""
-
-    create_folder = attr.ib(default=False, kw_only=True, type=bool)
-    mapped_to = attr.ib(default=None, kw_only=True)
-    produces = attr.ib(default=None, kw_only=True, type=str)
-
-    @staticmethod
-    def generate_id(plan_id, position=None, id_=None):
-        """Generate an id for an argument."""
-        if not id_:
-            id_ = str(position) if position else uuid.uuid4().hex
-        return f"{plan_id}/outputs/{id_}"
-
-    def default_label(self):
-        """Set default label."""
-        return 'Command Output Template "{}"'.format(self.produces)
-
-    def to_argv(self):
-        """String representation (sames as cmd argument)."""
-        raise RuntimeError("Cannot use CommandOutputTemplate in a command.")
-
-    def to_stream_repr(self):
-        """Input stream representation."""
-        if not self.mapped_to:
-            return ""
-
-        if self.mapped_to.stream_type == "stdout":
-            return " > {}".format(self.produces)
-
-        return " 2> {}".format(self.produces)
-
-    def __attrs_post_init__(self):
-        """Post-init hook."""
-        if not self._label:
-            self._label = self.default_label()
-
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return CommandOutputTemplateSchema().load(data)
-
-    def as_jsonld(self):
-        """Create JSON-LD."""
-        return CommandOutputTemplateSchema().dump(self)
-
-
 class MappedIOStreamSchema(JsonLDSchema):
     """MappedIOStream schema."""
 
@@ -435,12 +375,15 @@ class CommandParameterSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [renku.CommandParameter]
+        rdf_type = [renku.CommandParameter]  # , schema.PropertyValueSpecification]
         model = CommandParameter
         unknown = EXCLUDE
 
     _id = fields.Id(init_name="id")
     _label = fields.String(rdfs.label, init_name="label")
+    default_value = fields.Raw(schema.defaultValue, missing=None)
+    description = fields.String(schema.description, missing=None)
+    name = fields.String(schema.name, missing=None)
     position = fields.Integer(renku.position, missing=None)
     prefix = fields.String(renku.prefix, missing=None)
 
@@ -472,20 +415,6 @@ class CommandInputSchema(CommandParameterSchema):
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
 
 
-class CommandInputTemplateSchema(CommandParameterSchema):
-    """CommandInputTemplateSchema schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.CommandInputTemplate]
-        model = CommandInputTemplate
-        unknown = EXCLUDE
-
-    consumes = fields.String(renku.consume)
-    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
-
-
 class CommandOutputSchema(CommandParameterSchema):
     """CommandArgument schema."""
 
@@ -501,23 +430,8 @@ class CommandOutputSchema(CommandParameterSchema):
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
 
 
-class CommandOutputTemplateSchema(CommandParameterSchema):
-    """CommandOutputTemplateSchema schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.CommandOutputTemplate]
-        model = CommandOutputTemplate
-        unknown = EXCLUDE
-
-    create_folder = fields.Boolean(renku.createFolder)
-    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
-    produces = fields.String(renku.produces)
-
-
 class RunParameterSchema(JsonLDSchema):
-    """CommandParameter schema."""
+    """RunParameter schema."""
 
     class Meta:
         """Meta class."""
@@ -531,3 +445,9 @@ class RunParameterSchema(JsonLDSchema):
     name = fields.String(schema.name)
     value = fields.String(renku.value)
     type = fields.String(renku.type)
+
+
+def _generate_name(base, prefix, position):
+    name = get_slug(prefix.strip(" -=")) if prefix else base
+    position = position or uuid.uuid4().hex[:RANDOM_ID_LENGTH]
+    return f"{name}-{position}"

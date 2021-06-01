@@ -18,6 +18,113 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.15.0...v0.15.1>`__ (2021-05-20)
+----------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** remove locking from core read operations
+   (`#2099 <https://github.com/SwissDataScienceCenter/renku-python/issues/2099>`__)
+   (`4407808 <https://github.com/SwissDataScienceCenter/renku-python/commit/440780887983e8f949c6a2d909996f344ef24096>`__)
+-  **service:** fix service project creation
+   (`#2092 <https://github.com/SwissDataScienceCenter/renku-python/issues/2092>`__)
+   (`48d518f <https://github.com/SwissDataScienceCenter/renku-python/commit/48d518fda687003991852aad348a7edc99794e74>`__)
+
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.14.2...v0.15.0>`__ (2021-05-17)
+----------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Fix annotations serialization in ProvenanceGraph
+   (`#1992 <https://github.com/SwissDataScienceCenter/renku-python/issues/1992>`__)
+   (`eb3a7ba <https://github.com/SwissDataScienceCenter/renku-python/commit/eb3a7ba600b4b4858df77e1986caea9dc5ba565d>`__),
+   closes
+   `#1952 <https://github.com/SwissDataScienceCenter/renku-python/issues/1952>`__
+-  **core:** no failure when processing git history for deleted files
+   (`#2047 <https://github.com/SwissDataScienceCenter/renku-python/issues/2047>`__)
+   (`d85facd <https://github.com/SwissDataScienceCenter/renku-python/commit/d85facd1b8a1f2c5e8ed874afe0d79063c7dc499>`__)
+-  **cli:** fix path matching in renku log dot output
+   (`#2070 <https://github.com/SwissDataScienceCenter/renku-python/issues/2070>`__)
+   (`4a4342b <https://github.com/SwissDataScienceCenter/renku-python/commit/4a4342b6004e9632f38e7eaa13fe6567051c0b72>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** improve feedback around files being overwritten by renku
+   init and add --initial-branch flag
+   (`#1997 <https://github.com/SwissDataScienceCenter/renku-python/issues/1997>`__)
+   (`50bb67b <https://github.com/SwissDataScienceCenter/renku-python/commit/50bb67b65489bb75be29acb3fb8a3cdec65ad611>`__)
+-  **cli:** add JSON output format to ‘renku dataset ls’ and ‘renku
+   dataset ls-files’
+   (`#2084 <https://github.com/SwissDataScienceCenter/renku-python/issues/2084>`__)
+   (`514f13b <https://github.com/SwissDataScienceCenter/renku-python/commit/514f13b1f34d4d22beb0e69425136670f5c94beb>`__)
+-  **cli:** add OLOS export and improve import/export provider logic
+   (`#1857 <https://github.com/SwissDataScienceCenter/renku-python/issues/1857>`__)
+   (`779c481 <https://github.com/SwissDataScienceCenter/renku-python/commit/779c4816a8e994526255a78a7163afb45ea79cd2>`__)
+-  **cli:** detect filename from content-disposition header when
+   downloading
+   (`#2020 <https://github.com/SwissDataScienceCenter/renku-python/issues/2020>`__)
+   (`c79ea14 <https://github.com/SwissDataScienceCenter/renku-python/commit/c79ea148d7f08cd45085b5918144fdff7c3d161b>`__)
+-  **core:** add default value to all Run parameters
+   (`#2057 <https://github.com/SwissDataScienceCenter/renku-python/issues/2057>`__)
+   (`3a0321d <https://github.com/SwissDataScienceCenter/renku-python/commit/3a0321d3443c8226abbc534b2ddee0f4f54aa4c0>`__)
+-  **core:** adds node-js detection for rerun/update
+   (`#2002 <https://github.com/SwissDataScienceCenter/renku-python/issues/2002>`__)
+   (`8b9e801 <https://github.com/SwissDataScienceCenter/renku-python/commit/8b9e801718413763d17fbbc4c22212a0f8263013>`__)
+-  **core:** add renku login command to authenticate with a renku
+   deployment
+   (`#1864 <https://github.com/SwissDataScienceCenter/renku-python/issues/1864>`__)
+   (`7f3039f <https://github.com/SwissDataScienceCenter/renku-python/commit/7f3039f470558a157a5c0a8b45fa2dd6b77eb1d3>`__)
+-  **dataset:** add support to dataset update for detecting changes
+   to local files
+   (`#2049 <https://github.com/SwissDataScienceCenter/renku-python/issues/2049>`__)
+   (`71befe0 <https://github.com/SwissDataScienceCenter/renku-python/commit/71befe0303684bd790fb36c0f77630ac262ff05d>`__)
+-  **service:** pass gitlab token to core-service
+   (`#2062 <https://github.com/SwissDataScienceCenter/renku-python/issues/2062>`__)
+   (`63c2675 <https://github.com/SwissDataScienceCenter/renku-python/commit/63c2675859ae24eef32afa6f7a267e244000495c>`__)
+-  **workflow:** add naming metadata for command parameters
+   (`#2071 <https://github.com/SwissDataScienceCenter/renku-python/issues/2071>`__)
+   (`b1e7a9b <https://github.com/SwissDataScienceCenter/renku-python/commit/b1e7a9b2913883de8c8d4f76a7fbd75a2e036ab5>`__)
+-  **workflow:** add workflow naming metadata
+   (`#2033 <https://github.com/SwissDataScienceCenter/renku-python/issues/2033>`__)
+   (`5612199 <https://github.com/SwissDataScienceCenter/renku-python/commit/5612199e5ade9d7a6ea2937f87be8adb7b8de19a>`__)
+-  **service:** add delayed write operations, ie. porcelain and better cache management
+   (`#1957 <https://github.com/SwissDataScienceCenter/renku-python/issues/1957>`__)
+   (`a05b615 <https://github.com/SwissDataScienceCenter/renku-python/commit/a05b6158a79a7ee85828487ae2194746c3409d46>`__)
+
+
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.14.1...v0.14.2>`__ (2021-04-16)
+----------------------------------------------------------------------------------------------------
+
+Highlights
+~~~~~~~~~~
+
+- Ability to update local project from its template and to update the Dockerfile
+  to install the current version of renku-python using `renku migrate`.
+- Support for Unicode paths in `renku run` (including emojis).
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fix renku rerun/update with unicode input/output paths
+   (`#1963 <https://github.com/SwissDataScienceCenter/renku-python/issues/1963>`__)
+   (`9859b62 <https://github.com/SwissDataScienceCenter/renku-python/commit/9859b622e14c74a59964be67f5b2bcbe6e8e35f2>`__)
+-  **service:** fix project_clone with git ref specified
+   (`#2008 <https://github.com/SwissDataScienceCenter/renku-python/issues/2008>`__)
+   (`c072286 <https://github.com/SwissDataScienceCenter/renku-python/commit/c072286e029210a881765c686e589984385e4c36>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** support template and docker migration
+   (`#2019 <https://github.com/SwissDataScienceCenter/renku-python/issues/2019>`__)
+   (`ed87770 <https://github.com/SwissDataScienceCenter/renku-python/commit/ed87770eb79c346892a68d0a3b614c5cd597775d>`__)
+-  **dataset:** support moving files between datasets with renku mv
+   (`#1993 <https://github.com/SwissDataScienceCenter/renku-python/issues/1993>`__)
+   (`a715b70 <https://github.com/SwissDataScienceCenter/renku-python/commit/a715b709b3b63667963a7726629edb2670f7a13e>`__)
+
 `0.14.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.14.0...v0.14.1>`__ (2021-03-24)
 ----------------------------------------------------------------------------------------------------------
 

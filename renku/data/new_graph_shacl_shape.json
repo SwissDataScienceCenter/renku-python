@@ -718,6 +718,21 @@
                },
                "minCount": 1,
                "maxCount": 1
+            },
+            {
+               "path": "renku:parameter",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "renku:PathParameterValue"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "renku:VariableParameterValue"
+                     }
+                  }
+               ]
             }
          ]
       },
@@ -863,10 +878,25 @@
          "targetClass": "prov:Plan",
          "property": [
             {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
                "sh:class": {
-                  "@id": "renku:CommandArgument"
+                  "@id": "renku:CommandParameter"
                },
                "path": "renku:hasArguments"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:keywords",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             },
             {
                "nodeKind": "sh:Literal",
@@ -877,7 +907,7 @@
             },
             {
                "sh:class": {
-                  "@id": "renku:CommandInputTemplate"
+                  "@id": "renku:CommandInput"
                },
                "path": "renku:hasInputs"
             },
@@ -892,7 +922,7 @@
             },
             {
                "sh:class": {
-                  "@id": "renku:CommandOutputTemplate"
+                  "@id": "renku:CommandOutput"
                },
                "path": "renku:hasOutputs"
             },
@@ -906,7 +936,7 @@
          ]
       },
       {
-         "@id": "_:renkuCommandArgumentShape",
+         "@id": "_:renkuCommandParameterShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
             {
@@ -914,14 +944,31 @@
             }
          ],
          "closed": true,
-         "targetClass": "renku:CommandArgument",
+         "targetClass": "renku:CommandParameter",
          "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
             {
                "nodeKind": "sh:Literal",
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -943,6 +990,37 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "or": [
+                  {
+                     "datatype": {
+                        "@id": "xsd:decimal"
+                     }
+                  },
+                  {
+                     "datatype": {
+                        "@id": "xsd:integer"
+                     }
+                  },
+                  {
+                     "datatype": {
+                        "@id": "xsd:string"
+                     }
+                  }
+               ],
+               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "path": "schema:valueReference",
+               "sh:class": {
+                  "@id": "renku:VariableParameterValue"
+               },
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },
@@ -994,7 +1072,7 @@
          ]
       },
       {
-         "@id": "_:commandInputTemplateShape",
+         "@id": "_:commandInputShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
             {
@@ -1002,8 +1080,16 @@
             }
          ],
          "closed": true,
-         "targetClass": "renku:CommandInputTemplate",
+         "targetClass": "renku:CommandInput",
          "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
             {
                "nodeKind": "sh:Literal",
                "path": "rdfs:label",
@@ -1013,24 +1099,26 @@
             },
             {
                "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "renku:position",
                "datatype": {
                   "@id": "xsd:integer"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
                "path": "renku:prefix",
                "datatype": {
                   "@id": "xsd:string"
-               }
-            },
-            {
-               "path": "renku:consume",
-               "datatype": {
-                  "@id": "xsd:string"
                },
-               "minCount": 1,
                "maxCount": 1
             },
             {
@@ -1038,13 +1126,28 @@
                "sh:class": {
                   "@id": "renku:IOStream"
                },
-               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "path": "schema:valueReference",
+               "sh:class": {
+                  "@id": "renku:PathParameterValue"
+               },
+               "minCount": 1,
                "maxCount": 1
             }
          ]
       },
       {
-         "@id": "_:commandOutputTemplateShape",
+         "@id": "_:commandOutputShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
             {
@@ -1052,50 +1155,77 @@
             }
          ],
          "closed": true,
-         "targetClass": "renku:CommandOutputTemplate",
+         "targetClass": "renku:CommandOutput",
          "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
             {
                "nodeKind": "sh:Literal",
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
                "path": "renku:position",
                "datatype": {
                   "@id": "xsd:integer"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
                "path": "renku:prefix",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
                "path": "renku:createFolder",
                "datatype": {
                   "@id": "xsd:boolean"
-               }
+               },
+               "maxCount": 1
             },
             {
                "path": "renku:mappedTo",
                "sh:class": {
                   "@id": "renku:IOStream"
                },
-               "minCount": 0,
                "maxCount": 1
             },
             {
-               "path": "renku:produces",
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
                "datatype": {
                   "@id": "xsd:string"
                },
-               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "path": "schema:valueReference",
+               "sh:class": {
+                  "@id": "renku:PathParameterValue"
+               },
+               "minCount": 1,
                "maxCount": 1
             }
          ]
@@ -1124,6 +1254,60 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuPathParameterValueShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:PathParameterValue",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:atLocation",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuVariableParameterValueShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:VariableParameterValue",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:value",
+               "or": [
+                  {
+                     "datatype": {
+                        "@id": "xsd:decimal"
+                     }
+                  },
+                  {
+                     "datatype": {
+                        "@id": "xsd:integer"
+                     }
+                  },
+                  {
+                     "datatype": {
+                        "@id": "xsd:string"
+                     }
+                  }
+               ]
             }
          ]
       }
