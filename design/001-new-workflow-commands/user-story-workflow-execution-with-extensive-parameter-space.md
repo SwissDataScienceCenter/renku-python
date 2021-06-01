@@ -34,7 +34,7 @@ A substantial effort will be needed to handle such a number of workflows in case
 Furthermore, generating a workflow for every method-data-parameter combination is redundant and will rapidly increase in complexity as the number of 
 methods and data increases.
 Given that the planned workflow commands will allow us to modify parameters for workflow template execution, 
-we aspire to rely on the new functionality `renku run --map` to search the whole parameter space, 
+we aspire to rely on the new functionality `renku workflow loop` to search the whole parameter space, 
 rather than developing complex and redundant solution described above. 
 We hope that implementation and maybe also handling of workflows e.g., in case we want to edit, replace or remove the 
 workflows would be simplified by using this new feature.
@@ -53,7 +53,6 @@ An optimal solution would enable us to detect and exclude those from the paramet
 command=(R CMD BATCH --no-restore --no-save "$R_args_parsed" "$R_params_parsed"
          src/process_data.R log/process_${dataset_name}.Rout)
 
-renku run --name $dataset_name $inputs_parsed --map param1=”value1:value4” --map param2=”value1:value3”
--- "${command[@]}" 
+renku workflow loop --name $dataset_name $inputs_parsed --mapping $workflow_yaml" 
 ```
 
