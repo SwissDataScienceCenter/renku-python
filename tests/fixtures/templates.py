@@ -65,7 +65,9 @@ def project_init(template):
             "python-minimal",
             data["test_project"],
         ],
-        "init_custom_template": "https://dev.renku.ch/gitlab/renku-qa/core-it-template-variable-test-project",
+        "init_custom_template": (
+            "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-template-variable-test-project"
+        ),
         "remote": ["--template-source", template["url"], "--template-ref", template["ref"]],
         "id": ["--template-id", template["id"]],
         "index": ["--template-index", template["index"]],

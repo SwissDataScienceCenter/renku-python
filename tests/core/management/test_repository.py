@@ -71,14 +71,14 @@ def test_import_from_template(local_client):
         with fake_template_file.open("w") as dest:
             dest.writelines(
                 [
-                    "name: {{ name }}",
+                    "name: {{ __name__ }}",
                     "description: {{ description }}",
                     "created: {{ date_created }}",
                     "updated: {{ date_updated }}",
                 ]
             )
             metadata = {
-                "name": "name",
+                "__name__": "name",
                 "description": "description",
                 "date_created": "now",
                 "date_updated": "now",

@@ -111,7 +111,7 @@ def project_init(template):
         "init_custom": [
             "init",
             "--template-source",
-            "git@dev.renku.ch:renku-qa/core-it-template-variable-test-project.git",
+            "git@dev.renku.ch:renku-python-integration-tests/core-it-template-variable-test-project.git",
             "--template-ref",
             template["ref"],
             "--template-id",

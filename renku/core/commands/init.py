@@ -379,7 +379,8 @@ def _init(
     metadata["__sanitized_project_name__"] = ""
     metadata["__repository__"] = ""
     metadata["__project_slug__"] = ""
-    metadata["name"] = name
+    metadata["name"] = name  # NOTE: kept for backwards compatibility
+    metadata["__name__"] = name
 
     template_path = template_folder / template_data["folder"]
 
@@ -592,8 +593,9 @@ def create_from_template(
 
     commit_only = [f"{RENKU_HOME}/"] + template_files
 
-    if "name" not in metadata:
+    if "__name__" not in metadata:
         metadata["name"] = name
+        metadata["__name__"] = name
 
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
         with client.with_metadata(name=name) as project:
