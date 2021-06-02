@@ -107,7 +107,7 @@ def migrate(
 
     if not skip_docker_update:
         try:
-            docker_updated = _update_dockerfile(client)
+            docker_updated, _, _ = _update_dockerfile(client)
         except DockerfileUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -157,13 +157,13 @@ def _update_template(client, check_only=False):
         template_version = pkg_resources.parse_version(template_version)
         current_version = pkg_resources.parse_version(project.template_version)
         if template_version <= current_version:
-            return False, project.template_version, current_version
+            return False, str(project.template_version), str(current_version)
     else:
         if template_version == project.template_version:
-            return False, project.template_version, template_version
+            return False, str(project.template_version), str(template_version)
 
     if check_only:
-        return True, project.template_version, template_version
+        return True, str(project.template_version), str(template_version)
 
     communication.echo("Updating project from template...")
 
@@ -252,7 +252,7 @@ def _update_template(client, check_only=False):
     project.template_version = template_version
     project.to_yaml()
 
-    return True, project.template_version, template_version
+    return True, str(project.template_version), str(template_version)
 
 
 def _update_dockerfile(client, check_only=False):
@@ -260,7 +260,7 @@ def _update_dockerfile(client, check_only=False):
     from renku import __version__
 
     if not client.docker_path.exists():
-        return False
+        return False, None, None
 
     communication.echo("Updating dockerfile...")
 
@@ -271,7 +271,7 @@ def _update_dockerfile(client, check_only=False):
     m = re.search(r"^ARG RENKU_VERSION=(\d+\.\d+\.\d+)$", dockercontent, flags=re.MULTILINE)
     if not m:
         if check_only:
-            return False
+            return False, None, None
         raise DockerfileUpdateError(
             "Couldn't update renku-python version in Dockerfile, as it doesn't contain an 'ARG RENKU_VERSION=...' line."
         )
@@ -279,10 +279,10 @@ def _update_dockerfile(client, check_only=False):
     docker_version = pkg_resources.parse_version(m.group(1))
 
     if docker_version >= current_version:
-        return False
+        return True, False, str(docker_version)
 
     if check_only:
-        return True
+        return True, True, str(docker_version)
 
     dockercontent = re.sub(
         r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockercontent, flags=re.MULTILINE,
@@ -293,7 +293,7 @@ def _update_dockerfile(client, check_only=False):
 
     communication.echo("Updated dockerfile.")
 
-    return True
+    return True, False, str(current_version)
 
 
 def _get_project_version(client):

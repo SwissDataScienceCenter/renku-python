@@ -50,7 +50,7 @@ class GraphBuildCtrl(ServiceCtrl, RenkuOperationMixin):
         """Renku operation for the controller."""
         result = migrations_check().build().execute().output
 
-        if not result[1]:
+        if not result["project_supported"]:
             raise RenkuException("project not supported")
 
         with enqueue_retry(GRAPH_JOB_QUEUE) as queue:

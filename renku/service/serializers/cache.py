@@ -246,21 +246,46 @@ class ProjectMigrationCheckRequest(Schema):
     branch = fields.String()
 
 
-class ProjectMigrationCheckResponse(Schema):
-    """Response schema for project migration check."""
+class ProjectCompatibilityResponse(Schema):
+    """Response schema outlining service compatibility for migrations check."""
 
+    project_metadata_version = fields.String()
+    current_metadata_version = fields.String()
     migration_required = fields.Boolean()
-    template_update_possible = fields.Boolean()
+
+
+class DockerfileStatusResponse(Schema):
+    """Response schema outlining dockerfile status for migrations check."""
+
+    newer_renku_available = fields.Boolean()
+    automated_dockerfile_update = fields.Boolean()
+    latest_renku_version = fields.String()
+    dockerfile_renku_version = fields.String()
+
+
+class TemplateStatusResponse(Schema):
+    """Response schema outlining template status for migrations check."""
+
     automated_template_update = fields.Boolean()
-    current_template_version = fields.String(allow_none=True)
-    latest_template_version = fields.String(allow_none=True)
+    newer_template_available = fields.Boolean()
     template_source = fields.String()
     template_ref = fields.String()
     template_id = fields.String()
-    docker_update_possible = fields.Boolean()
+
+    project_template_version = fields.String(allow_none=True)
+    latest_template_version = fields.String(allow_none=True)
+
+
+class ProjectMigrationCheckResponse(Schema):
+    """Response schema for project migration check."""
+
     project_supported = fields.Boolean()
-    project_version = fields.String()
-    latest_version = fields.String()
+    core_renku_version = fields.String()
+    project_renku_version = fields.String()
+
+    core_compatibility_status = fields.Nested(ProjectCompatibilityResponse)
+    dockerfile_renku_status = fields.Nested(DockerfileStatusResponse)
+    template_status = fields.Nested(TemplateStatusResponse)
 
 
 class ProjectMigrationCheckResponseRPC(JsonRPCResponse):

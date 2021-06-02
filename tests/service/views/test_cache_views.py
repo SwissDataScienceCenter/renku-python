@@ -638,16 +638,16 @@ def test_check_migrations_local(svc_client_setup):
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
 
-    assert response.json["result"]["migration_required"]
-    assert not response.json["result"]["template_update_possible"]
-    assert not response.json["result"]["docker_update_possible"]
+    assert response.json["result"]["core_compatibility_status"]["migration_required"]
+    assert not response.json["result"]["template_status"]["newer_template_available"]
+    assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
     assert response.json["result"]["project_supported"]
-    assert response.json["result"]["project_version"]
-    assert response.json["result"]["latest_version"]
-    assert "template_source" in response.json["result"]
-    assert "template_ref" in response.json["result"]
-    assert "template_id" in response.json["result"]
-    assert "automated_template_update" in response.json["result"]
+    assert response.json["result"]["project_renku_version"]
+    assert response.json["result"]["core_renku_version"]
+    assert "template_source" in response.json["result"]["template_status"]
+    assert "template_ref" in response.json["result"]["template_status"]
+    assert "template_id" in response.json["result"]["template_status"]
+    assert "automated_template_update" in response.json["result"]["template_status"]
 
 
 @pytest.mark.service
@@ -660,12 +660,12 @@ def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_ur
 
     assert 200 == response.status_code
 
-    assert response.json["result"]["migration_required"]
-    assert not response.json["result"]["template_update_possible"]
-    assert not response.json["result"]["docker_update_possible"]
+    assert response.json["result"]["core_compatibility_status"]["migration_required"]
+    assert not response.json["result"]["template_status"]["newer_template_available"]
+    assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
     assert response.json["result"]["project_supported"]
-    assert response.json["result"]["project_version"]
-    assert response.json["result"]["latest_version"]
+    assert response.json["result"]["project_renku_version"]
+    assert response.json["result"]["core_renku_version"]
 
 
 @pytest.mark.service
@@ -677,9 +677,10 @@ def test_check_no_migrations(svc_client_with_repo):
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
     assert 200 == response.status_code
-    assert not response.json["result"]["migration_required"]
-    assert not response.json["result"]["template_update_possible"]
-    assert not response.json["result"]["docker_update_possible"]
+
+    assert not response.json["result"]["core_compatibility_status"]["migration_required"]
+    assert not response.json["result"]["template_status"]["newer_template_available"]
+    assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
     assert response.json["result"]["project_supported"]
 
 
@@ -719,7 +720,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
-    assert response.json["result"]["migration_required"]
+    assert response.json["result"]["core_compatibility_status"]["migration_required"]
 
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
@@ -733,7 +734,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
-    assert response.json["result"]["migration_required"]
+    assert response.json["result"]["core_compatibility_status"]["migration_required"]
 
 
 @pytest.mark.service

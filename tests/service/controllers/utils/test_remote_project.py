@@ -20,7 +20,7 @@ import pytest
 from marshmallow import ValidationError
 
 import renku
-from renku.core.commands.migrate import migrations_check, migrations_versions
+from renku.core.commands.migrate import migrations_check
 from renku.service.controllers.utils.remote_project import RemoteProject
 
 
@@ -93,29 +93,17 @@ def test_remote_project_context():
 
     with ctrl.remote() as project_path:
         assert project_path
-        latest_version, project_version = migrations_versions().build().execute().output
-        assert renku.__version__ == latest_version
-        assert "pre-0.11.0" == project_version
 
-        (
-            migration_required,
-            project_supported,
-            template_update_possible,
-            current_template_version,
-            latest_template_version,
-            template_source,
-            template_ref,
-            template_id,
-            automated_update_possible,
-            docker_update_possible,
-        ) = (migrations_check().build().execute().output)
-        assert migration_required is True
-        assert template_update_possible is False
-        assert current_template_version is None
-        assert latest_template_version is None
-        assert template_source is None
-        assert template_ref is None
-        assert template_id is None
-        assert automated_update_possible is False
-        assert docker_update_possible is False
-        assert project_supported is True
+        result = migrations_check().build().execute().output
+        assert result["core_renku_version"] == renku.__version__
+        assert result["project_renku_version"] == "pre-0.11.0"
+        assert result["core_compatibility_status"]["migration_required"] is True
+        assert result["template_status"]["newer_template_available"] is False
+        assert result["template_status"]["project_template_version"] is None
+        assert result["template_status"]["latest_template_version"] is None
+        assert result["template_status"]["template_source"] is None
+        assert result["template_status"]["template_ref"] is None
+        assert result["template_status"]["template_id"] is None
+        assert result["template_status"]["automated_template_update"] is False
+        assert result["dockerfile_renku_status"]["automated_dockerfile_update"] is False
+        assert result["project_supported"] is True
