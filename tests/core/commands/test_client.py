@@ -59,6 +59,7 @@ def test_safe_class_attributes(tmpdir):
         "ACTIVITY_INDEX",
         "CACHE",
         "CONFIG_NAME",
+        "DATABASE_PATH",
         "DATASETS",
         "DATASET_IMAGES",
         "DATASETS_PROVENANCE",
@@ -84,8 +85,8 @@ def test_safe_class_attributes(tmpdir):
         "_CMD_STORAGE_TRACK",
         "_CMD_STORAGE_UNTRACK",
         "_LFS_HEADER",
+        "_database",
         "_datasets_provenance",
-        "_dependency_graph",
         "_global_config_dir",
         "_temporary_datasets_path",
     ]

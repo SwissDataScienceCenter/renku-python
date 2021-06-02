@@ -29,6 +29,7 @@ CLI_FIXTURE_LOCATIONS = [
 ]
 
 CORE_FIXTURE_LOCATIONS = [
+    "tests.core.fixtures.core_database",
     "tests.core.fixtures.core_datasets",
     "tests.core.fixtures.core_plugins",
     "tests.core.fixtures.core_projects",

@@ -25,7 +25,7 @@ import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 from subprocess import check_output
-from typing import Union
+from typing import Optional, Union
 
 import attr
 import filelock
@@ -35,6 +35,7 @@ from werkzeug.utils import cached_property, secure_filename
 
 from renku.core import errors
 from renku.core.compat import Path
+from renku.core.incubation.database import Database
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.projects import Project
@@ -118,6 +119,9 @@ class RepositoryApiMixin(GitCore):
     PROVENANCE_GRAPH = "provenance.json"
     """File for storing ProvenanceGraph."""
 
+    DATABASE_PATH: str = "metadata"
+    """Directory for metadata storage."""
+
     ACTIVITY_INDEX = "activity_index.yaml"
     """Caches activities that generated a path."""
 
@@ -147,9 +151,9 @@ class RepositoryApiMixin(GitCore):
 
     _remote_cache = attr.ib(factory=dict)
 
-    _dependency_graph = None
-
     _migration_type = attr.ib(default=MigrationType.ALL)
+
+    _database = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
@@ -230,7 +234,7 @@ class RepositoryApiMixin(GitCore):
         return self.renku_path / self.TEMPLATE_CHECKSUMS
 
     @property
-    def provenance_graph_path(self) -> str:
+    def provenance_graph_path(self) -> Path:
         """Path to store activity files."""
         return self.renku_path / self.PROVENANCE_GRAPH
 
@@ -238,6 +242,11 @@ class RepositoryApiMixin(GitCore):
     def dependency_graph_path(self):
         """Path to the dependency graph file."""
         return self.renku_path / self.DEPENDENCY_GRAPH
+
+    @property
+    def database_path(self) -> Path:
+        """Path to the metadata storage directory."""
+        return self.renku_path / self.DATABASE_PATH
 
     @cached_property
     def cwl_prefix(self):
@@ -250,10 +259,24 @@ class RepositoryApiMixin(GitCore):
         """Return dependency graph if available."""
         if not self.has_graph_files():
             return
-        if not self._dependency_graph:
-            self._dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
+        return DependencyGraph.from_database(self.database)
 
-        return self._dependency_graph
+    @property
+    def provenance_graph(self) -> Optional[ProvenanceGraph]:
+        """Return provenance graph if available."""
+        if not self.has_graph_files():
+            return
+        return ProvenanceGraph.from_database(self.database)
+
+    @property
+    def database(self) -> Optional[Database]:
+        """Return metadata storage if available."""
+        if not self.has_graph_files():
+            return
+        if not self._database:
+            self._database = Database.from_path(path=self.database_path)
+
+        return self._database
 
     @property
     def project(self):
@@ -494,26 +517,44 @@ class RepositoryApiMixin(GitCore):
     def update_graphs(self, activity: Union[ProcessRun, WorkflowRun]):
         """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
         if not self.has_graph_files():
-            return
+            return None
 
         dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
         provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
 
         activity_collection = ActivityCollection.from_activity(activity, dependency_graph, self)
 
+        self.provenance_graph.add(activity_collection)
+        database = self.database
+
         provenance_graph.add(activity_collection)
 
+        for activity in activity_collection.activities:
+            database.get("activities").add(activity)
+            database.get("plans").add(activity.association.plan)
+
+        database.commit()
         dependency_graph.to_json()
         provenance_graph.to_json()
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""
-        return self.dependency_graph_path.exists() or self.provenance_graph_path.exists()
+        return self.database_path.exists()
 
     def initialize_graph(self):
         """Create empty graph files."""
         self.dependency_graph_path.write_text("[]")
         self.provenance_graph_path.write_text("[]")
+
+        self.database_path.mkdir(parents=True, exist_ok=True)
+
+        database = self.database
+
+        from renku.core.models.provenance.activity import Activity
+        from renku.core.models.workflow.plan import Plan
+
+        database.add_index(name="activities", object_type=Activity, attribute="id")
+        database.add_index(name="plans", object_type=Plan, attribute="id")
 
     def remove_graph_files(self):
         """Remove all graph files."""
@@ -523,6 +564,10 @@ class RepositoryApiMixin(GitCore):
             pass
         try:
             self.provenance_graph_path.unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            shutil.rmtree(self.database_path)
         except FileNotFoundError:
             pass
 

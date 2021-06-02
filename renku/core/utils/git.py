@@ -20,7 +20,11 @@
 import math
 import pathlib
 import urllib
+from pathlib import Path
 from subprocess import SubprocessError, run
+from typing import Optional, Union
+
+from git import Git, GitCommandError, Repo
 
 from renku.core import errors
 from renku.core.models.git import GitURL
@@ -105,3 +109,26 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
     hostname = deployment_hostname or parsed_remote.hostname
 
     return urllib.parse.urljoin(f"https://{credentials}{hostname}", path)
+
+
+def get_object_hash(repo: Repo, revision: str, path: Union[Path, str]) -> Optional[str]:
+    """Return git hash of an object in a Repo or its submodule."""
+
+    def get_object_hash_from_submodules() -> Optional[str]:
+        for submodule in repo.submodules:
+            try:
+                path_in_submodule = Path(path).relative_to(submodule.path)
+            except ValueError:
+                continue
+            else:
+                try:
+                    return Git(submodule.abspath).rev_parse(f"HEAD:{str(path_in_submodule)}")
+                except GitCommandError:
+                    pass
+
+    try:
+        return repo.git.rev_parse(f"{revision}:{str(path)}")
+    except GitCommandError:
+        # NOTE: The file can be in a submodule or it was not there when the command ran but was there when workflows
+        # were migrated (this can happen only for Usage); the project might be broken too.
+        return get_object_hash_from_submodules()

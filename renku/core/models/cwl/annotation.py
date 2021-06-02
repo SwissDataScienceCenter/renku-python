@@ -17,35 +17,18 @@
 # limitations under the License.
 """Represent an annotation for a workflow."""
 
-import attr
 from marshmallow import EXCLUDE
 
 from renku.core.models.calamus import JsonLDSchema, dcterms, fields, oa
 
 
-@attr.s(eq=False, order=False)
 class Annotation:
     """Represents a custom annotation for a research object."""
 
-    _id = attr.ib(kw_only=True)
-
-    body = attr.ib(default=None, kw_only=True)
-
-    source = attr.ib(default=None, kw_only=True)
-
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return AnnotationSchema().load(data)
-
-    def as_jsonld(self):
-        """Create JSON-LD."""
-        return AnnotationSchema().dump(self)
+    def __init__(self, *, id: str, body=None, source=None):
+        self.id = id
+        self.body = body
+        self.source = source
 
 
 class AnnotationSchema(JsonLDSchema):
@@ -58,6 +41,6 @@ class AnnotationSchema(JsonLDSchema):
         model = Annotation
         unknown = EXCLUDE
 
-    _id = fields.Id(init_name="id")
+    id = fields.Id()
     body = fields.RawJsonLD(oa.hasBody)
     source = fields.Raw(dcterms.creator)

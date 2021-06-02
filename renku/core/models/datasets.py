@@ -37,7 +37,7 @@ from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
-from renku.core.utils.urls import get_slug
+from renku.core.utils.urls import get_host, get_slug
 
 NoneType = type(None)
 
@@ -597,15 +597,6 @@ class Dataset(Entity, CreatorMixin):
         self.url = self._id
         self._label = self.identifier
 
-    def _get_host(self):
-        # Determine the hostname for the resource URIs.
-        # If RENKU_DOMAIN is set, it overrides the host from remote.
-        # Default is localhost.
-        host = "localhost"
-        if self.client:
-            host = self.client.remote.get("host") or host
-        return os.environ.get("RENKU_DOMAIN") or host
-
     def _set_id(self):
         self._id = generate_dataset_id(client=self.client, identifier=self.identifier)
 
@@ -618,7 +609,7 @@ class Dataset(Entity, CreatorMixin):
         self._label = self.identifier
 
         if self.derived_from:
-            host = self._get_host()
+            host = get_host(self.client)
             derived_from_id = self.derived_from._id
             derived_from_url = self.derived_from.url.get("@id")
             u = urlparse(derived_from_url)
