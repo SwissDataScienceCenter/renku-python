@@ -24,6 +24,7 @@ from typing import List, Optional, Union
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
+import persistent
 from git import Git, GitCommandError
 from marshmallow import EXCLUDE
 
@@ -70,7 +71,7 @@ class Generation:
         self.id: str = id
 
 
-class Activity:
+class Activity(persistent.Persistent):
     """Represent an activity in the repository."""
 
     def __init__(

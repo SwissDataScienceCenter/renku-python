@@ -114,13 +114,13 @@ def _generate_graph(client, force=False):
     client.initialize_graph()
     client.initialize_datasets_provenance()
 
-    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
+    client.metadata_storage.open()
 
     for n, commit in enumerate(commits, start=1):
         communication.echo(f"Processing commits {n}/{n_commits}", end="\r")
 
         try:
-            process_workflows(commit, provenance_graph)
+            process_workflows(commit, client.provenance_graph)
             process_datasets(commit)
         except errors.MigrationError:
             communication.echo("")
@@ -130,8 +130,10 @@ def _generate_graph(client, force=False):
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
     client.dependency_graph.to_json()
-    provenance_graph.to_json()
+    client.provenance_graph.to_storage(client.metadata_storage)
     client.datasets_provenance.to_json()
+
+    client.metadata_storage.close()
 
 
 def status():
@@ -142,7 +144,7 @@ def status():
 def _status(client):
     """Get status of workflows."""
     with measure("BUILD AND QUERY GRAPH"):
-        pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
+        pg = client.provenance_graph
         plans_usages = pg.get_latest_plans_usages()
 
     if client.has_external_files():
@@ -184,7 +186,7 @@ def update():
 def _update(client, dry_run):
     """Update outdated outputs."""
     with measure("BUILD AND QUERY GRAPH"):
-        pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
+        pg = client.provenance_graph
         plans_usages = pg.get_latest_plans_usages()
 
     with measure("CALCULATE MODIFIED"):
@@ -230,12 +232,11 @@ def _export_graph(client, format, workflows_only, strict):
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
 
-    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
     format = format.lower()
     if strict and format not in ["json-ld", "jsonld"]:
         raise errors.SHACLValidationError(f"'--strict' not supported for '{format}'")
 
-    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
+    pg = client.provenance_graph
 
     if not workflows_only:
         pg.rdf_graph.parse(location=str(client.datasets_provenance_path), format="json-ld")

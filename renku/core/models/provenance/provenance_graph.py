@@ -17,26 +17,28 @@
 # limitations under the License.
 """Represent provenance graph."""
 
-import json
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
+import persistent
 from marshmallow import EXCLUDE
 from rdflib import ConjunctiveGraph
 
+from renku.core.incubation.metadata_storage import MetadataStorage
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.provenance.activity import Activity, ActivityCollection, ActivitySchema
 
 
-class ProvenanceGraph:
+class ProvenanceGraph(persistent.Persistent):
     """A graph of all executions (Activities)."""
+
+    id = "/provenance-graph"
 
     def __init__(self, activities: List[Activity] = None):
         self.activities: List[Activity] = activities or []
 
         self._custom_bindings: Dict[str, str] = {}
         self._graph: Optional[ConjunctiveGraph] = None
-        self._loaded: bool = False
         self._order: int = 1 if len(self.activities) == 0 else max([a.order for a in self.activities]) + 1
         self._path: Optional[Path] = None
 
@@ -52,8 +54,6 @@ class ProvenanceGraph:
 
     def add(self, node: Union[Activity, ActivityCollection]) -> None:
         """Add an Activity/ActivityCollection to the graph."""
-        assert self._loaded
-
         activity_collection = node if isinstance(node, ActivityCollection) else ActivityCollection(activities=[node])
 
         for activity in activity_collection.activities:
@@ -62,24 +62,14 @@ class ProvenanceGraph:
             self._order += 1
             self.activities.append(activity)
 
-    @classmethod
-    def from_json(cls, path: Union[Path, str], lazy: bool = False) -> "ProvenanceGraph":
-        """Return an instance from a JSON file."""
-        if Path(path).exists():
-            if not lazy:
-                with open(path) as file_:
-                    data = json.load(file_)
-                    self = cls.from_jsonld(data=data) if data else ProvenanceGraph(activities=[])
-                    self.activities.sort(key=lambda e: e.order)
-                    self._loaded = True
-            else:
-                self = ProvenanceGraph(activities=[])
-                self._loaded = False
-        else:
-            self = ProvenanceGraph(activities=[])
-            self._loaded = True
+        self._p_changed = True
 
-        self._path = Path(path)
+    @classmethod
+    def from_storage(cls, metadata_storage: MetadataStorage) -> "ProvenanceGraph":
+        """Return an instance from a metadata storage."""
+        self = metadata_storage.get_object_by_id("ProvenanceGraph", ProvenanceGraph.id) or ProvenanceGraph()
+        # NOTE: If we sort then all ghost objects will be loaded which is not what we want
+        # self.activities.sort(key=lambda e: e.order)
 
         return self
 
@@ -92,20 +82,16 @@ class ProvenanceGraph:
             raise ValueError(data)
 
         self = ProvenanceGraphSchema(flattened=True).load(data)
-        self._loaded = True
-
         return self
 
     def to_jsonld(self):
         """Create JSON-LD."""
         return ProvenanceGraphSchema(flattened=True).dump(self)
 
-    def to_json(self, path=None):
-        """Write an instance to file."""
-        path = path or self._path
-        data = self.to_jsonld()
-        with open(path, "w", encoding="utf-8") as file_:
-            json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
+    def to_storage(self, metadata_storage: MetadataStorage):
+        """Write an instance to a metadata storage."""
+        metadata_storage.store_object("ProvenanceGraph", ProvenanceGraph.id, self)
+        metadata_storage.commit()
 
     @property
     def rdf_graph(self):

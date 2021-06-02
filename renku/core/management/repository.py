@@ -25,7 +25,7 @@ import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 from subprocess import check_output
-from typing import Union
+from typing import Optional, Union
 
 import attr
 import filelock
@@ -47,6 +47,7 @@ from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
 
+from ..incubation.metadata_storage import MetadataStorage
 from .git import GitCore
 
 DEFAULT_DATA_DIR = "data"
@@ -118,6 +119,9 @@ class RepositoryApiMixin(GitCore):
     PROVENANCE_GRAPH = "provenance.json"
     """File for storing ProvenanceGraph."""
 
+    METADATA_STORAGE_PATH: str = "metadata"
+    """Directory for metadata storage."""
+
     ACTIVITY_INDEX = "activity_index.yaml"
     """Caches activities that generated a path."""
 
@@ -147,7 +151,10 @@ class RepositoryApiMixin(GitCore):
 
     _remote_cache = attr.ib(factory=dict)
 
-    _dependency_graph = None
+    _dependency_graph: Optional[DependencyGraph] = None
+    _provenance_graph: Optional[ProvenanceGraph] = None
+
+    _metadata_storage: Optional[MetadataStorage] = None
 
     _migration_type = attr.ib(default=MigrationType.ALL)
 
@@ -230,7 +237,7 @@ class RepositoryApiMixin(GitCore):
         return self.renku_path / self.TEMPLATE_CHECKSUMS
 
     @property
-    def provenance_graph_path(self) -> str:
+    def provenance_graph_path(self) -> Path:
         """Path to store activity files."""
         return self.renku_path / self.PROVENANCE_GRAPH
 
@@ -238,6 +245,11 @@ class RepositoryApiMixin(GitCore):
     def dependency_graph_path(self):
         """Path to the dependency graph file."""
         return self.renku_path / self.DEPENDENCY_GRAPH
+
+    @property
+    def metadata_storage_path(self) -> Path:
+        """Path to the metadata storage directory."""
+        return self.renku_path / self.METADATA_STORAGE_PATH
 
     @cached_property
     def cwl_prefix(self):
@@ -254,6 +266,28 @@ class RepositoryApiMixin(GitCore):
             self._dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
 
         return self._dependency_graph
+
+    @property
+    def provenance_graph(self) -> Optional[ProvenanceGraph]:
+        """Return provenance graph if available."""
+        if not self.has_graph_files():
+            return
+        if not self._provenance_graph:
+            self._provenance_graph = ProvenanceGraph.from_storage(self.metadata_storage)
+
+        return self._provenance_graph
+
+    @property
+    def metadata_storage(self) -> Optional[MetadataStorage]:
+        """Return metadata storage if available."""
+        if not self.has_graph_files():
+            return
+        if not self._metadata_storage:
+            self._metadata_storage = MetadataStorage.from_path(self.metadata_storage_path)
+            self._metadata_storage.open()
+            # FIXME close the _metadata_storage at some point
+
+        return self._metadata_storage
 
     @property
     def project(self):
@@ -523,6 +557,10 @@ class RepositoryApiMixin(GitCore):
             pass
         try:
             self.provenance_graph_path.unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            shutil.rmtree(self.metadata_storage_path)
         except FileNotFoundError:
             pass
 
