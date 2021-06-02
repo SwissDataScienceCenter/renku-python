@@ -32,9 +32,8 @@ import pathspec
 from werkzeug.utils import cached_property
 
 from renku.core import errors
-from renku.core.models.provenance.activities import Collection
+from renku.core.models.provenance.activity import Collection
 from renku.core.models.provenance.datasets import DatasetProvenance
-from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.utils import communication
 from renku.core.utils.file_size import parse_file_size
 from renku.core.utils.git import add_to_git, run_command
@@ -535,6 +534,25 @@ class StorageApiMixin(RepositoryApiMixin):
         def _map_checksum(entity, checksum_mapping):
             """Update the checksum and id of an entity based on a mapping."""
             if entity.checksum not in checksum_mapping:
+                return False
+
+            new_checksum = checksum_mapping[entity.checksum]
+
+            entity.id = entity.id.replace(entity.checksum, new_checksum)
+            entity.checksum = new_checksum
+
+            if isinstance(entity, Collection) and entity.members:
+                for member in entity.members:
+                    _map_checksum(member, checksum_mapping)
+
+            return True
+
+        def _map_checksum_old(entity, checksum_mapping):
+            """Update the checksum and id of an entity based on a mapping."""
+            # TODO: Remove this method once moved to Entity with 'id' field
+            from renku.core.models.provenance.activities import Collection
+
+            if entity.checksum not in checksum_mapping:
                 return
 
             new_checksum = checksum_mapping[entity.checksum]
@@ -547,30 +565,34 @@ class StorageApiMixin(RepositoryApiMixin):
                     _map_checksum(member, checksum_mapping)
 
         # NOTE: Update workflow provenance
-        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+        provenance_graph = self.provenance_graph
 
         for activity in provenance_graph.activities:
+            changed = False
             if activity.generations:
                 for generation in activity.generations:
                     entity = generation.entity
-                    _map_checksum(entity, sha_mapping)
+                    changed |= _map_checksum(entity, sha_mapping)
 
             if activity.usages:
                 for usage in activity.usages:
                     entity = usage.entity
-                    _map_checksum(entity, sha_mapping)
+                    changed |= _map_checksum(entity, sha_mapping)
 
             if activity.invalidations:
                 for entity in activity.invalidations:
-                    _map_checksum(entity, sha_mapping)
+                    changed |= _map_checksum(entity, sha_mapping)
 
-        provenance_graph.to_json()
+            if changed:
+                activity._p_changed = True
+
+        self.database.commit()
 
         # NOTE: Update datasets provenance
         datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
 
         for dataset in datasets_provenance.datasets:
             for file_ in dataset.files:
-                _map_checksum(file_.entity, sha_mapping)
+                _map_checksum_old(file_.entity, sha_mapping)
 
         datasets_provenance.to_json()

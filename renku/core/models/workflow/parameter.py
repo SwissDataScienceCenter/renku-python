@@ -25,10 +25,26 @@ from uuid import uuid4
 from marshmallow import EXCLUDE
 
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
-from renku.core.models.workflow.parameters import MappedIOStream, MappedIOStreamSchema
 from renku.core.utils.urls import get_slug
 
 RANDOM_ID_LENGTH = 4
+
+
+class MappedIOStream:
+    """Represents an IO stream (stdin, stdout, stderr)."""
+
+    STREAMS = ["stdin", "stdout", "stderr"]
+
+    def __init__(self, *, id: str = None, stream_type: str):
+        assert stream_type in MappedIOStream.STREAMS
+
+        self.id: str = id or MappedIOStream.generate_id(stream_type)
+        self.stream_type = stream_type
+
+    @staticmethod
+    def generate_id(stream_type: str) -> str:
+        """Generate an id for parameters."""
+        return f"/iostreams/{stream_type}"
 
 
 class CommandParameterBase:
@@ -61,9 +77,9 @@ class CommandParameterBase:
     @staticmethod
     def _generate_id(plan_id: str, parameter_type: str, position: Optional[int], postfix: str = None) -> str:
         """Generate an id for parameters."""
-        # https://localhost/plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/1
-        # https://localhost/plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/stdin
-        # https://localhost/plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/dda5fcbf-0098-4917-be46-dc12f5f7b675
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/1
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/stdin
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/dda5fcbf-0098-4917-be46-dc12f5f7b675
         position = str(position) if position is not None else str(uuid4())
         postfix = urllib.parse.quote(postfix) if postfix else position
         return f"{plan_id}/{parameter_type}/{postfix}"
@@ -220,6 +236,20 @@ class CommandOutput(CommandParameterBase):
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="output")
+
+
+class MappedIOStreamSchema(JsonLDSchema):
+    """MappedIOStream schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = renku.IOStream
+        model = MappedIOStream
+        unknown = EXCLUDE
+
+    id = fields.Id()
+    stream_type = fields.String(renku.streamType)
 
 
 class CommandParameterBaseSchema(JsonLDSchema):

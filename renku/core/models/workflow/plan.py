@@ -26,6 +26,7 @@ from uuid import uuid4
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
+from renku.core.incubation.database import Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.entities import Entity
 from renku.core.models.workflow import parameters as old_parameter
@@ -36,6 +37,7 @@ from renku.core.models.workflow.parameter import (
     CommandOutputSchema,
     CommandParameter,
     CommandParameterSchema,
+    MappedIOStream,
 )
 from renku.core.models.workflow.run import Run
 from renku.core.utils.urls import get_host
@@ -43,7 +45,7 @@ from renku.core.utils.urls import get_host
 MAX_GENERATED_NAME_LENGTH = 25
 
 
-class Plan:
+class Plan(Persistent):
     """Represent a `renku run` execution template."""
 
     def __init__(
@@ -72,11 +74,8 @@ class Plan:
         if not self.name:
             self.name = self._get_default_name()
 
-    def __repr__(self):
-        return self.name
-
     @classmethod
-    def from_run(cls, run: Run, hostname: str):
+    def from_run(cls, run: Run):
         """Create a Plan from a Run."""
         assert not run.subprocesses, f"Cannot create a Plan from a Run with subprocesses: {run._id}"
 
@@ -85,7 +84,7 @@ class Plan:
             return run_id.rstrip("/").rsplit("/", maxsplit=1)[-1]
 
         uuid = extract_run_uuid(run._id)
-        plan_id = cls.generate_id(hostname=hostname, uuid=uuid)
+        plan_id = cls.generate_id(uuid=uuid)
 
         def convert_argument(argument: old_parameter.CommandArgument) -> CommandParameter:
             """Convert an old CommandArgument to a new CommandParameter."""
@@ -105,12 +104,16 @@ class Plan:
             """Convert an old CommandInput to a new CommandInput."""
             assert isinstance(input, old_parameter.CommandInput)
 
+            mapped_to = input.mapped_to
+            if mapped_to:
+                mapped_to = MappedIOStream(stream_type=mapped_to.stream_type)
+
             return CommandInput(
                 default_value=input.consumes.path,
                 description=input.description,
                 id=CommandInput.generate_id(plan_id=plan_id, postfix=PurePosixPath(input._id).name),
                 label=None,
-                mapped_to=input.mapped_to,
+                mapped_to=mapped_to,
                 name=input.name,
                 position=input.position,
                 prefix=input.prefix,
@@ -120,13 +123,17 @@ class Plan:
             """Convert an old CommandOutput to a new CommandOutput."""
             assert isinstance(output, old_parameter.CommandOutput)
 
+            mapped_to = output.mapped_to
+            if mapped_to:
+                mapped_to = MappedIOStream(stream_type=mapped_to.stream_type)
+
             return CommandOutput(
                 create_folder=output.create_folder,
                 default_value=output.produces.path,
                 description=output.description,
                 id=CommandOutput.generate_id(plan_id=plan_id, postfix=PurePosixPath(output._id).name),
                 label=None,
-                mapped_to=output.mapped_to,
+                mapped_to=mapped_to,
                 name=output.name,
                 position=output.position,
                 prefix=output.prefix,
@@ -145,10 +152,10 @@ class Plan:
         )
 
     @staticmethod
-    def generate_id(hostname: str, uuid: str) -> str:
+    def generate_id(uuid: str) -> str:
         """Generate an identifier for Plan."""
         uuid = uuid or str(uuid4())
-        return f"https://{hostname}/plans/{uuid}"
+        return f"/plans/{uuid}"
 
     def _get_default_name(self) -> str:
         name = "-".join(str(a) for a in self.to_argv())
@@ -233,24 +240,32 @@ class Plan:
             )
 
         def convert_input(input: CommandInput) -> old_parameter.CommandInput:
+            mapped_to = input.mapped_to
+            if mapped_to:
+                mapped_to = old_parameter.MappedIOStream(id=mapped_to.id, stream_type=mapped_to.stream_type)
+
             return old_parameter.CommandInput(
                 consumes=get_entity(input.default_value),
                 description=input.description,
                 id=input.id.replace(self.id, run_id),
                 label=None,
-                mapped_to=input.mapped_to,
+                mapped_to=mapped_to,
                 name=input.name,
                 position=input.position,
                 prefix=input.prefix,
             )
 
         def convert_output(output: CommandOutput) -> old_parameter.CommandOutput:
+            mapped_to = output.mapped_to
+            if mapped_to:
+                mapped_to = old_parameter.MappedIOStream(id=mapped_to.id, stream_type=mapped_to.stream_type)
+
             return old_parameter.CommandOutput(
                 create_folder=output.create_folder,
                 description=output.description,
                 id=output.id.replace(self.id, run_id),
                 label=None,
-                mapped_to=output.mapped_to,
+                mapped_to=mapped_to,
                 name=output.name,
                 position=output.position,
                 prefix=output.prefix,

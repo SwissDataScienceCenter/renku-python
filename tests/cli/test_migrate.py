@@ -271,7 +271,7 @@ def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_proj
 
     dataset = old_dataset_project.load_dataset("201901_us_flights_1")
 
-    assert not dataset.creators[0]._id.startswith("_:")
+    assert not dataset.creators[0].id.startswith("_:")
     assert not dataset.same_as._id.startswith("_:")
     assert not dataset.tags[0]._id.startswith("_:")
     assert isinstance(dataset.license, str)

@@ -40,7 +40,6 @@ from renku.core.management.repository import RepositoryApiMixin
 from renku.core.models.entities import Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.activities import Activity
-from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
@@ -50,6 +49,7 @@ from renku.core.utils.scm import git_unicode_unescape
 from renku.core.utils.shacl import validate_graph
 
 GRAPH_METADATA_PATHS = [
+    Path(RENKU_HOME) / Path(RepositoryApiMixin.DATABASE_PATH),
     Path(RENKU_HOME) / Path(RepositoryApiMixin.DEPENDENCY_GRAPH),
     Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE_GRAPH),
     Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS_PROVENANCE),
@@ -65,7 +65,7 @@ def generate_graph():
 def _generate_graph(client, force=False):
     """Generate graph and dataset provenance metadata."""
 
-    def process_workflows(commit: Commit, provenance_graph: ProvenanceGraph):
+    def process_workflows(commit: Commit):
         for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.yaml"):
             # Ignore deleted files (they appear as ADDED in this backwards diff)
             if file_.change_type == "A":
@@ -81,9 +81,7 @@ def _generate_graph(client, force=False):
                 continue
 
             workflow = Activity.from_yaml(path=path, client=client)
-            activity_collection = ActivityCollection.from_activity(workflow, client.dependency_graph, client)
-
-            provenance_graph.add(activity_collection)
+            client.update_graphs(workflow)
 
     def process_datasets(commit):
         files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
@@ -114,13 +112,11 @@ def _generate_graph(client, force=False):
     client.initialize_graph()
     client.initialize_datasets_provenance()
 
-    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
-
     for n, commit in enumerate(commits, start=1):
         communication.echo(f"Processing commits {n}/{n_commits}", end="\r")
 
         try:
-            process_workflows(commit, provenance_graph)
+            process_workflows(commit)
             process_datasets(commit)
         except errors.MigrationError:
             communication.echo("")
@@ -129,9 +125,9 @@ def _generate_graph(client, force=False):
             communication.echo("")
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
-    client.dependency_graph.to_json()
-    provenance_graph.to_json()
     client.datasets_provenance.to_json()
+
+    client.database.commit()
 
 
 def status():
@@ -230,7 +226,6 @@ def _export_graph(client, format, workflows_only, strict):
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
 
-    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
     format = format.lower()
     if strict and format not in ["json-ld", "jsonld"]:
         raise errors.SHACLValidationError(f"'--strict' not supported for '{format}'")
