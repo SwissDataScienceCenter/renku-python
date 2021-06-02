@@ -137,6 +137,8 @@ def select_template_from_manifest(
     if prompt and (repeat or not (template_id or template_index)):
         templates = [template_elem for template_elem in template_manifest]
         if len(templates) == 1:
+            if describe:
+                communication.echo(create_template_sentence(templates, describe=describe, instructions=False))
             template_data = templates[0]
         else:
             template_index = communication.prompt(
