@@ -285,11 +285,10 @@ class GitCore:
 
         committer = Actor("renku {0}".format(__version__), version_url)
 
-        change_types = {}
+        change_types = {git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff(None)}
 
         if commit_only == COMMIT_DIFF_STRATEGY:
             # Get diff generated in command.
-            change_types = {git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff(None)}
             staged_after = set(change_types.keys())
 
             modified_after_change_types = {
@@ -308,7 +307,7 @@ class GitCore:
         if isinstance(commit_only, list):
             for path_ in commit_only:
                 p = self.path / path_
-                if p.exists() or change_types.get(path_) == "D":
+                if p.exists() or change_types.get(str(path_)) == "D":
                     self.repo.git.add(path_)
 
         if not commit_only:
