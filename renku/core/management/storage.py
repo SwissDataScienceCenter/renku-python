@@ -549,21 +549,19 @@ class StorageApiMixin(RepositoryApiMixin):
         # NOTE: Update workflow provenance
         provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
 
-        for _, activity in provenance_graph.activities.items():
-            if activity.generated:
-                for generation in activity.generated:
+        for activity in provenance_graph.activities:
+            if activity.generations:
+                for generation in activity.generations:
                     entity = generation.entity
-                    generation._id = generation._id.replace(entity.checksum, sha_mapping[entity.checksum])
                     _map_checksum(entity, sha_mapping)
 
-            if activity.qualified_usage:
-                for usage in activity.qualified_usage:
+            if activity.usages:
+                for usage in activity.usages:
                     entity = usage.entity
-                    usage._id = usage._id.replace(entity.checksum, sha_mapping[entity.checksum])
                     _map_checksum(entity, sha_mapping)
 
-            if activity.invalidated:
-                for entity in activity.invalidated:
+            if activity.invalidations:
+                for entity in activity.invalidations:
                     _map_checksum(entity, sha_mapping)
 
         provenance_graph.to_json()

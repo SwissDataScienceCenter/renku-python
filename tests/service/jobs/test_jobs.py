@@ -201,7 +201,7 @@ def test_project_cleanup_success(svc_client_cache):
 
     user_data = {
         "user_id": uuid.uuid4().hex,
-        "email": "contact@justsam.io",
+        "email": "contact@renkulab.io",
         "fullname": "renku the frog",
         "token": "None",
     }
