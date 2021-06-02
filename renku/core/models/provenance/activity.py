@@ -17,20 +17,18 @@
 # limitations under the License.
 """Represent an execution of a Plan."""
 
-import pathlib
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional, Union
-from urllib.parse import quote, urlparse
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import persistent
-from git import Git, GitCommandError
 from marshmallow import EXCLUDE
 
+from renku.core.models import entities as old_entities
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
 from renku.core.models.cwl.annotation import Annotation, AnnotationSchema
-from renku.core.models.entities import Collection, CollectionSchema, Entity, EntitySchema
+from renku.core.models.entity import Collection, Entity, NewCollectionSchema, NewEntitySchema
 from renku.core.models.provenance import qualified as old_qualified
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.provenance.agents import Person, PersonSchema, SoftwareAgent, SoftwareAgentSchema
@@ -43,6 +41,7 @@ from renku.core.models.provenance.parameter import (
 )
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.plan import Plan, PlanSchema
+from renku.core.utils.git import get_object_hash
 from renku.core.utils.urls import get_host
 
 
@@ -54,6 +53,11 @@ class Association:
         self.id: str = id
         self.plan: Plan = plan
 
+    @staticmethod
+    def generate_id(activity_id: str) -> str:
+        """Generate a Association identifier."""
+        return f"{activity_id}/association"  # TODO: Does it make sense to use plural name here?
+
 
 class Usage:
     """Represent a dependent path."""
@@ -62,6 +66,11 @@ class Usage:
         self.entity: Union[Collection, Entity] = entity
         self.id: str = id
 
+    @staticmethod
+    def generate_id(activity_id: str) -> str:
+        """Generate a Usage identifier."""
+        return f"{activity_id}/usages/{uuid4()}"
+
 
 class Generation:
     """Represent an act of generating a path."""
@@ -69,6 +78,11 @@ class Generation:
     def __init__(self, *, entity: Union[Collection, Entity], id: str):
         self.entity: Union[Collection, Entity] = entity
         self.id: str = id
+
+    @staticmethod
+    def generate_id(activity_id: str) -> str:
+        """Generate a Generation identifier."""
+        return f"{activity_id}/generations/{uuid4()}"
 
 
 class Activity(persistent.Persistent):
@@ -112,14 +126,16 @@ class Activity(persistent.Persistent):
         hostname = get_host(client)
         activity_id = Activity.generate_id(hostname)
 
-        association = Association(agent=process_run.association.agent, id=f"{activity_id}/association", plan=plan)
+        association = Association(
+            agent=process_run.association.agent, id=Association.generate_id(activity_id), plan=plan
+        )
 
         # NOTE: The same entity can have the same id during different times in its lifetime (e.g. different commit_sha,
         # but the same content). When it gets flattened, some fields will have multiple values which will cause an error
         # during deserialization. Make sure that no such Entity attributes exists (store those information in the
         # Generation object).
 
-        invalidations = [_convert_invalidated_entity(e, activity_id, client) for e in process_run.invalidated]
+        invalidations = [_convert_invalidated_entity(e, client) for e in process_run.invalidated]
         generations = [_convert_generation(g, activity_id, client) for g in process_run.generated]
         usages = [_convert_usage(u, activity_id, client) for u in process_run.qualified_usage]
 
@@ -153,9 +169,7 @@ def _convert_usage(usage: old_qualified.Usage, activity_id: str, client) -> Usag
     entity = _convert_used_entity(usage.entity, commit_sha, activity_id, client)
     assert entity, f"Top entity was not found for Usage: {usage._id}, {usage.entity.path}"
 
-    id = f"{activity_id}/usages/{uuid4()}"
-
-    return Usage(id=id, entity=entity)
+    return Usage(id=Usage.generate_id(activity_id), entity=entity)
 
 
 def _convert_generation(generation: old_qualified.Generation, activity_id: str, client) -> Generation:
@@ -164,45 +178,45 @@ def _convert_generation(generation: old_qualified.Generation, activity_id: str, 
     entity = _convert_generated_entity(generation.entity, commit_sha, activity_id, client)
     assert entity, f"Root entity was not found for Generation: {generation._id}"
 
-    id = f"{activity_id}/generations/{uuid4()}"
-
-    return Generation(id=id, entity=entity)
+    return Generation(id=Generation.generate_id(activity_id), entity=entity)
 
 
-def _convert_used_entity(entity: Entity, revision: str, activity_id: str, client) -> Optional[Entity]:
-    """Convert an Entity to one with proper metadata.
+def _convert_used_entity(entity: old_entities.Entity, revision: str, activity_id: str, client) -> Optional[Entity]:
+    """Convert an old Entity to one with proper metadata.
 
     For Collections, add members that are modified in the same commit or before the revision.
     """
-    assert isinstance(entity, Entity)
+    assert isinstance(entity, old_entities.Entity)
 
-    checksum = _get_object_hash(revision=revision, path=entity.path, client=client)
+    checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
     if not checksum:
         return None
 
-    id_ = _generate_entity_id(entity_checksum=checksum, path=entity.path, activity_id=activity_id)
+    id = Entity.generate_id(hostname=get_host(client), checksum=checksum, path=entity.path)
 
-    if isinstance(entity, Collection):
-        new_entity = Collection(id=id_, checksum=checksum, path=entity.path)
+    if isinstance(entity, old_entities.Collection):
+        members = []
         for child in entity.members:
             new_child = _convert_used_entity(child, revision, activity_id, client)
             if not new_child:
                 continue
-            new_entity.members.append(new_child)
-    else:
-        new_entity = Entity(id=id_, checksum=checksum, path=entity.path)
+            members.append(new_child)
 
-    assert type(new_entity) is type(entity)
+        new_entity = Collection(id=id, checksum=checksum, path=entity.path, members=members)
+    else:
+        new_entity = Entity(id=id, checksum=checksum, path=entity.path)
+
+    assert new_entity.__class__.__name__ == entity.__class__.__name__
 
     return new_entity
 
 
-def _convert_generated_entity(entity: Entity, revision: str, activity_id: str, client) -> Optional[Entity]:
+def _convert_generated_entity(entity: old_entities.Entity, revision: str, activity_id: str, client) -> Optional[Entity]:
     """Convert an Entity to one with proper metadata.
 
     For Collections, add members that are modified in the same commit as revision.
     """
-    assert isinstance(entity, Entity)
+    assert isinstance(entity, old_entities.Entity)
 
     try:
         entity_commit = client.find_previous_commit(paths=entity.path, revision=revision)
@@ -211,77 +225,51 @@ def _convert_generated_entity(entity: Entity, revision: str, activity_id: str, c
     if entity_commit.hexsha != revision:
         return None
 
-    checksum = _get_object_hash(revision=revision, path=entity.path, client=client)
+    checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
     if not checksum:
         return None
 
-    id_ = _generate_entity_id(entity_checksum=checksum, path=entity.path, activity_id=activity_id)
+    id = Entity.generate_id(hostname=get_host(client), checksum=checksum, path=entity.path)
 
-    if isinstance(entity, Collection):
-        new_entity = Collection(id=id_, checksum=checksum, path=entity.path)
+    if isinstance(entity, old_entities.Collection):
+        members = []
         for child in entity.members:
             new_child = _convert_generated_entity(child, revision, activity_id, client)
             if not new_child:
                 continue
-            new_entity.members.append(new_child)
-    else:
-        new_entity = Entity(id=id_, checksum=checksum, path=entity.path)
+            members.append(new_child)
 
-    assert type(new_entity) is type(entity)
+        new_entity = Collection(id=id, checksum=checksum, path=entity.path, members=members)
+    else:
+        new_entity = Entity(id=id, checksum=checksum, path=entity.path)
+
+    assert new_entity.__class__.__name__ == entity.__class__.__name__
 
     return new_entity
 
 
-def _convert_invalidated_entity(entity: Entity, activity_id: str, client) -> Optional[Entity]:
+def _convert_invalidated_entity(entity: old_entities.Entity, client) -> Optional[Entity]:
     """Convert an Entity to one with proper metadata."""
-    assert isinstance(entity, Entity)
-    assert not isinstance(entity, Collection), f"Collection passed as invalidated: {entity._id}"
+    assert isinstance(entity, old_entities.Entity)
+    assert not isinstance(entity, old_entities.Collection), f"Collection passed as invalidated: {entity._id}"
 
     commit_sha = _extract_commit_sha(entity_id=entity._id)
     commit = client.find_previous_commit(revision=commit_sha, paths=entity.path)
-    commit_sha = commit.hexsha
-    checksum = _get_object_hash(revision=commit_sha, path=entity.path, client=client)
+    revision = commit.hexsha
+    checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
     if not checksum:
-        # Entity was deleted at commit_sha; get the one before it to have object_id
-        checksum = _get_object_hash(revision=f"{commit_sha}~", path=entity.path, client=client)
+        # Entity was deleted at revision; get the one before it to have object_id
+        checksum = get_object_hash(repo=client.repo, revision=f"{revision}~", path=entity.path)
         if not checksum:
-            print(f"Cannot find invalidated entity hash for {entity._id} at {commit_sha}:{entity.path}")
+            print(f"Cannot find invalidated entity hash for {entity._id} at {revision}:{entity.path}")
             return
 
-    id_ = _generate_entity_id(entity_checksum=checksum, path=entity.path, activity_id=activity_id)
-    new_entity = Entity(id=id_, checksum=checksum, path=entity.path)
-    assert type(new_entity) is type(entity)
+    id = Entity.generate_id(hostname=get_host(client), checksum=checksum, path=entity.path)
+    new_entity = Entity(id=id, checksum=checksum, path=entity.path)
+
+    assert new_entity.__class__.__name__ == entity.__class__.__name__
 
     return new_entity
-
-
-def _generate_entity_id(entity_checksum: str, path: Union[Path, str], activity_id: str) -> str:
-    quoted_path = quote(str(path))
-    path = pathlib.posixpath.join("blob", entity_checksum, quoted_path)
-
-    return urlparse(activity_id)._replace(path=path).geturl()
-
-
-def _get_object_hash(revision: str, path: Union[Path, str], client):
-    try:
-        return client.repo.git.rev_parse(f"{revision}:{str(path)}")
-    except GitCommandError:
-        # NOTE: The file can be in a submodule or it was not there when the command ran but was there when workflows
-        # were migrated (this can happen only for Usage); the project might be broken too.
-        return _get_object_hash_from_submodules(path, client)
-
-
-def _get_object_hash_from_submodules(path: Union[Path, str], client) -> str:
-    for submodule in client.repo.submodules:
-        try:
-            path_in_submodule = Path(path).relative_to(submodule.path)
-        except ValueError:
-            continue
-        else:
-            try:
-                return Git(submodule.abspath).rev_parse(f"HEAD:{str(path_in_submodule)}")
-            except GitCommandError:
-                pass
 
 
 def _extract_commit_sha(entity_id: str) -> str:
@@ -399,7 +387,7 @@ class UsageSchema(JsonLDSchema):
 
     id = fields.Id()
     # TODO: DatasetSchema, DatasetFileSchema
-    entity = Nested(prov.entity, [EntitySchema, CollectionSchema])
+    entity = Nested(prov.entity, [NewEntitySchema, NewCollectionSchema])
 
 
 class GenerationSchema(JsonLDSchema):
@@ -414,7 +402,7 @@ class GenerationSchema(JsonLDSchema):
 
     id = fields.Id()
     # TODO: DatasetSchema, DatasetFileSchema
-    entity = Nested(prov.qualifiedGeneration, [EntitySchema, CollectionSchema], reverse=True)
+    entity = Nested(prov.qualifiedGeneration, [NewEntitySchema, NewCollectionSchema], reverse=True)
 
 
 class ActivitySchema(JsonLDSchema):
@@ -433,7 +421,7 @@ class ActivitySchema(JsonLDSchema):
     ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
     generations = Nested(prov.activity, GenerationSchema, reverse=True, many=True, missing=None)
     id = fields.Id()
-    invalidations = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, missing=None)
+    invalidations = Nested(prov.wasInvalidatedBy, NewEntitySchema, reverse=True, many=True, missing=None)
     order = fields.Integer(renku.order)
     parameters = Nested(
         renku.parameter,
