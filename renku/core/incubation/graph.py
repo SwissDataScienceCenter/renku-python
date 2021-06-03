@@ -117,7 +117,7 @@ def _generate_graph(client, force=False):
     client.metadata_storage.open()
 
     for n, commit in enumerate(commits, start=1):
-        communication.echo(f"Processing commits {n}/{n_commits}", end="\r")
+        # communication.echo(f"Processing commits {n}/{n_commits}", end="\r")
 
         try:
             process_workflows(commit, client.provenance_graph)

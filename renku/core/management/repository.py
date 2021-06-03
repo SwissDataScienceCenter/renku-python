@@ -284,7 +284,7 @@ class RepositoryApiMixin(GitCore):
             return
         if not self._metadata_storage:
             self._metadata_storage = MetadataStorage.from_path(self.metadata_storage_path)
-            self._metadata_storage.open()
+            # self._metadata_storage.open()
             # FIXME close the _metadata_storage at some point
 
         return self._metadata_storage
