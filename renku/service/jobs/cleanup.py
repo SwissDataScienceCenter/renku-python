@@ -38,6 +38,8 @@ def cache_files_cleanup():
             if file.exists() and file.ttl_expired():
                 worker_log.debug(f"purging file {file.file_id}:{file.file_name}")
                 file.purge()
+            elif not file.exists():
+                file.delete()
 
 
 def cache_project_cleanup():
@@ -57,3 +59,5 @@ def cache_project_cleanup():
             if project.exists() and project.ttl_expired():
                 worker_log.debug(f"purging project {project.project_id}:{project.name}")
                 project.purge()
+            elif not project.exists():
+                project.delete()
