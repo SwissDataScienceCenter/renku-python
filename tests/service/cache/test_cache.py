@@ -255,7 +255,7 @@ def test_service_cache_make_project(svc_client_cache):
         "name": "renku-project-template",
         "depth": 1,
         "git_url": "https://github.com/SwissDataScienceCenter/renku-project-template",
-        "email": "contact@justsam.io",
+        "email": "contact@renkulab.io",
         "fullname": "renku the frog",
         "token": "None",
         "owner": "SwissDataScienceCenter",

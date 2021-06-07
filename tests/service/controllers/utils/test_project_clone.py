@@ -36,7 +36,7 @@ def test_service_user_project_clone(svc_client_cache):
 
     user_data = {
         "user_id": uuid.uuid4().hex,
-        "email": "contact@justsam.io",
+        "email": "contact@renkulab.io",
         "fullname": "renku the frog",
         "token": "None",
     }
