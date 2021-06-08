@@ -99,6 +99,7 @@ if [ ${#ADDED_FILES[@]} -ne 0 ]; then
       files=${UNTRACKED_PATHS[*]}
       git lfs track -- "$files"
       git add .gitattributes
+      git add -- "$files"
       IFS=$saveIFS
     else
       echo 'Large files:'
