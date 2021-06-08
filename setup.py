@@ -112,13 +112,13 @@ tests_require = [
 
 
 service_requires = [
-    "apispec>=4.0.0,<4.5.0",
+    "apispec>=4.0.0,<4.6.0",
     "apispec-webframeworks>=0.5.2,<0.6",
     "circus==0.17.1",
     "docker-compose==1.29.1",
     "flask==1.1.2",
     "gunicorn",
-    "marshmallow==3.11.1",
+    "marshmallow==3.12.1",
     "ptvsd>=4.3.0,<4.4.0",
     "python-dotenv==0.17.0",
     "redis==3.5.3",
@@ -130,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<3.0.2", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
