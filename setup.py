@@ -118,7 +118,7 @@ service_requires = [
     "docker-compose==1.29.1",
     "flask==1.1.2",
     "gunicorn",
-    "marshmallow==3.11.1",
+    "marshmallow==3.12.1",
     "ptvsd>=4.3.0,<4.4.0",
     "python-dotenv==0.17.0",
     "redis==3.5.3",
@@ -130,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<3.0.2", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -190,7 +190,7 @@ install_requires = [
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.60.1",
     "wcmatch>=6.0.0,<8.2",
-    "werkzeug>=0.15.5,<=1.0.1",
+    "werkzeug>=0.15.5,<2.0.2",
 ]
 
 
