@@ -59,6 +59,7 @@ def test_safe_class_attributes(tmpdir):
         "ACTIVITY_INDEX",
         "CACHE",
         "CONFIG_NAME",
+        "DATABASE_PATH",
         "DATASETS",
         "DATASET_IMAGES",
         "DATASETS_PROVENANCE",

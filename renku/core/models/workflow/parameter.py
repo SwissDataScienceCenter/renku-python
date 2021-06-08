@@ -25,10 +25,26 @@ from uuid import uuid4
 from marshmallow import EXCLUDE
 
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
-from renku.core.models.workflow.parameters import MappedIOStream, MappedIOStreamSchema
 from renku.core.utils.urls import get_slug
 
 RANDOM_ID_LENGTH = 4
+
+
+class MappedIOStream:
+    """Represents an IO stream (stdin, stdout, stderr)."""
+
+    STREAMS = ["stdin", "stdout", "stderr"]
+
+    def __init__(
+        self, *, id: str, stream_type: str,
+    ):
+        self.id: str = id
+        self.stream_type = stream_type
+
+    @staticmethod
+    def generate_id(hostname: str, stream_type: str) -> str:
+        """Generate an id for parameters."""
+        return f"https://{hostname}/iostreams/{stream_type}"
 
 
 class CommandParameterBase:
@@ -220,6 +236,20 @@ class CommandOutput(CommandParameterBase):
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="output")
+
+
+class MappedIOStreamSchema(JsonLDSchema):
+    """MappedIOStream schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = renku.IOStream
+        model = MappedIOStream
+        unknown = EXCLUDE
+
+    id = fields.Id()
+    stream_type = fields.String(renku.streamType)
 
 
 class CommandParameterBaseSchema(JsonLDSchema):

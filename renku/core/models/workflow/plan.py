@@ -26,6 +26,7 @@ from uuid import uuid4
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
+from renku.core.incubation.database import Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.entities import Entity
 from renku.core.models.workflow import parameters as old_parameter
@@ -36,6 +37,7 @@ from renku.core.models.workflow.parameter import (
     CommandOutputSchema,
     CommandParameter,
     CommandParameterSchema,
+    MappedIOStream,
 )
 from renku.core.models.workflow.run import Run
 from renku.core.utils.urls import get_host
@@ -43,7 +45,7 @@ from renku.core.utils.urls import get_host
 MAX_GENERATED_NAME_LENGTH = 25
 
 
-class Plan:
+class Plan(Persistent):
     """Represent a `renku run` execution template."""
 
     def __init__(
@@ -105,12 +107,19 @@ class Plan:
             """Convert an old CommandInput to a new CommandInput."""
             assert isinstance(input, old_parameter.CommandInput)
 
+            mapped_to = input.mapped_to
+            if mapped_to:
+                stream_type = mapped_to.stream_type
+                mapped_to = MappedIOStream(
+                    id=MappedIOStream.generate_id(hostname, stream_type), stream_type=stream_type
+                )
+
             return CommandInput(
                 default_value=input.consumes.path,
                 description=input.description,
                 id=CommandInput.generate_id(plan_id=plan_id, postfix=PurePosixPath(input._id).name),
                 label=None,
-                mapped_to=input.mapped_to,
+                mapped_to=mapped_to,
                 name=input.name,
                 position=input.position,
                 prefix=input.prefix,
@@ -120,13 +129,20 @@ class Plan:
             """Convert an old CommandOutput to a new CommandOutput."""
             assert isinstance(output, old_parameter.CommandOutput)
 
+            mapped_to = output.mapped_to
+            if mapped_to:
+                stream_type = mapped_to.stream_type
+                mapped_to = MappedIOStream(
+                    id=MappedIOStream.generate_id(hostname, stream_type), stream_type=stream_type
+                )
+
             return CommandOutput(
                 create_folder=output.create_folder,
                 default_value=output.produces.path,
                 description=output.description,
                 id=CommandOutput.generate_id(plan_id=plan_id, postfix=PurePosixPath(output._id).name),
                 label=None,
-                mapped_to=output.mapped_to,
+                mapped_to=mapped_to,
                 name=output.name,
                 position=output.position,
                 prefix=output.prefix,
@@ -233,24 +249,32 @@ class Plan:
             )
 
         def convert_input(input: CommandInput) -> old_parameter.CommandInput:
+            mapped_to = input.mapped_to
+            if mapped_to:
+                mapped_to = old_parameter.MappedIOStream(id=mapped_to.id, stream_type=mapped_to.stream_type)
+
             return old_parameter.CommandInput(
                 consumes=get_entity(input.default_value),
                 description=input.description,
                 id=input.id.replace(self.id, run_id),
                 label=None,
-                mapped_to=input.mapped_to,
+                mapped_to=mapped_to,
                 name=input.name,
                 position=input.position,
                 prefix=input.prefix,
             )
 
         def convert_output(output: CommandOutput) -> old_parameter.CommandOutput:
+            mapped_to = output.mapped_to
+            if mapped_to:
+                mapped_to = old_parameter.MappedIOStream(id=mapped_to.id, stream_type=mapped_to.stream_type)
+
             return old_parameter.CommandOutput(
                 create_folder=output.create_folder,
                 description=output.description,
                 id=output.id.replace(self.id, run_id),
                 label=None,
-                mapped_to=output.mapped_to,
+                mapped_to=mapped_to,
                 name=output.name,
                 position=output.position,
                 prefix=output.prefix,

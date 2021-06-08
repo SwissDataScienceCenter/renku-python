@@ -20,26 +20,27 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-import persistent
 from marshmallow import EXCLUDE
 from rdflib import ConjunctiveGraph
 
-from renku.core.incubation.metadata_storage import MetadataStorage
+from renku.core.incubation.database import Database, Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.provenance.activity import Activity, ActivityCollection, ActivitySchema
 
 
-class ProvenanceGraph(persistent.Persistent):
+class ProvenanceGraph(Persistent):
     """A graph of all executions (Activities)."""
 
-    id = "/provenance-graph"
+    id = "provenance-graph"
+    # _serializable_fields = ["activities"]
 
     def __init__(self, activities: List[Activity] = None):
         self.activities: List[Activity] = activities or []
 
         self._custom_bindings: Dict[str, str] = {}
         self._graph: Optional[ConjunctiveGraph] = None
-        self._order: int = 1 if len(self.activities) == 0 else max([a.order for a in self.activities]) + 1
+        # TODO: Remove _order and rely on Activity's ended_at_time and started_at_time for ordering
+        self._order: int = len(self.activities) + 1
         self._path: Optional[Path] = None
 
     @property
@@ -65,9 +66,11 @@ class ProvenanceGraph(persistent.Persistent):
         self._p_changed = True
 
     @classmethod
-    def from_storage(cls, metadata_storage: MetadataStorage) -> "ProvenanceGraph":
-        """Return an instance from a metadata storage."""
-        self = metadata_storage.get_object_by_id("ProvenanceGraph", ProvenanceGraph.id) or ProvenanceGraph()
+    def from_database(cls, database: Database) -> "ProvenanceGraph":
+        """Return an instance from a metadata database."""
+        activity_tree = database.get("Activity")
+        activities = list(activity_tree.values())
+        self = ProvenanceGraph(activities=activities)
         # NOTE: If we sort then all ghost objects will be loaded which is not what we want
         # self.activities.sort(key=lambda e: e.order)
 
@@ -87,11 +90,6 @@ class ProvenanceGraph(persistent.Persistent):
     def to_jsonld(self):
         """Create JSON-LD."""
         return ProvenanceGraphSchema(flattened=True).dump(self)
-
-    def to_storage(self, metadata_storage: MetadataStorage):
-        """Write an instance to a metadata storage."""
-        metadata_storage.store_object("ProvenanceGraph", ProvenanceGraph.id, self)
-        metadata_storage.commit()
 
     @property
     def rdf_graph(self):

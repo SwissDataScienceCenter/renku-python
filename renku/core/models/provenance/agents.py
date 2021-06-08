@@ -34,7 +34,7 @@ from renku.core.models.git import get_user_info
 from renku.version import __version__, version_url
 
 
-@attr.s(slots=True)
+@attr.s(eq=False, order=False)
 class Person:
     """Represent a person."""
 
@@ -149,7 +149,7 @@ class PersonSchema(JsonLDSchema):
     _id = fields.Id(init_name="id")
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(eq=False, order=False)
 class SoftwareAgent:
     """Represent executed software."""
 

@@ -17,7 +17,6 @@
 # limitations under the License.
 """Represent dependency graph."""
 
-import json
 from collections import deque
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -25,6 +24,7 @@ from typing import List, Optional, Tuple
 import networkx
 from marshmallow import EXCLUDE
 
+from renku.core.incubation.database import Database
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.workflow.plan import Plan, PlanSchema
 
@@ -39,9 +39,27 @@ class DependencyGraph:
         self._plans: List[Plan] = plans or []
         self._path = None
 
-        self._graph = networkx.DiGraph()
-        self._graph.add_nodes_from(self._plans)
-        self._connect_all_nodes()
+        # NOTE: If we connect nodes then all ghost objects will be loaded which is not what we want
+        self._graph = None
+
+    @classmethod
+    def from_database(cls, database: Database) -> "DependencyGraph":
+        """Return an instance from a metadata database."""
+        plan_tree = database.get("Plan")
+        plans = list(plan_tree.values())
+        self = DependencyGraph(plans=plans)
+
+        return self
+
+    @property
+    def graph(self) -> networkx.DiGraph:
+        """A networkx.DiGraph containing all plans."""
+        if not self._graph:
+            self._graph = networkx.DiGraph()
+            self._graph.add_nodes_from(self._plans)
+            self._connect_all_nodes()
+
+        return self._graph
 
     @property
     def plans(self) -> List[Plan]:
@@ -64,7 +82,7 @@ class DependencyGraph:
         self._add_helper(plan)
 
         # FIXME some existing projects have cyclic dependency; make this check outside this model.
-        # assert networkx.algorithms.dag.is_directed_acyclic_graph(self._graph)
+        # assert networkx.algorithms.dag.is_directed_acyclic_graph(self.graph)
 
         return plan
 
@@ -77,15 +95,15 @@ class DependencyGraph:
     def _add_helper(self, plan: Plan):
         self._plans.append(plan)
 
-        self._graph.add_node(plan)
+        self.graph.add_node(plan)
         self._connect_node_to_others(node=plan)
 
     def _connect_all_nodes(self):
-        for node in self._graph:
+        for node in self.graph:
             self._connect_node_to_others(node)
 
     def _connect_node_to_others(self, node: Plan):
-        for other_node in self._graph:
+        for other_node in self.graph:
             self._connect_two_nodes(from_=node, to_=other_node)
             self._connect_two_nodes(from_=other_node, to_=node)
 
@@ -93,19 +111,19 @@ class DependencyGraph:
         for o in from_.outputs:
             for i in to_.inputs:
                 if DependencyGraph._is_super_path(o.default_value, i.default_value):
-                    self._graph.add_edge(from_, to_, name=o.default_value)
+                    self.graph.add_edge(from_, to_, name=o.default_value)
 
     def visualize_graph(self):
         """Visualize graph using matplotlib."""
-        networkx.draw(self._graph, with_labels=True, labels={n: n.name for n in self._graph.nodes})
+        networkx.draw(self.graph, with_labels=True, labels={n: n.name for n in self.graph.nodes})
 
-        pos = networkx.spring_layout(self._graph)
-        edge_labels = networkx.get_edge_attributes(self._graph, "name")
-        networkx.draw_networkx_edge_labels(self._graph, pos=pos, edge_labels=edge_labels)
+        pos = networkx.spring_layout(self.graph)
+        edge_labels = networkx.get_edge_attributes(self.graph, "name")
+        networkx.draw_networkx_edge_labels(self.graph, pos=pos, edge_labels=edge_labels)
 
     def to_png(self, path):
         """Create a PNG image from graph."""
-        networkx.drawing.nx_pydot.to_pydot(self._graph).write_png(path)
+        networkx.drawing.nx_pydot.to_pydot(self.graph).write_png(path)
 
     @staticmethod
     def _is_super_path(parent, child):
@@ -117,7 +135,7 @@ class DependencyGraph:
         """Get a list of downstream paths."""
         nodes = deque()
         node: Plan
-        for node in self._graph:
+        for node in self.graph:
             if plan_id == node.id and any(self._is_super_path(path, p.default_value) for p in node.inputs):
                 nodes.append(node)
 
@@ -129,7 +147,7 @@ class DependencyGraph:
             outputs_paths = [o.default_value for o in node.outputs]
             paths.update(outputs_paths)
 
-            nodes.extend(self._graph.successors(node))
+            nodes.extend(self.graph.successors(node))
 
         return paths
 
@@ -146,13 +164,13 @@ class DependencyGraph:
         nodes_with_deleted_inputs = set()
         node: Plan
         for plan_id, path, _ in modified_usages:
-            for node in self._graph:
+            for node in self.graph:
                 if plan_id == node.id and any(self._is_super_path(path, p.default_value) for p in node.inputs):
                     nodes.add(node)
-                    nodes.update(networkx.algorithms.dag.descendants(self._graph, node))
+                    nodes.update(networkx.algorithms.dag.descendants(self.graph, node))
 
         sorted_nodes = []
-        for node in networkx.algorithms.dag.topological_sort(self._graph):
+        for node in networkx.algorithms.dag.topological_sort(self.graph):
             if node in nodes:
                 if node_has_deleted_inputs(node):
                     nodes_with_deleted_inputs.add(node)
@@ -160,20 +178,6 @@ class DependencyGraph:
                     sorted_nodes.append(node)
 
         return sorted_nodes, list(nodes_with_deleted_inputs)
-
-    @classmethod
-    def from_json(cls, path):
-        """Create an instance from a file."""
-        if Path(path).exists():
-            with open(path) as file_:
-                data = json.load(file_)
-                self = cls.from_jsonld(data=data) if data else DependencyGraph(plans=[])
-        else:
-            self = DependencyGraph(plans=[])
-
-        self._path = Path(path)
-
-        return self
 
     @classmethod
     def from_jsonld(cls, data):
@@ -188,13 +192,6 @@ class DependencyGraph:
     def to_jsonld(self):
         """Create JSON-LD."""
         return DependencyGraphSchema(flattened=True).dump(self)
-
-    def to_json(self, path=None):
-        """Write to file."""
-        path = path or self._path
-        data = self.to_jsonld()
-        with open(path, "w", encoding="utf-8") as file_:
-            json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
 
 class DependencyGraphSchema(JsonLDSchema):

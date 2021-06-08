@@ -35,6 +35,7 @@ from werkzeug.utils import cached_property, secure_filename
 
 from renku.core import errors
 from renku.core.compat import Path
+from renku.core.incubation.database import Database
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.projects import Project
@@ -47,7 +48,6 @@ from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
 
-from ..incubation.metadata_storage import MetadataStorage
 from .git import GitCore
 
 DEFAULT_DATA_DIR = "data"
@@ -119,7 +119,7 @@ class RepositoryApiMixin(GitCore):
     PROVENANCE_GRAPH = "provenance.json"
     """File for storing ProvenanceGraph."""
 
-    METADATA_STORAGE_PATH: str = "metadata"
+    DATABASE_PATH: str = "metadata"
     """Directory for metadata storage."""
 
     ACTIVITY_INDEX = "activity_index.yaml"
@@ -154,7 +154,7 @@ class RepositoryApiMixin(GitCore):
     _dependency_graph: Optional[DependencyGraph] = None
     _provenance_graph: Optional[ProvenanceGraph] = None
 
-    _metadata_storage: Optional[MetadataStorage] = None
+    _database: Optional[Database] = None
 
     _migration_type = attr.ib(default=MigrationType.ALL)
 
@@ -247,9 +247,9 @@ class RepositoryApiMixin(GitCore):
         return self.renku_path / self.DEPENDENCY_GRAPH
 
     @property
-    def metadata_storage_path(self) -> Path:
+    def database_path(self) -> Path:
         """Path to the metadata storage directory."""
-        return self.renku_path / self.METADATA_STORAGE_PATH
+        return self.renku_path / self.DATABASE_PATH
 
     @cached_property
     def cwl_prefix(self):
@@ -263,7 +263,7 @@ class RepositoryApiMixin(GitCore):
         if not self.has_graph_files():
             return
         if not self._dependency_graph:
-            self._dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
+            self._dependency_graph = DependencyGraph.from_database(self.database)
 
         return self._dependency_graph
 
@@ -273,21 +273,20 @@ class RepositoryApiMixin(GitCore):
         if not self.has_graph_files():
             return
         if not self._provenance_graph:
-            self._provenance_graph = ProvenanceGraph.from_storage(self.metadata_storage)
+            self._provenance_graph = ProvenanceGraph.from_database(self.database)
 
         return self._provenance_graph
 
     @property
-    def metadata_storage(self) -> Optional[MetadataStorage]:
+    def database(self) -> Optional[Database]:
         """Return metadata storage if available."""
         if not self.has_graph_files():
             return
-        if not self._metadata_storage:
-            self._metadata_storage = MetadataStorage.from_path(self.metadata_storage_path)
-            # self._metadata_storage.open()
-            # FIXME close the _metadata_storage at some point
+        if not self._database:
+            self._database = Database.from_path(self.database_path)
+            # FIXME commit the _database at some point
 
-        return self._metadata_storage
+        return self._database
 
     @property
     def project(self):
@@ -525,29 +524,34 @@ class RepositoryApiMixin(GitCore):
 
         self.update_graphs(process_run)
 
-    def update_graphs(self, activity: Union[ProcessRun, WorkflowRun]):
+    def update_graphs(self, activity: Union[ProcessRun, WorkflowRun]) -> Optional[ActivityCollection]:
         """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
         if not self.has_graph_files():
-            return
+            return None
 
-        dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
-        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+        activity_collection = ActivityCollection.from_activity(activity, self.dependency_graph, self)
 
-        activity_collection = ActivityCollection.from_activity(activity, dependency_graph, self)
+        for activity in activity_collection.activities:
+            self.database.add(activity)
+            self.database.add(activity.association.plan)
+            for u in activity.usages:
+                self.database.add(u.entity)
+            for g in activity.generations:
+                self.database.add(g.entity)
+            for i in activity.invalidations:
+                self.database.add(i)
 
-        provenance_graph.add(activity_collection)
+        self.database.commit()
 
-        dependency_graph.to_json()
-        provenance_graph.to_json()
+        return activity_collection
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""
-        return self.dependency_graph_path.exists() or self.provenance_graph_path.exists()
+        return self.database_path.exists()
 
     def initialize_graph(self):
         """Create empty graph files."""
-        self.dependency_graph_path.write_text("[]")
-        self.provenance_graph_path.write_text("[]")
+        self.database_path.mkdir(parents=True, exist_ok=True)
 
     def remove_graph_files(self):
         """Remove all graph files."""
@@ -560,7 +564,7 @@ class RepositoryApiMixin(GitCore):
         except FileNotFoundError:
             pass
         try:
-            shutil.rmtree(self.metadata_storage_path)
+            shutil.rmtree(self.database_path)
         except FileNotFoundError:
             pass
 

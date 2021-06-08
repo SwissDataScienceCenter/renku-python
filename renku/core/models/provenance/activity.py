@@ -16,15 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent an execution of a Plan."""
-
 from datetime import datetime
 from typing import List, Optional, Union
 from urllib.parse import urlparse
 from uuid import uuid4
 
-import persistent
 from marshmallow import EXCLUDE
 
+from renku.core.incubation.database import Persistent
 from renku.core.models import entities as old_entities
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
 from renku.core.models.cwl.annotation import Annotation, AnnotationSchema
@@ -85,7 +84,7 @@ class Generation:
         return f"{activity_id}/generations/{uuid4()}"
 
 
-class Activity(persistent.Persistent):
+class Activity(Persistent):
     """Represent an activity in the repository."""
 
     def __init__(
