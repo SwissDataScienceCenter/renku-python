@@ -253,6 +253,15 @@ class ZenodoRecordSerializer:
         """Get record metadata as jsonld."""
         response = self._zenodo.accept_jsonld().make_request(self._uri)
         self._jsonld = response.json()
+
+        if "image" in self._jsonld and isinstance(self._jsonld["image"], str):
+            self._jsonld["image"] = {
+                "@id": self._jsonld["image"],
+                "@type": "ImageObject",
+                "position": 1,
+                "contentUrl": self._jsonld["image"],
+            }
+
         return self._jsonld
 
     def get_files(self):
