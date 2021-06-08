@@ -154,7 +154,7 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
-    "attrs>=19.3.0,<20.4.0",
+    "attrs>=19.3.0,<21.3.0",
     "calamus>=0.3.8,<0.3.9",
     "click-completion>=0.5.0,<=0.5.3",
     "click-option-group>=0.5.2,<0.6.0",
@@ -163,7 +163,7 @@ install_requires = [
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool>=3.0.20210319143721,<3.2",
-    "environ_config>=18.2.0,<=20.1.0",
+    "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
     "humanize>=2.5.0,<3.4.0",
@@ -190,7 +190,7 @@ install_requires = [
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.60.1",
     "wcmatch>=6.0.0,<8.2",
-    "werkzeug>=0.15.5,<=1.0.1",
+    "werkzeug>=0.15.5,<2.0.2",
 ]
 
 
