@@ -56,6 +56,7 @@ jobs:
         RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
         RENKU_ANONYMOUS_SESSIONS: true
         RENKU_TESTS_ENABLED: true
+        TEST_ARTIFACTS_PATH: "tests-artifacts-${{ github.sha }}"
         renku_core: "@${{ github.head_ref }}"
         renku: "${{ needs.check-deploy.outputs.renku }}"
         renku_gateway: "${{ needs.check-deploy.outputs.renku-gateway }}"

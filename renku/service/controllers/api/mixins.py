@@ -272,9 +272,6 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
         project = self.cache.get_project(self.user, self.context["project_id"])
 
-        if not project.initialized:
-            raise UninitializedProject(project.abs_path)
-
         if self.skip_lock:
             lock = contextlib.suppress()
         elif self.is_write or self.migrate_project:
@@ -286,6 +283,10 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 self.reset_local_repo(project)
 
                 with lock:
+                    # NOTE: Get up-to-date version of object
+                    current_project = Project.load(project.project_id)
+                    if not current_project.initialized:
+                        raise UninitializedProject(project.abs_path)
                     if self.migrate_project:
                         self.ensure_migrated(project.project_id)
 

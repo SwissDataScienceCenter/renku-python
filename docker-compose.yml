@@ -66,7 +66,9 @@ services:
       - reverse-proxy
     ports:
       - "8080:8080"
-    command: ["api", "--debug"]
+    volumes:
+      - ${PWD}:/code/renku
+    command: "api --debug"
     labels:
       - "traefik.http.routers.renku-svc.rule=PathPrefix(`/api/renku`)"
       - "traefik.http.middlewares.stripprefix.stripprefix.prefixes=/api"

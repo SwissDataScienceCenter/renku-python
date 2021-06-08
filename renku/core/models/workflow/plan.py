@@ -18,26 +18,24 @@
 """Represent run templates."""
 
 import copy
-import pathlib
-import urllib.parse
-import uuid
-from pathlib import Path
-from typing import Sequence
+import itertools
+from pathlib import PurePosixPath
+from typing import Any, Dict, List
+from uuid import uuid4
 
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.entities import Entity
-from renku.core.models.workflow.parameters import (
-    CommandArgument,
-    CommandArgumentSchema,
+from renku.core.models.workflow import parameters as old_parameter
+from renku.core.models.workflow.parameter import (
     CommandInput,
-    CommandInputTemplate,
-    CommandInputTemplateSchema,
+    CommandInputSchema,
     CommandOutput,
-    CommandOutputTemplate,
-    CommandOutputTemplateSchema,
+    CommandOutputSchema,
+    CommandParameter,
+    CommandParameterSchema,
 )
 from renku.core.models.workflow.run import Run
 from renku.core.utils.urls import get_host
@@ -50,103 +48,134 @@ class Plan:
 
     def __init__(
         self,
-        id_,
-        arguments=None,
-        command=None,
-        description=None,
-        inputs=None,
-        keywords=None,
-        name=None,
-        outputs=None,
-        success_codes=None,
+        *,
+        parameters: List[CommandParameter] = None,
+        command: str = None,
+        description: str = None,
+        id: str,
+        inputs: List[CommandInput] = None,
+        keywords: List[str] = None,
+        name: str = None,
+        outputs: List[CommandOutput] = None,
+        success_codes: List[int] = None,
     ):
-        """Initialize."""
-        self.arguments: Sequence[CommandArgument] = arguments or []
-        self.command = command
-        self.description = description
-        self.id_ = id_
-        self.inputs: Sequence[CommandInputTemplate] = inputs or []
-        self.keywords = keywords or []
-        self.name = name or f"{secure_filename(self.command)}-{uuid.uuid4().hex}"
-        self.outputs: Sequence[CommandOutputTemplate] = outputs or []
-        self.success_codes = success_codes or []
+        self.command: str = command
+        self.description: str = description
+        self.id: str = id
+        self.inputs: List[CommandInput] = inputs or []
+        self.keywords: List[str] = keywords or []
+        self.name: str = name
+        self.outputs: List[CommandOutput] = outputs or []
+        self.parameters: List[CommandParameter] = parameters or []
+        self.success_codes: List[int] = success_codes or []
+
+        if not self.name:
+            self.name = self._get_default_name()
 
     def __repr__(self):
-        """String representation."""
         return self.name
 
     @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        elif not isinstance(data, dict):
-            raise ValueError(data)
-
-        return PlanSchema(flattened=True).load(data)
-
-    @classmethod
-    def from_run(cls, run: Run, client):
+    def from_run(cls, run: Run, hostname: str):
         """Create a Plan from a Run."""
-        assert not run.subprocesses, f"Cannot create from a Run with subprocesses: {run._id}"
+        assert not run.subprocesses, f"Cannot create a Plan from a Run with subprocesses: {run._id}"
 
-        uuid_ = _extract_run_uuid(run._id)
-        plan_id = cls.generate_id(client=client, uuid_=uuid_)
+        def extract_run_uuid(run_id: str) -> str:
+            # https://localhost/runs/723fd784-9347-4081-84de-a6dbb067545b/
+            return run_id.rstrip("/").rsplit("/", maxsplit=1)[-1]
 
-        inputs = [_convert_command_input(i, plan_id) for i in run.inputs]
-        outputs = [_convert_command_output(o, plan_id) for o in run.outputs]
+        uuid = extract_run_uuid(run._id)
+        plan_id = cls.generate_id(hostname=hostname, uuid=uuid)
+
+        def convert_argument(argument: old_parameter.CommandArgument) -> CommandParameter:
+            """Convert an old CommandArgument to a new CommandParameter."""
+            assert isinstance(argument, old_parameter.CommandArgument)
+
+            return CommandParameter(
+                default_value=argument.value,
+                description=argument.description,
+                id=CommandParameter.generate_id(plan_id=plan_id, postfix=PurePosixPath(argument._id).name),
+                label=None,
+                name=argument.name,
+                position=argument.position,
+                prefix=argument.prefix,
+            )
+
+        def convert_input(input: old_parameter.CommandInput) -> CommandInput:
+            """Convert an old CommandInput to a new CommandInput."""
+            assert isinstance(input, old_parameter.CommandInput)
+
+            return CommandInput(
+                default_value=input.consumes.path,
+                description=input.description,
+                id=CommandInput.generate_id(plan_id=plan_id, postfix=PurePosixPath(input._id).name),
+                label=None,
+                mapped_to=input.mapped_to,
+                name=input.name,
+                position=input.position,
+                prefix=input.prefix,
+            )
+
+        def convert_output(output: old_parameter.CommandOutput) -> CommandOutput:
+            """Convert an old CommandOutput to a new CommandOutput."""
+            assert isinstance(output, old_parameter.CommandOutput)
+
+            return CommandOutput(
+                create_folder=output.create_folder,
+                default_value=output.produces.path,
+                description=output.description,
+                id=CommandOutput.generate_id(plan_id=plan_id, postfix=PurePosixPath(output._id).name),
+                label=None,
+                mapped_to=output.mapped_to,
+                name=output.name,
+                position=output.position,
+                prefix=output.prefix,
+            )
 
         return cls(
-            arguments=run.arguments,
             command=run.command,
             description=run.description,
-            id_=plan_id,
-            inputs=inputs,
+            id=plan_id,
+            inputs=[convert_input(i) for i in run.inputs],
             keywords=run.keywords,
-            name=run.name or cls._generate_name(run),
-            outputs=outputs,
+            name=run.name,
+            outputs=[convert_output(o) for o in run.outputs],
+            parameters=[convert_argument(a) for a in run.arguments],
             success_codes=run.successcodes,
         )
 
     @staticmethod
-    def generate_id(client, uuid_):
-        """Generate an identifier for the plan."""
-        uuid_ = uuid_ or str(uuid.uuid4())
-        host = get_host(client)
-        return urllib.parse.urljoin(f"https://{host}", pathlib.posixpath.join("plans", uuid_))
+    def generate_id(hostname: str, uuid: str) -> str:
+        """Generate an identifier for Plan."""
+        uuid = uuid or str(uuid4())
+        return f"https://{hostname}/plans/{uuid}"
 
-    @staticmethod
-    def _generate_name(run):
-        if not run:
-            return uuid.uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
+    def _get_default_name(self) -> str:
+        name = "-".join(str(a) for a in self.to_argv())
+        if not name:
+            return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
-        name = "-".join(run.to_argv())
         name = secure_filename(name)
         rand_length = 5
-        return f"{name[:MAX_GENERATED_NAME_LENGTH - rand_length -1]}-{uuid.uuid4().hex[:rand_length]}"
+        return f"{name[:MAX_GENERATED_NAME_LENGTH - rand_length -1]}-{uuid4().hex[:rand_length]}"
 
     def assign_new_id(self):
         """Assign a new UUID.
 
-        This is required only when there is another plan which is exactly the same except the arguments list.
+        This is required only when there is another plan which is exactly the same except the parameters' list.
         """
-        path_start = self.id_.find("/plans/")
-        old_uuid = self.id_[path_start + len("/plans/") :]
-        new_uuid = str(uuid.uuid4())
-        self.id_ = self.id_.replace(old_uuid, new_uuid)
-        self.arguments = copy.deepcopy(self.arguments)
-        for a in self.arguments:
-            a._id = a._id.replace(old_uuid, new_uuid)
+        current_uuid = self._extract_uuid()
+        new_uuid = str(uuid4())
+        self.id = self.id.replace(current_uuid, new_uuid)
+        self.parameters = copy.deepcopy(self.parameters)
+        for a in self.parameters:
+            a.id = a.id.replace(current_uuid, new_uuid)
 
-    def _extract_uuid(self):
-        path_start = self.id_.find("/plans/")
-        return self.id_[path_start + len("/plans/") :]
+    def _extract_uuid(self) -> str:
+        path_start = self.id.find("/plans/")
+        return self.id[path_start + len("/plans/") :]
 
-    def to_jsonld(self):
-        """Create JSON-LD."""
-        return PlanSchema(flattened=True).dump(self)
-
-    def is_similar_to(self, other) -> bool:
+    def is_similar_to(self, other: "Plan") -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
 
         def get_input_patterns(plan: Plan):
@@ -155,107 +184,87 @@ class Plan:
         def get_output_patterns(plan: Plan):
             return {e.default_value for e in plan.outputs}
 
-        def get_arguments(plan: Plan):
-            return {(a.position, a.prefix, a.value) for a in plan.arguments}
+        def get_parameters(plan: Plan):
+            return {(a.position, a.prefix, a.default_value) for a in plan.parameters}
 
         # TODO: Check order of inputs/outputs/parameters as well after sorting by position
         return (
             self.command == other.command
             and set(self.success_codes) == set(other.success_codes)
             and get_input_patterns(self) == get_input_patterns(other)
-            and get_output_patterns(self) == get_output_patterns(self)
-            and get_arguments(self) == get_arguments(other)
+            and get_output_patterns(self) == get_output_patterns(other)
+            and get_parameters(self) == get_parameters(other)
         )
 
-    def to_run(self, client, entities_cache) -> Run:
+    def to_argv(self) -> List[Any]:
+        """Convert a Plan into argv list."""
+        arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
+        arguments = filter(lambda a: a.position is not None, arguments)
+        arguments = sorted(arguments, key=lambda a: a.position)
+
+        argv = self.command.split(" ") if self.command else []
+        argv.extend(e for a in arguments for e in a.to_argv())
+
+        return argv
+
+    def to_run(self, client, entities_cache: Dict[str, Entity]) -> Run:
         """Create a Run."""
-
-        def convert_input(input_: CommandInputTemplate) -> CommandInput:
-            entity = entities_cache.get(input_.default_value)
-            if not entity:
-                entity = Entity.from_revision(client=client, path=input_.default_value, revision="HEAD")
-                entities_cache[input_.default_value] = entity
-
-            return CommandInput(
-                id=input_._id.replace(self.id_, run_id),
-                consumes=entity,
-                mapped_to=input_.mapped_to,
-                position=input_.position,
-                prefix=input_.prefix,
-            )
-
-        def convert_output(output: CommandOutputTemplate) -> CommandOutput:
-            entity = entities_cache.get(output.default_value)
-            if not entity:
-                entity = Entity.from_revision(client=client, path=output.default_value, revision="HEAD")
-                entities_cache[output.default_value] = entity
-
-            return CommandOutput(
-                id=output._id.replace(self.id_, run_id),
-                produces=entity,
-                mapped_to=output.mapped_to,
-                position=output.position,
-                prefix=output.prefix,
-                create_folder=output.create_folder,
-            )
-
-        uuid_ = self._extract_uuid()
+        uuid = self._extract_uuid()
         host = get_host(client)
         # TODO: This won't work if plan_id was randomly generated; for PoC it's OK.
-        run_id = urllib.parse.urljoin(f"https://{host}", pathlib.posixpath.join("runs", uuid_))
+        run_id = f"https://{host}/runs/{uuid}"
 
-        inputs = [convert_input(i) for i in self.inputs]
-        outputs = [convert_output(o) for o in self.outputs]
+        def get_entity(path: str) -> Entity:
+            entity = entities_cache.get(path)
+            if not entity:
+                entity = Entity.from_revision(client=client, path=path, revision="HEAD")
+                entities_cache[path] = entity
+            return entity
+
+        def convert_parameter(argument: CommandParameter) -> old_parameter.CommandArgument:
+            return old_parameter.CommandArgument(
+                description=argument.description,
+                id=argument.id.replace(self.id, run_id),
+                label=None,
+                name=argument.name,
+                position=argument.position,
+                prefix=argument.prefix,
+                value=argument.default_value,
+            )
+
+        def convert_input(input: CommandInput) -> old_parameter.CommandInput:
+            return old_parameter.CommandInput(
+                consumes=get_entity(input.default_value),
+                description=input.description,
+                id=input.id.replace(self.id, run_id),
+                label=None,
+                mapped_to=input.mapped_to,
+                name=input.name,
+                position=input.position,
+                prefix=input.prefix,
+            )
+
+        def convert_output(output: CommandOutput) -> old_parameter.CommandOutput:
+            return old_parameter.CommandOutput(
+                create_folder=output.create_folder,
+                description=output.description,
+                id=output.id.replace(self.id, run_id),
+                label=None,
+                mapped_to=output.mapped_to,
+                name=output.name,
+                position=output.position,
+                prefix=output.prefix,
+                produces=get_entity(output.default_value),
+            )
 
         return Run(
-            arguments=self.arguments,
+            arguments=[convert_parameter(p) for p in self.parameters],
             command=self.command,
             id=run_id,
-            inputs=inputs,
-            outputs=outputs,
+            inputs=[convert_input(i) for i in self.inputs],
+            outputs=[convert_output(o) for o in self.outputs],
             successcodes=self.success_codes,
         )
-
-
-def _extract_run_uuid(run_id) -> str:
-    # https://localhost/runs/723fd784-9347-4081-84de-a6dbb067545b
-    parsed_url = urllib.parse.urlparse(run_id)
-    return parsed_url.path[len("/runs/") :]
-
-
-def _convert_command_input(input_: CommandInput, plan_id) -> CommandInputTemplate:
-    """Convert a CommandInput to CommandInputTemplate."""
-    assert isinstance(input_, CommandInput)
-
-    # TODO: add a '**' if this is a directory
-    # TODO: For now this is always a fully qualified path; in future this might be a glob pattern.
-    consumes = input_.consumes.path
-
-    return CommandInputTemplate(
-        id=CommandInputTemplate.generate_id(plan_id=plan_id, id_=Path(input_._id).name),
-        default_value=consumes,
-        mapped_to=input_.mapped_to,
-        position=input_.position,
-        prefix=input_.prefix,
-    )
-
-
-def _convert_command_output(output: CommandOutput, plan_id) -> CommandOutputTemplate:
-    """Convert a CommandOutput to CommandOutputTemplate."""
-    assert isinstance(output, CommandOutput)
-
-    # TODO: add a '*' if this is a directory
-    # TODO: For now this is always a fully qualified path; in future this might be glob pattern.
-    produces = output.produces.path
-
-    return CommandOutputTemplate(
-        id=CommandOutputTemplate.generate_id(plan_id=plan_id, id_=Path(output._id).name),
-        default_value=produces,
-        mapped_to=output.mapped_to,
-        position=output.position,
-        prefix=output.prefix,
-        create_folder=output.create_folder,
-    )
 
 
 class PlanSchema(JsonLDSchema):
@@ -268,12 +277,12 @@ class PlanSchema(JsonLDSchema):
         model = Plan
         unknown = EXCLUDE
 
-    arguments = Nested(renku.hasArguments, CommandArgumentSchema, many=True, missing=None)
     command = fields.String(renku.command, missing=None)
     description = fields.String(schema.description, missing=None)
-    id_ = fields.Id()
-    inputs = Nested(renku.hasInputs, CommandInputTemplateSchema, many=True, missing=None)
+    id = fields.Id()
+    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
-    outputs = Nested(renku.hasOutputs, CommandOutputTemplateSchema, many=True, missing=None)
+    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
+    parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])

@@ -110,7 +110,7 @@ def test_renku_clone_checkout_revs(tmp_path, rev, detached):
         repo, _ = (
             project_clone_command()
             .build()
-            .execute("https://dev.renku.ch/gitlab/contact/no-renku.git", checkout_rev=rev,)
+            .execute("https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku.git", checkout_rev=rev,)
         ).output
 
         if detached:
