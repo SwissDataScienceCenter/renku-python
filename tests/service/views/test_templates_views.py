@@ -90,7 +90,6 @@ def test_create_project_from_template(svc_client_templates_creation):
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
 
     # NOTE:  fail: remote authentication
-    """
     anonymous_headers = deepcopy(headers)
     anonymous_headers["Authorization"] = "Bearer None"
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=anonymous_headers)
@@ -98,7 +97,6 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert response
     assert response.json["error"]
     assert "Cannot push changes" in response.json["error"]["reason"]
-    """
 
     # NOTE:  fail: missing parameters
     if len(payload["parameters"]) > 0:
