@@ -25,6 +25,7 @@ import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 from subprocess import check_output
+from typing import Union
 
 import attr
 import filelock
@@ -37,6 +38,7 @@ from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.projects import Project
+from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.refs import LinkReference
@@ -228,7 +230,7 @@ class RepositoryApiMixin(GitCore):
         return self.renku_path / self.TEMPLATE_CHECKSUMS
 
     @property
-    def provenance_graph_path(self):
+    def provenance_graph_path(self) -> str:
         """Path to store activity files."""
         return self.renku_path / self.PROVENANCE_GRAPH
 
@@ -473,7 +475,7 @@ class RepositoryApiMixin(GitCore):
         if not read_only:
             metadata.to_yaml(path=metadata_path)
 
-    def process_and_store_run(self, command_line_tool, name, description, keywords, client):
+    def process_and_store_run(self, command_line_tool, name, description, keywords):
         """Create Plan and Activity from CommandLineTool and store them."""
         filename = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(command_line_tool.baseCommand)))
 
@@ -489,7 +491,7 @@ class RepositoryApiMixin(GitCore):
 
         self.update_graphs(process_run)
 
-    def update_graphs(self, activity_run):
+    def update_graphs(self, activity: Union[ProcessRun, WorkflowRun]):
         """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
         if not self.has_graph_files():
             return
@@ -497,7 +499,7 @@ class RepositoryApiMixin(GitCore):
         dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
         provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
 
-        activity_collection = ActivityCollection.from_activity_run(activity_run, dependency_graph, self)
+        activity_collection = ActivityCollection.from_activity(activity, dependency_graph, self)
 
         provenance_graph.add(activity_collection)
 

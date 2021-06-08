@@ -135,7 +135,7 @@ def migrationscheck():
         template_id,
         automated_update,
         docker_update_possible,
-    ) = (migrations_check().build().execute().output)
+    ) = (migrations_check().lock_project().build().execute().output)
 
     click.echo(
         json.dumps(

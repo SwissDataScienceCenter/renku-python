@@ -755,7 +755,7 @@ def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     assert expected_reason == response.json["error"]["reason"]
 
     params = {
-        "git_url": "https://dev.renku.ch/gitlab/contact/no-renku",
+        "git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku",
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers={})
@@ -836,7 +836,7 @@ def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     expected_reason = "Repository could not be accessed - Do you have access rights?"
     assert expected_reason == response.json["error"]["reason"]
 
-    params = {"git_url": "https://dev.renku.ch/gitlab/contact/no-renku", "name": "mydata"}
+    params = {"git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku", "name": "mydata"}
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
     assert_rpc_response(response)

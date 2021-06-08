@@ -43,6 +43,7 @@ def schedule(connection=None):
         queue_name=CLEANUP_QUEUE_FILES,
         func=cache_files_cleanup,
         interval=cleanup_interval,
+        timeout=cleanup_interval - 1,  # NOTE: Ensure job times out before next job starts
         result_ttl=cleanup_interval * 2,
     )
 
@@ -51,6 +52,7 @@ def schedule(connection=None):
         queue_name=CLEANUP_QUEUE_PROJECTS,
         func=cache_project_cleanup,
         interval=cleanup_interval,
+        timeout=cleanup_interval - 1,  # NOTE: Ensure job times out before next job starts
         result_ttl=cleanup_interval * 2,
     )
 

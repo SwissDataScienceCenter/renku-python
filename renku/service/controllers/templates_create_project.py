@@ -151,6 +151,9 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
 
         self.new_project_push(new_project_path)
 
+        new_project.initialized = True
+        new_project.save()
+
         return {
             "url": self.ctx["new_project_url"],
             "namespace": self.ctx["project_namespace"],

@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dependency and Provenance graph building."""
+
 import functools
 import shutil
 import sys
@@ -25,7 +26,7 @@ from pathlib import Path
 from typing import Dict
 
 import git
-from git import NULL_TREE, GitCommandError
+from git import NULL_TREE, Commit, GitCommandError
 from pkg_resources import resource_filename
 
 from renku.core import errors
@@ -38,7 +39,7 @@ from renku.core.management.migrate import migrate
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.models.entities import Entity
 from renku.core.models.jsonld import load_yaml
-from renku.core.models.provenance.activities import Activity as ActivityRun
+from renku.core.models.provenance.activities import Activity
 from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.workflow.run import Run
@@ -64,7 +65,7 @@ def generate_graph():
 def _generate_graph(client, force=False):
     """Generate graph and dataset provenance metadata."""
 
-    def process_workflows(commit, provenance_graph):
+    def process_workflows(commit: Commit, provenance_graph: ProvenanceGraph):
         for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.yaml"):
             # Ignore deleted files (they appear as ADDED in this backwards diff)
             if file_.change_type == "A":
@@ -79,8 +80,8 @@ def _generate_graph(client, force=False):
                 communication.warn(f"Workflow file does not exists: '{path}'")
                 continue
 
-            workflow = ActivityRun.from_yaml(path=path, client=client)
-            activity_collection = ActivityCollection.from_activity_run(workflow, client.dependency_graph, client)
+            workflow = Activity.from_yaml(path=path, client=client)
+            activity_collection = ActivityCollection.from_activity(workflow, client.dependency_graph, client)
 
             provenance_graph.add(activity_collection)
 

@@ -310,6 +310,16 @@ in editable mode using ``pipx``. Clone the repository and then do:
 This will install all the extras for testing and debugging.
 
 
+Service
+-------
+
+Developing the service and testing its APIs can be done with ``docker compose`` (see
+"Deploying Locally" above). To enable live reloading of the code, set the environment
+variable ``DEBUG_MODE=true`` either in your shell or in the ``.env`` file. Note that in
+this case the local directory is mounted in the docker container and renku is re-installed
+so it may take a few minutes before the container is ready.
+
+
 Running tests
 -------------
 

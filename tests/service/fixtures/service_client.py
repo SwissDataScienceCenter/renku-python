@@ -166,7 +166,7 @@ def authentication_headers(authentication_headers_raw):
     identification = {
         "Renku-User-Id": "b4b4de0eda0f471ab82702bd5c367fa7",
         "Renku-User-FullName": "Just Sam",
-        "Renku-User-Email": "contact@justsam.io",
+        "Renku-User-Email": "contact@renkulab.io",
     }
 
     return {**authentication_headers_raw, **identification}
@@ -216,7 +216,7 @@ def svc_client_templates_creation(svc_client_with_templates):
         "identifier": template["id"],
         "parameters": parameters,
         "project_name": f"Test renku-core {uuid.uuid4().hex[:12]}",
-        "project_namespace": "contact",
+        "project_namespace": "renku-python-integration-tests",
         "project_repository": "https://dev.renku.ch/gitlab",
     }
 

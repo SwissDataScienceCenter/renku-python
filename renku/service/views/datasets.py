@@ -52,6 +52,9 @@ def list_datasets_view(user_data, cache):
     ---
     get:
       description: List all datasets in a project.
+      parameters:
+        - in: query
+          schema: DatasetListRequest
       responses:
         200:
           description: Listing of all datasets in a project.

@@ -147,9 +147,7 @@ def _run_command(
             if return_code not in (success_codes or {0}):
                 raise errors.InvalidSuccessCode(return_code, success_codes=success_codes)
 
-        client.process_and_store_run(
-            command_line_tool=tool, name=name, description=description, keywords=keyword, client=client
-        )
+        client.process_and_store_run(command_line_tool=tool, name=name, description=description, keywords=keyword)
 
         if factory.messages:
             communication.echo(factory.messages)

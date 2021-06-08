@@ -21,15 +21,17 @@ import os
 import pytest
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
-    "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-qa/core-it-protected.git"
+    "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-protected.git"
 )
 
-IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-qa/core-integration-test")
+IT_REMOTE_REPO_URL = os.getenv(
+    "IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-integration-test"
+)
 IT_REMOTE_NON_RENKU_REPO_URL = os.getenv(
-    "IT_REMOTE_NON_RENKU_REPO_URL", "https://dev.renku.ch/gitlab/renku-qa/core-it-non-renku"
+    "IT_REMOTE_NON_RENKU_REPO_URL", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-non-renku"
 )
 IT_REMOTE_NO_COMMITS_REPO_URL = os.getenv(
-    "IT_REMOTE_NO_COMMITS_REPO_URL", "https://dev.renku.ch/gitlab/renku-qa/core-it-no-commits"
+    "IT_REMOTE_NO_COMMITS_REPO_URL", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-no-commits"
 )
 IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
