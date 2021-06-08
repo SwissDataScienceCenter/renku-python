@@ -123,7 +123,7 @@ service_requires = [
     "python-dotenv==0.17.0",
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
-    "rq==1.8.0",
+    "rq==1.8.1",
     "sentry-sdk[flask]>=0.7.4,<1.0.1",
     "walrus==0.8.2",
 ]
@@ -167,7 +167,7 @@ install_requires = [
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
     "humanize>=2.5.0,<3.4.0",
-    "jinja2>=2.10.3,<=2.11.4",
+    "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
