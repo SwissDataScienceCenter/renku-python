@@ -37,10 +37,10 @@ def template():
             "__template_source__": "renku",
             "__template_ref__": "master",
             "__template_id__": "python-minimal",
-            "__renku_version__": renku_version,
             "__namespace__": "",
             "__repository__": "",
             "__project_slug__": "",
+            "renku_version": renku_version,
         },
     }
 
