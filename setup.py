@@ -102,11 +102,11 @@ tests_require = [
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<2.12.0",
     "pytest-flake8>=1.0.6,<1.0.8",
-    "pytest-mock>=3.2.0,<3.6.0",
+    "pytest-mock>=3.2.0,<3.7.0",
     "pytest-pep8==1.0.6",
     "pytest-timeout==1.4.2",
     "pytest-xdist>=1.34.0,<2.3.0",
-    "pytest>=4.0.0,<6.2.4",
+    "pytest>=4.0.0,<6.2.5",
     "responses>=0.7.0,<0.13.4",
 ]
 
@@ -118,7 +118,7 @@ service_requires = [
     "docker-compose==1.29.1",
     "flask==1.1.2",
     "gunicorn",
-    "marshmallow==3.11.1",
+    "marshmallow==3.12.1",
     "ptvsd>=4.3.0,<4.4.0",
     "python-dotenv==0.17.0",
     "redis==3.5.3",
@@ -130,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<=2.11.4", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<3.0.2", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -167,7 +167,7 @@ install_requires = [
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
     "humanize>=2.5.0,<3.4.0",
-    "jinja2>=2.10.3,<=2.11.4",
+    "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
@@ -185,7 +185,7 @@ install_requires = [
     "rdflib-jsonld>=0.5.0,<0.6.0",
     "rdflib>=5.0.0,<5.1",
     "requests>=2.23.0,<=2.24.0",
-    "rich>=9.3.0,<10.2.0",
+    "rich>=9.3.0,<10.3.0",
     "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.60.1",
