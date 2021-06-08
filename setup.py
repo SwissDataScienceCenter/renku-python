@@ -118,7 +118,7 @@ service_requires = [
     "docker-compose==1.29.1",
     "flask==1.1.2",
     "gunicorn",
-    "marshmallow==3.11.1",
+    "marshmallow==3.12.1",
     "ptvsd>=4.3.0,<4.4.0",
     "python-dotenv==0.17.0",
     "redis==3.5.3",
