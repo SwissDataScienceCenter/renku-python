@@ -23,6 +23,8 @@ from pathlib import Path
 
 import pytest
 
+from renku.version import __version__ as renku_version
+
 
 @pytest.fixture
 def directory_tree_files():
@@ -87,6 +89,7 @@ def template():
             "__template_source__": "renku",
             "__template_ref__": "master",
             "__template_id__": "python-minimal",
+            "__renku_version__": renku_version,
             "__namespace__": "",
             "__repository__": "",
             "__project_slug__": "",

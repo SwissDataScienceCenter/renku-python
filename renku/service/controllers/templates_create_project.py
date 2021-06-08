@@ -30,6 +30,7 @@ from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
 from renku.service.utils import new_repo_push
 from renku.service.views import result_response
+from renku.version import __version__ as renku_version
 
 
 class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
@@ -66,6 +67,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "__repository__": self.ctx["project_repository"],
             "__sanitized_project_name__": self.ctx["project_name_stripped"],
             "__project_slug__": self.ctx["project_slug"],
+            "__renku_version__": renku_version,
         }
 
         return metadata
