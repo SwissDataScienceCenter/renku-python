@@ -124,7 +124,7 @@ service_requires = [
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
     "rq==1.8.1",
-    "sentry-sdk[flask]>=0.7.4,<1.0.1",
+    "sentry-sdk[flask]>=0.7.4,<1.1.1",
     "walrus==0.8.2",
 ]
 
@@ -178,7 +178,7 @@ install_requires = [
     "pyjwt==2.0.1",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
-    "pyshacl==0.14.3",
+    "pyshacl==0.14.4",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
     "PyYAML>=5.4,<=5.4.1",
