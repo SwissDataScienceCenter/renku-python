@@ -271,8 +271,8 @@ def _init(
     metadata["__sanitized_project_name__"] = ""
     metadata["__repository__"] = ""
     metadata["__project_slug__"] = ""
-    if "renku_version" not in metadata:
-        metadata["renku_version"] = renku_version
+    if "__renku_version__" not in metadata:
+        metadata["__renku_version__"] = renku_version
     metadata["name"] = name
 
     template_path = template_folder / template_data["folder"]

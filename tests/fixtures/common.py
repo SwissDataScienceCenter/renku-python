@@ -92,7 +92,7 @@ def template():
             "__namespace__": "",
             "__repository__": "",
             "__project_slug__": "",
-            "renku_version": renku_version,
+            "__renku_version__": renku_version,
         },
     }
 
