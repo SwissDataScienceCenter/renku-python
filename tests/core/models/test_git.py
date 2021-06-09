@@ -277,6 +277,16 @@ from renku.core.models.git import GitURL
             "port": "1234",
             "env": "https://gitlab.example.com:1234/",
         },
+        {
+            "href": "https://gitlab.example.com:1234/owner/repo.git/",
+            "protocol": "https",
+            "hostname": "gitlab.example.com",
+            "name": "repo",
+            "pathname": "owner/repo.git",
+            "owner": "owner",
+            "port": "1234",
+            "env": "https://gitlab.example.com:1234/",
+        },
     ],
 )
 def test_valid_href(fields):
