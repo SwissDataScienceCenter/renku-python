@@ -712,7 +712,7 @@ def test_export_dataset_wrong_provider(runner, project, tmpdir, client):
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", "unsupported-provider"])
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert "invalid choice: unsupported-provider. (choose from " in result.output
+    assert "Invalid value" in result.output
 
 
 @pytest.mark.integration

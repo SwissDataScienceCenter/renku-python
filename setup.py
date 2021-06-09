@@ -159,7 +159,7 @@ install_requires = [
     "click-completion>=0.5.0,<=0.5.3",
     "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",
-    "click>=7.0,<=7.1.2",
+    "click>=7.0,<8.0.2",
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool>=3.0.20210319143721,<3.2",
