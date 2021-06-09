@@ -390,6 +390,9 @@ def fetch_template(template_source, template_ref):
     else:
         from renku import __version__
 
+        if template_ref:
+            raise errors.ParameterError("Templates included in renku don't support specifying a template_ref")
+
         template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
         template_manifest = read_template_manifest(template_folder)
         template_source = "renku"
