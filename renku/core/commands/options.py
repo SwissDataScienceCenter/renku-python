@@ -73,10 +73,20 @@ def with_siblings(graph, outputs):
 
 
 option_check_siblings = click.option(
-    "--check-siblings", "siblings", flag_value=check_siblings, default=True, help=check_siblings.__doc__,
+    "--check-siblings",
+    "siblings",
+    flag_value=check_siblings,
+    default=True,
+    help=check_siblings.__doc__,
+    type=click.types.UnprocessedParamType(),
 )
 option_with_siblings = click.option(
-    "--with-siblings", "siblings", flag_value=with_siblings, default=True, help=with_siblings.__doc__,
+    "--with-siblings",
+    "siblings",
+    flag_value=with_siblings,
+    default=True,
+    help=with_siblings.__doc__,
+    type=click.types.UnprocessedParamType(),
 )
 
 
