@@ -16,21 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service fixtures for jobs testing."""
-import os
-
 import pytest
+
+from tests.utils import modified_environ
 
 
 @pytest.fixture
 def service_job(svc_client, mock_redis):
     """Ensure correct environment during testing of service jobs."""
-    old_environ = dict(os.environ)
-
-    os.environ["RENKU_SVC_CLEANUP_TTL_FILES"] = "0"
-    os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "0"
-
-    try:
+    with modified_environ(RENKU_SVC_CLEANUP_TTL_FILES="0", RENKU_SVC_CLEANUP_TTL_PROJECTS="0"):
         yield svc_client, mock_redis
-    finally:
-        os.environ.clear()
-        os.environ.update(old_environ)
