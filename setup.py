@@ -92,7 +92,7 @@ tests_require = [
     "black==19.10b0",
     "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.6",
-    "fakeredis>=1.4.1,<1.5.1",
+    "fakeredis>=1.4.1,<1.5.3",
     "flake8>=3.8,<3.10",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
@@ -154,7 +154,7 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
-    "attrs>=19.3.0,<20.4.0",
+    "attrs>=19.3.0,<21.3.0",
     "calamus>=0.3.8,<0.3.9",
     "click-completion>=0.5.0,<=0.5.3",
     "click-option-group>=0.5.2,<0.6.0",
