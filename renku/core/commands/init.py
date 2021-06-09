@@ -37,6 +37,7 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
+from renku.version import __version__ as renku_version
 
 TEMPLATE_MANIFEST = "manifest.yaml"
 
@@ -270,6 +271,8 @@ def _init(
     metadata["__sanitized_project_name__"] = ""
     metadata["__repository__"] = ""
     metadata["__project_slug__"] = ""
+    if "__renku_version__" not in metadata:
+        metadata["__renku_version__"] = renku_version
     metadata["name"] = name
 
     template_path = template_folder / template_data["folder"]
