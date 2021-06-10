@@ -175,7 +175,7 @@ install_requires = [
     "portalocker>=2.2.1,<2.4",
     "psutil>=5.4.7,<5.8.1",
     "pyasn1>=0.4.5,<=0.4.8",
-    "pyjwt==2.0.1",
+    "pyjwt==2.1.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
     "pyshacl==0.14.4",
