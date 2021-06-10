@@ -219,7 +219,16 @@ version_template = """\
 # limitations under the License.
 \"\"\"Version information for Renku.\"\"\"
 
+import re
+
 __version__ = {version!r}
+
+
+def is_release():
+    \"\"\"Check if current version is a release semver.\"\"\"
+    if re.match(r"\\d+.\\d+.\\d+$", __version__):
+        return True
+    return False
 
 
 def _get_distribution_url():
