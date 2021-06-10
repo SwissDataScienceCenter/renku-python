@@ -34,7 +34,6 @@ from werkzeug.utils import cached_property
 from renku.core import errors
 from renku.core.models.provenance.activities import Collection
 from renku.core.models.provenance.datasets import DatasetProvenance
-from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.utils import communication
 from renku.core.utils.file_size import parse_file_size
 from renku.core.utils.git import add_to_git, run_command
@@ -547,7 +546,7 @@ class StorageApiMixin(RepositoryApiMixin):
                     _map_checksum(member, checksum_mapping)
 
         # NOTE: Update workflow provenance
-        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+        provenance_graph = self.provenance_graph
 
         for activity in provenance_graph.activities:
             if activity.generations:

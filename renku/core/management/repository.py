@@ -524,7 +524,7 @@ class RepositoryApiMixin(GitCore):
 
         self.update_graphs(process_run)
 
-    def update_graphs(self, activity: Union[ProcessRun, WorkflowRun]) -> Optional[ActivityCollection]:
+    def update_graphs(self, activity: Union[ProcessRun, WorkflowRun]):
         """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
         if not self.has_graph_files():
             return None

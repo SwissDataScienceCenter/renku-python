@@ -22,7 +22,6 @@ import os
 import pytest
 
 from renku.cli import cli
-from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 
 
 def test_run_simple(runner, project):
@@ -158,7 +157,7 @@ def test_run_argument_parameters(runner, client):
     assert "delta-3" == plan.parameters[0].name
     assert "n-1" == plan.parameters[1].name
 
-    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
+    provenance_graph = client.provenance_graph
     assert 1 == len(provenance_graph.activities)
     activity = provenance_graph.activities[0]
 

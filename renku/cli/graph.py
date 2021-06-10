@@ -25,7 +25,6 @@ from renku.core.incubation.command import Command
 from renku.core.incubation.graph import FORMATS, add_to_dataset, create_dataset, export_graph, generate_graph
 from renku.core.incubation.graph import status as get_status
 from renku.core.incubation.graph import update as perform_update
-from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.utils.contexts import measure
 
 
@@ -110,8 +109,7 @@ def save(path):
     with measure("CREATE DEPENDENCY GRAPH"):
 
         def _to_png(client, path):
-            dg = DependencyGraph.from_json(client.dependency_graph_path)
-            dg.to_png(path=path)
+            client.dependency_graph.to_png(path=path)
 
         Command().command(_to_png).build().execute(path=path)
 
