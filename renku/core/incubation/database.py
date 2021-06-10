@@ -21,7 +21,7 @@ import datetime
 import hashlib
 import json
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
 import BTrees.OOBTree
@@ -31,8 +31,6 @@ from ZODB.interfaces import IConnection
 from ZODB.POSException import POSKeyError
 from ZODB.utils import z64
 from zope.interface import implementer
-
-from renku.core import errors
 
 MARKER = object()
 
@@ -52,12 +50,10 @@ class Database:
         self._cache = PickleCache(self)
         # The pre-cache is used by get to avoid infinite loops when objects load their state
         self._pre_cache: Dict[bytes, Persistent] = {}
-        # List of all objects registered as modified by the persistence machinery, or by add(). All objects of this list
-        # are either in _cache or in _added.
-        self._registered_objects: List[Persistent] = []
-        # Objects added explicitly through add(). When committing they are moved to _cache.
-        self._added: Dict[bytes, Persistent] = {}
-        self._reader = ObjectReader(cache=self._cache, database=self)
+        # Objects added explicitly by add() or when serializing other objects. After commit they are moved to _cache.
+        self._objects_to_commit: Dict[bytes, Persistent] = {}
+        self._reader = ObjectReader(database=self)
+        self._writer = ObjectWriter(database=self)
 
     @property
     def root(self):
@@ -108,84 +104,19 @@ class Database:
         if p_oid is MARKER:
             raise TypeError("Only first-class persistent objects may be added to database.", object)
 
+        if oid is not None:
+            assert isinstance(oid, bytes), f"Invalid 'oid' type: '{type(oid)}'"
+        elif object._p_oid is None:
+            assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
+
         oid = oid or object._p_oid
+        if oid is None:
+            oid = self.generate_oid(object)
 
-        if object._p_jar is None:
-            object._p_jar = self
-            if oid is None:
-                oid = self.generate_oid(object)
-            object._p_oid = oid
-            object._p_serial = NEW
-            self._added[oid] = object
-            self.register(object)
-        elif object._p_jar is not self:
-            raise errors.ObjectStateError(f"Object '{object._p_oid}' already has a Database: '{object._p_jar}'")
-
-    def get(self, oid: Union[bytes, str]) -> Persistent:
-        """Get the object by oid."""
-        if oid in self._root_object_types:
-            return self.root[oid]
-
-        if isinstance(oid, str):
-            oid = oid.encode("utf-8")
-
-        object = self._cache.get(oid)
-        if object is not None:
-            return object
-        object = self._added.get(oid)
-        if object is not None:
-            return object
-        object = self._pre_cache.get(oid)
-        if object is not None:
-            return object
-
-        data = self._storage.load(oid)
-        object = self._reader.deserialize(data)
-        object._p_changed = 0
-
-        # NOTE: Avoid infinite loop if object tries to load its state before it is added to the cache
-        self._pre_cache[oid] = object
-        self._cache[oid] = object
-        self._pre_cache.pop(oid)
-
-        return object
-
-    def commit(self):
-        """Commit modified and new objects."""
-        for object in self._registered_objects:
-            oid = object._p_oid
-            assert oid
-
-            if object._p_jar is not self:
-                raise errors.ObjectStateError(f"Object '{object}' doesn't belong to DataManager.")
-            elif not object._p_changed and object._p_serial != NEW:
-                continue
-
-            object_type = type(object).__name__
-            if object_type in self._root_object_types:
-                self._create_root_object_type(self.root, object_type)
-                oid = oid.decode("ascii")
-                self.root[object_type][oid] = object
-
-            self._store_object(object)
-
-    def _store_object(self, object: Persistent):
-        writer = ObjectWriter(object)
-
-        for object in writer:
-            oid = object._p_oid
-
-            object._p_jar = self
-            data = writer.serialize(object)
-
-            self._storage.store(oid=oid, data=data)
-            self._cache[oid] = object
-
-            self._cache.update_object_size_estimation(oid, 1)
-            object._p_estimated_size = 1
-
-            object._p_changed = 0  # NOTE: transition from changed to up-to-date
-            object._p_serial = PERSISTED
+        object._p_jar = self
+        object._p_oid = oid
+        object._p_serial = NEW
+        self.register(object)
 
     def oldstate(self, object, tid):
         """See persistent.interfaces.IPersistentDataManager::oldstate."""
@@ -200,9 +131,88 @@ class Database:
 
         object._p_serial = PERSISTED
 
-    def register(self, object):
+    def register(self, object: Persistent):
         """See persistent.interfaces.IPersistentDataManager::register."""
-        self._registered_objects.append(object)
+        if object._p_oid is None:
+            object._p_oid = self.generate_oid(object)
+        object._p_jar = self
+        self._objects_to_commit[object._p_oid] = object
+
+    def get(self, oid: Union[bytes, str]) -> Persistent:
+        """Get the object by oid."""
+        if oid in self._root_object_types:
+            return self.root[oid]
+
+        if isinstance(oid, str):
+            oid = oid.encode("utf-8")
+
+        object = self.get_cached(oid)
+        if object is not None:
+            return object
+
+        data = self._storage.load(oid)
+        object = self._reader.deserialize(data)
+        object._p_changed = 0
+        object._p_serial = PERSISTED
+
+        # NOTE: Avoid infinite loop if object tries to load its state before it is added to the cache
+        self._pre_cache[oid] = object
+        self._cache[oid] = object
+        self._pre_cache.pop(oid)
+
+        return object
+
+    def get_cached(self, oid: bytes) -> Optional[Persistent]:
+        """Return an object if it is in the cache or will be committed."""
+        object = self._cache.get(oid)
+        if object is not None:
+            return object
+
+        object = self._pre_cache.get(oid)
+        if object is not None:
+            return object
+
+        object = self._objects_to_commit.get(oid)
+        if object is not None:
+            return object
+
+    def commit(self):
+        """Commit modified and new objects."""
+        while self._objects_to_commit:
+            oid, object = self._objects_to_commit.popitem()
+
+            assert oid == object._p_oid
+
+            if not object._p_changed and object._p_serial != NEW:
+                continue
+
+            object_type = type(object).__name__
+            if object_type in self._root_object_types:
+                self._create_root_object_type(self.root, object_type)
+                oid = oid.decode("ascii")
+                root_object = self.root[object_type]
+                root_object[oid] = object
+                root_object._p_changed = 1
+
+            self._store_object(object)
+
+    def _store_object(self, object: Persistent):
+        oid = object._p_oid
+
+        data = self._writer.serialize(object)
+
+        self._storage.store(oid=oid, data=data)
+        self._cache[oid] = object
+
+        self._cache.update_object_size_estimation(oid, 1)
+        object._p_estimated_size = 1
+
+        object._p_changed = 0  # NOTE: transition from changed to up-to-date
+        object._p_serial = PERSISTED
+
+    def new_ghost(self, oid: bytes, object: Persistent):
+        """Create a new ghost object."""
+        self._cache.new_ghost(oid, object)
 
     @classmethod
     def from_path(cls, path: Union[str, Path]) -> "Database":
@@ -248,18 +258,14 @@ class Storage:
 class ObjectWriter:
     """Serialize objects for storage in storage."""
 
-    def __init__(self, object: Persistent):
+    def __init__(self, database: Database):
+        self._database: Database = database
+
+    def serialize(self, object: Persistent):
+        """Convert an object to JSON."""
+        assert isinstance(object, Persistent), f"Cannot serialize object of type '{type(object)}': {object}"
         assert object._p_oid, f"Object does not have an oid: '{object}'"
         assert object._p_jar is not None, f"Object is not associated with a DataManager: '{object._p_oid}'"
-        self._stack = [object]
-
-    def serialize(self, object):
-        """Convert an object to JSON."""
-        if not isinstance(object, Persistent):
-            raise TypeError(f"Cannot serialize object of type '{type(object)}': {object}")
-
-        if not object._p_oid:
-            object._p_oid = Database.generate_oid(object)
 
         state = object.__getstate__()
         data = self._serialize_helper(state)
@@ -294,7 +300,7 @@ class ObjectWriter:
             if not object._p_oid:
                 object._p_oid = Database.generate_oid(object)
             if object._p_state not in [GHOST, UPTODATE] or (object._p_state == UPTODATE and object._p_serial == NEW):
-                self._stack.append(object)
+                self._database.add(object)
             type_name = type(object).__name__
             return {"@type": type_name, "@oid": object._p_oid.decode("ascii"), "@reference": True}
         elif hasattr(object, "__getstate__"):
@@ -309,21 +315,11 @@ class ObjectWriter:
 
             return state
 
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if not self._stack:
-            raise StopIteration
-        else:
-            return self._stack.pop()
-
 
 class ObjectReader:
     """Deserialize objects loaded from storage."""
 
-    def __init__(self, cache, database: Database):
-        self._cache = cache
+    def __init__(self, database: Database):
         self._classes: Dict[str, type] = ObjectReader._load_classes()
         self._database = database
 
@@ -437,11 +433,12 @@ class ObjectReader:
                 oid: bytes = oid.encode("ascii")
 
                 if "@reference" in data and data["@reference"]:  # A reference
-                    object = self._cache.get(oid)
+                    object = self._database.get_cached(oid)
                     if object:
                         return object
                     object = cls.__new__(cls)
-                    self._cache.new_ghost(oid, object)
+                    assert isinstance(object, Persistent)
+                    self._database.new_ghost(oid, object)
                     return object
 
             if "@value" in data:

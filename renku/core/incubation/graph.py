@@ -81,8 +81,7 @@ def _generate_graph(client, force=False):
                 continue
 
             workflow = Activity.from_yaml(path=path, client=client)
-            activity_collection = client.update_graphs(workflow)
-            provenance_graph.add(activity_collection)
+            client.update_graphs(workflow)
 
     def process_datasets(commit):
         files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))

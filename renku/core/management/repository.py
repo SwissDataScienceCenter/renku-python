@@ -151,11 +151,6 @@ class RepositoryApiMixin(GitCore):
 
     _remote_cache = attr.ib(factory=dict)
 
-    _dependency_graph: Optional[DependencyGraph] = None
-    _provenance_graph: Optional[ProvenanceGraph] = None
-
-    _database: Optional[Database] = None
-
     _migration_type = attr.ib(default=MigrationType.ALL)
 
     def __attrs_post_init__(self):
@@ -262,31 +257,21 @@ class RepositoryApiMixin(GitCore):
         """Return dependency graph if available."""
         if not self.has_graph_files():
             return
-        if not self._dependency_graph:
-            self._dependency_graph = DependencyGraph.from_database(self.database)
-
-        return self._dependency_graph
+        return DependencyGraph.from_database(self.database)
 
     @property
     def provenance_graph(self) -> Optional[ProvenanceGraph]:
         """Return provenance graph if available."""
         if not self.has_graph_files():
             return
-        if not self._provenance_graph:
-            self._provenance_graph = ProvenanceGraph.from_database(self.database)
-
-        return self._provenance_graph
+        return ProvenanceGraph.from_database(self.database)
 
     @property
     def database(self) -> Optional[Database]:
         """Return metadata storage if available."""
         if not self.has_graph_files():
             return
-        if not self._database:
-            self._database = Database.from_path(self.database_path)
-            # FIXME commit the _database at some point
-
-        return self._database
+        return Database.from_path(self.database_path)
 
     @property
     def project(self):
@@ -531,19 +516,20 @@ class RepositoryApiMixin(GitCore):
 
         activity_collection = ActivityCollection.from_activity(activity, self.dependency_graph, self)
 
+        self.provenance_graph.add(activity_collection)
+        database = self.database
+
         for activity in activity_collection.activities:
-            self.database.add(activity)
-            self.database.add(activity.association.plan)
+            database.add(activity)
+            database.add(activity.association.plan)
             for u in activity.usages:
-                self.database.add(u.entity)
+                database.add(u.entity)
             for g in activity.generations:
-                self.database.add(g.entity)
+                database.add(g.entity)
             for i in activity.invalidations:
-                self.database.add(i)
+                database.add(i)
 
-        self.database.commit()
-
-        return activity_collection
+        database.commit()
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""
@@ -552,6 +538,7 @@ class RepositoryApiMixin(GitCore):
     def initialize_graph(self):
         """Create empty graph files."""
         self.database_path.mkdir(parents=True, exist_ok=True)
+        (self.database_path / ".gitkeep").touch(exist_ok=True)
 
     def remove_graph_files(self):
         """Remove all graph files."""

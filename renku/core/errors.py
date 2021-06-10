@@ -474,11 +474,3 @@ class NodeNotFoundError(RenkuException):
             "Please install it, for details see https://nodejs.org/en/download/package-manager/"
         )
         super(NodeNotFoundError, self).__init__(msg)
-
-
-class ConnectionStateError(RenkuException):
-    """Raised when accessing a metadata storage connection with wrong state."""
-
-
-class ObjectStateError(RenkuException):
-    """Raised when accessing a persistent object with wrong state."""
