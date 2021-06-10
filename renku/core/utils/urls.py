@@ -23,14 +23,15 @@ import unicodedata
 import urllib
 from urllib.parse import ParseResult
 
+from yagup import GitURL
+
 from renku.core import errors
-from renku.core.models.git import GitURL
 
 
 def url_to_string(url):
     """Convert url from ``list`` or ``ParseResult`` to string."""
     if isinstance(url, list):
-        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params=None, query=None, fragment=None,).geturl()
+        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params=None, query=None, fragment=None).geturl()
 
     if isinstance(url, ParseResult):
         return url.geturl()
@@ -76,7 +77,7 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
             remote_url = get_remote(client.repo)
             if not remote_url:
                 return
-            endpoint = f"https://{GitURL.parse(remote_url).hostname}/"
+            endpoint = f"https://{GitURL.parse(remote_url).host}/"
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"

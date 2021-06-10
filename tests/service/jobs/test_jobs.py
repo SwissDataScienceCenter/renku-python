@@ -27,8 +27,9 @@ from marshmallow import EXCLUDE
 
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
-from renku.service.serializers.templates import ManifestTemplatesRequest
+from renku.service.serializers.templates import ProjectTemplateRequest
 from tests.service.views.test_dataset_views import assert_rpc_response
+from tests.utils import modified_environ
 
 
 @pytest.mark.service
@@ -206,12 +207,15 @@ def test_project_cleanup_success(svc_client_cache):
         "token": "None",
     }
     project_data = {
-        "name": "renku-project-template",
+        "project_name": "deadbeef",
+        "project_repository": "https://dev.renku.ch",
+        "project_namespace": "gitlab/renku-qa",
+        "identifier": "0xdeadbeef",
         "depth": 1,
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
         "owner": "SwissDataScienceCenter",
     }
-    project_data = ManifestTemplatesRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
+    project_data = ProjectTemplateRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
     assert "user_id" not in project_data.keys()
     project_one = user_project_clone(user_data, project_data)
 
@@ -219,25 +223,24 @@ def test_project_cleanup_success(svc_client_cache):
     assert not project_one.ttl_expired()
     assert project_one.exists()
 
-    os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1"
-    time.sleep(1)
+    with modified_environ(RENKU_SVC_CLEANUP_TTL_PROJECTS="1"):
+        time.sleep(1)
 
-    assert project_one.age >= 1
-    assert project_one.ttl_expired()
+        assert project_one.age >= 1
+        assert project_one.ttl_expired()
 
-    cache_project_cleanup()
+        cache_project_cleanup()
 
-    project_data = ManifestTemplatesRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
+    project_data = ProjectTemplateRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
     assert "user_id" not in project_data.keys()
     user = cache.get_user(user_data["user_id"])
     projects = cache.get_projects(user)
     assert [] == [p.project_id for p in projects]
 
     project_two = user_project_clone(user_data, project_data)
-    os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1800"
+    with modified_environ(RENKU_SVC_CLEANUP_TTL_PROJECTS="1800"):
+        assert project_two.age >= 0
+        assert not project_two.ttl_expired()
+        assert project_two.exists()
 
-    assert project_two.age >= 0
-    assert not project_two.ttl_expired()
-    assert project_two.exists()
-
-    assert project_one.project_id != project_two.project_id
+        assert project_one.project_id != project_two.project_id

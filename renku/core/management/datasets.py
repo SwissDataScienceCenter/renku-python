@@ -41,6 +41,7 @@ import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
 from wcmatch import glob
+from yagup import GitURL
 
 from renku.core import errors
 from renku.core.management.clone import clone
@@ -54,7 +55,6 @@ from renku.core.models.datasets import (
     generate_dataset_file_url,
     is_dataset_name_valid,
 )
-from renku.core.models.git import GitURL
 from renku.core.models.provenance.agents import Person
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
@@ -485,7 +485,7 @@ class DatasetsApiMixin(object):
         files = []
         if all_at_once:  # Importing a dataset
             files = self._add_from_urls(
-                urls=urls, destination_names=destination_names, destination=destination, extract=extract,
+                urls=urls, destination_names=destination_names, destination=destination, extract=extract
             )
         else:
             for url in urls:
@@ -1328,17 +1328,18 @@ class DatasetsApiMixin(object):
         depth = 1 if not ref else None
         ref = ref or renku_branch
         u = GitURL.parse(url)
-        path = u.pathname
-        if u.hostname == "localhost":
+        path = u.path
+        if u.host == "localhost":
             path = Path(path).resolve()
             git_url = str(path)
-        elif "http" in u.protocol and gitlab_token:
+        elif "http" in u.scheme and gitlab_token:
             git_url = get_oauth_url(url, gitlab_token)
         else:
             git_url = url
 
+        repo_name = os.path.splitext(os.path.basename(path))[0]
         path = os.path.dirname(path).lstrip("/")
-        repo_path = self.renku_path / self.CACHE / u.hostname / path / u.name
+        repo_path = self.renku_path / self.CACHE / u.host / path / repo_name
 
         if repo_path.exists():
             repo = Repo(str(repo_path))

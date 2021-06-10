@@ -69,6 +69,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install coveralls setuptools wheel
         python -m pip install .[all]
+        python setup.py --version
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test docs
