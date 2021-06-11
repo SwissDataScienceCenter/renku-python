@@ -41,7 +41,7 @@ def test_dataset_deserialization(client_with_datasets):
     for attribute, type_ in dataset_types.items():
         assert type(dataset.__getattribute__(attribute)) in type_
 
-    creator_types = {"email": str, "_id": str, "name": str, "affiliation": str}
+    creator_types = {"email": str, "id": str, "name": str, "affiliation": str}
 
     creator = client_with_datasets.load_dataset("dataset-1").creators[0]
 
@@ -71,9 +71,9 @@ def test_dataset_creator_email(dataset_metadata):
     # modify the dataset metadata to change the creator
     dataset = Dataset.from_jsonld(dataset_metadata, client=LocalClient("."))
 
-    dataset.creators[0]._id = "mailto:None"
+    dataset.creators[0].id = "mailto:None"
     dataset_broken = Dataset.from_jsonld(dataset.as_jsonld(), client=LocalClient("."))
-    assert "mailto:None" not in dataset_broken.creators[0]._id
+    assert "mailto:None" not in dataset_broken.creators[0].id
 
 
 def test_calamus(client, dataset_metadata_before_calamus):

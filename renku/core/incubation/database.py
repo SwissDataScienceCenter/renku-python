@@ -95,14 +95,14 @@ class Database:
         return f"{uuid4().hex}{uuid4().hex}".encode("ascii")
 
     @staticmethod
-    def generate_oid(object) -> bytes:
+    def generate_oid(object: Persistent) -> bytes:
         """Generate oid for a Persistent object based on its id."""
         oid = getattr(object, "_p_oid")
         if oid:
             assert isinstance(oid, bytes)
             return oid
 
-        id: str = getattr(object, "id") or getattr(object, "_id")
+        id: str = getattr(object, "id", None) or getattr(object, "_id", None)
         if id:
             return Database.hash_id(id)
 
@@ -123,7 +123,7 @@ class Database:
             assert isinstance(oid, bytes), f"Invalid 'oid' type: '{type(oid)}'"
         else:
             if object._p_oid is None:
-                assert getattr(object, "id") is not None, f"Object does not have 'id': {object}"
+                assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
             oid = self.generate_oid(object)
 
         object._p_jar = self
@@ -379,7 +379,10 @@ class ObjectReader:
         module = __import__(module_name)
 
         for component in components[1:]:
-            module = getattr(module, component)
+            try:
+                module = getattr(module, component)
+            except AttributeError:
+                raise AttributeError(f"Cannot find attribute '{component}' in module '{module.__name__}'")
 
         self._classes[object_type] = module
         return module

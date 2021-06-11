@@ -61,28 +61,17 @@ class Person(Base):
     email = None
     name = None
 
-    @staticmethod
-    def _fix_person_id(person, client=None):
-        """Fixes the id of a Person if it is not set."""
-        if not person.id or "mailto:None" in person.id or person.id.startswith("_:"):
-            hostname = get_host(client)
-            person.id = agents.Person.generate_id(
-                email=person.email, full_identity=person.full_identity, hostname=hostname
-            )
-
     @classmethod
     def from_git(cls, git, client=None):
         """Create an instance from a Git repo."""
         name, email = get_user_info(git)
         instance = cls(name=name, email=email)
-
-        Person._fix_person_id(instance, client)
-
+        instance.fix_id(client)
         return instance
 
     def __init__(self, **kwargs):
         """Initialize an instance."""
-        kwargs.setdefault("id", None)
+        kwargs.setdefault("_id", None)
         super().__init__(**kwargs)
 
     @property
@@ -91,6 +80,14 @@ class Person(Base):
         email = f" <{self.email}>" if self.email else ""
         affiliation = f" [{self.affiliation}]" if self.affiliation else ""
         return f"{self.name}{email}{affiliation}"
+
+    def fix_id(self, client=None):
+        """Fixes the id of a Person if it is not set."""
+        if not self._id or "mailto:None" in self._id or self._id.startswith("_:"):
+            if not client and self.client:
+                client = self.client
+            hostname = get_host(client)
+            self._id = agents.Person.generate_id(email=self.email, full_identity=self.full_identity, hostname=hostname)
 
 
 class Project(Base):
@@ -208,8 +205,7 @@ class PersonSchemaV3(JsonLDSchema):
     def make_instance(self, data, **kwargs):
         """Transform loaded dict into corresponding object."""
         instance = JsonLDSchema.make_instance(self, data, **kwargs)
-
-        instance = Person._fix_person_id(instance)
+        instance.fix_id(client=None)
         return instance
 
 
