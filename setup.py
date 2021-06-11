@@ -116,7 +116,7 @@ service_requires = [
     "apispec-webframeworks>=0.5.2,<0.6",
     "circus==0.17.1",
     "docker-compose==1.29.2",
-    "flask==1.1.2",
+    "flask==2.0.1",
     "gunicorn",
     "marshmallow==3.12.1",
     "ptvsd>=4.3.0,<4.4.0",
