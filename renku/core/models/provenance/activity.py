@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent an execution of a Plan."""
+
 from datetime import datetime
 from typing import List, Optional, Union
 from urllib.parse import urlparse
