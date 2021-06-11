@@ -604,6 +604,8 @@ jobs:
     name: Aggregate coveralls data
     needs: [test-linux-cli, test-linux-core, test-linux-service, test-linux-api, test-linux-integration]
     runs-on: ubuntu-latest
+    permissions:
+        contents: read
     steps:
     - name: Coveralls Finished
       uses: coverallsapp/github-action@master
