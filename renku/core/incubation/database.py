@@ -21,7 +21,7 @@ import datetime
 import hashlib
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 import BTrees.OOBTree
@@ -46,9 +46,9 @@ MIN_COMPRESSED_FILENAME_LENGTH = 64
 class Database:
     """The Metadata Object Database."""
 
-    def __init__(self, path: Union[str, Path], root_object_types: List[str] = ("Activity", "Entity", "Plan")):
+    def __init__(self, path: Union[str, Path], root_type_names: Tuple[str] = ("Activity", "Entity", "Plan")):
         self._storage: Storage = Storage(path)
-        self._root_object_types: List[str] = list(root_object_types)
+        self._root_type_names: Tuple[str] = tuple(root_type_names)
         self._cache = PickleCache(self)
         # The pre-cache is used by get to avoid infinite loops when objects load their state
         self._pre_cache: Dict[bytes, Persistent] = {}
@@ -65,21 +65,21 @@ class Database:
         except POSKeyError:
             root = BTrees.OOBTree.BTree()
 
-            for root_object_type in self._root_object_types:
-                self._create_root_object_type(root, root_object_type)
+            for root_type in self._root_type_names:
+                self._create_root_type(root, root_type)
 
             self.add(root, b"root")
             root._p_changed = 1
             return root
 
     @staticmethod
-    def _create_root_object_type(root, root_object_type):
-        if root_object_type in root:
+    def _create_root_type(root, root_type):
+        if root_type in root:
             return
 
         object = BTrees.OOBTree.BTree()
-        object._p_oid = root_object_type.encode("ascii")
-        root[root_object_type] = object
+        object._p_oid = root_type.encode("ascii")
+        root[root_type] = object
 
     @staticmethod
     def new_oid():
@@ -140,7 +140,7 @@ class Database:
 
     def get(self, oid: Union[bytes, str]) -> Persistent:
         """Get the object by oid."""
-        if oid in self._root_object_types:
+        if oid in self._root_type_names:
             return self.root[oid]
 
         if isinstance(oid, str):
@@ -185,8 +185,8 @@ class Database:
                 continue
 
             object_type = type(object).__name__
-            if object_type in self._root_object_types:
-                self._create_root_object_type(self.root, object_type)
+            if object_type in self._root_type_names:
+                self._create_root_type(self.root, object_type)
                 oid = oid.decode("ascii")
                 root_object = self.root[object_type]
                 root_object[oid] = object
@@ -224,9 +224,9 @@ class Database:
         except KeyError:
             pass
         else:
-            object_type = type(object).__name__
-            if object_type in self._root_object_types:
-                root_object = self.root[object_type]
+            type_name = type(object).__name__
+            if type_name in self._root_type_names:
+                root_object = self.root[type_name]
                 del root_object[object._p_oid.decode("ascii")]
                 root_object._p_changed = 1
 
@@ -293,6 +293,11 @@ class ObjectWriter:
     def __init__(self, database: Database):
         self._database: Database = database
 
+    @staticmethod
+    def _get_type(object) -> str:
+        object_type = type(object)
+        return f"{object_type.__module__}.{object_type.__qualname__}"
+
     def serialize(self, object: Persistent):
         """Convert an object to JSON."""
         assert isinstance(object, Persistent), f"Cannot serialize object of type '{type(object)}': {object}"
@@ -305,15 +310,13 @@ class ObjectWriter:
         if not isinstance(data, dict):
             data = {"@value": data}
 
-        type_name = type(object).__name__
-        data["@type"] = type_name
+        data["@type"] = self._get_type(object)
         data["@oid"] = object._p_oid.decode("ascii")
 
         return data
 
     def _serialize_helper(self, object):
         # TODO: Add support for weakref. See persistent.wref.WeakRef
-
         if object is None:
             return None
         elif isinstance(object, list):
@@ -333,18 +336,18 @@ class ObjectWriter:
                 object._p_oid = Database.generate_oid(object)
             if object._p_state not in [GHOST, UPTODATE] or (object._p_state == UPTODATE and object._p_serial == NEW):
                 self._database.add(object)
-            type_name = type(object).__name__
-            return {"@type": type_name, "@oid": object._p_oid.decode("ascii"), "@reference": True}
+            return {"@type": self._get_type(object), "@oid": object._p_oid.decode("ascii"), "@reference": True}
         elif hasattr(object, "__getstate__"):
             state = object.__getstate__()
+            if isinstance(state, dict) and "_id" in state:  # TODO: Remove this once all Renku classes have 'id' field
+                state["id"] = state.pop("_id")
             return self._serialize_helper(state)
         else:
             state = object.__dict__.copy()
             state = self._serialize_helper(state)
-
-            type_name = type(object).__name__
-            state["@type"] = type_name
-
+            state["@type"] = self._get_type(object)
+            if "_id" in state:  # TODO: Remove this once all Renku classes have 'id' field
+                state["id"] = state.pop("_id")
             return state
 
 
@@ -352,61 +355,27 @@ class ObjectReader:
     """Deserialize objects loaded from storage."""
 
     def __init__(self, database: Database):
-        self._classes: Dict[str, type] = ObjectReader._load_classes()
+        self._classes: Dict[str, type] = {}
         self._database = database
 
-    def _get_class(self, name):
-        cls = self._classes.get(name)
-        if not cls:
-            raise TypeError(f"Class '{name}' not registered.")
+    def _get_class(self, object_type: str) -> type:
+        cls = self._classes.get(object_type)
+        if cls:
+            return cls
 
-        return cls
+        components = object_type.split(".")
+        module_name = components[0]
 
-    @staticmethod
-    def _load_classes() -> Dict[str, type]:
-        from datetime import datetime
+        if module_name not in ["renku", "datetime", "BTrees"]:
+            raise TypeError(f"Objects of type '{object_type}' are not allowed")
 
-        from BTrees.OOBTree import OOBTree
-        from persistent.mapping import PersistentMapping
+        module = __import__(module_name)
 
-        from renku.core.models.cwl.annotation import Annotation
-        from renku.core.models.entity import Collection, Entity
-        from renku.core.models.provenance.activity import Activity, ActivityCollection, Association, Generation, Usage
-        from renku.core.models.provenance.agents import Person, SoftwareAgent
-        from renku.core.models.provenance.parameter import PathParameterValue, VariableParameterValue
-        from renku.core.models.provenance.provenance_graph import ProvenanceGraph
-        from renku.core.models.workflow.dependency_graph import DependencyGraph
-        from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
-        from renku.core.models.workflow.plan import Plan
+        for component in components[1:]:
+            module = getattr(module, component)
 
-        return {
-            m.__name__: m
-            for m in [
-                Activity,
-                ActivityCollection,
-                Annotation,
-                Association,
-                Collection,
-                CommandInput,
-                CommandOutput,
-                CommandParameter,
-                CommandParameter,
-                DependencyGraph,
-                Entity,
-                Generation,
-                MappedIOStream,
-                OOBTree,
-                PathParameterValue,
-                PersistentMapping,
-                Person,
-                Plan,
-                ProvenanceGraph,
-                SoftwareAgent,
-                Usage,
-                VariableParameterValue,
-                datetime,
-            ]
-        }
+        self._classes[object_type] = module
+        return module
 
     def set_ghost_state(self, object: Persistent, data: Dict):
         """Set state of a Persistent ghost object."""
@@ -452,12 +421,12 @@ class ObjectReader:
                     data[key] = self._deserialize_helper(value)
                 return data
 
-            if object_type == "datetime":
+            cls = self._get_class(object_type)
+
+            if issubclass(cls, datetime.datetime):
                 assert create
                 value = data["@value"]
                 return datetime.datetime.fromisoformat(value)
-
-            cls = self._get_class(object_type)
 
             oid: str = data.pop("@oid", None)
             if oid:
@@ -492,8 +461,6 @@ class ObjectReader:
                 object.__setstate__(data)
             else:
                 assert isinstance(data, dict)
-                if "_id" in data:
-                    data["id"] = data.pop("_id")
                 object = cls(**data)
 
             return object
