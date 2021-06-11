@@ -59,7 +59,7 @@ def check_siblings(graph, outputs):
         msg = "Include the files above in the command " "or use the --with-siblings option."
         raise RenkuException(
             "There are missing output siblings:\n\n"
-            "\t{0}\n\n{1}".format("\n\t".join(click.style(path, fg="red") for path in missing), msg,),
+            "\t{0}\n\n{1}".format("\n\t".join(click.style(path, fg="red") for path in missing), msg)
         )
     return outputs
 

@@ -37,7 +37,13 @@ def test_template_read_manifest_ctrl(ctrl_init, svc_client_with_templates, mocke
     assert {"result": {"templates": ctrl_mock.return_value}} == response.json
 
 
-@pytest.mark.parametrize("git_url", ["https://github.com", "https://github.com/SwissDataScienceCenter",])
+@pytest.mark.parametrize(
+    "git_url",
+    [
+        "https://github.com",
+        "https://github.com/SwissDataScienceCenter",
+    ],
+)
 def test_validation_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_client_with_templates, mocker):
     """Test validation exception on template read manifest controller."""
     from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl

@@ -463,7 +463,7 @@ def _import_dataset(
                 tabulate(
                     files,
                     headers=OrderedDict(
-                        (("checksum", None), ("filename", "name"), ("size_in_mb", "size (mb)"), ("filetype", "type"),)
+                        (("checksum", None), ("filename", "name"), ("size_in_mb", "size (mb)"), ("filetype", "type"))
                     ),
                     floatfmt=".2f",
                 )

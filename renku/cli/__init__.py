@@ -130,7 +130,7 @@ def is_allowed_command(ctx):
 
 @with_plugins(iter_entry_points("renku.cli_plugins"))
 @click.group(
-    cls=IssueFromTraceback, context_settings={"auto_envvar_prefix": "RENKU", "help_option_names": ["-h", "--help"],}
+    cls=IssueFromTraceback, context_settings={"auto_envvar_prefix": "RENKU", "help_option_names": ["-h", "--help"]}
 )
 @click.option(
     "--version", is_flag=True, callback=print_version, expose_value=False, is_eager=True, help=print_version.__doc__
@@ -177,7 +177,7 @@ def cli(ctx, path, external_storage_requested):
             )
         )
 
-    ctx.obj = LocalClient(path=path, external_storage_requested=external_storage_requested,)
+    ctx.obj = LocalClient(path=path, external_storage_requested=external_storage_requested)
 
     if path != os.getcwd() and ctx.invoked_subcommand not in WARNING_UNPROTECTED_COMMANDS:
         click.secho(WARNING + "Run CLI commands only from project's root directory.\n", err=True)

@@ -27,9 +27,7 @@ TEMPLATES_BLUEPRINT_TAG = "templates"
 templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@templates_blueprint.route(
-    "/templates.read_manifest", methods=["GET"], provide_automatic_options=False,
-)
+@templates_blueprint.route("/templates.read_manifest", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -72,9 +70,7 @@ def read_manifest_from_template(user_data, cache):
     return TemplatesReadManifestCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@templates_blueprint.route(
-    "/templates.create_project", methods=["POST"], provide_automatic_options=False,
-)
+@templates_blueprint.route("/templates.create_project", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache

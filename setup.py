@@ -89,7 +89,7 @@ readme = open("README.rst").read()
 history = open("CHANGES.rst").read()
 
 tests_require = [
-    "black==19.10b0",
+    "black==21.6b0",
     "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.5.3",
@@ -169,7 +169,7 @@ install_requires = [
     "humanize>=2.5.0,<3.8.0",
     "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
-    "pathspec>=0.7.0,<=0.8.0",
+    "pathspec>=0.8.0,<1.0.0",
     "patool==1.12",
     "pluggy==0.13.1",
     "portalocker>=2.2.1,<2.4",

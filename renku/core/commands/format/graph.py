@@ -53,7 +53,7 @@ def _conjunctive_graph(graph):
 
     register("json-ld", Parser, "rdflib_jsonld.parser", "JsonLDParser")
 
-    return ConjunctiveGraph().parse(data=_jsonld(graph, "expand"), format="json-ld",)
+    return ConjunctiveGraph().parse(data=_jsonld(graph, "expand"), format="json-ld")
 
 
 def dot(graph, simple=True, debug=False, landscape=False, strict=False):
@@ -136,7 +136,7 @@ def _rdf2dot_simple(g, stream, graph=None):
 
     activity_nodes = {}
     artifact_nodes = {}
-    for source, role, target, comment, in chain(inputs, outputs):
+    for source, role, target, comment in chain(inputs, outputs):
         # extract the pieces of the process URI
         src_match = path_re.match(source)
         tgt_match = path_re.match(target)

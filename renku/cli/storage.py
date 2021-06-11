@@ -91,18 +91,14 @@ def storage():
 
 
 @storage.command()
-@click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
-)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def pull(paths):
     """Pull the specified paths from external storage."""
     pull_command().build().execute(paths=paths)
 
 
 @storage.command()
-@click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
-)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def clean(paths):
     """Remove files from lfs cache/turn them back into pointer files."""
     communicator = ClickCallback()
@@ -112,9 +108,7 @@ def clean(paths):
 
 
 @storage.command("check-lfs-hook", hidden=True)
-@click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
-)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def check_lfs_hook(paths):
     """Check specified paths are tracked in external storage."""
     paths = check_lfs_hook_command().build().execute(paths=paths).output
@@ -138,9 +132,7 @@ def check(all):
 
 @storage.command()
 @click.option("--all", "-a", "migrate_all", is_flag=True, default=False, help="Migrate all large files not in git LFS.")
-@click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1,
-)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 def migrate(migrate_all, paths):
     """Migrate large files committed to git by moving them to LFS."""
     if not paths:

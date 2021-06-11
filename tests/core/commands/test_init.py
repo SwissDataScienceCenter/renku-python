@@ -188,8 +188,7 @@ def test_create_from_template(local_client, template):
 
 
 def test_template_filename(local_client, template):
-    """Test using a template with dynamic filenames.
-    """
+    """Test using a template with dynamic filenames."""
     local_client.init_repository()
 
     with TemporaryDirectory() as tempdir:

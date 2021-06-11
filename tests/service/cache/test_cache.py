@@ -114,10 +114,10 @@ def test_service_cache_get_jobs(svc_client_cache):
     user2 = cache.ensure_user({"user_id": "testuser2"})
 
     for _ in range(10):
-        job = cache.make_job(user, {"job_id": uuid.uuid4().hex,})
+        job = cache.make_job(user, {"job_id": uuid.uuid4().hex})
         assert job
 
-    job2 = cache.make_job(user2, {"job_id": uuid.uuid4().hex,})
+    job2 = cache.make_job(user2, {"job_id": uuid.uuid4().hex})
     assert job2
 
     retrieved_jobs = cache.get_jobs(user)
