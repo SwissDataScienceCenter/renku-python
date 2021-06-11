@@ -39,6 +39,8 @@ MARKER = object()
 NEW = z64  # NOTE: Do not change this value since this is the default when a Persistent object is created
 PERSISTED = b"1" * 8
 
+MIN_COMPRESSED_FILENAME_LENGTH = 64
+
 
 @implementer(IConnection, IPersistentDataManager)
 class Database:
@@ -106,11 +108,9 @@ class Database:
 
         if oid is not None:
             assert isinstance(oid, bytes), f"Invalid 'oid' type: '{type(oid)}'"
-        elif object._p_oid is None:
-            assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
-
-        oid = oid or object._p_oid
-        if oid is None:
+        else:
+            if object._p_oid is None:
+                assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
             oid = self.generate_oid(object)
 
         object._p_jar = self
@@ -181,8 +181,6 @@ class Database:
         while self._objects_to_commit:
             oid, object = self._objects_to_commit.popitem()
 
-            assert oid == object._p_oid
-
             if not object._p_changed and object._p_serial != NEW:
                 continue
 
@@ -219,6 +217,22 @@ class Database:
         """Return a Database."""
         return cls(path)
 
+    def replace(self, object: Persistent):
+        """Remove an object by creating a new oid for it."""
+        try:
+            del self._cache[object._p_oid]
+        except KeyError:
+            pass
+        else:
+            object_type = type(object).__name__
+            if object_type in self._root_object_types:
+                root_object = self.root[object_type]
+                del root_object[object._p_oid.decode("ascii")]
+                root_object._p_changed = 1
+
+        object._p_oid = None
+        self.add(object)
+
     def readCurrent(self, object):
         """We don't use this method but some Persistent logic require its existence."""
         assert object._p_jar is self
@@ -233,23 +247,41 @@ class Storage:
         self.path.mkdir(parents=True, exist_ok=True)
 
     def store(self, oid: bytes, data: Union[Dict, List]):
-        """Store data for object with identifier oid."""
-        if not isinstance(oid, str):
-            oid = str(oid, "ascii")
+        """Store object."""
+        assert isinstance(oid, bytes)
 
-        filename = self.path / oid
-        with open(filename, "w") as file:
+        filename = oid.decode("ascii").lower()
+        compressed = len(filename) >= MIN_COMPRESSED_FILENAME_LENGTH
+
+        if compressed:
+            path = self.path / filename[0:2] / filename[2:4] / filename
+            path.parent.mkdir(parents=True, exist_ok=True)
+            open_func = open  # TODO: Change this to gzip.open for the final version
+        else:
+            path = self.path / filename
+            open_func = open
+
+        with open_func(path, "w") as file:
             json.dump(data, file, ensure_ascii=False, sort_keys=True, indent=2)
 
     def load(self, oid: bytes):
         """Load data for object with object id oid."""
-        if not isinstance(oid, str):
-            oid = str(oid, "ascii")
-        filename = self.path / oid
-        if not filename.exists():
+        assert isinstance(oid, bytes)
+
+        filename = oid.decode("ascii").lower()
+        compressed = len(filename) >= MIN_COMPRESSED_FILENAME_LENGTH
+
+        if compressed:
+            path = self.path / filename[0:2] / filename[2:4] / filename
+            open_func = open  # TODO: Change this to gzip.open for the final version
+        else:
+            path = self.path / filename
+            open_func = open
+
+        if not path.exists():
             raise POSKeyError(oid)
 
-        with open(filename) as file:
+        with open_func(path) as file:
             data = json.load(file)
 
         return data

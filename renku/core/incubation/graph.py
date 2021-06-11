@@ -223,13 +223,6 @@ def export_graph():
 
 def _export_graph(client, format, workflows_only, strict):
     """Output graph in specific format."""
-    from renku.core.models.provenance.activity import Activity
-
-    a = Activity(id="123")
-    client.database.add(a)
-    client.database.commit()
-    return
-
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
 

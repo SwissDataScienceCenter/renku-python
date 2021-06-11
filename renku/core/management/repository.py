@@ -153,6 +153,8 @@ class RepositoryApiMixin(GitCore):
 
     _migration_type = attr.ib(default=MigrationType.ALL)
 
+    _database = attr.ib(default=None)
+
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         #: Configure Renku path.
@@ -271,7 +273,10 @@ class RepositoryApiMixin(GitCore):
         """Return metadata storage if available."""
         if not self.has_graph_files():
             return
-        return Database.from_path(self.database_path)
+        if not self._database:
+            self._database = Database.from_path(self.database_path)
+
+        return self._database
 
     @property
     def project(self):

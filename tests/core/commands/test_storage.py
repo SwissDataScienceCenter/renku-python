@@ -106,7 +106,6 @@ def test_lfs_migrate(runner, project, client):
     client.repo.git.add("*")
     client.repo.index.commit("add files")
     dataset_checksum = client.repo.head.commit.tree["dataset_file"].hexsha
-    workflow_checksum = client.repo.head.commit.tree["workflow_file"].hexsha
 
     result = runner.invoke(cli, ["graph", "generate"])
     assert 0 == result.exit_code
@@ -123,7 +122,7 @@ def test_lfs_migrate(runner, project, client):
     previous_head = client.repo.head.commit.hexsha
 
     result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, result.output
     assert "dataset_file" in result.output
     assert "workflow_file" in result.output
     assert "regular_file" in result.output
@@ -131,12 +130,9 @@ def test_lfs_migrate(runner, project, client):
 
     assert previous_head != client.repo.head.commit.hexsha
     changed_files = client.repo.head.commit.stats.files.keys()
-    assert ".renku/dataset.json" in changed_files
-    assert ".renku/provenance.json" in changed_files
+    assert ".renku/metadata/Entity" in changed_files
 
     assert dataset_checksum not in (client.path / ".renku" / "dataset.json").read_text()
-
-    assert workflow_checksum not in (client.path / ".renku" / "provenance.json").read_text()
 
 
 def test_lfs_migrate_no_changes(runner, project, client):
@@ -175,7 +171,6 @@ def test_lfs_migrate_explicit_path(runner, project, client):
     client.repo.git.add("*")
     client.repo.index.commit("add files")
     dataset_checksum = client.repo.head.commit.tree["dataset_file"].hexsha
-    workflow_checksum = client.repo.head.commit.tree["workflow_file"].hexsha
 
     result = runner.invoke(cli, ["graph", "generate"])
     assert 0 == result.exit_code
@@ -194,7 +189,5 @@ def test_lfs_migrate_explicit_path(runner, project, client):
     assert previous_head != client.repo.head.commit.hexsha
 
     assert dataset_checksum in (client.path / ".renku" / "dataset.json").read_text()
-
-    assert workflow_checksum in (client.path / ".renku" / "provenance.json").read_text()
 
     assert "oid sha256:" in (client.path / "regular_file").read_text()
