@@ -336,7 +336,7 @@ def init_command():
     return Command().command(_init)
 
 
-def fetch_template_from_git(source, ref="master", tempdir=None):
+def fetch_template_from_git(source, ref=None, tempdir=None):
     """Fetch the template from a git repository and checkout the relevant data.
 
     :param source: url or full path of the templates repository
@@ -353,17 +353,22 @@ def fetch_template_from_git(source, ref="master", tempdir=None):
     except git.exc.GitCommandError as e:
         raise errors.GitError("Cannot clone repo from {0}".format(source)) from e
 
-    try:
-        # fetch ref and set the HEAD
-        template_repo.remotes.origin.fetch(ref)
+    if ref:
         try:
-            template_repo.head.reset(template_repo.commit(ref))
-        except git.exc.BadName:
-            ref = "origin/{0}".format(ref)
-            template_repo.head.reset(template_repo.commit(ref))
+            # fetch ref and set the HEAD
+            template_repo.remotes.origin.fetch(ref)
+            try:
+                template_repo.head.reset(template_repo.commit(ref))
+            except git.exc.BadName:
+                ref = "origin/{0}".format(ref)
+                template_repo.head.reset(template_repo.commit(ref))
+            git_repo = git.Git(str(tempdir))
+        except git.exc.GitCommandError as e:
+            raise errors.GitError("Cannot fetch and checkout reference {0}".format(ref)) from e
+    else:
+        template_repo.remotes.origin.fetch()
+        template_repo.head.reset(template_repo.commit())
         git_repo = git.Git(str(tempdir))
-    except git.exc.GitCommandError as e:
-        raise errors.GitError("Cannot fetch and checkout reference {0}".format(ref)) from e
 
     # checkout the manifest
     try:
@@ -382,7 +387,7 @@ def fetch_template(template_source, template_ref):
     :return: tuple of (template manifest, template folder, template source, template version)
     """
     if template_source and template_source != "renku":
-        communication.echo("Fetching template from {0}@{1}... ".format(template_source, template_ref))
+        communication.echo("Fetching template from {0}@{1}... ".format(template_source, template_ref or ""))
         template_folder = Path(mkdtemp())
         _, template_version = fetch_template_from_git(template_source, template_ref, template_folder)
         template_manifest = read_template_manifest(template_folder, checkout=True)
