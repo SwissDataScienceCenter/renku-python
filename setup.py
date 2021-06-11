@@ -189,7 +189,7 @@ install_requires = [
     "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.60.1",
-    "wcmatch>=6.0.0,<8.2",
+    "wcmatch>=6.0.0,<8.3",
     "werkzeug>=0.15.5,<2.0.2",
 ]
 
