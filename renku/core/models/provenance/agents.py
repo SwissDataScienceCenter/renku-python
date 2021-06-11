@@ -43,7 +43,6 @@ class Person:
         label: str = None,
         name: str,
     ):
-        assert name and isinstance(name, str)
         self.validate_email(email)
 
         self.affiliation: str = affiliation
