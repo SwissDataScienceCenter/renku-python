@@ -31,9 +31,6 @@ from renku.core.models.provenance.activity import Activity, ActivityCollection, 
 class ProvenanceGraph:
     """A graph of all executions (Activities)."""
 
-    id = "provenance-graph"
-    # _serializable_fields = ["activities"]
-
     def __init__(self, activities: List[Activity] = None):
         self.activities: List[Activity] = activities or []
 

@@ -109,8 +109,7 @@ class Plan(Persistent):
 
             mapped_to = input.mapped_to
             if mapped_to:
-                stream_type = mapped_to.stream_type
-                mapped_to = MappedIOStream(stream_type=stream_type)
+                mapped_to = MappedIOStream(stream_type=mapped_to.stream_type)
 
             return CommandInput(
                 default_value=input.consumes.path,
@@ -129,8 +128,7 @@ class Plan(Persistent):
 
             mapped_to = output.mapped_to
             if mapped_to:
-                stream_type = mapped_to.stream_type
-                mapped_to = MappedIOStream(stream_type=stream_type)
+                mapped_to = MappedIOStream(stream_type=mapped_to.stream_type)
 
             return CommandOutput(
                 create_folder=output.create_folder,
