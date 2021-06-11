@@ -130,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<3.0.2", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<3.0.2", "Sphinx>=1.6.3,<4.0.3", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -166,7 +166,7 @@ install_requires = [
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
-    "humanize>=2.5.0,<3.4.0",
+    "humanize>=2.5.0,<3.8.0",
     "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.7.0,<=0.8.0",
@@ -189,7 +189,7 @@ install_requires = [
     "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.60.1",
-    "wcmatch>=6.0.0,<8.2",
+    "wcmatch>=6.0.0,<8.3",
     "werkzeug>=0.15.5,<2.0.2",
 ]
 
