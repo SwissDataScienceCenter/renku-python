@@ -191,6 +191,7 @@ install_requires = [
     "tqdm>=4.48.1,<4.60.1",
     "wcmatch>=6.0.0,<8.3",
     "werkzeug>=0.15.5,<2.0.2",
+    "yagup>=0.1.1",
 ]
 
 
@@ -218,7 +219,16 @@ version_template = """\
 # limitations under the License.
 \"\"\"Version information for Renku.\"\"\"
 
+import re
+
 __version__ = {version!r}
+
+
+def is_release():
+    \"\"\"Check if current version is a release semver.\"\"\"
+    if re.match(r"\\d+.\\d+.\\d+$", __version__):
+        return True
+    return False
 
 
 def _get_distribution_url():

@@ -186,7 +186,7 @@ class ProjectSchema(JsonLDSchema):
     name = fields.String(schema.name, missing=None)
     created = DateTimeList(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     version = StringList(schema.schemaVersion, missing="1")
-    agent_version = fields.String(schema.agent, missing="pre-0.11.0")
+    agent_version = StringList(schema.agent, missing="pre-0.11.0")
     template_source = fields.String(renku.templateSource, missing=None)
     template_ref = fields.String(renku.templateReference, missing=None)
     template_id = fields.String(renku.templateId, missing=None)

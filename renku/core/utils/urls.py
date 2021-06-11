@@ -23,8 +23,9 @@ import unicodedata
 import urllib
 from urllib.parse import ParseResult
 
+from yagup import GitURL
+
 from renku.core import errors
-from renku.core.models.git import GitURL
 
 
 def url_to_string(url):
@@ -76,7 +77,7 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
             remote_url = get_remote(client.repo)
             if not remote_url:
                 return
-            endpoint = f"https://{GitURL.parse(remote_url).hostname}/"
+            endpoint = f"https://{GitURL.parse(remote_url).host}/"
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"

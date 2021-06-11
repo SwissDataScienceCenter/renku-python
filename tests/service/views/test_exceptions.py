@@ -146,13 +146,22 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
 @pytest.mark.parametrize(
     "git_url,expected",
     [
-        ("https://github.com", {"error": {"code": -32602, "reason": "Validation error: `schema` - Invalid `git_url`"}}),
+        (
+            "https://github.com",
+            {"error": {"code": -32602, "reason": "Validation error: `git_url` - Invalid `git_url`"}},
+        ),
         (
             "https://github.com/SwissDataScienceCenter",
-            {"error": {"code": -32602, "reason": "Validation error: `schema` - Invalid `git_url`"}},
+            {"error": {"code": -32100, "reason": "Cannot clone repo from https://github.com/SwissDataScienceCenter"}},
         ),
-        ("https://test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found"}}),
-        ("https://www.test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found"}}),
+        (
+            "https://test.com/test2/test3",
+            {"error": {"code": -32100, "reason": "Cannot clone repo from https://test.com/test2/test3"}},
+        ),
+        (
+            "https://www.test.com/test2/test3",
+            {"error": {"code": -32100, "reason": "Cannot clone repo from https://www.test.com/test2/test3"}},
+        ),
     ],
 )
 def test_invalid_git_remote(git_url, expected, svc_client_with_templates):

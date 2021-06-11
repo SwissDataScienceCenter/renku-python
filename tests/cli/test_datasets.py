@@ -1413,6 +1413,7 @@ def test_lfs_hook_autocommit(runner, client, subdirectory, large_file):
     assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
     assert "Adding files to LFS" in result[2]
     assert 'Tracking "large-file"' in result[2]
+    assert len(client.dirty_paths) == 0  # NOTE: make sure repo is clean
 
 
 def test_lfs_hook_autocommit_env(runner, client, subdirectory, large_file):
@@ -1432,6 +1433,7 @@ def test_lfs_hook_autocommit_env(runner, client, subdirectory, large_file):
     assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
     assert "Adding files to LFS" in result[2]
     assert 'Tracking "large-file"' in result[2]
+    assert len(client.dirty_paths) == 0  # NOTE: make sure repo is clean
 
 
 def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
