@@ -485,7 +485,7 @@ class DatasetsApiMixin(object):
         files = []
         if all_at_once:  # Importing a dataset
             files = self._add_from_urls(
-                urls=urls, destination_names=destination_names, destination=destination, extract=extract,
+                urls=urls, destination_names=destination_names, destination=destination, extract=extract
             )
         else:
             for url in urls:

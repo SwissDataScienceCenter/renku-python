@@ -56,14 +56,14 @@ from renku.core.commands.rerun import rerun_workflows
 def show_inputs(client, workflow):
     """Show workflow inputs and exit."""
     for input_ in workflow.inputs:
-        click.echo("{id}: {default}".format(id=input_._id, default=input_.consumes.path,))
+        click.echo("{id}: {default}".format(id=input_._id, default=input_.consumes.path))
     sys.exit(0)
 
 
 def edit_inputs(client, workflow):
     """Edit workflow inputs."""
     for input_ in workflow.inputs:
-        new_path = click.prompt("{0._id}".format(input_), default=input_.consumes.path,)
+        new_path = click.prompt("{0._id}".format(input_), default=input_.consumes.path)
         input_.consumes.path = str(Path(os.path.abspath(new_path)).relative_to(client.path))
 
         try:
@@ -76,7 +76,7 @@ def edit_inputs(client, workflow):
 
     for step in workflow.subprocesses:
         for argument in step.process.arguments:
-            argument.value = click.prompt("{0._id}".format(argument), default=argument.value,)
+            argument.value = click.prompt("{0._id}".format(argument), default=argument.value)
 
     return workflow
 

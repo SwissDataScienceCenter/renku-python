@@ -96,7 +96,7 @@ class Activity(CommitMixin):
 
     _id = attr.ib(default=None, kw_only=True)
     _message = attr.ib(kw_only=True)
-    _was_informed_by = attr.ib(kw_only=True,)
+    _was_informed_by = attr.ib(kw_only=True)
 
     part_of = attr.ib(default=None, kw_only=True)
 
@@ -169,7 +169,7 @@ class Activity(CommitMixin):
 
     def _get_activity_entity(self, path, deleted=False):
         """Gets the entity associated with this Activity and path."""
-        client, commit, path = self.client.resolve_in_submodules(self.commit, path,)
+        client, commit, path = self.client.resolve_in_submodules(self.commit, path)
         path = str(path)
         output_path = client.path / path
         parents = list(output_path.relative_to(client.path).parents)
@@ -180,7 +180,7 @@ class Activity(CommitMixin):
             if str(parent) in self._collections:
                 collection = self._collections[str(parent)]
             else:
-                collection = Collection(client=client, commit=commit, path=str(parent), members=[], parent=collection,)
+                collection = Collection(client=client, commit=commit, path=str(parent), members=[], parent=collection)
                 members.append(collection)
                 self._collections[str(parent)] = collection
 
@@ -453,7 +453,7 @@ class ProcessRun(Activity):
                 if not usage.commit and "@UNCOMMITTED" in usage._label:
                     usages.append(
                         Usage.from_revision(
-                            client=self.client, path=usage.path, role=usage.role, revision=revision, id=usage._id,
+                            client=self.client, path=usage.path, role=usage.role, revision=revision, id=usage._id
                         )
                     )
                 else:
@@ -625,7 +625,7 @@ class WorkflowRun(ProcessRun):
             usage_id = f"{id_}/inputs/{input_index}"
 
             dependency = Usage.from_revision(
-                client=client, path=input_.consumes.path, role=input_.sanitized_id, revision=commit, id=usage_id,
+                client=client, path=input_.consumes.path, role=input_.sanitized_id, revision=commit, id=usage_id
             )
 
             usages.append(dependency)

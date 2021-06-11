@@ -285,7 +285,7 @@ def _update_dockerfile(client, check_only=False):
         return True
 
     dockercontent = re.sub(
-        r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockercontent, flags=re.MULTILINE,
+        r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockercontent, flags=re.MULTILINE
     )
 
     with open(client.docker_path, "w") as f:

@@ -57,7 +57,9 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
             template_id,
             automated_update,
             docker_update_possible,
-        ) = (migrations_check().build().execute().output)
+        ) = (
+            migrations_check().build().execute().output
+        )
 
         return {
             "migration_required": migration_required,

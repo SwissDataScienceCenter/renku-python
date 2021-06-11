@@ -47,9 +47,7 @@ from renku.core.models.workflow.parameters import (
 
 def _entity_from_path(client, path, commit):
     """Gets the entity associated with a path."""
-    client, commit, path = client.resolve_in_submodules(
-        client.find_previous_commit(path, revision=commit.hexsha), path,
-    )
+    client, commit, path = client.resolve_in_submodules(client.find_previous_commit(path, revision=commit.hexsha), path)
 
     entity_cls = Entity
     if (client.path / path).is_dir():
@@ -58,7 +56,7 @@ def _entity_from_path(client, path, commit):
     if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)):
         return client.load_dataset_from_path(path, commit=commit)
     else:
-        return entity_cls(commit=commit, client=client, path=str(path),)
+        return entity_cls(commit=commit, client=client, path=str(path))
 
 
 def _convert_cmd_binding(binding, client, commit):
@@ -170,7 +168,7 @@ def _convert_run_parameter(parameter, run_id):
 class Run(CommitMixin):
     """Represents a `renku run` execution template."""
 
-    command = attr.ib(default=None, type=str, kw_only=True,)
+    command = attr.ib(default=None, type=str, kw_only=True)
 
     successcodes = attr.ib(kw_only=True, type=list, factory=list)
 
@@ -204,8 +202,7 @@ class Run(CommitMixin):
             identifier = str(uuid.uuid4())
 
         return urllib.parse.urljoin(
-            "https://{host}".format(host=host),
-            pathlib.posixpath.join("/runs", urllib.parse.quote(identifier, safe="")),
+            "https://{host}".format(host=host), pathlib.posixpath.join("/runs", urllib.parse.quote(identifier, safe=""))
         )
 
     @classmethod

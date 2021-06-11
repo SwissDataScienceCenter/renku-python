@@ -34,7 +34,7 @@ from renku.core.models.git import get_user_info
 from renku.version import __version__, version_url
 
 
-@attr.s(slots=True,)
+@attr.s(slots=True)
 class Person:
     """Represent a person."""
 
@@ -43,8 +43,8 @@ class Person:
     name = attr.ib(kw_only=True, validator=instance_of(str))
     email = attr.ib(default=None, kw_only=True)
     label = attr.ib(kw_only=True)
-    affiliation = attr.ib(default=None, kw_only=True,)
-    alternate_name = attr.ib(default=None, kw_only=True,)
+    affiliation = attr.ib(default=None, kw_only=True)
+    alternate_name = attr.ib(default=None, kw_only=True)
     _id = attr.ib(default=None, kw_only=True)
 
     def default_id(self):
@@ -65,7 +65,7 @@ class Person:
     @classmethod
     def from_commit(cls, commit):
         """Create an instance from a Git commit."""
-        return cls(name=commit.author.name, email=commit.author.email,)
+        return cls(name=commit.author.name, email=commit.author.email)
 
     @property
     def short_name(self):
@@ -149,9 +149,7 @@ class PersonSchema(JsonLDSchema):
     _id = fields.Id(init_name="id")
 
 
-@attr.s(
-    frozen=True, slots=True,
-)
+@attr.s(frozen=True, slots=True)
 class SoftwareAgent:
     """Represent executed software."""
 

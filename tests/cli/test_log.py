@@ -52,7 +52,7 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirector
         test_paths.append(os.path.relpath(str(new_file), str(project)))
 
     # add data
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths,)
+    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths)
     assert 0 == result.exit_code
 
     result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])

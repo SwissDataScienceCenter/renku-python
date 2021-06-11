@@ -34,15 +34,15 @@ from renku.core.utils.datetime8601 import parse_date
 PROJECT_URL_PATH = "projects"
 
 
-@attr.s(slots=True,)
+@attr.s(slots=True)
 class Project:
     """Represent a project."""
 
-    name = attr.ib(default=None,)
+    name = attr.ib(default=None)
 
-    created = attr.ib(converter=parse_date,)
+    created = attr.ib(converter=parse_date)
 
-    version = attr.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION),)
+    version = attr.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION))
 
     agent_version = attr.ib(converter=str, default="pre-0.11.0")
 
@@ -78,7 +78,7 @@ class Project:
         if not self.creator and self.client:
             if self.client.renku_metadata_path.exists():
                 self.creator = Person.from_commit(
-                    self.client.find_previous_commit(self.client.renku_metadata_path, return_first=True),
+                    self.client.find_previous_commit(self.client.renku_metadata_path, return_first=True)
                 )
             else:
                 # this assumes the project is being newly created

@@ -135,7 +135,9 @@ def migrationscheck():
         template_id,
         automated_update,
         docker_update_possible,
-    ) = (migrations_check().lock_project().build().execute().output)
+    ) = (
+        migrations_check().lock_project().build().execute().output
+    )
 
     click.echo(
         json.dumps(
@@ -158,9 +160,7 @@ def migrationscheck():
 
 
 @click.command(hidden=True)
-@click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
-)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def check_immutable_template_files(paths):
     """Check specified paths if they are marked immutable in the template."""
     result = check_immutable_template_files_command().build().execute(paths=paths)

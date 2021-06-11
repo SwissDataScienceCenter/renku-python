@@ -97,7 +97,7 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_re
 
     payload = {"git_url": it_remote_repo_url, "depth": -1}
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
@@ -267,7 +267,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             pass
 
         payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH}
-        response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
+        response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
         assert response
         assert {"result"} == set(response.json.keys())

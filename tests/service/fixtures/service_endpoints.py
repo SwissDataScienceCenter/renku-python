@@ -26,38 +26,38 @@ import pytest
         {
             "url": "/cache.files_list",
             "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
         {"url": "/cache.files_upload", "allowed_method": "POST", "headers": {}},
         {
             "url": "/cache.project_clone",
             "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
         {
             "url": "/cache.project_list",
             "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
         {
             "url": "/datasets.add",
             "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
         {
             "url": "/datasets.create",
             "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
         {
             "url": "/templates.read_manifest",
             "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
         {
             "url": "/templates.create_project",
             "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
     ]
 )
@@ -84,7 +84,7 @@ def unlink_file_setup(svc_client_with_repo):
 
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    payload = make_dataset_add_payload(project_id, [("file_path", "README.md")],)
+    payload = make_dataset_add_payload(project_id, [("file_path", "README.md")])
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert 200 == response.status_code

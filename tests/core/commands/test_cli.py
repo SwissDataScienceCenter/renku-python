@@ -165,13 +165,11 @@ def test_workflow(runner, project):
     with open("counted.txt", "w") as stdout:
         with contextlib.redirect_stdout(stdout):
             try:
-                cli.main(
-                    args=("run", "wc", "data.csv"), prog_name=runner.get_default_prog_name(cli),
-                )
+                cli.main(args=("run", "wc", "data.csv"), prog_name=runner.get_default_prog_name(cli))
             except SystemExit as e:
                 assert e.code in {None, 0}
 
-    result = runner.invoke(cli, ["workflow", "create", "counted.txt", "-o", "workflow.cwl"], catch_exceptions=False,)
+    result = runner.invoke(cli, ["workflow", "create", "counted.txt", "-o", "workflow.cwl"], catch_exceptions=False)
     assert 0 == result.exit_code
     workflow = parse_cwl("workflow.cwl")
     assert 2 == len(workflow.steps)
@@ -203,7 +201,7 @@ def test_streams(runner, project, capsys, no_lfs_warning):
                     sys.stdin, sys.stdout = stdin, stdout
                     try:
                         cli.main(
-                            args=("run", "cut", "-d,", "-f", "2", "-s"), prog_name=runner.get_default_prog_name(cli),
+                            args=("run", "cut", "-d,", "-f", "2", "-s"), prog_name=runner.get_default_prog_name(cli)
                         )
                     except SystemExit as e:
                         assert e.code in {None, 0}
@@ -225,12 +223,12 @@ def test_streams(runner, project, capsys, no_lfs_warning):
 
     result = runner.invoke(cli, ["show", "outputs"])
     assert 0 == result.exit_code
-    assert {"result.txt",} == set(result.output.strip().split("\n"))
+    assert {"result.txt"} == set(result.output.strip().split("\n"))
 
     # Check that source.txt is shown in inputs.
     result = runner.invoke(cli, ["show", "inputs"])
     assert 0 == result.exit_code
-    assert {"source.txt",} == set(result.output.strip().split("\n"))
+    assert {"source.txt"} == set(result.output.strip().split("\n"))
 
     with open("source.txt", "w") as source:
         source.write("first,second,third,fourth")
@@ -282,7 +280,7 @@ def test_streams_and_args_names(runner, project, capsys, no_lfs_warning):
                 old_stdout = sys.stdout
                 sys.stdout = stdout
                 try:
-                    cli.main(args=("run", "echo", "lalala"),)
+                    cli.main(args=("run", "echo", "lalala"))
                 except SystemExit as e:
                     assert e.code in {None, 0}
             finally:
@@ -471,9 +469,7 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     with open("woop.wc", "w") as stdout:
         with contextlib.redirect_stdout(stdout):
             try:
-                cli.main(
-                    args=("-S", "run", "wc", "data/b/woop"), prog_name=runner.get_default_prog_name(cli),
-                )
+                cli.main(args=("-S", "run", "wc", "data/b/woop"), prog_name=runner.get_default_prog_name(cli))
             except SystemExit as e:
                 assert e.code in {None, 0}
 
@@ -547,7 +543,7 @@ def test_unchanged_stdout(runner, project, capsys, no_lfs_warning):
                 old_stdout = sys.stdout
                 sys.stdout = stdout
                 try:
-                    cli.main(args=("run", "echo", "1"),)
+                    cli.main(args=("run", "echo", "1"))
                 except SystemExit as e:
                     assert e.code in {None, 0}
             finally:
@@ -559,7 +555,7 @@ def test_unchanged_stdout(runner, project, capsys, no_lfs_warning):
                 old_stdout = sys.stdout
                 sys.stdout = stdout
                 try:
-                    cli.main(args=("run", "echo", "1"),)
+                    cli.main(args=("run", "echo", "1"))
                 except SystemExit as e:
                     # The stdout has not been modified!
                     assert e.code in {None, 1}

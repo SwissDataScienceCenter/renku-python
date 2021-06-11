@@ -138,9 +138,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             job = self.cache.make_job(self.user, job_data={"ctrl_context": {**self.context, **ctrl_cls}})
 
             with enqueue_retry(f"delayed.ctrl.{ctrl_cls['renku_ctrl']}") as queue:
-                queue.enqueue(
-                    delayed_ctrl_job, self.context, self.user_data, job.job_id, **ctrl_cls,
-                )
+                queue.enqueue(delayed_ctrl_job, self.context, self.user_data, job.job_id, **ctrl_cls)
 
             return job
 

@@ -95,7 +95,7 @@ class RenkuHeaders:
     @staticmethod
     def decode_user(data):
         """Extract renku user from a JWT."""
-        decoded = jwt.decode(data, JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku",)
+        decoded = jwt.decode(data, JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku")
         return UserIdentityToken().load(decoded)
 
     @staticmethod
