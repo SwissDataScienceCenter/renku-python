@@ -24,23 +24,24 @@ from urllib.parse import quote
 from renku.core.incubation.database import Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, wfprov
 from renku.core.utils.git import get_object_hash
-from renku.core.utils.urls import get_host
 
 
 class Entity(Persistent):
     """Represent a file."""
 
-    def __init__(self, id: str, checksum: str, path: Union[Path, str]):
-        self.id: str = id
+    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str]):
+        assert id is None or isinstance(id, str)
+
+        self.id: str = id or Entity.generate_id(checksum, path)
         self.path: Path = path
         self.checksum: str = checksum
 
     @staticmethod
-    def generate_id(hostname: str, checksum: str, path: Union[Path, str]) -> str:
+    def generate_id(checksum: str, path: Union[Path, str]) -> str:
         """Generate an Entity identifier."""
         quoted_path = quote(str(path).strip("/"))
 
-        return f"https://{hostname}/entities/{checksum}/{quoted_path}"
+        return f"/entities/{checksum}/{quoted_path}"
 
     @classmethod
     def from_revision(cls, client, path: Union[Path, str], revision: str = "HEAD", find_previous: bool = True):
@@ -50,48 +51,53 @@ class Entity(Persistent):
 
         client, commit, path = client.resolve_in_submodules(revision, path,)
 
-        hostname = get_host(client)
         checksum = get_object_hash(repo=client.repo, revision=revision, path=path)
         # TODO: What if checksum is None
         # TODO: What would be checksum for a directory if it's not committed yet.
-        id = cls.generate_id(hostname=hostname, checksum=checksum, path=path)
+        id = cls.generate_id(checksum=checksum, path=path)
 
         absolute_path = client.path / path
         if str(path) != "." and absolute_path.is_dir():
-            files_in_commit = commit.stats.files
-            members: List[Entity] = []
-
-            for member in absolute_path.iterdir():
-                if member.name == ".gitkeep":
-                    continue
-
-                member_path = str(member.relative_to(client.path))
-                find_previous = True
-
-                if member_path in files_in_commit:
-                    # we already know the newest commit, no need to look it up
-                    find_previous = False
-
-                try:
-                    assert all(member_path != m.path for m in members)
-
-                    members.append(cls.from_revision(client, member_path, commit, find_previous=find_previous))
-                except KeyError:
-                    pass
-
-            entity = Collection(id=id, checksum=checksum, path=path, members=[])
+            members = cls.get_directory_members(client, commit, absolute_path)
+            entity = Collection(id=id, checksum=checksum, path=path, members=members)
         else:
             entity = cls(id=id, checksum=checksum, path=path)
 
         return entity
 
+    @classmethod
+    def get_directory_members(cls, client, commit, absolute_path: Path) -> List["Entity"]:
+        """Return first-level files/directories in a directory."""
+        files_in_commit = commit.stats.files
+        members: List[Entity] = []
+
+        for member in absolute_path.iterdir():
+            if member.name == ".gitkeep":
+                continue
+
+            member_path = str(member.relative_to(client.path))
+            find_previous = True
+
+            if member_path in files_in_commit:
+                # we already know the newest commit, no need to look it up
+                find_previous = False
+
+            try:
+                assert all(member_path != m.path for m in members)
+
+                members.append(cls.from_revision(client, member_path, commit, find_previous=find_previous))
+            except KeyError:
+                pass
+
+        return members
+
 
 class Collection(Entity):
     """Represent a directory with files."""
 
-    def __init__(self, id: str, checksum: str, path: Union[Path, str], members: List[Entity]):
-        super().__init__(id, checksum, path)
-        self.members: List[Entity] = members
+    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], members: List[Entity] = None):
+        super().__init__(id=id, checksum=checksum, path=path)
+        self.members: List[Entity] = members or []
 
 
 class NewEntitySchema(JsonLDSchema):

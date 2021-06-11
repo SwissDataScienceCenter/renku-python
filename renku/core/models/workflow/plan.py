@@ -78,7 +78,7 @@ class Plan(Persistent):
         return self.name
 
     @classmethod
-    def from_run(cls, run: Run, hostname: str):
+    def from_run(cls, run: Run):
         """Create a Plan from a Run."""
         assert not run.subprocesses, f"Cannot create a Plan from a Run with subprocesses: {run._id}"
 
@@ -87,7 +87,7 @@ class Plan(Persistent):
             return run_id.rstrip("/").rsplit("/", maxsplit=1)[-1]
 
         uuid = extract_run_uuid(run._id)
-        plan_id = cls.generate_id(hostname=hostname, uuid=uuid)
+        plan_id = cls.generate_id(uuid=uuid)
 
         def convert_argument(argument: old_parameter.CommandArgument) -> CommandParameter:
             """Convert an old CommandArgument to a new CommandParameter."""
@@ -110,9 +110,7 @@ class Plan(Persistent):
             mapped_to = input.mapped_to
             if mapped_to:
                 stream_type = mapped_to.stream_type
-                mapped_to = MappedIOStream(
-                    id=MappedIOStream.generate_id(hostname, stream_type), stream_type=stream_type
-                )
+                mapped_to = MappedIOStream(stream_type=stream_type)
 
             return CommandInput(
                 default_value=input.consumes.path,
@@ -132,9 +130,7 @@ class Plan(Persistent):
             mapped_to = output.mapped_to
             if mapped_to:
                 stream_type = mapped_to.stream_type
-                mapped_to = MappedIOStream(
-                    id=MappedIOStream.generate_id(hostname, stream_type), stream_type=stream_type
-                )
+                mapped_to = MappedIOStream(stream_type=stream_type)
 
             return CommandOutput(
                 create_folder=output.create_folder,
@@ -161,10 +157,10 @@ class Plan(Persistent):
         )
 
     @staticmethod
-    def generate_id(hostname: str, uuid: str) -> str:
+    def generate_id(uuid: str) -> str:
         """Generate an identifier for Plan."""
         uuid = uuid or str(uuid4())
-        return f"https://{hostname}/plans/{uuid}"
+        return f"/plans/{uuid}"
 
     def _get_default_name(self) -> str:
         name = "-".join(str(a) for a in self.to_argv())

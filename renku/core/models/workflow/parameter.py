@@ -35,16 +35,16 @@ class MappedIOStream:
 
     STREAMS = ["stdin", "stdout", "stderr"]
 
-    def __init__(
-        self, *, id: str, stream_type: str,
-    ):
-        self.id: str = id
+    def __init__(self, *, id: str = None, stream_type: str):
+        assert stream_type in MappedIOStream.STREAMS
+
+        self.id: str = id or MappedIOStream.generate_id(stream_type)
         self.stream_type = stream_type
 
     @staticmethod
-    def generate_id(hostname: str, stream_type: str) -> str:
+    def generate_id(stream_type: str) -> str:
         """Generate an id for parameters."""
-        return f"https://{hostname}/iostreams/{stream_type}"
+        return f"/iostreams/{stream_type}"
 
 
 class CommandParameterBase:
@@ -77,9 +77,9 @@ class CommandParameterBase:
     @staticmethod
     def _generate_id(plan_id: str, parameter_type: str, position: Optional[int], postfix: str = None) -> str:
         """Generate an id for parameters."""
-        # https://localhost/plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/1
-        # https://localhost/plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/stdin
-        # https://localhost/plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/dda5fcbf-0098-4917-be46-dc12f5f7b675
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/1
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/stdin
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/dda5fcbf-0098-4917-be46-dc12f5f7b675
         position = str(position) if position is not None else str(uuid4())
         postfix = urllib.parse.quote(postfix) if postfix else position
         return f"{plan_id}/{parameter_type}/{postfix}"

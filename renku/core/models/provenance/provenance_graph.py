@@ -23,12 +23,12 @@ from typing import Dict, List, Optional, Union
 from marshmallow import EXCLUDE
 from rdflib import ConjunctiveGraph
 
-from renku.core.incubation.database import Database, Persistent
+from renku.core.incubation.database import Database
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.provenance.activity import Activity, ActivityCollection, ActivitySchema
 
 
-class ProvenanceGraph(Persistent):
+class ProvenanceGraph:
     """A graph of all executions (Activities)."""
 
     id = "provenance-graph"

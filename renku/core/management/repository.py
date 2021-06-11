@@ -274,7 +274,7 @@ class RepositoryApiMixin(GitCore):
         if not self.has_graph_files():
             return
         if not self._database:
-            self._database = Database.from_path(self.database_path)
+            self._database = Database.from_path(path=self.database_path)
 
         return self._database
 
@@ -544,6 +544,9 @@ class RepositoryApiMixin(GitCore):
         """Create empty graph files."""
         self.database_path.mkdir(parents=True, exist_ok=True)
         (self.database_path / ".gitkeep").touch(exist_ok=True)
+
+        # NOTE: Access dataset's root to make sure that it is created in case there are no commits
+        _ = self.database.root
 
     def remove_graph_files(self):
         """Remove all graph files."""

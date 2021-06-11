@@ -37,7 +37,8 @@ from renku.core.models.calamus import (
 from renku.core.models.datasets import generate_dataset_tag_id, generate_url_id
 from renku.core.models.git import get_user_info
 from renku.core.models.projects import generate_project_id
-from renku.core.models.provenance.agents import generate_person_id
+from renku.core.models.provenance import agents
+from renku.core.utils.urls import get_host
 
 
 class Base:
@@ -63,12 +64,11 @@ class Person(Base):
     @staticmethod
     def _fix_person_id(person, client=None):
         """Fixes the id of a Person if it is not set."""
-        if not person._id or "mailto:None" in person._id or person._id.startswith("_:"):
-            if not client and person.client:
-                client = person.client
-            person._id = generate_person_id(client=client, email=person.email, full_identity=person.full_identity)
-
-        return person
+        if not person.id or "mailto:None" in person.id or person.id.startswith("_:"):
+            hostname = get_host(client)
+            person.id = agents.Person.generate_id(
+                email=person.email, full_identity=person.full_identity, hostname=hostname
+            )
 
     @classmethod
     def from_git(cls, git, client=None):
@@ -76,13 +76,13 @@ class Person(Base):
         name, email = get_user_info(git)
         instance = cls(name=name, email=email)
 
-        instance = Person._fix_person_id(instance, client)
+        Person._fix_person_id(instance, client)
 
         return instance
 
     def __init__(self, **kwargs):
         """Initialize an instance."""
-        kwargs.setdefault("_id", None)
+        kwargs.setdefault("id", None)
         super().__init__(**kwargs)
 
     @property

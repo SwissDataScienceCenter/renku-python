@@ -37,7 +37,6 @@ class DependencyGraph:
     def __init__(self, plans: List[Plan] = None):
         """Initialized."""
         self._plans: List[Plan] = plans or []
-        self._path = None
 
         # NOTE: If we connect nodes then all ghost objects will be loaded which is not what we want
         self._graph = None

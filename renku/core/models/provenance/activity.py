@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent an execution of a Plan."""
+
 from datetime import datetime
 from typing import List, Optional, Union
 from urllib.parse import urlparse
@@ -41,7 +42,6 @@ from renku.core.models.provenance.parameter import (
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.plan import Plan, PlanSchema
 from renku.core.utils.git import get_object_hash
-from renku.core.utils.urls import get_host
 
 
 class Association:
@@ -122,8 +122,7 @@ class Activity(Persistent):
     @classmethod
     def from_process_run(cls, process_run: ProcessRun, plan: Plan, client, order: Optional[int] = None):
         """Create an Activity from a ProcessRun."""
-        hostname = get_host(client)
-        activity_id = Activity.generate_id(hostname)
+        activity_id = Activity.generate_id()
 
         association = Association(
             agent=process_run.association.agent, id=Association.generate_id(activity_id), plan=plan
@@ -156,10 +155,10 @@ class Activity(Persistent):
         )
 
     @staticmethod
-    def generate_id(hostname: str) -> str:
+    def generate_id() -> str:
         """Generate an identifier for an activity."""
         # TODO: make id generation idempotent
-        return f"https://{hostname}/activities/{uuid4()}"
+        return f"/activities/{uuid4()}"
 
 
 def _convert_usage(usage: old_qualified.Usage, activity_id: str, client) -> Usage:
@@ -191,8 +190,6 @@ def _convert_used_entity(entity: old_entities.Entity, revision: str, activity_id
     if not checksum:
         return None
 
-    id = Entity.generate_id(hostname=get_host(client), checksum=checksum, path=entity.path)
-
     if isinstance(entity, old_entities.Collection):
         members = []
         for child in entity.members:
@@ -201,9 +198,9 @@ def _convert_used_entity(entity: old_entities.Entity, revision: str, activity_id
                 continue
             members.append(new_child)
 
-        new_entity = Collection(id=id, checksum=checksum, path=entity.path, members=members)
+        new_entity = Collection(checksum=checksum, path=entity.path, members=members)
     else:
-        new_entity = Entity(id=id, checksum=checksum, path=entity.path)
+        new_entity = Entity(checksum=checksum, path=entity.path)
 
     assert new_entity.__class__.__name__ == entity.__class__.__name__
 
@@ -228,8 +225,6 @@ def _convert_generated_entity(entity: old_entities.Entity, revision: str, activi
     if not checksum:
         return None
 
-    id = Entity.generate_id(hostname=get_host(client), checksum=checksum, path=entity.path)
-
     if isinstance(entity, old_entities.Collection):
         members = []
         for child in entity.members:
@@ -238,9 +233,9 @@ def _convert_generated_entity(entity: old_entities.Entity, revision: str, activi
                 continue
             members.append(new_child)
 
-        new_entity = Collection(id=id, checksum=checksum, path=entity.path, members=members)
+        new_entity = Collection(checksum=checksum, path=entity.path, members=members)
     else:
-        new_entity = Entity(id=id, checksum=checksum, path=entity.path)
+        new_entity = Entity(checksum=checksum, path=entity.path)
 
     assert new_entity.__class__.__name__ == entity.__class__.__name__
 
@@ -263,8 +258,7 @@ def _convert_invalidated_entity(entity: old_entities.Entity, client) -> Optional
             print(f"Cannot find invalidated entity hash for {entity._id} at {revision}:{entity.path}")
             return
 
-    id = Entity.generate_id(hostname=get_host(client), checksum=checksum, path=entity.path)
-    new_entity = Entity(id=id, checksum=checksum, path=entity.path)
+    new_entity = Entity(checksum=checksum, path=entity.path)
 
     assert new_entity.__class__.__name__ == entity.__class__.__name__
 
@@ -346,7 +340,7 @@ class ActivityCollection:
                 assert len(run.subprocesses) == 1, f"Run in ProcessRun has multiple steps: {run._id}"
                 run = run.subprocesses[0]
 
-            plan = Plan.from_run(run=run, hostname=get_host(client))
+            plan = Plan.from_run(run=run)
             plan = dependency_graph.add(plan)
 
             activity = Activity.from_process_run(process_run=process_run, plan=plan, client=client)

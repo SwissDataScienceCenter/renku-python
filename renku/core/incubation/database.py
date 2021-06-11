@@ -21,7 +21,7 @@ import datetime
 import hashlib
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
 import BTrees.OOBTree
@@ -46,40 +46,48 @@ MIN_COMPRESSED_FILENAME_LENGTH = 64
 class Database:
     """The Metadata Object Database."""
 
-    def __init__(self, path: Union[str, Path], root_type_names: Tuple[str] = ("Activity", "Entity", "Plan")):
-        self._storage: Storage = Storage(path)
-        self._root_type_names: Tuple[str] = tuple(root_type_names)
+    ROOT_TYPE_NAMES = ("Activity", "Entity", "Plan")
+
+    def __init__(self, storage):
+        self._storage: Storage = storage
         self._cache = PickleCache(self)
         # The pre-cache is used by get to avoid infinite loops when objects load their state
         self._pre_cache: Dict[bytes, Persistent] = {}
         # Objects added explicitly by add() or when serializing other objects. After commit they are moved to _cache.
         self._objects_to_commit: Dict[bytes, Persistent] = {}
-        self._reader = ObjectReader(database=self)
-        self._writer = ObjectWriter(database=self)
+        self._reader: ObjectReader = ObjectReader(database=self)
+        self._writer: ObjectWriter = ObjectWriter(database=self)
+        self._root: Optional[BTrees.OOBTree.BTree] = None
+
+    @classmethod
+    def from_path(cls, path: Union[str, Path]) -> "Database":
+        """Create a Storage and Database using the given path."""
+        storage = Storage(path)
+        return Database(storage=storage)
 
     @property
     def root(self):
         """Return the database root object."""
-        try:
-            return self.get(b"root")
-        except POSKeyError:
-            root = BTrees.OOBTree.BTree()
+        if not self._root:
+            try:
+                self._root = self.get(b"root")
+            except POSKeyError:
+                self._root = BTrees.OOBTree.BTree()
+                self.add(self._root, b"root")
 
-            for root_type in self._root_type_names:
-                self._create_root_type(root, root_type)
+        # NOTE: Make sure that all root objects have an entry
+        self._create_root_types()
 
-            self.add(root, b"root")
-            root._p_changed = 1
-            return root
+        return self._root
 
-    @staticmethod
-    def _create_root_type(root, root_type):
-        if root_type in root:
-            return
+    def _create_root_types(self):
+        for root_type in Database.ROOT_TYPE_NAMES:
+            if root_type in self._root:
+                continue
 
-        object = BTrees.OOBTree.BTree()
-        object._p_oid = root_type.encode("ascii")
-        root[root_type] = object
+            object = BTrees.OOBTree.BTree()
+            object._p_oid = root_type.encode("ascii")
+            self._root[root_type] = object
 
     @staticmethod
     def new_oid():
@@ -89,15 +97,20 @@ class Database:
     @staticmethod
     def generate_oid(object) -> bytes:
         """Generate oid for a Persistent object based on its id."""
-        oid = getattr(object, "_p_oid", None)
+        oid = getattr(object, "_p_oid")
         if oid:
             assert isinstance(oid, bytes)
             return oid
 
-        id: str = getattr(object, "id", None) or getattr(object, "_id", None)
-        if not id:
-            return Database.new_oid()
+        id: str = getattr(object, "id") or getattr(object, "_id")
+        if id:
+            return Database.hash_id(id)
 
+        return Database.new_oid()
+
+    @staticmethod
+    def hash_id(id: str) -> bytes:
+        """Return oid from id."""
         return hashlib.sha3_256(id.encode("utf-8")).hexdigest().encode("ascii")
 
     def add(self, object: Persistent, oid: bytes = None):
@@ -110,7 +123,7 @@ class Database:
             assert isinstance(oid, bytes), f"Invalid 'oid' type: '{type(oid)}'"
         else:
             if object._p_oid is None:
-                assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
+                assert getattr(object, "id") is not None, f"Object does not have 'id': {object}"
             oid = self.generate_oid(object)
 
         object._p_jar = self
@@ -126,7 +139,7 @@ class Database:
         """Load the state for a ghost object."""
         oid = object._p_oid
 
-        data = self._storage.load(oid)
+        data = self._storage.load(filename=self._get_filename_from_oid(oid))
         self._reader.set_ghost_state(object, data)
 
         object._p_serial = PERSISTED
@@ -140,7 +153,7 @@ class Database:
 
     def get(self, oid: Union[bytes, str]) -> Persistent:
         """Get the object by oid."""
-        if oid in self._root_type_names:
+        if oid in Database.ROOT_TYPE_NAMES:
             return self.root[oid]
 
         if isinstance(oid, str):
@@ -150,7 +163,7 @@ class Database:
         if object is not None:
             return object
 
-        data = self._storage.load(oid)
+        data = self._storage.load(filename=self._get_filename_from_oid(oid))
         object = self._reader.deserialize(data)
         object._p_changed = 0
         object._p_serial = PERSISTED
@@ -185,12 +198,10 @@ class Database:
                 continue
 
             object_type = type(object).__name__
-            if object_type in self._root_type_names:
-                self._create_root_type(self.root, object_type)
+            if object_type in Database.ROOT_TYPE_NAMES:
                 oid = oid.decode("ascii")
                 root_object = self.root[object_type]
                 root_object[oid] = object
-                root_object._p_changed = 1
 
             self._store_object(object)
 
@@ -199,7 +210,7 @@ class Database:
 
         data = self._writer.serialize(object)
 
-        self._storage.store(oid=oid, data=data)
+        self._storage.store(filename=self._get_filename_from_oid(oid), data=data)
         self._cache[oid] = object
 
         self._cache.update_object_size_estimation(oid, 1)
@@ -208,14 +219,13 @@ class Database:
         object._p_changed = 0  # NOTE: transition from changed to up-to-date
         object._p_serial = PERSISTED
 
+    @staticmethod
+    def _get_filename_from_oid(oid: bytes) -> str:
+        return oid.decode("ascii").lower()
+
     def new_ghost(self, oid: bytes, object: Persistent):
         """Create a new ghost object."""
         self._cache.new_ghost(oid, object)
-
-    @classmethod
-    def from_path(cls, path: Union[str, Path]) -> "Database":
-        """Return a Database."""
-        return cls(path)
 
     def replace(self, object: Persistent):
         """Remove an object by creating a new oid for it."""
@@ -225,10 +235,9 @@ class Database:
             pass
         else:
             type_name = type(object).__name__
-            if type_name in self._root_type_names:
+            if type_name in Database.ROOT_TYPE_NAMES:
                 root_object = self.root[type_name]
                 del root_object[object._p_oid.decode("ascii")]
-                root_object._p_changed = 1
 
         object._p_oid = None
         self.add(object)
@@ -246,11 +255,10 @@ class Storage:
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
 
-    def store(self, oid: bytes, data: Union[Dict, List]):
+    def store(self, filename: str, data: Union[Dict, List]):
         """Store object."""
-        assert isinstance(oid, bytes)
+        assert isinstance(filename, str)
 
-        filename = oid.decode("ascii").lower()
         compressed = len(filename) >= MIN_COMPRESSED_FILENAME_LENGTH
 
         if compressed:
@@ -264,11 +272,10 @@ class Storage:
         with open_func(path, "w") as file:
             json.dump(data, file, ensure_ascii=False, sort_keys=True, indent=2)
 
-    def load(self, oid: bytes):
+    def load(self, filename: str):
         """Load data for object with object id oid."""
-        assert isinstance(oid, bytes)
+        assert isinstance(filename, str)
 
-        filename = oid.decode("ascii").lower()
         compressed = len(filename) >= MIN_COMPRESSED_FILENAME_LENGTH
 
         if compressed:
@@ -279,7 +286,7 @@ class Storage:
             open_func = open
 
         if not path.exists():
-            raise POSKeyError(oid)
+            raise POSKeyError(filename)
 
         with open_func(path) as file:
             data = json.load(file)
@@ -330,7 +337,7 @@ class ObjectWriter:
         elif isinstance(object, (int, float, str, bool)):
             return object
         elif isinstance(object, datetime.datetime):
-            return {"@type": "datetime", "@value": object.isoformat()}
+            return {"@type": self._get_type(object), "@value": object.isoformat()}
         elif isinstance(object, Persistent):
             if not object._p_oid:
                 object._p_oid = Database.generate_oid(object)
