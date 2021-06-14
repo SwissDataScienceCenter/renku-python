@@ -32,14 +32,10 @@ from ZODB.POSException import POSKeyError
 from ZODB.utils import z64
 from zope.interface import implementer
 
-MARKER = object()
-
 
 # NOTE These are used as _p_serial to mark if an object was read from storage or is new
 NEW = z64  # NOTE: Do not change this value since this is the default when a Persistent object is created
 PERSISTED = b"1" * 8
-
-MIN_COMPRESSED_FILENAME_LENGTH = 64
 
 
 @implementer(IConnection, IPersistentDataManager)
@@ -73,7 +69,7 @@ class Database:
                 self._root = self.get(b"root")
             except POSKeyError:
                 self._root = BTrees.OOBTree.BTree()
-                self.add(self._root, b"root")
+                self._add_internal(self._root, b"root")
 
         # NOTE: Make sure that all root objects have an entry
         self._create_root_types()
@@ -113,20 +109,29 @@ class Database:
         """Return oid from id."""
         return hashlib.sha3_256(id.encode("utf-8")).hexdigest().encode("ascii")
 
-    def add(self, object: Persistent, oid: bytes = None):
-        """Add a new object to the database and assign an oid to it."""
-        p_oid = getattr(object, "_p_oid", MARKER)
-        if p_oid is MARKER:
-            raise TypeError("Only first-class persistent objects may be added to database.", object)
+    def add(self, object: Persistent):
+        """Add a new object to the database."""
+        type_name = type(object).__name__
+        assert type_name in Database.ROOT_TYPE_NAMES, f"Cannot add objects of type '{type_name}'"
 
-        if oid is not None:
-            assert isinstance(oid, bytes), f"Invalid 'oid' type: '{type(oid)}'"
-        else:
-            if object._p_oid is None:
-                assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
-            oid = self.generate_oid(object)
+        if object._p_oid is None:
+            assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
+        oid = self.generate_oid(object)
 
-        object._p_jar = self
+        cached_object = self.get_cached(oid)
+        if cached_object:
+            assert (
+                cached_object is object
+            ), f"A different object with oid '{oid}' is already in cache: {cached_object} != {object}"
+            return
+
+        self._add_internal(object, oid)
+
+    def _add_internal(self, object: Persistent, oid: bytes):
+        """Allow adding non-root types; used for adding root object."""
+        assert isinstance(object, Persistent), f"Cannot add non-Persistent object: '{object}'"
+        assert isinstance(oid, bytes), f"Invalid oid type: '{type(oid)}'"
+
         object._p_oid = oid
         object._p_serial = NEW
         self.register(object)
@@ -135,7 +140,7 @@ class Database:
         """See persistent.interfaces.IPersistentDataManager::oldstate."""
         raise NotImplementedError
 
-    def setstate(self, object):
+    def setstate(self, object: Persistent):
         """Load the state for a ghost object."""
         oid = object._p_oid
 
@@ -251,6 +256,8 @@ class Database:
 class Storage:
     """Store Persistent objects on the disk."""
 
+    MIN_COMPRESSED_FILENAME_LENGTH = 64
+
     def __init__(self, path: Union[Path, str]):
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
@@ -259,8 +266,7 @@ class Storage:
         """Store object."""
         assert isinstance(filename, str)
 
-        compressed = len(filename) >= MIN_COMPRESSED_FILENAME_LENGTH
-
+        compressed = len(filename) >= Storage.MIN_COMPRESSED_FILENAME_LENGTH
         if compressed:
             path = self.path / filename[0:2] / filename[2:4] / filename
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -276,8 +282,7 @@ class Storage:
         """Load data for object with object id oid."""
         assert isinstance(filename, str)
 
-        compressed = len(filename) >= MIN_COMPRESSED_FILENAME_LENGTH
-
+        compressed = len(filename) >= Storage.MIN_COMPRESSED_FILENAME_LENGTH
         if compressed:
             path = self.path / filename[0:2] / filename[2:4] / filename
             open_func = open  # TODO: Change this to gzip.open for the final version
@@ -309,7 +314,7 @@ class ObjectWriter:
         """Convert an object to JSON."""
         assert isinstance(object, Persistent), f"Cannot serialize object of type '{type(object)}': {object}"
         assert object._p_oid, f"Object does not have an oid: '{object}'"
-        assert object._p_jar is not None, f"Object is not associated with a DataManager: '{object._p_oid}'"
+        assert object._p_jar is not None, f"Object is not associated with a Database: '{object._p_oid}'"
 
         state = object.__getstate__()
         data = self._serialize_helper(state)
