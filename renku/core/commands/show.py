@@ -21,6 +21,8 @@ from collections import namedtuple
 
 from renku.core import errors
 from renku.core.commands.graph import Graph
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.models.entities import Entity
 from renku.core.models.provenance.activities import ProcessRun
@@ -33,13 +35,13 @@ def get_siblings():
     return Command().command(_get_siblings).require_migration()
 
 
-def _get_siblings(client, revision, verbose, paths):
+def _get_siblings(revision, verbose, paths):
     def get_sibling_name(graph, node):
         """Return the display name of a sibling."""
         name = graph._format_path(node.path)
         return "{} @ {}".format(name, node.commit) if verbose else name
 
-    graph = Graph(client)
+    graph = Graph()
     nodes = graph.build(paths=paths, revision=revision)
     nodes = [n for n in nodes if not isinstance(n, Entity) or n.parent]
 
@@ -75,8 +77,9 @@ def get_inputs():
     return Command().command(_get_inputs).require_migration()
 
 
-def _get_inputs(client, revision, paths):
-    graph = Graph(client)
+@inject.autoparams()
+def _get_inputs(client: LocalClient, revision, paths):
+    graph = Graph()
     paths = set(paths)
     nodes = graph.build(revision=revision)
     commits = {node.activity.commit if hasattr(node, "activity") else node.commit for node in nodes}
@@ -109,8 +112,8 @@ def get_outputs():
     return Command().command(_get_outputs).require_migration()
 
 
-def _get_outputs(client, revision, paths):
-    graph = Graph(client)
+def _get_outputs(revision, paths):
+    graph = Graph()
     filter_ = graph.build(paths=paths, revision=revision)
     output_paths = {}
 

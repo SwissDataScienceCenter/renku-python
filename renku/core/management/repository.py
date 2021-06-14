@@ -507,7 +507,7 @@ class RepositoryApiMixin(GitCore):
         path = self.workflow_path / filename
 
         process_run = command_line_tool.generate_process_run(
-            client=self, commit=self.repo.head.commit, path=path, name=name, description=description, keywords=keywords
+            commit=self.repo.head.commit, path=path, name=name, description=description, keywords=keywords
         )
         process_run.to_yaml(path=path)
         self.add_to_activity_index(process_run)
@@ -522,7 +522,7 @@ class RepositoryApiMixin(GitCore):
         dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
         provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
 
-        activity_collection = ActivityCollection.from_activity(activity, dependency_graph, self)
+        activity_collection = ActivityCollection.from_activity(activity, dependency_graph)
 
         self.provenance_graph.add(activity_collection)
         database = self.database

@@ -17,12 +17,15 @@
 # limitations under the License.
 """Clone a Renku repo along with all Renku-specific initializations."""
 
+from renku.core.management import LocalClient
 from renku.core.management.clone import clone
+from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 
 
+@inject.autoparams()
 def _project_clone(
-    client,
+    client: LocalClient,
     url,
     path=None,
     install_githooks=True,

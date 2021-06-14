@@ -33,6 +33,8 @@ import yaml
 
 from renku.core import errors
 from renku.core.commands.git import set_git_home
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
@@ -174,7 +176,8 @@ def verify_template_variables(template_data, metadata):
     return metadata
 
 
-def get_existing_template_files(client, template_path, metadata, force=False):
+@inject.autoparams()
+def get_existing_template_files(client: LocalClient, template_path, metadata, force=False):
     """Gets files in the template that already exists in the repo."""
     template_files = list(client.get_template_files(template_path, metadata))
 
@@ -189,7 +192,8 @@ def get_existing_template_files(client, template_path, metadata, force=False):
     return existing
 
 
-def create_backup_branch(client, path):
+@inject.autoparams()
+def create_backup_branch(client: LocalClient, path):
     """Creates a backup branch of the repo."""
     branch_name = None
     if not is_path_empty(path):
@@ -220,8 +224,9 @@ def create_backup_branch(client, path):
     return branch_name
 
 
+@inject.autoparams()
 def _init(
-    client,
+    client: LocalClient,
     ctx,
     external_storage_requested,
     path,
@@ -280,7 +285,7 @@ def _init(
 
     template_path = template_folder / template_data["folder"]
 
-    existing = get_existing_template_files(client, template_path, metadata, force)
+    existing = get_existing_template_files(template_path, metadata, force)
 
     append = list(filter(lambda x: x.lower() in INIT_APPEND_FILES, existing))
     existing = list(filter(lambda x: x.lower() not in INIT_APPEND_FILES + INIT_KEEP_FILES, existing))
@@ -300,7 +305,7 @@ def _init(
 
         communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 
-    branch_name = create_backup_branch(client, path)
+    branch_name = create_backup_branch(path)
 
     # clone the repo
     communication.echo("Initializing new Renku repository... ")
@@ -308,7 +313,6 @@ def _init(
         try:
             create_from_template(
                 template_path=template_path,
-                client=client,
                 name=name,
                 metadata=metadata,
                 template_version=template_version,
@@ -462,9 +466,10 @@ def read_template_manifest(folder, checkout=False):
     return manifest
 
 
+@inject.autoparams()
 def create_from_template(
     template_path,
-    client,
+    client: LocalClient,
     name=None,
     metadata={},
     template_version=None,
@@ -503,8 +508,9 @@ def create_from_template(
             (data_path / ".gitkeep").touch(exist_ok=True)
 
 
+@inject.autoparams()
 def _create_from_template_local(
-    client,
+    client: LocalClient,
     template_path,
     name,
     metadata={},
@@ -533,7 +539,6 @@ def _create_from_template_local(
 
     create_from_template(
         template_path=template_path,
-        client=client,
         name=name,
         metadata=metadata,
         template_version=template_version,

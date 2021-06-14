@@ -24,6 +24,7 @@ from urllib.parse import quote, urljoin
 
 import attr
 
+from renku.core.management.command_builder.command import inject
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, rdfs, renku, schema, wfprov
 from renku.core.models.projects import Project, ProjectSchema
 
@@ -38,7 +39,7 @@ class CommitMixin:
     """Represent a commit mixin."""
 
     commit = attr.ib(default=None, kw_only=True)
-    client = attr.ib(default=None, kw_only=True)
+    client = attr.ib(default=lambda: inject.attr("LocalClient"), kw_only=True)
     path = attr.ib(default=None, kw_only=True, converter=_str_or_none)
 
     _id = attr.ib(default=None, kw_only=True)
@@ -96,6 +97,7 @@ class Entity(CommitMixin):
     checksum = attr.ib(default=None, kw_only=True, type=str)
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_revision(cls, client, path, revision="HEAD", parent=None, find_previous=True, **kwargs):
         """Return dependency from given path and revision."""
         if find_previous:

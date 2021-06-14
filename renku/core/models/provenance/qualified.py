@@ -23,6 +23,7 @@ from urllib.parse import quote
 import attr
 from marshmallow import EXCLUDE
 
+from renku.core.management.command_builder.command import inject
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov
 from renku.core.models.datasets import DatasetFileSchema, DatasetSchema
 from renku.core.models.entities import CollectionSchema, EntitySchema
@@ -93,6 +94,7 @@ class Usage(EntityProxyMixin):
     _id = attr.ib(default=None, kw_only=True)
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_revision(cls, client, path, revision="HEAD", **kwargs):
         """Return dependency from given path and revision."""
         from renku.core.models.entities import Entity

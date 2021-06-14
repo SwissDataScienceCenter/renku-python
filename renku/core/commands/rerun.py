@@ -42,8 +42,6 @@ def _rerun_workflows(client, revision, roots, siblings, inputs, paths):
 
     # Generate workflow and check inputs.
     # NOTE The workflow creation is done before opening a new file.
-    workflow = inputs(client, graph.as_workflow(input_paths=roots, output_paths=output_paths, outputs=outputs))
+    workflow = inputs(graph.as_workflow(input_paths=roots, output_paths=output_paths, outputs=outputs))
 
-    execute_workflow(
-        client=client, workflow=workflow, output_paths=output_paths, command_name="rerun", update_commits=False
-    )
+    execute_workflow(workflow=workflow, output_paths=output_paths, command_name="rerun", update_commits=False)

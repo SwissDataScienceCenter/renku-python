@@ -19,14 +19,17 @@
 
 import contextlib
 import functools
+import threading
+import typing
 from collections import defaultdict
 
 import click
+import inject
 
 from renku.core import errors
-from renku.core.management import LocalClient
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.repository import default_path
+
+_LOCAL = threading.local()
 
 
 def check_finalized(f):
@@ -44,6 +47,57 @@ def check_finalized(f):
         return f(*args, **kwargs)
 
     return wrapper
+
+
+def _patched_get_injector_or_die() -> inject.Injector:
+    """Patched version of get_injector_or_die with thread local injectors.
+
+    Allows deferred definition of an injector per thread.
+    """
+    injector = getattr(_LOCAL, "injector", None)
+    if not injector:
+        raise inject.InjectorException("No injector is configured")
+
+    return injector
+
+
+def _patched_configure(
+    config: typing.Optional[inject.BinderCallable] = None, bind_in_runtime: bool = True
+) -> inject.Injector:
+    """Create an injector with a callable config or raise an exception when already configured."""
+
+    if getattr(_LOCAL, "injector", None):
+        raise inject.InjectorException("Injector is already configured")
+
+    _LOCAL.injector = inject.Injector(config, bind_in_runtime=bind_in_runtime)
+    inject.logger.debug("Created and configured an injector, config=%s", config)
+    return _LOCAL.injector
+
+
+inject.configure = _patched_configure
+inject.get_injector_or_die = _patched_get_injector_or_die
+
+
+def _bind_local_client(binder: inject.Binder, client) -> inject.Binder:
+    """Bind a LocalClient to an Injector."""
+    from renku.core.management import LocalClient
+
+    binder.bind(LocalClient, client)
+    binder.bind("LocalClient", client)
+    return binder
+
+
+@contextlib.contextmanager
+def replace_injected_client(new_client):
+    """Temporarily inject a different client into dependency injection."""
+    old_injector = getattr(_LOCAL, "injector", None)
+    if old_injector:
+        del _LOCAL.injector
+    inject.configure(lambda binder: _bind_local_client(binder, new_client))
+
+    yield
+
+    _LOCAL.injector = old_injector
 
 
 class Command:
@@ -77,6 +131,9 @@ class Command:
 
     def _pre_hook(self, builder, context, *args, **kwargs):
         """Setup local client."""
+        from renku.core.management import LocalClient
+        from renku.core.management.repository import default_path
+
         ctx = click.get_current_context(silent=True)
         if ctx is None:
             client = LocalClient(
@@ -94,6 +151,7 @@ class Command:
         if self._git_isolation:
             client = stack.enter_context(client.worktree())
 
+        context["binder"] = functools.partial(_bind_local_client, client=client)
         context["client"] = client
         context["stack"] = stack
         context["click_context"] = ctx
@@ -124,9 +182,11 @@ class Command:
         output = None
         error = None
 
+        inject.configure(context["binder"])
+
         try:
             with context["stack"]:
-                output = context["click_context"].invoke(self._operation, context["client"], *args, **kwargs)
+                output = context["click_context"].invoke(self._operation, *args, **kwargs)
         except errors.RenkuException as e:
             error = e
 
@@ -139,6 +199,7 @@ class Command:
                 for hook in self.post_hooks[o]:
                     hook(self, context, result, *args, **kwargs)
 
+        del _LOCAL.injector
         return result
 
     @property

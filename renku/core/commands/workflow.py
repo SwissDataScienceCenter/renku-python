@@ -22,6 +22,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from renku.core.commands.graph import Graph
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.models.workflow.converters.cwl import CWLConverter
 from renku.core.utils import communication
@@ -38,12 +40,13 @@ def _deref(ref):
     return ref[len("workflows/") :]
 
 
-def _list_workflows(client):
+@inject.autoparams()
+def _list_workflows(client: LocalClient):
     """List or manage workflows with subcommands."""
     from renku.core.models.refs import LinkReference
 
     names = defaultdict(list)
-    for ref in LinkReference.iter_items(client, common_path="workflows"):
+    for ref in LinkReference.iter_items(common_path="workflows"):
         names[ref.reference.name].append(ref.name)
 
     for path in client.workflow_path.glob("*.yaml"):
@@ -57,11 +60,11 @@ def list_workflows_command():
     return Command().command(_list_workflows).require_migration()
 
 
-def _set_workflow_name(client, name, path, force):
+def _set_workflow_name(name, path, force):
     """Sets the <name> for remote <path>."""
     from renku.core.models.refs import LinkReference
 
-    LinkReference.create(client=client, name=_ref(name), force=force).set_reference(path)
+    LinkReference.create(name=_ref(name), force=force).set_reference(path)
 
 
 def set_workflow_name_command():
@@ -69,11 +72,11 @@ def set_workflow_name_command():
     return Command().command(_set_workflow_name).require_clean().with_commit()
 
 
-def _rename_workflow(client, old, new, force):
+def _rename_workflow(old, new, force):
     """Rename the workflow named <old> to <new>."""
     from renku.core.models.refs import LinkReference
 
-    LinkReference(client=client, name=_ref(old)).rename(_ref(new), force=force)
+    LinkReference(name=_ref(old)).rename(_ref(new), force=force)
 
 
 def rename_workflow_command():
@@ -81,11 +84,11 @@ def rename_workflow_command():
     return Command().command(_rename_workflow).require_clean().with_commit()
 
 
-def _remove_workflow(client, name):
+def _remove_workflow(name):
     """Remove the remote named <name>."""
     from renku.core.models.refs import LinkReference
 
-    LinkReference(client=client, name=_ref(name)).delete()
+    LinkReference(name=_ref(name)).delete()
 
 
 def remove_workflow_command():
@@ -93,9 +96,10 @@ def remove_workflow_command():
     return Command().command(_remove_workflow).require_clean().with_commit()
 
 
-def _create_workflow(client, output_file, revision, paths):
+@inject.autoparams()
+def _create_workflow(client: LocalClient, output_file, revision, paths):
     """Create a workflow description for a file."""
-    graph = Graph(client)
+    graph = Graph()
     outputs = graph.build(paths=paths, revision=revision)
 
     workflow = graph.as_workflow(outputs=outputs)
@@ -103,7 +107,7 @@ def _create_workflow(client, output_file, revision, paths):
     if output_file:
         output_file = Path(output_file)
 
-    wf, path = CWLConverter.convert(workflow, client, path=output_file)
+    wf, path = CWLConverter.convert(workflow, client.path, path=output_file)
 
     return wf.export_string()
 

@@ -17,18 +17,9 @@
 # limitations under the License.
 """Command builder for local object database."""
 
-import threading
-
-import inject
 
 from renku.core.incubation.database import Database, Storage
 from renku.core.management.command_builder.command import Command, check_finalized
-
-_LOCAL = threading.local()
-
-
-def database():
-    return getattr(_LOCAL, "database", None)
 
 
 class DatabaseCommand(Command):
@@ -51,14 +42,13 @@ class DatabaseCommand(Command):
         client = context["client"]
         storage = Storage(self._path or client.database_path)
 
-        _LOCAL.database = Database(storage=storage)
-        inject.configure(lambda binder: binder.bind_to_provider(Database, database))
+        self.database = Database(storage=storage)
+        current_binder = context["binder"]
+        context["binder"] = lambda binder: current_binder(binder).bind(Database, self.database)
 
     def _post_hook(self, builder, context, result, *args, **kwargs):
         if self._write:
-            _LOCAL.database.commit()
-
-        del _LOCAL.database
+            self.database.commit()
 
     @check_finalized
     def build(self):

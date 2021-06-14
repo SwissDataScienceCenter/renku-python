@@ -343,7 +343,7 @@ def test_existing_output_directory(client, runner, project):
 
     run = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
 
-    cwl, _ = CWLConverter.convert(run.association.plan, client)
+    cwl, _ = CWLConverter.convert(run.association.plan, client.path)
 
     assert 1 == len([r for r in cwl.requirements if hasattr(r, "listing")])
 
@@ -355,7 +355,7 @@ def test_existing_output_directory(client, runner, project):
     assert 1 == len(tool.inputs)
 
     run = tool.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
-    cwl, _ = CWLConverter.convert(run.association.plan, client)
+    cwl, _ = CWLConverter.convert(run.association.plan, client.path)
 
     reqs = [r for r in cwl.requirements if hasattr(r, "listing")]
 

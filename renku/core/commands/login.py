@@ -26,6 +26,8 @@ import webbrowser
 import requests
 
 from renku.core import errors
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils import communication
@@ -39,8 +41,8 @@ def login_command():
     return Command().command(_login)
 
 
-def _login(client, endpoint):
-    parsed_endpoint = _parse_endpoint(client, endpoint)
+def _login(endpoint):
+    parsed_endpoint = _parse_endpoint(endpoint)
     cli_nonce = str(uuid.uuid4())
 
     communication.echo(f"Please log in at {parsed_endpoint.geturl()} on your browser.")
@@ -58,7 +60,7 @@ def _login(client, endpoint):
 
     if response.status_code == 200:
         access_token = response.json().get("access_token")
-        _store_token(client, parsed_endpoint, access_token)
+        _store_token(parsed_endpoint, access_token)
     else:
         communication.error(
             f"Remote host did not return an access token: {parsed_endpoint.geturl()}, "
@@ -67,8 +69,8 @@ def _login(client, endpoint):
         sys.exit(1)
 
 
-def _parse_endpoint(client, endpoint):
-    parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=endpoint)
+def _parse_endpoint(endpoint):
+    parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint)
     if not parsed_endpoint:
         raise errors.ParameterError("Parameter 'endpoint' is missing.")
 
@@ -80,14 +82,16 @@ def _get_url(parsed_endpoint, path, **query_args):
     return parsed_endpoint._replace(path=path, query=query).geturl()
 
 
-def _store_token(client, parsed_endpoint, token):
+@inject.autoparams()
+def _store_token(client: LocalClient, parsed_endpoint, token):
     client.set_value(section=CONFIG_SECTION, key=parsed_endpoint.netloc, value=token, global_only=True)
     os.chmod(client.global_config_path, 0o600)
 
 
-def read_renku_token(client, endpoint):
+@inject.autoparams()
+def read_renku_token(client: LocalClient, endpoint):
     """Read renku token from renku config file."""
-    parsed_endpoint = _parse_endpoint(client, endpoint)
+    parsed_endpoint = _parse_endpoint(endpoint)
     return client.get_value(section=CONFIG_SECTION, key=parsed_endpoint.netloc, config_filter=ConfigFilter.GLOBAL_ONLY)
 
 
@@ -96,9 +100,10 @@ def logout_command():
     return Command().command(_logout)
 
 
-def _logout(client, endpoint):
+@inject.autoparams()
+def _logout(client: LocalClient, endpoint):
     if endpoint:
-        parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=endpoint)
+        parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint)
         key = parsed_endpoint.netloc
     else:
         key = "*"

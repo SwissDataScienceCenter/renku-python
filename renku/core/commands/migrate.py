@@ -17,6 +17,8 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.migrate import (
     is_docker_update_possible,
@@ -41,11 +43,12 @@ def migrations_check():
     return Command().command(_migrations_check)
 
 
-def _migrations_check(client):
-    template_update_possible, current_version, new_version = is_template_update_possible(client)
+@inject.autoparams()
+def _migrations_check(client: LocalClient):
+    template_update_possible, current_version, new_version = is_template_update_possible()
     return (
-        is_migration_required(client),
-        not is_project_unsupported(client),
+        is_migration_required(),
+        not is_project_unsupported(),
         template_update_possible,
         current_version,
         new_version,
@@ -53,7 +56,7 @@ def _migrations_check(client):
         client.project.template_ref,
         client.project.template_id,
         bool(client.project.automated_update),
-        is_docker_update_possible(client),
+        is_docker_update_possible(),
     )
 
 
@@ -62,7 +65,8 @@ def migrations_versions():
     return Command().command(_migrations_versions).lock_project()
 
 
-def _migrations_versions(client):
+@inject.autoparams()
+def _migrations_versions(client: LocalClient):
     """Return source and destination migration versions."""
     from renku import __version__
 
@@ -75,11 +79,10 @@ def migrate_project():
 
 
 def _migrate_project(
-    client, force_template_update=False, skip_template_update=False, skip_docker_update=False, skip_migrations=False
+    force_template_update=False, skip_template_update=False, skip_docker_update=False, skip_migrations=False
 ):
     """Migrate all project's entities."""
     return migrate(
-        client=client,
         force_template_update=force_template_update,
         skip_template_update=skip_template_update,
         skip_docker_update=skip_docker_update,
@@ -92,28 +95,30 @@ def check_project():
     return Command().command(_check_project)
 
 
-def _check_project(client):
-    if not is_renku_project(client):
+@inject.autoparams()
+def _check_project(client: LocalClient):
+    if not is_renku_project():
         return NON_RENKU_REPOSITORY
-    elif is_project_unsupported(client):
+    elif is_project_unsupported():
         return UNSUPPORTED_PROJECT
 
     status = 0
 
-    if is_template_update_possible(client):
+    if is_template_update_possible():
         status |= TEMPLATE_UPDATE_POSSIBLE
     if client.project.automated_update:
         status |= AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
-    if is_docker_update_possible(client):
+    if is_docker_update_possible():
         status |= DOCKERFILE_UPDATE_POSSIBLE
 
-    if is_migration_required(client):
+    if is_migration_required():
         return status | MIGRATION_REQUIRED
 
     return status | SUPPORTED_RENKU_PROJECT
 
 
-def _check_immutable_template_files(client, paths):
+@inject.autoparams()
+def _check_immutable_template_files(client: LocalClient, paths):
     """Check paths and return a list of those that are marked immutable in the project template."""
     if not client.project.immutable_template_files:
         return []

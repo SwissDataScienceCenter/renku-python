@@ -22,9 +22,9 @@ from renku.core.management.githooks import install, uninstall
 from renku.core.utils import communication
 
 
-def _install_githooks(client, force):
+def _install_githooks(force):
     """Install Git hooks."""
-    warning_messages = install(client=client, force=force)
+    warning_messages = install(force=force)
     if warning_messages:
         for message in warning_messages:
             communication.warn(message)
@@ -35,11 +35,6 @@ def install_githooks_command():
     return Command().command(_install_githooks)
 
 
-def _uninstall_githooks(client):
-    """Uninstall Git hooks."""
-    uninstall(client=client)
-
-
 def uninstall_githooks_command():
     """Command to uninstall Git hooks."""
-    return Command().command(_uninstall_githooks)
+    return Command().command(uninstall)

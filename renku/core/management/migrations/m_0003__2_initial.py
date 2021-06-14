@@ -21,6 +21,8 @@ import shutil
 import urllib
 from pathlib import Path
 
+from renku.core.management import LocalClient
+from renku.core.management.command_builder.command import inject
 from renku.core.management.migrations.models.v3 import Dataset, Project, get_client_datasets
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.datasets import generate_dataset_id, generate_default_name
@@ -30,7 +32,8 @@ from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
 from renku.core.utils.urls import url_to_string
 
 
-def migrate(client):
+@inject.autoparams()
+def migrate(client: LocalClient):
     """Migration function."""
     _ensure_clean_lock(client)
     _do_not_track_lock_file(client)
@@ -67,7 +70,7 @@ def _migrate_datasets_pre_v0_3(client):
     for old_path in get_pre_0_3_4_datasets_metadata(client):
         name = str(old_path.parent.relative_to(client.path / DATA_DIR))
 
-        dataset = Dataset.from_yaml(old_path, client=client)
+        dataset = Dataset.from_yaml(old_path)
         dataset.title = name
         dataset.name = generate_default_name(name)
         new_path = client.renku_datasets_path / dataset.identifier / client.METADATA
@@ -87,7 +90,7 @@ def _migrate_datasets_pre_v0_3(client):
         dataset.to_yaml(new_path)
 
         Path(old_path).unlink()
-        ref = LinkReference.create(client=client, name="datasets/{0}".format(name), force=True)
+        ref = LinkReference.create(name="datasets/{0}".format(name), force=True)
         ref.set_reference(new_path)
 
 
@@ -103,7 +106,7 @@ def _migrate_broken_dataset_paths(client):
 
         # migrate the refs
         if not client.is_using_temporary_datasets_path():
-            ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True)
+            ref = LinkReference.create(name="datasets/{0}".format(dataset.name), force=True)
             ref.set_reference(expected_path / client.METADATA)
 
         if not expected_path.exists():
@@ -137,7 +140,7 @@ def _migrate_broken_dataset_paths(client):
 def _fix_labels_and_ids(client):
     """Ensure files have correct label instantiation."""
     for dataset in get_client_datasets(client):
-        dataset._id = generate_dataset_id(client=client, identifier=dataset.identifier)
+        dataset._id = generate_dataset_id(identifier=dataset.identifier)
         dataset._label = dataset.identifier
 
         for file_ in dataset.files:
@@ -148,7 +151,7 @@ def _fix_labels_and_ids(client):
             )
 
             if not _is_file_id_valid(file_._id, file_.path, commit.hexsha):
-                file_._id = generate_file_id(client=client, hexsha=commit.hexsha, path=file_.path)
+                file_._id = generate_file_id(hexsha=commit.hexsha, path=file_.path)
 
             if not file_._label or commit.hexsha not in file_._label or file_.path not in file_._label:
                 file_._label = generate_label(file_.path, commit.hexsha)
@@ -169,11 +172,11 @@ def _fix_dataset_urls(client):
 
 def _migrate_dataset_and_files_project(client):
     """Ensure dataset files have correct project."""
-    project = Project.from_yaml(client.renku_metadata_path, client)
+    project = Project.from_yaml(client.renku_metadata_path)
     if not client.is_using_temporary_datasets_path():
         project.to_yaml(client.renku_metadata_path)
 
-    for dataset in get_client_datasets(client):
+    for dataset in get_client_datasets():
         dataset._project = project
         if not dataset.creators:
             dataset.creators = [project.creator]

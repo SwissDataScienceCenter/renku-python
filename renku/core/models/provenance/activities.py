@@ -27,6 +27,7 @@ import attr
 from git import NULL_TREE
 from marshmallow import EXCLUDE
 
+from renku.core.management.command_builder.command import inject
 from renku.core.models import jsonld
 from renku.core.models.calamus import Nested, fields, oa, prov, rdfs, renku, wfprov
 from renku.core.models.cwl.annotation import AnnotationSchema
@@ -367,6 +368,7 @@ class Activity(CommitMixin):
                 g._activity = weakref.ref(self)
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
         data = jsonld.read_yaml(path)
@@ -383,6 +385,7 @@ class Activity(CommitMixin):
         jsonld.write_yaml(path=self._metadata_path, data=data)
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_jsonld(cls, data, client=None, commit=None):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
@@ -496,6 +499,7 @@ class ProcessRun(Activity):
         return [a for r in results for a in r]
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_run(cls, run, client, path, commit=None, subprocess_index=None, update_commits=False):
         """Convert a ``Run`` to a ``ProcessRun``."""
         from .agents import SoftwareAgent
@@ -574,6 +578,7 @@ class ProcessRun(Activity):
         jsonld.write_yaml(path=self._metadata_path, data=data)
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_jsonld(cls, data, client=None, commit=None):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
@@ -602,6 +607,7 @@ class WorkflowRun(ProcessRun):
         return {i: p for i, p in enumerate(self._processes)}
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_run(cls, run, client, path, commit=None, subprocess_index=None, update_commits=False):
         """Convert a ``Run`` to a ``WorkflowRun``."""
         from .agents import SoftwareAgent
@@ -713,6 +719,7 @@ class WorkflowRun(ProcessRun):
         jsonld.write_yaml(path=self._metadata_path, data=data)
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_jsonld(cls, data, client=None, commit=None):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):

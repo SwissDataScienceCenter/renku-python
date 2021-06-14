@@ -30,6 +30,7 @@ from attr.validators import instance_of
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
+from renku.core.management.command_builder.command import inject
 from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, rdfs, renku, schema
 from renku.core.models.entities import Entity, EntitySchema
@@ -46,7 +47,7 @@ NoneType = type(None)
 class Url:
     """Represents a schema URL reference."""
 
-    client = attr.ib(default=None, kw_only=True)
+    client = inject.attr("LocalClient")
 
     url = attr.ib(default=None, kw_only=True)
 
@@ -147,7 +148,7 @@ def _extract_doi(value):
 class DatasetTag(object):
     """Represents a Tag of an instance of a dataset."""
 
-    client = attr.ib(default=None, kw_only=True)
+    client = inject.attr("LocalClient")
 
     name = attr.ib(default=None, kw_only=True, validator=instance_of(str))
 
@@ -658,6 +659,7 @@ class Dataset(Entity, CreatorMixin):
                 file_.client = client
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
         data = jsonld.read_yaml(path)
@@ -668,6 +670,7 @@ class Dataset(Entity, CreatorMixin):
         return self
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_jsonld(cls, data, client=None, commit=None, schema_class=None):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):

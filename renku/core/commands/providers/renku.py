@@ -29,6 +29,7 @@ import requests
 from renku import LocalClient
 from renku.core import errors
 from renku.core.commands.providers.api import ProviderApi
+from renku.core.management.command_builder.command import inject, replace_injected_client
 from renku.core.management.migrate import is_project_unsupported, migrate
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils import communication
@@ -58,7 +59,7 @@ class RenkuProvider(ProviderApi):
         """Whether this provider supports dataset import."""
         return True
 
-    def find_record(self, uri, client=None, **kwargs):
+    def find_record(self, uri, **kwargs):
         """Retrieves a dataset from Renku.
 
         :raises: ``NotFound``, ``OperationError``, ``ParameterError``
@@ -67,7 +68,7 @@ class RenkuProvider(ProviderApi):
         """
         gitlab_token = kwargs.get("gitlab_token")
 
-        self._prepare_authentication(client, uri, gitlab_token=gitlab_token)
+        self._prepare_authentication(uri, gitlab_token=gitlab_token)
 
         name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(uri)
 
@@ -188,19 +189,20 @@ class RenkuProvider(ProviderApi):
 
         return urls.get("ssh"), urls.get("http")
 
-    def _prepare_authentication(self, client, uri, gitlab_token):
+    def _prepare_authentication(self, uri, gitlab_token):
         if gitlab_token:
             token = gitlab_token
             self._use_gitlab_token = True
         else:
-            token = self._read_renku_token(client, uri)
+            token = self._read_renku_token(uri)
 
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
 
-    def _read_renku_token(self, client, uri):
+    @inject.autoparams()
+    def _read_renku_token(self, client: LocalClient, uri):
         """Read renku token from renku config file."""
         try:
-            parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=uri, use_remote=True)
+            parsed_endpoint = parse_authentication_endpoint(endpoint=uri, use_remote=True)
         except errors.ParameterError:
             return
         self._authentication_endpoint = parsed_endpoint.netloc
@@ -264,12 +266,13 @@ class _RenkuRecordSerializer:
         full_path = remote_client.path / path
         return os.path.getsize(full_path)
 
-    def as_dataset(self, client):
+    def as_dataset(self):
         """Return encapsulated dataset instance."""
-        self._fetch_dataset(client, gitlab_token=self._gitlab_token)
+        self._fetch_dataset(gitlab_token=self._gitlab_token)
         return self._dataset
 
-    def import_images(self, client, dataset):
+    @inject.autoparams()
+    def import_images(self, client: LocalClient, dataset):
         """Add images from remote dataset."""
         if not self._dataset.images:
             return
@@ -316,7 +319,8 @@ class _RenkuRecordSerializer:
         """Whether the dataset datadir exists (might be missing in git if empty)."""
         return (self._remote_client.path / self._dataset.data_dir).exists()
 
-    def _fetch_dataset(self, client, gitlab_token):
+    @inject.autoparams()
+    def _fetch_dataset(self, client: LocalClient, gitlab_token):
         repo_path = None
 
         urls = (self._project_url_ssh, self._project_url_http)
@@ -334,7 +338,9 @@ class _RenkuRecordSerializer:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
 
         self._remote_client = LocalClient(repo_path)
-        self._migrate_project(self._remote_client)
+
+        with replace_injected_client(self._remote_client):
+            self._migrate_project()
 
         self._dataset = self._remote_client.load_dataset(self._name)
 
@@ -347,13 +353,14 @@ class _RenkuRecordSerializer:
             file_.filetype = Path(file_.path).suffix.replace(".", "")
 
     @staticmethod
+    @inject.autoparams()
     def _migrate_project(client):
-        if is_project_unsupported(client):
+        if is_project_unsupported():
             return
         # NOTE: We are not interested in migrating workflows when importing datasets
         client.migration_type = ~MigrationType.WORKFLOWS
         try:
             communication.disable()
-            migrate(client, skip_template_update=True, skip_docker_update=True)
+            migrate(skip_template_update=True, skip_docker_update=True)
         finally:
             communication.enable()

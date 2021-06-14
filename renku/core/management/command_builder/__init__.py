@@ -17,6 +17,6 @@
 # limitations under the License.
 """Renku Command Builder ."""
 
-from .command import Command
+from .command import Command, inject, replace_injected_client
 
-__all__ = ["Command"]
+__all__ = ["Command", "inject", "replace_injected_client"]

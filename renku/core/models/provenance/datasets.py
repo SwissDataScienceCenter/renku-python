@@ -29,6 +29,7 @@ from git import GitCommandError
 from marshmallow import EXCLUDE
 
 from renku.core import errors
+from renku.core.management.command_builder.command import inject
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema
 from renku.core.models.datasets import (
     DatasetFileSchema,
@@ -51,6 +52,7 @@ from renku.core.utils.urls import get_host
 class DatasetFile:
     """Represent a file in a dataset."""
 
+    @inject.params(client="LocalClient")
     def __init__(
         self,
         *,
@@ -82,6 +84,7 @@ class DatasetFile:
         self._update_metadata()
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_dataset_file(cls, dataset_file, client, revision):
         """Create an instance by converting from renku.core.models.datasets.DatasetFile if available at revision."""
         path = dataset_file.path
@@ -175,6 +178,7 @@ class DatasetFile:
 class Dataset:
     """Represent a dataset."""
 
+    @inject.params(client="LocalClient")
     def __init__(
         self,
         name,
@@ -475,6 +479,7 @@ class DatasetProvenance:
         """Return list of datasets."""
         return self._datasets
 
+    @inject.params(client="LocalClient")
     def update_dataset(self, dataset, client, revision=None, date=None):
         """Add/update a dataset according to its new content."""
         revision = revision or "HEAD"

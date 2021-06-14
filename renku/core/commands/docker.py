@@ -23,10 +23,13 @@ from configparser import NoSectionError
 import attr
 
 from renku.core import errors
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.models.git import GitURL
 
 
-def detect_registry_url(client, auto_login=True):
+@inject.autoparams()
+def detect_registry_url(client: LocalClient, auto_login=True):
     """Return a URL of the Docker registry."""
     repo = client.repo
     config = repo.config_reader()

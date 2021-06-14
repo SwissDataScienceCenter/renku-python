@@ -33,6 +33,8 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, OperationError, ParameterError, UsageError
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.models.datasets import DatasetDetailsJson, Url, generate_default_name
@@ -44,7 +46,8 @@ from renku.core.utils.doi import is_doi
 from renku.core.utils.urls import remove_credentials
 
 
-def _list_datasets(client, revision=None, format=None, columns=None):
+@inject.autoparams()
+def _list_datasets(client: LocalClient, revision=None, format=None, columns=None):
     """List all datasets."""
     if revision is None:
         datasets = client.datasets.values()
@@ -57,7 +60,7 @@ def _list_datasets(client, revision=None, format=None, columns=None):
     if format not in DATASETS_FORMATS:
         raise UsageError("format not supported")
 
-    return DATASETS_FORMATS[format](client, datasets, columns=columns)
+    return DATASETS_FORMATS[format](datasets, columns=columns)
 
 
 def list_datasets():
@@ -65,8 +68,16 @@ def list_datasets():
     return Command().command(_list_datasets)
 
 
+@inject.autoparams()
 def create_dataset_helper(
-    client, name, title=None, description="", creators=None, keywords=None, images=None, safe_image_paths=[]
+    client: LocalClient,
+    name,
+    title=None,
+    description="",
+    creators=None,
+    keywords=None,
+    images=None,
+    safe_image_paths=[],
 ):
     """Create a dataset in the repository."""
     if not creators:
@@ -95,8 +106,17 @@ def create_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
+@inject.autoparams()
 def _edit_dataset(
-    client, name, title, description, creators, keywords=None, images=[], skip_image_update=False, safe_image_paths=[]
+    client: LocalClient,
+    name,
+    title,
+    description,
+    creators,
+    keywords=None,
+    images=[],
+    skip_image_update=False,
+    safe_image_paths=[],
 ):
     """Edit dataset metadata."""
     creator_objs, no_email_warnings = _construct_creators(creators, ignore_email=True)
@@ -141,7 +161,8 @@ def edit_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _show_dataset(client, name):
+@inject.autoparams()
+def _show_dataset(client: LocalClient, name):
     """Show detailed dataset information."""
     dataset = client.load_dataset(name)
     return DatasetDetailsJson().dump(dataset)
@@ -186,8 +207,9 @@ def _construct_creators(creators, ignore_email=False):
     return people, no_email_warnings
 
 
+@inject.autoparams()
 def _add_to_dataset(
-    client,
+    client: LocalClient,
     urls,
     name,
     external=False,
@@ -267,9 +289,9 @@ def add_to_dataset():
     return command.require_migration().with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
 
 
-def _list_files(client, datasets=None, creators=None, include=None, exclude=None, format=None, columns=None):
+def _list_files(datasets=None, creators=None, include=None, exclude=None, format=None, columns=None):
     """List dataset files."""
-    records = _filter(client, names=datasets, creators=creators, include=include, exclude=exclude)
+    records = _filter(names=datasets, creators=creators, include=include, exclude=exclude)
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
@@ -283,7 +305,7 @@ def _list_files(client, datasets=None, creators=None, include=None, exclude=None
     if format not in DATASETS_FORMATS:
         raise UsageError("format not supported")
 
-    return DATASET_FILES_FORMATS[format](client, records, columns=columns)
+    return DATASET_FILES_FORMATS[format](records, columns=columns)
 
 
 def list_files():
@@ -291,7 +313,8 @@ def list_files():
     return Command().command(_list_files)
 
 
-def _file_unlink(client, name, include, exclude, yes=False):
+@inject.autoparams()
+def _file_unlink(client: LocalClient, name, include, exclude, yes=False):
     """Remove matching files from a dataset."""
     if not include and not exclude:
         raise ParameterError(
@@ -307,7 +330,7 @@ def _file_unlink(client, name, include, exclude, yes=False):
     if not dataset:
         raise ParameterError("Dataset does not exist.")
 
-    records = _filter(client, names=[name], include=include, exclude=exclude)
+    records = _filter(names=[name], include=include, exclude=exclude)
     if not records:
         raise ParameterError("No records found.")
 
@@ -335,7 +358,8 @@ def file_unlink():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _remove_dataset(client, name):
+@inject.autoparams()
+def _remove_dataset(client: LocalClient, name):
     """Delete a dataset."""
     dataset = client.load_dataset(name=name, strict=True)
     dataset.mutate()
@@ -350,7 +374,7 @@ def _remove_dataset(client, name):
     metadata_path = client.path / dataset.path
     shutil.rmtree(metadata_path, ignore_errors=True)
 
-    references = list(LinkReference.iter_items(client, common_path="datasets"))
+    references = list(LinkReference.iter_items(common_path="datasets"))
     for ref in references:
         if ref.reference == ref_path:
             ref.delete()
@@ -362,7 +386,8 @@ def remove_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _export_dataset(client, name, provider_name, publish, tag, **kwargs):
+@inject.autoparams()
+def _export_dataset(client: LocalClient, name, provider_name, publish, tag, **kwargs):
     """Export data to 3rd party provider.
 
     :raises: ``ValueError``, ``HTTPError``, ``InvalidAccessToken``,
@@ -380,7 +405,7 @@ def _export_dataset(client, name, provider_name, publish, tag, **kwargs):
     except KeyError:
         raise ParameterError("Unknown provider.")
 
-    provider.set_parameters(client, **kwargs)
+    provider.set_parameters(**kwargs)
 
     selected_tag = None
     selected_commit = client.repo.head.commit
@@ -444,8 +469,9 @@ def export_dataset():
     return command.require_migration().require_clean()
 
 
+@inject.autoparams()
 def _import_dataset(
-    client, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False, gitlab_token=None
+    client: LocalClient, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False, gitlab_token=None
 ):
     """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -453,8 +479,8 @@ def _import_dataset(
         raise ParameterError(f"Could not process '{uri}'.\n{err}")
 
     try:
-        record = provider.find_record(uri, client, gitlab_token=gitlab_token)
-        dataset = record.as_dataset(client)
+        record = provider.find_record(uri, gitlab_token=gitlab_token)
+        dataset = record.as_dataset()
         files = dataset.files
         total_size = 0
 
@@ -502,7 +528,6 @@ def _import_dataset(
         urls, names = zip(*[(f.source, f.filename) for f in files])
 
         new_dataset = _add_to_dataset(
-            client,
             urls=urls,
             name=name,
             create=not previous_dataset,
@@ -516,11 +541,11 @@ def _import_dataset(
         )
 
         if previous_dataset:
-            dataset = _update_metadata(client, new_dataset, previous_dataset, new_files, delete, dataset.same_as)
+            dataset = _update_metadata(new_dataset, previous_dataset, new_files, delete, dataset.same_as)
 
         if dataset.version:
             tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", dataset.version)
-            _tag_dataset(client, name, tag_name, "Tag {} created by renku import".format(dataset.version))
+            _tag_dataset(name, tag_name, "Tag {} created by renku import".format(dataset.version))
     else:
         name = name or dataset.name
 
@@ -541,7 +566,6 @@ def _import_dataset(
                 sources.append(file_.path)
 
         new_dataset = _add_to_dataset(
-            client,
             urls=[record.project_url],
             name=name,
             sources=sources,
@@ -551,11 +575,11 @@ def _import_dataset(
         )
 
         if previous_dataset:
-            _update_metadata(client, new_dataset, previous_dataset, new_files, delete, dataset.same_as)
+            _update_metadata(new_dataset, previous_dataset, new_files, delete, dataset.same_as)
 
     if provider.supports_images:
         with client.with_dataset(name=name):
-            record.import_images(client, dataset)
+            record.import_images(dataset)
 
 
 def import_dataset():
@@ -564,7 +588,8 @@ def import_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _update_metadata(client, new_dataset, previous_dataset, new_files, delete, same_as):
+@inject.autoparams()
+def _update_metadata(client: LocalClient, new_dataset, previous_dataset, new_files, delete, same_as):
     """Update metadata and remove files that exists in ``previous_dataset`` but not in ``new_dataset``."""
     current_paths = set(str(f.path) for f in new_files)
 
@@ -587,7 +612,8 @@ def _update_metadata(client, new_dataset, previous_dataset, new_files, delete, s
     return new_dataset
 
 
-def _update_datasets(client, names, creators, include, exclude, ref, delete, external=False):
+@inject.autoparams()
+def _update_datasets(client: LocalClient, names, creators, include, exclude, ref, delete, external=False):
     """Update files from a remote Git repo."""
     ignored_datasets = []
 
@@ -610,7 +636,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
             if not provider:
                 continue
 
-            record = provider.find_record(uri, client)
+            record = provider.find_record(uri)
 
             if record.is_last_version(uri) and record.version == dataset.version:
                 continue
@@ -628,9 +654,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
                     extract = False
                     break
 
-            _import_dataset(
-                client, uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
-            )
+            _import_dataset(uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete)
 
             communication.echo(f"Updated dataset '{dataset.name}' from remote provider")
 
@@ -643,7 +667,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
     if names_provided and not names:
         return
 
-    records = _filter(client, names=names, creators=creators, include=include, exclude=exclude, ignore=ignored_datasets)
+    records = _filter(names=names, creators=creators, include=include, exclude=exclude, ignore=ignored_datasets)
 
     if not records:
         if ignored_datasets:
@@ -723,7 +747,8 @@ def _include_exclude(file_path, include=None, exclude=None):
     return True
 
 
-def _filter(client, names=None, creators=None, include=None, exclude=None, ignore=None):
+@inject.autoparams()
+def _filter(client: LocalClient, names=None, creators=None, include=None, exclude=None, ignore=None):
     """Filter dataset files by specified filters.
 
     :param names: Filter by specified dataset names.
@@ -764,7 +789,8 @@ def _filter(client, names=None, creators=None, include=None, exclude=None, ignor
     return sorted(records, key=lambda r: r.added)
 
 
-def _tag_dataset(client, name, tag, description, force=False):
+@inject.autoparams()
+def _tag_dataset(client: LocalClient, name, tag, description, force=False):
     """Creates a new tag for a dataset."""
     dataset = client.load_dataset(name, strict=True)
 
@@ -783,7 +809,8 @@ def tag_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _remove_dataset_tags(client, name, tags):
+@inject.autoparams()
+def _remove_dataset_tags(client: LocalClient, name, tags):
     """Removes tags from a dataset."""
     dataset = client.load_dataset(name, strict=True)
 
@@ -802,13 +829,14 @@ def remove_dataset_tags():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _list_tags(client, name, format):
+@inject.autoparams()
+def _list_tags(client: LocalClient, name, format):
     """List all tags for a dataset."""
     dataset = client.load_dataset(name, strict=True)
 
     tags = sorted(dataset.tags, key=lambda t: t.created)
 
-    return DATASET_TAGS_FORMATS[format](client, tags)
+    return DATASET_TAGS_FORMATS[format](tags)
 
 
 def list_tags():

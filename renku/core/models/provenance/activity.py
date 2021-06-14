@@ -25,6 +25,7 @@ from uuid import uuid4
 from marshmallow import EXCLUDE
 
 from renku.core.incubation.database import Persistent
+from renku.core.management.command_builder import inject
 from renku.core.models import entities as old_entities
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
 from renku.core.models.cwl.annotation import Annotation, AnnotationSchema
@@ -120,6 +121,7 @@ class Activity(Persistent):
         # TODO: influenced = attr.ib(kw_only=True)
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_process_run(cls, process_run: ProcessRun, plan: Plan, client, order: Optional[int] = None):
         """Create an Activity from a ProcessRun."""
         activity_id = Activity.generate_id()
@@ -311,7 +313,7 @@ class ActivityCollection:
         self.activities: List[Activity] = activities or []
 
     @classmethod
-    def from_activity(cls, activity: Union[ProcessRun, WorkflowRun], dependency_graph: DependencyGraph, client):
+    def from_activity(cls, activity: Union[ProcessRun, WorkflowRun], dependency_graph: DependencyGraph):
         """Convert a ProcessRun/WorkflowRun to ActivityCollection."""
 
         def get_process_runs(workflow_run: WorkflowRun) -> List[ProcessRun]:
@@ -343,7 +345,7 @@ class ActivityCollection:
             plan = Plan.from_run(run=run)
             plan = dependency_graph.add(plan)
 
-            activity = Activity.from_process_run(process_run=process_run, plan=plan, client=client)
+            activity = Activity.from_process_run(process_run=process_run, plan=plan)
             self.add(activity)
 
         return self

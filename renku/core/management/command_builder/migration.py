@@ -17,7 +17,7 @@
 # limitations under the License.
 """Command builder for migrations."""
 
-from renku.core.management.command_builder.command import Command, check_finalized
+from renku.core.management.command_builder.command import Command, check_finalized, replace_injected_client
 from renku.core.management.migrate import check_for_migration
 
 
@@ -35,7 +35,9 @@ class RequireMigration(Command):
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
 
-        check_for_migration(context["client"])
+        with replace_injected_client(context["client"]):
+            # NOTE: temporarily inject a client so commands can run outside of the command builder
+            check_for_migration()
 
     @check_finalized
     def build(self):

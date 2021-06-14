@@ -22,11 +22,14 @@ from pathlib import Path
 from subprocess import run
 
 from renku.core import errors
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.utils import communication
 
 
-def _remove(client, sources, edit_command):
+@inject.autoparams()
+def _remove(client: LocalClient, sources, edit_command):
     """Remove files and check repository for potential problems."""
     from renku.core.management.git import _expand_directories
 

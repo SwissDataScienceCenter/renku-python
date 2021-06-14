@@ -81,9 +81,8 @@ class CWLConverter(object):
     """Converts a ``Run`` to cwl file(s)."""
 
     @staticmethod
-    def convert(run, client, path=None):
+    def convert(run, basedir, path=None):
         """Convert the workflow to one ore more .cwl files."""
-        basedir = client.path
         filename = None
         if path:
             if os.path.isdir(path):
