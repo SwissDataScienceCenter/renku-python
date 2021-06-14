@@ -31,7 +31,6 @@ templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SE
     "/templates.read_manifest", methods=["GET"], provide_automatic_options=False,
 )
 @handle_common_except
-@accepts_json
 @requires_cache
 @requires_identity
 def read_manifest_from_template(user_data, cache):

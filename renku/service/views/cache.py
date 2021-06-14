@@ -192,7 +192,6 @@ def migrate_project_view(user_data, cache):
 @handle_common_except
 @requires_cache
 @requires_identity
-@accepts_json
 def migration_check_project_view(user_data, cache):
     """
     Retrieve migration information for a project.
