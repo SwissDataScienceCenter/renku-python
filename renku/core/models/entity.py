@@ -49,7 +49,7 @@ class Entity(Persistent):
         if find_previous:
             revision = client.find_previous_commit(path, revision=revision)
 
-        client, commit, path = client.resolve_in_submodules(revision, path,)
+        client, commit, path = client.resolve_in_submodules(revision, path)
 
         checksum = get_object_hash(repo=client.repo, revision=revision, path=path)
         # TODO: What if checksum is None
