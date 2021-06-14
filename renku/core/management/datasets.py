@@ -1341,7 +1341,7 @@ class DatasetsApiMixin(object):
             git_url = str(path)
         elif "http" in u.scheme and gitlab_token:
             git_url = get_oauth_url(url, gitlab_token)
-        elif "http" in u.protocol and renku_token:
+        elif "http" in u.scheme and renku_token:
             git_url = get_renku_repo_url(url, deployment_hostname=deployment_hostname, access_token=renku_token)
         else:
             git_url = url
