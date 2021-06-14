@@ -22,7 +22,7 @@ from pathlib import Path
 from subprocess import run
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.utils import communication
 
 

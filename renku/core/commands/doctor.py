@@ -19,7 +19,7 @@
 import traceback
 
 from renku.core.commands.echo import ERROR
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 
 DOCTOR_INFO = """\
 Please note that the diagnosis report is used to help Renku maintainers with

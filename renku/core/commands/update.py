@@ -25,7 +25,7 @@ from git import Actor
 from renku.core.commands.cwl_runner import execute
 from renku.core.commands.graph import Graph, _safe_path
 from renku.core.errors import ParameterError
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.models.cwl.command_line_tool import delete_indirect_files_list, read_indirect_parameters
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.workflow.converters.cwl import CWLConverter

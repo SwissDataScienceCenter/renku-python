@@ -33,7 +33,7 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, OperationError, ParameterError, UsageError
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.models.datasets import DatasetDetailsJson, Url, generate_default_name
 from renku.core.models.provenance.agents import Person

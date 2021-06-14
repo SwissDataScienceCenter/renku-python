@@ -21,7 +21,7 @@ from collections import namedtuple
 
 from renku.core import errors
 from renku.core.commands.graph import Graph
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.models.entities import Entity
 from renku.core.models.provenance.activities import ProcessRun
 

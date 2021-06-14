@@ -26,13 +26,15 @@ from pathlib import Path
 from typing import Dict
 
 import git
+import inject
 from git import NULL_TREE, Commit, GitCommandError
 from pkg_resources import resource_filename
 
 from renku.core import errors
 from renku.core.commands.dataset import create_dataset_helper
 from renku.core.commands.update import execute_workflow
-from renku.core.incubation.command import Command
+from renku.core.incubation.database import Database
+from renku.core.management.command_builder.command import Command
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DATASET_METADATA_PATHS, DatasetsApiMixin
 from renku.core.management.migrate import migrate
@@ -59,10 +61,11 @@ GRAPH_METADATA_PATHS = [
 def generate_graph():
     """Return a command for generating the graph."""
     command = Command().command(_generate_graph).lock_project()
-    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
+    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS).with_database(write=True)
 
 
-def _generate_graph(client, force=False):
+@inject.params(database=Database)
+def _generate_graph(client, database: Database, force=False):
     """Generate graph and dataset provenance metadata."""
 
     def process_workflows(commit: Commit):
@@ -126,8 +129,8 @@ def _generate_graph(client, force=False):
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
     client.datasets_provenance.to_json()
-
-    client.database.commit()
+    breakpoint()
+    database.commit()
 
 
 def status():

@@ -23,7 +23,7 @@ from uuid import uuid4
 import git
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape

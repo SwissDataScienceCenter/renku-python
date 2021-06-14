@@ -17,7 +17,7 @@
 # limitations under the License.
 """Get and set Renku repository or global options."""
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.management.config import CONFIG_LOCAL_PATH
 from renku.core.models.enums import ConfigFilter
 

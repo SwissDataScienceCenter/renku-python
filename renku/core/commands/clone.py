@@ -17,8 +17,8 @@
 # limitations under the License.
 """Clone a Renku repo along with all Renku-specific initializations."""
 
-from renku.core.incubation.command import Command
 from renku.core.management.clone import clone
+from renku.core.management.command_builder.command import Command
 
 
 def _project_clone(

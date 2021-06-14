@@ -23,7 +23,7 @@ from pathlib import Path
 import git
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
 

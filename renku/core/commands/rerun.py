@@ -19,7 +19,7 @@
 
 from renku.core.commands.graph import Graph
 from renku.core.commands.update import execute_workflow
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 
 
 def rerun_workflows():

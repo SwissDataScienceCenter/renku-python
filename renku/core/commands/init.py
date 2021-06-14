@@ -33,7 +33,7 @@ import yaml
 
 from renku.core import errors
 from renku.core.commands.git import set_git_home
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.models.tabulate import tabulate

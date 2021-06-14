@@ -26,7 +26,7 @@ import webbrowser
 import requests
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils import communication
 from renku.core.utils.urls import parse_authentication_endpoint

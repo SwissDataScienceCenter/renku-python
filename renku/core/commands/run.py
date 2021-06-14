@@ -24,7 +24,7 @@ from subprocess import call
 import click
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.management.git import get_mapped_std_streams
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 from renku.core.utils import communication

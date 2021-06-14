@@ -17,7 +17,7 @@
 # limitations under the License.
 """Install and uninstall Git hooks."""
 
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command
 from renku.core.management.githooks import install, uninstall
 from renku.core.utils import communication
 
