@@ -26,21 +26,20 @@ from uuid import uuid4
 
 import BTrees.OOBTree
 from persistent import GHOST, UPTODATE, Persistent, PickleCache
-from persistent.interfaces import IPersistentDataManager
-from ZODB.interfaces import IConnection
 from ZODB.POSException import POSKeyError
 from ZODB.utils import z64
-from zope.interface import implementer
-
 
 # NOTE These are used as _p_serial to mark if an object was read from storage or is new
 NEW = z64  # NOTE: Do not change this value since this is the default when a Persistent object is created
 PERSISTED = b"1" * 8
 
 
-@implementer(IConnection, IPersistentDataManager)
 class Database:
-    """The Metadata Object Database."""
+    """The Metadata Object Database.
+
+    It is equivalent to a ZODB.Connection and a persistent.DataManager. It implements ZODB.interfaces.IConnection and
+    persistent.interfaces.IPersistentDataManager interfaces.
+    """
 
     ROOT_TYPE_NAMES = ("Activity", "Entity", "Plan")
 
@@ -112,7 +111,9 @@ class Database:
     def add(self, object: Persistent):
         """Add a new object to the database."""
         type_name = type(object).__name__
-        assert type_name in Database.ROOT_TYPE_NAMES, f"Cannot add objects of type '{type_name}'"
+        assert type_name in Database.ROOT_TYPE_NAMES or isinstance(
+            object, BTrees.OOBTree.OOBTree
+        ), f"Cannot add objects of type '{type_name}'"
 
         if object._p_oid is None:
             assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
@@ -124,6 +125,12 @@ class Database:
                 cached_object is object
             ), f"A different object with oid '{oid}' is already in cache: {cached_object} != {object}"
             return
+
+        object_type = type(object).__name__
+        if object_type in Database.ROOT_TYPE_NAMES:
+            key = oid.decode("ascii")
+            root_object = self.root[object_type]
+            root_object[key] = object
 
         self._add_internal(object, oid)
 
@@ -201,12 +208,6 @@ class Database:
 
             if not object._p_changed and object._p_serial != NEW:
                 continue
-
-            object_type = type(object).__name__
-            if object_type in Database.ROOT_TYPE_NAMES:
-                oid = oid.decode("ascii")
-                root_object = self.root[object_type]
-                root_object[oid] = object
 
             self._store_object(object)
 
@@ -407,6 +408,7 @@ class ObjectReader:
 
     def deserialize(self, data):
         """Convert JSON to Persistent object."""
+        data_type = data["@type"]
         oid = data["@oid"].encode("ascii")
 
         object = self._deserialize_helper(data)
