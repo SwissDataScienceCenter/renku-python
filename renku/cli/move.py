@@ -53,5 +53,5 @@ def move(sources, destination, force, verbose, to_dataset):
     """Move files and check repository for potential problems."""
     communicator = ClickCallback()
     move_command().with_communicator(communicator).build().execute(
-        sources=sources, destination=destination, force=force, verbose=verbose, to_dataset=to_dataset,
+        sources=sources, destination=destination, force=force, verbose=verbose, to_dataset=to_dataset
     )

@@ -309,7 +309,7 @@ def test_explicit_output_as_stdin(renku_cli):
     """Test cannot use explicit outputs as stdin when auto-detection is
     disabled."""
     exit_code, cwl = renku_cli(
-        "run", "--no-input-detection", "--no-output-detection", "--output", "README.md", "ls", stdin="README.md",
+        "run", "--no-input-detection", "--no-output-detection", "--output", "README.md", "ls", stdin="README.md"
     )
 
     assert 2 == exit_code

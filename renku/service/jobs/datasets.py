@@ -32,9 +32,7 @@ from renku.service.views.decorators import requires_cache
 
 
 @requires_cache
-def dataset_import(
-    cache, user, user_job_id, project_id, dataset_uri, name=None, extract=False, timeout=None,
-):
+def dataset_import(cache, user, user_job_id, project_id, dataset_uri, name=None, extract=False, timeout=None):
     """Job for dataset import."""
     user = cache.ensure_user(user)
     worker_log.debug(f"executing dataset import job for {user.user_id}:{user.fullname}")

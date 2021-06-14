@@ -91,9 +91,7 @@ def execute_workflow(client, workflow, output_paths, command_name, update_commit
 
         committer = Actor(f"renku {__version__}", version_url)
 
-        client.repo.index.commit(
-            commit_msg, committer=committer, skip_hooks=True,
-        )
+        client.repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
 
     workflow_name = f"{uuid.uuid4().hex}_{command_name}.yaml"
 

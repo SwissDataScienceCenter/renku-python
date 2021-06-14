@@ -362,7 +362,7 @@ class ZenodoDeposition:
         file = {"file": open(str(filepath), "rb")}
 
         response = requests.post(
-            url=self.upload_file_url, params=self.exporter.default_params, data=request_payload, files=file,
+            url=self.upload_file_url, params=self.exporter.default_params, data=request_payload, files=file
         )
         check_or_raise(response)
 
@@ -457,7 +457,7 @@ class ZenodoExporter(ExporterApi):
         # Step 3. Upload all files to created deposition
         with tqdm(total=len(self.dataset.files)) as progressbar:
             for file_ in self.dataset.files:
-                deposition.upload_file(file_.full_path,)
+                deposition.upload_file(file_.full_path)
                 progressbar.update(1)
 
         # Step 4. Publish newly created deposition

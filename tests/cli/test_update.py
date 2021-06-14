@@ -98,7 +98,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
 
     for output_format in FORMATS:
         # Make sure the log contains the original parent.
-        result = runner.invoke(cli, ["log", "--format", output_format], catch_exceptions=False,)
+        result = runner.invoke(cli, ["log", "--format", output_format], catch_exceptions=False)
         assert 0 == result.exit_code, result.output
         assert source.name in result.output, output_format
 
@@ -247,7 +247,7 @@ def test_siblings_update(runner, project, run, no_lfs_warning):
     assert not brother.exists()
 
     # Update should find also missing siblings.
-    assert 1 == run(args=("update", "--all",))
+    assert 1 == run(args=("update", "--all"))
     assert 0 == run(args=("update", "--with-siblings", "--all"))
 
     for sibling in siblings:

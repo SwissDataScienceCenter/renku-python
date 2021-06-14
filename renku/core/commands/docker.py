@@ -68,7 +68,7 @@ def detect_registry_url(client, auto_login=True):
     if auto_login and url.username and url.password:
         try:
             subprocess.run(
-                ["docker", "login", url.hostname, "-u", url.username, "--password-stdin",],
+                ["docker", "login", url.hostname, "-u", url.username, "--password-stdin"],
                 check=True,
                 input=url.password.encode("utf-8"),
             )
