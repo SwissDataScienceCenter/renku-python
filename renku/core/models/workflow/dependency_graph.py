@@ -17,6 +17,7 @@
 # limitations under the License.
 """Represent dependency graph."""
 
+import json
 from collections import deque
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -37,6 +38,7 @@ class DependencyGraph:
     def __init__(self, plans: List[Plan] = None):
         """Initialized."""
         self._plans: List[Plan] = plans or []
+        self._path = None
 
         # NOTE: If we connect nodes then all ghost objects will be loaded which is not what we want
         self._graph = None
@@ -179,6 +181,20 @@ class DependencyGraph:
         return sorted_nodes, list(nodes_with_deleted_inputs)
 
     @classmethod
+    def from_json(cls, path):
+        """Create an instance from a file."""
+        if Path(path).exists():
+            with open(path) as file_:
+                data = json.load(file_)
+                self = cls.from_jsonld(data=data) if data else DependencyGraph(plans=[])
+        else:
+            self = DependencyGraph(plans=[])
+
+        self._path = Path(path)
+
+        return self
+
+    @classmethod
     def from_jsonld(cls, data):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
@@ -191,6 +207,13 @@ class DependencyGraph:
     def to_jsonld(self):
         """Create JSON-LD."""
         return DependencyGraphSchema(flattened=True).dump(self)
+
+    def to_json(self, path=None):
+        """Write to file."""
+        path = path or self._path
+        data = self.to_jsonld()
+        with open(path, "w", encoding="utf-8") as file_:
+            json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
 
 class DependencyGraphSchema(JsonLDSchema):

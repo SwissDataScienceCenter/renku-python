@@ -519,10 +519,15 @@ class RepositoryApiMixin(GitCore):
         if not self.has_graph_files():
             return None
 
-        activity_collection = ActivityCollection.from_activity(activity, self.dependency_graph, self)
+        dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
+        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+
+        activity_collection = ActivityCollection.from_activity(activity, dependency_graph, self)
 
         self.provenance_graph.add(activity_collection)
         database = self.database
+
+        provenance_graph.add(activity_collection)
 
         for activity in activity_collection.activities:
             database.add(activity)
@@ -535,6 +540,8 @@ class RepositoryApiMixin(GitCore):
                 database.add(i)
 
         database.commit()
+        dependency_graph.to_json()
+        provenance_graph.to_json()
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""
@@ -542,6 +549,9 @@ class RepositoryApiMixin(GitCore):
 
     def initialize_graph(self):
         """Create empty graph files."""
+        self.dependency_graph_path.write_text("[]")
+        self.provenance_graph_path.write_text("[]")
+
         self.database_path.mkdir(parents=True, exist_ok=True)
         (self.database_path / ".gitkeep").touch(exist_ok=True)
 

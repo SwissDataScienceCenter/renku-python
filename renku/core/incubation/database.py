@@ -408,7 +408,6 @@ class ObjectReader:
 
     def deserialize(self, data):
         """Convert JSON to Persistent object."""
-        data_type = data["@type"]
         oid = data["@oid"].encode("ascii")
 
         object = self._deserialize_helper(data)

@@ -170,7 +170,6 @@ def test_run_argument_parameters(runner, client):
     parameters_values = {p.parameter.default_value for p in activity.parameters}
     assert {42, "Dockerfile", "README.md", "requirements.txt", "some message"} == parameters_values
 
-    # TODO: Uncomment these lines once new graph generation works again
-    # result = runner.invoke(cli, ["graph", "export", "--format", "jsonld", "--strict"])
-    #
-    # assert 0 == result.exit_code, result.output
+    result = runner.invoke(cli, ["graph", "export", "--format", "jsonld", "--strict"])
+
+    assert 0 == result.exit_code, result.output

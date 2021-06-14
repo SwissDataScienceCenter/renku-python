@@ -23,8 +23,6 @@ from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 
 
-# TODO: Enable this test once new graph generation works again
-@pytest.mark.xfail
 @pytest.mark.parametrize("format", ["json-ld", "jsonld"])
 def test_graph_export_validation(runner, client, directory_tree, run, format):
     """Test graph validation when exporting."""

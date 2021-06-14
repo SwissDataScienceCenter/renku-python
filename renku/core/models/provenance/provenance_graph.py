@@ -17,6 +17,7 @@
 # limitations under the License.
 """Represent provenance graph."""
 
+import json
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -36,6 +37,7 @@ class ProvenanceGraph:
 
         self._custom_bindings: Dict[str, str] = {}
         self._graph: Optional[ConjunctiveGraph] = None
+        self._loaded: bool = False
         # TODO: Remove _order and rely on Activity's ended_at_time and started_at_time for ordering
         self._order: int = len(self.activities) + 1
         self._path: Optional[Path] = None
@@ -70,6 +72,26 @@ class ProvenanceGraph:
         self = ProvenanceGraph(activities=activities)
         # NOTE: If we sort then all ghost objects will be loaded which is not what we want
         # self.activities.sort(key=lambda e: e.order)
+        return self
+
+    @classmethod
+    def from_json(cls, path: Union[Path, str], lazy: bool = False) -> "ProvenanceGraph":
+        """Return an instance from a JSON file."""
+        if Path(path).exists():
+            if not lazy:
+                with open(path) as file_:
+                    data = json.load(file_)
+                    self = cls.from_jsonld(data=data) if data else ProvenanceGraph(activities=[])
+                    self.activities.sort(key=lambda e: e.order)
+                    self._loaded = True
+            else:
+                self = ProvenanceGraph(activities=[])
+                self._loaded = False
+        else:
+            self = ProvenanceGraph(activities=[])
+            self._loaded = True
+
+        self._path = Path(path)
 
         return self
 
@@ -82,11 +104,20 @@ class ProvenanceGraph:
             raise ValueError(data)
 
         self = ProvenanceGraphSchema(flattened=True).load(data)
+        self._loaded = True
+
         return self
 
     def to_jsonld(self):
         """Create JSON-LD."""
         return ProvenanceGraphSchema(flattened=True).dump(self)
+
+    def to_json(self, path=None):
+        """Write an instance to file."""
+        path = path or self._path
+        data = self.to_jsonld()
+        with open(path, "w", encoding="utf-8") as file_:
+            json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
     @property
     def rdf_graph(self):
