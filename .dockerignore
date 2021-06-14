@@ -5,3 +5,4 @@
 !*.rst
 !entrypoint-svc.sh
 !.git
+!.gitignore
