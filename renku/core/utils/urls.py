@@ -90,13 +90,15 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
 
 
 def get_remote(repo):
-    """Return remote url of repo or its active branch."""
-    if not repo or not repo.remotes:
-        return
-    elif len(repo.remotes) == 1:
-        return repo.remotes[0].url
-    elif repo.active_branch.tracking_branch():
-        return repo.remotes[repo.active_branch.tracking_branch().remote_name].url
+    """Return remote name and url of repo or its active branch."""
+    if repo and repo.remotes:
+        if len(repo.remotes) == 1:
+            return repo.remotes[0].name, repo.remotes[0].url
+        elif repo.active_branch.tracking_branch():
+            name = repo.active_branch.tracking_branch().remote_name
+            return name, repo.remotes[name].url
+
+    return None, None
 
 
 def get_slug(name):

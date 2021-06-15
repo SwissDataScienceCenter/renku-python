@@ -17,39 +17,52 @@
 # limitations under the License.
 """Test ``login`` command."""
 
+import git
+import pytest
+
 from renku.cli import cli
 from renku.core.commands.login import read_renku_token
+from renku.core.utils.contexts import chdir
 from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT, USER_CODE
 
 
-def test_login(runner, client, mock_login):
+def test_login(runner, client_with_remote, mock_login):
     """Test login command."""
-    result = runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE)
+    remote_url = client_with_remote.repo.remotes[0].url
+
+    result = runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE)
 
     assert 0 == result.exit_code
-    assert ACCESS_TOKEN == read_renku_token(client, ENDPOINT)
+    assert ACCESS_TOKEN == read_renku_token(client_with_remote, ENDPOINT)
+    credential = client_with_remote.repo.config_reader().get_value("credential", "helper")
+    assert f"!renku token --hostname {ENDPOINT}" == credential
+    assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repo.remotes}
+    assert remote_url == client_with_remote.repo.remotes["renku-backup-origin"].url
+    assert client_with_remote.repo.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
 
 
-def test_login_no_endpoint(runner, client, mock_login):
+@pytest.mark.parametrize("args", [[], ["--git"]])
+def test_login_no_endpoint(runner, client, mock_login, args):
     """Test login command with no endpoint."""
-    result = runner.invoke(cli, ["login"])
+    result = runner.invoke(cli, ["login"] + args)
 
     assert 2 == result.exit_code
     assert "Parameter 'endpoint' is missing." in result.output
 
 
-def test_login_no_endpoint_and_remote(runner, client, mock_login):
+@pytest.mark.parametrize("args", [[], ["--git"]])
+def test_login_no_endpoint_and_remote(runner, client_with_remote, mock_login, args):
     """Test login command with no endpoint and with project remote."""
-    client.repo.create_remote("test_remote", url="https://example.com/")
-    result = runner.invoke(cli, ["login"], input="invalid_user_code")
+    result = runner.invoke(cli, ["login"] + args)
 
     assert 2 == result.exit_code, result.output
     assert "Parameter 'endpoint' is missing." in result.output
 
 
-def test_login_invalid_endpoint(runner, client, mock_login):
+@pytest.mark.parametrize("args", [[], ["--git"]])
+def test_login_invalid_endpoint(runner, client, mock_login, args):
     """Test login with and invalid endpoint."""
-    result = runner.invoke(cli, ["login", "http: //example.com"])
+    result = runner.invoke(cli, ["login", "http: //example.com"] + args)
 
     assert 2 == result.exit_code
     assert "Invalid endpoint: `http: //example.com`." in result.output
@@ -148,3 +161,111 @@ def test_logout_non_existing_endpoint(runner, client, mock_login):
     assert 0 == runner.invoke(cli, ["logout", "non.existing"]).exit_code
 
     assert read_renku_token(client, ENDPOINT) is not None
+
+
+def test_login_git_abort(runner, client_with_remote):
+    """Test login command."""
+    result = runner.invoke(cli, ["login", "--git", ENDPOINT], input="n")
+
+    assert 1 == result.exit_code
+    assert "Remote URL will be changed. Do you want to continue?" in result.output
+    assert "Aborted!" in result.output
+
+
+def test_login_non_git(runner, client, directory_tree):
+    """Test login from a non-git directory."""
+    with chdir(directory_tree):
+        result = runner.invoke(cli, ["login", "--git", ENDPOINT])
+
+    assert 2 == result.exit_code
+    assert "Cannot use '--git' flag outside a project" in result.output
+
+
+def test_login_git_no_unique_remote(runner, client_with_remote):
+    """Test login from a git directory with no clear remote."""
+    client_with_remote.repo.create_remote("second-remote", "second-remote.net")
+    client_with_remote.repo.create_head("branch-with-no-remote")
+    client_with_remote.repo.heads["branch-with-no-remote"].checkout()
+
+    result = runner.invoke(cli, ["login", "--git", ENDPOINT])
+
+    assert 2 == result.exit_code
+    assert "Cannot find a unique remote URL for project." in result.output
+
+
+def test_repeated_git_login(runner, client_with_remote, mock_login):
+    """Test multiple logins to git repo fails to change remote URL after first time."""
+    remote_url = client_with_remote.repo.remotes[0].url
+
+    assert 0 == runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE).exit_code
+
+    result = runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE)
+
+    assert 0 == result.exit_code
+    assert "Backup remove 'renku-backup-origin' already exists. Ignoring '--git' flag." in result.output
+    assert "Error: Cannot create backup remote 'renku-backup-origin' for" not in result.output
+    assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repo.remotes}
+    assert remote_url == client_with_remote.repo.remotes["renku-backup-origin"].url
+    assert client_with_remote.repo.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
+    assert not client_with_remote.repo.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo/repo")
+
+
+def test_logout_git(runner, client_with_remote, mock_login):
+    """Test logout removes backup remotes and restores original remote url."""
+    remote_url = client_with_remote.repo.remotes[0].url
+
+    assert 0 == runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE).exit_code
+
+    result = runner.invoke(cli, ["logout"])
+
+    assert 0 == result.exit_code
+    assert {"origin"} == {r.name for r in client_with_remote.repo.remotes}
+    assert remote_url == client_with_remote.repo.remotes["origin"].url
+    try:
+        credential = client_with_remote.repo.git.config("credential.helper", local=True)
+    except git.exc.GitCommandError:  # NOTE: If already logged out, ``git config --unset`` raises an exception
+        credential = None
+    assert credential is None
+
+
+def test_token(runner, client_with_remote, mock_login):
+    """Test get credential when valid credential exist."""
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
+
+    result = runner.invoke(cli, ["token", "--hostname", ENDPOINT, "get"])
+
+    assert 0 == result.exit_code
+    assert "username=renku\n" in result.output
+    assert f"password={ACCESS_TOKEN}\n" in result.output
+
+
+def test_token_non_existing_hostname(runner, client_with_remote, mock_login):
+    """Test get credential for a different hostname."""
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
+
+    result = runner.invoke(cli, ["token", "--hostname", "non-existing", "get"])
+
+    assert 0 == result.exit_code
+    assert "username=renku\n" in result.output
+    assert "password=\n" in result.output
+
+
+def test_token_no_credential(runner, client_with_remote, mock_login):
+    """Test get credential when valid credential doesn't exist."""
+    assert 0 == runner.invoke(cli, ["logout"]).exit_code
+
+    result = runner.invoke(cli, ["token", "--hostname", ENDPOINT, "get"])
+
+    assert 0 == result.exit_code
+    assert "username=renku\n" in result.output
+    assert "password=\n" in result.output
+
+
+def test_token_invalid_command(runner, client_with_remote, mock_login):
+    """Test call credential helper with a command other than 'get'."""
+    assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
+
+    result = runner.invoke(cli, ["token", "--hostname", ENDPOINT, "non-get-command"])
+
+    assert 0 == result.exit_code
+    assert "" == result.output

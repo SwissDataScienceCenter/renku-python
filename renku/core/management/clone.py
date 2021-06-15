@@ -63,16 +63,23 @@ def clone(
     if skip_smudge:
         os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
 
+    clone_config = None
+    if isinstance(config, str):
+        clone_config = config
+        config = None
+
     try:
         # NOTE: Try to clone, assuming checkout_rev is a branch (if it is set)
-        repo = Repo.clone_from(url, path, branch=checkout_rev, recursive=recursive, depth=depth, progress=progress)
+        repo = Repo.clone_from(
+            url, path, branch=checkout_rev, recursive=recursive, depth=depth, progress=progress, config=clone_config
+        )
     except GitCommandError as e:
         # NOTE: clone without branch set, in case checkout_rev was not a branch but a tag or commit
         if not checkout_rev:
             _handle_git_exception(e, raise_git_except, progress)
 
         try:
-            repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress)
+            repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress, config=clone_config)
         except GitCommandError as e:
             _handle_git_exception(e, raise_git_except, progress)
 
