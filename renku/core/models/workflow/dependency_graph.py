@@ -46,7 +46,7 @@ class DependencyGraph:
     @classmethod
     def from_database(cls, database: Database) -> "DependencyGraph":
         """Return an instance from a metadata database."""
-        plan_tree = database.get("Plan")
+        plan_tree = database.get("plans")
         plans = list(plan_tree.values())
         self = DependencyGraph(plans=plans)
 

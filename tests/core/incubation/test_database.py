@@ -30,7 +30,7 @@ def test_database_create(client, runner):
     assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
 
     assert not client.repo.is_dirty()
-    root_objects = ["root", "activity", "entity", "plan"]
+    root_objects = ["root", "activities", "entities", "plans"]
     for filename in root_objects:
         assert (client.database_path / filename).exists()
 
@@ -44,7 +44,7 @@ def test_database_add(database):
     database.add(activity)
     database.commit()
 
-    root_objects = ["root", "activity", "entity", "plan"]
+    root_objects = ["root", "activities", "entities", "plans"]
     for filename in root_objects:
         assert storage.exists(filename)
 
@@ -61,7 +61,7 @@ def test_database_add_to_root_object(database):
 
     id = "/activities/42"
     activity = Activity(id=id)
-    activity_root = root["Activity"]
+    activity_root = root["activities"]
     activity_root[id] = activity
     database.commit()
 
@@ -80,7 +80,7 @@ def test_database_add_also_adds_to_root_object(database):
     activity_1 = Activity(id=id)
     database.add(activity_1)
 
-    activity_2 = list(root["Activity"].values())[0]
+    activity_2 = list(root["activities"].values())[0]
 
     assert activity_1 is activity_2
 
@@ -173,8 +173,8 @@ def test_database_loads_only_required_objects(database):
     assert GHOST == activity.invalidations[0]._p_state
 
     root = new_database.root
-    assert GHOST == root["Entity"]._p_state
-    assert GHOST == root["Activity"]._p_state  # NOTE: Object was loaded directly and not via "Activity" root
+    assert GHOST == root["entities"]._p_state
+    assert GHOST == root["activities"]._p_state  # NOTE: Object was loaded directly and not via "activities" root
 
 
 def test_database_load_multiple(database):
@@ -191,10 +191,10 @@ def test_database_load_multiple(database):
     oid = Database.hash_id(id)
     activity_1 = new_database.get(oid)
     print("\n\n")
-    activity_2 = list(new_database.root["Activity"].values())[0]
+    activity_2 = list(new_database.root["activities"].values())[0]
 
     assert activity_1 is activity_2
 
     root = new_database.root
-    assert GHOST == root["Entity"]._p_state
-    assert UPTODATE == root["Activity"]._p_state
+    assert GHOST == root["entities"]._p_state
+    assert UPTODATE == root["activities"]._p_state
