@@ -129,7 +129,7 @@ class Database:
         if not self._root:
             try:
                 self._root = self.get(Database.ROOT_OID)
-                root_types = {i.model for i in self._root.values() if i.model not in self._root_types}
+                root_types = tuple(i.model for i in self._root.values() if i.model not in self._root_types)
                 self._root_types += root_types
             except POSKeyError:
                 self._root = OOBTree()
@@ -141,7 +141,7 @@ class Database:
         """Add an index."""
         assert len(self._objects_to_commit) == 0 or set(self._objects_to_commit.keys()) == {Database.ROOT_OID}
         root = self.root
-        assert name not in root, f"Index already exists: '{name}'"
+        # assert name not in root, f"Index already exists: '{name}'"  # TODO: Uncomment
 
         root[name] = Index(name=name, model=model, attribute=attribute)
         if model not in self._root_types:
@@ -313,7 +313,7 @@ class Cache:
         if oid in self._entries:
             existing_data = self.get(oid)
             if existing_data is not object:
-                raise ValueError("A different object already has the same oid")
+                raise ValueError(f"The same oid exists: {existing_data} != {object}")
 
         self._entries[oid] = object
 
