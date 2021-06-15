@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
-import BTrees.OOBTree
+from BTrees.OOBTree import OOBTree
 from persistent import GHOST, UPTODATE, Persistent
 from ZODB.POSException import POSKeyError
 from ZODB.utils import z64
@@ -35,6 +35,33 @@ from zope.interface import implementer
 
 NEW = z64  # NOTE: Do not change this value since this is the default when a Persistent object is created
 PERSISTED = b"1" * 8
+
+OID_TYPE = str
+
+
+def get_type_name(object) -> str:
+    """Return fully-qualified object's type name."""
+    object_type = object if isinstance(object, type) else type(object)
+    return f"{object_type.__module__}.{object_type.__qualname__}"
+
+
+def get_class(type_name: str) -> type:
+    """Return the class for a fully-qualified type name."""
+    components = type_name.split(".")
+    module_name = components[0]
+
+    if module_name not in ["renku", "datetime", "BTrees"]:
+        raise TypeError(f"Objects of type '{type_name}' are not allowed")
+
+    module = __import__(module_name)
+
+    for component in components[1:]:
+        try:
+            module = getattr(module, component)
+        except AttributeError:
+            raise AttributeError(f"Cannot find attribute '{component}' in module '{module.__name__}'")
+
+    return module
 
 
 class Database:
@@ -50,12 +77,12 @@ class Database:
         self._storage: Storage = storage
         self._cache = Cache()
         # The pre-cache is used by get to avoid infinite loops when objects load their state
-        self._pre_cache: Dict[bytes, Persistent] = {}
+        self._pre_cache: Dict[OID_TYPE, Persistent] = {}
         # Objects added explicitly by add() or when serializing other objects. After commit they are moved to _cache.
-        self._objects_to_commit: Dict[bytes, Persistent] = {}
+        self._objects_to_commit: Dict[OID_TYPE, Persistent] = {}
         self._reader: ObjectReader = ObjectReader(database=self)
         self._writer: ObjectWriter = ObjectWriter(database=self)
-        self._root: Optional[BTrees.OOBTree.BTree] = None
+        self._root: Optional[OOBTree] = None
 
     @classmethod
     def from_path(cls, path: Union[str, Path]) -> "Database":
@@ -68,10 +95,10 @@ class Database:
         """Return the database root object."""
         if not self._root:
             try:
-                self._root = self.get(b"root")
+                self._root = self.get("root")
             except POSKeyError:
-                self._root = BTrees.OOBTree.BTree()
-                self._add_internal(self._root, b"root")
+                self._root = OOBTree()
+                self._add_internal(self._root, "root")
 
         # NOTE: Make sure that all root objects have an entry
         self._create_root_types()
@@ -83,21 +110,21 @@ class Database:
             if root_type in self._root:
                 continue
 
-            object = BTrees.OOBTree.BTree()
-            object._p_oid = root_type.encode("ascii")
+            object = OOBTree()
+            object._p_oid = root_type
             self._root[root_type] = object
 
     @staticmethod
     def new_oid():
         """Generate a random oid."""
-        return f"{uuid4().hex}{uuid4().hex}".encode("ascii")
+        return f"{uuid4().hex}{uuid4().hex}"
 
     @staticmethod
-    def generate_oid(object: Persistent) -> bytes:
+    def generate_oid(object: Persistent) -> OID_TYPE:
         """Generate oid for a Persistent object based on its id."""
         oid = getattr(object, "_p_oid")
         if oid:
-            assert isinstance(oid, bytes)
+            assert isinstance(oid, OID_TYPE)
             return oid
 
         id: str = getattr(object, "id", None) or getattr(object, "_id", None)
@@ -107,20 +134,21 @@ class Database:
         return Database.new_oid()
 
     @staticmethod
-    def hash_id(id: str) -> bytes:
+    def hash_id(id: str) -> OID_TYPE:
         """Return oid from id."""
-        return hashlib.sha3_256(id.encode("utf-8")).hexdigest().encode("ascii")
+        return hashlib.sha3_256(id.encode("utf-8")).hexdigest()
 
     def add(self, object: Persistent):
         """Add a new object to the database."""
         type_name = type(object).__name__
         assert type_name in Database.ROOT_TYPE_NAMES or isinstance(
-            object, BTrees.OOBTree.OOBTree
+            object, OOBTree
         ), f"Cannot add objects of type '{type_name}'"
 
         if object._p_oid is None:
             assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
         oid = self.generate_oid(object)
+        print("ADD", object, oid)
 
         cached_object = self.get_cached(oid)
         if cached_object:
@@ -131,16 +159,16 @@ class Database:
 
         object_type = type(object).__name__
         if object_type in Database.ROOT_TYPE_NAMES:
-            key = oid.decode("ascii")
+            key = oid
             root_object = self.root[object_type]
             root_object[key] = object
 
         self._add_internal(object, oid)
 
-    def _add_internal(self, object: Persistent, oid: bytes):
+    def _add_internal(self, object: Persistent, oid: OID_TYPE):
         """Allow adding non-root types; used for adding root object."""
         assert isinstance(object, Persistent), f"Cannot add non-Persistent object: '{object}'"
-        assert isinstance(oid, bytes), f"Invalid oid type: '{type(oid)}'"
+        assert isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
 
         object._p_oid = oid
         object._p_serial = NEW
@@ -153,6 +181,7 @@ class Database:
     def setstate(self, object: Persistent):
         """Load the state for a ghost object."""
         oid = object._p_oid
+        print("SET-STATE", object, oid)
 
         data = self._storage.load(filename=self._get_filename_from_oid(oid))
         self._reader.set_ghost_state(object, data)
@@ -166,13 +195,11 @@ class Database:
         object._p_jar = self
         self._objects_to_commit[object._p_oid] = object
 
-    def get(self, oid: Union[bytes, str]) -> Persistent:
+    def get(self, oid: OID_TYPE) -> Persistent:
         """Get the object by oid."""
+        print("GET", oid)
         if oid in Database.ROOT_TYPE_NAMES:
             return self.root[oid]
-
-        if isinstance(oid, str):
-            oid = oid.encode("utf-8")
 
         object = self.get_cached(oid)
         if object is not None:
@@ -190,7 +217,7 @@ class Database:
 
         return object
 
-    def get_cached(self, oid: bytes) -> Optional[Persistent]:
+    def get_cached(self, oid: OID_TYPE) -> Optional[Persistent]:
         """Return an object if it is in the cache or will be committed."""
         object = self._cache.get(oid)
         if object is not None:
@@ -206,8 +233,10 @@ class Database:
 
     def commit(self):
         """Commit modified and new objects."""
+        print("---- COMMIT ----")
         while self._objects_to_commit:
             oid, object = self._objects_to_commit.popitem()
+            print("---- COMMIT OBJECT ----", object._p_oid, object._p_changed, object._p_serial, type(object).__name__)
 
             if not object._p_changed and object._p_serial != NEW:
                 continue
@@ -228,11 +257,12 @@ class Database:
         object._p_serial = PERSISTED
 
     @staticmethod
-    def _get_filename_from_oid(oid: bytes) -> str:
-        return oid.decode("ascii").lower()
+    def _get_filename_from_oid(oid: OID_TYPE) -> str:
+        return oid.lower()
 
-    def new_ghost(self, oid: bytes, object: Persistent):
+    def new_ghost(self, oid: OID_TYPE, object: Persistent):
         """Create a new ghost object."""
+        print("NEW-GHOST", type(object).__name__, oid, object._p_status)
         object._p_jar = self
         self._cache.new_ghost(oid, object)
 
@@ -246,7 +276,7 @@ class Database:
             type_name = type(object).__name__
             if type_name in Database.ROOT_TYPE_NAMES:
                 root_object = self.root[type_name]
-                del root_object[object._p_oid.decode("ascii")]
+                del root_object[object._p_oid]
 
         object._p_oid = None
         self.add(object)
@@ -257,11 +287,55 @@ class Database:
         assert object._p_oid is not None
 
 
+class Index(Persistent):
+    """Database index."""
+
+    def __init__(self, name: str, model: type, attribute_name: str):
+        self._name: str = name
+        self._model: type = model
+        self._attribute_name: str = attribute_name
+        self._index: OOBTree = OOBTree()
+
+    @property
+    def name(self) -> str:
+        """Return Index's name."""
+        return self._name
+
+    def update(self, object: Persistent):
+        """Update index with object."""
+        if not isinstance(object, self._model):
+            return
+
+        key = getattr(object, self._attribute_name)
+
+        current_object = self._index.get(key)
+        if current_object:
+            assert object is current_object, f"Another object with the same key exists: {key}:{current_object}"
+        else:
+            self._index[key] = object
+
+    def __getstate__(self):
+        data = super().__getstate__()
+
+        data["name"] = self._name
+        data["model"] = get_type_name(self.model)
+        data["attribute_name"] = self._attribute_name
+        data["index"] = self._index
+
+        return data
+
+    def __setstate__(self, data):
+        self._name = data.pop("name")
+        self._model = get_class(data.pop("model"))
+        self._attribute_name = data.pop("attribute_name")
+        self._index = data.pop("index")
+
+        super().__setstate__(data)
+
+
 @implementer(IPickleCache)
 class Cache:
     """Database Cache."""
-
-    OID_TYPE = bytes
 
     def __init__(self):
         self.data = {}
@@ -270,12 +344,12 @@ class Cache:
         return len(self.data)
 
     def __getitem__(self, oid):
-        assert isinstance(oid, Cache.OID_TYPE), f"Invalid oid type: '{type(oid)}'"
+        assert isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
         return self.data[oid]
 
     def __setitem__(self, oid, object):
         assert isinstance(object, Persistent), f"Cannot cache non-Persistent objects: '{object}'"
-        assert isinstance(oid, Cache.OID_TYPE), f"Invalid oid type: '{type(oid)}'"
+        assert isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
 
         assert object._p_jar is not None, "Cached object jar missing"
         assert oid == object._p_oid, f"Cache key does not match oid: {oid} != {object._p_oid}"
@@ -288,12 +362,12 @@ class Cache:
         self.data[oid] = object
 
     def __delitem__(self, oid):
-        assert isinstance(oid, Cache.OID_TYPE), f"Invalid oid type: '{type(oid)}'"
+        assert isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
         self.data.pop(oid)
 
     def get(self, oid, default=None):
         """See IPickleCache."""
-        assert isinstance(oid, Cache.OID_TYPE), f"Invalid oid type: '{type(oid)}'"
+        assert isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
         return self.data.get(oid, default)
 
     def new_ghost(self, oid, object):
@@ -304,7 +378,7 @@ class Cache:
 
         object._p_oid = oid
         if object._p_state != GHOST:
-            object._p_invalidate_deactivate_helper(False)
+            object._p_invalidate()
 
         self[oid] = object
 
@@ -320,6 +394,7 @@ class Storage:
 
     def store(self, filename: str, data: Union[Dict, List]):
         """Store object."""
+        print("        STORE", data["@type"], data["@oid"])
         assert isinstance(filename, str)
 
         compressed = len(filename) >= Storage.MIN_COMPRESSED_FILENAME_LENGTH
@@ -336,6 +411,7 @@ class Storage:
 
     def load(self, filename: str):
         """Load data for object with object id oid."""
+        print("        LOAD", filename)
         assert isinstance(filename, str)
 
         compressed = len(filename) >= Storage.MIN_COMPRESSED_FILENAME_LENGTH
@@ -361,11 +437,6 @@ class ObjectWriter:
     def __init__(self, database: Database):
         self._database: Database = database
 
-    @staticmethod
-    def _get_type(object) -> str:
-        object_type = type(object)
-        return f"{object_type.__module__}.{object_type.__qualname__}"
-
     def serialize(self, object: Persistent):
         """Convert an object to JSON."""
         assert isinstance(object, Persistent), f"Cannot serialize object of type '{type(object)}': {object}"
@@ -378,8 +449,8 @@ class ObjectWriter:
         if not isinstance(data, dict):
             data = {"@value": data}
 
-        data["@type"] = self._get_type(object)
-        data["@oid"] = object._p_oid.decode("ascii")
+        data["@type"] = get_type_name(object)
+        data["@oid"] = object._p_oid
 
         return data
 
@@ -398,13 +469,13 @@ class ObjectWriter:
         elif isinstance(object, (int, float, str, bool)):
             return object
         elif isinstance(object, datetime.datetime):
-            return {"@type": self._get_type(object), "@value": object.isoformat()}
+            return {"@type": get_type_name(object), "@value": object.isoformat()}
         elif isinstance(object, Persistent):
             if not object._p_oid:
                 object._p_oid = Database.generate_oid(object)
             if object._p_state not in [GHOST, UPTODATE] or (object._p_state == UPTODATE and object._p_serial == NEW):
                 self._database.add(object)
-            return {"@type": self._get_type(object), "@oid": object._p_oid.decode("ascii"), "@reference": True}
+            return {"@type": get_type_name(object), "@oid": object._p_oid, "@reference": True}
         elif hasattr(object, "__getstate__"):
             state = object.__getstate__()
             if isinstance(state, dict) and "_id" in state:  # TODO: Remove this once all Renku classes have 'id' field
@@ -413,7 +484,7 @@ class ObjectWriter:
         else:
             state = object.__dict__.copy()
             state = self._serialize_helper(state)
-            state["@type"] = self._get_type(object)
+            state["@type"] = get_type_name(object)
             if "_id" in state:  # TODO: Remove this once all Renku classes have 'id' field
                 state["id"] = state.pop("_id")
             return state
@@ -426,32 +497,20 @@ class ObjectReader:
         self._classes: Dict[str, type] = {}
         self._database = database
 
-    def _get_class(self, object_type: str) -> type:
-        cls = self._classes.get(object_type)
+    def _get_class(self, type_name: str) -> type:
+        cls = self._classes.get(type_name)
         if cls:
             return cls
 
-        components = object_type.split(".")
-        module_name = components[0]
+        cls = get_class(type_name)
 
-        if module_name not in ["renku", "datetime", "BTrees"]:
-            raise TypeError(f"Objects of type '{object_type}' are not allowed")
-
-        module = __import__(module_name)
-
-        for component in components[1:]:
-            try:
-                module = getattr(module, component)
-            except AttributeError:
-                raise AttributeError(f"Cannot find attribute '{component}' in module '{module.__name__}'")
-
-        self._classes[object_type] = module
-        return module
+        self._classes[type_name] = cls
+        return cls
 
     def set_ghost_state(self, object: Persistent, data: Dict):
         """Set state of a Persistent ghost object."""
         state = self._deserialize_helper(data, create=False)
-        if isinstance(object, BTrees.OOBTree.OOBTree):
+        if isinstance(object, OOBTree):
             state = self._to_tuple(state)
 
         object.__setstate__(state)
@@ -463,7 +522,7 @@ class ObjectReader:
 
     def deserialize(self, data):
         """Convert JSON to Persistent object."""
-        oid = data["@oid"].encode("ascii")
+        oid = data["@oid"]
 
         object = self._deserialize_helper(data)
 
@@ -502,7 +561,6 @@ class ObjectReader:
             oid: str = data.pop("@oid", None)
             if oid:
                 assert isinstance(oid, str)
-                oid: bytes = oid.encode("ascii")
 
                 if "@reference" in data and data["@reference"]:  # A reference
                     object = self._database.get_cached(oid)
@@ -527,7 +585,7 @@ class ObjectReader:
 
             if hasattr(cls, "__setstate__"):
                 object = cls.__new__(cls)
-                if isinstance(object, BTrees.OOBTree.OOBTree):
+                if isinstance(object, OOBTree):
                     data = self._to_tuple(data)
                 object.__setstate__(data)
             else:

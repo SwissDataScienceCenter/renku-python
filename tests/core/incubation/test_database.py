@@ -49,7 +49,7 @@ def test_database_add(database):
         assert storage.exists(filename)
 
     oid = Database.hash_id(id)
-    assert storage.exists(oid.decode("ascii"))
+    assert storage.exists(oid)
 
 
 def test_database_add_to_root_object(database):
@@ -66,7 +66,7 @@ def test_database_add_to_root_object(database):
     database.commit()
 
     oid = Database.hash_id(id)
-    assert storage.exists(oid.decode("ascii"))
+    assert storage.exists(oid)
 
 
 def test_database_add_also_adds_to_root_object(database):
@@ -97,7 +97,7 @@ def test_database_no_file_created_if_not_committed(database):
     database.add(activity)
 
     oid = Database.hash_id(id)
-    assert not storage.exists(oid.decode("ascii"))
+    assert not storage.exists(oid)
 
 
 def test_database_update_required_object_only(database):
@@ -108,7 +108,7 @@ def test_database_update_required_object_only(database):
     activity_1 = Activity(id=id_1)
     database.add(activity_1)
     database.commit()
-    oid_1 = Database.hash_id(id_1).decode("ascii")
+    oid_1 = Database.hash_id(id_1)
     modification_time_before = storage.get_modification_date(oid_1)
 
     id_2 = "/activities/43"
@@ -190,6 +190,7 @@ def test_database_load_multiple(database):
     new_database = Database(storage=storage)
     oid = Database.hash_id(id)
     activity_1 = new_database.get(oid)
+    print("\n\n")
     activity_2 = list(new_database.root["Activity"].values())[0]
 
     assert activity_1 is activity_2
