@@ -202,6 +202,7 @@ def _add_to_dataset(
     all_at_once=False,
     destination_names=None,
     total_size=None,
+    repository=None,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -240,6 +241,7 @@ def _add_to_dataset(
                 extract=extract,
                 all_at_once=all_at_once,
                 destination_names=destination_names,
+                repository=repository,
             )
             if with_metadata:
                 # dataset has the correct list of files
@@ -548,6 +550,7 @@ def _import_dataset(
             with_metadata=dataset,
             create=not previous_dataset,
             overwrite=True,
+            repository=record.repository,
         )
 
         if previous_dataset:
