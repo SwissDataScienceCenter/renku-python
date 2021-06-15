@@ -25,11 +25,14 @@ from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
 import BTrees.OOBTree
-from persistent import GHOST, UPTODATE, Persistent, PickleCache
+from persistent import GHOST, UPTODATE, Persistent
 from ZODB.POSException import POSKeyError
 from ZODB.utils import z64
 
 # NOTE These are used as _p_serial to mark if an object was read from storage or is new
+from persistent.interfaces import IPickleCache
+from zope.interface import implementer
+
 NEW = z64  # NOTE: Do not change this value since this is the default when a Persistent object is created
 PERSISTED = b"1" * 8
 
@@ -45,7 +48,7 @@ class Database:
 
     def __init__(self, storage):
         self._storage: Storage = storage
-        self._cache = PickleCache(self)
+        self._cache = Cache()
         # The pre-cache is used by get to avoid infinite loops when objects load their state
         self._pre_cache: Dict[bytes, Persistent] = {}
         # Objects added explicitly by add() or when serializing other objects. After commit they are moved to _cache.
@@ -219,8 +222,7 @@ class Database:
         self._storage.store(filename=self._get_filename_from_oid(oid), data=data)
         self._cache[oid] = object
 
-        self._cache.update_object_size_estimation(oid, 1)
-        object._p_estimated_size = 1
+        object._p_estimated_size = 0
 
         object._p_changed = 0  # NOTE: transition from changed to up-to-date
         object._p_serial = PERSISTED
@@ -231,6 +233,7 @@ class Database:
 
     def new_ghost(self, oid: bytes, object: Persistent):
         """Create a new ghost object."""
+        object._p_jar = self
         self._cache.new_ghost(oid, object)
 
     def replace(self, object: Persistent):
@@ -252,6 +255,58 @@ class Database:
         """We don't use this method but some Persistent logic require its existence."""
         assert object._p_jar is self
         assert object._p_oid is not None
+
+
+@implementer(IPickleCache)
+class Cache:
+    """Database Cache."""
+
+    OID_TYPE = bytes
+
+    def __init__(self):
+        self.data = {}
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, oid):
+        assert isinstance(oid, Cache.OID_TYPE), f"Invalid oid type: '{type(oid)}'"
+        return self.data[oid]
+
+    def __setitem__(self, oid, object):
+        assert isinstance(object, Persistent), f"Cannot cache non-Persistent objects: '{object}'"
+        assert isinstance(oid, Cache.OID_TYPE), f"Invalid oid type: '{type(oid)}'"
+
+        assert object._p_jar is not None, "Cached object jar missing"
+        assert oid == object._p_oid, f"Cache key does not match oid: {oid} != {object._p_oid}"
+
+        if oid in self.data:
+            existing_data = self.get(oid)
+            if existing_data is not object:
+                raise ValueError("A different object already has the same oid")
+
+        self.data[oid] = object
+
+    def __delitem__(self, oid):
+        assert isinstance(oid, Cache.OID_TYPE), f"Invalid oid type: '{type(oid)}'"
+        self.data.pop(oid)
+
+    def get(self, oid, default=None):
+        """See IPickleCache."""
+        assert isinstance(oid, Cache.OID_TYPE), f"Invalid oid type: '{type(oid)}'"
+        return self.data.get(oid, default)
+
+    def new_ghost(self, oid, object):
+        """See IPickleCache."""
+        assert object._p_oid is None, f"Object already has an oid: {object}"
+        assert object._p_jar is not None, f"Object does not have a jar: {object}"
+        assert oid not in self.data, f"Duplicate oid: {oid}"
+
+        object._p_oid = oid
+        if object._p_state != GHOST:
+            object._p_invalidate_deactivate_helper(False)
+
+        self[oid] = object
 
 
 class Storage:
