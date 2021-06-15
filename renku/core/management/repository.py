@@ -555,8 +555,19 @@ class RepositoryApiMixin(GitCore):
         self.database_path.mkdir(parents=True, exist_ok=True)
         (self.database_path / ".gitkeep").touch(exist_ok=True)
 
-        # NOTE: Access dataset's root to make sure that it is created in case there are no commits
-        _ = self.database.root
+        database = self.database
+
+
+        from renku.core.models.entity import Entity
+        from renku.core.models.provenance.activity import Activity
+        from renku.core.models.workflow.plan import Plan
+
+        database.add_index(name="activities", model=Activity, attribute="id")
+        database.add_index(name="plans", model=Plan, attribute="id")
+        database.add_index(name="entities", model=Entity, attribute="id")
+
+        # # NOTE: Access dataset's root to make sure that it is created in case there are no commits
+        # _ = self.database.root
 
     def remove_graph_files(self):
         """Remove all graph files."""

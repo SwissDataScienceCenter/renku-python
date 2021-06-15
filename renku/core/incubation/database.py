@@ -85,13 +85,6 @@ class Database:
         self._root: Optional[OOBTree] = None
         self._root_types: Tuple[type, ...] = (OOBTree, Index)
 
-        from renku.core.models.entity import Entity
-        from renku.core.models.provenance.activity import Activity
-        from renku.core.models.workflow.plan import Plan
-
-        self.add_index(name="activities", model=Activity, attribute="id")
-        self.add_index(name="plans", model=Plan, attribute="id")
-        self.add_index(name="entities", model=Entity, attribute="id")
 
     @classmethod
     def from_path(cls, path: Union[str, Path]) -> "Database":
@@ -164,6 +157,7 @@ class Database:
         self._add_internal(object, oid)
 
     def _update_indexes(self, object: Persistent):
+        index: Index
         for index in self.root.values():
             index.update(object)
 
@@ -377,7 +371,7 @@ class Index(Persistent):
             "name": self._name,
             "model": get_type_name(self._model),
             "attribute": self._attribute,
-            "index": self._entries,
+            "index": self._entries, # TODO: Rename
         }
 
     def __setstate__(self, data):
@@ -636,7 +630,7 @@ class ObjectReader:
             if not create:
                 return data
 
-            if hasattr(cls, "__setstate__"):
+            if issubclass(cls, Persistent):
                 object = cls.__new__(cls)
                 if isinstance(object, OOBTree):
                     data = self._to_tuple(data)
