@@ -1,2 +1,5 @@
 [run]
-omit = renku/conftest.py
+omit =
+    renku/conftest.py
+    renku/data/*
+

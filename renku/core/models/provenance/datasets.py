@@ -572,7 +572,7 @@ class NewDatasetSchema(JsonLDSchema):
 
     creators = Nested(schema.creator, PersonSchema, many=True)
     date_created = fields.DateTime(
-        schema.dateCreated, missing=None, allow_none=True, format="iso", extra_formats=("%Y-%m-%d",),
+        schema.dateCreated, missing=None, allow_none=True, format="iso", extra_formats=("%Y-%m-%d",)
     )
     date_deleted = fields.DateTime(prov.invalidatedAtTime, missing=None, allow_none=True, format="iso")
     date_published = fields.DateTime(

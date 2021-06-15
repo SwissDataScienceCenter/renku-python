@@ -103,14 +103,14 @@ def test_renku_clone_checkout_rev(tmp_path, url):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-@pytest.mark.parametrize("rev,detached", [("test-branch", False), ("my-tag", True),])
+@pytest.mark.parametrize("rev,detached", [("test-branch", False), ("my-tag", True)])
 def test_renku_clone_checkout_revs(tmp_path, rev, detached):
     """Test cloning of a Renku repo checking out a rev."""
     with chdir(tmp_path):
         repo, _ = (
             project_clone_command()
             .build()
-            .execute("https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku.git", checkout_rev=rev,)
+            .execute("https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku.git", checkout_rev=rev)
         ).output
 
         if detached:

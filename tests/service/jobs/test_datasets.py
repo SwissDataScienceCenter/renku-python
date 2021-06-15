@@ -47,7 +47,7 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     """Test dataset import via url."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    decoded = jwt.decode(headers["Renku-User"], JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku",)
+    decoded = jwt.decode(headers["Renku-User"], JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku")
     user_data = {
         "fullname": decoded["name"],
         "email": decoded["email"],
@@ -60,7 +60,7 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
         "dataset_uri": url,
     }
 
-    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -73,22 +73,20 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
-    dataset_import(
-        user_data, job_id, project_id, url,
-    )
+    dataset_import(user_data, job_id, project_id, url)
 
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
     assert f"service: dataset import {url}" == new_commit.message
 
-    response = svc_client.get(f"/jobs/{job_id}", headers=headers,)
+    response = svc_client.get(f"/jobs/{job_id}", headers=headers)
 
     assert response
     assert_rpc_response(response)
     assert "COMPLETED" == response.json["result"]["state"]
 
 
-@pytest.mark.parametrize("doi", ["10.5281/zenodo.3239980", "10.5281/zenodo.3188334", "10.7910/DVN/TJCLKP",])
+@pytest.mark.parametrize("doi", ["10.5281/zenodo.3239980", "10.5281/zenodo.3188334", "10.7910/DVN/TJCLKP"])
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
@@ -103,7 +101,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
         "project_id": project_id,
         "dataset_uri": doi,
     }
-    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -116,15 +114,13 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
-    dataset_import(
-        user, job_id, project_id, doi,
-    )
+    dataset_import(user, job_id, project_id, doi)
 
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
     assert f"service: dataset import {doi}" == new_commit.message
 
-    response = svc_client.get(f"/jobs/{job_id}", headers=headers,)
+    response = svc_client.get(f"/jobs/{job_id}", headers=headers)
     assert response
     assert_rpc_response(response)
     assert "COMPLETED" == response.json["result"]["state"]
@@ -153,7 +149,7 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
         "project_id": project_id,
         "dataset_uri": doi,
     }
-    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -167,14 +163,12 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     job_id = response.json["result"]["job_id"]
 
     with pytest.raises(ParameterError):
-        dataset_import(
-            user, job_id, project_id, doi,
-        )
+        dataset_import(user, job_id, project_id, doi)
 
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha == new_commit.hexsha
 
-    response = svc_client.get(f"/jobs/{job_id}", data=json.dumps(payload), headers=headers,)
+    response = svc_client.get(f"/jobs/{job_id}", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
     extras = response.json["result"]["extras"]
@@ -183,7 +177,7 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     assert expected_err in extras["error"]
 
 
-@pytest.mark.parametrize("doi", ["10.5281/zenodo.3634052",])
+@pytest.mark.parametrize("doi", ["10.5281/zenodo.3634052"])
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
@@ -198,7 +192,7 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
         "project_id": project_id,
         "dataset_uri": doi,
     }
-    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -211,22 +205,18 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
-    dataset_import(
-        user, job_id, project_id, doi,
-    )
+    dataset_import(user, job_id, project_id, doi)
 
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
 
     with pytest.raises(DatasetExistsError):
-        dataset_import(
-            user, job_id, project_id, doi,
-        )
+        dataset_import(user, job_id, project_id, doi)
 
     new_commit2 = Repo(dest).head.commit
     assert new_commit.hexsha == new_commit2.hexsha
 
-    response = svc_client.get(f"/jobs/{job_id}", data=json.dumps(payload), headers=headers,)
+    response = svc_client.get(f"/jobs/{job_id}", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
     extras = response.json["result"]["extras"]
@@ -249,7 +239,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     user = {"user_id": user_id}
 
     payload = {"project_id": project_id, "name": uuid.uuid4().hex, "create_dataset": True, "files": [{"file_url": url}]}
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -351,7 +341,7 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_br
         delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
 
-@pytest.mark.parametrize("doi", ["10.5281/zenodo.3761586",])
+@pytest.mark.parametrize("doi", ["10.5281/zenodo.3761586"])
 @pytest.mark.integration
 @pytest.mark.service
 def test_dataset_project_lock(doi, svc_client_with_repo):
@@ -364,7 +354,7 @@ def test_dataset_project_lock(doi, svc_client_with_repo):
         "project_id": project_id,
         "dataset_uri": doi,
     }
-    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -627,7 +617,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"unlinked", "remote_branch",} == updated_job.ctrl_result["result"].keys()
+    assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
     assert ["data/data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
 
 
@@ -641,7 +631,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetUnlinkRequest().load(
-        {"git_url": it_remote_repo_url, "ref": branch, "name": "ds1", "include_filters": ["data1"],}
+        {"git_url": it_remote_repo_url, "ref": branch, "name": "ds1", "include_filters": ["data1"]}
     )
 
     _, _, cache = svc_client_cache
@@ -692,5 +682,5 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"unlinked", "remote_branch",} == updated_job.ctrl_result["result"].keys()
+    assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
     assert ["data/data/data1"] == updated_job.ctrl_result["result"]["unlinked"]

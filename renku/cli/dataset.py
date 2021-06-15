@@ -715,7 +715,7 @@ def export_(name, provider, publish, tag, **kwargs):
     try:
         communicator = ClickCallback()
         export_dataset().lock_dataset().with_communicator(communicator).build().execute(
-            name=name, provider_name=provider, publish=publish, tag=tag, **kwargs,
+            name=name, provider_name=provider, publish=publish, tag=tag, **kwargs
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, requests.HTTPError) as e:
         raise click.BadParameter(e)

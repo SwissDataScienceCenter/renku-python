@@ -87,7 +87,7 @@ def _migrate_datasets_pre_v0_3(client):
         dataset.to_yaml(new_path)
 
         Path(old_path).unlink()
-        ref = LinkReference.create(client=client, name="datasets/{0}".format(name), force=True,)
+        ref = LinkReference.create(client=client, name="datasets/{0}".format(name), force=True)
         ref.set_reference(new_path)
 
 
@@ -144,7 +144,7 @@ def _fix_labels_and_ids(client):
             if not Path(file_.path).exists():
                 continue
             _, commit, _ = client.resolve_in_submodules(
-                client.find_previous_commit(file_.path, revision="HEAD"), file_.path,
+                client.find_previous_commit(file_.path, revision="HEAD"), file_.path
             )
 
             if not _is_file_id_valid(file_._id, file_.path, commit.hexsha):
