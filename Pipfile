@@ -7,7 +7,7 @@ name = "pypi"
 renku = {editable = true, extras = ["all"], path = "."}
 
 [dev-packages]
-chartpress = "==1.0.4"
+chartpress = "==1.1.0"
 
 [requires]
 python_version = "3.7"

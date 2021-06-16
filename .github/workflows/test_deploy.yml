@@ -133,8 +133,10 @@ jobs:
     - name: Coveralls
       env:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: coveralls
+        COVERALLS_PARALLEL: true
+      run: coveralls --service=github-actions
       continue-on-error: true
 
   test-linux-cli:
@@ -173,12 +175,14 @@ jobs:
       env:
         LANG: en_US.UTF-8
         LC_ALL: en_US.UTF-8
-      run: pytest -v -m "not integration and not publish and serial"  tests/cli
+      run: pytest -v --cov-append -m "not integration and not publish and serial"  tests/cli
     - name: Coveralls
       env:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: coveralls
+        COVERALLS_PARALLEL: true
+      run: coveralls --service=github-actions
       continue-on-error: true
 
   test-linux-core:
@@ -217,12 +221,14 @@ jobs:
         env:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
-        run: pytest -v -m "not integration and not publish and serial" tests/core
+        run: pytest -v --cov-append -m "not integration and not publish and serial" tests/core
       - name: Coveralls
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: coveralls
+          COVERALLS_PARALLEL: true
+        run: coveralls --service=github-actions
         continue-on-error: true
 
   test-linux-service:
@@ -260,8 +266,10 @@ jobs:
       - name: Coveralls
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: coveralls
+          COVERALLS_PARALLEL: true
+        run: coveralls --service=github-actions
         continue-on-error: true
 
   test-macos-api:
@@ -445,7 +453,15 @@ jobs:
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -m "integration and serial" -v --timeout=600 -n auto
+      run: pytest --cov-append -m "integration and serial" -v --timeout=600 -n auto
+    - name: Coveralls
+      env:
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+        COVERALLS_PARALLEL: true
+      run: coveralls --service=github-actions
+      continue-on-error: true
 
   test-macos-integration:
     runs-on: macos-latest
@@ -583,3 +599,16 @@ jobs:
       env:
         CHART_NAME: renku-core
         GITHUB_TOKEN: ${{ secrets.RENKU_CI_TOKEN }}
+
+  coveralls-final:
+    name: Aggregate coveralls data
+    needs: [test-linux-cli, test-linux-core, test-linux-service, test-linux-api, test-linux-integration]
+    runs-on: ubuntu-latest
+    permissions:
+        contents: read
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.github_token }}
+        parallel-finished: true

@@ -165,7 +165,7 @@ class Range:
         elif not stop:
             stop = "HEAD"
 
-        return cls(start=git.rev_parse(start) if start else None, stop=git.rev_parse(stop),)
+        return cls(start=git.rev_parse(start) if start else None, stop=git.rev_parse(stop))
 
     def __str__(self):
         """Format range."""

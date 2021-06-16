@@ -109,7 +109,7 @@ def test_base_command_as_file_input(client):
     client.repo.index.commit("add file")
 
     argv = ["script.py", "input.csv"]
-    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path,).generate_process_run(
+    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
         client=client, commit=client.repo.head.commit, path="dummy.yaml"
     )
 
@@ -167,7 +167,7 @@ def test_05_stdout(client):
     client.repo.index.commit("add output")
 
     argv = ["echo", "Hello world!"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path, stdout="output.txt",)
+    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path, stdout="output.txt")
 
     assert "output.txt" == factory.stdout
     assert "stdout" == factory.outputs[0].type
@@ -187,7 +187,7 @@ def test_stdout_with_conflicting_arg(client):
     client.repo.index.commit("add lalala")
 
     argv = ["echo", "lalala"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path, stdout="lalala",)
+    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path, stdout="lalala")
 
     assert "lalala" == factory.inputs[0].default
     assert "string" == factory.inputs[0].type
@@ -208,7 +208,7 @@ def test_06_params(client):
     client.repo.index.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar", "goodbye.txt"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path,)
+    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path)
 
     assert "goodbye.txt" == factory.inputs[1].default
     assert "string" == factory.inputs[1].type
@@ -311,7 +311,7 @@ def test_input_directory(client):
     client.repo.index.commit("add file and folder")
 
     argv = ["tar", "czvf", "src.tar", "src"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path,)
+    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path)
 
     tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
 
@@ -335,7 +335,7 @@ def test_existing_output_directory(client, runner, project):
     output = client.path / "output"
 
     argv = ["script", "output"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path,)
+    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path)
 
     with factory.watch(client, no_output=True) as tool:
         # Script creates the directory.

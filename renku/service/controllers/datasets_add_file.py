@@ -112,7 +112,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
         if local_paths:
             add_to_dataset().with_commit_message(self.ctx["commit_message"]).build().execute(
-                urls=local_paths, name=self.ctx["name"], create=self.ctx["create_dataset"], force=self.ctx["force"],
+                urls=local_paths, name=self.ctx["name"], create=self.ctx["create_dataset"], force=self.ctx["force"]
             )
 
         return local_paths, enqueued_paths

@@ -104,7 +104,7 @@ def test_git_repo_import(client_with_datasets, data_repository):
     "creators",
     [
         [Person(name="me", email="me@example.com")],
-        [{"http://schema.org/name": "me", "http://schema.org/email": "me@example.com",}],
+        [{"http://schema.org/name": "me", "http://schema.org/email": "me@example.com"}],
     ],
 )
 def test_creator_parse(creators):

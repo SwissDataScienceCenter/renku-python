@@ -54,7 +54,7 @@ def test_auth_headers_exc(service_allowed_endpoint):
     else:
         client_method = methods.pop(method)
 
-    response = client_method(request["url"], headers=request["headers"],)
+    response = client_method(request["url"], headers=request["headers"])
 
     assert 200 == response.status_code
     assert response.json["error"]["code"] in [INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE]
@@ -73,7 +73,7 @@ def test_migration_required_flag(svc_client_setup):
         "name": uuid.uuid4().hex,
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert response.json["error"]["migration_required"]
 
@@ -85,7 +85,7 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
     """Check migration required failure."""
     payload = {"git_url": it_non_renku_repo_url}
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert "result" in response.json
@@ -101,7 +101,7 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
         "name": uuid.uuid4().hex,
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert "error" in response.json
@@ -116,7 +116,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
     """Check migration required failure."""
     payload = {"git_url": it_no_commit_repo_url}
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert "result" in response.json
@@ -132,7 +132,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
         "name": uuid.uuid4().hex,
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert "error" in response.json

@@ -50,7 +50,7 @@ class CommandLineToolFactory(object):
 
     _RE_SUBCOMMAND = re.compile(r"^[A-Za-z]+(-[A-Za-z]+)?$")
 
-    command_line = attr.ib(converter=lambda cmd: list(cmd) if isinstance(cmd, (list, tuple)) else shlex.split(cmd),)
+    command_line = attr.ib(converter=lambda cmd: list(cmd) if isinstance(cmd, (list, tuple)) else shlex.split(cmd))
 
     explicit_inputs = attr.ib(factory=list, converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
     explicit_outputs = attr.ib(factory=list, converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
@@ -58,8 +58,8 @@ class CommandLineToolFactory(object):
     no_input_detection = attr.ib(default=False)
     no_output_detection = attr.ib(default=False)
 
-    directory = attr.ib(default=".", converter=lambda path: Path(path).resolve(),)
-    working_dir = attr.ib(default=".", converter=lambda path: Path(path).resolve(),)
+    directory = attr.ib(default=".", converter=lambda path: Path(path).resolve())
+    working_dir = attr.ib(default=".", converter=lambda path: Path(path).resolve())
 
     stdin = attr.ib(default=None)  # null, str, Expression
     stderr = attr.ib(default=None)  # null, str, Expression
@@ -92,14 +92,14 @@ class CommandLineToolFactory(object):
         if self.stdin:
             input_ = next(self.guess_inputs(str(self.working_dir / self.stdin)))
             assert input_.type == "File"
-            input_ = attr.evolve(input_, id="input_stdin", inputBinding=None,)  # do not include in tool arguments
+            input_ = attr.evolve(input_, id="input_stdin", inputBinding=None)  # do not include in tool arguments
             self.inputs.append(input_)
             self.stdin = "$(inputs.{0}.path)".format(input_.id)
 
         for stream_name in ("stdout", "stderr"):
             stream = getattr(self, stream_name)
             if stream and self.is_existing_path(self.working_dir / stream):
-                self.outputs.append(CommandOutputParameter(id="output_{0}".format(stream_name), type=stream_name,))
+                self.outputs.append(CommandOutputParameter(id="output_{0}".format(stream_name), type=stream_name))
 
         for input_ in self.guess_inputs(*detect):
             if isinstance(input_, CommandLineBinding):
@@ -230,9 +230,7 @@ class CommandLineToolFactory(object):
 
                 committer = Actor("renku {0}".format(__version__), version_url)
 
-                repo.index.commit(
-                    commit_msg, committer=committer, skip_hooks=True,
-                )
+                repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
 
                 self._had_changes = True
 
@@ -328,9 +326,7 @@ class CommandLineToolFactory(object):
             if prefix:
                 if argument.startswith("-"):
                     position += 1
-                    yield CommandLineBinding(
-                        position=position, valueFrom=prefix,
-                    )
+                    yield CommandLineBinding(position=position, valueFrom=prefix)
                     prefix = None
 
             if argument.startswith("--"):
@@ -346,7 +342,7 @@ class CommandLineToolFactory(object):
                         type=type,
                         default=default,
                         inputBinding=dict(
-                            position=position, itemSeparator=itemSeparator, prefix=prefix, separate=False,
+                            position=position, itemSeparator=itemSeparator, prefix=prefix, separate=False
                         ),
                     )
                     prefix = None
@@ -390,15 +386,13 @@ class CommandLineToolFactory(object):
                     id="input_{0}".format(position),
                     type=type,
                     default=default,
-                    inputBinding=dict(position=position, itemSeparator=itemSeparator, prefix=prefix,),
+                    inputBinding=dict(position=position, itemSeparator=itemSeparator, prefix=prefix),
                 )
                 prefix = None
 
         if prefix:
             position += 1
-            yield CommandLineBinding(
-                position=position, valueFrom=prefix,
-            )
+            yield CommandLineBinding(position=position, valueFrom=prefix)
 
     def guess_outputs(self, candidates):
         """Yield detected output and changed command input parameter."""
@@ -497,7 +491,7 @@ class CommandLineToolFactory(object):
                     CommandOutputParameter(
                         id="output_{0}".format(position),
                         type=candidate_type,
-                        outputBinding=dict(glob="$(inputs.{0})".format(input.id),),
+                        outputBinding=dict(glob="$(inputs.{0})".format(input.id)),
                     ),
                     new_input,
                     glob,
@@ -505,7 +499,7 @@ class CommandLineToolFactory(object):
             else:
                 yield (
                     CommandOutputParameter(
-                        id="output_{0}".format(position), type=candidate_type, outputBinding=dict(glob=glob,),
+                        id="output_{0}".format(position), type=candidate_type, outputBinding=dict(glob=glob)
                     ),
                     None,
                     glob,

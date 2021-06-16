@@ -26,9 +26,7 @@ GRAPH_BLUEPRINT_TAG = "graph"
 graph_blueprint = Blueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@graph_blueprint.route(
-    "/graph.build", methods=["POST"], provide_automatic_options=False,
-)
+@graph_blueprint.route("/graph.build", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @optional_identity

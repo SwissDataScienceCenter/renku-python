@@ -93,7 +93,6 @@ def test_remote_project_context():
 
     with ctrl.remote() as project_path:
         assert project_path
-
         result = migrations_check().build().execute().output
         assert result["core_renku_version"] == renku.__version__
         assert result["project_renku_version"] == "pre-0.11.0"

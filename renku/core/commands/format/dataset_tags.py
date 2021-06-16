@@ -31,7 +31,7 @@ def tabular(client, tags):
     return tabulate(
         tags,
         headers=OrderedDict(
-            (("created", None), ("name", None), ("description", None), ("dataset", None), ("commit", None),)
+            (("created", None), ("name", None), ("description", None), ("dataset", None), ("commit", None))
         ),
         # workaround for tabulate issue 181
         # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input

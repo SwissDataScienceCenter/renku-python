@@ -62,13 +62,11 @@ def run(runner, capsys):
     from renku.cli import cli
     from renku.core.utils.contexts import Isolation
 
-    def generate(args=("update", "--all",), cwd=None, **streams):
+    def generate(args=("update", "--all"), cwd=None, **streams):
         """Generate an output."""
         with capsys.disabled(), Isolation(cwd=cwd, **streams):
             try:
-                cli.main(
-                    args=args, prog_name=runner.get_default_prog_name(cli),
-                )
+                cli.main(args=args, prog_name=runner.get_default_prog_name(cli))
                 return 0
             except SystemExit as e:
                 return 0 if e.code is None else e.code

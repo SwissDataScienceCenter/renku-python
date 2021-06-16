@@ -18,6 +18,7 @@
 """Project initialization logic."""
 
 import json
+import re
 import tempfile
 from collections import OrderedDict, namedtuple
 from pathlib import Path
@@ -37,7 +38,7 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
-from renku.version import __version__ as renku_version
+from renku.version import __version__, is_release
 
 TEMPLATE_MANIFEST = "manifest.yaml"
 
@@ -75,7 +76,7 @@ def create_template_sentence(templates, describe=False, instructions=False):
         for index, template_elem in enumerate(templates)
     ]
 
-    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters"),))
+    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters")))
 
     if describe:
         table_headers["description"] = "Description"
@@ -159,14 +160,16 @@ def verify_template_variables(template_data, metadata):
             show_default=False,
         )
         metadata[key] = value
-    useless_variables = input_parameters_keys - template_variables_keys
-    if len(useless_variables) > 0:
+
+    # ignore internal variables, i.e. __\w__
+    internal_keys = re.compile(r"__\w+__$")
+    input_parameters_keys = set([i for i in input_parameters_keys if not internal_keys.match(i)])
+    unused_variables = input_parameters_keys - template_variables_keys
+    if len(unused_variables) > 0:
         communication.info(
             "These parameters are not used by the template and were "
-            "ignored:\n\t{}".format("\n\t".join(useless_variables))
+            "ignored:\n\t{}".format("\n\t".join(unused_variables))
         )
-        for key in useless_variables:
-            del metadata[key]
 
     return metadata
 
@@ -271,8 +274,8 @@ def _init(
     metadata["__sanitized_project_name__"] = ""
     metadata["__repository__"] = ""
     metadata["__project_slug__"] = ""
-    if "__renku_version__" not in metadata:
-        metadata["__renku_version__"] = renku_version
+    if is_release() and "__renku_version__" not in metadata:
+        metadata["__renku_version__"] = __version__
     metadata["name"] = name
 
     template_path = template_folder / template_data["folder"]
@@ -295,9 +298,7 @@ def _init(
             append_paths = "\n\t".join(append)
             message += f"The following files exist in the directory and will be appended to:\n\t{append_paths}\n"
 
-        communication.confirm(
-            f"{message}Proceed?", abort=True, warning=True,
-        )
+        communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 
     branch_name = create_backup_branch(client, path)
 

@@ -20,6 +20,7 @@ import pytest
 from marshmallow import ValidationError
 
 from renku.core.utils.scm import normalize_to_ascii
+from renku.version import is_release
 
 
 def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, mocker):
@@ -77,8 +78,9 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "__repository__",
         "__sanitized_project_name__",
         "__project_slug__",
-        "__renku_version__",
     }
+    if is_release():
+        expected_metadata.add("__renku_version__")
     assert expected_metadata == set(received_metadata.keys())
     assert payload["url"] == received_metadata["__template_source__"]
     assert payload["ref"] == received_metadata["__template_ref__"]

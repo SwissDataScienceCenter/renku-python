@@ -37,9 +37,7 @@ CACHE_BLUEPRINT_TAG = "cache"
 cache_blueprint = Blueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@cache_blueprint.route(
-    "/cache.files_list", methods=["GET"], provide_automatic_options=False,
-)
+@cache_blueprint.route("/cache.files_list", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -62,9 +60,7 @@ def list_uploaded_files_view(user_data, cache):
     return ListUploadedFilesCtrl(cache, user_data).to_response()
 
 
-@cache_blueprint.route(
-    "/cache.files_upload", methods=["POST"], provide_automatic_options=False,
-)
+@cache_blueprint.route("/cache.files_upload", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -99,9 +95,7 @@ def upload_file_view(user_data, cache):
     return UploadFilesCtrl(cache, user_data, request).to_response()
 
 
-@cache_blueprint.route(
-    "/cache.project_clone", methods=["POST"], provide_automatic_options=False,
-)
+@cache_blueprint.route("/cache.project_clone", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -130,9 +124,7 @@ def project_clone_view(user_data, cache):
     return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@cache_blueprint.route(
-    "/cache.project_list", methods=["GET"], provide_automatic_options=False,
-)
+@cache_blueprint.route("/cache.project_list", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -155,9 +147,7 @@ def list_projects_view(user_data, cache):
     return ListProjectsCtrl(cache, user_data).to_response()
 
 
-@cache_blueprint.route(
-    "/cache.migrate", methods=["POST"], provide_automatic_options=False,
-)
+@cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @handle_migration_except
 @accepts_json
@@ -186,9 +176,7 @@ def migrate_project_view(user_data, cache):
     return MigrateProjectCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@cache_blueprint.route(
-    "/cache.migrations_check", methods=["GET"], provide_automatic_options=False,
-)
+@cache_blueprint.route("/cache.migrations_check", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @requires_cache
 @requires_identity
