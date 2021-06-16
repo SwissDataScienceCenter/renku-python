@@ -532,12 +532,6 @@ class RepositoryApiMixin(GitCore):
         for activity in activity_collection.activities:
             database.add(activity)
             database.add(activity.association.plan)
-            for u in activity.usages:
-                database.add(u.entity)
-            for g in activity.generations:
-                database.add(g.entity)
-            for i in activity.invalidations:
-                database.add(i)
 
         database.commit()
         dependency_graph.to_json()
@@ -557,14 +551,11 @@ class RepositoryApiMixin(GitCore):
 
         database = self.database
 
-
-        from renku.core.models.entity import Entity
         from renku.core.models.provenance.activity import Activity
         from renku.core.models.workflow.plan import Plan
 
-        database.add_index(name="activities", model=Activity, attribute="id")
-        database.add_index(name="plans", model=Plan, attribute="id")
-        database.add_index(name="entities", model=Entity, attribute="id")
+        database.add_index(name="activities", value_type=Activity, attribute="id")
+        database.add_index(name="plans", value_type=Plan, attribute="id")
 
         # # NOTE: Access dataset's root to make sure that it is created in case there are no commits
         # _ = self.database.root

@@ -21,12 +21,11 @@ from pathlib import Path
 from typing import List, Union
 from urllib.parse import quote
 
-from renku.core.incubation.database import Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, wfprov
 from renku.core.utils.git import get_object_hash
 
 
-class Entity(Persistent):
+class Entity:
     """Represent a file."""
 
     def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str]):

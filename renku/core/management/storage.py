@@ -534,7 +534,7 @@ class StorageApiMixin(RepositoryApiMixin):
         def _map_checksum(entity, checksum_mapping):
             """Update the checksum and id of an entity based on a mapping."""
             if entity.checksum not in checksum_mapping:
-                return
+                return False
 
             new_checksum = checksum_mapping[entity.checksum]
 
@@ -544,6 +544,8 @@ class StorageApiMixin(RepositoryApiMixin):
             if isinstance(entity, Collection) and entity.members:
                 for member in entity.members:
                     _map_checksum(member, checksum_mapping)
+
+            return True
 
         def _map_checksum_old(entity, checksum_mapping):
             """Update the checksum and id of an entity based on a mapping."""
@@ -566,32 +568,25 @@ class StorageApiMixin(RepositoryApiMixin):
         provenance_graph = self.provenance_graph
 
         for activity in provenance_graph.activities:
+            changed = False
             if activity.generations:
                 for generation in activity.generations:
                     entity = generation.entity
-                    _map_checksum(entity, sha_mapping)
+                    changed |= _map_checksum(entity, sha_mapping)
 
             if activity.usages:
                 for usage in activity.usages:
                     entity = usage.entity
-                    _map_checksum(entity, sha_mapping)
+                    changed |= _map_checksum(entity, sha_mapping)
 
             if activity.invalidations:
                 for entity in activity.invalidations:
-                    _map_checksum(entity, sha_mapping)
+                    changed |= _map_checksum(entity, sha_mapping)
 
-        database = self.database
+            if changed:
+                activity._p_changed = True
 
-        for activity in provenance_graph.activities:
-            database.replace(activity)
-            for u in activity.usages:
-                database.replace(u.entity)
-            for g in activity.generations:
-                database.replace(g.entity)
-            for i in activity.invalidations:
-                database.replace(i)
-
-        database.commit()
+        self.database.commit()
 
         # NOTE: Update datasets provenance
         datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)

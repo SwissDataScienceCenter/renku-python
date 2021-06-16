@@ -130,7 +130,7 @@ def test_lfs_migrate(runner, project, client):
 
     assert previous_head != client.repo.head.commit.hexsha
     changed_files = client.repo.head.commit.stats.files.keys()
-    assert ".renku/metadata/entity" in changed_files
+    assert ".renku/metadata/activities" not in changed_files
 
     assert dataset_checksum not in (client.path / ".renku" / "dataset.json").read_text()
 

@@ -74,9 +74,6 @@ class Plan(Persistent):
         if not self.name:
             self.name = self._get_default_name()
 
-    def __repr__(self):
-        return self.name
-
     @classmethod
     def from_run(cls, run: Run):
         """Create a Plan from a Run."""

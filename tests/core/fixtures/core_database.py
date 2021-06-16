@@ -60,7 +60,13 @@ class DummyStorage:
 @pytest.fixture
 def database():
     """A Database with in-memory storage."""
+    from renku.core.models.provenance.activity import Activity
+    from renku.core.models.workflow.plan import Plan
+
     storage = DummyStorage()
     database = Database(storage=storage)
+
+    database.add_index(name="activities", value_type=Activity, attribute="id")
+    database.add_index(name="plans", value_type=Plan, attribute="id")
 
     yield database, storage
