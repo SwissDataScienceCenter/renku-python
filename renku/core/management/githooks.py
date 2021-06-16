@@ -30,7 +30,7 @@ HOOKS = ("pre-commit",)
 
 
 @inject.autoparams()
-def install(client: LocalClient, force):
+def install(force, client: LocalClient):
     """Install Git hooks."""
     warning_messages = []
     for hook in HOOKS:

@@ -30,7 +30,7 @@ def get_status():
 
 
 @inject.autoparams()
-def _get_status(client: LocalClient, revision, no_output, path):
+def _get_status(revision, no_output, path, client: LocalClient):
     graph = Graph()
     # TODO filter only paths = {graph.normalize_path(p) for p in path}
     status = graph.build_status(revision=revision, can_be_cwl=no_output)

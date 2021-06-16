@@ -24,14 +24,11 @@ from pathlib import Path
 
 import pyld
 
-from renku.core.management import LocalClient
-from renku.core.management.command_builder.command import inject
 from renku.core.models.jsonld import read_yaml, write_yaml
 from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
 
 
-@inject.autoparams()
-def migrate(client: LocalClient):
+def migrate(client):
     """Migration function."""
     _migrate_project_metadata(client)
     _migrate_datasets_metadata(client)

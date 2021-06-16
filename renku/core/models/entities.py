@@ -39,7 +39,7 @@ class CommitMixin:
     """Represent a commit mixin."""
 
     commit = attr.ib(default=None, kw_only=True)
-    client = attr.ib(default=lambda: inject.attr("LocalClient"), kw_only=True)
+    client = attr.ib(default=None, kw_only=True)
     path = attr.ib(default=None, kw_only=True, converter=_str_or_none)
 
     _id = attr.ib(default=None, kw_only=True)

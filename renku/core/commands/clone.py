@@ -25,8 +25,8 @@ from renku.core.management.command_builder.command import Command
 
 @inject.autoparams()
 def _project_clone(
-    client: LocalClient,
     url,
+    client: LocalClient,
     path=None,
     install_githooks=True,
     skip_smudge=True,

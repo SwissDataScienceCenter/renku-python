@@ -199,7 +199,7 @@ class RenkuProvider(ProviderApi):
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
 
     @inject.autoparams()
-    def _read_renku_token(self, client: LocalClient, uri):
+    def _read_renku_token(self, uri, client: LocalClient):
         """Read renku token from renku config file."""
         try:
             parsed_endpoint = parse_authentication_endpoint(endpoint=uri, use_remote=True)
@@ -266,7 +266,7 @@ class _RenkuRecordSerializer:
         full_path = remote_client.path / path
         return os.path.getsize(full_path)
 
-    def as_dataset(self):
+    def as_dataset(self, client):
         """Return encapsulated dataset instance."""
         self._fetch_dataset(gitlab_token=self._gitlab_token)
         return self._dataset

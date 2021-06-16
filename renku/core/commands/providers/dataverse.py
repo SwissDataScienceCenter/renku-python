@@ -298,10 +298,10 @@ class DataverseRecordSerializer:
 
         return [DataverseFileSerializer(**file_) for file_ in self.files]
 
-    def as_dataset(self):
+    def as_dataset(self, client):
         """Deserialize `DataverseRecordSerializer` to `Dataset`."""
         files = self.get_files()
-        dataset = Dataset.from_jsonld(self._json, schema_class=_DataverseDatasetSchema)
+        dataset = Dataset.from_jsonld(self._json, client=client, schema_class=_DataverseDatasetSchema)
 
         dataset.version = self.version
 

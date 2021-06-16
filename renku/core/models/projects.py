@@ -24,7 +24,6 @@ import attr
 from marshmallow import EXCLUDE
 from marshmallow.decorators import pre_dump
 
-from renku.core.management.command_builder.command import inject
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, prov, renku, schema
@@ -61,7 +60,7 @@ class Project:
 
     automated_update = attr.ib(converter=bool, default=False)
 
-    client = inject.attr("LocalClient")
+    client = attr.ib(default=None)
 
     creator = attr.ib(default=None, kw_only=True)
 
@@ -102,7 +101,6 @@ class Project:
         return generate_project_id(client=self.client, name=self.name, creator=self.creator)
 
     @classmethod
-    @inject.params(client="LocalClient")
     def from_yaml(cls, path, client=None):
         """Return an instance from a YAML file."""
         data = jsonld.read_yaml(path)
@@ -112,7 +110,6 @@ class Project:
         return self
 
     @classmethod
-    @inject.params(client="LocalClient")
     def from_jsonld(cls, data, client=None):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):

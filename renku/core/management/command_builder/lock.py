@@ -25,11 +25,11 @@ class ProjectLock(Command):
 
     DEFAULT_ORDER = 5
 
-    def __init__(self, builder):
+    def __init__(self, builder: Command) -> None:
         """__init__ of ProjectLock."""
         self._builder = builder
 
-    def _pre_hook(self, builder, context, *args, **kwargs):
+    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Lock the project."""
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
@@ -39,7 +39,7 @@ class ProjectLock(Command):
         context["stack"].enter_context(context["client"].lock)
 
     @check_finalized
-    def build(self):
+    def build(self) -> Command:
         """Build the command."""
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 
@@ -51,11 +51,11 @@ class DatasetLock(Command):
 
     DEFAULT_ORDER = 5
 
-    def __init__(self, builder):
+    def __init__(self, builder: Command) -> None:
         """__init__ of DatasetLock."""
         self._builder = builder
 
-    def _pre_hook(self, builder, context, *args, **kwargs):
+    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
         if "stack" not in context:
@@ -64,7 +64,7 @@ class DatasetLock(Command):
         context["stack"].enter_context(context["client"].lock)
 
     @check_finalized
-    def build(self):
+    def build(self) -> Command:
         """Build the command."""
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 

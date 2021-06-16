@@ -31,7 +31,7 @@ from renku.core.management.command_builder import inject
 class LinkReference:
     """Manage linked object names."""
 
-    client = inject.attr("LocalClient")
+    client = attr.ib(default=None, kw_only=True)
     name = attr.ib()
 
     REFS = "refs"

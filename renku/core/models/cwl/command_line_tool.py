@@ -30,7 +30,6 @@ import yaml
 from git import Actor
 
 from renku.core import errors
-from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import inject
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
@@ -146,8 +145,8 @@ class CommandLineToolFactory(object):
                 yield input_.id, os.path.normpath(os.path.join(basedir, str(input_.default.path)))
 
     @contextmanager
-    @inject.autoparams()
-    def watch(self, client: LocalClient, no_output=False):
+    @inject.params(client="LocalClient")
+    def watch(self, client, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
         client.check_external_storage()
 

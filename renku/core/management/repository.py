@@ -539,7 +539,7 @@ class RepositoryApiMixin(GitCore):
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""
-        return self.database_path.exists()
+        return self.database_path.exists() and any(self.database_path.iterdir())
 
     def initialize_graph(self):
         """Create empty graph files."""

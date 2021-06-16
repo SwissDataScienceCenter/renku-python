@@ -368,7 +368,6 @@ class Activity(CommitMixin):
                 g._activity = weakref.ref(self)
 
     @classmethod
-    @inject.params(client="LocalClient")
     def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
         data = jsonld.read_yaml(path)
@@ -385,7 +384,6 @@ class Activity(CommitMixin):
         jsonld.write_yaml(path=self._metadata_path, data=data)
 
     @classmethod
-    @inject.params(client="LocalClient")
     def from_jsonld(cls, data, client=None, commit=None):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):

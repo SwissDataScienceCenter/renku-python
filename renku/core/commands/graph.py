@@ -59,7 +59,7 @@ def _safe_path(filepath, can_be_cwl=False):
 class Graph(object):
     """Represent the provenance graph."""
 
-    client = inject.attr(LocalClient)
+    client = attr.ib(default=attr.Factory(lambda: inject.instance(LocalClient)))
     activities = attr.ib(default=attr.Factory(dict))
     generated = attr.ib(default=attr.Factory(dict))
 
@@ -521,7 +521,7 @@ class Graph(object):
         return run
 
 
-@inject.autoparams()
+@inject.autoparams("client")
 def _build_graph(client: LocalClient, revision="HEAD", no_output=False, paths=()):
     """Build graph structure."""
     graph = Graph(client)

@@ -65,7 +65,7 @@ def get_host(client):
 
 
 @inject.params(client="LocalClient")
-def parse_authentication_endpoint(client, endpoint, use_remote=False):
+def parse_authentication_endpoint(endpoint, client, use_remote=False):
     """Return a parsed url.
 
     If an endpoint is provided then use it, otherwise, look for a configured endpoint. If no configured endpoint exists

@@ -78,7 +78,7 @@ def get_inputs():
 
 
 @inject.autoparams()
-def _get_inputs(client: LocalClient, revision, paths):
+def _get_inputs(revision, paths, client: LocalClient):
     graph = Graph()
     paths = set(paths)
     nodes = graph.build(revision=revision)

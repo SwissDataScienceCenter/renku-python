@@ -63,7 +63,7 @@ def show_inputs(workflow):
 
 
 @inject.autoparams()
-def edit_inputs(client: LocalClient, workflow):
+def edit_inputs(workflow, client: LocalClient):
     """Edit workflow inputs."""
     for input_ in workflow.inputs:
         new_path = click.prompt("{0._id}".format(input_), default=input_.consumes.path)
@@ -98,7 +98,7 @@ def edit_inputs(client: LocalClient, workflow):
     "--default-inputs",
     "inputs",
     default=True,
-    flag_value=lambda _, workflow: workflow,
+    flag_value=lambda workflow: workflow,
     help="Use default inputs.",
     type=click.types.UnprocessedParamType(),
 )

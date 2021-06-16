@@ -60,11 +60,12 @@ def list_workflows_command():
     return Command().command(_list_workflows).require_migration()
 
 
-def _set_workflow_name(name, path, force):
+@inject.autoparams()
+def _set_workflow_name(name, path, force, client: LocalClient):
     """Sets the <name> for remote <path>."""
     from renku.core.models.refs import LinkReference
 
-    LinkReference.create(name=_ref(name), force=force).set_reference(path)
+    LinkReference.create(client=client, name=_ref(name), force=force).set_reference(path)
 
 
 def set_workflow_name_command():
@@ -72,11 +73,12 @@ def set_workflow_name_command():
     return Command().command(_set_workflow_name).require_clean().with_commit()
 
 
-def _rename_workflow(old, new, force):
+@inject.autoparams()
+def _rename_workflow(old, new, force, client: LocalClient):
     """Rename the workflow named <old> to <new>."""
     from renku.core.models.refs import LinkReference
 
-    LinkReference(name=_ref(old)).rename(_ref(new), force=force)
+    LinkReference(client=client, name=_ref(old)).rename(_ref(new), force=force)
 
 
 def rename_workflow_command():
@@ -84,11 +86,12 @@ def rename_workflow_command():
     return Command().command(_rename_workflow).require_clean().with_commit()
 
 
-def _remove_workflow(name):
+@inject.autoparams()
+def _remove_workflow(name, client: LocalClient):
     """Remove the remote named <name>."""
     from renku.core.models.refs import LinkReference
 
-    LinkReference(name=_ref(name)).delete()
+    LinkReference(client=client, name=_ref(name)).delete()
 
 
 def remove_workflow_command():
@@ -97,7 +100,7 @@ def remove_workflow_command():
 
 
 @inject.autoparams()
-def _create_workflow(client: LocalClient, output_file, revision, paths):
+def _create_workflow(output_file, revision, paths, client: LocalClient):
     """Create a workflow description for a file."""
     graph = Graph()
     outputs = graph.build(paths=paths, revision=revision)

@@ -24,15 +24,14 @@ from git import GitError, Repo
 
 from renku.core import errors
 from renku.core.management import LocalClient
-from renku.core.management.command_builder.command import inject, replace_injected_client
+from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.management.migrations.models.v3 import DatasetFileSchemaV3, get_client_datasets
 from renku.core.models.datasets import DatasetFile, DatasetFileSchema
 from renku.core.models.entities import generate_file_id, generate_label
 from renku.core.utils.urls import remove_credentials
 
 
-@inject.autoparams()
-def migrate(client: LocalClient):
+def migrate(client):
     """Migration function."""
     _migrate_submodule_based_datasets(client)
 
@@ -47,7 +46,7 @@ def _migrate_submodule_based_datasets(client):
     repo_paths = []
     symlinks = []
 
-    for dataset in get_client_datasets():
+    for dataset in get_client_datasets(client):
         for file_ in dataset.files:
             path = client.path / file_.path
             if not path.is_symlink():

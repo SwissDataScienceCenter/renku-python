@@ -40,7 +40,7 @@ def check_lfs_command():
 
 
 @inject.autoparams()
-def _fix_lfs(client: LocalClient, paths):
+def _fix_lfs(paths, client: LocalClient):
     """Migrate large files into lfs."""
     client.migrate_files_to_lfs(paths)
 
@@ -51,7 +51,7 @@ def fix_lfs_command():
 
 
 @inject.autoparams()
-def _pull(client: LocalClient, paths):
+def _pull(paths, client: LocalClient):
     """Pull the specified paths from external storage."""
     client.pull_paths_from_storage(*paths)
 
@@ -62,7 +62,7 @@ def pull_command():
 
 
 @inject.autoparams()
-def _clean(client: LocalClient, paths):
+def _clean(paths, client: LocalClient):
     """Remove files from lfs cache/turn them back into pointer files."""
     untracked_paths, local_only_paths = client.clean_storage_cache(*paths)
 
@@ -85,7 +85,7 @@ def clean_command():
 
 
 @inject.autoparams()
-def _check_lfs_hook(client: LocalClient, paths):
+def _check_lfs_hook(paths, client: LocalClient):
     """Pull the specified paths from external storage."""
     return client.check_requires_tracking(*paths)
 

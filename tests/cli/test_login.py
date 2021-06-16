@@ -19,6 +19,7 @@
 
 from renku.cli import cli
 from renku.core.commands.login import read_renku_token
+from renku.core.management.command_builder.command import replace_injected_client
 from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT, USER_CODE
 
 
@@ -27,7 +28,9 @@ def test_login(runner, client, mock_login):
     result = runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE)
 
     assert 0 == result.exit_code
-    assert ACCESS_TOKEN == read_renku_token(client, ENDPOINT)
+
+    with replace_injected_client(client):
+        assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
 
 
 def test_login_no_endpoint(runner, client, mock_login):
@@ -81,7 +84,9 @@ def test_logout(runner, client, mock_login):
     result = runner.invoke(cli, ["logout"])
 
     assert 0 == result.exit_code
-    assert read_renku_token(client, ENDPOINT) is None
+
+    with replace_injected_client(client):
+        assert read_renku_token(ENDPOINT) is None
     assert "Successfully logged out." in result.output
 
 
@@ -90,7 +95,9 @@ def test_repeated_login(runner, client, mock_login):
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
-    assert ACCESS_TOKEN == read_renku_token(client, ENDPOINT)
+
+    with replace_injected_client(client):
+        assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
 
 
 def test_repeated_logout(runner, client, mock_login):
@@ -100,7 +107,9 @@ def test_repeated_logout(runner, client, mock_login):
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
-    assert read_renku_token(client, ENDPOINT) is None
+
+    with replace_injected_client(client):
+        assert read_renku_token(ENDPOINT) is None
 
 
 def test_login_to_multiple_endpoints(runner, client, mock_login):
@@ -111,8 +120,9 @@ def test_login_to_multiple_endpoints(runner, client, mock_login):
 
     assert 0 == runner.invoke(cli, ["login", second_endpoint], input=USER_CODE).exit_code
 
-    assert ACCESS_TOKEN == read_renku_token(client, ENDPOINT)
-    assert second_token == read_renku_token(client, second_endpoint)
+    with replace_injected_client(client):
+        assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
+        assert second_token == read_renku_token(second_endpoint)
 
 
 def test_logout_all(runner, client, mock_login):
@@ -124,8 +134,9 @@ def test_logout_all(runner, client, mock_login):
 
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
-    assert read_renku_token(client, ENDPOINT) is None
-    assert read_renku_token(client, second_endpoint) is None
+    with replace_injected_client(client):
+        assert read_renku_token(ENDPOINT) is None
+        assert read_renku_token(second_endpoint) is None
 
 
 def test_logout_one_endpoint(runner, client, mock_login):
@@ -137,8 +148,9 @@ def test_logout_one_endpoint(runner, client, mock_login):
 
     assert 0 == runner.invoke(cli, ["logout", ENDPOINT]).exit_code
 
-    assert read_renku_token(client, ENDPOINT) is None
-    assert second_token == read_renku_token(client, second_endpoint)
+    with replace_injected_client(client):
+        assert read_renku_token(ENDPOINT) is None
+        assert second_token == read_renku_token(second_endpoint)
 
 
 def test_logout_non_existing_endpoint(runner, client, mock_login):
@@ -147,4 +159,5 @@ def test_logout_non_existing_endpoint(runner, client, mock_login):
 
     assert 0 == runner.invoke(cli, ["logout", "non.existing"]).exit_code
 
-    assert read_renku_token(client, ENDPOINT) is not None
+    with replace_injected_client(client):
+        assert read_renku_token(ENDPOINT) is not None

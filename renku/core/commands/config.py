@@ -52,7 +52,7 @@ def update_multiple_config():
 
 
 @inject.autoparams()
-def _update_config(client: LocalClient, key, *, value=None, remove=False, global_only=False, commit_message=None):
+def _update_config(key, client: LocalClient, *, value=None, remove=False, global_only=False, commit_message=None):
     """Add, update, or remove configuration values."""
     section, section_key = _split_section_and_key(key)
     if remove:
@@ -75,7 +75,7 @@ def update_config():
 
 
 @inject.autoparams()
-def _read_config(client: LocalClient, key, config_filter=ConfigFilter.ALL, as_string=True):
+def _read_config(key, client: LocalClient, config_filter=ConfigFilter.ALL, as_string=True):
     """Read configuration."""
     if key:
         section, section_key = _split_section_and_key(key)

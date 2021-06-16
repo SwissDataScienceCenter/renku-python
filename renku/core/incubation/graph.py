@@ -83,7 +83,7 @@ def _generate_graph(client: LocalClient, database: Database, force=False):
                 communication.warn(f"Workflow file does not exists: '{path}'")
                 continue
 
-            workflow = Activity.from_yaml(path=path)
+            workflow = Activity.from_yaml(path=path, client=client)
             client.update_graphs(workflow)
 
     def process_datasets(commit):
@@ -129,7 +129,6 @@ def _generate_graph(client: LocalClient, database: Database, force=False):
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
     client.datasets_provenance.to_json()
-    breakpoint()
     database.commit()
 
 
@@ -182,7 +181,7 @@ def update():
 
 
 @inject.autoparams()
-def _update(client: LocalClient, dry_run):
+def _update(dry_run, client: LocalClient):
     """Update outdated outputs."""
     with measure("BUILD AND QUERY GRAPH"):
         pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
@@ -225,7 +224,7 @@ def export_graph():
 
 
 @inject.autoparams()
-def _export_graph(client: LocalClient, format, workflows_only, strict):
+def _export_graph(format, workflows_only, strict, client: LocalClient):
     """Output graph in specific format."""
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
@@ -250,7 +249,7 @@ def _export_graph(client: LocalClient, format, workflows_only, strict):
 
 
 @inject.autoparams()
-def _get_modified_paths(client: LocalClient, plans_usages):
+def _get_modified_paths(plans_usages, client: LocalClient):
     """Get modified and deleted usages/inputs of a plan."""
     modified = set()
     deleted = set()
@@ -268,7 +267,7 @@ def _get_modified_paths(client: LocalClient, plans_usages):
 
 
 @inject.autoparams()
-def _fetch_datasets(client: LocalClient, revision, paths, deleted_paths):
+def _fetch_datasets(revision, paths, deleted_paths, client: LocalClient):
     from renku.core.models.datasets import Dataset
 
     datasets_path = client.path / ".renku" / "tmp" / "datasets"
@@ -322,7 +321,7 @@ def _fetch_datasets(client: LocalClient, revision, paths, deleted_paths):
 
     datasets = []
     for path in paths:
-        dataset = Dataset.from_yaml(path)
+        dataset = Dataset.from_yaml(path, client)
         # NOTE: Fixing dataset path after migration
         original_identifier = Path(dataset.path).name
         dataset.path = f".renku/datasets/{original_identifier}"
@@ -330,7 +329,7 @@ def _fetch_datasets(client: LocalClient, revision, paths, deleted_paths):
 
     deleted_datasets = []
     for path in deleted_paths:
-        dataset = Dataset.from_yaml(path)
+        dataset = Dataset.from_yaml(path, client)
         # NOTE: Fixing dataset path after migration
         original_identifier = Path(dataset.path).name
         dataset.path = f".renku/datasets/{original_identifier}"
@@ -396,7 +395,7 @@ def create_dataset():
 
 
 @inject.autoparams()
-def _create_dataset(client: LocalClient, name, title=None, description="", creators=None, keywords=None):
+def _create_dataset(name, client: LocalClient, title=None, description="", creators=None, keywords=None):
     """Create a dataset in the repository."""
     if not client.has_datasets_provenance():
         raise errors.OperationError("Dataset provenance is not generated. Run `renku graph generate-dataset`.")

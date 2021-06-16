@@ -262,11 +262,11 @@ class ZenodoRecordSerializer:
 
         return [ZenodoFileSerializer(**file_) for file_ in self.files]
 
-    def as_dataset(self):
+    def as_dataset(self, client):
         """Deserialize `ZenodoRecordSerializer` to `Dataset`."""
         files = self.get_files()
         metadata = self.get_jsonld()
-        dataset = Dataset.from_jsonld(metadata, schema_class=_ZenodoDatasetSchema)
+        dataset = Dataset.from_jsonld(metadata, client=client, schema_class=_ZenodoDatasetSchema)
 
         serialized_files = []
         for file_ in files:

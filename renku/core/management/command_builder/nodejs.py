@@ -28,17 +28,17 @@ class RequireNodeJs(Command):
 
     DEFAULT_ORDER = 4
 
-    def __init__(self, builder):
+    def __init__(self, builder: Command) -> None:
         """__init__ of DatasetLock."""
         self._builder = builder
 
-    def _pre_hook(self, builder, context, *args, **kwargs):
+    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Check node is available."""
         if not shutil.which("nodejs") and not shutil.which("node"):
             raise errors.NodeNotFoundError()
 
     @check_finalized
-    def build(self):
+    def build(self) -> Command:
         """Build the command."""
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 

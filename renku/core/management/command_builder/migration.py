@@ -26,11 +26,11 @@ class RequireMigration(Command):
 
     DEFAULT_ORDER = 3
 
-    def __init__(self, builder):
+    def __init__(self, builder: Command) -> None:
         """__init__ of RequireMigration."""
         self._builder = builder
 
-    def _pre_hook(self, builder, context, *args, **kwargs):
+    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Check if migration is necessary."""
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
@@ -40,7 +40,7 @@ class RequireMigration(Command):
             check_for_migration()
 
     @check_finalized
-    def build(self):
+    def build(self) -> Command:
         """Build the command."""
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 

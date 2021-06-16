@@ -83,13 +83,13 @@ def _get_url(parsed_endpoint, path, **query_args):
 
 
 @inject.autoparams()
-def _store_token(client: LocalClient, parsed_endpoint, token):
+def _store_token(parsed_endpoint, token, client: LocalClient):
     client.set_value(section=CONFIG_SECTION, key=parsed_endpoint.netloc, value=token, global_only=True)
     os.chmod(client.global_config_path, 0o600)
 
 
 @inject.autoparams()
-def read_renku_token(client: LocalClient, endpoint):
+def read_renku_token(endpoint, client: LocalClient):
     """Read renku token from renku config file."""
     parsed_endpoint = _parse_endpoint(endpoint)
     return client.get_value(section=CONFIG_SECTION, key=parsed_endpoint.netloc, config_filter=ConfigFilter.GLOBAL_ONLY)
@@ -101,7 +101,7 @@ def logout_command():
 
 
 @inject.autoparams()
-def _logout(client: LocalClient, endpoint):
+def _logout(endpoint, client: LocalClient):
     if endpoint:
         parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint)
         key = parsed_endpoint.netloc

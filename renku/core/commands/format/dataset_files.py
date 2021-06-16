@@ -56,7 +56,7 @@ def tabular(records, *, columns=None):
 
 
 @inject.autoparams()
-def _get_lfs_tracking(client: LocalClient, records):
+def _get_lfs_tracking(records, client: LocalClient):
     """Check if files are tracked in git lfs."""
     paths = [r.path for r in records]
     attrs = client.find_attr(*paths)
@@ -69,7 +69,7 @@ def _get_lfs_tracking(client: LocalClient, records):
 
 
 @inject.autoparams()
-def _get_lfs_file_sizes(client: LocalClient, records):
+def _get_lfs_file_sizes(records, client: LocalClient):
     """Try to get file size from Git LFS."""
     lfs_files_sizes = {}
 

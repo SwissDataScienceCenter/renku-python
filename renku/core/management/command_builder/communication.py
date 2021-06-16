@@ -17,7 +17,7 @@
 # limitations under the License.
 """Command builder for communication."""
 
-from renku.core.management.command_builder.command import Command, check_finalized
+from renku.core.management.command_builder.command import Command, CommandResult, check_finalized
 from renku.core.utils import communication
 
 
@@ -26,7 +26,7 @@ class Communicator(Command):
 
     DEFAULT_ORDER = 2
 
-    def __init__(self, builder, communicator):
+    def __init__(self, builder: Command, communicator: communication.CommunicationCallback) -> None:
         """__init__ of Communicator.
 
         :param communicator: Instance of CommunicationCallback.
@@ -34,14 +34,14 @@ class Communicator(Command):
         self._builder = builder
         self._communicator = communicator
 
-    def _pre_hook(self, builder, context, *args, **kwargs):
+    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         communication.subscribe(self._communicator)
 
-    def _post_hook(self, builder, context, result, *args, **kwargs):
+    def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs) -> None:
         communication.unsubscribe(self._communicator)
 
     @check_finalized
-    def build(self):
+    def build(self) -> Command:
         """Build the command."""
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
         self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)

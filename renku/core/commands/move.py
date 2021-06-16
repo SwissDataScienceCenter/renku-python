@@ -36,7 +36,7 @@ def move_command():
 
 
 @inject.autoparams()
-def _move(client: LocalClient, sources, destination, force, verbose, to_dataset):
+def _move(sources, destination, force, verbose, to_dataset, client: LocalClient):
     """Move files and check repository for potential problems."""
     if to_dataset:
         client.load_dataset(to_dataset, strict=True)
@@ -115,7 +115,7 @@ def _get_dst(path, src_root, dst_root, is_rename):
 
 
 @inject.autoparams()
-def _get_absolute_path(client: LocalClient, path):
+def _get_absolute_path(path, client: LocalClient):
     """Resolve path and raise if path is outside the repo or is protected."""
     abs_path = Path(os.path.abspath(path))
 
@@ -144,7 +144,7 @@ def _check_existing_destinations(destinations):
 
 
 @inject.autoparams()
-def _warn_about_ignored_destinations(client: LocalClient, destinations):
+def _warn_about_ignored_destinations(destinations, client: LocalClient):
     ignored = client.find_ignored_paths(*destinations)
     if ignored:
         ignored = "\n\t".join((str(Path(p).relative_to(client.path)) for p in ignored))
@@ -152,7 +152,7 @@ def _warn_about_ignored_destinations(client: LocalClient, destinations):
 
 
 @inject.autoparams()
-def _warn_about_git_filters(client: LocalClient, files):
+def _warn_about_git_filters(files, client: LocalClient):
     """Check if there are any git attributes for files including LFS."""
     src_attrs = []
     dst_attrs = []

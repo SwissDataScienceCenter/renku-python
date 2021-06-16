@@ -128,7 +128,7 @@ def migrate(
             module_name = module.__name__.split(".")[-1]
             communication.echo(f"Applying migration {module_name}...")
             try:
-                module.migrate()
+                module.migrate(client)
             except (Exception, BaseException) as e:
                 raise MigrationError("Couldn't execute migration") from e
             n_migrations_executed += 1

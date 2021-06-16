@@ -19,7 +19,7 @@
 
 
 from renku.core.incubation.database import Database, Storage
-from renku.core.management.command_builder.command import Command, check_finalized
+from renku.core.management.command_builder.command import Command, CommandResult, check_finalized
 
 
 class DatabaseCommand(Command):
@@ -28,13 +28,13 @@ class DatabaseCommand(Command):
     PRE_ORDER = 3
     POST_ORDER = 5
 
-    def __init__(self, builder, write=False, path=None):
+    def __init__(self, builder: Command, write: bool = False, path: str = None) -> None:
         """__init__ of ProjectLock."""
         self._builder = builder
         self._write = write
         self._path = path
 
-    def _pre_hook(self, builder, context, *args, **kwargs):
+    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Lock the project."""
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
@@ -46,12 +46,12 @@ class DatabaseCommand(Command):
         current_binder = context["binder"]
         context["binder"] = lambda binder: current_binder(binder).bind(Database, self.database)
 
-    def _post_hook(self, builder, context, result, *args, **kwargs):
+    def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs) -> None:
         if self._write:
             self.database.commit()
 
     @check_finalized
-    def build(self):
+    def build(self) -> Command:
         """Build the command."""
         self._builder.add_pre_hook(self.PRE_ORDER, self._pre_hook)
         self._builder.add_post_hook(self.POST_ORDER, self._post_hook)

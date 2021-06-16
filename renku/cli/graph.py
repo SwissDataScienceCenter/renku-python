@@ -110,7 +110,7 @@ def save(path):
     with measure("CREATE DEPENDENCY GRAPH"):
 
         @inject.autoparams()
-        def _to_png(client: LocalClient, path):
+        def _to_png(path, client: LocalClient):
             client.dependency_graph.to_png(path=path)
 
         Command().command(_to_png).build().execute(path=path)

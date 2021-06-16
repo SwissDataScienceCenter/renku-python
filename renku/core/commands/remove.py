@@ -29,7 +29,7 @@ from renku.core.utils import communication
 
 
 @inject.autoparams()
-def _remove(client: LocalClient, sources, edit_command):
+def _remove(sources, edit_command, client: LocalClient):
     """Remove files and check repository for potential problems."""
     from renku.core.management.git import _expand_directories
 

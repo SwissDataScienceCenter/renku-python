@@ -70,8 +70,8 @@ def list_datasets():
 
 @inject.autoparams()
 def create_dataset_helper(
-    client: LocalClient,
     name,
+    client: LocalClient,
     title=None,
     description="",
     creators=None,
@@ -108,11 +108,11 @@ def create_dataset():
 
 @inject.autoparams()
 def _edit_dataset(
-    client: LocalClient,
     name,
     title,
     description,
     creators,
+    client: LocalClient,
     keywords=None,
     images=[],
     skip_image_update=False,
@@ -162,7 +162,7 @@ def edit_dataset():
 
 
 @inject.autoparams()
-def _show_dataset(client: LocalClient, name):
+def _show_dataset(name, client: LocalClient):
     """Show detailed dataset information."""
     dataset = client.load_dataset(name)
     return DatasetDetailsJson().dump(dataset)
@@ -209,9 +209,9 @@ def _construct_creators(creators, ignore_email=False):
 
 @inject.autoparams()
 def _add_to_dataset(
-    client: LocalClient,
     urls,
     name,
+    client: LocalClient,
     external=False,
     force=False,
     overwrite=False,
@@ -314,7 +314,7 @@ def list_files():
 
 
 @inject.autoparams()
-def _file_unlink(client: LocalClient, name, include, exclude, yes=False):
+def _file_unlink(name, include, exclude, client: LocalClient, yes=False):
     """Remove matching files from a dataset."""
     if not include and not exclude:
         raise ParameterError(
@@ -359,7 +359,7 @@ def file_unlink():
 
 
 @inject.autoparams()
-def _remove_dataset(client: LocalClient, name):
+def _remove_dataset(name, client: LocalClient):
     """Delete a dataset."""
     dataset = client.load_dataset(name=name, strict=True)
     dataset.mutate()
@@ -387,7 +387,7 @@ def remove_dataset():
 
 
 @inject.autoparams()
-def _export_dataset(client: LocalClient, name, provider_name, publish, tag, **kwargs):
+def _export_dataset(name, provider_name, publish, tag, client: LocalClient, **kwargs):
     """Export data to 3rd party provider.
 
     :raises: ``ValueError``, ``HTTPError``, ``InvalidAccessToken``,
@@ -471,7 +471,7 @@ def export_dataset():
 
 @inject.autoparams()
 def _import_dataset(
-    client: LocalClient, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False, gitlab_token=None
+    uri, client: LocalClient, name="", extract=False, yes=False, previous_dataset=None, delete=False, gitlab_token=None
 ):
     """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -480,7 +480,7 @@ def _import_dataset(
 
     try:
         record = provider.find_record(uri, gitlab_token=gitlab_token)
-        dataset = record.as_dataset()
+        dataset = record.as_dataset(client)
         files = dataset.files
         total_size = 0
 
@@ -589,7 +589,7 @@ def import_dataset():
 
 
 @inject.autoparams()
-def _update_metadata(client: LocalClient, new_dataset, previous_dataset, new_files, delete, same_as):
+def _update_metadata(new_dataset, previous_dataset, new_files, delete, same_as, client: LocalClient):
     """Update metadata and remove files that exists in ``previous_dataset`` but not in ``new_dataset``."""
     current_paths = set(str(f.path) for f in new_files)
 
@@ -613,7 +613,7 @@ def _update_metadata(client: LocalClient, new_dataset, previous_dataset, new_fil
 
 
 @inject.autoparams()
-def _update_datasets(client: LocalClient, names, creators, include, exclude, ref, delete, external=False):
+def _update_datasets(names, creators, include, exclude, ref, delete, client: LocalClient, external=False):
     """Update files from a remote Git repo."""
     ignored_datasets = []
 
@@ -790,7 +790,7 @@ def _filter(client: LocalClient, names=None, creators=None, include=None, exclud
 
 
 @inject.autoparams()
-def _tag_dataset(client: LocalClient, name, tag, description, force=False):
+def _tag_dataset(name, tag, description, client: LocalClient, force=False):
     """Creates a new tag for a dataset."""
     dataset = client.load_dataset(name, strict=True)
 
@@ -810,7 +810,7 @@ def tag_dataset():
 
 
 @inject.autoparams()
-def _remove_dataset_tags(client: LocalClient, name, tags):
+def _remove_dataset_tags(name, tags, client: LocalClient):
     """Removes tags from a dataset."""
     dataset = client.load_dataset(name, strict=True)
 
@@ -830,7 +830,7 @@ def remove_dataset_tags():
 
 
 @inject.autoparams()
-def _list_tags(client: LocalClient, name, format):
+def _list_tags(name, format, client: LocalClient):
     """List all tags for a dataset."""
     dataset = client.load_dataset(name, strict=True)
 

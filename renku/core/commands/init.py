@@ -34,8 +34,7 @@ import yaml
 from renku.core import errors
 from renku.core.commands.git import set_git_home
 from renku.core.management import LocalClient
-from renku.core.management.command_builder import inject
-from renku.core.management.command_builder.command import Command
+from renku.core.management.command_builder.command import Command, inject, update_injected_client
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.models.tabulate import tabulate
@@ -176,8 +175,8 @@ def verify_template_variables(template_data, metadata):
     return metadata
 
 
-@inject.autoparams()
-def get_existing_template_files(client: LocalClient, template_path, metadata, force=False):
+@inject.autoparams("client")
+def get_existing_template_files(template_path, metadata, client: LocalClient, force=False):
     """Gets files in the template that already exists in the repo."""
     template_files = list(client.get_template_files(template_path, metadata))
 
@@ -193,7 +192,7 @@ def get_existing_template_files(client: LocalClient, template_path, metadata, fo
 
 
 @inject.autoparams()
-def create_backup_branch(client: LocalClient, path):
+def create_backup_branch(path, client: LocalClient):
     """Creates a backup branch of the repo."""
     branch_name = None
     if not is_path_empty(path):
@@ -226,7 +225,6 @@ def create_backup_branch(client: LocalClient, path):
 
 @inject.autoparams()
 def _init(
-    client: LocalClient,
     ctx,
     external_storage_requested,
     path,
@@ -241,6 +239,7 @@ def _init(
     describe,
     data_dir,
     initial_branch,
+    client: LocalClient,
 ):
     """Initialize a renku project."""
     template_manifest, template_folder, template_source, template_version = fetch_template(
@@ -260,18 +259,21 @@ def _init(
 
     metadata = verify_template_variables(template_data, metadata)
 
-    # set local path and storage
+    # NOTE: set local path and storage
     store_directory(path)
     if not client.external_storage_requested:
         external_storage_requested = False
+
+    # NOTE: create new copy of LocalClient with modified values
     ctx.obj = client = attr.evolve(
         client, path=path, data_dir=data_dir, external_storage_requested=external_storage_requested
     )
+    update_injected_client(client)
 
     communication.echo("Initializing Git repository...")
     client.init_repository(force, None, initial_branch=initial_branch)
 
-    # supply additional metadata
+    # NOTE: supply additional metadata
     metadata["__template_source__"] = template_source
     metadata["__template_ref__"] = template_ref
     metadata["__template_id__"] = template_id
@@ -285,7 +287,7 @@ def _init(
 
     template_path = template_folder / template_data["folder"]
 
-    existing = get_existing_template_files(template_path, metadata, force)
+    existing = get_existing_template_files(template_path=template_path, metadata=metadata, force=force)
 
     append = list(filter(lambda x: x.lower() in INIT_APPEND_FILES, existing))
     existing = list(filter(lambda x: x.lower() not in INIT_APPEND_FILES + INIT_KEEP_FILES, existing))
@@ -305,14 +307,15 @@ def _init(
 
         communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 
-    branch_name = create_backup_branch(path)
+    branch_name = create_backup_branch(path=path)
 
-    # clone the repo
+    # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")
     with client.lock:
         try:
             create_from_template(
                 template_path=template_path,
+                client=client,
                 name=name,
                 metadata=metadata,
                 template_version=template_version,
@@ -466,10 +469,9 @@ def read_template_manifest(folder, checkout=False):
     return manifest
 
 
-@inject.autoparams()
 def create_from_template(
     template_path,
-    client: LocalClient,
+    client,
     name=None,
     metadata={},
     template_version=None,
@@ -510,9 +512,9 @@ def create_from_template(
 
 @inject.autoparams()
 def _create_from_template_local(
-    client: LocalClient,
     template_path,
     name,
+    client: LocalClient,
     metadata={},
     default_metadata={},
     template_version=None,
@@ -539,6 +541,7 @@ def _create_from_template_local(
 
     create_from_template(
         template_path=template_path,
+        client=client,
         name=name,
         metadata=metadata,
         template_version=template_version,

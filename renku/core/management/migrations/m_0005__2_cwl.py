@@ -30,8 +30,6 @@ from cwlgen.requirements import InitialWorkDirRequirement
 from git import NULL_TREE, Actor
 from werkzeug.utils import secure_filename
 
-from renku.core.management import LocalClient
-from renku.core.management.command_builder.command import inject
 from renku.core.management.migrations.models.v3 import Dataset
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
@@ -49,8 +47,7 @@ default_missing_software_agent = SoftwareAgent(
 )
 
 
-@inject.autoparams()
-def migrate(client: LocalClient):
+def migrate(client):
     """Migration function."""
     if MigrationType.WORKFLOWS not in client.migration_type:
         return

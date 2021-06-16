@@ -32,7 +32,7 @@ from .echo import progressbar
 
 
 @inject.autoparams()
-def execute(client: LocalClient, output_file, output_paths=None):
+def execute(output_file, client: LocalClient, output_paths=None):
     """Run the generated workflow using cwltool library."""
     output_paths = output_paths or set()
 

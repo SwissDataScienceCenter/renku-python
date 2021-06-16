@@ -32,6 +32,7 @@ from renku.core.commands.init import (
     read_template_manifest,
     validate_template,
 )
+from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import migrate
 from tests.utils import raises
@@ -221,7 +222,8 @@ def test_update_from_template(local_client, template_update):
             continue
         p.write_text(f"{p.read_text()}\nmodified")
 
-    migrate(local_client, skip_docker_update=True)
+    with replace_injected_client(local_client):
+        migrate(local_client, skip_docker_update=True)
 
     for p in project_files:
         if p.is_dir():
@@ -255,7 +257,8 @@ def test_update_from_template_with_modified_files(local_client, template_update)
     deleted_file = next(f for f in project_files if str(f).endswith("README.md"))
     deleted_file.unlink()
 
-    migrate(local_client, skip_docker_update=True)
+    with replace_injected_client(local_client):
+        migrate(local_client, skip_docker_update=True)
 
     for p in project_files:
         if p.is_dir():
@@ -293,7 +296,7 @@ def test_update_from_template_with_immutable_modified_files(local_client, mocker
 
     with pytest.raises(
         errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
-    ):
+    ), replace_injected_client(local_client):
         migrate(local_client)
 
 
@@ -316,7 +319,7 @@ def test_update_from_template_with_immutable_deleted_files(local_client, mocker,
 
     with pytest.raises(
         errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
-    ):
+    ), replace_injected_client(local_client):
         migrate(local_client)
 
 
@@ -330,7 +333,8 @@ def test_update_template_dockerfile(local_client, mocker, template_update):
 
     mocker.patch.object(renku, "__version__", "0.0.2")
 
-    migrate(local_client)
+    with replace_injected_client(local_client):
+        migrate(local_client)
 
     dockerfile = (local_client.path / "Dockerfile").read_text()
     assert "0.0.2" in dockerfile
@@ -355,5 +359,7 @@ def test_update_from_template_with_new_variable(local_client, mocker, template_u
             continue
         p.write_text(f"{p.read_text()}\nmodified")
 
-    with pytest.raises(errors.TemplateUpdateError, match=r".*Can't update template, it now requires variable.*"):
+    with pytest.raises(
+        errors.TemplateUpdateError, match=r".*Can't update template, it now requires variable.*"
+    ), replace_injected_client(local_client):
         migrate(local_client)

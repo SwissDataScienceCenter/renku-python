@@ -31,7 +31,7 @@ def test_communicator_is_unsubscribed(tmp_path):
     """Test communicator is unsubscribed when command is executed."""
     communicator = ServiceCallback()
 
-    command = Command().command(lambda _: communication.echo("Hello world!"))
+    command = Command().command(lambda: communication.echo("Hello world!"))
     command.with_communicator(communicator).build().execute()
 
     assert ["Hello world!"] == communicator.messages
@@ -46,7 +46,7 @@ def test_multi_communicators(tmp_path):
     communicator_1 = ServiceCallback()
     communicator_2 = ServiceCallback()
 
-    command = Command().command(lambda _: communication.echo("Hello world!"))
+    command = Command().command(lambda: communication.echo("Hello world!"))
     command.with_communicator(communicator_1).with_communicator(communicator_2).build().execute()
 
     assert ["Hello world!"] == communicator_1.messages
@@ -78,7 +78,7 @@ def test_multi_threaded_communication(tmp_path):
 def test_click_callback(capsys):
     """Test communication with ClickCallback."""
     communicator = ClickCallback()
-    command = Command().command(lambda _: communication.echo("Hello world!"))
+    command = Command().command(lambda: communication.echo("Hello world!"))
     command.with_communicator(communicator).build().execute()
 
     assert "Hello world!" in capsys.readouterr().out
@@ -87,7 +87,7 @@ def test_click_callback(capsys):
 @pytest.mark.serial
 def test_no_callback(capsys):
     """Test communication does not print anything without a callback."""
-    command = Command().command(lambda _: communication.echo("Hello world!"))
+    command = Command().command(lambda: communication.echo("Hello world!"))
     command.build().execute()
 
     assert "Hello world!" not in capsys.readouterr().out

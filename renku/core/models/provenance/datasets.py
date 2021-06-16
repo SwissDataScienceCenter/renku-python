@@ -52,7 +52,6 @@ from renku.core.utils.urls import get_host
 class DatasetFile:
     """Represent a file in a dataset."""
 
-    @inject.params(client="LocalClient")
     def __init__(
         self,
         *,
@@ -178,7 +177,6 @@ class DatasetFile:
 class Dataset:
     """Represent a dataset."""
 
-    @inject.params(client="LocalClient")
     def __init__(
         self,
         name,

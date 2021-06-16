@@ -118,7 +118,7 @@ def _check_project(client: LocalClient):
 
 
 @inject.autoparams()
-def _check_immutable_template_files(client: LocalClient, paths):
+def _check_immutable_template_files(paths, client: LocalClient):
     """Check paths and return a list of those that are marked immutable in the project template."""
     if not client.project.immutable_template_files:
         return []

@@ -27,8 +27,6 @@ from calamus.schema import JsonLDSchema as CalamusJsonLDSchema
 from calamus.utils import normalize_type, normalize_value
 from marshmallow.base import SchemaABC
 
-from renku.core.management.command_builder.command import inject
-
 prov = fields.Namespace("http://www.w3.org/ns/prov#")
 rdfs = fields.Namespace("http://www.w3.org/2000/01/rdf-schema#")
 renku = fields.Namespace("https://swissdatasciencecenter.github.io/renku-ontology#")
@@ -41,7 +39,6 @@ dcterms = fields.Namespace("http://purl.org/dc/terms/")
 class JsonLDSchema(CalamusJsonLDSchema):
     """Base schema class for Renku."""
 
-    @inject.params(client="LocalClient")
     def __init__(self, *args, commit=None, client=None, **kwargs):
         """Create an instance."""
         self._commit = commit

@@ -69,7 +69,7 @@ def _update_workflows(revision, no_output, update_all, siblings, paths):
 
 
 @inject.autoparams()
-def execute_workflow(client: LocalClient, workflow, output_paths, command_name, update_commits):
+def execute_workflow(workflow, output_paths, command_name, update_commits, client: LocalClient):
     """Execute a Run with/without subprocesses."""
     wf, path = CWLConverter.convert(workflow, client.path)
     # Don't compute paths if storage is disabled.
@@ -100,7 +100,7 @@ def execute_workflow(client: LocalClient, workflow, output_paths, command_name, 
 
     path = client.workflow_path / workflow_name
 
-    workflow.update_id_and_label_from_commit_path(client.repo.head.commit, path)
+    workflow.update_id_and_label_from_commit_path(client, client.repo.head.commit, path)
 
     if not workflow.subprocesses:  # Update parameters if there is only one step
         _update_run_parameters(run=workflow, working_dir=client.path)
