@@ -26,17 +26,16 @@ from uuid import uuid4
 
 from BTrees.OOBTree import OOBTree
 from persistent import GHOST, UPTODATE, Persistent
-
-# NOTE These are used as _p_serial to mark if an object was read from storage or is new
 from persistent.interfaces import IPickleCache
 from ZODB.POSException import POSKeyError
 from ZODB.utils import z64
 from zope.interface import implementer
 
+OID_TYPE = str
+
+"""NOTE: These are used as _p_serial to mark if an object was read from storage or is new"""
 NEW = z64  # NOTE: Do not change this value since this is the default when a Persistent object is created
 PERSISTED = b"1" * 8
-
-OID_TYPE = str
 
 
 def get_type_name(object) -> Optional[str]:
