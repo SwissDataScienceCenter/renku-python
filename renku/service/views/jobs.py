@@ -28,9 +28,7 @@ JOBS_BLUEPRINT_TAG = "jobs"
 jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@jobs_blueprint.route(
-    "/jobs", methods=["GET"], provide_automatic_options=False,
-)
+@jobs_blueprint.route("/jobs", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -65,9 +63,7 @@ def list_jobs(user_data, cache):
     return result_response(JobListResponseRPC(), {"jobs": jobs})
 
 
-@jobs_blueprint.route(
-    "/jobs/<job_id>", methods=["GET"], provide_automatic_options=False,
-)
+@jobs_blueprint.route("/jobs/<job_id>", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @requires_cache
 @requires_identity

@@ -46,6 +46,6 @@ def test_delay_migration_job(svc_client_cache, it_remote_repo_url_temp_branch, v
 
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
     assert updated_job
-    assert {"docker_migrated", "was_migrated", "template_migrated", "messages",} == updated_job.ctrl_result[
+    assert {"docker_migrated", "was_migrated", "template_migrated", "messages"} == updated_job.ctrl_result[
         "result"
     ].keys()

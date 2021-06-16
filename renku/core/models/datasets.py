@@ -143,17 +143,17 @@ def _extract_doi(value):
     return value
 
 
-@attr.s(slots=True,)
+@attr.s(slots=True)
 class DatasetTag(object):
     """Represents a Tag of an instance of a dataset."""
 
     client = attr.ib(default=None, kw_only=True)
 
-    name = attr.ib(default=None, kw_only=True, validator=instance_of(str),)
+    name = attr.ib(default=None, kw_only=True, validator=instance_of(str))
 
-    description = attr.ib(default=None, kw_only=True, validator=instance_of(str),)
+    description = attr.ib(default=None, kw_only=True, validator=instance_of(str))
 
-    commit = attr.ib(default=None, kw_only=True, validator=instance_of(str),)
+    commit = attr.ib(default=None, kw_only=True, validator=instance_of(str))
 
     created = attr.ib(converter=parse_date, kw_only=True)
 
@@ -190,7 +190,7 @@ class DatasetTag(object):
         return DatasetTagSchema().dump(self)
 
 
-@attr.s(slots=True,)
+@attr.s(slots=True)
 class Language:
     """Represent a language of an object."""
 
@@ -661,7 +661,7 @@ class Dataset(Entity, CreatorMixin):
 
             if file_.client is None:
                 client, _, _ = self.client.resolve_in_submodules(
-                    self.client.find_previous_commit(file_.path, revision="HEAD"), file_.path,
+                    self.client.find_previous_commit(file_.path, revision="HEAD"), file_.path
                 )
 
                 file_.client = client

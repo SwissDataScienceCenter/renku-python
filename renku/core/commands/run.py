@@ -131,7 +131,7 @@ def _run_command(
                     sys.stderr = old_stderr
 
             return_code = call(
-                factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()},
+                factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()}
             )
 
             sys.stdout.flush()

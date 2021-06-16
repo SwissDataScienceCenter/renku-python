@@ -24,7 +24,7 @@ include .tx/config
 include *.md
 prune docs/_build
 recursive-include renku *.po *.pot *.mo
-recursive-include renku *.py
+recursive-include renku *.py *.tmpl
 # added by check_manifest.py
 chartpress.yaml
 include .coveragerc

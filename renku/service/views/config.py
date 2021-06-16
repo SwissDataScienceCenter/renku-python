@@ -33,9 +33,7 @@ CONFIG_BLUEPRINT_TAG = "config"
 config_blueprint = Blueprint("config", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@config_blueprint.route(
-    "/config.show", methods=["GET"], provide_automatic_options=False,
-)
+@config_blueprint.route("/config.show", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @requires_cache
 @optional_identity
@@ -61,9 +59,7 @@ def show_config(user_data, cache):
     return ShowConfigCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@config_blueprint.route(
-    "/config.set", methods=["POST"], provide_automatic_options=False,
-)
+@config_blueprint.route("/config.set", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache

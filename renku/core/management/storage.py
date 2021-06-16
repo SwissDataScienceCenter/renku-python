@@ -230,7 +230,7 @@ class StorageApiMixin(RepositoryApiMixin):
         """Untrack paths from the external storage."""
         try:
             result = run_command(
-                self._CMD_STORAGE_UNTRACK, *paths, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True,
+                self._CMD_STORAGE_UNTRACK, *paths, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True
             )
 
             if result.returncode != 0:
@@ -381,7 +381,7 @@ class StorageApiMixin(RepositoryApiMixin):
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
         result = run_command(
-            self._CMD_STORAGE_CHECKOUT, *paths, cwd=self.path, stdout=PIPE, stderr=STDOUT, universal_newlines=True,
+            self._CMD_STORAGE_CHECKOUT, *paths, cwd=self.path, stdout=PIPE, stderr=STDOUT, universal_newlines=True
         )
 
         if result.returncode != 0:

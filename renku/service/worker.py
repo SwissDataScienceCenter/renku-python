@@ -28,9 +28,7 @@ from renku.service.jobs.queues import QUEUES, WorkerQueues
 from renku.service.logger import DEPLOYMENT_LOG_LEVEL, worker_log
 
 if os.getenv("SENTRY_DSN"):
-    sentry_sdk.init(
-        dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"), integrations=[RqIntegration()],
-    )
+    sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"), integrations=[RqIntegration()])
 
 
 @contextmanager

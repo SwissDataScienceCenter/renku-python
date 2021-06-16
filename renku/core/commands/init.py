@@ -76,7 +76,7 @@ def create_template_sentence(templates, describe=False, instructions=False):
         for index, template_elem in enumerate(templates)
     ]
 
-    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters"),))
+    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters")))
 
     if describe:
         table_headers["description"] = "Description"
@@ -298,9 +298,7 @@ def _init(
             append_paths = "\n\t".join(append)
             message += f"The following files exist in the directory and will be appended to:\n\t{append_paths}\n"
 
-        communication.confirm(
-            f"{message}Proceed?", abort=True, warning=True,
-        )
+        communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 
     branch_name = create_backup_branch(client, path)
 
