@@ -22,8 +22,10 @@ import shutil
 import sys
 import traceback
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Dict
+from urllib.parse import urlparse
 
 import git
 from git import NULL_TREE, Commit, GitCommandError
@@ -42,6 +44,8 @@ from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.activities import Activity
 from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+from renku.core.models.workflow.dependency_graph import DependencyGraph
+from renku.core.models.workflow.plan import Plan
 from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
 from renku.core.utils.contexts import measure
@@ -453,3 +457,52 @@ def _add_to_dataset(
     except (FileNotFoundError, git.exc.NoSuchPathError) as e:
         message = "\n\t".join(urls)
         raise errors.ParameterError(f"Could not find paths/URLs: \n\t{message}") from e
+
+
+def remove_workflow():
+    """Return a command for removing workflow."""
+    command = Command().command(_remove_workflow).lock_project()
+    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
+
+
+def _remove_workflow(client, name: str, force: bool):
+    """Remove the given workflow."""
+    if not force:
+        prompt_text = f'You are about to remove the following workflow "{name}".' + "\n" + "\nDo you wish to continue?"
+        communication.confirm(prompt_text, abort=True, warning=True)
+
+    now = datetime.utcnow()
+    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
+    pg_workflows = _unique_workflow(provenance_graph)
+
+    not_found_text = f'The specified workflow is "{name}" is not an active workflow.'
+    plan = None
+    parse_result = urlparse(name)
+    if parse_result.scheme:
+        plan = list(filter(lambda x: x.id == name, pg_workflows.values()))
+        if not plan:
+            communication.warn(not_found_text)
+            return
+    elif name not in pg_workflows:
+        communication.warn(not_found_text)
+        return
+
+    plan = plan[0] if plan else pg_workflows[name]
+    plan.invalidated_at = now
+    dependency_graph = DependencyGraph.from_json(client.dependency_graph_path)
+    for p in dependency_graph.plans:
+        if p.id == plan.id:
+            p.invalidated_at = now
+
+    dependency_graph.to_json()
+    provenance_graph.to_json()
+
+
+def _unique_workflow(provenance_graph: ProvenanceGraph) -> Dict[str, Plan]:
+    """Map of unique plans in the provenance graph indexed by name."""
+    workflows = dict()
+    for activity in provenance_graph.activities:
+        plan = activity.association.plan
+        if plan.invalidated_at is None and plan.name not in workflows:
+            workflows[plan.name] = plan
+    return workflows
