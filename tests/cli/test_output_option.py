@@ -88,8 +88,7 @@ def test_output_directory_with_output_option(renku_cli, client, subdirectory):
     """Test output directories are not deleted with --output"""
     outdir = os.path.relpath(client.path / "outdir", os.getcwd())
     a_script = ("sh", "-c", 'mkdir -p "$0"; touch "$0/$1"')
-    renku_cli("run", *a_script, outdir, "foo")
-
+    exit_code, wf = renku_cli("run", *a_script, outdir, "foo")
     exit_code, _ = renku_cli("run", "--output", outdir, *a_script, outdir, "bar")
 
     assert 0 == exit_code

@@ -43,6 +43,7 @@ from renku.core.models.entities import Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.activities import Activity
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
 from renku.core.utils.contexts import measure
@@ -134,11 +135,11 @@ def _generate_graph(client: LocalClient, database: Database, force=False):
 
 def status():
     """Return a command for getting workflow graph status."""
-    return Command().command(_status)
+    return Command().command(_status).with_database(write=False)
 
 
 @inject.autoparams()
-def _status(client: LocalClient):
+def _status(client: LocalClient, database: Database):
     """Get status of workflows."""
     with measure("BUILD AND QUERY GRAPH"):
         pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
@@ -165,7 +166,7 @@ def _status(client: LocalClient):
 
     with measure("CALCULATE UPDATES"):
         for plan_id, path, _ in modified:
-            paths = client.dependency_graph.get_dependent_paths(plan_id, path)
+            paths = DependencyGraph.from_database(database).get_dependent_paths(plan_id, path)
             for p in paths:
                 stales[p].add(path)
 
@@ -176,12 +177,12 @@ def _status(client: LocalClient):
 
 def update():
     """Return a command for generating the graph."""
-    command = Command().command(_update).lock_project()
+    command = Command().command(_update).lock_project().with_database(write=True)
     return command.require_migration().with_commit(commit_if_empty=False).require_clean().require_nodejs()
 
 
 @inject.autoparams()
-def _update(dry_run, client: LocalClient):
+def _update(dry_run, client: LocalClient, database: Database):
     """Update outdated outputs."""
     with measure("BUILD AND QUERY GRAPH"):
         pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
@@ -195,7 +196,7 @@ def _update(dry_run, client: LocalClient):
         return
 
     with measure("CALCULATE UPDATES"):
-        plans, plans_with_deleted_inputs = client.dependency_graph.get_downstream(modified, deleted)
+        plans, plans_with_deleted_inputs = DependencyGraph.from_database(database).get_downstream(modified, deleted)
 
     if plans_with_deleted_inputs:
         formatted_deleted_plans = "".join((f"\n\t{p}" for p in plans_with_deleted_inputs))
@@ -220,7 +221,7 @@ def _update(dry_run, client: LocalClient):
 
 def export_graph():
     """Return a command for exporting graph data."""
-    return Command().command(_export_graph)
+    return Command().command(_export_graph).with_database(write=False)
 
 
 @inject.autoparams()

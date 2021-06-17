@@ -26,7 +26,7 @@ from renku.core.utils import communication
 
 def get_status():
     """Show a status of the repository."""
-    return Command().command(_get_status).require_migration().require_clean()
+    return Command().command(_get_status).require_migration().require_clean().with_database(write=False)
 
 
 @inject.autoparams()

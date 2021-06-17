@@ -35,12 +35,11 @@ from renku.core.utils.urls import get_slug
 
 def run_command():
     """Tracking work on a specific problem."""
-    return Command().command(_run_command).require_migration().require_clean().with_commit()
+    return Command().command(_run_command).require_migration().require_clean().with_commit().with_database(write=True)
 
 
 @inject.autoparams()
 def _run_command(
-    client: LocalClient,
     name,
     description,
     keyword,
@@ -51,6 +50,7 @@ def _run_command(
     no_output_detection,
     success_codes,
     command_line,
+    client: LocalClient,
 ):
     # NOTE: validate name as early as possible
     if name:

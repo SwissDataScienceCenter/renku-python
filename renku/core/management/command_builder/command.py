@@ -57,7 +57,6 @@ def _patched_get_injector_or_die() -> inject.Injector:
     """
     injector = getattr(_LOCAL, "injector", None)
     if not injector:
-        breakpoint()
         raise inject.InjectorException("No injector is configured")
 
     return injector
@@ -96,7 +95,7 @@ def remove_injector():
 
 
 @contextlib.contextmanager
-def replace_injected_client(new_client: "LocalClient"):
+def replace_injected_client(new_client):
     """Temporarily inject a different client into dependency injection."""
     try:
         old_injector = getattr(_LOCAL, "injector", None)
@@ -112,7 +111,7 @@ def replace_injected_client(new_client: "LocalClient"):
             _LOCAL.injector = old_injector
 
 
-def update_injected_client(new_client: "LocalClient"):
+def update_injected_client(new_client):
     """Update the injected client instance.
 
     Necessary because we sometimes use attr.evolve to modify a client and this doesn't affect the injected instance.
@@ -140,7 +139,6 @@ class Command:
         self._operation = None
         self._finalized = False
         self._track_std_streams = False
-        self._git_isolation = False
         self._working_directory = None
 
     def __getattr__(self, name: str) -> typing.Any:
@@ -175,11 +173,7 @@ class Command:
 
         stack = contextlib.ExitStack()
 
-        # Handle --isolation option:
-        if self._git_isolation:
-            client = stack.enter_context(client.worktree())
-
-        context["binder"] = functools.partial(_bind_local_client, client=client)
+        context["bindings"] = {LocalClient: client, "LocalClient": client}
         context["client"] = client
         context["stack"] = stack
         context["click_context"] = ctx
@@ -212,7 +206,13 @@ class Command:
         output = None
         error = None
 
-        inject.configure(context["binder"])
+        def _bind(binder):
+            for key, value in context["bindings"].items():
+                binder.bind(key, value)
+
+            return binder
+
+        inject.configure(_bind)
 
         try:
             with context["stack"]:
@@ -307,9 +307,9 @@ class Command:
     @check_finalized
     def with_git_isolation(self) -> "Command":
         """Whether to run in git isolation or not."""
-        self._git_isolation = True
+        from renku.core.management.command_builder.repo import Isolation
 
-        return self
+        return Isolation(self)
 
     @check_finalized
     def with_commit(
@@ -369,7 +369,7 @@ class Command:
         return Communicator(self, communicator)
 
     @check_finalized
-    def with_database(self, write: bool, path: str = None) -> "Command":
+    def with_database(self, write: bool = False, path: str = None) -> "Command":
         """Provide an object database connection."""
         from renku.core.management.command_builder.database import DatabaseCommand
 

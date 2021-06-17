@@ -208,7 +208,7 @@ class Run(CommitMixin):
 
     @classmethod
     @inject.params(client="LocalClient")
-    def from_factory(cls, factory, client, commit, path, name, description, keywords):
+    def from_factory(cls, factory, commit, path, name, description, keywords, client):
         """Creates a ``Run`` from a ``CommandLineToolFactory``."""
         inputs = []
         arguments = []

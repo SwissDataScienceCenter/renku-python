@@ -57,7 +57,9 @@ def test_multi_threaded_communication(tmp_path):
     """Test communication with multi-threading."""
 
     def thread_function(name, communicator):
-        command = Command().command(lambda _: communication.echo(f"Hello world from {name}!"))
+        print("Starting Command")
+        print(communicator)
+        command = Command().command(lambda: communication.echo(f"Hello world from {name}!"))
         command.with_communicator(communicator).build().execute()
 
     communicator_1 = ServiceCallback()

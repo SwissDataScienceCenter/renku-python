@@ -26,7 +26,7 @@ from renku.core.management.command_builder.command import Command, check_finaliz
 class RequireNodeJs(Command):
     """Check that node.js is installed and available on the system."""
 
-    DEFAULT_ORDER = 4
+    DEFAULT_ORDER = 5
 
     def __init__(self, builder: Command) -> None:
         """__init__ of DatasetLock."""

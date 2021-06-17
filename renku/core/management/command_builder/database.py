@@ -18,14 +18,14 @@
 """Command builder for local object database."""
 
 
-from renku.core.incubation.database import Database, Storage
+from renku.core.incubation.database import Database
 from renku.core.management.command_builder.command import Command, CommandResult, check_finalized
 
 
 class DatabaseCommand(Command):
     """Builder to get a database connection."""
 
-    PRE_ORDER = 3
+    PRE_ORDER = 4
     POST_ORDER = 5
 
     def __init__(self, builder: Command, write: bool = False, path: str = None) -> None:
@@ -40,14 +40,13 @@ class DatabaseCommand(Command):
             raise ValueError("Commit builder needs a LocalClient to be set.")
 
         client = context["client"]
-        storage = Storage(self._path or client.database_path)
 
-        self.database = Database(storage=storage)
-        current_binder = context["binder"]
-        context["binder"] = lambda binder: current_binder(binder).bind(Database, self.database)
+        self.database = Database.from_path(path=self._path or client.database_path)
+
+        context["bindings"][Database] = self.database
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs) -> None:
-        if self._write:
+        if self._write and not result.error:
             self.database.commit()
 
     @check_finalized

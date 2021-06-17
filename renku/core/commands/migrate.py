@@ -40,7 +40,7 @@ DOCKERFILE_UPDATE_POSSIBLE = 64
 
 def migrations_check():
     """Return a command for a migrations check."""
-    return Command().command(_migrations_check)
+    return Command().command(_migrations_check).with_database(write=False)
 
 
 @inject.autoparams()
@@ -75,7 +75,7 @@ def _migrations_versions(client: LocalClient):
 
 def migrate_project():
     """Return a command to migrate all project's entities."""
-    return Command().command(_migrate_project).lock_project().require_clean()
+    return Command().command(_migrate_project).lock_project().require_clean().with_database(write=True)
 
 
 def _migrate_project(

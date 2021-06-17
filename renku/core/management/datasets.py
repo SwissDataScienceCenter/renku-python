@@ -935,7 +935,7 @@ class DatasetsApiMixin(object):
 
         files = {}
 
-        if is_project_unsupported(client):
+        if is_project_unsupported():
             return files
 
         migration_type = client.migration_type

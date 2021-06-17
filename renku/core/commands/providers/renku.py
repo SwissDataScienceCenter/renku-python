@@ -354,7 +354,7 @@ class _RenkuRecordSerializer:
 
     @staticmethod
     @inject.autoparams()
-    def _migrate_project(client):
+    def _migrate_project(client: LocalClient):
         if is_project_unsupported():
             return
         # NOTE: We are not interested in migrating workflows when importing datasets

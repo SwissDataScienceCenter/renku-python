@@ -17,7 +17,8 @@
 # limitations under the License.
 """Command builder for repo."""
 
-from renku.core.management.command_builder.command import Command, check_finalized
+from renku.core import errors
+from renku.core.management.command_builder.command import Command, CommandResult, check_finalized
 
 
 class Commit(Command):
@@ -53,21 +54,38 @@ class Commit(Command):
         if "stack" not in context:
             raise ValueError("Commit builder needs a stack to be set.")
 
-        transaction = context["client"].transaction(
-            clean=False,
-            commit=True,
-            commit_empty=self._commit_if_empty,
-            commit_message=self._message,
-            commit_only=self._commit_filter_paths,
-            ignore_std_streams=not builder._track_std_streams,
-            raise_if_empty=self._raise_if_empty,
+        from renku.core.management.git import prepare_commit
+
+        self.project_metadata_path, self.diff_before = prepare_commit(
+            context["client"], commit_only=self._commit_filter_paths
         )
-        context["stack"].enter_context(transaction)
+
+    def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
+        """Hook that commits changes."""
+        from renku.core.management.git import finalize_commit
+
+        if result.error:
+            # TODO: Cleanup repo
+            return
+
+        try:
+            finalize_commit(
+                context["client"],
+                self.project_metadata_path,
+                self.diff_before,
+                commit_only=self._commit_filter_paths,
+                commit_empty=self._commit_if_empty,
+                raise_if_empty=self._raise_if_empty,
+                commit_message=self._message,
+            )
+        except errors.RenkuException as e:
+            result.error = e
 
     @check_finalized
     def build(self) -> Command:
         """Build the command."""
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+        self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
 
         return self._builder.build()
 
@@ -98,5 +116,61 @@ class RequireClean(Command):
     def build(self) -> Command:
         """Build the command."""
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+
+        return self._builder.build()
+
+
+class Isolation(Command):
+    """Builder to run a command in git isolation."""
+
+    DEFAULT_ORDER = 3
+
+    def __init__(
+        self,
+        builder: Command,
+    ) -> None:
+        """__init__ of Commit."""
+        self._builder = builder
+
+    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
+        """Hook to create a commit transaction."""
+        if "client" not in context:
+            raise ValueError("Commit builder needs a LocalClient to be set.")
+        from renku.core.management import LocalClient
+        from renku.core.management.git import prepare_worktree
+
+        self.original_client = context["client"]
+
+        self.new_client, self.isolation, self.path, self.branch_name = prepare_worktree(
+            context["client"], path=None, branch_name=None, commit=None
+        )
+
+        context["client"] = self.new_client
+        context["bindings"][LocalClient] = self.new_client
+        context["bindings"]["LocalClient"] = self.new_client
+
+    def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
+        """Hook that commits changes."""
+        from renku.core.management.git import finalize_worktree
+
+        try:
+            finalize_worktree(
+                self.original_client,
+                self.isolation,
+                self.path,
+                self.branch_name,
+                delete=True,
+                new_branch=True,
+                exception=result.error,
+            )
+        except errors.RenkuException as e:
+            if not result.error:
+                result.error = e
+
+    @check_finalized
+    def build(self) -> Command:
+        """Build the command."""
+        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+        self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
 
         return self._builder.build()
