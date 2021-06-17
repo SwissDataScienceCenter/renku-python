@@ -9,6 +9,7 @@ FROM base as builder
 # The python install is done in two steps to avoid re-installing all dependencies every
 # time the code changes
 COPY setup.py README.rst CHANGES.rst /code/renku/
+COPY renku/version.py.tmpl /code/renku/renku/version.py.tmpl
 WORKDIR /code/renku
 RUN requirements-builder -e service --level=pypi setup.py > /tmp/requirements.txt && \
     pip install -r /tmp/requirements.txt
