@@ -467,11 +467,8 @@ def remove_workflow():
 
 def _remove_workflow(client, name: str, force: bool):
     """Remove the given workflow."""
-    if not force:
-        prompt_text = f'You are about to remove the following workflow "{name}".' + "\n" + "\nDo you wish to continue?"
-        communication.confirm(prompt_text, abort=True, warning=True)
-
     now = datetime.utcnow()
+    # TODO: refactor this once we switch to Database
     provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
     pg_workflows = _unique_workflow(provenance_graph)
 
@@ -483,7 +480,11 @@ def _remove_workflow(client, name: str, force: bool):
     if not plan and name not in pg_workflows:
         raise errors.ParameterError(not_found_text)
 
-    plan = plan[0] if plan else pg_workflows[name]
+    if not force:
+        prompt_text = f'You are about to remove the following workflow "{name}".' + "\n" + "\nDo you wish to continue?"
+        communication.confirm(prompt_text, abort=True, warning=True)
+
+    plan = plan or pg_workflows[name]
     plan.invalidated_at = now
     dependency_graph = DependencyGraph.from_json(client.dependency_graph_path)
     for p in dependency_graph.plans:

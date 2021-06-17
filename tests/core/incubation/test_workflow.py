@@ -28,6 +28,10 @@ def test_workflow_remove_command(runner, project):
     assert 0 == result.exit_code
 
     workflow_name = "test_workflow"
+
+    result = runner.invoke(cli, ["graph", "workflow", "remove", workflow_name])
+    assert 2 == result.exit_code
+
     result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", workflow_name, "echo", "foo"])
     assert 0 == result.exit_code
 
