@@ -16,6 +16,8 @@ datasetsWorkerQueues: datasets.jobs,delayed.ctrl.DatasetsCreateCtrl,delayed.ctrl
 managementWorkerQueues: cache.cleanup.files,cache.cleanup.projects,delayed.ctrl.MigrateProjectCtrl,delayed.ctrl.SetConfigCtrl
 cleanupFilesTTL: 1800
 cleanupProjectsTTL: 1800
+workerJobsTimeout: 1800
+workerJobsResultTTL: -1
 logLevel: INFO
 
 # override to automatically pull LFS data on clone

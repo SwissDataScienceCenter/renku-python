@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service controller mixin."""
 import contextlib
+import os
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
 from functools import wraps
@@ -138,7 +139,15 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             job = self.cache.make_job(self.user, job_data={"ctrl_context": {**self.context, **ctrl_cls}})
 
             with enqueue_retry(f"delayed.ctrl.{ctrl_cls['renku_ctrl']}") as queue:
-                queue.enqueue(delayed_ctrl_job, self.context, self.user_data, job.job_id, **ctrl_cls)
+                queue.enqueue(
+                    delayed_ctrl_job,
+                    self.context,
+                    self.user_data,
+                    job.job_id,
+                    job_timeout=int(os.getenv("WORKER_JOBS_TIMEOUT", 1800)),
+                    result_ttl=int(os.getenv("WORKER_JOBS_RESULT_TTL", -1)),
+                    **ctrl_cls,
+                )
 
             return job
 

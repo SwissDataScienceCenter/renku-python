@@ -142,6 +142,10 @@ spec:
               value: {{ .Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ .Values.global.renku.domain }}
+            - name: WORKER_JOBS_TIMEOUT
+              value: {{ .Values.workerJobsTimeout | quote }}
+            - name: WORKER_JOBS_RESULT_TTL
+              value: {{ .Values.workerJobsResultTTL | quote }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}

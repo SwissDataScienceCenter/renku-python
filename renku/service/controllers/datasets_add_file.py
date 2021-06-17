@@ -81,8 +81,8 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
                         commit_message,
                         self.ctx["name"],
                         _file["file_url"],
-                        job_timeout=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
-                        result_ttl=int(os.getenv("WORKER_DATASET_JOBS_RESULT_TTL", 500)),
+                        job_timeout=int(os.getenv("WORKER_JOBS_TIMEOUT", 1800)),
+                        result_ttl=int(os.getenv("WORKER_JOBS_RESULT_TTL", -1)),
                     )
                     enqueued_paths.append(_file["file_url"])
 
