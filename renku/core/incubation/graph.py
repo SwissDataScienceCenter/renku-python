@@ -481,11 +481,9 @@ def _remove_workflow(client, name: str, force: bool):
     if parse_result.scheme:
         plan = list(filter(lambda x: x.id == name, pg_workflows.values()))
         if not plan:
-            communication.warn(not_found_text)
-            return
+            raise errors.ParameterError(not_found_text)
     elif name not in pg_workflows:
-        communication.warn(not_found_text)
-        return
+        raise errors.ParameterError(not_found_text)
 
     plan = plan[0] if plan else pg_workflows[name]
     plan.invalidated_at = now
