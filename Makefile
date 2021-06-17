@@ -14,27 +14,30 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License..PHONY: build-docker-images push-docker-images login
+# limitations under the License.
 
 DOCKER_REPOSITORY?=renku/
 DOCKER_PREFIX:=${DOCKER_REGISTRY}$(DOCKER_REPOSITORY)
 
-GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short=12 --verify HEAD)
+GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short --verify HEAD)
 
-.PHONY: docker-build docker-tag docker-push docker-login
+.PHONY: service cli docker-tag docker-push docker-login
 
-docker-build: Dockerfile.cli
-	docker build --rm --force-rm -t $(DOCKER_PREFIX)renku-python:$(GIT_MASTER_HEAD_SHA) -f $< .
-
-docker-tag: docker-build
+docker-tag: service cli
 	docker tag $(DOCKER_PREFIX)renku-python:$(GIT_MASTER_HEAD_SHA) $(DOCKER_PREFIX)renku-python:latest
+	docker tag $(DOCKER_PREFIX)renku-core:$(GIT_MASTER_HEAD_SHA) $(DOCKER_PREFIX)renku-core:latest
 
 docker-push: docker-tag
 	docker push $(DOCKER_PREFIX)renku-python:$(GIT_MASTER_HEAD_SHA)
 	docker push $(DOCKER_PREFIX)renku-python:latest
+	docker push $(DOCKER_PREFIX)renku-core:$(GIT_MASTER_HEAD_SHA)
+	docker push $(DOCKER_PREFIX)renku-core:latest
 
 docker-login:
 	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}
 
-service-container:
-	docker build -f Dockerfile.svc -t renku-core:`git rev-parse --short HEAD` .
+service:
+	docker build -f Dockerfile.svc -t $(DOCKER_PREFIX)renku-core:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
+
+cli:
+	docker build -f Dockerfile.cli -t $(DOCKER_PREFIX)renku-python:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
