@@ -479,10 +479,8 @@ def _remove_workflow(client, name: str, force: bool):
     plan = None
     parse_result = urlparse(name)
     if parse_result.scheme:
-        plan = list(filter(lambda x: x.id == name, pg_workflows.values()))
-        if not plan:
-            raise errors.ParameterError(not_found_text)
-    elif name not in pg_workflows:
+        plan = next(filter(lambda x: x.id == name, pg_workflows.values()), None)
+    if not plan and name not in pg_workflows:
         raise errors.ParameterError(not_found_text)
 
     plan = plan[0] if plan else pg_workflows[name]
