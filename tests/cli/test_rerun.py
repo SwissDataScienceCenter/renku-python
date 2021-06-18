@@ -116,6 +116,29 @@ def test_rerun_with_inputs(runner, project, run):
         assert f.read() != initial_data, "The output should have changed."
 
 
+def test_rerun_with_inputs_with_spaces(runner, project, run):
+    """Test file recreation with specified inputs."""
+    cwd = Path(project)
+    input_ = cwd / "foo bar.txt"
+
+    output = cwd / "output.txt"
+
+    cmd = ["run", "python", "-S", "-c", "import random; print(random.random())"]
+
+    assert 0 == run(args=cmd, stdout=input_), "Random number generation."
+
+    cmd = ["run", "cat"] + [str(input_)]
+    assert 0 == run(args=cmd, stdout=output)
+
+    with output.open("r") as f:
+        initial_data = f.read()
+
+    assert 0 == run(args=("rerun", str(output)))
+
+    with output.open("r") as f:
+        assert f.read() != initial_data, "The output should have changed."
+
+
 def test_rerun_with_inputs_with_from(runner, project, run):
     """Test file recreation with specified inputs."""
     cwd = Path(project)
