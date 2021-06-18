@@ -470,7 +470,7 @@ def _remove_workflow(client, name: str, force: bool):
     now = datetime.utcnow()
     # TODO: refactor this once we switch to Database
     provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
-    pg_workflows = _unique_workflow(provenance_graph)
+    pg_workflows = unique_workflow(provenance_graph)
 
     not_found_text = f'The specified workflow is "{name}" is not an active workflow.'
     plan = None
@@ -495,7 +495,7 @@ def _remove_workflow(client, name: str, force: bool):
     provenance_graph.to_json()
 
 
-def _unique_workflow(provenance_graph: ProvenanceGraph) -> Dict[str, Plan]:
+def unique_workflow(provenance_graph: ProvenanceGraph) -> Dict[str, Plan]:
     """Map of unique plans in the provenance graph indexed by name."""
     workflows = dict()
     for activity in provenance_graph.activities:
