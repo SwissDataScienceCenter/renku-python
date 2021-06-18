@@ -71,7 +71,7 @@ def _patched_configure(
         raise inject.InjectorException("Injector is already configured")
 
     _LOCAL.injector = inject.Injector(config, bind_in_runtime=bind_in_runtime)
-    inject.logger.debug("Created and configured an injector, config=%s", config)
+
     return _LOCAL.injector
 
 
@@ -235,7 +235,7 @@ class Command:
         return result
 
     @property
-    def finalized(self) -> "Command":
+    def finalized(self) -> bool:
         """Whether this builder is still being constructed or has been finalized."""
         if hasattr(self, "_builder"):
             return self._builder.finalized

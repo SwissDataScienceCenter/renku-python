@@ -19,7 +19,6 @@
 import os
 import uuid
 from contextlib import contextmanager
-from functools import partial
 
 import pytest
 
@@ -106,23 +105,3 @@ def modified_environ(*remove, **update):
     finally:
         env.update(update_after)
         [env.pop(k) for k in remove_after]
-
-
-@contextmanager
-def inject_client(client):
-    """Temporarily inject a LocalClient using dependency injection."""
-    from renku.core.management.command_builder.Command import _LOCAL, _bind_local_client, inject, remove_injector
-
-    try:
-        previous_injector = getattr(_LOCAL, "injector", None)
-
-        if previous_injector:
-            del _LOCAL.injector
-
-        inject.configure(partial(_bind_local_client, client=client))
-        yield
-    finally:
-        remove_injector()
-
-        if previous_injector:
-            _LOCAL.injector = previous_injector
