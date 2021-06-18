@@ -22,7 +22,14 @@ import click
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
 from renku.core.incubation.command import Command
-from renku.core.incubation.graph import FORMATS, add_to_dataset, create_dataset, export_graph, generate_graph
+from renku.core.incubation.graph import (
+    FORMATS,
+    add_to_dataset,
+    create_dataset,
+    export_graph,
+    generate_graph,
+    remove_workflow,
+)
 from renku.core.incubation.graph import status as get_status
 from renku.core.incubation.graph import update as perform_update
 from renku.core.models.workflow.dependency_graph import DependencyGraph
@@ -189,3 +196,17 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
         ref=ref,
     )
     click.secho("OK", fg="green")
+
+
+@graph.group()
+def workflow():
+    """Proof-of-Concept command for workflow operations using new metadata."""
+
+
+@workflow.command()
+@click.argument("name", metavar="<name or uuid>")
+@click.option("-f", "--force", is_flag=True, help="Force remove (don't prompt user to confirm).")
+def remove(name, force):
+    """Remove the workflow named <name>."""
+    communicator = ClickCallback()
+    remove_workflow().with_communicator(communicator).build().execute(name=name, force=force)
