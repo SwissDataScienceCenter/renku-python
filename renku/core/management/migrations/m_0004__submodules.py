@@ -133,7 +133,7 @@ def _migrate_submodule_based_datasets(client):
                 file_.based_on = based_on
                 file_.url = remove_credentials(url)
                 file_.commit = client.find_previous_commit(file_.path)
-                file_._id = generate_file_id(hexsha=file_.commit.hexsha, path=file_.path)
+                file_._id = generate_file_id(client, hexsha=file_.commit.hexsha, path=file_.path)
                 file_._label = generate_label(file_.path, file_.commit.hexsha)
 
         dataset.to_yaml()

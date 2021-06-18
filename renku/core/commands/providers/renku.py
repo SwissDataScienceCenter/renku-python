@@ -272,7 +272,7 @@ class _RenkuRecordSerializer:
         return self._dataset
 
     @inject.autoparams()
-    def import_images(self, client: LocalClient, dataset):
+    def import_images(self, dataset, client: LocalClient):
         """Add images from remote dataset."""
         if not self._dataset.images:
             return

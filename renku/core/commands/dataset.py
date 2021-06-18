@@ -654,7 +654,9 @@ def _update_datasets(names, creators, include, exclude, ref, delete, client: Loc
                     extract = False
                     break
 
-            _import_dataset(uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete)
+            _import_dataset(
+                uri=uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
+            )
 
             communication.echo(f"Updated dataset '{dataset.name}' from remote provider")
 
