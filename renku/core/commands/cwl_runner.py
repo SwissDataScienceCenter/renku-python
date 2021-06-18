@@ -56,7 +56,7 @@ def execute(client, output_file, output_paths=None):
     runtime_context = RuntimeContext(
         kwargs={"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True}
     )
-    loading_context = LoadingContext(kwargs={"construct_tool_object": construct_tool_object})
+    loading_context = LoadingContext(kwargs={"construct_tool_object": construct_tool_object, "relax_path_checks": True})
 
     factory = cwltool.factory.Factory(loading_context=loading_context, runtime_context=runtime_context)
     process = factory.make(os.path.relpath(str(output_file)))
