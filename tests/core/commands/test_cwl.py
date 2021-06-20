@@ -20,15 +20,17 @@ from pathlib import Path
 
 import pytest
 
+from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 from renku.core.models.entities import Collection, Entity
 
 
 def test_1st_tool(client):
     """Check creation of 1st tool example from args."""
-    tool = CommandLineToolFactory(("echo", "Hello world!")).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with replace_injected_client(client):
+        tool = CommandLineToolFactory(("echo", "Hello world!")).generate_process_run(
+            commit=client.repo.head.commit, path="dummy.yaml"
+        )
 
     tool = tool.association.plan
     assert "Hello world!" == tool.arguments[0].value
@@ -50,9 +52,10 @@ def test_03_input(client):
         "hello",
         "--file=whale.txt",
     ]
-    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with replace_injected_client(client):
+        tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
+            commit=client.repo.head.commit, path="dummy.yaml"
+        )
 
     tool = tool.association.plan
 
@@ -81,9 +84,10 @@ def test_base_command_detection(client):
     client.repo.index.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
-    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with replace_injected_client(client):
+        tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
+            commit=client.repo.head.commit, path="dummy.yaml"
+        )
 
     tool = tool.association.plan
 
@@ -109,9 +113,10 @@ def test_base_command_as_file_input(client):
     client.repo.index.commit("add file")
 
     argv = ["script.py", "input.csv"]
-    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with replace_injected_client(client):
+        tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
+            commit=client.repo.head.commit, path="dummy.yaml"
+        )
 
     tool = tool.association.plan
 
@@ -121,9 +126,10 @@ def test_base_command_as_file_input(client):
 
 def test_short_base_command_detection(client):
     """Test base command detection without arguments."""
-    tool = CommandLineToolFactory(("echo", "A")).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with replace_injected_client(client):
+        tool = CommandLineToolFactory(("echo", "A")).generate_process_run(
+            commit=client.repo.head.commit, path="dummy.yaml"
+        )
 
     tool = tool.association.plan
 
@@ -152,7 +158,8 @@ def test_04_output(client):
     assert "File" == parameters[0][0].type
     assert "hello.txt" == parameters[0][0].outputBinding.glob
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with replace_injected_client(client):
+        tool = factory.generate_process_run(commit=client.repo.head.commit, path="dummy.yaml")
 
     tool = tool.association.plan
     assert argv == tool.to_argv()
@@ -172,7 +179,8 @@ def test_05_stdout(client):
     assert "output.txt" == factory.stdout
     assert "stdout" == factory.outputs[0].type
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with replace_injected_client(client):
+        tool = factory.generate_process_run(commit=client.repo.head.commit, path="dummy.yaml")
 
     tool = tool.association.plan
     assert argv == tool.to_argv()
@@ -194,7 +202,8 @@ def test_stdout_with_conflicting_arg(client):
     assert "lalala" == factory.stdout
     assert "stdout" == factory.outputs[0].type
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with replace_injected_client(client):
+        tool = factory.generate_process_run(commit=client.repo.head.commit, path="dummy.yaml")
 
     tool = tool.association.plan
     assert argv == tool.to_argv()
@@ -226,7 +235,8 @@ def test_06_params(client):
     assert "File" == parameters[0][0].type
     assert "$(inputs.{0})".format(goodbye_id) == parameters[0][0].outputBinding.glob
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with replace_injected_client(client):
+        tool = factory.generate_process_run(commit=client.repo.head.commit, path="dummy.yaml")
 
     tool = tool.association.plan
     assert argv == tool.to_argv()
@@ -245,9 +255,10 @@ def test_09_array_inputs(client):
         "-B=six",
         "-C=seven,eight,nine",
     ]
-    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with replace_injected_client(client):
+        tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
+            commit=client.repo.head.commit, path="dummy.yaml"
+        )
 
     tool = tool.association.plan
 
@@ -286,7 +297,8 @@ def test_stdin_and_stdout(argv, client):
     assert "output.txt" == factory.stdout
     assert "stdout" == factory.outputs[0].type
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with replace_injected_client(client):
+        tool = factory.generate_process_run(commit=client.repo.head.commit, path="dummy.yaml")
 
     tool = tool.association.plan
     assert argv == tool.to_argv()
@@ -313,7 +325,8 @@ def test_input_directory(client):
     argv = ["tar", "czvf", "src.tar", "src"]
     factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path)
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with replace_injected_client(client):
+        tool = factory.generate_process_run(commit=client.repo.head.commit, path="dummy.yaml")
 
     tool = tool.association.plan
     assert argv == tool.to_argv()
@@ -341,9 +354,10 @@ def test_existing_output_directory(client, runner, project):
         # Script creates the directory.
         output.mkdir(parents=True)
 
-    run = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with replace_injected_client(client):
+        run = factory.generate_process_run(commit=client.repo.head.commit, path="dummy.yaml")
 
-    cwl, _ = CWLConverter.convert(run.association.plan, client)
+    cwl, _ = CWLConverter.convert(run.association.plan, client.path)
 
     assert 1 == len([r for r in cwl.requirements if hasattr(r, "listing")])
 
@@ -354,8 +368,9 @@ def test_existing_output_directory(client, runner, project):
 
     assert 1 == len(tool.inputs)
 
-    run = tool.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
-    cwl, _ = CWLConverter.convert(run.association.plan, client)
+    with replace_injected_client(client):
+        run = tool.generate_process_run(commit=client.repo.head.commit, path="dummy.yaml")
+    cwl, _ = CWLConverter.convert(run.association.plan, client.path)
 
     reqs = [r for r in cwl.requirements if hasattr(r, "listing")]
 

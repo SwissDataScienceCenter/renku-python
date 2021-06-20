@@ -51,7 +51,7 @@ def dataset_import(cache, user, user_job_id, project_id, dataset_uri, name=None,
 
             command = import_dataset().with_commit_message(f"service: dataset import {dataset_uri}")
             command.with_communicator(communicator).build().execute(
-                dataset_uri, name, extract, yes=True, gitlab_token=gitlab_token
+                uri=dataset_uri, name=name, extract=extract, yes=True, gitlab_token=gitlab_token
             )
 
             worker_log.debug("operation successful - syncing with remote")

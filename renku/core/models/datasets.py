@@ -46,7 +46,7 @@ NoneType = type(None)
 class Url:
     """Represents a schema URL reference."""
 
-    client = attr.ib(default=None, kw_only=True)
+    client = attr.ib(default=None)
 
     url = attr.ib(default=None, kw_only=True)
 
@@ -147,7 +147,7 @@ def _extract_doi(value):
 class DatasetTag(object):
     """Represents a Tag of an instance of a dataset."""
 
-    client = attr.ib(default=None, kw_only=True)
+    client = attr.ib(default=None)
 
     name = attr.ib(default=None, kw_only=True, validator=instance_of(str))
 

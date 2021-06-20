@@ -23,6 +23,8 @@ from pathlib import Path
 from git import GitError, Repo
 
 from renku.core import errors
+from renku.core.management import LocalClient
+from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.management.migrations.models.v3 import DatasetFileSchemaV3, get_client_datasets
 from renku.core.models.datasets import DatasetFile, DatasetFileSchema
 from renku.core.models.entities import generate_file_id, generate_label
@@ -35,7 +37,6 @@ def migrate(client):
 
 
 def _migrate_submodule_based_datasets(client):
-    from renku.core.management import LocalClient
     from renku.core.management.migrate import is_project_unsupported, migrate
 
     submodules = client.repo.submodules
@@ -77,8 +78,9 @@ def _migrate_submodule_based_datasets(client):
     remote_clients = {p: LocalClient(p) for p in repo_paths}
 
     for remote_client in remote_clients.values():
-        if not is_project_unsupported(remote_client):
-            migrate(remote_client, skip_template_update=True, skip_docker_update=True)
+        with replace_injected_client(remote_client):
+            if not is_project_unsupported():
+                migrate(skip_template_update=True, skip_docker_update=True)
 
     metadata = {}
 
@@ -131,7 +133,7 @@ def _migrate_submodule_based_datasets(client):
                 file_.based_on = based_on
                 file_.url = remove_credentials(url)
                 file_.commit = client.find_previous_commit(file_.path)
-                file_._id = generate_file_id(client=client, hexsha=file_.commit.hexsha, path=file_.path)
+                file_._id = generate_file_id(client, hexsha=file_.commit.hexsha, path=file_.path)
                 file_._label = generate_label(file_.path, file_.commit.hexsha)
 
         dataset.to_yaml()

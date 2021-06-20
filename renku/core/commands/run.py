@@ -24,7 +24,9 @@ from subprocess import call
 import click
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
 from renku.core.management.git import get_mapped_std_streams
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 from renku.core.utils import communication
@@ -33,11 +35,11 @@ from renku.core.utils.urls import get_slug
 
 def run_command():
     """Tracking work on a specific problem."""
-    return Command().command(_run_command).require_migration().require_clean().with_commit()
+    return Command().command(_run_command).require_migration().require_clean().with_commit().with_database(write=True)
 
 
+@inject.autoparams()
 def _run_command(
-    client,
     name,
     description,
     keyword,
@@ -48,6 +50,7 @@ def _run_command(
     no_output_detection,
     success_codes,
     command_line,
+    client: LocalClient,
 ):
     # NOTE: validate name as early as possible
     if name:
@@ -116,7 +119,7 @@ def _run_command(
             successCodes=success_codes,
             **{name: os.path.relpath(path, working_dir) for name, path in mapped_std.items()},
         )
-        with factory.watch(client, no_output=no_output) as tool:
+        with factory.watch(no_output=no_output) as tool:
             # Don't compute paths if storage is disabled.
             if client.check_external_storage():
                 # Make sure all inputs are pulled from a storage.

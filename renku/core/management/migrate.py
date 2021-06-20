@@ -46,40 +46,42 @@ from renku.core.errors import (
     ProjectNotSupported,
     TemplateUpdateError,
 )
+from renku.core.management.command_builder.command import inject
 from renku.core.utils import communication
 from renku.core.utils.migrate import read_project_version
 
 SUPPORTED_PROJECT_VERSION = 8
 
 
-def check_for_migration(client):
+def check_for_migration():
     """Checks if migration is required."""
-    if is_migration_required(client):
+    if is_migration_required():
         raise MigrationRequired
-    elif is_project_unsupported(client):
+    elif is_project_unsupported():
         raise ProjectNotSupported
 
 
-def is_migration_required(client):
+def is_migration_required():
     """Check if project requires migration."""
-    return is_renku_project(client) and _get_project_version(client) < SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and _get_project_version() < SUPPORTED_PROJECT_VERSION
 
 
-def is_project_unsupported(client):
+def is_project_unsupported():
     """Check if this version of Renku cannot work with the project."""
-    return is_renku_project(client) and _get_project_version(client) > SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and _get_project_version() > SUPPORTED_PROJECT_VERSION
 
 
-def is_template_update_possible(client):
+def is_template_update_possible():
     """Check if the project can be updated to a newer version of the project template."""
-    return _update_template(client, check_only=True)
+    return _update_template(check_only=True)
 
 
-def is_docker_update_possible(client):
+def is_docker_update_possible():
     """Check if the Dockerfile can be updated to a new version of renku-python."""
-    return _update_dockerfile(client, check_only=True)
+    return _update_dockerfile(check_only=True)
 
 
+@inject.params(client="LocalClient")
 def migrate(
     client,
     force_template_update=False,
@@ -90,7 +92,7 @@ def migrate(
 ):
     """Apply all migration files to the project."""
     template_updated = docker_updated = False
-    if not is_renku_project(client):
+    if not is_renku_project():
         return False, template_updated, docker_updated
 
     if (
@@ -99,7 +101,7 @@ def migrate(
         and (force_template_update or client.project.automated_update)
     ):
         try:
-            template_updated, _, _ = _update_template(client)
+            template_updated, _, _ = _update_template()
         except TemplateUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -107,7 +109,7 @@ def migrate(
 
     if not skip_docker_update:
         try:
-            docker_updated = _update_dockerfile(client)
+            docker_updated = _update_dockerfile()
         except DockerfileUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -116,7 +118,7 @@ def migrate(
     if skip_migrations:
         return False, template_updated, docker_updated
 
-    project_version = project_version or _get_project_version(client)
+    project_version = project_version or _get_project_version()
     n_migrations_executed = 0
 
     version = 1
@@ -140,6 +142,7 @@ def migrate(
     return n_migrations_executed != 0, template_updated, docker_updated
 
 
+@inject.params(client="LocalClient")
 def _update_template(client, check_only=False):
     """Update local files from the remote template."""
     from renku.core.commands.init import fetch_template
@@ -255,6 +258,7 @@ def _update_template(client, check_only=False):
     return True, project.template_version, template_version
 
 
+@inject.params(client="LocalClient")
 def _update_dockerfile(client, check_only=False):
     """Update the dockerfile to the newest version of renku."""
     from renku import __version__
@@ -296,6 +300,7 @@ def _update_dockerfile(client, check_only=False):
     return True
 
 
+@inject.params(client="LocalClient")
 def _get_project_version(client):
     try:
         return int(read_project_version(client))
@@ -303,6 +308,7 @@ def _get_project_version(client):
         return 1
 
 
+@inject.params(client="LocalClient")
 def is_renku_project(client):
     """Check if repository is a renku project."""
     try:

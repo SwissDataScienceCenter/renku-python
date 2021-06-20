@@ -27,7 +27,8 @@ from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 def test_graph_export_validation(runner, client, directory_tree, run, format):
     """Test graph validation when exporting."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
-    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
+    result = runner.invoke(cli, ["graph", "generate"])
+    assert 0 == result.exit_code
     file1 = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
     file2 = client.path / DATA_DIR / "my-data" / directory_tree.name / "dir1" / "file2"
     assert 0 == run(["run", "head", str(file1)], stdout="out1")
@@ -36,3 +37,24 @@ def test_graph_export_validation(runner, client, directory_tree, run, format):
     result = runner.invoke(cli, ["graph", "export", "--format", format, "--strict"])
 
     assert 0 == result.exit_code, result.output
+
+
+def test_graph(runner, client, directory_tree, run):
+    """Test graph generation."""
+    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
+    file1 = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
+    file2 = client.path / DATA_DIR / "my-data" / directory_tree.name / "dir1" / "file2"
+    assert 0 == run(["run", "head", str(file1)], stdout="out1")
+    assert 0 == run(["run", "tail", str(file2)], stdout="out2")
+
+    result = runner.invoke(cli, ["graph", "generate", "-f"])
+    assert 0 == result.exit_code, result.output
+
+    from renku.core.incubation.database import Database
+    from renku.core.models.provenance.activity import Activity
+
+    database = Database.from_path(client.database_path)
+
+    a = Activity(id="123")
+    database.add(a)
+    database.commit()

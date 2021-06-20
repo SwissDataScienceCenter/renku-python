@@ -24,7 +24,7 @@ from renku.core.models.json import dumps
 from .tabulate import tabulate
 
 
-def tabular(client, datasets, *, columns=None):
+def tabular(datasets, *, columns=None):
     """Format datasets with a tabular output."""
     if not columns:
         columns = "id,date_created,name,creators,tags,version"
@@ -40,13 +40,13 @@ def _create_dataset_short_description(datasets):
         dataset.short_description = "\n".join(lines)
 
 
-def jsonld(client, datasets, **kwargs):
+def jsonld(datasets, **kwargs):
     """Format datasets as JSON-LD."""
     data = [dataset.as_jsonld() for dataset in datasets]
     return dumps(data, indent=2)
 
 
-def json(client, datasets, **kwargs):
+def json(datasets, **kwargs):
     """Format datasets as JSON."""
     data = [DatasetDetailsJson().dump(dataset) for dataset in datasets]
     return dumps(data, indent=2)

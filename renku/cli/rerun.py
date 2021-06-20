@@ -51,16 +51,19 @@ from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
 from renku.core.commands.options import option_siblings
 from renku.core.commands.rerun import rerun_workflows
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 
 
-def show_inputs(client, workflow):
+def show_inputs(workflow):
     """Show workflow inputs and exit."""
     for input_ in workflow.inputs:
         click.echo("{id}: {default}".format(id=input_._id, default=input_.consumes.path))
     sys.exit(0)
 
 
-def edit_inputs(client, workflow):
+@inject.autoparams()
+def edit_inputs(workflow, client: LocalClient):
     """Edit workflow inputs."""
     for input_ in workflow.inputs:
         new_path = click.prompt("{0._id}".format(input_), default=input_.consumes.path)
@@ -95,7 +98,7 @@ def edit_inputs(client, workflow):
     "--default-inputs",
     "inputs",
     default=True,
-    flag_value=lambda _, workflow: workflow,
+    flag_value=lambda workflow: workflow,
     help="Use default inputs.",
     type=click.types.UnprocessedParamType(),
 )

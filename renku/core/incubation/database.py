@@ -94,6 +94,7 @@ class Database:
         self._writer: ObjectWriter = ObjectWriter(database=self)
         self._root: Optional[OOBTree] = None
         self._root_types: Tuple[type, ...] = (OOBTree, Index)
+        self._initialize_root()
 
     @classmethod
     def from_path(cls, path: Union[str, Path]) -> "Database":
@@ -129,6 +130,13 @@ class Database:
     def root(self):
         """Return the database root object."""
         if not self._root:
+            self._initialize_root()
+
+        return self._root
+
+    def _initialize_root(self):
+        """Initialize root object."""
+        if not self._root:
             try:
                 self._root = self.get(Database.ROOT_OID)
                 root_types = tuple(i.value_type for i in self._root.values() if i.value_type not in self._root_types)
@@ -138,8 +146,6 @@ class Database:
             except POSKeyError:
                 self._root = OOBTree()
                 self._add_internal(self._root, Database.ROOT_OID)
-
-        return self._root
 
     def add_index(self, name: str, value_type: type, attribute: str, is_list: bool = False, key_type: type = None):
         """Add an index."""

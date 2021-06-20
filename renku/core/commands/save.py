@@ -23,13 +23,16 @@ from uuid import uuid4
 import git
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
 
 
-def _save_and_push(client, message=None, remote=None, paths=None):
+@inject.autoparams()
+def _save_and_push(client: LocalClient, message=None, remote=None, paths=None):
     """Save and push local changes."""
     client.setup_credential_helper()
     if not paths:

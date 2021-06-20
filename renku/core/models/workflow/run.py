@@ -29,6 +29,7 @@ from pathlib import Path
 import attr
 from marshmallow import EXCLUDE
 
+from renku.core.management.command_builder.command import inject
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.cwl.types import PATH_OBJECTS
 from renku.core.models.entities import Collection, CommitMixin, CommitMixinSchema, Entity
@@ -206,7 +207,8 @@ class Run(CommitMixin):
         )
 
     @classmethod
-    def from_factory(cls, factory, client, commit, path, name, description, keywords):
+    @inject.params(client="LocalClient")
+    def from_factory(cls, factory, commit, path, name, description, keywords, client):
         """Creates a ``Run`` from a ``CommandLineToolFactory``."""
         inputs = []
         arguments = []

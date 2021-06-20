@@ -32,7 +32,9 @@ from pkg_resources import resource_filename
 from renku.core import errors
 from renku.core.commands.dataset import create_dataset_helper
 from renku.core.commands.update import execute_workflow
-from renku.core.incubation.command import Command
+from renku.core.incubation.database import Database
+from renku.core.management import LocalClient
+from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DATASET_METADATA_PATHS, DatasetsApiMixin
 from renku.core.management.migrate import migrate
@@ -41,6 +43,7 @@ from renku.core.models.entities import Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.activities import Activity
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
 from renku.core.utils.contexts import measure
@@ -59,10 +62,11 @@ GRAPH_METADATA_PATHS = [
 def generate_graph():
     """Return a command for generating the graph."""
     command = Command().command(_generate_graph).lock_project()
-    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
+    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS).with_database(write=True)
 
 
-def _generate_graph(client, force=False):
+@inject.autoparams()
+def _generate_graph(client: LocalClient, database: Database, force=False):
     """Generate graph and dataset provenance metadata."""
 
     def process_workflows(commit: Commit):
@@ -89,15 +93,15 @@ def _generate_graph(client, force=False):
         paths = [p for p in paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
         deleted_paths = [git_unicode_unescape(f.a_path) for f in files_diff if f.change_type == "A"]
 
-        datasets, deleted_datasets = _fetch_datasets(client, commit.hexsha, paths=paths, deleted_paths=deleted_paths)
+        datasets, deleted_datasets = _fetch_datasets(commit.hexsha, paths=paths, deleted_paths=deleted_paths)
 
         revision = commit.hexsha
         date = commit.authored_datetime
 
         for dataset in datasets:
-            client.datasets_provenance.update_dataset(dataset, client=client, revision=revision, date=date)
+            client.datasets_provenance.update_dataset(dataset, revision=revision, date=date)
         for dataset in deleted_datasets:
-            client.datasets_provenance.remove_dataset(dataset, client=client, revision=revision, date=date)
+            client.datasets_provenance.remove_dataset(dataset, revision=revision, date=date)
 
     commits = list(client.repo.iter_commits(paths=[f"{client.workflow_path}/*.yaml", ".renku/datasets/*/*.yml"]))
     n_commits = len(commits)
@@ -126,16 +130,16 @@ def _generate_graph(client, force=False):
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
     client.datasets_provenance.to_json()
-
-    client.database.commit()
+    database.commit()
 
 
 def status():
     """Return a command for getting workflow graph status."""
-    return Command().command(_status)
+    return Command().command(_status).with_database(write=False)
 
 
-def _status(client):
+@inject.autoparams()
+def _status(client: LocalClient, database: Database):
     """Get status of workflows."""
     with measure("BUILD AND QUERY GRAPH"):
         pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
@@ -153,7 +157,7 @@ def _status(client):
         communication.warn("Git HEAD is detached!\n Please move back to your working branch to use renku\n")
 
     with measure("CALCULATE MODIFIED"):
-        modified, deleted = _get_modified_paths(client=client, plans_usages=plans_usages)
+        modified, deleted = _get_modified_paths(plans_usages=plans_usages)
 
     if not modified and not deleted:
         return None, None, None
@@ -162,7 +166,7 @@ def _status(client):
 
     with measure("CALCULATE UPDATES"):
         for plan_id, path, _ in modified:
-            paths = client.dependency_graph.get_dependent_paths(plan_id, path)
+            paths = DependencyGraph.from_database(database).get_dependent_paths(plan_id, path)
             for p in paths:
                 stales[p].add(path)
 
@@ -173,25 +177,26 @@ def _status(client):
 
 def update():
     """Return a command for generating the graph."""
-    command = Command().command(_update).lock_project()
+    command = Command().command(_update).lock_project().with_database(write=True)
     return command.require_migration().with_commit(commit_if_empty=False).require_clean().require_nodejs()
 
 
-def _update(client, dry_run):
+@inject.autoparams()
+def _update(dry_run, client: LocalClient, database: Database):
     """Update outdated outputs."""
     with measure("BUILD AND QUERY GRAPH"):
         pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
         plans_usages = pg.get_latest_plans_usages()
 
     with measure("CALCULATE MODIFIED"):
-        modified, deleted = _get_modified_paths(client=client, plans_usages=plans_usages)
+        modified, deleted = _get_modified_paths(plans_usages=plans_usages)
 
     if not modified:
         communication.echo("Everything is up-to-date.")
         return
 
     with measure("CALCULATE UPDATES"):
-        plans, plans_with_deleted_inputs = client.dependency_graph.get_downstream(modified, deleted)
+        plans, plans_with_deleted_inputs = DependencyGraph.from_database(database).get_downstream(modified, deleted)
 
     if plans_with_deleted_inputs:
         formatted_deleted_plans = "".join((f"\n\t{p}" for p in plans_with_deleted_inputs))
@@ -206,22 +211,21 @@ def _update(client, dry_run):
 
     with measure("CONVERTING RUNS"):
         entities_cache: Dict[str, Entity] = {}
-        runs = [p.to_run(client, entities_cache) for p in plans]
-        parent_process = Run(client=client)
+        runs = [p.to_run(entities_cache) for p in plans]
+        parent_process = Run()
         for run in runs:
             parent_process.add_subprocess(run)
 
-    execute_workflow(
-        client=client, workflow=parent_process, output_paths=None, command_name="update", update_commits=True
-    )
+    execute_workflow(workflow=parent_process, output_paths=None, command_name="update", update_commits=True)
 
 
 def export_graph():
     """Return a command for exporting graph data."""
-    return Command().command(_export_graph)
+    return Command().command(_export_graph).with_database(write=False)
 
 
-def _export_graph(client, format, workflows_only, strict):
+@inject.autoparams()
+def _export_graph(format, workflows_only, strict, client: LocalClient):
     """Output graph in specific format."""
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
@@ -245,7 +249,8 @@ def _export_graph(client, format, workflows_only, strict):
     return FORMATS[format](graph)
 
 
-def _get_modified_paths(client, plans_usages):
+@inject.autoparams()
+def _get_modified_paths(plans_usages, client: LocalClient):
     """Get modified and deleted usages/inputs of a plan."""
     modified = set()
     deleted = set()
@@ -262,7 +267,8 @@ def _get_modified_paths(client, plans_usages):
     return modified, deleted
 
 
-def _fetch_datasets(client, revision, paths, deleted_paths):
+@inject.autoparams()
+def _fetch_datasets(revision, paths, deleted_paths, client: LocalClient):
     from renku.core.models.datasets import Dataset
 
     datasets_path = client.path / ".renku" / "tmp" / "datasets"
@@ -305,7 +311,7 @@ def _fetch_datasets(client, revision, paths, deleted_paths):
             client.set_temporary_datasets_path(datasets_path)
             communication.disable()
             client.migration_type = MigrationType.DATASETS
-            migrate(client, project_version=project_version, skip_template_update=True, skip_docker_update=True)
+            migrate(project_version=project_version, skip_template_update=True, skip_docker_update=True)
         finally:
             communication.enable()
             client.clear_temporary_datasets_path()
@@ -316,7 +322,7 @@ def _fetch_datasets(client, revision, paths, deleted_paths):
 
     datasets = []
     for path in paths:
-        dataset = Dataset.from_yaml(path, client=client)
+        dataset = Dataset.from_yaml(path, client)
         # NOTE: Fixing dataset path after migration
         original_identifier = Path(dataset.path).name
         dataset.path = f".renku/datasets/{original_identifier}"
@@ -324,7 +330,7 @@ def _fetch_datasets(client, revision, paths, deleted_paths):
 
     deleted_datasets = []
     for path in deleted_paths:
-        dataset = Dataset.from_yaml(path, client=client)
+        dataset = Dataset.from_yaml(path, client)
         # NOTE: Fixing dataset path after migration
         original_identifier = Path(dataset.path).name
         dataset.path = f".renku/datasets/{original_identifier}"
@@ -389,14 +395,13 @@ def create_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _create_dataset(client, name, title=None, description="", creators=None, keywords=None):
+@inject.autoparams()
+def _create_dataset(name, client: LocalClient, title=None, description="", creators=None, keywords=None):
     """Create a dataset in the repository."""
     if not client.has_datasets_provenance():
         raise errors.OperationError("Dataset provenance is not generated. Run `renku graph generate-dataset`.")
 
-    return create_dataset_helper(
-        client=client, name=name, title=title, description=description, creators=creators, keywords=keywords
-    )
+    return create_dataset_helper(name=name, title=title, description=description, creators=creators, keywords=keywords)
 
 
 def add_to_dataset():
@@ -405,8 +410,9 @@ def add_to_dataset():
     return command.require_migration().with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
 
 
+@inject.autoparams()
 def _add_to_dataset(
-    client,
+    client: LocalClient,
     urls,
     name,
     external=False,

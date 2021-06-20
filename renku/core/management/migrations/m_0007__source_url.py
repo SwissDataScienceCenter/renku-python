@@ -30,7 +30,7 @@ def _fix_dataset_file_source_and_url(client):
     for dataset in get_client_datasets(client):
         for file_ in dataset.files:
             file_.source = file_.url
-            file_.url = generate_dataset_file_url(client=client, filepath=file_.path)
+            file_.url = generate_dataset_file_url(client, filepath=file_.path)
 
             if file_.source:
                 file_.source = file_.source.replace("file://", "")
