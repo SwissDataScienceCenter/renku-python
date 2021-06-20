@@ -22,6 +22,9 @@ import os
 import pytest
 
 from renku.cli import cli
+from renku.core.incubation.database import Database
+from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+from renku.core.models.workflow.dependency_graph import DependencyGraph
 
 
 def test_run_simple(runner, project):
@@ -85,7 +88,8 @@ def test_run_metadata(renku_cli, client_with_new_graph):
     assert "first run" == activity.description
     assert {"key1", "key2"} == set(activity.keywords)
 
-    plan = client_with_new_graph.dependency_graph.plans[0]
+    database = Database.from_path(client_with_new_graph.database_path)
+    plan = DependencyGraph.from_database(database).plans[0]
     assert "run-1" == plan.name
     assert "first run" == plan.description
     assert {"key1", "key2"} == set(plan.keywords)
@@ -105,8 +109,10 @@ def test_generated_run_name(runner, client, command, name):
     result = runner.invoke(cli, ["run", "--no-output"] + command)
 
     assert 0 == result.exit_code
-    assert 1 == len(client.dependency_graph.plans)
-    assert name == client.dependency_graph.plans[0].name[:-5]
+    database = Database.from_path(client.database_path)
+    dependency_graph = DependencyGraph.from_database(database)
+    assert 1 == len(dependency_graph.plans)
+    assert name == dependency_graph.plans[0].name[:-5]
 
 
 def test_run_invalid_name(runner, client):
@@ -141,8 +147,10 @@ def test_run_argument_parameters(runner, client):
     )
 
     assert 0 == result.exit_code
-    assert 1 == len(client.dependency_graph.plans)
-    plan = client.dependency_graph.plans[0]
+    database = Database.from_path(client.database_path)
+    dependency_graph = DependencyGraph.from_database(database)
+    assert 1 == len(dependency_graph.plans)
+    plan = dependency_graph.plans[0]
 
     assert 2 == len(plan.inputs)
     plan.inputs.sort(key=lambda i: i.name)
@@ -157,7 +165,7 @@ def test_run_argument_parameters(runner, client):
     assert "delta-3" == plan.parameters[0].name
     assert "n-1" == plan.parameters[1].name
 
-    provenance_graph = client.provenance_graph
+    provenance_graph = ProvenanceGraph.from_database(database)
     assert 1 == len(provenance_graph.activities)
     activity = provenance_graph.activities[0]
 

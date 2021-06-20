@@ -25,7 +25,9 @@ from git import Actor
 from renku.core.commands.cwl_runner import execute
 from renku.core.commands.graph import Graph, _safe_path
 from renku.core.errors import ParameterError
-from renku.core.incubation.command import Command
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
 from renku.core.models.cwl.command_line_tool import delete_indirect_files_list, read_indirect_parameters
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.workflow.converters.cwl import CWLConverter
@@ -37,16 +39,24 @@ from renku.version import __version__, version_url
 
 def update_workflows():
     """Update existing files by rerunning their outdated workflow."""
-    return Command().command(_update_workflows).require_migration().require_clean().with_commit().require_nodejs()
+    return (
+        Command()
+        .command(_update_workflows)
+        .require_migration()
+        .require_clean()
+        .with_commit()
+        .require_nodejs()
+        .with_database(write=True)
+    )
 
 
-def _update_workflows(client, revision, no_output, update_all, siblings, paths):
+def _update_workflows(revision, no_output, update_all, siblings, paths):
     if not paths and not update_all:
         raise ParameterError("Either PATHS or --all/-a should be specified.")
     if paths and update_all:
         raise ParameterError("Cannot use PATHS and --all/-a at the same time.")
 
-    graph = Graph(client)
+    graph = Graph()
     outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
     outputs = {node for node in outputs if graph.need_update(node)}
     if not outputs:
@@ -63,12 +73,13 @@ def _update_workflows(client, revision, no_output, update_all, siblings, paths):
     # Store the generated workflow used for updating paths.
     workflow = graph.as_workflow(input_paths=input_paths, output_paths=output_paths, outputs=outputs)
 
-    execute_workflow(client, workflow, output_paths, command_name="update", update_commits=True)
+    execute_workflow(workflow, output_paths, command_name="update", update_commits=True)
 
 
-def execute_workflow(client, workflow, output_paths, command_name, update_commits):
+@inject.autoparams()
+def execute_workflow(workflow, output_paths, command_name, update_commits, client: LocalClient):
     """Execute a Run with/without subprocesses."""
-    wf, path = CWLConverter.convert(workflow, client)
+    wf, path = CWLConverter.convert(workflow, client.path)
     # Don't compute paths if storage is disabled.
     if client.check_external_storage():
         # Make sure all inputs are pulled from a storage.
@@ -80,7 +91,7 @@ def execute_workflow(client, workflow, output_paths, command_name, update_commit
     # Execute the workflow and relocate all output files.
     # FIXME get new output paths for edited tools
     # output_paths = {path for _, path in workflow.iter_output_files()}
-    execute(client, path, output_paths=output_paths)
+    execute(path, output_paths=output_paths)
 
     paths = [o.produces.path for o in workflow.outputs]
 
@@ -103,7 +114,7 @@ def execute_workflow(client, workflow, output_paths, command_name, update_commit
         _update_run_parameters(run=workflow, working_dir=client.path)
 
     cls = WorkflowRun if workflow.subprocesses else ProcessRun
-    activity = cls.from_run(run=workflow, client=client, path=path, update_commits=update_commits)
+    activity = cls.from_run(run=workflow, path=path, update_commits=update_commits)
     activity.to_yaml(path=path)
     client.add_to_activity_index(activity)
 

@@ -45,8 +45,8 @@ from yagup import GitURL
 
 from renku.core import errors
 from renku.core.management.clone import clone
+from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.migrate import is_project_unsupported, migrate
 from renku.core.models.datasets import (
     Dataset,
     DatasetFile,
@@ -938,16 +938,19 @@ class DatasetsApiMixin(object):
     @staticmethod
     def _fetch_files_metadata(client, paths):
         """Return metadata for files from paths."""
+        from renku.core.management.migrate import is_project_unsupported, migrate
+
         files = {}
 
-        if is_project_unsupported(client):
+        if is_project_unsupported():
             return files
 
         migration_type = client.migration_type
         # NOTE: We are not interested in migrating workflows when looking for dataset metadata
         client.migration_type = ~MigrationType.WORKFLOWS
         try:
-            migrate(client, skip_template_update=True, skip_docker_update=True)
+            with replace_injected_client(client):
+                migrate(skip_template_update=True, skip_docker_update=True)
         finally:
             client.migration_type = migration_type
 

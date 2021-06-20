@@ -19,17 +19,18 @@
 
 import contextlib
 import functools
-import shutil
+import threading
+import typing
 from collections import defaultdict
 
 import click
+import inject
 
 from renku.core import errors
-from renku.core.management import LocalClient
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.migrate import check_for_migration
-from renku.core.management.repository import default_path
-from renku.core.utils import communication
+from renku.core.utils.communication import CommunicationCallback
+
+_LOCAL = threading.local()
 
 
 def check_finalized(f):
@@ -49,37 +50,116 @@ def check_finalized(f):
     return wrapper
 
 
+def _patched_get_injector_or_die() -> inject.Injector:
+    """Patched version of get_injector_or_die with thread local injectors.
+
+    Allows deferred definition of an injector per thread.
+    """
+    injector = getattr(_LOCAL, "injector", None)
+    if not injector:
+        raise inject.InjectorException("No injector is configured")
+
+    return injector
+
+
+def _patched_configure(
+    config: typing.Optional[inject.BinderCallable] = None, bind_in_runtime: bool = True
+) -> inject.Injector:
+    """Create an injector with a callable config or raise an exception when already configured."""
+
+    if getattr(_LOCAL, "injector", None):
+        raise inject.InjectorException("Injector is already configured")
+
+    _LOCAL.injector = inject.Injector(config, bind_in_runtime=bind_in_runtime)
+
+    return _LOCAL.injector
+
+
+inject.configure = _patched_configure
+inject.get_injector_or_die = _patched_get_injector_or_die
+
+
+def _bind_local_client(binder: inject.Binder, client) -> inject.Binder:
+    """Bind a LocalClient to an Injector."""
+    from renku.core.management import LocalClient
+
+    binder.bind(LocalClient, client)
+    binder.bind("LocalClient", client)
+    return binder
+
+
+def remove_injector():
+    """Remove a thread-local injector."""
+    if getattr(_LOCAL, "injector", None):
+        del _LOCAL.injector
+
+
+@contextlib.contextmanager
+def replace_injected_client(new_client):
+    """Temporarily inject a different client into dependency injection."""
+    try:
+        old_injector = getattr(_LOCAL, "injector", None)
+        if old_injector:
+            remove_injector()
+        inject.configure(lambda binder: _bind_local_client(binder, new_client))
+
+        yield
+    finally:
+        remove_injector()
+
+        if old_injector:
+            _LOCAL.injector = old_injector
+
+
+def update_injected_client(new_client):
+    """Update the injected client instance.
+
+    Necessary because we sometimes use attr.evolve to modify a client and this doesn't affect the injected instance.
+    """
+    from renku.core.management import LocalClient
+
+    injector = getattr(_LOCAL, "injector", None)
+
+    if not injector:
+        raise inject.InjectorException("No injector is configured")
+
+    injector._bindings[LocalClient] = lambda: new_client
+    injector._bindings["LocalClient"] = lambda: new_client
+
+
 class Command:
     """Base renku command builder."""
 
     CLIENT_HOOK_ORDER = 1
 
-    def __init__(self):
+    def __init__(self) -> None:
         """__init__ of Command."""
         self.pre_hooks = defaultdict(list)
         self.post_hooks = defaultdict(list)
         self._operation = None
         self._finalized = False
         self._track_std_streams = False
-        self._git_isolation = False
         self._working_directory = None
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> typing.Any:
         """Bubble up attributes of wrapped builders."""
         if "_builder" in self.__dict__:
             return getattr(self._builder, name)
 
         raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: typing.Any) -> None:
         """Set attributes of wrapped builders."""
         if hasattr(self, "_builder") and self.__class__ is not self._builder.__class__:
             self._builder.__setattr__(name, value)
 
         object.__setattr__(self, name, value)
 
-    def _pre_hook(self, builder, context, *args, **kwargs):
+    def _pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
         """Setup local client."""
+        from renku.core.management import LocalClient
+        from renku.core.management.repository import default_path
+
         ctx = click.get_current_context(silent=True)
         if ctx is None:
             client = LocalClient(
@@ -93,20 +173,19 @@ class Command:
 
         stack = contextlib.ExitStack()
 
-        # Handle --isolation option:
-        if self._git_isolation:
-            client = stack.enter_context(client.worktree())
-
+        context["bindings"] = {LocalClient: client, "LocalClient": client}
         context["client"] = client
         context["stack"] = stack
         context["click_context"] = ctx
 
-    def _post_hook(self, builder, context, result, *args, **kwargs):
+    def _post_hook(self, builder: "Command", context: dict, result: "CommandResult", *args, **kwargs) -> None:
         """Post-hook method."""
+        remove_injector()
+
         if result.error:
             raise result.error
 
-    def execute(self, *args, **kwargs):
+    def execute(self, *args, **kwargs) -> "CommandResult":
         """Execute the wrapped operation.
 
         First executes `pre_hooks` in ascending `order`, passing a read/write context between them.
@@ -127,11 +206,22 @@ class Command:
         output = None
         error = None
 
+        def _bind(binder):
+            for key, value in context["bindings"].items():
+                binder.bind(key, value)
+
+            return binder
+
+        inject.configure(_bind)
+
         try:
             with context["stack"]:
-                output = context["click_context"].invoke(self._operation, context["client"], *args, **kwargs)
+                output = context["click_context"].invoke(self._operation, *args, **kwargs)
         except errors.RenkuException as e:
             error = e
+        except (Exception, BaseException):
+            remove_injector()
+            raise
 
         result = CommandResult(output, error, CommandResult.FAILURE if error else CommandResult.SUCCESS)
 
@@ -145,14 +235,14 @@ class Command:
         return result
 
     @property
-    def finalized(self):
+    def finalized(self) -> bool:
         """Whether this builder is still being constructed or has been finalized."""
         if hasattr(self, "_builder"):
             return self._builder.finalized
         return self._finalized
 
     @check_finalized
-    def add_pre_hook(self, order, hook):
+    def add_pre_hook(self, order: int, hook: typing.Callable):
         """Add a pre-execution hook.
 
         :param order: Determines the order of executed hooks, lower numbers get executed first.
@@ -164,7 +254,7 @@ class Command:
             self.pre_hooks[order].append(hook)
 
     @check_finalized
-    def add_post_hook(self, order, hook):
+    def add_post_hook(self, order: int, hook: typing.Callable):
         """Add a post-execution hook.
 
         :param order: Determines the order of executed hooks, lower numbers get executed first.
@@ -176,7 +266,7 @@ class Command:
             self.post_hooks[order].append(hook)
 
     @check_finalized
-    def build(self):
+    def build(self) -> "Command":
         """Build (finalize) the command."""
         if not self._operation:
             raise errors.ConfigurationError("`Command` needs to have a wrapped `command` set")
@@ -188,7 +278,7 @@ class Command:
         return self
 
     @check_finalized
-    def command(self, operation):
+    def command(self, operation: typing.Callable):
         """Set the wrapped command.
 
         :param operation: The function to wrap in the command builder.
@@ -198,7 +288,7 @@ class Command:
         return self
 
     @check_finalized
-    def working_directory(self, directory):
+    def working_directory(self, directory: str) -> "Command":
         """Set the working directory for the command.
 
         :param directory: The working directory to work in.
@@ -208,21 +298,23 @@ class Command:
         return self
 
     @check_finalized
-    def track_std_streams(self):
+    def track_std_streams(self) -> "Command":
         """Whether to track STD streams or not."""
         self._track_std_streams = True
 
         return self
 
     @check_finalized
-    def with_git_isolation(self):
+    def with_git_isolation(self) -> "Command":
         """Whether to run in git isolation or not."""
-        self._git_isolation = True
+        from renku.core.management.command_builder.repo import Isolation
 
-        return self
+        return Isolation(self)
 
     @check_finalized
-    def with_commit(self, message=None, commit_if_empty=False, raise_if_empty=False, commit_only=None):
+    def with_commit(
+        self, message: str = None, commit_if_empty: bool = False, raise_if_empty: bool = False, commit_only: bool = None
+    ) -> "Command":
         """Create a commit.
 
         :param message: The commit message. Autogenerated if left empty.
@@ -230,237 +322,58 @@ class Command:
         :param raise_if_empty: Whether to raise an exception if there are no modified files.
         :param commit_only: Only commit the supplied paths.
         """
+        from renku.core.management.command_builder.repo import Commit
+
         return Commit(self, message, commit_if_empty, raise_if_empty, commit_only)
 
     @check_finalized
-    def lock_project(self):
+    def lock_project(self) -> "Command":
         """Acquire a lock for the whole project."""
+        from renku.core.management.command_builder.lock import ProjectLock
+
         return ProjectLock(self)
 
     @check_finalized
-    def lock_dataset(self):
+    def lock_dataset(self) -> "Command":
         """Acquire a lock for a dataset."""
+        from renku.core.management.command_builder.lock import DatasetLock
+
         return DatasetLock(self)
 
     @check_finalized
-    def require_migration(self):
+    def require_migration(self) -> "Command":
         """Check if a migration is needed."""
+        from renku.core.management.command_builder.migration import RequireMigration
+
         return RequireMigration(self)
 
     @check_finalized
-    def require_clean(self):
+    def require_clean(self) -> "Command":
         """Check that the repository is clean."""
+        from renku.core.management.command_builder.repo import RequireClean
+
         return RequireClean(self)
 
     @check_finalized
-    def require_nodejs(self):
+    def require_nodejs(self) -> "Command":
         """Ensure nodejs is installed."""
+        from renku.core.management.command_builder.nodejs import RequireNodeJs
+
         return RequireNodeJs(self)
 
     @check_finalized
-    def with_communicator(self, communicator):
+    def with_communicator(self, communicator: CommunicationCallback) -> "Command":
         """Create a communicator."""
+        from renku.core.management.command_builder.communication import Communicator
+
         return Communicator(self, communicator)
 
-
-class Commit(Command):
-    """Builder for commands that create a commit."""
-
-    DEFAULT_ORDER = 3
-
-    def __init__(self, builder, message=None, commit_if_empty=False, raise_if_empty=False, commit_only=None):
-        """__init__ of Commit.
-
-        :param message: The commit message. Autogenerated if left empty.
-        :param commit_if_empty: Whether to commit if there are no modified files .
-        :param raise_if_empty: Whether to raise an exception if there are no modified files.
-        :param commit_only: Only commit the supplied paths.
-        """
-        self._builder = builder
-        self._message = message
-        self._commit_if_empty = commit_if_empty
-        self._raise_if_empty = raise_if_empty
-        self._commit_filter_paths = commit_only
-
-    def _pre_hook(self, builder, context, *args, **kwargs):
-        """Hook to create a commit transaction."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
-        if "stack" not in context:
-            raise ValueError("Commit builder needs a stack to be set.")
-
-        transaction = context["client"].transaction(
-            clean=False,
-            commit=True,
-            commit_empty=self._commit_if_empty,
-            commit_message=self._message,
-            commit_only=self._commit_filter_paths,
-            ignore_std_streams=not builder._track_std_streams,
-            raise_if_empty=self._raise_if_empty,
-        )
-        context["stack"].enter_context(transaction)
-
     @check_finalized
-    def build(self):
-        """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+    def with_database(self, write: bool = False, path: str = None) -> "Command":
+        """Provide an object database connection."""
+        from renku.core.management.command_builder.database import DatabaseCommand
 
-        return self._builder.build()
-
-    @check_finalized
-    def with_commit_message(self, message):
-        """Set a new commit message."""
-        self._message = message
-
-        return self
-
-
-class RequireMigration(Command):
-    """Builder to check for migrations."""
-
-    DEFAULT_ORDER = 2
-
-    def __init__(self, builder):
-        """__init__ of RequireMigration."""
-        self._builder = builder
-
-    def _pre_hook(self, builder, context, *args, **kwargs):
-        """Check if migration is necessary."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
-
-        check_for_migration(context["client"])
-
-    @check_finalized
-    def build(self):
-        """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
-
-        return self._builder.build()
-
-
-class RequireClean(Command):
-    """Builder to check if repo is clean."""
-
-    DEFAULT_ORDER = 3
-
-    def __init__(self, builder):
-        """__init__ of RequireClean."""
-        self._builder = builder
-
-    def _pre_hook(self, builder, context, *args, **kwargs):
-        """Check if repo is clean."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
-        context["client"].ensure_clean(ignore_std_streams=not builder._track_std_streams)
-
-    @check_finalized
-    def build(self):
-        """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
-
-        return self._builder.build()
-
-
-class ProjectLock(Command):
-    """Builder to get a project wide lock."""
-
-    DEFAULT_ORDER = 4
-
-    def __init__(self, builder):
-        """__init__ of ProjectLock."""
-        self._builder = builder
-
-    def _pre_hook(self, builder, context, *args, **kwargs):
-        """Lock the project."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
-        if "stack" not in context:
-            raise ValueError("Commit builder needs a stack to be set.")
-
-        context["stack"].enter_context(context["client"].lock)
-
-    @check_finalized
-    def build(self):
-        """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
-
-        return self._builder.build()
-
-
-class DatasetLock(Command):
-    """Builder to lock on a dataset."""
-
-    DEFAULT_ORDER = 5
-
-    def __init__(self, builder):
-        """__init__ of DatasetLock."""
-        self._builder = builder
-
-    def _pre_hook(self, builder, context, *args, **kwargs):
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
-        if "stack" not in context:
-            raise ValueError("Commit builder needs a stack to be set.")
-
-        context["stack"].enter_context(context["client"].lock)
-
-    @check_finalized
-    def build(self):
-        """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
-
-        return self._builder.build()
-
-
-class RequireNodeJs(Command):
-    """Check that node.js is installed and available on the system."""
-
-    DEFAULT_ORDER = 3
-
-    def __init__(self, builder):
-        """__init__ of DatasetLock."""
-        self._builder = builder
-
-    def _pre_hook(self, builder, context, *args, **kwargs):
-        """Check node is available."""
-        if not shutil.which("nodejs") and not shutil.which("node"):
-            raise errors.NodeNotFoundError()
-
-    @check_finalized
-    def build(self):
-        """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
-
-        return self._builder.build()
-
-
-class Communicator(Command):
-    """Hook for logging and interaction with user."""
-
-    DEFAULT_ORDER = 2
-
-    def __init__(self, builder, communicator):
-        """__init__ of Communicator.
-
-        :param communicator: Instance of CommunicationCallback.
-        """
-        self._builder = builder
-        self._communicator = communicator
-
-    def _pre_hook(self, builder, context, *args, **kwargs):
-        communication.subscribe(self._communicator)
-
-    def _post_hook(self, builder, context, result, *args, **kwargs):
-        communication.unsubscribe(self._communicator)
-
-    @check_finalized
-    def build(self):
-        """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
-        self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
-
-        return self._builder.build()
+        return DatabaseCommand(self, write, path)
 
 
 class CommandResult:
@@ -474,7 +387,7 @@ class CommandResult:
 
     FAILURE = 1
 
-    def __init__(self, output, error, status):
+    def __init__(self, output, error, status) -> None:
         """__init__ of CommandResult."""
         self.output = output
         self.error = error

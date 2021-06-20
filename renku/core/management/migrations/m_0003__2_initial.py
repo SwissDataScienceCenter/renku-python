@@ -67,7 +67,7 @@ def _migrate_datasets_pre_v0_3(client):
     for old_path in get_pre_0_3_4_datasets_metadata(client):
         name = str(old_path.parent.relative_to(client.path / DATA_DIR))
 
-        dataset = Dataset.from_yaml(old_path, client=client)
+        dataset = Dataset.from_yaml(old_path, client)
         dataset.title = name
         dataset.name = generate_default_name(name)
         new_path = client.renku_datasets_path / dataset.identifier / client.METADATA
@@ -87,7 +87,7 @@ def _migrate_datasets_pre_v0_3(client):
         dataset.to_yaml(new_path)
 
         Path(old_path).unlink()
-        ref = LinkReference.create(client=client, name="datasets/{0}".format(name), force=True)
+        ref = LinkReference.create(name="datasets/{0}".format(name), force=True)
         ref.set_reference(new_path)
 
 
@@ -103,7 +103,7 @@ def _migrate_broken_dataset_paths(client):
 
         # migrate the refs
         if not client.is_using_temporary_datasets_path():
-            ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True)
+            ref = LinkReference.create(name="datasets/{0}".format(dataset.name), force=True)
             ref.set_reference(expected_path / client.METADATA)
 
         if not expected_path.exists():
@@ -137,7 +137,7 @@ def _migrate_broken_dataset_paths(client):
 def _fix_labels_and_ids(client):
     """Ensure files have correct label instantiation."""
     for dataset in get_client_datasets(client):
-        dataset._id = generate_dataset_id(client=client, identifier=dataset.identifier)
+        dataset._id = generate_dataset_id(client, identifier=dataset.identifier)
         dataset._label = dataset.identifier
 
         for file_ in dataset.files:
@@ -148,7 +148,7 @@ def _fix_labels_and_ids(client):
             )
 
             if not _is_file_id_valid(file_._id, file_.path, commit.hexsha):
-                file_._id = generate_file_id(client=client, hexsha=commit.hexsha, path=file_.path)
+                file_._id = generate_file_id(client, hexsha=commit.hexsha, path=file_.path)
 
             if not file_._label or commit.hexsha not in file_._label or file_.path not in file_._label:
                 file_._label = generate_label(file_.path, commit.hexsha)

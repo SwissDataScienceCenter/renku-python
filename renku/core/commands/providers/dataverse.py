@@ -32,6 +32,8 @@ from tqdm import tqdm
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.models.datasets import Dataset, DatasetFile, DatasetSchema
 from renku.core.models.provenance.agents import PersonSchema
 from renku.core.utils.doi import extract_doi, is_doi
@@ -192,7 +194,7 @@ class DataverseProvider(ProviderApi):
                 raise LookupError("record not found. Status: {}".format(response.status_code))
             return response
 
-    def find_record(self, uri, client=None, **kwargs):
+    def find_record(self, uri, **kwargs):
         """Retrieves a record from Dataverse.
 
         :raises: ``LookupError``
@@ -225,7 +227,8 @@ class DataverseProvider(ProviderApi):
             dataset=dataset, access_token=access_token, server_url=self._server_url, dataverse_name=self._dataverse_name
         )
 
-    def set_parameters(self, client, *, dataverse_server, dataverse_name, **kwargs):
+    @inject.autoparams()
+    def set_parameters(self, client: LocalClient, *, dataverse_server, dataverse_name, **kwargs):
         """Set and validate required parameters for a provider."""
         CONFIG_BASE_URL = "server_url"
 

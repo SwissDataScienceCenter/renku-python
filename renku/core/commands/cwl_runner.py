@@ -25,11 +25,14 @@ from urllib.parse import unquote
 import click
 
 from renku.core.errors import WorkflowRerunError
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 
 from .echo import progressbar
 
 
-def execute(client, output_file, output_paths=None):
+@inject.autoparams()
+def execute(output_file, client: LocalClient, output_paths=None):
     """Run the generated workflow using cwltool library."""
     output_paths = output_paths or set()
 

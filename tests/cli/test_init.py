@@ -259,6 +259,7 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     assert gitignore.exists()
 
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
+
     assert 1 == result.exit_code
     assert "The following files exist in the directory and will be overwritten" in result.output
     assert "The following files exist in the directory and will be appended to" in result.output

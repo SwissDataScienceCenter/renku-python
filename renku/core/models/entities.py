@@ -24,6 +24,7 @@ from urllib.parse import quote, urljoin
 
 import attr
 
+from renku.core.management.command_builder.command import inject
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, rdfs, renku, schema, wfprov
 from renku.core.models.projects import Project, ProjectSchema
 
@@ -96,6 +97,7 @@ class Entity(CommitMixin):
     checksum = attr.ib(default=None, kw_only=True, type=str)
 
     @classmethod
+    @inject.params(client="LocalClient")
     def from_revision(cls, client, path, revision="HEAD", parent=None, find_previous=True, **kwargs):
         """Return dependency from given path and revision."""
         if find_previous:

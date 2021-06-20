@@ -25,7 +25,7 @@ import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 from subprocess import check_output
-from typing import Optional, Union
+from typing import Union
 
 import attr
 import filelock
@@ -36,6 +36,7 @@ from werkzeug.utils import cached_property, secure_filename
 from renku.core import errors
 from renku.core.compat import Path
 from renku.core.incubation.database import Database
+from renku.core.management.command_builder import inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.projects import Project
@@ -253,30 +254,6 @@ class RepositoryApiMixin(GitCore):
         """Return a CWL prefix."""
         self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
         return str(self.workflow_path.resolve().relative_to(self.path))
-
-    @property
-    def dependency_graph(self):
-        """Return dependency graph if available."""
-        if not self.has_graph_files():
-            return
-        return DependencyGraph.from_database(self.database)
-
-    @property
-    def provenance_graph(self) -> Optional[ProvenanceGraph]:
-        """Return provenance graph if available."""
-        if not self.has_graph_files():
-            return
-        return ProvenanceGraph.from_database(self.database)
-
-    @property
-    def database(self) -> Optional[Database]:
-        """Return metadata storage if available."""
-        if not self.has_graph_files():
-            return
-        if not self._database:
-            self._database = Database.from_path(path=self.database_path)
-
-        return self._database
 
     @property
     def project(self):
@@ -507,14 +484,15 @@ class RepositoryApiMixin(GitCore):
         path = self.workflow_path / filename
 
         process_run = command_line_tool.generate_process_run(
-            client=self, commit=self.repo.head.commit, path=path, name=name, description=description, keywords=keywords
+            commit=self.repo.head.commit, path=path, name=name, description=description, keywords=keywords
         )
         process_run.to_yaml(path=path)
         self.add_to_activity_index(process_run)
 
         self.update_graphs(process_run)
 
-    def update_graphs(self, activity: Union[ProcessRun, WorkflowRun]):
+    @inject.autoparams()
+    def update_graphs(self, activity: Union[ProcessRun, WorkflowRun], database: Database):
         """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
         if not self.has_graph_files():
             return None
@@ -522,10 +500,7 @@ class RepositoryApiMixin(GitCore):
         dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
         provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
 
-        activity_collection = ActivityCollection.from_activity(activity, dependency_graph, self)
-
-        self.provenance_graph.add(activity_collection)
-        database = self.database
+        activity_collection = ActivityCollection.from_activity(activity, dependency_graph)
 
         provenance_graph.add(activity_collection)
 
@@ -533,22 +508,22 @@ class RepositoryApiMixin(GitCore):
             database.get("activities").add(activity)
             database.get("plans").add(activity.association.plan)
 
-        database.commit()
         dependency_graph.to_json()
         provenance_graph.to_json()
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""
-        return self.database_path.exists()
+        return self.database_path.exists() and any(
+            f for f in self.database_path.iterdir() if f != self.database_path / "root"
+        )
 
-    def initialize_graph(self):
+    @inject.autoparams()
+    def initialize_graph(self, database: Database):
         """Create empty graph files."""
         self.dependency_graph_path.write_text("[]")
         self.provenance_graph_path.write_text("[]")
 
         self.database_path.mkdir(parents=True, exist_ok=True)
-
-        database = self.database
 
         from renku.core.models.provenance.activity import Activity
         from renku.core.models.workflow.plan import Plan

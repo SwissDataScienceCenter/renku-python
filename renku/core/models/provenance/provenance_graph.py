@@ -25,6 +25,7 @@ from marshmallow import EXCLUDE
 from rdflib import ConjunctiveGraph
 
 from renku.core.incubation.database import Database
+from renku.core.management.command_builder.command import inject
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.provenance.activity import Activity, ActivityCollection, ActivitySchema
 
@@ -65,7 +66,8 @@ class ProvenanceGraph:
         self._p_changed = True
 
     @classmethod
-    def from_database(cls, database: Database) -> "ProvenanceGraph":
+    @inject.autoparams()
+    def from_database(cls, database: Database):
         """Return an instance from a metadata database."""
         activity_tree = database.get("activities")
         activities = list(activity_tree.values())

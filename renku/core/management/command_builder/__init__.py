@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,20 +15,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Warn if migration is required."""
-from renku.core.commands.echo import ERROR, WARNING
-from renku.core.management.migrate import is_migration_required, is_project_unsupported
+"""Renku Command Builder ."""
 
+from .command import Command, inject, replace_injected_client
 
-def check_migration(client):
-    """Check for project version."""
-    if is_migration_required():
-        problems = WARNING + "Project requires migration.\n" + '  (use "renku migrate" to fix this issue)\n'
-    elif is_project_unsupported():
-        problems = (
-            ERROR + "Project version is not supported by your version of Renku.\n" + "  (upgrade your Renku version)\n"
-        )
-    else:
-        return True, None
-
-    return False, problems
+__all__ = ["Command", "inject", "replace_injected_client"]

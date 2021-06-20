@@ -22,10 +22,9 @@ from collections import OrderedDict
 from renku.core.models.tabulate import tabulate
 
 
-def tabular(client, tags):
+def tabular(tags):
     """Format dataset tags with a tabular output.
 
-    :param client: LocalClient instance.
     :param tags: Dataset tags.
     """
     return tabulate(
@@ -39,10 +38,9 @@ def tabular(client, tags):
     )
 
 
-def jsonld(client, tags):
+def jsonld(tags):
     """Format dataset tags as JSON-LD.
 
-    :param client: LocalClient instance.
     :param tags: Dataset tags.
     """
     from renku.core.models.json import dumps
