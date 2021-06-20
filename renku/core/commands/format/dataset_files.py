@@ -21,12 +21,14 @@ from subprocess import PIPE, SubprocessError, run
 
 from humanize import naturalsize
 
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.models.datasets import DatasetFileDetailsJson
 
 from .tabulate import tabulate
 
 
-def tabular(client, records, *, columns=None):
+def tabular(records, *, columns=None):
     """Format dataset files with a tabular output.
 
     :param client: LocalClient instance.
@@ -37,10 +39,10 @@ def tabular(client, records, *, columns=None):
         columns = "added,creators,dataset,full_path"
 
     if "size" in columns.split(","):
-        _get_lfs_file_sizes(client, records)
+        _get_lfs_file_sizes(records)
 
     if "lfs" in columns.split(","):
-        _get_lfs_tracking(client, records)
+        _get_lfs_tracking(records)
 
     for record in records:
         record.creators = record.dataset.creators
@@ -53,7 +55,8 @@ def tabular(client, records, *, columns=None):
     )
 
 
-def _get_lfs_tracking(client, records):
+@inject.autoparams()
+def _get_lfs_tracking(records, client: LocalClient):
     """Check if files are tracked in git lfs."""
     paths = [r.path for r in records]
     attrs = client.find_attr(*paths)
@@ -65,7 +68,8 @@ def _get_lfs_tracking(client, records):
             record.is_lfs = False
 
 
-def _get_lfs_file_sizes(client, records):
+@inject.autoparams()
+def _get_lfs_file_sizes(records, client: LocalClient):
     """Try to get file size from Git LFS."""
     lfs_files_sizes = {}
 
@@ -98,10 +102,9 @@ def _get_lfs_file_sizes(client, records):
         record.size = size
 
 
-def jsonld(client, records, **kwargs):
+def jsonld(records, **kwargs):
     """Format dataset files as JSON-LD.
 
-    :param client: LocalClient instance.
     :param records: Filtered collection.
     """
     from renku.core.models.json import dumps
@@ -110,16 +113,15 @@ def jsonld(client, records, **kwargs):
     return dumps(data, indent=2)
 
 
-def json(client, records, **kwargs):
+def json(records, **kwargs):
     """Format dataset files as JSON.
 
-    :param client: LocalClient instance.
     :param records: Filtered collection.
     """
     from renku.core.models.json import dumps
 
-    _get_lfs_file_sizes(client, records)
-    _get_lfs_tracking(client, records)
+    _get_lfs_file_sizes(records)
+    _get_lfs_tracking(records)
 
     for record in records:
         record.creators = record.dataset.creators

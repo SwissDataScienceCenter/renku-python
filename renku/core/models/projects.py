@@ -60,7 +60,7 @@ class Project:
 
     automated_update = attr.ib(converter=bool, default=False)
 
-    client = attr.ib(default=None, kw_only=True)
+    client = attr.ib(default=None)
 
     creator = attr.ib(default=None, kw_only=True)
 

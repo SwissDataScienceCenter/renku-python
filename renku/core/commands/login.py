@@ -27,7 +27,8 @@ import git
 import requests
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import Command, inject
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils import communication
 from renku.core.utils.git import get_renku_repo_url
@@ -42,8 +43,9 @@ def login_command():
     return Command().command(_login)
 
 
-def _login(client, endpoint, git_login, yes):
-    parsed_endpoint = _parse_endpoint(client, endpoint)
+@inject.autoparams()
+def _login(endpoint, git_login, yes, client: LocalClient):
+    parsed_endpoint = _parse_endpoint(endpoint)
 
     remote_name, remote_url = None, None
     if git_login:
@@ -74,11 +76,11 @@ def _login(client, endpoint, git_login, yes):
 
     if response.status_code == 200:
         access_token = response.json().get("access_token")
-        _store_token(client, parsed_endpoint.netloc, access_token)
+        _store_token(parsed_endpoint.netloc, access_token)
 
         if git_login:
-            _store_git_credential_helper(client, parsed_endpoint.netloc)
-            _swap_git_remote(client, parsed_endpoint, remote_name, remote_url)
+            _store_git_credential_helper(parsed_endpoint.netloc)
+            _swap_git_remote(parsed_endpoint, remote_name, remote_url)
     else:
         communication.error(
             f"Remote host did not return an access token: {parsed_endpoint.geturl()}, "
@@ -87,7 +89,8 @@ def _login(client, endpoint, git_login, yes):
         sys.exit(1)
 
 
-def _parse_endpoint(client, endpoint):
+@inject.autoparams()
+def _parse_endpoint(endpoint, client: LocalClient):
     parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=endpoint)
     if not parsed_endpoint:
         raise errors.ParameterError("Parameter 'endpoint' is missing.")
@@ -100,16 +103,19 @@ def _get_url(parsed_endpoint, path, **query_args):
     return parsed_endpoint._replace(path=path, query=query).geturl()
 
 
-def _store_token(client, netloc, access_token):
+@inject.autoparams()
+def _store_token(netloc, access_token, client: LocalClient):
     client.set_value(section=CONFIG_SECTION, key=netloc, value=access_token, global_only=True)
     os.chmod(client.global_config_path, 0o600)
 
 
-def _store_git_credential_helper(client, netloc):
+@inject.autoparams()
+def _store_git_credential_helper(netloc, client: LocalClient):
     client.repo.git.config("credential.helper", f"!renku token --hostname {netloc}", local=True)
 
 
-def _swap_git_remote(client, parsed_endpoint, remote_name, remote_url):
+@inject.autoparams()
+def _swap_git_remote(parsed_endpoint, remote_name, remote_url, client: LocalClient):
     backup_remote_name = f"{RENKU_BACKUP_PREFIX}-{remote_name}"
 
     if backup_remote_name in [r.name for r in client.repo.remotes]:
@@ -130,10 +136,11 @@ def _swap_git_remote(client, parsed_endpoint, remote_name, remote_url):
             raise errors.GitError(f"Cannot change remote url for '{remote_name}' to {new_remote_url}")
 
 
-def read_renku_token(client, endpoint):
+@inject.autoparams()
+def read_renku_token(endpoint, client: LocalClient):
     """Read renku token from renku config file."""
     try:
-        parsed_endpoint = _parse_endpoint(client, endpoint)
+        parsed_endpoint = _parse_endpoint(endpoint)
     except errors.ParameterError:
         return
     if not parsed_endpoint:
@@ -151,7 +158,8 @@ def logout_command():
     return Command().command(_logout)
 
 
-def _logout(client, endpoint):
+@inject.autoparams()
+def _logout(endpoint, client: LocalClient):
     if endpoint:
         parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=endpoint)
         key = parsed_endpoint.netloc
@@ -159,18 +167,20 @@ def _logout(client, endpoint):
         key = "*"
 
     client.remove_value(section=CONFIG_SECTION, key=key, global_only=True)
-    _remove_git_credential_helper(client)
-    _restore_git_remote(client)
+    _remove_git_credential_helper()
+    _restore_git_remote()
 
 
-def _remove_git_credential_helper(client):
+@inject.autoparams()
+def _remove_git_credential_helper(client: LocalClient):
     try:
         client.repo.git.config("credential.helper", local=True, unset=True)
     except git.exc.GitCommandError:  # NOTE: If already logged out, ``git config --unset`` raises an exception
         pass
 
 
-def _restore_git_remote(client):
+@inject.autoparams()
+def _restore_git_remote(client: LocalClient):
     if not client.repo:  # Outside a renku project
         return
 
@@ -195,7 +205,8 @@ def token_command():
     return Command().command(_token)
 
 
-def _token(client, command, hostname):
+@inject.autoparams()
+def _token(command, hostname, client: LocalClient):
     if command != "get":
         return
 

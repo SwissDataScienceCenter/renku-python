@@ -19,7 +19,7 @@
 import traceback
 
 from renku.core.commands.echo import ERROR
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command, inject
 
 DOCTOR_INFO = """\
 Please note that the diagnosis report is used to help Renku maintainers with
@@ -28,6 +28,7 @@ and if in doubt ask an expert around or file an issue. Thanks!
 """
 
 
+@inject.params(client="LocalClient")
 def _doctor_check(client):
     """Check your system and repository for potential problems."""
     from . import checks

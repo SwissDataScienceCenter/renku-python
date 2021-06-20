@@ -28,6 +28,7 @@ from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
 from renku.core.incubation.database import Persistent
+from renku.core.management.command_builder.command import inject
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.entities import Entity
 from renku.core.models.workflow import parameters as old_parameter
@@ -217,6 +218,7 @@ class Plan(Persistent):
 
         return argv
 
+    @inject.params(client="LocalClient")
     def to_run(self, client, entities_cache: Dict[str, Entity]) -> Run:
         """Create a Run."""
         uuid = self._extract_uuid()

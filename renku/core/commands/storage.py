@@ -17,11 +17,14 @@
 # limitations under the License.
 """Renku storage command."""
 
-from renku.core.incubation.command import Command
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
 from renku.core.utils import communication
 
 
-def _check_lfs(client, everything=False):
+@inject.autoparams()
+def _check_lfs(client: LocalClient, everything=False):
     """Check if large files are not in lfs."""
     files = client.check_lfs_migrate_info(everything)
 
@@ -36,17 +39,19 @@ def check_lfs_command():
     return Command().command(_check_lfs)
 
 
-def _fix_lfs(client, paths):
+@inject.autoparams()
+def _fix_lfs(paths, client: LocalClient):
     """Migrate large files into lfs."""
     client.migrate_files_to_lfs(paths)
 
 
 def fix_lfs_command():
     """Fix lfs command."""
-    return Command().command(_fix_lfs).require_clean().with_commit(commit_if_empty=False)
+    return Command().command(_fix_lfs).require_clean().with_commit(commit_if_empty=False).with_database(write=True)
 
 
-def _pull(client, paths):
+@inject.autoparams()
+def _pull(paths, client: LocalClient):
     """Pull the specified paths from external storage."""
     client.pull_paths_from_storage(*paths)
 
@@ -56,7 +61,8 @@ def pull_command():
     return Command().command(_pull)
 
 
-def _clean(client, paths):
+@inject.autoparams()
+def _clean(paths, client: LocalClient):
     """Remove files from lfs cache/turn them back into pointer files."""
     untracked_paths, local_only_paths = client.clean_storage_cache(*paths)
 
@@ -78,7 +84,8 @@ def clean_command():
     return Command().command(_clean)
 
 
-def _check_lfs_hook(client, paths):
+@inject.autoparams()
+def _check_lfs_hook(paths, client: LocalClient):
     """Pull the specified paths from external storage."""
     return client.check_requires_tracking(*paths)
 

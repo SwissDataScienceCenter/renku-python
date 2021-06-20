@@ -24,13 +24,14 @@ from pathlib import Path
 import attr
 
 from renku.core import errors
+from renku.core.management.command_builder import inject
 
 
 @attr.s(slots=True)
 class LinkReference:
     """Manage linked object names."""
 
-    client = attr.ib()
+    client = attr.ib(default=None, kw_only=True)
     name = attr.ib()
 
     REFS = "refs"
@@ -82,6 +83,7 @@ class LinkReference:
         os.symlink(os.path.relpath(str(reference_path), start=str(self.path.parent)), str(self.path))
 
     @classmethod
+    @inject.params(client="LocalClient")
     def iter_items(cls, client, common_path=None):
         """Find all references in the repository."""
         refs_path = path = client.renku_path / cls.REFS
@@ -94,6 +96,7 @@ class LinkReference:
             yield cls(client=client, name=str(name.relative_to(refs_path)))
 
     @classmethod
+    @inject.params(client="LocalClient")
     def create(cls, client, name, force=False):
         """Create symlink to object in reference path."""
         ref = cls(client=client, name=name)

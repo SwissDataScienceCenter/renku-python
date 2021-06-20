@@ -28,6 +28,8 @@ import requests
 
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.utils import communication
 from renku.core.utils.requests import retry
 
@@ -63,7 +65,8 @@ class OLOSProvider(ProviderApi):
         """Create export manager for given dataset."""
         return OLOSExporter(dataset=dataset, access_token=access_token, server_url=self._server_url)
 
-    def set_parameters(self, client, *, dlcm_server=None, **kwargs):
+    @inject.autoparams()
+    def set_parameters(self, client: LocalClient, *, dlcm_server=None, **kwargs):
         """Set and validate required parameters for a provider."""
         config_base_url = "server_url"
 

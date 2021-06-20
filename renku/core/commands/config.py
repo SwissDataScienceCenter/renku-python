@@ -17,7 +17,9 @@
 # limitations under the License.
 """Get and set Renku repository or global options."""
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
 from renku.core.management.config import CONFIG_LOCAL_PATH
 from renku.core.models.enums import ConfigFilter
 
@@ -30,13 +32,13 @@ def _split_section_and_key(key):
     return "renku", key
 
 
-def _update_multiple_config(client, values, global_only=False, commit_message=None):
+def _update_multiple_config(values, global_only=False, commit_message=None):
     """Add, update, or remove multiple configuration values."""
     for k, v in values.items():
         if v is not None:
-            _update_config(client, k, value=v, global_only=global_only)
+            _update_config(k, value=v, global_only=global_only)
         else:
-            _update_config(client, k, remove=True, global_only=global_only)
+            _update_config(k, remove=True, global_only=global_only)
 
 
 def update_multiple_config():
@@ -49,7 +51,8 @@ def update_multiple_config():
     )
 
 
-def _update_config(client, key, *, value=None, remove=False, global_only=False, commit_message=None):
+@inject.autoparams()
+def _update_config(key, client: LocalClient, *, value=None, remove=False, global_only=False, commit_message=None):
     """Add, update, or remove configuration values."""
     section, section_key = _split_section_and_key(key)
     if remove:
@@ -71,7 +74,8 @@ def update_config():
     )
 
 
-def _read_config(client, key, config_filter=ConfigFilter.ALL, as_string=True):
+@inject.autoparams()
+def _read_config(key, client: LocalClient, config_filter=ConfigFilter.ALL, as_string=True):
     """Read configuration."""
     if key:
         section, section_key = _split_section_and_key(key)

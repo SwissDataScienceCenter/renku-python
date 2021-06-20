@@ -25,7 +25,9 @@ import attr
 from git import NULL_TREE
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.git import Range
 from renku.core.models.provenance.activities import Activity, ProcessRun, Usage, WorkflowRun
@@ -57,7 +59,7 @@ def _safe_path(filepath, can_be_cwl=False):
 class Graph(object):
     """Represent the provenance graph."""
 
-    client = attr.ib()
+    client = attr.ib(default=attr.Factory(lambda: inject.instance(LocalClient)))
     activities = attr.ib(default=attr.Factory(dict))
     generated = attr.ib(default=attr.Factory(dict))
 
@@ -519,7 +521,8 @@ class Graph(object):
         return run
 
 
-def _build_graph(client, revision="HEAD", no_output=False, paths=()):
+@inject.autoparams("client")
+def _build_graph(client: LocalClient, revision="HEAD", no_output=False, paths=()):
     """Build graph structure."""
     graph = Graph(client)
     if not paths:

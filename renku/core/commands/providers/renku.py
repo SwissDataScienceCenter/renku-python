@@ -31,6 +31,7 @@ from renku import LocalClient
 from renku.core import errors
 from renku.core.commands.login import read_renku_token
 from renku.core.commands.providers.api import ProviderApi
+from renku.core.management.command_builder.command import inject, replace_injected_client
 from renku.core.management.migrate import is_project_unsupported, migrate
 from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
@@ -63,7 +64,7 @@ class RenkuProvider(ProviderApi):
         """Whether this provider supports dataset import."""
         return True
 
-    def find_record(self, uri, client=None, **kwargs):
+    def find_record(self, uri, **kwargs):
         """Retrieves a dataset from Renku.
 
         :raises: ``NotFound``, ``OperationError``, ``ParameterError``
@@ -73,7 +74,7 @@ class RenkuProvider(ProviderApi):
         self._uri = uri
         self._gitlab_token = kwargs.get("gitlab_token")
 
-        self._prepare_auth(client, uri)
+        self._prepare_auth(uri)
 
         name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(uri)
 
@@ -197,11 +198,12 @@ class RenkuProvider(ProviderApi):
 
         return urls.get("ssh"), urls.get("http")
 
-    def _prepare_auth(self, client, uri):
+    @inject.autoparams()
+    def _prepare_auth(self, uri, client: LocalClient):
         if self._gitlab_token:
             token = self._gitlab_token
         else:
-            self._renku_token = read_renku_token(client, endpoint=uri)
+            self._renku_token = read_renku_token(endpoint=uri)
             token = self._renku_token
 
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
@@ -270,10 +272,11 @@ class _RenkuRecordSerializer:
 
     def as_dataset(self, client):
         """Return encapsulated dataset instance."""
-        self._fetch_dataset(client)
+        self._fetch_dataset()
         return self._dataset
 
-    def import_images(self, client, dataset):
+    @inject.autoparams()
+    def import_images(self, dataset, client: LocalClient):
         """Add images from remote dataset."""
         if not self._dataset.images:
             return
@@ -325,7 +328,8 @@ class _RenkuRecordSerializer:
         """Whether the dataset datadir exists (might be missing in git if empty)."""
         return (self._remote_client.path / self._dataset.data_dir).exists()
 
-    def _fetch_dataset(self, client):
+    @inject.autoparams()
+    def _fetch_dataset(self, client: LocalClient):
         repo_path = None
         repo = None
 
@@ -351,8 +355,10 @@ class _RenkuRecordSerializer:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
 
         self._remote_client = LocalClient(repo_path)
-        self._migrate_project(self._remote_client)
-        self._project_repo = repo
+
+        with replace_injected_client(self._remote_client):
+            self._migrate_project()
+            self._project_repo = repo
 
         self._dataset = self._remote_client.load_dataset(self._name)
 
@@ -365,13 +371,14 @@ class _RenkuRecordSerializer:
             file_.filetype = Path(file_.path).suffix.replace(".", "")
 
     @staticmethod
-    def _migrate_project(client):
-        if is_project_unsupported(client):
+    @inject.autoparams()
+    def _migrate_project(client: LocalClient):
+        if is_project_unsupported():
             return
         # NOTE: We are not interested in migrating workflows when importing datasets
         client.migration_type = ~MigrationType.WORKFLOWS
         try:
             communication.disable()
-            migrate(client, skip_template_update=True, skip_docker_update=True)
+            migrate(skip_template_update=True, skip_docker_update=True)
         finally:
             communication.enable()

@@ -18,17 +18,20 @@
 """Renku show command."""
 
 from renku.core.commands.graph import Graph
-from renku.core.incubation.command import Command
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
 from renku.core.utils import communication
 
 
 def get_status():
     """Show a status of the repository."""
-    return Command().command(_get_status).require_migration().require_clean()
+    return Command().command(_get_status).require_migration().require_clean().with_database(write=False)
 
 
-def _get_status(client, revision, no_output, path):
-    graph = Graph(client)
+@inject.autoparams()
+def _get_status(revision, no_output, path, client: LocalClient):
+    graph = Graph()
     # TODO filter only paths = {graph.normalize_path(p) for p in path}
     status = graph.build_status(revision=revision, can_be_cwl=no_output)
 

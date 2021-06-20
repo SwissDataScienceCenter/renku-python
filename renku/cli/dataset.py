@@ -640,7 +640,7 @@ def remove(name):
 @click.option("--force", is_flag=True, help="Allow overwriting existing tags.")
 def tag(name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset().build().execute(name, tag, description, force)
+    tag_dataset().build().execute(name, tag, description, force=force)
     click.secho("OK", fg="green")
 
 

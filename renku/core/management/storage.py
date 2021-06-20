@@ -32,8 +32,11 @@ import pathspec
 from werkzeug.utils import cached_property
 
 from renku.core import errors
+from renku.core.incubation.database import Database
+from renku.core.management.command_builder.command import inject
 from renku.core.models.provenance.activity import Collection
 from renku.core.models.provenance.datasets import DatasetProvenance
+from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.utils import communication
 from renku.core.utils.file_size import parse_file_size
 from renku.core.utils.git import add_to_git, run_command
@@ -469,7 +472,8 @@ class StorageApiMixin(RepositoryApiMixin):
 
         return groups
 
-    def migrate_files_to_lfs(self, paths):
+    @inject.autoparams()
+    def migrate_files_to_lfs(self, paths, database: Database):
         """Migrate files to Git LFS."""
         if not self.has_graph_files:
             raise errors.OperationError(
@@ -565,7 +569,7 @@ class StorageApiMixin(RepositoryApiMixin):
                     _map_checksum(member, checksum_mapping)
 
         # NOTE: Update workflow provenance
-        provenance_graph = self.provenance_graph
+        provenance_graph = ProvenanceGraph.from_database(database)
 
         for activity in provenance_graph.activities:
             changed = False
@@ -585,8 +589,6 @@ class StorageApiMixin(RepositoryApiMixin):
 
             if changed:
                 activity._p_changed = True
-
-        self.database.commit()
 
         # NOTE: Update datasets provenance
         datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)

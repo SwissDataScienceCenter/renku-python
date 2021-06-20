@@ -30,6 +30,7 @@ import yaml
 from git import Actor
 
 from renku.core import errors
+from renku.core.management.command_builder.command import inject
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
@@ -115,16 +116,16 @@ class CommandLineToolFactory(object):
             for input in self.find_explicit_inputs():
                 self.inputs.append(input)
 
-    def generate_process_run(self, client, commit, path, name=None, description=None, keywords=None):
+    def generate_process_run(self, commit, path, name=None, description=None, keywords=None):
         """Return an instance of ``ProcessRun``."""
         from ..provenance.activities import ProcessRun
         from ..workflow.run import Run
 
         run = Run.from_factory(
-            factory=self, client=client, commit=commit, path=path, name=name, description=description, keywords=keywords
+            factory=self, commit=commit, path=path, name=name, description=description, keywords=keywords
         )
 
-        process_run = ProcessRun.from_run(run, client, path, commit)
+        process_run = ProcessRun.from_run(run, path=path, commit=commit)
 
         if not self._had_changes:
             process_run.invalidated = []
@@ -144,6 +145,7 @@ class CommandLineToolFactory(object):
                 yield input_.id, os.path.normpath(os.path.join(basedir, str(input_.default.path)))
 
     @contextmanager
+    @inject.params(client="LocalClient")
     def watch(self, client, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
         client.check_external_storage()

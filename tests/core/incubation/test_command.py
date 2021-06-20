@@ -17,7 +17,7 @@
 # limitations under the License.
 """Test command builder."""
 
-from renku.core.incubation.command import Command, CommandResult
+from renku.core.management.command_builder.command import Command, CommandResult
 
 
 def test_dataset_add_command(project, tmp_path):

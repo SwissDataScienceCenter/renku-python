@@ -188,7 +188,15 @@ html_favicon = "_static/icons/favicon.ico"
 # html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-html_sidebars = {"**": ["about.html", "navigation.html", "relations.html", "searchbox.html", "donate.html",]}
+html_sidebars = {
+    "**": [
+        "about.html",
+        "navigation.html",
+        "relations.html",
+        "searchbox.html",
+        "donate.html",
+    ]
+}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -336,6 +344,10 @@ intersphinx_mapping = {
 
 # Autodoc configuraton.
 autoclass_content = "both"
+autodoc_mock_imports = ["persistent", "ZODB"]
+autodoc_typehints = "none"
+autodoc_typehints_description_target = "documented"
+
 
 # -- Custom Document processing ----------------------------------------------
 

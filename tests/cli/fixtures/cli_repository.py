@@ -116,7 +116,6 @@ def project(repository):
         repo.head.reset(commit, index=True, working_tree=True)
         # INFO: remove any extra non-tracked files (.pyc, etc)
         repo.git.clean("-xdff")
-
         assert 0 == runner.invoke(cli, ["githooks", "install", "--force"]).exit_code
 
 
