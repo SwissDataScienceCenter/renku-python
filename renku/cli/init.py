@@ -250,7 +250,7 @@ def check_git_user_config():
 @click.option("-i", "--template-index", help="Provide the index number of the template to use.", type=int)
 @click.option("-s", "--template-source", help="Provide the templates repository url or path.")
 @click.option(
-    "-r", "--template-ref", default="master", help="Specify the reference to checkout on remote template repository."
+    "-r", "--template-ref", default=None, help="Specify the reference to checkout on remote template repository."
 )
 @click.option(
     "-p",
@@ -297,6 +297,10 @@ def init(
             "\tgit config --global --add user.email "
             '"john.doe@example.com"\n'
         )
+
+    if template_ref and not template_source:
+        raise errors.ParameterError("Can't use '--template-ref' without specifying '--template-source'")
+
     communicator = ClickCallback()
     init_command().with_communicator(communicator).build().execute(
         ctx=ctx,

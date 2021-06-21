@@ -1,20 +1,15 @@
-FROM python:3.7-alpine
+FROM python:3.7-slim as base
 
-RUN apk add --update --no-cache alpine-sdk g++ gcc linux-headers libxslt-dev python3-dev build-base openssl-dev libffi-dev git bash musl-dev rust cargo zeromq-dev && \
-    pip install --no-cache --upgrade pip setuptools pipenv requirements-builder
+RUN apt-get update && \
+    apt-get install -y git && \
+    pip install --no-cache --upgrade pip requirements-builder
 
-RUN apk add --no-cache --allow-untrusted \
-    --repository http://dl-cdn.alpinelinux.org/alpine/latest-stable/community \
-    --repository http://dl-cdn.alpinelinux.org/alpine/latest-stable/main \
-    --repository http://nl.alpinelinux.org/alpine/edge/community \
-    git-lfs && \
-    git lfs install && \
-    addgroup -g 1000 shuhitsu && \
-    addgroup -g 2000 debug && \
-    adduser -S -u 1000 -G shuhitsu shuhitsu && \
-    mkdir /svc && chown shuhitsu:shuhitsu /svc
+FROM base as builder
 
+# The python install is done in two steps to avoid re-installing all dependencies every
+# time the code changes
 COPY setup.py README.rst CHANGES.rst /code/renku/
+COPY renku/version.py.tmpl /code/renku/renku/version.py.tmpl
 WORKDIR /code/renku
 RUN requirements-builder -e service --level=pypi setup.py > /tmp/requirements.txt && \
     pip install -r /tmp/requirements.txt
@@ -25,11 +20,26 @@ COPY renku /code/renku/renku
 # Set CLEAN_INSTALL to a non-null value to ensure that only a committed version of
 # renku-python is installed in the image. This is the default for chartpress builds.
 ARG CLEAN_INSTALL
-RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi && pip install .[service]
+RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi
 
-# Set group of code directory to 'debug' so files can be changed when running the pod
-# in debug mode
-RUN chown -R root:debug /code/renku && chmod -R 775 /code/renku
+RUN pip wheel --wheel-dir /wheels .[service] && \
+    pip install --no-index --no-warn-script-location --force --root=/pythonroot/ /wheels/*.whl && \
+    apt-get clean
+
+FROM base
+
+RUN addgroup -gid 1000 shuhitsu && \
+    useradd -m -u 1000 -g shuhitsu shuhitsu && \
+    mkdir /svc && chown shuhitsu:shuhitsu /svc
+
+RUN apt-get install -y git-lfs && \
+    git lfs install
+
+COPY --from=builder /pythonroot/ /
+COPY --from=builder /code/renku /code/renku
+
+# make shuhitsu own the code directory
+RUN chown -R shuhitsu:shuhitsu /code/renku && chmod -R 775 /code/renku
 
 # shuhitsu (執筆): The "secretary" of the renga, as it were, who is responsible for
 # writing down renga verses and for the proceedings of the renga.
@@ -37,6 +47,8 @@ USER shuhitsu
 
 ENV RENKU_SVC_NUM_WORKERS 4
 ENV RENKU_SVC_NUM_THREADS 8
+
+WORKDIR /code/renku
 
 COPY entrypoint-svc.sh /code/renku/
 ENTRYPOINT ["./entrypoint-svc.sh"]
