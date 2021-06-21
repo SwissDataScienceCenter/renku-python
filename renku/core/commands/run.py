@@ -25,8 +25,10 @@ import click
 
 from renku.core import errors
 from renku.core.incubation.command import Command
+from renku.core.incubation.graph import unique_workflow
 from renku.core.management.git import get_mapped_std_streams
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
+from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.utils import communication
 from renku.core.utils.urls import get_slug
 
@@ -54,6 +56,12 @@ def _run_command(
         valid_name = get_slug(name)
         if name != valid_name:
             raise errors.ParameterError(f"Invalid name: '{name}' (Hint: '{valid_name}' is valid).")
+
+        # TODO: refactor this once we switch to Database
+        if client.provenance_graph_path.exists():
+            workflows = unique_workflow(ProvenanceGraph.from_json(client.provenance_graph_path))
+            if name in workflows:
+                raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
 
     paths = explicit_outputs if no_output_detection else client.candidate_paths
     mapped_std = get_mapped_std_streams(paths, streams=("stdout", "stderr"))
