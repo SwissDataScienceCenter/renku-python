@@ -18,10 +18,9 @@
 """Renku service template read manifest controller."""
 from marshmallow import EXCLUDE
 
-from renku.core.commands.init import read_template_manifest
+from renku.core.commands.init import fetch_template
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
-from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC
 from renku.service.views import result_response
 
@@ -44,8 +43,8 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def template_manifest(self):
         """Reads template manifest."""
-        project = user_project_clone(self.user_data, self.ctx)
-        return read_template_manifest(project.abs_path)
+        template_manifest, _, _, _ = fetch_template(self.ctx["git_url"], self.ctx["ref"])
+        return template_manifest
 
     def renku_op(self):
         """Renku operation for the controller."""

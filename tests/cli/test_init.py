@@ -412,7 +412,7 @@ def test_default_init_parameters(isolated_runner, mocker, project_init, template
         "__sanitized_project_name__",
     } <= set(metadata.keys())
     assert metadata["__template_source__"] == "renku"
-    assert metadata["__template_ref__"] == "master"
+    assert metadata["__template_ref__"] is None
     assert metadata["__template_id__"] == template["id"]
     assert metadata["__namespace__"] == ""
     assert metadata["__repository__"] == ""

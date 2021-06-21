@@ -19,6 +19,7 @@
 
 import copy
 import itertools
+from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Any, Dict, List
 from uuid import uuid4
@@ -54,6 +55,7 @@ class Plan:
         description: str = None,
         id: str,
         inputs: List[CommandInput] = None,
+        invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str = None,
         outputs: List[CommandOutput] = None,
@@ -63,6 +65,7 @@ class Plan:
         self.description: str = description
         self.id: str = id
         self.inputs: List[CommandInput] = inputs or []
+        self.invalidated_at: datetime = invalidated_at
         self.keywords: List[str] = keywords or []
         self.name: str = name
         self.outputs: List[CommandOutput] = outputs or []
@@ -281,6 +284,7 @@ class PlanSchema(JsonLDSchema):
     description = fields.String(schema.description, missing=None)
     id = fields.Id()
     inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
+    invalidated_at = fields.DateTime(prov.invalidatedAtTime, add_value_types=True)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2021 Swiss Data Science Center (SDSC)
+# Copyright 2017-%d - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,14 +15,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service fixtures for jobs testing."""
-import pytest
+"""Version information for Renku."""
 
-from tests.utils import modified_environ
+import re
+
+__version__ = "{version}"
 
 
-@pytest.fixture
-def service_job(svc_client, mock_redis):
-    """Ensure correct environment during testing of service jobs."""
-    with modified_environ(RENKU_SVC_CLEANUP_TTL_FILES="0", RENKU_SVC_CLEANUP_TTL_PROJECTS="0"):
-        yield svc_client, mock_redis
+def is_release():
+    """Check if current version is a release semver."""
+    if re.match(r"\d+.\d+.\d+$", __version__):
+        return True
+    return False
+
+
+def _get_distribution_url():
+    try:
+        import pkg_resources
+
+        d = pkg_resources.get_distribution("renku")
+        metadata = d._get_metadata(d.PKG_INFO)
+        home_page = [m for m in metadata if m.startswith("Home-page:")]
+        return home_page[0].split(":", 1)[1].strip()
+    except Exception:
+        return "N/A"
+
+
+version_url = "{{}}/tree/{{}}".format(_get_distribution_url(), "v" + __version__)

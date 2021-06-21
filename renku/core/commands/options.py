@@ -59,7 +59,7 @@ def check_siblings(graph, outputs):
         msg = "Include the files above in the command " "or use the --with-siblings option."
         raise RenkuException(
             "There are missing output siblings:\n\n"
-            "\t{0}\n\n{1}".format("\n\t".join(click.style(path, fg="red") for path in missing), msg,),
+            "\t{0}\n\n{1}".format("\n\t".join(click.style(path, fg="red") for path in missing), msg)
         )
     return outputs
 
@@ -73,10 +73,20 @@ def with_siblings(graph, outputs):
 
 
 option_check_siblings = click.option(
-    "--check-siblings", "siblings", flag_value=check_siblings, default=True, help=check_siblings.__doc__,
+    "--check-siblings",
+    "siblings",
+    flag_value=check_siblings,
+    default=True,
+    help=check_siblings.__doc__,
+    type=click.types.UnprocessedParamType(),
 )
 option_with_siblings = click.option(
-    "--with-siblings", "siblings", flag_value=with_siblings, default=True, help=with_siblings.__doc__,
+    "--with-siblings",
+    "siblings",
+    flag_value=with_siblings,
+    default=True,
+    help=with_siblings.__doc__,
+    type=click.types.UnprocessedParamType(),
 )
 
 

@@ -102,7 +102,7 @@ class Activity:
         self.started_at_time: datetime = started_at_time
         self.usages: List[Usage] = usages or []
 
-        # TODO: _was_informed_by = attr.ib(kw_only=True,)
+        # TODO: _was_informed_by = attr.ib(kw_only=True)
         # TODO: influenced = attr.ib(kw_only=True)
 
     @classmethod

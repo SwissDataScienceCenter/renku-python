@@ -45,8 +45,9 @@ def client_with_remote(client, tmpdir):
     origin = client.repo.create_remote("origin", path)
     client.repo.git.push("--set-upstream", "origin", "master")
 
-    yield {"client": client, "origin": origin}
+    yield client
 
+    client.repo.heads["master"].checkout()
     client.repo.git.branch("--unset-upstream")
     client.repo.delete_remote(origin)
     shutil.rmtree(path)

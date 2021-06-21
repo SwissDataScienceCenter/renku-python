@@ -54,11 +54,11 @@ def execute(client, output_file, output_paths=None):
 
     # Keep all environment variables.
     runtime_context = RuntimeContext(
-        kwargs={"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True,}
+        kwargs={"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True}
     )
-    loading_context = LoadingContext(kwargs={"construct_tool_object": construct_tool_object,})
+    loading_context = LoadingContext(kwargs={"construct_tool_object": construct_tool_object, "relax_path_checks": True})
 
-    factory = cwltool.factory.Factory(loading_context=loading_context, runtime_context=runtime_context,)
+    factory = cwltool.factory.Factory(loading_context=loading_context, runtime_context=runtime_context)
     process = factory.make(os.path.relpath(str(output_file)))
     try:
         outputs = process()
@@ -81,7 +81,7 @@ def execute(client, output_file, output_paths=None):
         location for location in locations if not any(location.startswith(d) for d in locations if location != d)
     }
 
-    with progressbar(locations, label="Moving outputs",) as bar:
+    with progressbar(locations, label="Moving outputs") as bar:
         for location in bar:
             for output_dir in output_dirs:
                 if location.startswith(output_dir):

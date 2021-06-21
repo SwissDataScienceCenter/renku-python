@@ -41,6 +41,7 @@ import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
 from wcmatch import glob
+from yagup import GitURL
 
 from renku.core import errors
 from renku.core.management.clone import clone
@@ -54,12 +55,11 @@ from renku.core.models.datasets import (
     generate_dataset_file_url,
     is_dataset_name_valid,
 )
-from renku.core.models.git import GitURL
 from renku.core.models.provenance.agents import Person
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
-from renku.core.utils.git import add_to_git, get_oauth_url, have_same_remote, run_command
+from renku.core.utils.git import add_to_git, get_oauth_url, get_renku_repo_url, have_same_remote, run_command
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.urls import get_slug, remove_credentials
 
@@ -469,6 +469,7 @@ class DatasetsApiMixin(object):
         extract=False,
         all_at_once=False,
         destination_names=None,
+        repository=None,
     ):
         """Import the data into the data directory."""
         dataset_datadir = self.path / dataset.data_dir
@@ -485,7 +486,7 @@ class DatasetsApiMixin(object):
         files = []
         if all_at_once:  # Importing a dataset
             files = self._add_from_urls(
-                urls=urls, destination_names=destination_names, destination=destination, extract=extract,
+                urls=urls, destination_names=destination_names, destination=destination, extract=extract
             )
         else:
             for url in urls:
@@ -493,7 +494,9 @@ class DatasetsApiMixin(object):
 
                 if is_git and is_remote:  # Remote git repo
                     sources = sources or ()
-                    new_files = self._add_from_git(url=url, sources=sources, destination=destination, ref=ref)
+                    new_files = self._add_from_git(
+                        url=url, sources=sources, destination=destination, ref=ref, repository=repository
+                    )
                 else:
                     if sources:
                         raise errors.UsageError('Cannot use "--source" with URLs or local files.')
@@ -735,7 +738,7 @@ class DatasetsApiMixin(object):
             for src, dst in paths
         ]
 
-    def _add_from_git(self, url, sources, destination, ref):
+    def _add_from_git(self, url, sources, destination, ref, repository=None):
         """Process adding resources from another git repository."""
         from renku import LocalClient
 
@@ -743,11 +746,15 @@ class DatasetsApiMixin(object):
 
         sources = self._resolve_paths(u.path, sources)
 
+        if not repository:
+            repository, repo_path = self.prepare_git_repo(url, ref)
+        else:
+            repo_path = Path(repository.working_dir)
+
         # Get all files from repo that match sources
-        repo, repo_path = self.prepare_git_repo(url, ref)
         files = set()
         used_sources = set()
-        for file in repo.head.commit.tree.traverse():
+        for file in repository.head.commit.tree.traverse():
             path = file.path
             result = self._get_src_and_dst(path, repo_path, sources, destination, used_sources)
 
@@ -1318,7 +1325,7 @@ class DatasetsApiMixin(object):
         else:
             return True
 
-    def prepare_git_repo(self, url, ref=None, gitlab_token=None):
+    def prepare_git_repo(self, url, ref=None, gitlab_token=None, renku_token=None, deployment_hostname=None):
         """Clone and cache a Git repo."""
         if not url:
             raise errors.GitError("Invalid URL.")
@@ -1328,17 +1335,20 @@ class DatasetsApiMixin(object):
         depth = 1 if not ref else None
         ref = ref or renku_branch
         u = GitURL.parse(url)
-        path = u.pathname
-        if u.hostname == "localhost":
+        path = u.path
+        if u.host == "localhost":
             path = Path(path).resolve()
             git_url = str(path)
-        elif "http" in u.protocol and gitlab_token:
+        elif "http" in u.scheme and gitlab_token:
             git_url = get_oauth_url(url, gitlab_token)
+        elif "http" in u.scheme and renku_token:
+            git_url = get_renku_repo_url(url, deployment_hostname=deployment_hostname, access_token=renku_token)
         else:
             git_url = url
 
+        repo_name = os.path.splitext(os.path.basename(path))[0]
         path = os.path.dirname(path).lstrip("/")
-        repo_path = self.renku_path / self.CACHE / u.hostname / path / u.name
+        repo_path = self.renku_path / self.CACHE / u.host / path / repo_name
 
         if repo_path.exists():
             repo = Repo(str(repo_path))

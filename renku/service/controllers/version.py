@@ -32,5 +32,5 @@ class VersionCtrl(ServiceCtrl):
         """Serialize to service version response."""
         return result_response(
             VersionCtrl.RESPONSE_SERIALIZER,
-            {"latest_version": __version__, "supported_project_version": SUPPORTED_PROJECT_VERSION,},
+            {"latest_version": __version__, "supported_project_version": SUPPORTED_PROJECT_VERSION},
         )

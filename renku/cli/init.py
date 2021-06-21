@@ -238,12 +238,8 @@ def check_git_user_config():
 
 
 @click.command()
-@click.argument(
-    "path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True),
-)
-@click.option(
-    "-n", "--name", callback=validate_name, help="Provide a custom project name.",
-)
+@click.argument("path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True))
+@click.option("-n", "--name", callback=validate_name, help="Provide a custom project name.")
 @click.option(
     "--data-dir",
     default=None,
@@ -251,12 +247,10 @@ def check_git_user_config():
     help="Data directory within the project",
 )
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
-@click.option(
-    "-i", "--template-index", help="Provide the index number of the template to use.", type=int,
-)
+@click.option("-i", "--template-index", help="Provide the index number of the template to use.", type=int)
 @click.option("-s", "--template-source", help="Provide the templates repository url or path.")
 @click.option(
-    "-r", "--template-ref", default="master", help="Specify the reference to checkout on remote template repository.",
+    "-r", "--template-ref", default=None, help="Specify the reference to checkout on remote template repository."
 )
 @click.option(
     "-p",
@@ -303,6 +297,10 @@ def init(
             "\tgit config --global --add user.email "
             '"john.doe@example.com"\n'
         )
+
+    if template_ref and not template_source:
+        raise errors.ParameterError("Can't use '--template-ref' without specifying '--template-source'")
+
     communicator = ClickCallback()
     init_command().with_communicator(communicator).build().execute(
         ctx=ctx,

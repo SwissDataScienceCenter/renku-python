@@ -231,9 +231,7 @@ def service(ctx, env):
     show_default=True,
     help="Request silent for more than this many seconds are dropped.",
 )
-@click.option(
-    "-d", "--debug", default=False, is_flag=True, help="Start API in debug mode.",
-)
+@click.option("-d", "--debug", default=False, is_flag=True, help="Start API in debug mode.")
 def api_start(addr, port, timeout, debug):
     """Start service JSON-RPC API in active shell session."""
     run_api(addr, port, timeout, debug)
@@ -261,7 +259,7 @@ def ps(ctx):
     processes = list_renku_processes()
     headers = [{k.upper(): v for k, v in rec.items()} for rec in processes]
 
-    output = tabulate(processes, headers=headers,)
+    output = tabulate(processes, headers=headers)
 
     if not processes:
         click.echo("Renku service components are down.")

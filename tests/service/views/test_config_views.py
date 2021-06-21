@@ -34,7 +34,7 @@ def test_config_view_show(svc_client_with_repo):
         "project_id": project_id,
     }
 
-    response = svc_client.get("/config.show", query_string=params, headers=headers,)
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
 
     assert {"result"} == set(response.json.keys())
     keys = {"interactive.default_url", "renku.autocommit_lfs", "renku.lfs_threshold"}
@@ -52,7 +52,7 @@ def test_config_view_show_remote(svc_client_with_repo, it_remote_repo_url):
 
     params = dict(git_url=it_remote_repo_url)
 
-    response = svc_client.get("/config.show", query_string=params, headers=headers,)
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
 
     assert {"result"} == set(response.json.keys())
     keys = {"interactive.default_url", "renku.autocommit_lfs", "renku.lfs_threshold"}
@@ -78,7 +78,7 @@ def test_config_view_set(svc_client_with_repo):
         },
     }
 
-    response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
     assert 200 == response.status_code
     assert {"error"} != set(response.json.keys())
 
@@ -86,7 +86,7 @@ def test_config_view_set(svc_client_with_repo):
         "project_id": project_id,
     }
 
-    response = svc_client.get("/config.show", query_string=params, headers=headers,)
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
 
     assert {"result"} == set(response.json.keys())
     assert "1b" == response.json["result"]["config"]["renku.lfs_threshold"]
@@ -100,11 +100,11 @@ def test_config_view_set(svc_client_with_repo):
         "config": {"lfs_threshold": None, "interactive.default_url": "/still_not_lab", "interactive.dummy": None},
     }
 
-    response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
     assert 200 == response.status_code
     assert {"error"} != set(response.json.keys())
 
-    response = svc_client.get("/config.show", query_string=params, headers=headers,)
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
 
     assert {"result"} == set(response.json.keys())
     assert "100kb" == response.json["result"]["config"]["renku.lfs_threshold"]

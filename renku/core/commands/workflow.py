@@ -48,7 +48,7 @@ def _list_workflows(client):
 
     for path in client.workflow_path.glob("*.yaml"):
         communication.echo(
-            "{path}: {names}".format(path=path.name, names=", ".join(_deref(name) for name in names[path.name]),)
+            "{path}: {names}".format(path=path.name, names=", ".join(_deref(name) for name in names[path.name]))
         )
 
 
@@ -98,7 +98,7 @@ def _create_workflow(client, output_file, revision, paths):
     graph = Graph(client)
     outputs = graph.build(paths=paths, revision=revision)
 
-    workflow = graph.as_workflow(outputs=outputs,)
+    workflow = graph.as_workflow(outputs=outputs)
 
     if output_file:
         output_file = Path(output_file)

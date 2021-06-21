@@ -181,10 +181,10 @@ from renku.core.models.git import GitURL
             "owner": "prefix/owner",
             "username": "git",
         },
-        {"href": "/path/to/repo", "pathname": "/path/to/repo",},
-        {"href": "file:///path/to/repo", "pathname": "/path/to/repo",},
-        {"href": "../relative/path/to/repo", "pathname": "../relative/path/to/repo",},
-        {"href": "file://../relative/path/to/repo", "pathname": "../relative/path/to/repo",},
+        {"href": "/path/to/repo", "pathname": "/path/to/repo"},
+        {"href": "file:///path/to/repo", "pathname": "/path/to/repo"},
+        {"href": "../relative/path/to/repo", "pathname": "../relative/path/to/repo"},
+        {"href": "file://../relative/path/to/repo", "pathname": "../relative/path/to/repo"},
         pytest.param(
             {
                 "href": "https://example.com:1234:repo.git",
@@ -269,6 +269,16 @@ from renku.core.models.git import GitURL
         },
         {
             "href": "https://gitlab.example.com:1234/owner/repo.git",
+            "protocol": "https",
+            "hostname": "gitlab.example.com",
+            "name": "repo",
+            "pathname": "owner/repo.git",
+            "owner": "owner",
+            "port": "1234",
+            "env": "https://gitlab.example.com:1234/",
+        },
+        {
+            "href": "https://gitlab.example.com:1234/owner/repo.git/",
             "protocol": "https",
             "hostname": "gitlab.example.com",
             "name": "repo",

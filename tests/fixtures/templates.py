@@ -21,6 +21,8 @@ from pathlib import Path
 
 import pytest
 
+from renku.version import __version__ as renku_version
+
 
 @pytest.fixture
 def template():
@@ -38,6 +40,7 @@ def template():
             "__namespace__": "",
             "__repository__": "",
             "__project_slug__": "",
+            "__renku_version__": renku_version,
         },
     }
 

@@ -221,7 +221,7 @@ class Graph(object):
 
         for path in paths:
             try:
-                result.append(Usage.from_revision(self.client, path=path, revision=revision,))
+                result.append(Usage.from_revision(self.client, path=path, revision=revision))
             except KeyError:
                 continue
 
@@ -340,7 +340,7 @@ class Graph(object):
         }
 
         dependencies = self.dependencies(revision=revision)
-        current_files = self.build(dependencies=dependencies, can_be_cwl=can_be_cwl,)
+        current_files = self.build(dependencies=dependencies, can_be_cwl=can_be_cwl)
 
         # TODO check only outputs
         paths = {}
@@ -415,9 +415,7 @@ class Graph(object):
 
         return set(parent.generated)
 
-    def as_workflow(
-        self, input_paths=None, output_paths=None, outputs=None, use_latest=True,
-    ):
+    def as_workflow(self, input_paths=None, output_paths=None, outputs=None, use_latest=True):
         """Serialize graph to renku ``Run`` workflow."""
         processes = set()
         stack = []

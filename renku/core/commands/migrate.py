@@ -75,7 +75,7 @@ def migrate_project():
 
 
 def _migrate_project(
-    client, force_template_update=False, skip_template_update=False, skip_docker_update=False, skip_migrations=False,
+    client, force_template_update=False, skip_template_update=False, skip_docker_update=False, skip_migrations=False
 ):
     """Migrate all project's entities."""
     return migrate(

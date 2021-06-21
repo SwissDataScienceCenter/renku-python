@@ -27,9 +27,7 @@ TEMPLATES_BLUEPRINT_TAG = "templates"
 templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@templates_blueprint.route(
-    "/templates.read_manifest", methods=["GET"], provide_automatic_options=False,
-)
+@templates_blueprint.route("/templates.read_manifest", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -64,17 +62,10 @@ def read_manifest_from_template(user_data, cache):
       tags:
         - templates
     """
-    # TODO: #2051 The ManifestTemplatesRequest should be refactored to not include the
-    # ProjectContext - as it is now, the ManifestTemplatesRequest inherits all
-    # the fields of the ProjectContext and if used as the Schema for the request
-    # of this view, all of those fields are automatically added to the schema.
-    # Since they are not actually needed, the schema is documented manually for now.
     return TemplatesReadManifestCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@templates_blueprint.route(
-    "/templates.create_project", methods=["POST"], provide_automatic_options=False,
-)
+@templates_blueprint.route("/templates.create_project", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache
