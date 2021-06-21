@@ -199,6 +199,7 @@ def test_dataset_import_expected_err(runner, project, doi, err):
     [
         "https://zenodo.org/record/2621208",
         "https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMR",
+        "https://zenodo.org/record/830044",
     ],
 )
 @pytest.mark.integration
