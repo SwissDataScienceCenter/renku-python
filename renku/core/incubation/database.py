@@ -21,7 +21,7 @@ import datetime
 import hashlib
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
 from BTrees.OOBTree import OOBTree
@@ -32,6 +32,7 @@ from ZODB.utils import z64
 from zope.interface import implementer
 
 OID_TYPE = str
+MARKER = object()
 
 """NOTE: These are used as _p_serial to mark if an object was read from storage or is new"""
 NEW = z64  # NOTE: Do not change this value since this is the default when a Persistent object is created
@@ -76,12 +77,11 @@ def get_attribute(object, name: Union[List[str], str]):
 class Database:
     """The Metadata Object Database.
 
-    It is equivalent to a ZODB.Connection and a persistent.DataManager. It implements ZODB.interfaces.IConnection and
-    persistent.interfaces.IPersistentDataManager interfaces.
+    This class is equivalent to a persistent.DataManager and implements persistent.interfaces.IPersistentDataManager
+    interface.
     """
 
     ROOT_OID = "root"
-    ROOT_TYPE_NAMES = ("Activity", "Entity", "Plan")
 
     def __init__(self, storage):
         self._storage: Storage = storage
@@ -93,19 +93,14 @@ class Database:
         self._reader: ObjectReader = ObjectReader(database=self)
         self._writer: ObjectWriter = ObjectWriter(database=self)
         self._root: Optional[OOBTree] = None
-        self._root_types: Tuple[type, ...] = (OOBTree, Index)
+
         self._initialize_root()
 
     @classmethod
-    def from_path(cls, path: Union[str, Path]) -> "Database":
+    def from_path(cls, path: Union[Path, str]) -> "Database":
         """Create a Storage and Database using the given path."""
         storage = Storage(path)
         return Database(storage=storage)
-
-    @staticmethod
-    def new_oid():
-        """Generate a random oid."""
-        return f"{uuid4().hex}{uuid4().hex}"
 
     @staticmethod
     def generate_oid(object: Persistent) -> OID_TYPE:
@@ -126,12 +121,18 @@ class Database:
         """Return oid from id."""
         return hashlib.sha3_256(id.encode("utf-8")).hexdigest()
 
+    @staticmethod
+    def new_oid():
+        """Generate a random oid."""
+        return f"{uuid4().hex}{uuid4().hex}"
+
+    @staticmethod
+    def _get_filename_from_oid(oid: OID_TYPE) -> str:
+        return oid.lower()
+
     @property
     def root(self):
         """Return the database root object."""
-        if not self._root:
-            self._initialize_root()
-
         return self._root
 
     def _initialize_root(self):
@@ -139,95 +140,41 @@ class Database:
         if not self._root:
             try:
                 self._root = self.get(Database.ROOT_OID)
-                root_types = tuple(i.value_type for i in self._root.values() if i.value_type not in self._root_types)
-                self._root_types += root_types
-                for index in self._root.values():
-                    len(index._entries)
             except POSKeyError:
                 self._root = OOBTree()
-                self._add_internal(self._root, Database.ROOT_OID)
+                self._root._p_oid = Database.ROOT_OID
+                self.register(self._root)
 
     def add_index(self, name: str, value_type: type, attribute: str, is_list: bool = False, key_type: type = None):
         """Add an index."""
-        assert len(self._objects_to_commit) == 0 or set(self._objects_to_commit.keys()) == {Database.ROOT_OID}
-        root = self.root
-        assert name not in root, f"Index already exists: '{name}'"
+        assert name not in self._root, f"Index already exists: '{name}'"
 
         cls = IndexList if is_list else Index
-        root[name] = cls(name=name, value_type=value_type, attribute=attribute, key_type=key_type)
-        if value_type not in self._root_types:
-            self._root_types += (value_type,)
+        index = cls(name=name, value_type=value_type, attribute=attribute, key_type=key_type)
+        index._p_jar = self
 
-    def add(self, object: Persistent, *, key_object=None):
-        """Add a new object to the database.
+        self._root[name] = index
 
-        If ``key_object`` is not None then it is used to generate index keys, otherwise, ``object`` is used as the key.
-        """
-        assert isinstance(object, self._root_types), f"Cannot add objects of type '{type(object)}'"
-
-        if object._p_oid is None:
-            assert getattr(object, "id", None) is not None, f"Object does not have 'id': {object}"
-            object._p_oid = self.generate_oid(object)
-
-        oid = object._p_oid
-
-        cached_object = self.get_cached(oid)
-        if cached_object:
-            assert cached_object is object, f"An object with oid '{oid}' is in the cache: {cached_object} != {object}"
-            return
-
-        self._add_internal(object=object, key_object=key_object)
-
-    def _update_indexes(self, object: Persistent, key_object):
-        index: Index
-        for index in self.root.values():
-            index.update(object=object, key_object=key_object)
-
-    def _add_internal(self, object: Persistent, oid: OID_TYPE = None, key_object=None):
-        """Allow adding non-root types; used for adding root object."""
-        assert isinstance(object, Persistent), f"Cannot add non-Persistent object: '{object}'"
-        assert oid is None or isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
-
-        object._p_jar = self
-
-        if oid:
-            assert object._p_oid is None or object._p_oid == oid, f"Object's oid is different: {object._p_oid} != {oid}"
-            object._p_oid = oid
-        else:
-            assert object._p_oid is not None, f"Object has no pid: {object}"
-
-        object._p_serial = NEW
-        self._objects_to_commit[object._p_oid] = object
-
-        self._update_indexes(object=object, key_object=key_object)
-
-    def oldstate(self, object, tid):
-        """See persistent.interfaces.IPersistentDataManager::oldstate."""
-        raise NotImplementedError
-
-    def setstate(self, object: Persistent):
-        """Load the state for a ghost object."""
-        oid = object._p_oid
-
-        data = self._storage.load(filename=self._get_filename_from_oid(oid))
-        self._reader.set_ghost_state(object, data)
-
-        object._p_serial = PERSISTED
+        return index
 
     def register(self, object: Persistent):
         """Register a Persistent object to be stored.
 
         NOTE: When a Persistent object is changed it calls this method.
         """
+        assert isinstance(object, Persistent), f"Cannot add non-Persistent object: '{object}'"
+
         if object._p_oid is None:
             object._p_oid = self.generate_oid(object)
 
-        self._add_internal(object)
+        object._p_jar = self
+        # object._p_serial = NEW
+        self._objects_to_commit[object._p_oid] = object
 
     def get(self, oid: OID_TYPE) -> Persistent:
         """Get the object by oid."""
-        if oid != Database.ROOT_OID and oid in self.root:  # NOTE: Avoid looping if getting "root"
-            return self.root[oid]
+        if oid != Database.ROOT_OID and oid in self._root:  # NOTE: Avoid looping if getting "root"
+            return self._root[oid]
 
         object = self.get_cached(oid)
         if object is not None:
@@ -259,55 +206,48 @@ class Database:
         if object is not None:
             return object
 
-    def commit(self):
-        """Commit modified and new objects."""
-        while self._objects_to_commit:
-            oid, object = self._objects_to_commit.popitem()
-
-            if not object._p_changed and object._p_serial != NEW:
-                continue
-
-            self._store_object(object)
-
-    def _store_object(self, object: Persistent):
-        oid = object._p_oid
-
-        data = self._writer.serialize(object)
-
-        self._storage.store(filename=self._get_filename_from_oid(oid), data=data)
-        self._cache[oid] = object
-
-        object._p_estimated_size = 0
-
-        object._p_changed = 0  # NOTE: transition from changed to up-to-date
-        object._p_serial = PERSISTED
-
-    @staticmethod
-    def _get_filename_from_oid(oid: OID_TYPE) -> str:
-        return oid.lower()
-
     def new_ghost(self, oid: OID_TYPE, object: Persistent):
         """Create a new ghost object."""
         object._p_jar = self
         self._cache.new_ghost(oid, object)
 
-    def remove(self, object: Persistent):
-        """Remove an object from cache and indexes by creating a new oid for it."""
+    def setstate(self, object: Persistent):
+        """Load the state for a ghost object."""
+        data = self._storage.load(filename=self._get_filename_from_oid(object._p_oid))
+        self._reader.set_ghost_state(object, data)
+        object._p_serial = PERSISTED
+
+    def commit(self):
+        """Commit modified and new objects."""
+        while self._objects_to_commit:
+            _, object = self._objects_to_commit.popitem()
+            if object._p_changed or object._p_serial == NEW:
+                self._store_object(object)
+
+    def _store_object(self, object: Persistent):
+        data = self._writer.serialize(object)
+        self._storage.store(filename=self._get_filename_from_oid(object._p_oid), data=data)
+
+        self._cache[object._p_oid] = object
+
+        object._p_changed = 0  # NOTE: transition from changed to up-to-date
+        object._p_serial = PERSISTED
+
+    def remove_from_cache(self, object: Persistent):
+        """Remove an object from cache."""
         oid = object._p_oid
-        try:
-            del self._cache[oid]
-        except KeyError:
-            pass
+        self._cache.pop(oid, None)
         self._pre_cache.pop(oid, None)
         self._objects_to_commit.pop(oid, None)
-
-        for index in self.root.values():
-            index.delete(object)
 
     def readCurrent(self, object):
         """We don't use this method but some Persistent logic require its existence."""
         assert object._p_jar is self
         assert object._p_oid is not None
+
+    def oldstate(self, object, tid):
+        """See persistent.interfaces.IPersistentDataManager::oldstate."""
+        raise NotImplementedError
 
 
 @implementer(IPickleCache)
@@ -341,6 +281,10 @@ class Cache:
     def __delitem__(self, oid):
         assert isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
         self._entries.pop(oid)
+
+    def pop(self, oid, default=MARKER):
+        """Remove and return an object or the default value; raise if not default is provided."""
+        return self._entries.pop(oid) if default is MARKER else self._entries.pop(oid, default)
 
     def get(self, oid, default=None):
         """See IPickleCache."""
@@ -393,9 +337,6 @@ class Index(Persistent):
     def __getitem__(self, key):
         return self._entries[key]
 
-    def __delitem__(self, key):
-        self._entries.pop(key)
-
     def __getstate__(self):
         return {
             "name": self._name,
@@ -434,20 +375,21 @@ class Index(Persistent):
         """Return an iterator of keys and values."""
         return self._entries.items()
 
-    def update(self, object: Persistent, key_object):
-        """Update index with object."""
-        if not isinstance(object, self._value_type):
-            return
+    def add(self, object: Persistent, *, key_object=None):
+        """Update index with object.
+
+        If ``key_object`` is not None then it is used to generate index keys, otherwise, ``object`` is used as the key.
+        """
+        assert isinstance(object, self._value_type), f"Cannot add objects of type '{type(object)}'"
 
         key = self._get_key(object=object, key_object=key_object)
         self._entries[key] = object
 
-    def delete(self, object: Persistent):
+    def remove(self, object: Persistent, *, key_object=None):
         """Delete an object if it is indexed."""
-        if not isinstance(object, self._value_type):
-            return
+        assert isinstance(object, self._value_type), f"Invalid object type '{type(object)}'"
 
-        key = get_attribute(object, self._attribute)
+        key = self._get_key(object=object, key_object=key_object)
         self._entries.pop(key, None)
 
     def _get_key(self, object: Persistent, key_object):
@@ -463,10 +405,12 @@ class Index(Persistent):
 class IndexList(Index):
     """Database index pointing to multiple values."""
 
-    def update(self, object: Persistent, key_object):
-        """Update index with object."""
-        if not isinstance(object, self._value_type):
-            return
+    def add(self, object: Persistent, *, key_object=None):
+        """Update index with object.
+
+        If ``key_object`` is not None then it is used to generate index keys, otherwise, ``object`` is used as the key.
+        """
+        assert isinstance(object, self._value_type), f"Cannot add objects of type '{type(object)}'"
 
         key = self._get_key(object=object, key_object=key_object)
         values = self._entries.get(key)
@@ -481,12 +425,15 @@ class IndexList(Index):
         else:
             self._entries[key] = [object]
 
-    def delete(self, object: Persistent):
-        """Delete an object if it is indexed."""
-        if not isinstance(object, self._value_type):
-            return
+        # NOTE: It is needed to register the object because a list is not Persistent and its content won't be registered
+        # by the persistent machinery
+        self._p_jar.register(object)
 
-        key = get_attribute(object, self._attribute)
+    def remove(self, object: Persistent, *, key_object=None):
+        """Delete an object if it is indexed."""
+        assert isinstance(object, self._value_type), f"Invalid object type '{type(object)}'"
+
+        key = self._get_key(object=object, key_object=key_object)
         values = self._entries.get(key)
         if values:
             assert isinstance(values, list), f"Value in IndexList is not a list: {values}"
@@ -594,7 +541,7 @@ class ObjectWriter:
             if not object._p_oid:
                 object._p_oid = Database.generate_oid(object)
             if object._p_state not in [GHOST, UPTODATE] or (object._p_state == UPTODATE and object._p_serial == NEW):
-                self._database.add(object)
+                self._database.register(object)
             return {"@type": get_type_name(object), "@oid": object._p_oid, "@reference": True}
         elif hasattr(object, "__getstate__"):
             state = object.__getstate__()

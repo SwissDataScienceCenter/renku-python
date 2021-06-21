@@ -127,6 +127,22 @@ def update_injected_client(new_client):
     injector._bindings["LocalClient"] = lambda: new_client
 
 
+def update_injected_database(database):
+    """Update the injected Database instance.
+
+    Used when re-generating new graphs to allow overriding existing database.
+    """
+    from renku.core.incubation.database import Database
+
+    injector = getattr(_LOCAL, "injector", None)
+
+    if not injector:
+        raise inject.InjectorException("No injector is configured")
+
+    injector._bindings[Database] = lambda: database
+    injector._bindings["Database"] = lambda: database
+
+
 class Command:
     """Base renku command builder."""
 

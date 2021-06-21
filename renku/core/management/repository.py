@@ -504,17 +504,11 @@ class RepositoryApiMixin(GitCore):
 
         provenance_graph.add(activity_collection)
 
-        # TODO: remove this try except once we move to the database and have a migration.
-        # Currently needed for 'test_graph()'
-        try:
-            for activity in activity_collection.activities:
-                database.add(activity)
-                database.add(activity.association.plan)
+        for activity in activity_collection.activities:
+            database.get("activities").add(activity)
+            database.get("plans").add(activity.association.plan)
 
-            database.commit()
-        except AssertionError:
-            pass
-
+        database.commit()
         dependency_graph.to_json()
         provenance_graph.to_json()
 
@@ -531,7 +525,6 @@ class RepositoryApiMixin(GitCore):
         self.provenance_graph_path.write_text("[]")
 
         self.database_path.mkdir(parents=True, exist_ok=True)
-        (self.database_path / ".gitkeep").touch(exist_ok=True)
 
         from renku.core.models.provenance.activity import Activity
         from renku.core.models.workflow.plan import Plan
@@ -539,8 +532,7 @@ class RepositoryApiMixin(GitCore):
         database.add_index(name="activities", value_type=Activity, attribute="id")
         database.add_index(name="plans", value_type=Plan, attribute="id")
 
-        # # NOTE: Access dataset's root to make sure that it is created in case there are no commits
-        _ = database.root
+        database.commit()
 
     def remove_graph_files(self):
         """Remove all graph files."""

@@ -35,14 +35,28 @@ def test_database_create(client, runner):
     for filename in root_objects:
         assert (client.database_path / filename).exists()
 
+    assert client.has_graph_files()
+
+
+@pytest.mark.xfail
+def test_database_recreate(client, runner):
+    """Test can force re-create the database."""
+    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
+
+    result = runner.invoke(cli, ["graph", "generate", "-f"])
+
+    assert 0 == result.exit_code, result.output
+    assert client.has_graph_files()
+
 
 def test_database_add(database):
-    """Test adding an object to the database."""
+    """Test adding an object to an index."""
     database, storage = database
 
     id = "/activities/42"
     activity = Activity(id=id)
-    database.add(activity)
+    index = database.get("activities")
+    index.add(activity)
     database.commit()
 
     root_objects = ["root", "activities", "plans"]
@@ -57,14 +71,11 @@ def test_database_add_also_adds_to_root_object(database):
     """Test adding an object to the database also adds it to the root object before committing."""
     database, storage = database
 
-    root = database.root
-    database.commit()
-
     id = "/activities/42"
     activity_1 = Activity(id=id)
-    database.add(activity_1)
+    database.get("activities").add(activity_1)
 
-    activity_2 = list(root["activities"].values())[0]
+    activity_2 = list(database.root["activities"].values())[0]
 
     assert activity_1 is activity_2
 
@@ -72,13 +83,13 @@ def test_database_add_also_adds_to_root_object(database):
 def test_database_no_file_created_if_not_committed(database):
     """Test adding an object to a database does not create a file before commit."""
     database, storage = database
-
-    _ = database.root
     database.commit()
+
+    assert storage.exists("root")
 
     id = "/activities/42"
     activity = Activity(id=id)
-    database.add(activity)
+    database.get("activities").add(activity)
 
     oid = Database.hash_id(id)
     assert not storage.exists(oid)
@@ -88,16 +99,18 @@ def test_database_update_required_object_only(database):
     """Test adding an object to the database does not cause an update to all other objects."""
     database, storage = database
 
+    index = database.get("activities")
+
     id_1 = "/activities/42"
     activity_1 = Activity(id=id_1)
-    database.add(activity_1)
+    index.add(activity_1)
     database.commit()
     oid_1 = Database.hash_id(id_1)
     modification_time_before = storage.get_modification_date(oid_1)
 
     id_2 = "/activities/43"
     activity_2 = Activity(id=id_2)
-    database.add(activity_2)
+    index.add(activity_2)
     database.commit()
 
     modification_time_after = storage.get_modification_date(oid_1)
@@ -106,7 +119,7 @@ def test_database_update_required_object_only(database):
 
 
 def test_database_update_required_root_objects_only(database):
-    """Test adding an object to the database does not cause an update to other root objects."""
+    """Test adding an object to an index does not cause an update to other indexes."""
     database, storage = database
 
     _ = database.root
@@ -116,7 +129,7 @@ def test_database_update_required_root_objects_only(database):
     activity_modification_time_before = storage.get_modification_date("activities")
 
     activity = Activity(id="/activities/42")
-    database.add(activity)
+    database.get("activities").add(activity)
     database.commit()
 
     entity_modification_time_after = storage.get_modification_date("plans")
@@ -135,7 +148,7 @@ def test_database_add_non_persistent(database):
 
     with pytest.raises(AssertionError) as e:
         object = Dummy()
-        database.add(object)
+        database.get("activities").add(object)
 
     assert "Cannot add objects of type" in str(e)
 
@@ -148,7 +161,7 @@ def test_database_loads_only_required_objects(database):
     association = Association(id="association", plan=plan)
     id = "/activities/42"
     activity = Activity(id=id, association=association)
-    database.add(activity)
+    database.get("activities").add(activity)
     database.commit()
 
     new_database = Database(storage=storage)
@@ -167,21 +180,26 @@ def test_database_loads_only_required_objects(database):
 
 
 def test_database_load_multiple(database):
-    """Test loading an object from multiple sources returns the same object."""
+    """Test loading an object from multiple indexes returns the same object."""
     database, storage = database
+    database.add_index(name="associations", value_type=Activity, attribute="association.id")
 
-    entity = Entity(checksum="42", path="dummy")
+    plan = Plan(id="/plan/9")
+    association = Association(id="/association/42", plan=plan)
     id = "/activities/42"
-    activity = Activity(id=id, invalidations=[entity])
-    database.add(activity)
+    activity = Activity(id=id, association=association)
+    database.get("activities").add(activity)
+    database.get("associations").add(activity)
     database.commit()
 
     new_database = Database(storage=storage)
     oid = Database.hash_id(id)
     activity_1 = new_database.get(oid)
-    activity_2 = list(new_database.root["activities"].values())[0]
+    activity_2 = new_database.get("activities").get(id)
+    activity_3 = new_database.get("associations").get("/association/42")
 
     assert activity_1 is activity_2
+    assert activity_2 is activity_3
 
 
 def test_database_index_list(database):
@@ -196,11 +214,13 @@ def test_database_index_list(database):
 
     id_1 = "/activities/1"
     activity_1 = Activity(id=id_1, association=association)
-    database.add(activity_1)
+    database.get("activities").add(activity_1)
+    database.get(index_name).add(activity_1)
 
     id_2 = "/activities/2"
     activity_2 = Activity(id=id_2, association=association)
-    database.add(activity_2)
+    database.get("activities").add(activity_2)
+    database.get(index_name).add(activity_2)
 
     database.commit()
 
@@ -221,15 +241,15 @@ def test_database_index_update(database):
     name = "same-name"
 
     plan_1 = Plan(id="/plans/42", name=name, description="old")
-    database.add(plan_1)
+    database.get(index_name).add(plan_1)
     plan_2 = Plan(id="/plans/43", name=name, description="new")
-    database.add(plan_2)
+    database.get(index_name).add(plan_2)
     assert plan_2 is database.get(index_name).get(name)
 
     database.commit()
 
     plan_3 = Plan(id="/plans/44", name=name, description="newer")
-    database.add(plan_3)
+    database.get(index_name).add(plan_3)
     database.commit()
 
     new_database = Database(storage=storage)
@@ -262,7 +282,7 @@ def test_database_index_different_key_type(database):
     usage = Usage(entity=entity, id="/usages/42")
 
     activity = Activity(id="/activities/42", usages=[usage])
-    database.add(activity, key_object=usage)
+    database.get(index_name).add(activity, key_object=usage)
     database.commit()
 
     new_database = Database(storage=storage)
@@ -275,7 +295,7 @@ def test_database_index_different_key_type(database):
 
 
 def test_database_wrong_index_key_type(database):
-    """Test adding an Index with a wrong key type."""
+    """Test adding to an Index with a wrong key type."""
     database, _ = database
 
     index_name = "usages"
@@ -284,6 +304,43 @@ def test_database_wrong_index_key_type(database):
     activity = Activity(id="/activities/42")
 
     with pytest.raises(AssertionError) as e:
-        database.add(activity)
+        database.get(index_name).add(activity)
 
     assert "Invalid key type" in str(e)
+
+
+def test_database_missing_attribute(database):
+    """Test adding to an Index while object does not have the requires attribute."""
+    database, _ = database
+
+    index_name = "usages"
+    database.add_index(name=index_name, value_type=Activity, attribute="missing.attribute")
+
+    activity = Activity(id="/activities/42")
+
+    with pytest.raises(AttributeError) as e:
+        database.get(index_name).add(activity)
+
+    assert "'Activity' object has no attribute 'missing'" in str(e)
+
+
+def test_database_remove(database):
+    """Test removing an object from an index."""
+    database, storage = database
+
+    id = "/activities/42"
+    activity = Activity(id=id)
+    database.get("activities").add(activity)
+    database.commit()
+
+    database = Database(storage=storage)
+    database.get("activities").remove(activity)
+    database.commit()
+
+    database = Database(storage=storage)
+    activity = database.get("activities").get(id, None)
+
+    assert activity is None
+    # However, the file still exists in the storageg
+    oid = Database.hash_id(id)
+    assert storage.exists(oid)

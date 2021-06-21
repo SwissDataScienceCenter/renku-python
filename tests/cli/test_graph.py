@@ -49,12 +49,3 @@ def test_graph(runner, client, directory_tree, run):
 
     result = runner.invoke(cli, ["graph", "generate", "-f"])
     assert 0 == result.exit_code, result.output
-
-    from renku.core.incubation.database import Database
-    from renku.core.models.provenance.activity import Activity
-
-    database = Database.from_path(client.database_path)
-
-    a = Activity(id="123")
-    database.add(a)
-    database.commit()

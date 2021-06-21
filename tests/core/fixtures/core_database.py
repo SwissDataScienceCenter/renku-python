@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku fixtures for metadata Database."""
 
+import copy
 import datetime
 
 import pytest
@@ -46,7 +47,7 @@ class DummyStorage:
         if filename not in self._files:
             raise POSKeyError(filename)
 
-        return self._files[filename]
+        return copy.deepcopy(self._files[filename])
 
     def get_modification_date(self, filename: str):
         """Return modification date of a file."""
