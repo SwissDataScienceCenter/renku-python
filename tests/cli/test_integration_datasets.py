@@ -33,7 +33,7 @@ from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.datasets import Url
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
-from tests.utils import assert_dataset_is_mutated
+from tests.utils import assert_dataset_is_mutated, get_datasets_provenance
 
 
 @pytest.mark.integration
@@ -1576,9 +1576,8 @@ def test_datasets_provenance_after_import(runner, client_with_new_graph):
     """Test dataset provenance is updated after importing a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-data", "10.7910/DVN/F4NUMR"]).exit_code
 
-    dataset = next(client_with_new_graph.datasets_provenance.get_by_name("my-data"), None)
-
-    assert dataset is not None
+    datasets_provenance = get_datasets_provenance(client_with_new_graph)
+    assert datasets_provenance.get_by_name("my-data") is not None
 
 
 @pytest.mark.integration
@@ -1592,10 +1591,8 @@ def test_datasets_provenance_after_git_update(client_with_new_graph, runner):
 
     assert 0 == runner.invoke(cli, ["dataset", "update"], catch_exceptions=False).exit_code
 
-    dataset = client_with_new_graph.load_dataset("my-data")
-    current_version = client_with_new_graph.datasets_provenance.get(dataset.identifier)
-
-    assert current_version.identifier != current_version.original_identifier
+    current_version = get_datasets_provenance(client_with_new_graph).get_by_name("my-data")
+    assert current_version.identifier != current_version.initial_identifier
 
 
 @pytest.mark.integration
@@ -1607,7 +1604,6 @@ def test_datasets_provenance_after_external_provider_update(client_with_new_grap
 
     assert 0 == runner.invoke(cli, ["dataset", "update", "my-data"]).exit_code
 
-    dataset = client_with_new_graph.load_dataset("my-data")
-    current_version = client_with_new_graph.datasets_provenance.get(dataset.identifier)
+    current_version = get_datasets_provenance(client_with_new_graph).get_by_name("my-data")
 
-    assert current_version.identifier != current_version.original_identifier
+    assert current_version.identifier != current_version.initial_identifier

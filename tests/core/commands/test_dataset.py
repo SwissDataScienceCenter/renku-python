@@ -163,7 +163,9 @@ def test_dataset_serialization(client_with_datasets):
 
 def test_create_dataset_custom_message(project):
     """Test create dataset custom message."""
-    create_dataset().with_commit_message("my dataset").build().execute("ds1", title="", description="", creators=[])
+    create_dataset().with_commit_message("my dataset").with_database(write=True).build().execute(
+        "ds1", title="", description="", creators=[]
+    )
 
     last_commit = Repo(".").head.commit
     assert "my dataset" == last_commit.message
@@ -171,7 +173,9 @@ def test_create_dataset_custom_message(project):
 
 def test_list_datasets_default(project):
     """Test a default dataset listing."""
-    create_dataset().with_commit_message("my dataset").build().execute("ds1", title="", description="", creators=[])
+    create_dataset().with_commit_message("my dataset").with_database(write=False).build().execute(
+        "ds1", title="", description="", creators=[]
+    )
 
     datasets = list_datasets().build().execute().output
 
@@ -181,7 +185,9 @@ def test_list_datasets_default(project):
 
 def test_list_files_default(project, tmpdir):
     """Test a default file listing."""
-    create_dataset().with_commit_message("my dataset").build().execute("ds1", title="", description="", creators=[])
+    create_dataset().with_commit_message("my dataset").with_database(write=False).build().execute(
+        "ds1", title="", description="", creators=[]
+    )
     data_file = tmpdir / Path("some-file")
     data_file.write_text("1,2,3", encoding="utf-8")
 
@@ -195,8 +201,8 @@ def test_list_files_default(project, tmpdir):
 def test_unlink_default(directory_tree, client):
     """Test unlink default behaviour."""
     with chdir(client.path):
-        create_dataset().build().execute("dataset")
-        add_to_dataset().build().execute([str(directory_tree / "dir1")], "dataset")
+        create_dataset().with_database(write=True).build().execute("dataset")
+        add_to_dataset().with_database(write=True).build().execute([str(directory_tree / "dir1")], "dataset")
 
     with pytest.raises(ParameterError):
         file_unlink().build().execute("dataset", (), ())

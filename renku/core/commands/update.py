@@ -44,9 +44,9 @@ def update_workflows():
         .command(_update_workflows)
         .require_migration()
         .require_clean()
-        .with_commit()
         .require_nodejs()
         .with_database(write=True)
+        .with_commit()
     )
 
 

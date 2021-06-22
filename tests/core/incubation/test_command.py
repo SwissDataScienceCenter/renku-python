@@ -29,12 +29,15 @@ def test_dataset_add_command(project, tmp_path):
         .require_clean()
         .require_migration()
         .with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
-        .lock_project()
+        .with_database(write=True)
+        .lock_dataset()
         .command(_add_to_dataset)
         .build()
     )
 
-    create_dataset().with_commit_message("my dataset").build().execute("ds1", title="", description="", creators=[])
+    create_dataset().with_commit_message("my dataset").with_database(write=True).build().execute(
+        "ds1", title="", description="", creators=[]
+    )
     data_file = tmp_path / "some-file"
     data_file.write_text("1,2,3", encoding="utf-8")
 

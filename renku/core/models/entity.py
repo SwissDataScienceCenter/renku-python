@@ -17,6 +17,7 @@
 # limitations under the License.
 """Represent provenance entities."""
 
+import os.path
 from pathlib import Path
 from typing import List, Union
 from urllib.parse import quote
@@ -30,10 +31,21 @@ class Entity:
 
     def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str]):
         assert id is None or isinstance(id, str)
+        assert not os.path.isabs(path), f"Entity is being created with absolute path: '{path}'"
 
-        self.id: str = id or Entity.generate_id(checksum, path)
-        self.path: Path = path
         self.checksum: str = checksum
+        self.id: str = id or Entity.generate_id(checksum, path)
+        self.path: str = str(path)
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if not isinstance(other, Entity):
+            return False
+        return self.checksum == other.checksum and self.path == other.path
+
+    def __hash__(self):
+        return hash((self.checksum, self.path))
 
     @staticmethod
     def generate_id(checksum: str, path: Union[Path, str]) -> str:
@@ -43,8 +55,12 @@ class Entity:
         return f"/entities/{checksum}/{quoted_path}"
 
     @classmethod
-    def from_revision(cls, client, path: Union[Path, str], revision: str = "HEAD", find_previous: bool = True):
+    def from_revision(
+        cls, client, path: Union[Path, str], revision: str = None, find_previous: bool = True
+    ) -> "Entity":
         """Return dependency from given path and revision."""
+        revision = revision or "HEAD"
+
         if find_previous:
             revision = client.find_previous_commit(path, revision=revision)
 
@@ -52,6 +68,7 @@ class Entity:
 
         checksum = get_object_hash(repo=client.repo, revision=revision, path=path)
         # TODO: What if checksum is None
+        assert checksum is not None, f"Entity not found: {revision}:{path}"
         # TODO: What would be checksum for a directory if it's not committed yet.
         id = cls.generate_id(checksum=checksum, path=path)
 

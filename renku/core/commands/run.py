@@ -35,7 +35,7 @@ from renku.core.utils.urls import get_slug
 
 def run_command():
     """Tracking work on a specific problem."""
-    return Command().command(_run_command).require_migration().require_clean().with_commit().with_database(write=True)
+    return Command().command(_run_command).require_migration().require_clean().with_database(write=True).with_commit()
 
 
 @inject.autoparams()

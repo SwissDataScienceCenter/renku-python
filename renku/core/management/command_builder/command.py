@@ -190,6 +190,7 @@ class Command:
         stack = contextlib.ExitStack()
 
         context["bindings"] = {LocalClient: client, "LocalClient": client}
+        context["constructor_bindings"] = {}
         context["client"] = client
         context["stack"] = stack
         context["click_context"] = ctx
@@ -225,6 +226,8 @@ class Command:
         def _bind(binder):
             for key, value in context["bindings"].items():
                 binder.bind(key, value)
+            for key, value in context["constructor_bindings"].items():
+                binder.bind_to_constructor(key, value)
 
             return binder
 
@@ -385,11 +388,11 @@ class Command:
         return Communicator(self, communicator)
 
     @check_finalized
-    def with_database(self, write: bool = False, path: str = None) -> "Command":
+    def with_database(self, write: bool = False, path: str = None, create: bool = False) -> "Command":
         """Provide an object database connection."""
         from renku.core.management.command_builder.database import DatabaseCommand
 
-        return DatabaseCommand(self, write, path)
+        return DatabaseCommand(self, write, path, create)
 
 
 class CommandResult:

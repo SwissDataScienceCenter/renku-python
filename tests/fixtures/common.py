@@ -33,7 +33,7 @@ def directory_tree_files():
 
 
 @pytest.fixture()
-def directory_tree(tmp_path, directory_tree_files):
+def directory_tree(tmp_path, directory_tree_files) -> Path:
     """Create a test directory tree."""
     # initialize
     base = tmp_path / "directory_tree"
