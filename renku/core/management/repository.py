@@ -529,8 +529,8 @@ class RepositoryApiMixin(GitCore):
         from renku.core.models.provenance.activity import Activity
         from renku.core.models.workflow.plan import Plan
 
-        database.add_index(name="activities", value_type=Activity, attribute="id")
-        database.add_index(name="plans", value_type=Plan, attribute="id")
+        database.add_index(name="activities", object_type=Activity, attribute="id")
+        database.add_index(name="plans", object_type=Plan, attribute="id")
 
         database.commit()
 

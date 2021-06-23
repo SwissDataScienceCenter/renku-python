@@ -16,8 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test metadata Database."""
+
 import pytest
 from persistent import GHOST, UPTODATE
+from persistent.list import PersistentList
+from persistent.mapping import PersistentMapping
 
 from renku.cli import cli
 from renku.core.incubation.database import PERSISTED, Database
@@ -67,17 +70,63 @@ def test_database_add(database):
     assert storage.exists(oid)
 
 
-def test_database_add_also_adds_to_root_object(database):
-    """Test adding an object to the database also adds it to the root object before committing."""
+def test_database_add_using_set_item(database):
+    """Test adding an object to the database using __setitem__."""
     database, storage = database
 
     id = "/activities/42"
     activity_1 = Activity(id=id)
-    database.get("activities").add(activity_1)
+    database["activities"][id] = activity_1
 
     activity_2 = list(database.root["activities"].values())[0]
 
     assert activity_1 is activity_2
+
+
+def test_database_index_with_no_automatic_key(database):
+    """Test indexes with no automatic key attribute."""
+    database, storage = database
+    index = database.add_index(name="manual", object_type=Activity)
+
+    id = "/activities/42"
+    activity = Activity(id=id)
+    index.add(activity, key=id)
+
+    database.commit()
+
+    new_database = Database(storage=storage)
+    activity = new_database["manual"][id]
+
+    assert id == activity.id
+
+    oid = Database.hash_id(id)
+    assert storage.exists(oid)
+
+
+def test_database_add_with_incorrect_key(database):
+    """Test adding an object to the database using __setitem__ with an incorrect key should fail."""
+    database, storage = database
+
+    id = "/activities/42"
+    activity_1 = Activity(id=id)
+
+    with pytest.raises(AssertionError) as e:
+        database["activities"]["incorrect-key"] = activity_1
+
+    assert "Incorrect key for index 'activities': 'incorrect-key' != '/activities/42'" in str(e)
+
+
+def test_database_add_fails_when_no_key_and_no_automatic_key(database):
+    """Test adding to an index with no automatic key fails if no key is provided."""
+    database, storage = database
+    index = database.add_index(name="manual", object_type=Activity)
+
+    activity = Activity(id="/activities/42")
+
+    with pytest.raises(AssertionError) as e:
+        index.add(activity)
+
+    assert "No key is provided" in str(e)
 
 
 def test_database_no_file_created_if_not_committed(database):
@@ -182,7 +231,7 @@ def test_database_loads_only_required_objects(database):
 def test_database_load_multiple(database):
     """Test loading an object from multiple indexes returns the same object."""
     database, storage = database
-    database.add_index(name="associations", value_type=Activity, attribute="association.id")
+    database.add_index(name="associations", object_type=Activity, attribute="association.id")
 
     plan = Plan(id="/plan/9")
     association = Association(id="/association/42", plan=plan)
@@ -202,41 +251,12 @@ def test_database_load_multiple(database):
     assert activity_2 is activity_3
 
 
-def test_database_index_list(database):
-    """Test adding an IndexList."""
-    database, storage = database
-
-    index_name = "associations"
-    database.add_index(name=index_name, value_type=Activity, attribute="association.id", is_list=True)
-
-    plan = Plan(id="/plan/9")
-    association = Association(id="/association/42", plan=plan)
-
-    id_1 = "/activities/1"
-    activity_1 = Activity(id=id_1, association=association)
-    database.get("activities").add(activity_1)
-    database.get(index_name).add(activity_1)
-
-    id_2 = "/activities/2"
-    activity_2 = Activity(id=id_2, association=association)
-    database.get("activities").add(activity_2)
-    database.get(index_name).add(activity_2)
-
-    database.commit()
-
-    new_database = Database(storage=storage)
-    usages = new_database.get(index_name)
-    activities = usages.get("/association/42")
-
-    assert {id_1, id_2} == {a.id for a in activities}
-
-
 def test_database_index_update(database):
     """Test adding objects with the same key, updates the Index."""
     database, storage = database
 
     index_name = "plan-names"
-    database.add_index(name=index_name, value_type=Plan, attribute="name")
+    database.add_index(name=index_name, object_type=Plan, attribute="name")
 
     name = "same-name"
 
@@ -266,7 +286,7 @@ def test_database_add_duplicate_index(database):
     same_name = "plans"
 
     with pytest.raises(AssertionError) as e:
-        database.add_index(name=same_name, value_type=Plan, attribute="name")
+        database.add_index(name=same_name, object_type=Plan, attribute="name")
 
     assert "Index already exists: 'plans'" in str(e)
 
@@ -276,7 +296,7 @@ def test_database_index_different_key_type(database):
     database, storage = database
 
     index_name = "usages"
-    database.add_index(name=index_name, value_type=Activity, attribute="entity.path", key_type=Usage)
+    index = database.add_index(name=index_name, object_type=Activity, attribute="entity.path", key_type=Usage)
 
     entity = Entity(checksum="42", path="/dummy/path")
     usage = Usage(entity=entity, id="/usages/42")
@@ -286,12 +306,16 @@ def test_database_index_different_key_type(database):
     database.commit()
 
     new_database = Database(storage=storage)
-    usages = new_database.get(index_name)
+    usages = new_database[index_name]
     activity = usages.get("/dummy/path")
 
     assert "/activities/42" == activity.id
     assert "42" == activity.usages[0].entity.checksum
     assert "/dummy/path" == activity.usages[0].entity.path
+
+    key = index.generate_key(activity, key_object=usage)
+
+    assert activity is usages[key]
 
 
 def test_database_wrong_index_key_type(database):
@@ -299,7 +323,7 @@ def test_database_wrong_index_key_type(database):
     database, _ = database
 
     index_name = "usages"
-    database.add_index(name=index_name, value_type=Activity, attribute="id", key_type=Usage)
+    database.add_index(name=index_name, object_type=Activity, attribute="id", key_type=Usage)
 
     activity = Activity(id="/activities/42")
 
@@ -314,7 +338,7 @@ def test_database_missing_attribute(database):
     database, _ = database
 
     index_name = "usages"
-    database.add_index(name=index_name, value_type=Activity, attribute="missing.attribute")
+    database.add_index(name=index_name, object_type=Activity, attribute="missing.attribute")
 
     activity = Activity(id="/activities/42")
 
@@ -334,13 +358,60 @@ def test_database_remove(database):
     database.commit()
 
     database = Database(storage=storage)
-    database.get("activities").remove(activity)
+    database.get("activities").pop(id)
     database.commit()
 
     database = Database(storage=storage)
     activity = database.get("activities").get(id, None)
 
     assert activity is None
-    # However, the file still exists in the storageg
+    # However, the file still exists in the storage
     oid = Database.hash_id(id)
     assert storage.exists(oid)
+
+
+def test_database_remove_non_existing(database):
+    """Test removing a non-existing object from an index."""
+    database, storage = database
+
+    with pytest.raises(KeyError):
+        database.get("activities").pop("non-existing-key")
+
+    object = database.get("activities").pop("non-existing-key", None)
+
+    assert object is None
+
+
+def test_database_persistent_collections(database):
+    """Test using Persistent collections."""
+    database, storage = database
+    index_name = "collections"
+    database.add_index(name=index_name, object_type=PersistentMapping)
+
+    entity_checksum = "42"
+    entity_path = "/dummy/path"
+    usage = Usage(entity=Entity(checksum=entity_checksum, path=entity_path), id="/usages/42")
+    id_1 = "/activities/1"
+    activity_1 = Activity(id=id_1, usages=[usage])
+    id_2 = "/activities/2"
+    activity_2 = Activity(id=id_2, usages=[usage])
+
+    p_mapping = PersistentMapping()
+
+    database[index_name][entity_path] = p_mapping
+
+    p_list = PersistentList()
+    p_mapping[entity_checksum] = p_list
+    p_list.append(activity_1)
+    p_list.append(activity_2)
+
+    database.commit()
+
+    new_database = Database(storage=storage)
+    collections = new_database[index_name]
+
+    id_3 = "/activities/3"
+    activity_3 = Activity(id=id_3, usages=[usage])
+    collections[entity_path][entity_checksum].append(activity_3)
+
+    assert {id_1, id_2, id_3} == {activity.id for activity in collections[entity_path][entity_checksum]}

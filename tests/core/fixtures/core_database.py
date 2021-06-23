@@ -19,6 +19,7 @@
 
 import copy
 import datetime
+from typing import Tuple
 
 import pytest
 from ZODB.POSException import POSKeyError
@@ -59,7 +60,7 @@ class DummyStorage:
 
 
 @pytest.fixture
-def database():
+def database() -> Tuple[Database, DummyStorage]:
     """A Database with in-memory storage."""
     from renku.core.models.provenance.activity import Activity
     from renku.core.models.workflow.plan import Plan
@@ -67,7 +68,7 @@ def database():
     storage = DummyStorage()
     database = Database(storage=storage)
 
-    database.add_index(name="activities", value_type=Activity, attribute="id")
-    database.add_index(name="plans", value_type=Plan, attribute="id")
+    database.add_index(name="activities", object_type=Activity, attribute="id")
+    database.add_index(name="plans", object_type=Plan, attribute="id")
 
     yield database, storage

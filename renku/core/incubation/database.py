@@ -56,7 +56,7 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
     components = type_name.split(".")
     module_name = components[0]
 
-    if module_name not in ["renku", "datetime", "BTrees"]:
+    if module_name not in ["renku", "datetime", "BTrees", "persistent"]:
         raise TypeError(f"Objects of type '{type_name}' are not allowed")
 
     module = __import__(module_name)
@@ -130,6 +130,9 @@ class Database:
     def _get_filename_from_oid(oid: OID_TYPE) -> str:
         return oid.lower()
 
+    def __getitem__(self, key) -> "Index":
+        return self._root[key]
+
     @property
     def root(self):
         """Return the database root object."""
@@ -145,12 +148,11 @@ class Database:
                 self._root._p_oid = Database.ROOT_OID
                 self.register(self._root)
 
-    def add_index(self, name: str, value_type: type, attribute: str, is_list: bool = False, key_type: type = None):
+    def add_index(self, name: str, object_type: type, attribute: str = None, key_type: type = None) -> "Index":
         """Add an index."""
         assert name not in self._root, f"Index already exists: '{name}'"
 
-        cls = IndexList if is_list else Index
-        index = cls(name=name, value_type=value_type, attribute=attribute, key_type=key_type)
+        index = Index(name=name, object_type=object_type, attribute=attribute, key_type=key_type)
         index._p_jar = self
 
         self._root[name] = index
@@ -283,7 +285,7 @@ class Cache:
         self._entries.pop(oid)
 
     def pop(self, oid, default=MARKER):
-        """Remove and return an object or the default value; raise if not default is provided."""
+        """Remove and return an object."""
         return self._entries.pop(oid) if default is MARKER else self._entries.pop(oid, default)
 
     def get(self, oid, default=None):
@@ -307,13 +309,13 @@ class Cache:
 class Index(Persistent):
     """Database index."""
 
-    def __init__(self, *, name: str, value_type, attribute: str, key_type=None):
+    def __init__(self, *, name: str, object_type, attribute: Optional[str], key_type=None):
         """
-        Create an index where keys are extracted using ``attribute`` from an object or a key.
+        Create an index where keys are extracted using `attribute` from an object or a key.
 
         @param name: Index's name
-        @param value_type: Type of values that the index points to
-        @param attribute: Name of an attribute to be used as key (e.g. ``entity.path``))
+        @param object_type: Type of objects that the index points to
+        @param attribute: Name of an attribute to be used to automatically generate a key (e.g. `entity.path`)
         @param key_type: Type of keys. If not None then a key must be provided when updating the index
         """
         assert name == name.lower(), f"Index name must be all lowercase: '{name}'."
@@ -322,9 +324,9 @@ class Index(Persistent):
 
         self._p_oid = f"{name}-index"
         self._name: str = name
-        self._value_type = value_type
+        self._object_type = object_type
         self._key_type = key_type
-        self._attribute: str = attribute
+        self._attribute: Optional[str] = attribute
         self._entries: OOBTree = OOBTree()
         self._entries._p_oid = name
 
@@ -337,10 +339,17 @@ class Index(Persistent):
     def __getitem__(self, key):
         return self._entries[key]
 
+    def __setitem__(self, key, value):
+        # NOTE: if Index is using a key object then we cannot check if key is valid. It's safer to use `add` method
+        # instead of setting values directly.
+        self._verify_and_get_key(object=value, key_object=None, key=key, missing_key_object_ok=True)
+
+        self._entries[key] = value
+
     def __getstate__(self):
         return {
             "name": self._name,
-            "value_type": get_type_name(self._value_type),
+            "object_type": get_type_name(self._object_type),
             "key_type": get_type_name(self._key_type),
             "attribute": self._attribute,
             "entries": self._entries,
@@ -348,7 +357,7 @@ class Index(Persistent):
 
     def __setstate__(self, data):
         self._name = data.pop("name")
-        self._value_type = get_class(data.pop("value_type"))
+        self._object_type = get_class(data.pop("object_type"))
         self._key_type = get_class(data.pop("key_type"))
         self._attribute = data.pop("attribute")
         self._entries = data.pop("entries")
@@ -359,13 +368,17 @@ class Index(Persistent):
         return self._name
 
     @property
-    def value_type(self) -> type:
-        """Return Index's value_type."""
-        return self._value_type
+    def object_type(self) -> type:
+        """Return Index's object_type."""
+        return self._object_type
 
     def get(self, key, default=None):
         """Return an entry based on its key."""
         return self._entries.get(key, default)
+
+    def pop(self, key, default=MARKER):
+        """Remove and return an object."""
+        return self._entries.pop(key) if default is MARKER else self._entries.pop(key, default)
 
     def values(self):
         """Return an iterator of values."""
@@ -375,73 +388,41 @@ class Index(Persistent):
         """Return an iterator of keys and values."""
         return self._entries.items()
 
-    def add(self, object: Persistent, *, key_object=None):
+    def add(self, object: Persistent, *, key: Optional[str] = None, key_object=None):
         """Update index with object.
 
-        If ``key_object`` is not None then it is used to generate index keys, otherwise, ``object`` is used as the key.
+        If `Index._attribute` is not None then key is automatically generated.
+        Key is extracted from `key_object` if it is not None; otherwise, it's extracted from `object`.
         """
-        assert isinstance(object, self._value_type), f"Cannot add objects of type '{type(object)}'"
+        assert isinstance(object, self._object_type), f"Cannot add objects of type '{type(object)}'"
 
-        key = self._get_key(object=object, key_object=key_object)
+        key = self._verify_and_get_key(object=object, key_object=key_object, key=key, missing_key_object_ok=False)
         self._entries[key] = object
 
-    def remove(self, object: Persistent, *, key_object=None):
-        """Delete an object if it is indexed."""
-        assert isinstance(object, self._value_type), f"Invalid object type '{type(object)}'"
+    def generate_key(self, object: Persistent, *, key_object=None):
+        """Return index key for an object.
 
-        key = self._get_key(object=object, key_object=key_object)
-        self._entries.pop(key, None)
-
-    def _get_key(self, object: Persistent, key_object):
-        if key_object is None:
-            key_object = object
-
-        if self._key_type is not None:
-            assert isinstance(key_object, self._key_type), f"Invalid key type: {type(key_object)} != {self._key_type}"
-
-        return get_attribute(key_object, self._attribute)
-
-
-class IndexList(Index):
-    """Database index pointing to multiple values."""
-
-    def add(self, object: Persistent, *, key_object=None):
-        """Update index with object.
-
-        If ``key_object`` is not None then it is used to generate index keys, otherwise, ``object`` is used as the key.
+        Key is extracted from `key_object` if it is not None; otherwise, it's extracted from `object`.
         """
-        assert isinstance(object, self._value_type), f"Cannot add objects of type '{type(object)}'"
+        return self._verify_and_get_key(object=object, key_object=key_object, key=None, missing_key_object_ok=False)
 
-        key = self._get_key(object=object, key_object=key_object)
-        values = self._entries.get(key)
-        if values:
-            assert isinstance(values, list), f"Value in IndexList is not a list: {values}"
-            for value in values:
-                if value._p_oid == object._p_oid:  # Object is already indexed
-                    return
-            values.append(object)
-            self._entries._p_changed = True
-            # TODO: Do we need self._p_changed = True
+    def _verify_and_get_key(self, *, object: Persistent, key_object, key, missing_key_object_ok):
+        if self._key_type:
+            if not missing_key_object_ok:
+                assert isinstance(key_object, self._key_type), f"Invalid key type: {type(key_object)} for '{self.name}'"
         else:
-            self._entries[key] = [object]
+            assert key_object is None, f"Index '{self.name}' does not accept 'key_object'"
 
-        # NOTE: It is needed to register the object because a list is not Persistent and its content won't be registered
-        # by the persistent machinery
-        self._p_jar.register(object)
+        if self._attribute:
+            key_object = key_object or object
+            correct_key = get_attribute(key_object, self._attribute)
+            if key is not None:
+                assert key == correct_key, f"Incorrect key for index '{self.name}': '{key}' != '{correct_key}'"
+        else:
+            assert key is not None, "No key is provided"
+            correct_key = key
 
-    def remove(self, object: Persistent, *, key_object=None):
-        """Delete an object if it is indexed."""
-        assert isinstance(object, self._value_type), f"Invalid object type '{type(object)}'"
-
-        key = self._get_key(object=object, key_object=key_object)
-        values = self._entries.get(key)
-        if values:
-            assert isinstance(values, list), f"Value in IndexList is not a list: {values}"
-            for value in values:
-                if value._p_oid == object._p_oid:  # Object is already indexed
-                    values.remove(value)
-                    self._entries._p_changed = True
-                    return
+        return correct_key
 
 
 class Storage:
