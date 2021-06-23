@@ -354,14 +354,14 @@ def fetch_template_from_git(source, ref=None, tempdir=None):
     if ref:
         try:
             # fetch ref and set the HEAD
-            template_repo.remotes.origin.fetch(ref)
+            template_repo.remotes.origin.fetch()
             try:
                 template_repo.head.reset(template_repo.commit(ref))
             except git.exc.BadName:
                 ref = "origin/{0}".format(ref)
                 template_repo.head.reset(template_repo.commit(ref))
             git_repo = git.Git(str(tempdir))
-        except git.exc.GitCommandError as e:
+        except (git.exc.GitCommandError, git.exc.BadName) as e:
             raise errors.GitError("Cannot fetch and checkout reference {0}".format(ref)) from e
     else:
         template_repo.remotes.origin.fetch()
