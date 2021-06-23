@@ -113,9 +113,6 @@ def _generate_graph(client: LocalClient, database: Database, force=False):
     elif client.has_graph_files() or client.has_datasets_provenance():
         raise errors.OperationError("Graph metadata exists. Use ``--force`` to regenerate it.")
 
-    # database = Database.from_path(path=client.database_path)
-    # update_injected_database(database)
-
     client.initialize_graph()
     client.initialize_datasets_provenance()
 
@@ -133,7 +130,6 @@ def _generate_graph(client: LocalClient, database: Database, force=False):
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
     client.datasets_provenance.to_json()
-    database.commit()
 
 
 def status():

@@ -508,7 +508,6 @@ class RepositoryApiMixin(GitCore):
             database.get("activities").add(activity)
             database.get("plans").add(activity.association.plan)
 
-        database.commit()
         dependency_graph.to_json()
         provenance_graph.to_json()
 
@@ -531,8 +530,6 @@ class RepositoryApiMixin(GitCore):
 
         database.add_index(name="activities", object_type=Activity, attribute="id")
         database.add_index(name="plans", object_type=Plan, attribute="id")
-
-        database.commit()
 
     def remove_graph_files(self):
         """Remove all graph files."""
