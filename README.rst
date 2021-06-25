@@ -283,15 +283,11 @@ logging in to a renku instance with ``renku login`` and retrieving it from your 
 renku configuration.
 
 In a live deployment, the swagger documentation is available under ``https://<renku-endpoint>/swagger``.
-You can authorize the API by clicking ``Authorize`` and authenticating with Keycloak.
-Note that this requires you to know the Keycloak ``renku`` client secret, which
-can be fetched with ``kubectl``:
-
-::
-
-    $ kubectl -n <namespace> get secret <namespace>-renku-gateway -ojson | jq -r .data.oidcClientSecret
-
-Make sure to base64 decode it before copy/pasting into the swagger UI dialog.
+You can authorize the API by first logging into renku normally, then going to the
+swagger page, clicking ``Authorize`` and picking the ``oidc (OAuth2, authorization_code)``
+option. Leave the ``client_id`` as ``swagger`` and the ``client_secret`` empty, select
+all scopes and click ``Authorize``. You should now be logged in and you can send
+requests using the ``Try it out`` buttons on individual requests.
 
 
 Developing Renku

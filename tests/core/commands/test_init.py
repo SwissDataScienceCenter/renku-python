@@ -50,6 +50,7 @@ def test_fetch_template_from_git(template):
     # ? REF: https://docs.pytest.org/en/stable/proposals/parametrize_with_fixtures.html
     parametrize = [
         {"url": template["url"], "ref": template["ref"], "error": None},
+        {"url": template["url"], "ref": "817b03c", "error": None},
         {"url": "fake", "ref": template["ref"], "error": errors.GitError},
         {"url": template["url"], "ref": "fake", "error": errors.GitError},
     ]
