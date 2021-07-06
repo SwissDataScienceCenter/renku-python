@@ -31,11 +31,9 @@ from renku.core.metadata.database import Database, Index, Persistent
 from renku.core.metadata.immutable import Immutable, Slots
 from renku.core.models import datasets as old_datasets
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema
-from renku.core.models.datasets import generate_dataset_id, is_dataset_name_valid
-from renku.core.models.entities import generate_label
+from renku.core.models.datasets import is_dataset_name_valid
 from renku.core.models.entity import Entity, NewEntitySchema
-from renku.core.models.provenance import agents as old_agents
-from renku.core.models.provenance.agent import Agent, NewPersonSchema, Person, SoftwareAgent
+from renku.core.models.provenance.agent import NewPersonSchema, Person
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
 
@@ -60,15 +58,6 @@ class Url:
 
         if not self.id or self.id.startswith("_:"):
             self.id = Url.generate_id(url_str=self.url_str, url_id=self.url_id)
-
-    @classmethod
-    def from_url(cls, url: Optional[old_datasets.Url]) -> Optional["Url"]:
-        """Create from old Url instance."""
-        return cls(url=url.url, url_id=url.url_id, url_str=url.url_str) if url else None
-
-    def to_url(self, client) -> old_datasets.Url:
-        """Convert to an old Url."""
-        return old_datasets.Url(client=client, url=self.url, url_id=self.url_id, url_str=self.url_str)
 
     @staticmethod
     def generate_id(url_str, url_id):
@@ -116,26 +105,6 @@ class DatasetTag(Slots):
             name=name,
         )
 
-    @classmethod
-    def from_dataset_tag(cls, tag: Optional[old_datasets.DatasetTag]) -> Optional["DatasetTag"]:
-        """Create from old DatasetTag instance."""
-        if not tag:
-            return
-        return cls(
-            commit=tag.commit, dataset=tag.dataset, date_created=tag.created, description=tag.description, name=tag.name
-        )
-
-    def to_dataset_tag(self, client) -> old_datasets.DatasetTag:
-        """Convert to an old DatasetTag."""
-        return old_datasets.DatasetTag(
-            client=client,
-            commit=self.commit,
-            dataset=self.dataset,
-            created=self.date_created,
-            description=self.description,
-            name=self.name,
-        )
-
     @staticmethod
     def generate_id(commit: str, name: str) -> str:
         """Define default value for id field."""
@@ -152,15 +121,6 @@ class Language(Immutable):
         id = id or Language.generate_id(name)
         super().__init__(alternate_name=alternate_name, id=id, name=name)
 
-    @classmethod
-    def from_language(cls, language: Optional[old_datasets.Language]) -> Optional["Language"]:
-        """Create from old Language instance."""
-        return cls(alternate_name=language.alternate_name, name=language.name) if language else None
-
-    def to_language(self) -> old_datasets.Language:
-        """Convert to an old Language."""
-        return old_datasets.Language(alternate_name=self.alternate_name, name=self.name)
-
     @staticmethod
     def generate_id(name: str) -> str:
         """Generate @id field."""
@@ -176,17 +136,6 @@ class ImageObject(Slots):
     def __init__(self, *, content_url: str, position: int, id: str = None):
         # TODO: Remove scheme://hostname from id
         super().__init__(content_url=content_url, position=position, id=id)
-
-    @classmethod
-    def from_image_object(cls, image_object: Optional[old_datasets.ImageObject]) -> Optional["ImageObject"]:
-        """Create from old ImageObject instance."""
-        if not image_object:
-            return
-        return cls(content_url=image_object.content_url, position=image_object.position, id=image_object.id)
-
-    def to_image_object(self) -> old_datasets.ImageObject:
-        """Convert to an old ImageObject."""
-        return old_datasets.ImageObject(content_url=self.content_url, position=self.position, id=self.id)
 
     @staticmethod
     def generate_id(dataset: "Dataset", position: int) -> str:
@@ -218,14 +167,6 @@ class RemoteEntity(Slots):
         path = quote(str(path))
         return f"/remote-entity/{commit_sha}/{path}"
 
-    @classmethod
-    def from_dataset_file(cls, dataset_file: Optional[old_datasets.DatasetFile]) -> Optional["RemoteEntity"]:
-        """Create an instance by converting from renku.core.models.datasets.DatasetFile."""
-        if not dataset_file:
-            return
-        commit_sha = dataset_file._label.rsplit("@", maxsplit=1)[-1]
-        return cls(commit_sha=commit_sha, path=dataset_file.path, url=dataset_file.url)
-
     def __eq__(self, other):
         if self is other:
             return True
@@ -235,11 +176,6 @@ class RemoteEntity(Slots):
 
     def __hash__(self):
         return hash((self.commit_sha, self.path, self.url))
-
-    def to_dataset_file(self) -> old_datasets.DatasetFile:
-        """Return an instance of renku.core.models.datasets.DatasetFile."""
-        label = generate_label(self.path, self.commit_sha)
-        return old_datasets.DatasetFile(label=label, path=self.path, source=self.url, url=self.url)
 
 
 class DatasetFile(Slots):
@@ -279,24 +215,6 @@ class DatasetFile(Slots):
 
         return cls(entity=entity, is_external=client.is_external_file(path))
 
-    @classmethod
-    @inject.params(client="LocalClient")
-    def from_dataset_file(
-        cls, dataset_file: old_datasets.DatasetFile, client, revision: str = None
-    ) -> Optional["DatasetFile"]:
-        """Create an instance by converting from renku.core.models.datasets.DatasetFile if available at revision."""
-        entity = Entity.from_revision(client=client, path=dataset_file.path, revision=revision)
-        if not entity:
-            return
-
-        return cls(
-            based_on=RemoteEntity.from_dataset_file(dataset_file.based_on),
-            date_added=dataset_file.added,
-            entity=entity,
-            is_external=dataset_file.external,
-            source=dataset_file.source,
-        )
-
     @staticmethod
     def generate_id():
         """Generate an identifier for DatasetFile.
@@ -328,23 +246,6 @@ class DatasetFile(Slots):
     def is_removed(self) -> bool:
         """Return true if dataset is removed and should not be accessed."""
         return self.date_removed is not None
-
-    def to_dataset_file(self, client, revision="HEAD") -> Optional[old_datasets.DatasetFile]:
-        """Return an instance of renku.core.models.datasets.DatasetFile at a revision."""
-        try:
-            return old_datasets.DatasetFile.from_revision(
-                client=client,
-                revision=revision,
-                added=self.date_added,
-                based_on=self.based_on.to_dataset_file() if self.based_on else None,
-                external=self.is_external,
-                id=None,
-                path=self.entity.path,
-                source=self.source,
-                url=None,
-            )
-        except KeyError:  # NOTE: cannot find a previous commit for path starting at revision
-            return None
 
 
 class Dataset(Persistent):
@@ -407,71 +308,6 @@ class Dataset(Persistent):
     def generate_id(identifier: str) -> str:
         """Generate an identifier for Dataset."""
         return f"/datasets/{identifier}"
-
-    @classmethod
-    def from_dataset(cls, dataset: old_datasets.Dataset, client, revision: str, database: Database) -> "Dataset":
-        """Create an instance by converting from renku.core.models.datasets.Dataset."""
-
-        def convert_creators(creators) -> List[Person]:
-            result = []
-            for creator in creators:
-                agent = Agent.from_agent(creator)
-                existing_agent = database["agents"].get(agent.id)
-                if existing_agent:
-                    result.append(existing_agent)
-                else:
-                    result.append(agent)
-                    database["agents"].add(agent)
-
-            return result
-
-        def convert_dataset_files(files: List[old_datasets.DatasetFile]) -> List[DatasetFile]:
-            """Create instances from renku.core.models.datasets.DatasetFile."""
-            dataset_files = []
-            files = {f.path: f for f in files}  # NOTE: To make sure there are no duplicate paths
-
-            for file in files.values():
-                new_file = DatasetFile.from_dataset_file(file, client=client, revision=revision)
-                if not new_file:
-                    continue
-
-                dataset_files.append(new_file)
-
-            return dataset_files
-
-        def convert_derived_from(derived_from: Optional[Url]) -> Optional[str]:
-            """Return Dataset.id from `derived_from` url."""
-            if not derived_from:
-                return
-
-            url = derived_from.url.get("@id")
-            path = urlparse(url).path
-
-            return Dataset.generate_id(identifier=Path(path).name)
-
-        self = cls(
-            creators=convert_creators(dataset.creators),
-            date_created=dataset.date_created,
-            date_published=dataset.date_published,
-            date_removed=None,
-            derived_from=convert_derived_from(dataset.derived_from),
-            description=dataset.description,
-            files=convert_dataset_files(dataset.files),
-            id=None,
-            identifier=dataset.identifier,
-            images=[ImageObject.from_image_object(image) for image in (dataset.images or [])],
-            in_language=Language.from_language(dataset.in_language),
-            keywords=dataset.keywords,
-            license=dataset.license,
-            name=dataset.name,
-            initial_identifier=dataset.initial_identifier,
-            same_as=Url.from_url(dataset.same_as),
-            tags=[DatasetTag.from_dataset_tag(tag) for tag in (dataset.tags or [])],
-            title=dataset.title,
-            version=dataset.version,
-        )
-
-        return self
 
     def replace_identifier(self):
         """Replace dataset's identifier and update relevant fields.
@@ -539,69 +375,6 @@ class Dataset(Persistent):
             files.append(removed_file)
 
         self.files = files
-
-    def to_dataset(self, client) -> old_datasets.Dataset:
-        """Return an instance of renku.core.models.datasets.Dataset."""
-
-        def convert_creators(creators) -> List[Union[old_agents.Person, old_agents.SoftwareAgent]]:
-            result = []
-            for creator in creators:
-                if isinstance(creator, SoftwareAgent):
-                    agent = old_agents.SoftwareAgent(id=creator.id, label=creator.name)
-                else:
-                    assert isinstance(creator, Person)
-                    agent = old_agents.Person(
-                        affiliation=creator.affiliation,
-                        alternate_name=creator.alternate_name,
-                        email=creator.email,
-                        id=creator.id,
-                        label=creator.name,
-                        name=creator.name,
-                    )
-                result.append(agent)
-            return result
-
-        if self.derived_from:
-            identifier = Path(self.derived_from).name
-            id = generate_dataset_id(client=client, identifier=identifier)
-            derived_from = old_datasets.Url(client=client, url_id=id)
-        else:
-            derived_from = None
-
-        return old_datasets.Dataset(
-            name=self.name,
-            client=client,
-            creators=convert_creators(self.creators),
-            date_created=self.date_created,
-            date_published=self.date_published,
-            derived_from=derived_from,
-            description=self.description,
-            files=self._convert_to_dataset_files(client),
-            id=None,
-            identifier=self.identifier,
-            images=[image.to_image_object() for image in self.images] if self.images else None,
-            in_language=self.in_language.to_language() if self.in_language else None,
-            keywords=self.keywords,
-            license=self.license,
-            project=client._project,
-            same_as=self.same_as.to_url(client) if self.same_as else None,
-            tags=[tag.to_dataset_tag(client) for tag in self.tags],
-            title=self.title,
-            url=None,
-            version=self.version,
-        )
-
-    def _convert_to_dataset_files(self, client):
-        """Create instances of renku.core.models.datasets.DatasetFile."""
-        dataset_files = []
-        for file in self.files:
-            dataset_file = file.to_dataset_file(client)
-            if not dataset_file:
-                continue
-
-            dataset_files.append(dataset_file)
-
-        return dataset_files
 
 
 class DatasetsProvenance:
