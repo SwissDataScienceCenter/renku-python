@@ -24,9 +24,11 @@ from git import GitError, Repo
 
 from renku.core import errors
 from renku.core.management import LocalClient
-from renku.core.management.command_builder.command import replace_injected_client
+from renku.core.management.command_builder.command import replace_injection
 from renku.core.management.migrations.models.v3 import DatasetFileSchemaV3, get_client_datasets
-from renku.core.models.datasets import DatasetFile, DatasetFileSchema
+from renku.core.management.migrations.models.v9 import DatasetFile, DatasetFileSchema
+from renku.core.metadata.database import Database
+from renku.core.models.dataset import DatasetsProvenance
 from renku.core.models.entities import generate_file_id, generate_label
 from renku.core.utils.urls import remove_credentials
 
@@ -78,7 +80,15 @@ def _migrate_submodule_based_datasets(client):
     remote_clients = {p: LocalClient(p) for p in repo_paths}
 
     for remote_client in remote_clients.values():
-        with replace_injected_client(remote_client):
+        database = Database.from_path(remote_client.database_path)
+        bindings = {
+            "LocalClient": remote_client,
+            LocalClient: remote_client,
+            Database: database,
+        }
+        constructor_bindings = {DatasetsProvenance: lambda: DatasetsProvenance(database)}
+
+        with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
             if not is_project_unsupported():
                 migrate(skip_template_update=True, skip_docker_update=True)
 
@@ -142,6 +152,6 @@ def _migrate_submodule_based_datasets(client):
 def _fetch_file_metadata(client, path):
     """Return metadata for a single file."""
     for dataset in client.datasets.values():
-        for file_ in dataset.files:
-            if file_.path == path:
-                return file_
+        for file in dataset.files:
+            if file.entity.path == path:
+                return file

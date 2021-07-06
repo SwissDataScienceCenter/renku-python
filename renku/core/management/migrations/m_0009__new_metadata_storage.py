@@ -29,6 +29,7 @@ from git import NULL_TREE, Commit, GitCommandError
 import renku.core.management.migrate
 from renku.core import errors
 from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.metadata import initialize_database
@@ -41,6 +42,7 @@ from renku.core.models.provenance.activities import Activity
 from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.utils import communication
+from renku.core.utils.metadata import convert_dataset
 from renku.core.utils.migrate import MigrationType, read_project_version_from_yaml
 from renku.core.utils.scm import git_unicode_unescape
 
@@ -54,23 +56,38 @@ GRAPH_METADATA_PATHS = [
 
 def migrate(client):
     """Migration function."""
-    # NOTE: Don't run this migration for dataset-only migrations
-    if MigrationType.WORKFLOWS not in client.migration_type:
-        return
-
+    committed = _commit_previous_changes(client)
     # TODO: set remove=True once the migration to the new metadata is finalized
-    generate_new_metadata(client, remove=False)
+    generate_new_metadata(remove=False, committed=committed)
+    _remove_dataset_metadata_files(client)
     _migrate_project(client)
 
 
-def generate_new_metadata(client: LocalClient, force=True, remove=True):
+def _commit_previous_changes(client):
+    client.repo.git.add(str(client.renku_path))
+
+    staged_files = client.repo.index.diff("HEAD")
+    if staged_files:
+        client._project = None  # NOTE: force reloading of project metadata
+        client.project.version = "8"
+        client.project.to_yaml()
+
+        client.repo.git.add(str(client.renku_path))
+
+        client.repo.index.commit("renku migrate: committing structural changes", skip_hooks=True)
+        return True
+
+    return False
+
+
+@inject.autoparams()
+def generate_new_metadata(client: LocalClient, database: Database, force=True, remove=True, committed=False):
     """Generate graph and dataset provenance metadata."""
     if force:
         client.remove_graph_files()
     elif client.has_graph_files():
         raise errors.OperationError("Graph metadata exists.")
 
-    database = Database.from_path(client.database_path)
     initialize_database(database)
 
     dependency_graph = DependencyGraph.from_database(database)
@@ -80,16 +97,22 @@ def generate_new_metadata(client: LocalClient, force=True, remove=True):
         client.repo.iter_commits(paths=[f"{client.workflow_path}/*.yaml", ".renku/datasets/*/*.yml"], reverse=True)
     )
     n_commits = len(commits)
-    # commits = reversed(commits)
 
     for n, commit in enumerate(commits, start=1):
         communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\n")
 
+        # NOTE: Treat the last commit differently if it was done by this migration
+        is_last_commit = committed and n == n_commits
+
         try:
-            _process_workflows(
-                client=client, commit=commit, database=database, dependency_graph=dependency_graph, remove=remove
+            # NOTE: Don't migrate workflows for dataset-only migrations
+            if MigrationType.WORKFLOWS in client.migration_type:
+                _process_workflows(
+                    client=client, commit=commit, database=database, dependency_graph=dependency_graph, remove=remove
+                )
+            _process_datasets(
+                client=client, commit=commit, datasets_provenance=datasets_provenance, is_last_commit=is_last_commit
             )
-            _process_datasets(client=client, commit=commit, datasets_provenance=datasets_provenance)
         except errors.MigrationError:
             communication.echo("")
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Migration failed: {traceback.format_exc()}")
@@ -97,31 +120,13 @@ def generate_new_metadata(client: LocalClient, force=True, remove=True):
             communication.echo("")
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
-        # NOTE: We need to commit in case we want to resume because we delete processed files
+        # NOTE: Commit changes after each step
         database.commit()
 
 
 def _process_workflows(
     client: LocalClient, commit: Commit, database: Database, dependency_graph: DependencyGraph, remove: bool
 ):
-    def replace_agents(activity):
-        """Convert all instances of old Agent metadata classes in an Activity to new Agent metadata classes."""
-        agent = database["agents"].get(activity.association.agent.id)
-        if agent:
-            activity.association.agent = agent
-        elif activity.association.agent:
-            database["agents"].add(activity.association.agent)
-        agents = []
-        for agent in activity.agents:
-            existing_agent = database["agents"].get(agent.id)
-            if existing_agent:
-                agents.append(existing_agent)
-            elif agent:
-                agents.append(agent)
-                database["agents"].add(agent)
-
-        activity.agents = agents
-
     for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.yaml"):
         # Ignore deleted files (they appear as ADDED in this backwards diff)
         if file_.change_type == "A":
@@ -141,7 +146,6 @@ def _process_workflows(
         activity_collection = ActivityCollection.from_activity(workflow, dependency_graph)
 
         for activity in activity_collection.activities:
-            replace_agents(activity)
             database["activities"].add(activity)
             # database["plans"].add(activity.association.plan)  # TODO: Plan should be added by dependency_graph
 
@@ -152,7 +156,7 @@ def _process_workflows(
                 pass
 
 
-def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: DatasetsProvenance):
+def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: DatasetsProvenance, is_last_commit):
     files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
     paths = [git_unicode_unescape(f.a_path) for f in files_diff]
     paths = [p for p in paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
@@ -166,14 +170,19 @@ def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: 
     date = commit.authored_datetime
 
     for dataset in datasets:
-        datasets_provenance.add_or_update(dataset, revision=revision, date=date)
+        dataset = convert_dataset(dataset=dataset, client=client, revision=revision)
+        if is_last_commit:
+            datasets_provenance.add_or_replace(dataset, date=date)
+        else:
+            datasets_provenance.add_or_update(dataset, revision=revision, date=date)
     for dataset in deleted_datasets:
-        datasets_provenance.remove(dataset, revision=revision, date=date, client=client)
+        dataset = convert_dataset(dataset=dataset, client=client, revision=revision)
+        datasets_provenance.remove(dataset, revision=revision, date=date)
 
 
 def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):
     # TODO: Make Datasets as v9 models and use them here
-    from renku.core.models.datasets import Dataset
+    from renku.core.management.migrations.models.v9 import Dataset
 
     datasets_path = client.path / ".renku" / "tmp" / "datasets"
     shutil.rmtree(datasets_path, ignore_errors=True)
@@ -235,7 +244,10 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
             communication.disable()
             client.migration_type = MigrationType.DATASETS
             renku.core.management.migrate.migrate(
-                project_version=project_version, skip_template_update=True, skip_docker_update=True
+                project_version=project_version,
+                skip_template_update=True,
+                skip_docker_update=True,
+                max_version=8,
             )
         finally:
             communication.enable()
@@ -289,10 +301,22 @@ class _DatasetMigrationContext:
         return self.client.find_previous_commit(path, revision=self.revision)
 
 
+def _remove_dataset_metadata_files(client: LocalClient):
+    """Remove old dataset metadata."""
+    try:
+        shutil.rmtree(os.path.join(client.renku_path, client.DATASETS))
+    except FileNotFoundError:
+        pass
+    try:
+        shutil.rmtree(os.path.join(client.renku_path, "refs", client.DATASETS))
+    except FileNotFoundError:
+        pass
+
+
 def _migrate_project(client: LocalClient):
     """Create new project metadata."""
     database = Database.from_path(client.database_path)
     project = Project.from_project(client.project)
     project.version = 9
-    database.add(project, "project")
+    database.add(project)
     database.commit()
