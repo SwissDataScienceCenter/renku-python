@@ -47,7 +47,6 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
-    "sphinx_rtd_theme",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -126,11 +125,11 @@ add_function_parentheses = True
 todo_include_todos = False
 
 # -- Options for HTML output ----------------------------------------------
-html_theme = "sphinx_rtd_theme"
+html_theme = "renku"
 html_baseurl = "https://github.com/SwissDataScienceCenter/renku-python"
 
 html_theme_options = {
-    "logo_only": False,
+    "logo_only": True,
     "display_version": True,
     "prev_next_buttons_location": "bottom",
     "style_external_links": False,
@@ -163,12 +162,12 @@ html_theme_options = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-# html_logo = None
+html_logo = "_static/icons/logo.svg"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-# html_favicon = '_static/favicon.png'
+html_favicon = "_static/icons/favicon.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
