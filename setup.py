@@ -184,6 +184,7 @@ install_requires = [
     "PyYAML>=5.4,<=5.4.1",
     "rdflib-jsonld>=0.5.0,<0.6.0",
     "rdflib>=5.0.0,<5.1",
+    "renku-sphinx-theme>=0.2.0",
     "requests>=2.23.0,<=2.24.0",
     "rich>=9.3.0,<10.4.0",
     "setuptools_scm>=3.1.0,<6.0.2",
