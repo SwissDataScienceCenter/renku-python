@@ -474,3 +474,11 @@ class NodeNotFoundError(RenkuException):
             "Please install it, for details see https://nodejs.org/en/download/package-manager/"
         )
         super(NodeNotFoundError, self).__init__(msg)
+
+
+class ObjectNotFoundError(RenkuException):
+    """Raise when an object is not found in the storage."""
+
+    def __init__(self, filename):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Cannot find object: '{filename}'")

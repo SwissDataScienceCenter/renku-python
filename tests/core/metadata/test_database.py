@@ -75,12 +75,11 @@ def test_database_add_using_set_item(database):
     database, storage = database
 
     id = "/activities/42"
-    activity_1 = Activity(id=id)
-    database["activities"][id] = activity_1
+    activity = Activity(id=id)
+    database["activities"][id] = activity
 
-    activity_2 = list(database.root["activities"].values())[0]
-
-    assert activity_1 is activity_2
+    assert {id} == set(database["activities"].keys())
+    assert {activity} == set(database["activities"].values())
 
 
 def test_database_index_with_no_automatic_key(database):
@@ -171,7 +170,6 @@ def test_database_update_required_root_objects_only(database):
     """Test adding an object to an index does not cause an update to other indexes."""
     database, storage = database
 
-    _ = database.root
     database.commit()
 
     entity_modification_time_before = storage.get_modification_date("plans")
@@ -224,8 +222,8 @@ def test_database_loads_only_required_objects(database):
     assert PERSISTED == activity._p_serial
     assert GHOST == activity.association.plan._p_state
 
-    assert UPTODATE == new_database.root["plans"]._p_state
-    assert UPTODATE == new_database.root["activities"]._p_state
+    assert UPTODATE == new_database["plans"]._p_state
+    assert UPTODATE == new_database["activities"]._p_state
 
 
 def test_database_load_multiple(database):
@@ -298,7 +296,7 @@ def test_database_index_different_key_type(database):
     index_name = "usages"
     index = database.add_index(name=index_name, object_type=Activity, attribute="entity.path", key_type=Usage)
 
-    entity = Entity(checksum="42", path="/dummy/path")
+    entity = Entity(checksum="42", path="dummy/path")
     usage = Usage(entity=entity, id="/usages/42")
 
     activity = Activity(id="/activities/42", usages=[usage])
@@ -307,11 +305,11 @@ def test_database_index_different_key_type(database):
 
     new_database = Database(storage=storage)
     usages = new_database[index_name]
-    activity = usages.get("/dummy/path")
+    activity = usages.get("dummy/path")
 
     assert "/activities/42" == activity.id
     assert "42" == activity.usages[0].entity.checksum
-    assert "/dummy/path" == activity.usages[0].entity.path
+    assert "dummy/path" == activity.usages[0].entity.path
 
     key = index.generate_key(activity, key_object=usage)
 
@@ -389,7 +387,7 @@ def test_database_persistent_collections(database):
     database.add_index(name=index_name, object_type=PersistentMapping)
 
     entity_checksum = "42"
-    entity_path = "/dummy/path"
+    entity_path = "dummy/path"
     usage = Usage(entity=Entity(checksum=entity_checksum, path=entity_path), id="/usages/42")
     id_1 = "/activities/1"
     activity_1 = Activity(id=id_1, usages=[usage])

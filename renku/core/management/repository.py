@@ -525,11 +525,14 @@ class RepositoryApiMixin(GitCore):
 
         self.database_path.mkdir(parents=True, exist_ok=True)
 
+        from renku.core.models.dataset import Dataset
         from renku.core.models.provenance.activity import Activity
         from renku.core.models.workflow.plan import Plan
 
         database.add_index(name="activities", object_type=Activity, attribute="id")
         database.add_index(name="plans", object_type=Plan, attribute="id")
+        database.add_index(name="datasets", object_type=Dataset, attribute="name")
+        database.add_index(name="datasets-provenance", object_type=Dataset, attribute="id")
 
     def remove_graph_files(self):
         """Remove all graph files."""
@@ -543,6 +546,10 @@ class RepositoryApiMixin(GitCore):
             pass
         try:
             shutil.rmtree(self.database_path)
+        except FileNotFoundError:
+            pass
+        try:
+            self.datasets_provenance_path.unlink()
         except FileNotFoundError:
             pass
 

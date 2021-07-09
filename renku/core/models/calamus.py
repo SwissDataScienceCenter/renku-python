@@ -19,13 +19,14 @@
 
 import copy
 import inspect
-from datetime import datetime, timezone
 
 import marshmallow
 from calamus import fields
 from calamus.schema import JsonLDSchema as CalamusJsonLDSchema
 from calamus.utils import normalize_type, normalize_value
 from marshmallow.base import SchemaABC
+
+from renku.core.utils.datetime8601 import fix_timezone
 
 prov = fields.Namespace("http://www.w3.org/ns/prov#")
 rdfs = fields.Namespace("http://www.w3.org/2000/01/rdf-schema#")
@@ -82,11 +83,7 @@ class JsonLDSchema(CalamusJsonLDSchema):
 
     def _fix_timezone(self, value):
         """Fix timezone of non-aware datetime objects."""
-        if isinstance(value, datetime) and not value.tzinfo:
-            # set timezone to local timezone
-            tz = datetime.now(timezone.utc).astimezone().tzinfo
-            value = value.replace(tzinfo=tz)
-        return value
+        return fix_timezone(value)
 
 
 class Uri(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.Dict):

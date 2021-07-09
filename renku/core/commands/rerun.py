@@ -30,9 +30,9 @@ def rerun_workflows():
         .command(_rerun_workflows)
         .require_migration()
         .require_clean()
-        .with_commit()
         .require_nodejs()
         .with_database(write=True)
+        .with_commit()
     )
 
 

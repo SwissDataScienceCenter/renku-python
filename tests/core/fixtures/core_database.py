@@ -22,8 +22,8 @@ import datetime
 from typing import Tuple
 
 import pytest
-from ZODB.POSException import POSKeyError
 
+from renku.core import errors
 from renku.core.metadata.database import Database
 
 
@@ -46,7 +46,7 @@ class DummyStorage:
         assert isinstance(filename, str)
 
         if filename not in self._files:
-            raise POSKeyError(filename)
+            raise errors.ObjectNotFoundError(filename)
 
         return copy.deepcopy(self._files[filename])
 

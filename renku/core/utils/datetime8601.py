@@ -16,8 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku datetime utilities."""
-import datetime
 import re
+from datetime import datetime, timezone
 
 from dateutil.parser import parse as dateutil_parse_date
 
@@ -43,13 +43,31 @@ def parse_date(value):
     """Convert date to datetime."""
     if value is None:
         return
-    if isinstance(value, datetime.datetime):
+    if isinstance(value, datetime):
         date = value
     else:
         date = dateutil_parse_date(value)
+
     if not date.tzinfo:
-        # set timezone to local timezone
-        tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
-        date = date.replace(tzinfo=tz)
+        date = _set_to_local_timezone(date)
 
     return date
+
+
+def fix_timezone(value):
+    """Fix timezone of non-aware datetime objects."""
+    if value is None:
+        return
+    if isinstance(value, datetime) and not value.tzinfo:
+        value = _set_to_local_timezone(value)
+    return value
+
+
+def _set_to_local_timezone(value):
+    local_tz = local_now().tzinfo
+    return value.replace(tzinfo=local_tz)
+
+
+def local_now():
+    """Return current datetime in local timezone."""
+    return datetime.now(timezone.utc).astimezone()

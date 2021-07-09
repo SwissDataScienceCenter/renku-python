@@ -47,7 +47,7 @@ def _fix_lfs(paths, client: LocalClient):
 
 def fix_lfs_command():
     """Fix lfs command."""
-    return Command().command(_fix_lfs).require_clean().with_commit(commit_if_empty=False).with_database(write=True)
+    return Command().command(_fix_lfs).require_clean().with_database(write=True).with_commit(commit_if_empty=False)
 
 
 @inject.autoparams()

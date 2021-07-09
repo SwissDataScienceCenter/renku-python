@@ -22,6 +22,9 @@ from contextlib import contextmanager
 
 import pytest
 
+from renku.core.metadata.database import Database
+from renku.core.models.dataset import DatasetsProvenance
+
 
 def raises(error):
     """Wrapper around pytest.raises to support None."""
@@ -105,3 +108,11 @@ def modified_environ(*remove, **update):
     finally:
         env.update(update_after)
         [env.pop(k) for k in remove_after]
+
+
+def get_datasets_provenance(client) -> DatasetsProvenance:
+    """Return DatasetsProvenance for a client."""
+    assert client.has_graph_files()
+
+    database = Database.from_path(client.database_path)
+    return DatasetsProvenance(database)
