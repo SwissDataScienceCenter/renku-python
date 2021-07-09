@@ -475,7 +475,7 @@ class Dataset(Entity, CreatorMixin):
         return ""
 
     @property
-    def original_identifier(self):
+    def initial_identifier(self):
         """Return the first identifier of the dataset."""
         if self.path:
             return Path(self.path).name

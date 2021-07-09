@@ -35,7 +35,6 @@ from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.metadata.database import Database
 from renku.core.models.provenance.activity import Collection
-from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.utils import communication
 from renku.core.utils.file_size import parse_file_size
@@ -591,10 +590,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 activity._p_changed = True
 
         # NOTE: Update datasets provenance
-        datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
-
-        for dataset in datasets_provenance.datasets:
-            for file_ in dataset.files:
-                _map_checksum_old(file_.entity, sha_mapping)
-
-        datasets_provenance.to_json()
+        # TODO: Fix dataset provenance
+        # for dataset in datasets_provenance.datasets:
+        #     for file_ in dataset.files:
+        #         _map_checksum_old(file_.entity, sha_mapping)
