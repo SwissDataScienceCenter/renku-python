@@ -409,11 +409,11 @@ def _add_to_dataset(
 def remove_workflow():
     """Return a command for removing workflow."""
     command = Command().command(_remove_workflow).lock_project()
-    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
+    return command.require_migration().with_database(write=True).with_commit(commit_only=GRAPH_METADATA_PATHS)
 
 
 @inject.autoparams()
-def _remove_workflow(name: str, force: bool, client: LocalClient):
+def _remove_workflow(name: str, force: bool, client: LocalClient, database: Database):
     """Remove the given workflow."""
     now = datetime.utcnow()
     # TODO: refactor this once we switch to Database
@@ -434,12 +434,11 @@ def _remove_workflow(name: str, force: bool, client: LocalClient):
 
     plan = plan or pg_workflows[name]
     plan.invalidated_at = now
-    dependency_graph = DependencyGraph.from_json(client.dependency_graph_path)
+    dependency_graph = DependencyGraph.from_database(database)
     for p in dependency_graph.plans:
         if p.id == plan.id:
             p.invalidated_at = now
 
-    dependency_graph.to_json()
     provenance_graph.to_json()
 
 
