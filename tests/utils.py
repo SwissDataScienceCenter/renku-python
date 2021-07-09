@@ -22,7 +22,7 @@ from contextlib import contextmanager
 
 import pytest
 
-from renku.core.incubation.database import Database
+from renku.core.metadata.database import Database
 from renku.core.models.dataset import DatasetsProvenance
 
 

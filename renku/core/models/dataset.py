@@ -26,8 +26,8 @@ from uuid import uuid4
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
-from renku.core.incubation.database import Database, Index, Persistent
 from renku.core.management.command_builder.command import inject
+from renku.core.metadata.database import Database, Index, Persistent
 from renku.core.models import datasets as old_datasets
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema
 from renku.core.models.datasets import generate_dataset_id, is_dataset_name_valid

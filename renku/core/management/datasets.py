@@ -44,11 +44,11 @@ from wcmatch import glob
 from yagup import GitURL
 
 from renku.core import errors
-from renku.core.incubation.database import Database
 from renku.core.management.clone import clone
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.management.config import RENKU_HOME
+from renku.core.metadata.database import Database
 from renku.core.models.dataset import DatasetsProvenance
 from renku.core.models.datasets import (
     Dataset,
