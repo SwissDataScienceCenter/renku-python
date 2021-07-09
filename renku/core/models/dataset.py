@@ -473,6 +473,35 @@ class Dataset(Persistent):
 
         return self
 
+    def replace_identifier(self):
+        """Replace dataset's identifier and update relevant fields.
+
+        NOTE: Call this only for newly-created/-imported datasets that don't have a mutability chain because it sets
+        `initial_identifier`.
+        """
+        assert (
+            self.derived_from is None
+        ), f"Replacing identifier to dataset '{self.name}:{self.identifier}' that is derived from {self.derived_from}"
+
+        self._assign_new_identifier()
+        # NOTE: Do not unset `same_as` because it can be set for imported datasets
+
+    def derive_from(self, dataset: "Dataset"):
+        """Make `self` a derivative of `dataset` and update related fields."""
+        assert dataset is not None, "Cannot derive from None"
+
+        self._assign_new_identifier()
+        # NOTE: Setting `initial_identifier` is required for migration of broken projects
+        self.initial_identifier = dataset.initial_identifier
+        self.derived_from = dataset.id
+        self.same_as = None
+
+    def _assign_new_identifier(self):
+        identifier = str(uuid4())
+        self.initial_identifier = identifier
+        self.identifier = identifier
+        self.id = Dataset.generate_id(identifier)
+
     def remove(self, date: datetime = None):
         """Mark the dataset as removed."""
         self.date_removed = fix_timezone(date) or local_now()
@@ -488,32 +517,6 @@ class Dataset(Persistent):
         for file in self.files:
             if file.entity.path == path and not file.is_removed():
                 return file
-
-    def copy_from(self, dataset: "Dataset"):
-        """Copy all metadata from another dataset."""
-        assert self.identifier == dataset.identifier, f"Identifiers differ {self.identifier} != {dataset.identifier}"
-        assert (
-            self.initial_identifier == dataset.initial_identifier
-        ), f"Initial identifiers differ {self.initial_identifier} != {dataset.initial_identifier}"
-
-        self.creators = dataset.creators
-        self.date_created = dataset.date_created
-        self.date_published = dataset.date_published
-        self.date_removed = None
-        self.derived_from = dataset.derived_from
-        self.description = dataset.description
-        self.files = dataset.files
-        self.images = dataset.images
-        self.in_language = dataset.in_language
-        self.keywords = dataset.keywords
-        self.license = dataset.license
-        self.name = dataset.name
-        self.same_as = dataset.same_as
-        self.tags = dataset.tags
-        self.title = dataset.title
-        self.version = dataset.version
-
-        self._p_changed = True
 
     def update_files_from(self, current_files: List[DatasetFile], date: datetime = None):
         """Check `current_files` to reuse existing entries and mark removed files."""
@@ -536,8 +539,6 @@ class Dataset(Persistent):
             files.append(removed_file)
 
         self.files = files
-
-        self._p_changed = True
 
     def to_dataset(self, client) -> old_datasets.Dataset:
         """Return an instance of renku.core.models.datasets.Dataset."""
@@ -610,7 +611,7 @@ class DatasetsProvenance:
         # A map from name to datasets for current datasets
         self._datasets: Index = database["datasets"]
         # A map from id to datasets that keeps provenance chain tails for all current and removed datasets
-        self._provenance: Index = database["datasets-provenance"]
+        self._provenance_tails: Index = database["datasets-provenance-tails"]
         self._database: Database = database
 
     def get_by_id(self, id: str) -> Optional[Dataset]:
@@ -629,7 +630,7 @@ class DatasetsProvenance:
 
     def get_provenance(self):
         """Return the provenance for all datasets."""
-        return self._provenance.values()
+        return self._provenance_tails.values()
 
     def get_previous_version(self, dataset: Dataset) -> Optional[Dataset]:
         """Return the previous version of a dataset if any."""
@@ -645,55 +646,70 @@ class DatasetsProvenance:
         revision: str = None,
         date: datetime = None,
     ):
-        """Add/update a dataset according to its new content."""
+        """Add/update a dataset according to its new content.
+
+        NOTE: This functions always mutates the dataset.
+        """
         revision = revision or "HEAD"
 
         new_dataset = Dataset.from_dataset(dataset, client, revision, self._database)
-
+        # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
         current_dataset = self.get_by_name(dataset.name)
 
         if current_dataset:
-            if current_dataset.is_removed():
-                communication.warn(f"Deleted dataset is being updated `{dataset.identifier}` at revision `{revision}`")
+            assert (
+                not current_dataset.is_removed()
+            ), f"Adding/Updating a removed dataset '{dataset.name}:{dataset.identifier}' at '{revision}'"
 
             new_dataset.update_files_from(current_dataset.files, date=date)
 
-            if current_dataset.identifier == new_dataset.identifier:
-                # Use the same Dataset object if identifier doesn't change
-                current_dataset.copy_from(new_dataset)
-                new_dataset = current_dataset
+            # NOTE: Always mutate a dataset to make sure an old identifier is not reused
+            new_dataset.derive_from(current_dataset)
+        else:
+            assert (
+                dataset.derived_from is None
+            ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
 
-        if not current_dataset or current_dataset.identifier != new_dataset.identifier:
             # NOTE: This happens in migrations of broken projects
             current_dataset = self.get_by_id(new_dataset.id)
             if current_dataset:
-                current_dataset.copy_from(new_dataset)
-                new_dataset = current_dataset
+                new_dataset.replace_identifier()
 
         self._datasets.add(new_dataset)
-        self._provenance.pop(new_dataset.derived_from, None)
-        self._provenance.add(new_dataset)
+        self._provenance_tails.pop(new_dataset.derived_from, None)
+        self._provenance_tails.add(new_dataset)
 
     def remove(self, dataset, client, revision=None, date=None):
         """Remove a dataset."""
+        revision = revision or "HEAD"
+
         new_dataset = Dataset.from_dataset(dataset, client, revision, self._database)
+        # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
         current_dataset = self._datasets.pop(dataset.name, None)
 
-        if not current_dataset:
-            communication.warn(f"Deleting non-existing dataset '{dataset.name}'")
-        elif current_dataset.is_removed():
-            communication.warn(f"Deleting an already-removed dataset '{dataset.name}'")
+        if current_dataset:
+            assert (
+                not current_dataset.is_removed()
+            ), f"Removing a removed dataset '{dataset.name}:{dataset.identifier}' at '{revision}'"
 
-        if not current_dataset or current_dataset.identifier != new_dataset.identifier:
+            # NOTE: We always assign a new identifier to make sure an old identifier is not reused
+            new_dataset.derive_from(current_dataset)
+        else:
+            # TODO: Should we raise here when migrating
+            communication.warn(f"Deleting non-existing dataset '{dataset.name}'")
+
+            assert (
+                dataset.derived_from is None
+            ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
+
             # NOTE: This happens in migrations of broken projects
             current_dataset = self.get_by_id(new_dataset.id)
             if current_dataset:
-                current_dataset.copy_from(new_dataset)
-                new_dataset = current_dataset
+                new_dataset.replace_identifier()
 
         new_dataset.remove(date)
-        self._provenance.pop(new_dataset.derived_from, None)
-        self._provenance.add(new_dataset)
+        self._provenance_tails.pop(new_dataset.derived_from, None)
+        self._provenance_tails.add(new_dataset)
 
 
 class UrlSchema(JsonLDSchema):

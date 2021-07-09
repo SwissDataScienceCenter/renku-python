@@ -30,6 +30,6 @@ def initialize_database(database: Database):
     database.add_index(name="activities", object_type=Activity, attribute="id")
     database.add_index(name="plans", object_type=Plan, attribute="id")
     database.add_index(name="datasets", object_type=Dataset, attribute="name")
-    database.add_index(name="datasets-provenance", object_type=Dataset, attribute="id")
+    database.add_index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
 
     database.commit()

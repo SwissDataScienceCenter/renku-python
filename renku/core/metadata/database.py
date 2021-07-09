@@ -289,11 +289,10 @@ class Cache:
         assert object._p_jar is not None, "Cached object jar missing"
         assert oid == object._p_oid, f"Cache key does not match oid: {oid} != {object._p_oid}"
 
-        # FIXME: This was commented out because dataset migration was failing. Resolve the issue and uncomment this.
-        # if oid in self._entries:
-        #     existing_data = self.get(oid)
-        #     if existing_data is not object:
-        #         raise ValueError(f"The same oid exists: {existing_data} != {object}")
+        if oid in self._entries:
+            existing_data = self.get(oid)
+            if existing_data is not object:
+                raise ValueError(f"The same oid exists: {existing_data} != {object}")
 
         self._entries[oid] = object
 
@@ -395,6 +394,8 @@ class Index(Persistent):
 
     def pop(self, key, default=MARKER):
         """Remove and return an object."""
+        if not key:
+            return
         return self._entries.pop(key) if default is MARKER else self._entries.pop(key, default)
 
     def keys(self):
