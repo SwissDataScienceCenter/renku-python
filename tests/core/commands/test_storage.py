@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Storage command tests."""
-
 import os
 import subprocess
 from pathlib import Path
