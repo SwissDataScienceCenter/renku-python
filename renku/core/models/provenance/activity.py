@@ -43,7 +43,10 @@ from renku.core.models.provenance.parameter import (
 )
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.plan import Plan, PlanSchema
+from renku.core.utils import communication
 from renku.core.utils.git import get_object_hash
+
+NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 
 
 class Association:
@@ -109,7 +112,6 @@ class Activity(Persistent):
         invalidations: List[Entity] = None,
         order: Optional[int] = None,  # TODO: Remove order and use ended_at_time for ordering
         parameters: List[Union[PathParameterValue, VariableParameterValue]] = None,
-        # project=None,  # TODO: project._id gets messed up when generating and then running commands
         started_at_time: datetime = None,
         usages: List[Usage] = None,
     ):
@@ -194,7 +196,7 @@ def _convert_generation(generation: old_qualified.Generation, activity_id: str, 
     return Generation(id=Generation.generate_id(activity_id), entity=entity)
 
 
-def _convert_used_entity(entity: old_entities.Entity, revision: str, activity_id: str, client) -> Optional[Entity]:
+def _convert_used_entity(entity: old_entities.Entity, revision: str, activity_id: str, client) -> Entity:
     """Convert an old Entity to one with proper metadata.
 
     For Collections, add members that are modified in the same commit or before the revision.
@@ -203,7 +205,8 @@ def _convert_used_entity(entity: old_entities.Entity, revision: str, activity_id
 
     checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
     if not checksum:
-        return None
+        communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
+        checksum = NON_EXISTING_ENTITY_CHECKSUM
 
     if isinstance(entity, old_entities.Collection):
         members = []
@@ -238,7 +241,8 @@ def _convert_generated_entity(entity: old_entities.Entity, revision: str, activi
 
     checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
     if not checksum:
-        return None
+        communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
+        checksum = NON_EXISTING_ENTITY_CHECKSUM
 
     if isinstance(entity, old_entities.Collection):
         members = []
@@ -270,8 +274,8 @@ def _convert_invalidated_entity(entity: old_entities.Entity, client) -> Optional
         # Entity was deleted at revision; get the one before it to have object_id
         checksum = get_object_hash(repo=client.repo, revision=f"{revision}~", path=entity.path)
         if not checksum:
-            print(f"Cannot find invalidated entity hash for {entity._id} at {revision}:{entity.path}")
-            return
+            communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
+            checksum = NON_EXISTING_ENTITY_CHECKSUM
 
     new_entity = Entity(checksum=checksum, path=entity.path)
 
