@@ -18,8 +18,8 @@
 """Command builder for local object database."""
 
 
-from renku.core.incubation.database import Database
 from renku.core.management.command_builder.command import Command, CommandResult, check_finalized
+from renku.core.metadata.database import Database
 
 
 class DatabaseCommand(Command):

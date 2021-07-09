@@ -26,8 +26,8 @@ from uuid import uuid4
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
-from renku.core.incubation.database import Persistent
 from renku.core.management.command_builder.command import inject
+from renku.core.metadata.database import Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.entities import Entity
 from renku.core.models.workflow import parameters as old_parameter

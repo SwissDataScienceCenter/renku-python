@@ -132,7 +132,7 @@ def update_injected_database(database):
 
     Used when re-generating new graphs to allow overriding existing database.
     """
-    from renku.core.incubation.database import Database
+    from renku.core.metadata.database import Database
 
     injector = getattr(_LOCAL, "injector", None)
 
