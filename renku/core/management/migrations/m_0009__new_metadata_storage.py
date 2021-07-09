@@ -76,9 +76,11 @@ def generate_new_metadata(client: LocalClient, force=True, remove=True):
     dependency_graph = DependencyGraph.from_database(database)
     datasets_provenance = DatasetsProvenance(database)
 
-    commits = list(client.repo.iter_commits(paths=[f"{client.workflow_path}/*.yaml", ".renku/datasets/*/*.yml"]))
+    commits = list(
+        client.repo.iter_commits(paths=[f"{client.workflow_path}/*.yaml", ".renku/datasets/*/*.yml"], reverse=True)
+    )
     n_commits = len(commits)
-    commits = reversed(commits)
+    # commits = reversed(commits)
 
     for n, commit in enumerate(commits, start=1):
         communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\n")
@@ -103,6 +105,7 @@ def _process_workflows(
     client: LocalClient, commit: Commit, database: Database, dependency_graph: DependencyGraph, remove: bool
 ):
     def replace_agents(activity):
+        """Convert all instances of old Agent metadata classes in an Activity to new Agent metadata classes."""
         agent = database["agents"].get(activity.association.agent.id)
         if agent:
             activity.association.agent = agent

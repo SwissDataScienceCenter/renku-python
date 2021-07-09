@@ -150,7 +150,9 @@ class Activity(Persistent):
         generations = [_convert_generation(g, activity_id, client) for g in process_run.generated]
         usages = [_convert_usage(u, activity_id, client) for u in process_run.qualified_usage]
 
-        parameters = _create_parameters(activity_id=activity_id, plan=plan, usages=usages, generations=generations)
+        parameters = _create_parameters(
+            activity_id=activity_id, plan=rerun_plan, usages=usages, generations=generations
+        )
 
         return cls(
             agents=agents,
