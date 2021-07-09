@@ -26,9 +26,9 @@ from uuid import uuid4
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
-from renku.core.incubation.immutable import Immutable
 from renku.core.management.command_builder.command import inject
 from renku.core.metadata.database import Database, Index, Persistent
+from renku.core.metadata.immutable import Immutable, Slots
 from renku.core.models import datasets as old_datasets
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema
 from renku.core.models.datasets import generate_dataset_id, is_dataset_name_valid
@@ -89,7 +89,7 @@ class Url:
             raise NotImplementedError("Either url_id or url_str has to be set")
 
 
-class DatasetTag(Immutable):
+class DatasetTag(Slots):
     """Represents a Tag of an instance of a dataset."""
 
     __slots__ = ("commit", "dataset", "date_created", "description", "id", "name")
@@ -146,7 +146,7 @@ class DatasetTag(Immutable):
 class Language(Immutable):
     """Represent a language of an object."""
 
-    __slots__ = ("alternate_name", "id", "name")
+    __slots__ = ("alternate_name", "name")
 
     def __init__(self, alternate_name: str = None, id: str = None, name: str = None):
         id = id or Language.generate_id(name)
@@ -168,7 +168,7 @@ class Language(Immutable):
         return f"/languages/{name}"
 
 
-class ImageObject(Immutable):
+class ImageObject(Slots):
     """Represents a schema.org `ImageObject`."""
 
     __slots__ = ("content_url", "id", "position")
@@ -199,18 +199,18 @@ class ImageObject(Immutable):
         return bool(urlparse(self.content_url).netloc)
 
 
-class RemoteEntity(Immutable):
+class RemoteEntity(Slots):
     """Reference to an Entity in a remote repo."""
 
     __slots__ = ("commit_sha", "id", "path", "url")
 
     def __init__(self, *, commit_sha: str, id: str = None, path: Union[Path, str], url: str):
-        super().__init__(
-            commit_sha=commit_sha,
-            id=id or RemoteEntity.generate_id(commit_sha, path),
-            path=str(path),
-            url=url,
-        )
+        super().__init__()
+
+        self.commit_sha: str = commit_sha
+        self.id: str = id or RemoteEntity.generate_id(commit_sha, path)
+        self.path: str = str(path)
+        self.url: str = url
 
     @staticmethod
     def generate_id(commit_sha: str, path: Union[Path, str]) -> str:
@@ -242,7 +242,7 @@ class RemoteEntity(Immutable):
         return old_datasets.DatasetFile(label=label, path=self.path, source=self.url, url=self.url)
 
 
-class DatasetFile(Immutable):
+class DatasetFile(Slots):
     """A file in a dataset."""
 
     __slots__ = ("based_on", "date_added", "date_removed", "entity", "id", "is_external", "source")
@@ -260,15 +260,15 @@ class DatasetFile(Immutable):
     ):
         assert isinstance(entity, Entity), f"Invalid entity type: '{entity}'"
 
-        super().__init__(
-            based_on=based_on,
-            date_added=fix_timezone(date_added) or local_now(),
-            date_removed=fix_timezone(date_removed),
-            entity=entity,
-            id=id or DatasetFile.generate_id(),
-            is_external=is_external,
-            source=str(source),
-        )
+        super().__init__()
+
+        self.based_on: RemoteEntity = based_on
+        self.date_added: datetime = fix_timezone(date_added) or local_now()
+        self.date_removed: datetime = fix_timezone(date_removed)
+        self.entity: Entity = entity
+        self.id: str = id or DatasetFile.generate_id()
+        self.is_external: bool = is_external
+        self.source: str = str(source)
 
     @classmethod
     def from_path(cls, client, path: Union[str, Path]) -> Optional["DatasetFile"]:
@@ -321,9 +321,9 @@ class DatasetFile(Immutable):
         )
 
     def remove(self, date: datetime = None):
-        """Mark the file as removed."""
+        """Create a new instance and mark it as removed."""
         date_removed = fix_timezone(date) or local_now()
-        object.__setattr__(self, "date_removed", date_removed)
+        self.date_removed = date_removed
 
     def is_removed(self) -> bool:
         """Return true if dataset is removed and should not be accessed."""

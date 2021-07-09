@@ -19,10 +19,10 @@
 
 import pytest
 
-from renku.core.incubation.immutable import Immutable
+from renku.core.metadata.immutable import Immutable, Slots
 
 
-class A(Immutable):
+class A(Slots):
     """Test class."""
 
     __slots__ = ("a_member",)
@@ -37,42 +37,75 @@ class B(A):
         super().__init__(b_member=b_member, **kwargs)
 
 
-def test_instantiate(client, runner):
-    """Test instantiating Immutable subclasses."""
+class C(Immutable):
+    """Test class."""
+
+    __slots__ = ("c_member",)
+
+
+def test_instantiate():
+    """Test instantiating Slots subclasses."""
     b = B(a_member=42, b_member=43)
 
     assert {"a_member": 42, "b_member": 43} == b.__getstate__()
 
 
-def test_instantiate_incomplete(client, runner):
-    """Test instantiating Immutable subclasses without setting all members."""
+def test_instantiate_incomplete():
+    """Test instantiating Slots subclasses without setting all members."""
     b = B(a_member=42)
 
     assert {"a_member": 42, "b_member": None} == b.__getstate__()
 
 
-def test_instantiate_invalid_member(client, runner):
-    """Test instantiating Immutable subclasses and passing a non-member."""
+def test_instantiate_invalid_member():
+    """Test instantiating Slots subclasses and passing a non-member."""
     with pytest.raises(AttributeError) as e:
         B(c_member=42)
 
     assert "object has no attribute 'c_member'" in str(e)
 
 
-def test_cannot_mutate(client, runner):
-    """Test cannot mutate an Immutable subclasses."""
-    b = B(a_member=42, b_member=43)
-
-    with pytest.raises(TypeError) as e:
-        b.a_member = None
-
-    assert "Cannot modify an immutable class" in str(e)
-    assert 42 == b.a_member
-
-
-def test_get_all_slots(client, runner):
+def test_get_all_slots():
     """Test get all slots from an Immutable subclasses."""
     b = B(a_member=42, b_member=43)
     _ = b.__getstate__()
 
-    assert ("b_member", "a_member", "__weakref__") == B.__all_slots__
+    assert {"b_member", "a_member", "__weakref__"} == set(B.__all_slots__)
+
+
+def test_immutable_object_id():
+    """Test Immutable subclasses have an `id` field."""
+    c = C(id=42, c_member=43)
+
+    assert {"c_member": 43, "id": 42} == c.__getstate__()
+
+
+def test_cannot_mutate():
+    """Test cannot mutate an Immutable subclasses."""
+    c = C(c_member=42)
+
+    with pytest.raises(TypeError) as e:
+        c.c_member = None
+
+    assert "Cannot modify an immutable class" in str(e)
+    assert 42 == c.c_member
+
+
+def test_immutable_objects_cache():
+    """Test Immutable objects are cached once created."""
+    data = {"id": 42, "c_member": 43}
+
+    o1 = C.make_instance(**data)
+    o2 = C.make_instance(**data)
+
+    assert o1 is o2
+
+
+def test_immutable_objects_cache_without_id():
+    """Test Immutable objects cannot be cached if id is not set."""
+    data = {"c_member": 43}
+
+    o1 = C.make_instance(**data)
+    o2 = C.make_instance(**data)
+
+    assert o1 is not o2

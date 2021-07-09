@@ -21,7 +21,6 @@ import datetime
 import gzip
 import hashlib
 import json
-import weakref
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from uuid import uuid4
@@ -33,7 +32,7 @@ from ZODB.utils import z64
 from zope.interface import implementer
 
 from renku.core import errors
-from renku.core.incubation.immutable import Immutable
+from renku.core.metadata.immutable import Immutable
 
 OID_TYPE = str
 MARKER = object()
@@ -565,7 +564,6 @@ class ObjectReader:
     def __init__(self, database: Database):
         self._classes: Dict[str, type] = {}
         self._database = database
-        self._immutable_objects_cache = weakref.WeakValueDictionary()
 
     def _get_class(self, type_name: str) -> type:
         cls = self._classes.get(type_name)
@@ -657,13 +655,7 @@ class ObjectReader:
                 assert isinstance(data, dict)
 
                 if issubclass(cls, Immutable):
-                    id = data["id"]
-                    object = self._immutable_objects_cache.get(id)
-                    if object:
-                        return object
-
-                    object = cls(**data)
-                    self._immutable_objects_cache[id] = object
+                    object = cls.make_instance(**data)
                 else:
                     object = cls(**data)
 

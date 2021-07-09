@@ -32,7 +32,7 @@ _entity_cache = {}
 class Entity(Immutable):
     """Represent a file."""
 
-    __slots__ = ("checksum", "id", "path")
+    __slots__ = ("checksum", "path")
 
     def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], **kwargs):
         assert id is None or isinstance(id, str)
