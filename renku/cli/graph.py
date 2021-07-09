@@ -21,7 +21,6 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
-from renku.core.incubation.database import Database
 from renku.core.incubation.graph import (
     FORMATS,
     add_to_dataset,
@@ -33,6 +32,7 @@ from renku.core.incubation.graph import (
 from renku.core.incubation.graph import status as get_status
 from renku.core.incubation.graph import update as perform_update
 from renku.core.management.command_builder.command import Command, inject
+from renku.core.metadata.database import Database
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.utils.contexts import measure
 

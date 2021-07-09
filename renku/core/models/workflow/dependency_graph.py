@@ -25,7 +25,7 @@ from typing import List, Optional, Tuple
 import networkx
 from marshmallow import EXCLUDE
 
-from renku.core.incubation.database import Database
+from renku.core.metadata.database import Database
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.workflow.plan import Plan, PlanSchema
 

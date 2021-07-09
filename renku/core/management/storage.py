@@ -32,8 +32,8 @@ import pathspec
 from werkzeug.utils import cached_property
 
 from renku.core import errors
-from renku.core.incubation.database import Database
 from renku.core.management.command_builder.command import inject
+from renku.core.metadata.database import Database
 from renku.core.models.provenance.activity import Collection
 from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph

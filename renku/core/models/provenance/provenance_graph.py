@@ -24,8 +24,8 @@ from typing import Dict, List, Optional, Union
 from marshmallow import EXCLUDE
 from rdflib import ConjunctiveGraph
 
-from renku.core.incubation.database import Database
 from renku.core.management.command_builder.command import inject
+from renku.core.metadata.database import Database
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.provenance.activity import Activity, ActivityCollection, ActivitySchema
 
