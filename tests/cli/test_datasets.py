@@ -2048,6 +2048,11 @@ def test_datasets_provenance_multiple(runner, client_with_new_graph, directory_t
     tail_dataset = datasets_provenance.get_previous_version(tail_dataset)
     assert v1.identifier == tail_dataset.identifier
 
+    provenance = datasets_provenance.get_provenance()
+
+    # NOTE: We only keep the tail of provenance chain for each dataset in the provenance
+    assert 1 == len(provenance)
+
 
 def test_datasets_provenance_add_file(runner, client_with_new_graph, directory_tree):
     """Test add to dataset using graph command."""

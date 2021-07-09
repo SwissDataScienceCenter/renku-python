@@ -19,23 +19,27 @@
 
 import os.path
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 from urllib.parse import quote
 
+from renku.core.metadata.immutable import Immutable
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, wfprov
 from renku.core.utils.git import get_object_hash
 
+_entity_cache = {}
 
-class Entity:
+
+class Entity(Immutable):
     """Represent a file."""
 
-    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str]):
+    __slots__ = ("checksum", "id", "path")
+
+    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], **kwargs):
         assert id is None or isinstance(id, str)
         assert not os.path.isabs(path), f"Entity is being created with absolute path: '{path}'"
 
-        self.checksum: str = checksum
-        self.id: str = id or Entity.generate_id(checksum, path)
-        self.path: str = str(path)
+        id = id or Entity.generate_id(checksum, path)
+        super().__init__(checksum=checksum, id=id, path=path, **kwargs)
 
     def __eq__(self, other):
         if self is other:
@@ -57,18 +61,33 @@ class Entity:
     @classmethod
     def from_revision(
         cls, client, path: Union[Path, str], revision: str = None, find_previous: bool = True
-    ) -> "Entity":
+    ) -> Optional["Entity"]:
         """Return dependency from given path and revision."""
         revision = revision or "HEAD"
+        assert isinstance(revision, str), f"Invalid revision: {revision}"
 
         if find_previous:
-            revision = client.find_previous_commit(path, revision=revision)
+            try:
+                commit = client.find_previous_commit(path, revision=revision)
+                revision = commit.hexsha
+            except KeyError:
+                return
+        else:
+            # TODO: This might raise git.BadName: What should we do?
+            commit = client.repo.commit(revision)
 
-        client, commit, path = client.resolve_in_submodules(revision, path)
+        client, commit, path = client.resolve_in_submodules(commit, path)
+
+        global _entity_cache
+        key = (revision, str(path))
+        cached_entry = _entity_cache.get(key)
+        if cached_entry:
+            return cached_entry
 
         checksum = get_object_hash(repo=client.repo, revision=revision, path=path)
-        # TODO: What if checksum is None
-        assert checksum is not None, f"Entity not found: {revision}:{path}"
+        # NOTE: If object was not found at a revision it's either removed or exists in a different revision; keep the
+        # entity and use revision as checksum
+        checksum = checksum or revision
         # TODO: What would be checksum for a directory if it's not committed yet.
         id = cls.generate_id(checksum=checksum, path=path)
 
@@ -78,6 +97,8 @@ class Entity:
             entity = Collection(id=id, checksum=checksum, path=path, members=members)
         else:
             entity = cls(id=id, checksum=checksum, path=path)
+
+        _entity_cache[cached_entry] = entity
 
         return entity
 
@@ -101,7 +122,9 @@ class Entity:
             try:
                 assert all(member_path != m.path for m in members)
 
-                members.append(cls.from_revision(client, member_path, commit, find_previous=find_previous))
+                entity = cls.from_revision(client, member_path, commit.hexsha, find_previous=find_previous)
+                if entity:
+                    members.append(entity)
             except KeyError:
                 pass
 
@@ -111,9 +134,11 @@ class Entity:
 class Collection(Entity):
     """Represent a directory with files."""
 
+    __slots__ = ("members",)
+
     def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], members: List[Entity] = None):
-        super().__init__(id=id, checksum=checksum, path=path)
-        self.members: List[Entity] = members or []
+        members = tuple(members) if members else ()
+        super().__init__(checksum=checksum, id=id, path=path, members=members)
 
 
 class NewEntitySchema(JsonLDSchema):

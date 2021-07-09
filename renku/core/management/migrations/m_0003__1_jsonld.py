@@ -198,7 +198,11 @@ def _migrate_doi_identifier(data, client):
 
     if not is_uuid(_id):
         if not is_uuid(identifier):
-            data["identifier"] = str(uuid.uuid4())
+            possible_identifier = Path(identifier).name
+            if not is_uuid(possible_identifier):
+                data["identifier"] = str(uuid.uuid4())
+            else:
+                data["identifier"] = possible_identifier
         if is_doi(data.get("_id", "")):
             data["same_as"] = {"@type": ["schema:URL"], "url": data["_id"]}
             if data.get("@context"):

@@ -17,7 +17,6 @@
 # limitations under the License.
 """Represent dependency graph."""
 
-import json
 from collections import deque
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -25,7 +24,7 @@ from typing import List, Optional, Tuple
 import networkx
 from marshmallow import EXCLUDE
 
-from renku.core.metadata.database import Database
+from renku.core.metadata.database import Database, Index
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.workflow.plan import Plan, PlanSchema
 
@@ -35,9 +34,9 @@ class DependencyGraph:
 
     # TODO: dependency graph can have cycles in it because up until now there was no check to prevent this
 
-    def __init__(self, plans: List[Plan] = None):
+    def __init__(self, plans: Index):
         """Initialized."""
-        self._plans: List[Plan] = plans or []
+        self._plans: Index = plans
 
         # NOTE: If we connect nodes then all ghost objects will be loaded which is not what we want
         self._graph = None
@@ -45,8 +44,7 @@ class DependencyGraph:
     @classmethod
     def from_database(cls, database: Database) -> "DependencyGraph":
         """Return an instance from a metadata database."""
-        plan_tree = database.get("plans")
-        plans = list(plan_tree.values())
+        plans = database["plans"]
         self = DependencyGraph(plans=plans)
 
         return self
@@ -56,7 +54,7 @@ class DependencyGraph:
         """A networkx.DiGraph containing all plans."""
         if not self._graph:
             self._graph = networkx.DiGraph()
-            self._graph.add_nodes_from(self._plans)
+            self._graph.add_nodes_from(self._plans.values())
             self._connect_all_nodes()
 
         return self._graph
@@ -64,7 +62,7 @@ class DependencyGraph:
     @property
     def plans(self) -> List[Plan]:
         """A list of all plans in the graph."""
-        return list(self._plans)
+        return list(self._plans.values())
 
     def add(self, plan: Plan) -> Plan:
         """Add a plan to the graph if a similar plan does not exists."""
@@ -72,13 +70,15 @@ class DependencyGraph:
         if existing_plan:
             return existing_plan
 
-        assert not any([p for p in self._plans if p.name == plan.name]), f"Duplicate name {plan.id}, {plan.name}"
-        # FIXME it's possible to have the same identifier but different list of arguments (e.g.
-        # test_rerun_with_edited_inputs)
-        same_id_found = [p for p in self._plans if p.id == plan.id]
-        if same_id_found:
-            plan.assign_new_id()
-        assert not any([p for p in self._plans if p.id == plan.id]), f"Identifier exists {plan.id}"
+        assert not any(
+            [p for p in self._plans.values() if p.name == plan.name]
+        ), f"Duplicate name {plan.id}, {plan.name}"
+        # NOTE: It's possible to have the same identifier but different list of arguments (e.g.
+        # test_rerun_with_edited_inputs). We return the existing plan and use the new plan to determine rerun params.
+        plan_with_same_id = self._plans.get(plan.id)
+        if plan_with_same_id:
+            return plan_with_same_id
+        assert not any([p for p in self._plans.values() if p.id == plan.id]), f"Identifier exists {plan.id}"
         self._add_helper(plan)
 
         # FIXME some existing projects have cyclic dependency; make this check outside this model.
@@ -88,12 +88,12 @@ class DependencyGraph:
 
     def _find_similar_plan(self, plan: Plan) -> Optional[Plan]:
         """Search for a similar plan and return it."""
-        for p in self._plans:
+        for p in self._plans.values():
             if p.is_similar_to(plan):
                 return p
 
     def _add_helper(self, plan: Plan):
-        self._plans.append(plan)
+        self._plans.add(plan)
 
         self.graph.add_node(plan)
         self._connect_node_to_others(node=plan)
@@ -178,41 +178,6 @@ class DependencyGraph:
                     sorted_nodes.append(node)
 
         return sorted_nodes, list(nodes_with_deleted_inputs)
-
-    @classmethod
-    def from_json(cls, path):
-        """Create an instance from a file."""
-        if Path(path).exists():
-            with open(path) as file_:
-                data = json.load(file_)
-                self = cls.from_jsonld(data=data) if data else DependencyGraph(plans=[])
-        else:
-            self = DependencyGraph(plans=[])
-
-        self._path = Path(path)
-
-        return self
-
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        elif not isinstance(data, list):
-            raise ValueError(data)
-
-        return DependencyGraphSchema(flattened=True).load(data)
-
-    def to_jsonld(self):
-        """Create JSON-LD."""
-        return DependencyGraphSchema(flattened=True).dump(self)
-
-    def to_json(self, path=None):
-        """Write to file."""
-        path = path or self._path
-        data = self.to_jsonld()
-        with open(path, "w", encoding="utf-8") as file_:
-            json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
 
 class DependencyGraphSchema(JsonLDSchema):

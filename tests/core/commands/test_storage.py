@@ -118,7 +118,7 @@ def test_lfs_migrate(runner, project, client):
 
     previous_head = client.repo.head.commit.hexsha
 
-    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
+    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y", catch_exceptions=False)
     assert 0 == result.exit_code, result.output
     assert "dataset_file" in result.output
     assert "workflow_file" in result.output
@@ -150,7 +150,7 @@ def test_lfs_migrate_no_changes(runner, project, client):
 
     previous_head = client.repo.head.commit.hexsha
 
-    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
+    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y", catch_exceptions=False)
     assert 0 == result.exit_code
     assert "All files are already in LFS" in result.output
 

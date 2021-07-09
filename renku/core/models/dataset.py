@@ -26,6 +26,7 @@ from uuid import uuid4
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
+from renku.core.incubation.immutable import Immutable
 from renku.core.management.command_builder.command import inject
 from renku.core.metadata.database import Database, Index, Persistent
 from renku.core.models import datasets as old_datasets
@@ -33,7 +34,8 @@ from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, f
 from renku.core.models.datasets import generate_dataset_id, is_dataset_name_valid
 from renku.core.models.entities import generate_label
 from renku.core.models.entity import Entity, NewEntitySchema
-from renku.core.models.provenance.agents import Person, PersonSchema
+from renku.core.models.provenance import agents as old_agents
+from renku.core.models.provenance.agent import Agent, NewPersonSchema, Person, SoftwareAgent
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
 
@@ -72,8 +74,8 @@ class Url:
     def generate_id(url_str, url_id):
         """Generate an identifier for Url."""
         url = url_str or url_id
-        id = urlparse(url)._replace(scheme="").geturl() if url else uuid4().hex
-        id = quote(id, safe="")
+        id = urlparse(url)._replace(scheme="").geturl().strip("/") if url else uuid4().hex
+        id = quote(id, safe="/")
 
         return f"/urls/{id}"
 
@@ -87,8 +89,10 @@ class Url:
             raise NotImplementedError("Either url_id or url_str has to be set")
 
 
-class DatasetTag:
+class DatasetTag(Immutable):
     """Represents a Tag of an instance of a dataset."""
+
+    __slots__ = ("commit", "dataset", "date_created", "description", "id", "name")
 
     def __init__(
         self,
@@ -100,15 +104,17 @@ class DatasetTag:
         id: str = None,
         name: str,
     ):
-        self.commit: str = commit
-        self.dataset = dataset
-        self.date_created: datetime = parse_date(date_created) or local_now()
-        self.description: str = description
-        self.id: str = id
-        self.name: str = name
+        if not id or id.startswith("_:"):
+            id = DatasetTag.generate_id(commit=commit, name=name)
 
-        if not self.id or self.id.startswith("_:"):
-            self.id = DatasetTag.generate_id(commit=self.commit, name=self.name)
+        super().__init__(
+            commit=commit,
+            dataset=dataset,
+            date_created=parse_date(date_created) or local_now(),
+            description=description,
+            id=id,
+            name=name,
+        )
 
     @classmethod
     def from_dataset_tag(cls, tag: Optional[old_datasets.DatasetTag]) -> Optional["DatasetTag"]:
@@ -137,12 +143,14 @@ class DatasetTag:
         return f"/dataset-tags/{name}"
 
 
-class Language:
+class Language(Immutable):
     """Represent a language of an object."""
 
-    def __init__(self, alternate_name: str = None, name: str = None):
-        self.alternate_name: str = alternate_name
-        self.name: str = name
+    __slots__ = ("alternate_name", "id", "name")
+
+    def __init__(self, alternate_name: str = None, id: str = None, name: str = None):
+        id = id or Language.generate_id(name)
+        super().__init__(alternate_name=alternate_name, id=id, name=name)
 
     @classmethod
     def from_language(cls, language: Optional[old_datasets.Language]) -> Optional["Language"]:
@@ -153,15 +161,21 @@ class Language:
         """Convert to an old Language."""
         return old_datasets.Language(alternate_name=self.alternate_name, name=self.name)
 
+    @staticmethod
+    def generate_id(name: str) -> str:
+        """Generate @id field."""
+        name = quote(name, safe="")
+        return f"/languages/{name}"
 
-class ImageObject:
+
+class ImageObject(Immutable):
     """Represents a schema.org `ImageObject`."""
 
+    __slots__ = ("content_url", "id", "position")
+
     def __init__(self, *, content_url: str, position: int, id: str = None):
-        self.content_url: str = content_url
-        self.position: int = position
         # TODO: Remove scheme://hostname from id
-        self.id: str = id
+        super().__init__(content_url=content_url, position=position, id=id)
 
     @classmethod
     def from_image_object(cls, image_object: Optional[old_datasets.ImageObject]) -> Optional["ImageObject"]:
@@ -185,14 +199,18 @@ class ImageObject:
         return bool(urlparse(self.content_url).netloc)
 
 
-class RemoteEntity:
+class RemoteEntity(Immutable):
     """Reference to an Entity in a remote repo."""
 
+    __slots__ = ("commit_sha", "id", "path", "url")
+
     def __init__(self, *, commit_sha: str, id: str = None, path: Union[Path, str], url: str):
-        self.commit_sha: str = commit_sha
-        self.id = id or RemoteEntity.generate_id(commit_sha, path)
-        self.path: str = str(path)
-        self.url = url
+        super().__init__(
+            commit_sha=commit_sha,
+            id=id or RemoteEntity.generate_id(commit_sha, path),
+            path=str(path),
+            url=url,
+        )
 
     @staticmethod
     def generate_id(commit_sha: str, path: Union[Path, str]) -> str:
@@ -224,8 +242,10 @@ class RemoteEntity:
         return old_datasets.DatasetFile(label=label, path=self.path, source=self.url, url=self.url)
 
 
-class DatasetFile:
+class DatasetFile(Immutable):
     """A file in a dataset."""
+
+    __slots__ = ("based_on", "date_added", "date_removed", "entity", "id", "is_external", "source")
 
     def __init__(
         self,
@@ -240,26 +260,34 @@ class DatasetFile:
     ):
         assert isinstance(entity, Entity), f"Invalid entity type: '{entity}'"
 
-        self.based_on: RemoteEntity = based_on
-        self.date_added: datetime = fix_timezone(date_added) or local_now()
-        self.date_removed: datetime = fix_timezone(date_removed)
-        self.entity: Entity = entity
-        self.id: str = id or DatasetFile.generate_id()
-        self.is_external: bool = is_external
-        self.source: str = str(source)
+        super().__init__(
+            based_on=based_on,
+            date_added=fix_timezone(date_added) or local_now(),
+            date_removed=fix_timezone(date_removed),
+            entity=entity,
+            id=id or DatasetFile.generate_id(),
+            is_external=is_external,
+            source=str(source),
+        )
 
     @classmethod
-    def from_path(cls, client, path: Union[str, Path]) -> "DatasetFile":
+    def from_path(cls, client, path: Union[str, Path]) -> Optional["DatasetFile"]:
         """Return an instance from a path."""
         entity = Entity.from_revision(client=client, path=path)
+        if not entity:
+            return
 
         return cls(entity=entity, is_external=client.is_external_file(path))
 
     @classmethod
     @inject.params(client="LocalClient")
-    def from_dataset_file(cls, dataset_file: old_datasets.DatasetFile, client, revision: str = None) -> "DatasetFile":
+    def from_dataset_file(
+        cls, dataset_file: old_datasets.DatasetFile, client, revision: str = None
+    ) -> Optional["DatasetFile"]:
         """Create an instance by converting from renku.core.models.datasets.DatasetFile if available at revision."""
         entity = Entity.from_revision(client=client, path=dataset_file.path, revision=revision)
+        if not entity:
+            return
 
         return cls(
             based_on=RemoteEntity.from_dataset_file(dataset_file.based_on),
@@ -294,7 +322,8 @@ class DatasetFile:
 
     def remove(self, date: datetime = None):
         """Mark the file as removed."""
-        self.date_removed = fix_timezone(date) or local_now()
+        date_removed = fix_timezone(date) or local_now()
+        object.__setattr__(self, "date_removed", date_removed)
 
     def is_removed(self) -> bool:
         """Return true if dataset is removed and should not be accessed."""
@@ -335,18 +364,21 @@ class Dataset(Persistent):
         files: List[DatasetFile] = None,
         id: str = None,
         images: List[ImageObject] = None,
-        immutable: bool = False,
         in_language: Language = None,
+        initial_identifier: str = None,
         keywords: List[str] = None,
         license: str = None,
-        initial_identifier: str = None,
         same_as: Url = None,
         tags: List[DatasetTag] = None,
         title: str = None,
-        version=None,
+        version: str = None,
     ):
         if not is_dataset_name_valid(name):
             raise errors.ParameterError(f"Invalid dataset name: '{name}'")
+
+        # if `date_published` is set, we are probably dealing with an imported dataset so `date_created` is not needed
+        if date_published:
+            date_created = None
 
         # TODO Verify identifier to be valid
         self.identifier = identifier or str(uuid4())
@@ -362,19 +394,14 @@ class Dataset(Persistent):
         """`files` includes existing files and those that have been removed in the previous version."""
         self.files: List[DatasetFile] = files or []
         self.images: List[ImageObject] = images or []
-        self.immutable: bool = immutable
         self.in_language: Language = in_language
+        self.initial_identifier: str = initial_identifier
         self.keywords: List[str] = keywords or []
         self.license: str = license
-        self.initial_identifier: str = initial_identifier
         self.same_as: Url = same_as
         self.tags: List[DatasetTag] = tags or []
         self.title: str = title
-        self.version = version
-
-        # if `date_published` is set, we are probably dealing with an imported dataset so `date_created` is not needed
-        if self.date_published:
-            self.date_created = None
+        self.version: str = version
 
     @staticmethod
     def generate_id(identifier: str) -> str:
@@ -382,18 +409,54 @@ class Dataset(Persistent):
         return f"/datasets/{identifier}"
 
     @classmethod
-    def from_dataset(cls, dataset: old_datasets.Dataset, client, revision: str) -> "Dataset":
+    def from_dataset(cls, dataset: old_datasets.Dataset, client, revision: str, database: Database) -> "Dataset":
         """Create an instance by converting from renku.core.models.datasets.Dataset."""
-        files = cls._convert_dataset_files(dataset.files, client, revision)
+
+        def convert_creators(creators) -> List[Person]:
+            result = []
+            for creator in creators:
+                agent = Agent.from_agent(creator)
+                existing_agent = database["agents"].get(agent.id)
+                if existing_agent:
+                    result.append(existing_agent)
+                else:
+                    result.append(agent)
+                    database["agents"].add(agent)
+
+            return result
+
+        def convert_dataset_files(files: List[old_datasets.DatasetFile]) -> List[DatasetFile]:
+            """Create instances from renku.core.models.datasets.DatasetFile."""
+            dataset_files = []
+            files = {f.path: f for f in files}  # NOTE: To make sure there are no duplicate paths
+
+            for file in files.values():
+                new_file = DatasetFile.from_dataset_file(file, client=client, revision=revision)
+                if not new_file:
+                    continue
+
+                dataset_files.append(new_file)
+
+            return dataset_files
+
+        def convert_derived_from(derived_from: Optional[Url]) -> Optional[str]:
+            """Return Dataset.id from `derived_from` url."""
+            if not derived_from:
+                return
+
+            url = derived_from.url.get("@id")
+            path = urlparse(url).path
+
+            return Dataset.generate_id(identifier=Path(path).name)
 
         self = cls(
-            creators=dataset.creators,
+            creators=convert_creators(dataset.creators),
             date_created=dataset.date_created,
             date_published=dataset.date_published,
             date_removed=None,
-            derived_from=cls._convert_derived_from(dataset.derived_from),
+            derived_from=convert_derived_from(dataset.derived_from),
             description=dataset.description,
-            files=files,
+            files=convert_dataset_files(dataset.files),
             id=None,
             identifier=dataset.identifier,
             images=[ImageObject.from_image_object(image) for image in (dataset.images or [])],
@@ -409,32 +472,6 @@ class Dataset(Persistent):
         )
 
         return self
-
-    @staticmethod
-    def _convert_dataset_files(files: List[old_datasets.DatasetFile], client, revision) -> List[DatasetFile]:
-        """Create instances from renku.core.models.datasets.DatasetFile."""
-        dataset_files = []
-        files = {f.path: f for f in files}  # NOTE: To make sure there are no duplicate paths
-
-        for file in files.values():
-            new_file = DatasetFile.from_dataset_file(file, client=client, revision=revision)
-            if not new_file:
-                continue
-
-            dataset_files.append(new_file)
-
-        return dataset_files
-
-    @staticmethod
-    def _convert_derived_from(derived_from: Optional[Url]) -> Optional[str]:
-        """Return Dataset.id from `derived_from` url."""
-        if not derived_from:
-            return
-
-        url = derived_from.url.get("@id")
-        path = urlparse(url).path
-
-        return Dataset.generate_id(identifier=Path(path).name)
 
     def remove(self, date: datetime = None):
         """Mark the dataset as removed."""
@@ -453,7 +490,7 @@ class Dataset(Persistent):
                 return file
 
     def copy_from(self, dataset: "Dataset"):
-        """Copy metadata from another dataset."""
+        """Copy all metadata from another dataset."""
         assert self.identifier == dataset.identifier, f"Identifiers differ {self.identifier} != {dataset.identifier}"
         assert (
             self.initial_identifier == dataset.initial_identifier
@@ -504,6 +541,25 @@ class Dataset(Persistent):
 
     def to_dataset(self, client) -> old_datasets.Dataset:
         """Return an instance of renku.core.models.datasets.Dataset."""
+
+        def convert_creators(creators) -> List[Union[old_agents.Person, old_agents.SoftwareAgent]]:
+            result = []
+            for creator in creators:
+                if isinstance(creator, SoftwareAgent):
+                    agent = old_agents.SoftwareAgent(id=creator.id, label=creator.name)
+                else:
+                    assert isinstance(creator, Person)
+                    agent = old_agents.Person(
+                        affiliation=creator.affiliation,
+                        alternate_name=creator.alternate_name,
+                        email=creator.email,
+                        id=creator.id,
+                        label=creator.name,
+                        name=creator.name,
+                    )
+                result.append(agent)
+            return result
+
         if self.derived_from:
             identifier = Path(self.derived_from).name
             id = generate_dataset_id(client=client, identifier=identifier)
@@ -514,7 +570,7 @@ class Dataset(Persistent):
         return old_datasets.Dataset(
             name=self.name,
             client=client,
-            creators=self.creators,
+            creators=convert_creators(self.creators),
             date_created=self.date_created,
             date_published=self.date_published,
             derived_from=derived_from,
@@ -526,6 +582,7 @@ class Dataset(Persistent):
             in_language=self.in_language.to_language() if self.in_language else None,
             keywords=self.keywords,
             license=self.license,
+            project=client._project,
             same_as=self.same_as.to_url(client) if self.same_as else None,
             tags=[tag.to_dataset_tag(client) for tag in self.tags],
             title=self.title,
@@ -591,7 +648,8 @@ class DatasetsProvenance:
         """Add/update a dataset according to its new content."""
         revision = revision or "HEAD"
 
-        new_dataset = Dataset.from_dataset(dataset, client, revision)
+        new_dataset = Dataset.from_dataset(dataset, client, revision, self._database)
+
         current_dataset = self.get_by_name(dataset.name)
 
         if current_dataset:
@@ -605,19 +663,33 @@ class DatasetsProvenance:
                 current_dataset.copy_from(new_dataset)
                 new_dataset = current_dataset
 
+        if not current_dataset or current_dataset.identifier != new_dataset.identifier:
+            # NOTE: This happens in migrations of broken projects
+            current_dataset = self.get_by_id(new_dataset.id)
+            if current_dataset:
+                current_dataset.copy_from(new_dataset)
+                new_dataset = current_dataset
+
         self._datasets.add(new_dataset)
         self._provenance.pop(new_dataset.derived_from, None)
         self._provenance.add(new_dataset)
 
     def remove(self, dataset, client, revision=None, date=None):
         """Remove a dataset."""
-        new_dataset = Dataset.from_dataset(dataset, client, revision)
+        new_dataset = Dataset.from_dataset(dataset, client, revision, self._database)
         current_dataset = self._datasets.pop(dataset.name, None)
 
         if not current_dataset:
             communication.warn(f"Deleting non-existing dataset '{dataset.name}'")
         elif current_dataset.is_removed():
             communication.warn(f"Deleting an already-removed dataset '{dataset.name}'")
+
+        if not current_dataset or current_dataset.identifier != new_dataset.identifier:
+            # NOTE: This happens in migrations of broken projects
+            current_dataset = self.get_by_id(new_dataset.id)
+            if current_dataset:
+                current_dataset.copy_from(new_dataset)
+                new_dataset = current_dataset
 
         new_dataset.remove(date)
         self._provenance.pop(new_dataset.derived_from, None)
@@ -739,7 +811,7 @@ class NewDatasetSchema(JsonLDSchema):
         model = Dataset
         unknown = EXCLUDE
 
-    creators = Nested(schema.creator, PersonSchema, many=True)
+    creators = Nested(schema.creator, NewPersonSchema, many=True)
     date_created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
     date_published = fields.DateTime(

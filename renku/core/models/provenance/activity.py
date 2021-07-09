@@ -26,13 +26,14 @@ from marshmallow import EXCLUDE
 
 from renku.core.management.command_builder import inject
 from renku.core.metadata.database import Persistent
+from renku.core.metadata.immutable import Immutable
 from renku.core.models import entities as old_entities
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
 from renku.core.models.cwl.annotation import Annotation, AnnotationSchema
 from renku.core.models.entity import Collection, Entity, NewCollectionSchema, NewEntitySchema
 from renku.core.models.provenance import qualified as old_qualified
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
-from renku.core.models.provenance.agents import Person, PersonSchema, SoftwareAgent, SoftwareAgentSchema
+from renku.core.models.provenance.agent import Agent, NewPersonSchema, NewSoftwareAgentSchema, Person, SoftwareAgent
 from renku.core.models.provenance.parameter import (
     ParameterValueSchema,
     PathParameterValue,
@@ -59,12 +60,16 @@ class Association:
         return f"{activity_id}/association"  # TODO: Does it make sense to use plural name here?
 
 
-class Usage:
+class Usage(Immutable):
     """Represent a dependent path."""
 
+    __slots__ = ("entity", "id")
+
+    entity: Union[Collection, Entity]
+    id: str
+
     def __init__(self, *, entity: Union[Collection, Entity], id: str):
-        self.entity: Union[Collection, Entity] = entity
-        self.id: str = id
+        super().__init__(entity=entity, id=id)
 
     @staticmethod
     def generate_id(activity_id: str) -> str:
@@ -72,12 +77,16 @@ class Usage:
         return f"{activity_id}/usages/{uuid4()}"
 
 
-class Generation:
+class Generation(Immutable):
     """Represent an act of generating a path."""
 
+    __slots__ = ("entity", "id")
+
+    entity: Union[Collection, Entity]
+    id: str
+
     def __init__(self, *, entity: Union[Collection, Entity], id: str):
-        self.entity: Union[Collection, Entity] = entity
-        self.id: str = id
+        super().__init__(entity=entity, id=id)
 
     @staticmethod
     def generate_id(activity_id: str) -> str:
@@ -122,13 +131,15 @@ class Activity(Persistent):
 
     @classmethod
     @inject.params(client="LocalClient")
-    def from_process_run(cls, process_run: ProcessRun, plan: Plan, client, order: Optional[int] = None):
+    def from_process_run(
+        cls, process_run: ProcessRun, plan: Plan, rerun_plan: Plan, client, order: Optional[int] = None
+    ):
         """Create an Activity from a ProcessRun."""
         activity_id = Activity.generate_id()
 
-        association = Association(
-            agent=process_run.association.agent, id=Association.generate_id(activity_id), plan=plan
-        )
+        agents = [Agent.from_agent(a) for a in process_run.agents or []]
+        association_agent = Agent.from_agent(process_run.association.agent)
+        association = Association(agent=association_agent, id=Association.generate_id(activity_id), plan=plan)
 
         # NOTE: The same entity can have the same id during different times in its lifetime (e.g. different commit_sha,
         # but the same content). When it gets flattened, some fields will have multiple values which will cause an error
@@ -142,7 +153,7 @@ class Activity(Persistent):
         parameters = _create_parameters(activity_id=activity_id, plan=plan, usages=usages, generations=generations)
 
         return cls(
-            agents=process_run.agents,
+            agents=agents,
             annotations=process_run.annotations,
             association=association,
             ended_at_time=process_run.ended_at_time,
@@ -160,7 +171,7 @@ class Activity(Persistent):
     def generate_id() -> str:
         """Generate an identifier for an activity."""
         # TODO: make id generation idempotent
-        return f"/activities/{uuid4()}"
+        return f"/activities/{uuid4().hex}"
 
 
 def _convert_usage(usage: old_qualified.Usage, activity_id: str, client) -> Usage:
@@ -343,9 +354,9 @@ class ActivityCollection:
                 run = run.subprocesses[0]
 
             plan = Plan.from_run(run=run)
-            plan = dependency_graph.add(plan)
+            base_plan = dependency_graph.add(plan)
 
-            activity = Activity.from_process_run(process_run=process_run, plan=plan)
+            activity = Activity.from_process_run(process_run=process_run, plan=base_plan, rerun_plan=plan)
             self.add(activity)
 
         return self
@@ -365,7 +376,7 @@ class AssociationSchema(JsonLDSchema):
         model = Association
         unknown = EXCLUDE
 
-    agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
+    agent = Nested(prov.agent, [NewSoftwareAgentSchema, NewPersonSchema])
     id = fields.Id()
     plan = Nested(prov.hadPlan, PlanSchema)
 
@@ -410,7 +421,7 @@ class ActivitySchema(JsonLDSchema):
         model = Activity
         unknown = EXCLUDE
 
-    agents = Nested(prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True)
+    agents = Nested(prov.wasAssociatedWith, [NewPersonSchema, NewSoftwareAgentSchema], many=True)
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     association = Nested(prov.qualifiedAssociation, AssociationSchema)
     ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)

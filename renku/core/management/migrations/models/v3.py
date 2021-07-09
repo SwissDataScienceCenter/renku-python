@@ -122,6 +122,14 @@ class Project(Base):
         jsonld.write_yaml(path=path, data=data)
 
 
+class Collection(Base):
+    """Collection migration model."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("members", [])
+        super().__init__(**kwargs)
+
+
 class DatasetFile(Base):
     """DatasetFile migration model."""
 
@@ -251,6 +259,19 @@ class EntitySchemaV3(CommitMixinSchemaV3):
         rdf_type = [prov.Entity, wfprov.Artifact]
 
 
+class CollectionSchemaV3(EntitySchemaV3):
+    """Collection Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.Collection]
+        model = Collection
+        unknown = EXCLUDE
+
+    members = fields.Nested(prov.hadMember, ["DatasetFileSchemaV3", "CollectionSchemaV3"], many=True)
+
+
 class DatasetFileSchemaV3(EntitySchemaV3):
     """DatasetFile schema."""
 
@@ -328,7 +349,7 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
     date_created = fields.DateTime(schema.dateCreated, missing=None)
     date_published = fields.DateTime(schema.datePublished, missing=None)
     description = fields.String(schema.description, missing=None)
-    files = fields.Nested(schema.hasPart, DatasetFileSchemaV3, many=True)
+    files = fields.Nested(schema.hasPart, [DatasetFileSchemaV3, CollectionSchemaV3], many=True)
     identifier = fields.String(schema.identifier)
     in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)

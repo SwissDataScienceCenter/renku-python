@@ -413,3 +413,30 @@ def test_database_persistent_collections(database):
     collections[entity_path][entity_checksum].append(activity_3)
 
     assert {id_1, id_2, id_3} == {activity.id for activity in collections[entity_path][entity_checksum]}
+
+
+def test_database_immutable_object(database):
+    """Test storage and retrieval of immutable objects."""
+    database, storage = database
+    index_name = "collections"
+    database.add_index(name=index_name, object_type=PersistentMapping)
+
+    usage = Usage(entity=Entity(checksum="42", path="dummy/path"), id="/usages/42")
+    id_1 = "/activities/1"
+    activity_1 = Activity(id=id_1, usages=[usage])
+    id_2 = "/activities/2"
+    activity_2 = Activity(id=id_2, usages=[usage])
+
+    database.get("activities").add(activity_1)
+    database.get("activities").add(activity_2)
+    database.commit()
+
+    database = Database(storage=storage)
+    activity_1 = database["activities"][id_1]
+    activity_2 = database["activities"][id_2]
+
+    usage_1 = activity_1.usages[0]
+    usage_2 = activity_1.usages[0]
+
+    assert isinstance(usage_1, Usage)
+    assert usage_1 is usage_2
