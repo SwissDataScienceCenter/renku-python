@@ -19,6 +19,7 @@
 
 import copy
 import itertools
+import re
 from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Any, Dict, List
@@ -27,6 +28,7 @@ from uuid import uuid4
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
+from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.metadata.database import Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
@@ -38,6 +40,7 @@ from renku.core.models.workflow.parameter import (
     CommandOutput,
     CommandOutputSchema,
     CommandParameter,
+    CommandParameterBase,
     CommandParameterSchema,
     MappedIOStream,
 )
@@ -77,6 +80,8 @@ class Plan(Persistent):
 
         if not self.name:
             self.name = self._get_default_name()
+        else:
+            Plan.validate_name(name)
 
     @classmethod
     def from_run(cls, run: Run):
@@ -156,7 +161,7 @@ class Plan(Persistent):
         )
 
     @staticmethod
-    def generate_id(uuid: str) -> str:
+    def generate_id(uuid: str = None) -> str:
         """Generate an identifier for Plan."""
         uuid = uuid or uuid4().hex
         return f"/plans/{uuid}"
@@ -169,6 +174,12 @@ class Plan(Persistent):
         name = secure_filename(name)
         rand_length = 5
         return f"{name[:MAX_GENERATED_NAME_LENGTH - rand_length -1]}-{uuid4().hex[:rand_length]}"
+
+    @staticmethod
+    def validate_name(name: str):
+        """Check a name for invalid characters."""
+        if re.match("[\.,=]+", name):
+            raise errors.ParameterError(f"Name {name} contains illegal characters. '.,=' are not allowed.")
 
     def assign_new_id(self):
         """Assign a new UUID.
@@ -206,6 +217,40 @@ class Plan(Persistent):
             and get_output_patterns(self) == get_output_patterns(other)
             and get_parameters(self) == get_parameters(other)
         )
+
+    def resolve_mapping_path(self, mapping_path: str) -> CommandParameterBase:
+        """Resolve a mapping path to its reference parameter."""
+
+        parts = mapping_path.split(".", maxsplit=1)
+
+        if len(parts) > 1:
+            raise errors.ParameterNotFoundError(mapping_path, self.name)
+
+        return self.resolve_direct_reference(parts[0])
+
+    def resolve_direct_reference(self, reference: str) -> CommandParameterBase:
+        """Resolve a direct parameter reference."""
+        if reference.startswith("@input"):
+            try:
+                return self.inputs[int(reference[6:]) - 1]
+            except (ValueError, IndexError):
+                raise errors.ParameterNotFoundError(reference, self.name)
+        elif reference.startswith("@output"):
+            try:
+                return self.outputs[int(reference[7:]) - 1]
+            except (ValueError, IndexError):
+                raise errors.ParameterNotFoundError(reference, self.name)
+        elif reference.startswith("@param"):
+            try:
+                return self.parameters[int(reference[6:]) - 1]
+            except (ValueError, IndexError):
+                raise errors.ParameterNotFoundError(reference, self.name)
+
+        for parameter in self.inputs + self.outputs + self.parameters:
+            if parameter.name == reference:
+                return parameter
+
+        raise errors.ParameterNotFoundError(reference, self.name)
 
     def to_argv(self) -> List[Any]:
         """Convert a Plan into argv list."""

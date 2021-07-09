@@ -19,7 +19,7 @@
 
 import urllib
 from pathlib import PurePosixPath
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 from uuid import uuid4
 
 from marshmallow import EXCLUDE
@@ -238,6 +238,49 @@ class CommandOutput(CommandParameterBase):
         return self._generate_name(base="output")
 
 
+class ParameterMapping(CommandParameterBase):
+    """A mapping of child parameter(s) to a parent GroupedRun."""
+
+    def __init__(
+        self,
+        *,
+        default_value: Any = None,
+        description: str = None,
+        id: str,
+        label: str = None,
+        name: str = None,
+        mapped_parameters: List[CommandParameterBase] = None,
+        position: int = None,
+        prefix: str = None,
+    ):
+        super().__init__(
+            default_value=default_value,
+            description=description,
+            id=id,
+            label=label,
+            name=name,
+            position=None,
+            prefix=None,
+        )
+
+        self.mapped_parameters: List[CommandParameterBase] = mapped_parameters
+
+    @staticmethod
+    def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
+        """Generate an id for CommandOutput."""
+        return CommandParameterBase._generate_id(plan_id, parameter_type="mappings", position=position, postfix=postfix)
+
+    def to_stream_representation(self) -> str:
+        """Input stream representation."""
+        return ""
+
+    def _get_default_label(self) -> str:
+        return f"Command Parameter Mapping '{self.default_value}'"
+
+    def _get_default_name(self) -> str:
+        return self._generate_name(base="mapping")
+
+
 class MappedIOStreamSchema(JsonLDSchema):
     """MappedIOStream schema."""
 
@@ -307,3 +350,20 @@ class CommandOutputSchema(CommandParameterBaseSchema):
 
     create_folder = fields.Boolean(renku.createFolder, missing=False)
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
+
+
+class ParameterMappingSchema(CommandParameterBaseSchema):
+    """ParameterMapping schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.ParameterMapping]
+        model = ParameterMapping
+        unknown = EXCLUDE
+
+    mapped_parameters = Nested(
+        renku.mapsTo,
+        ["ParameterMappingSchema", CommandInputSchema, CommandOutputSchema, CommandParameterSchema],
+        many=True,
+    )

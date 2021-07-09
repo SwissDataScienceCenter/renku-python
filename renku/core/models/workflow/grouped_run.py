@@ -1,0 +1,172 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Eidgenössische Technische Hochschule Zürich (ETHZ).
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Represent a group of run templates."""
+
+from datetime import datetime
+from typing import List
+from uuid import uuid4
+
+from marshmallow import EXCLUDE
+
+from renku.core import errors
+from renku.core.metadata.database import Persistent
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
+from renku.core.models.workflow.parameter import CommandParameterBase, ParameterMapping, ParameterMappingSchema
+from renku.core.models.workflow.plan import Plan, PlanSchema
+
+
+class GroupedRun(Persistent):
+    """A plan containing child plans."""
+
+    def __init__(
+        self,
+        *,
+        description: str = None,
+        id: str,
+        invalidated_at: datetime = None,
+        keywords: List[str] = None,
+        name: str,
+        plans: List[Plan] = None,
+        mappings: List[ParameterMapping] = None,
+    ):
+        self.description: str = description
+        self.id: str = id
+        self.invalidated_at: datetime = invalidated_at
+        self.keywords: List[str] = keywords or []
+        self.name: str = name
+
+        Plan.validate_name(name)
+
+        self.plans: List[Plan] = plans
+        self.mappings: List[ParameterMapping] = mappings or []
+
+    @staticmethod
+    def generate_id(uuid: str = None) -> str:
+        """Generate an identifier for Plan."""
+        uuid = uuid or str(uuid4())
+        return f"/plans/{uuid}"
+
+    def set_mappings_from_strings(self, mapping_strings: List[str]) -> None:
+        """Set mappings by parsing mapping strings."""
+        for mapping_string in mapping_strings:
+            name, targets = mapping_string.split("=", maxsplit=1)
+            targets = targets.split(",")
+
+            target_params = []
+
+            for target in targets:
+                target_params.append(self.resolve_mapping_path(target))
+
+            self.mappings.append(
+                ParameterMapping(
+                    name=name,
+                    mapped_parameters=target_params,
+                    id=ParameterMapping.generate_id(plan_id=self.id, postfix=name),
+                )
+            )
+
+    def add_mapping(self, mapping: ParameterMapping) -> None:
+        """Add a mapping to this run."""
+        existing: ParameterMapping = next((m for m in self.mappings if mapping.name == m.name), None)
+
+        if not existing:
+            self.mappings.append(mapping)
+            return
+
+        new = set(mapping.mapped_parameters) - set(existing.mapped_parameters)
+
+        if new:
+            existing.mapped_parameters.extend(new)
+
+    def set_mapping_defaults(self, default_strings: List[str]) -> None:
+        """Set default value based on a default specification string."""
+        for default_string in default_strings:
+            target, value = default_string.split("=", maxsplit=1)
+
+            mapping = self.resolve_mapping_path(target)
+
+            mapping.default_value = value
+
+    def set_mapping_descriptions(self, mapping_descriptions: List[str]) -> None:
+        """Set descriptions for mappings."""
+
+        for mapping_description in mapping_descriptions:
+            target, value = mapping_description.split("=", maxsplit=1)
+
+            mapping = self.resolve_direct_reference(target)
+            mapping.description = value.strip(' "')
+
+    def resolve_mapping_path(self, mapping_path: str) -> CommandParameterBase:
+        """Resolve a mapping path to its reference parameter."""
+
+        parts = mapping_path.split(".", maxsplit=1)
+
+        if len(parts) == 1:
+            return self.resolve_direct_reference(parts[0])
+
+        prefix, suffix = parts
+
+        if prefix.startswith("@step"):
+            # NOTE: relative reference
+            try:
+                workflow = self.plans[int(prefix[5:]) - 1]
+            except (ValueError, IndexError):
+                raise errors.ParameterNotFoundError(mapping_path, self.name)
+            if isinstance(workflow, GroupedRun):
+                return workflow.resolve_mapping_path(suffix)
+            else:
+                return workflow.resolve_direct_reference(suffix)
+
+        for workflow in self.plans:
+            if workflow.name == prefix:
+                return workflow.resolve_mapping_path(suffix)
+
+        raise errors.ParameterNotFoundError(mapping_path, self.name)
+
+    def resolve_direct_reference(self, reference) -> CommandParameterBase:
+        """Resolve a direct parameter reference."""
+        if reference.startswith("@mapping"):
+            try:
+                return self.mappings[int(reference[8:]) - 1]
+            except (ValueError, IndexError):
+                raise errors.ParameterNotFoundError(reference, self.name)
+
+        for mapping in self.mappings:
+            if mapping.name == reference:
+                return mapping
+
+        raise errors.ParameterNotFoundError(reference, self.name)
+
+
+class GroupedRunSchema(JsonLDSchema):
+    """Plan schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork, renku.GroupedRun]
+        model = GroupedRun
+        unknown = EXCLUDE
+
+    description = fields.String(schema.description, missing=None)
+    id = fields.Id()
+    mappings = Nested(renku.hasMapping, [ParameterMappingSchema], many=True, missing=None)
+    invalidated_at = fields.DateTime(prov.invalidatedAtTime, add_value_types=True)
+    keywords = fields.List(schema.keywords, fields.String(), missing=None)
+    name = fields.String(schema.name, missing=None)
+    plans = Nested(renku.hasSubprocess, [PlanSchema, "GroupedRunSchema"], many=True)

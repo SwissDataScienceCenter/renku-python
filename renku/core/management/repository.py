@@ -523,6 +523,7 @@ class RepositoryApiMixin(GitCore):
         for activity in activity_collection.activities:
             database.get("activities").add(activity)
             database.get("plans").add(activity.association.plan)
+            database.get("plans_by_name").add(activity.association.plan)
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""

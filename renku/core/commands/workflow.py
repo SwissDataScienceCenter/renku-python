@@ -20,12 +20,16 @@
 
 from collections import defaultdict
 from pathlib import Path
+from typing import List
 
+from renku.core import errors
 from renku.core.commands.graph import Graph
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.metadata.database import Database
 from renku.core.models.workflow.converters.cwl import CWLConverter
+from renku.core.models.workflow.grouped_run import GroupedRun
 from renku.core.utils import communication
 
 
@@ -118,3 +122,59 @@ def _create_workflow(output_file, revision, paths, client: LocalClient):
 def create_workflow_command():
     """Command that create a workflow description for a file."""
     return Command().command(_create_workflow)
+
+
+@inject.autoparams()
+def _group_workflow(
+    name: str,
+    description: str,
+    mappings: List[str],
+    defaults: List[str],
+    param_descriptions: List[str],
+    map_inputs: bool,
+    map_outputs: bool,
+    map_params: bool,
+    keywords: List[str],
+    workflows: List[str],
+    database: Database,
+):
+    """Group workflows into a GroupedRun."""
+
+    if database.get("plans_by_name").get(name):
+        raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
+
+    child_workflows = []
+
+    for workflow_name_or_id in workflows:
+        child_workflow = database.get("plans").get(workflow_name_or_id)
+
+        if not child_workflow:
+            child_workflow = database.get("plans_by_name").get(workflow_name_or_id)
+
+        if not child_workflow:
+            raise errors.ObjectNotFoundError(f"Plan with name or id {workflow_name_or_id} doesn't exist.")
+
+        child_workflows.append(child_workflow)
+
+    run = GroupedRun(
+        description=description, id=GroupedRun.generate_id(), keywords=keywords, name=name, plans=child_workflows
+    )
+
+    if mappings:
+        run.set_mappings_from_strings(mappings)
+
+    if defaults:
+        run.set_mapping_defaults(defaults)
+
+    if param_descriptions:
+        run.set_mapping_descriptions(param_descriptions)
+
+    database.get("plans")[run.id] = run
+    database.get("plans_by_name")[run.name] = run
+
+
+def group_workflow_command():
+    """Command that creates a group of several workflows."""
+    return (
+        Command().command(_group_workflow).require_migration().require_clean().with_database(write=True).with_commit()
+    )

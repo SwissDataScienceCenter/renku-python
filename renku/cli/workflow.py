@@ -87,6 +87,7 @@ import click
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.workflow import (
     create_workflow_command,
+    group_workflow_command,
     list_workflows_command,
     remove_workflow_command,
     rename_workflow_command,
@@ -173,3 +174,47 @@ def create(output_file, revision, paths):
 
     if not output_file:
         click.echo(result.output)
+
+
+@workflow.command()
+@click.option("-d", "--description", help="Workflow step's description.")
+@click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
+@click.option("defaults", "-s", "--set", multiple=True, help="Default value for a workflow parameter.")
+@click.option("-p", "--describe-param", multiple=True, help="Default value for a workflow parameter.")
+@click.option("--map-inputs", is_flag=True, help="Exposes all child inputs as inputs on the GroupedRun.")
+@click.option("--map-outputs", is_flag=True, help="Exposes all child outputs as inputs on the GroupedRun.")
+@click.option("--map-params", is_flag=True, help="Exposes all child parameters as inputs on the GroupedRun.")
+@click.option("--map-all", is_flag=True, help="Combination of --map-inputs, --map-outputs, --map-params.")
+@click.option("--keyword", multiple=True, help="List of keywords for the workflow.")
+@click.argument("name", required=True)
+@click.argument("workflow", nargs=-1, required=True, type=click.UNPROCESSED)
+def group(
+    description,
+    mappings,
+    defaults,
+    describe_param,
+    map_inputs,
+    map_outputs,
+    map_params,
+    map_all,
+    keyword,
+    name,
+    workflow,
+):
+    """Create a grouped workflow consisting of multiple steps."""
+
+    if map_all:
+        map_inputs, map_outputs, map_params = True
+
+    group_workflow_command().build().execute(
+        name=name,
+        description=description,
+        mappings=mappings,
+        defaults=defaults,
+        param_descriptions=describe_param,
+        map_inputs=map_inputs,
+        map_outputs=map_outputs,
+        map_params=map_params,
+        keywords=keyword,
+        workflows=workflow,
+    )

@@ -34,6 +34,7 @@ CORE_FIXTURE_LOCATIONS = [
     "tests.core.fixtures.core_plugins",
     "tests.core.fixtures.core_projects",
     "tests.core.fixtures.core_serialization",
+    "tests.core.fixtures.core_workflow",
 ]
 
 GLOBAL_FIXTURE_LOCATIONS = [

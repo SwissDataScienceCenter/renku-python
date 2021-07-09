@@ -477,8 +477,16 @@ class NodeNotFoundError(RenkuException):
 
 
 class ObjectNotFoundError(RenkuException):
-    """Raise when an object is not found in the storage."""
+    """Raised when an object is not found in the storage."""
 
     def __init__(self, filename):
         """Embed exception and build a custom message."""
         super().__init__(f"Cannot find object: '{filename}'")
+
+
+class ParameterNotFoundError(RenkuException):
+    """Raised when a parameter reference cannot be resolved to a parameter."""
+
+    def __init__(self, parameter, workflow):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Cannot find parameter '{parameter}' on workflow {workflow}")
