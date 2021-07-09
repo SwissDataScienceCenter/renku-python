@@ -35,9 +35,9 @@ from werkzeug.utils import cached_property, secure_filename
 
 from renku.core import errors
 from renku.core.compat import Path
-from renku.core.incubation.database import Database
 from renku.core.management.command_builder import inject
 from renku.core.management.config import RENKU_HOME
+from renku.core.metadata.database import Database
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.projects import Project
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun

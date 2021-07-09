@@ -24,7 +24,7 @@ from typing import Tuple
 import pytest
 from ZODB.POSException import POSKeyError
 
-from renku.core.incubation.database import Database
+from renku.core.metadata.database import Database
 
 
 class DummyStorage:

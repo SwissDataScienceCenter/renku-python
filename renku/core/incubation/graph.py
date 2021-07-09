@@ -34,13 +34,13 @@ from pkg_resources import resource_filename
 from renku.core import errors
 from renku.core.commands.dataset import create_dataset_helper
 from renku.core.commands.update import execute_workflow
-from renku.core.incubation.database import Database
 from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DATASET_METADATA_PATHS, DatasetsApiMixin
 from renku.core.management.migrate import migrate
 from renku.core.management.repository import RepositoryApiMixin
+from renku.core.metadata.database import Database
 from renku.core.models.entities import Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.activities import Activity

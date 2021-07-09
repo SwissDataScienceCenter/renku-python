@@ -22,7 +22,7 @@ import os
 import pytest
 
 from renku.cli import cli
-from renku.core.incubation.database import Database
+from renku.core.metadata.database import Database
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 

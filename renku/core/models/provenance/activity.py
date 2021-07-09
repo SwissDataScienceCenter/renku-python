@@ -24,8 +24,8 @@ from uuid import uuid4
 
 from marshmallow import EXCLUDE
 
-from renku.core.incubation.database import Persistent
 from renku.core.management.command_builder import inject
+from renku.core.metadata.database import Persistent
 from renku.core.models import entities as old_entities
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
 from renku.core.models.cwl.annotation import Annotation, AnnotationSchema

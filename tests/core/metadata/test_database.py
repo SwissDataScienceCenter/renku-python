@@ -23,7 +23,7 @@ from persistent.list import PersistentList
 from persistent.mapping import PersistentMapping
 
 from renku.cli import cli
-from renku.core.incubation.database import PERSISTED, Database
+from renku.core.metadata.database import PERSISTED, Database
 from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Activity, Association, Usage
 from renku.core.models.workflow.plan import Plan
