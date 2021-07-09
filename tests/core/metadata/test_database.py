@@ -41,7 +41,6 @@ def test_database_create(client, runner):
     assert client.has_graph_files()
 
 
-@pytest.mark.xfail
 def test_database_recreate(client, runner):
     """Test can force re-create the database."""
     assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code

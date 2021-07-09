@@ -18,6 +18,7 @@
 """Custom database for store Persistent objects."""
 
 import datetime
+import gzip
 import hashlib
 import json
 import weakref
@@ -242,7 +243,9 @@ class Database:
 
     def _store_object(self, object: Persistent):
         data = self._writer.serialize(object)
-        self._storage.store(filename=self._get_filename_from_oid(object._p_oid), data=data)
+        # TODO: Set compress based on the object type in the final version
+        compress = False  # if isinstance(object, (OOBTree, OOBucket, Project, Index)) else True
+        self._storage.store(filename=self._get_filename_from_oid(object._p_oid), data=data, compress=compress)
 
         self._cache[object._p_oid] = object
 
@@ -447,45 +450,47 @@ class Index(Persistent):
 class Storage:
     """Store Persistent objects on the disk."""
 
-    MIN_COMPRESSED_FILENAME_LENGTH = 64
+    OID_FILENAME_LENGTH = 64
 
     def __init__(self, path: Union[Path, str]):
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
 
-    def store(self, filename: str, data: Union[Dict, List]):
+    def store(self, filename: str, data: Union[Dict, List], compress=False):
         """Store object."""
         assert isinstance(filename, str)
 
-        compressed = len(filename) >= Storage.MIN_COMPRESSED_FILENAME_LENGTH
-        if compressed:
+        is_oid_path = len(filename) == Storage.OID_FILENAME_LENGTH
+        if is_oid_path:
             path = self.path / filename[0:2] / filename[2:4] / filename
             path.parent.mkdir(parents=True, exist_ok=True)
-            open_func = open  # TODO: Change this to gzip.open for the final version
         else:
             path = self.path / filename
-            open_func = open
 
-        with open_func(path, "w") as file:
+        open_func = gzip.open if compress else open
+
+        with open_func(path, "wt") as file:
             json.dump(data, file, ensure_ascii=False, sort_keys=True, indent=2)
 
     def load(self, filename: str):
         """Load data for object with object id oid."""
         assert isinstance(filename, str)
 
-        compressed = len(filename) >= Storage.MIN_COMPRESSED_FILENAME_LENGTH
-        if compressed:
+        is_oid_path = len(filename) == Storage.OID_FILENAME_LENGTH
+        if is_oid_path:
             path = self.path / filename[0:2] / filename[2:4] / filename
-            open_func = open  # TODO: Change this to gzip.open for the final version
         else:
             path = self.path / filename
-            open_func = open
 
         if not path.exists():
             raise errors.ObjectNotFoundError(filename)
 
-        with open_func(path) as file:
-            data = json.load(file)
+        try:
+            with gzip.open(path) as file:
+                data = json.load(file)
+        except OSError:  # Not a gzip file
+            with open(path) as file:
+                data = json.load(file)
 
         return data
 
