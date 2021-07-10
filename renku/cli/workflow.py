@@ -217,6 +217,7 @@ from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.commands.workflow import (
     compose_workflow_command,
     create_workflow_command,
+    edit_workflow_command,
     list_workflows_command,
     remove_workflow_command,
     rename_workflow_command,
@@ -419,7 +420,7 @@ def rename(old, new, force):
 @click.argument("name", metavar="<name>")
 @click.option("--force", is_flag=True, help="Override the existence check.")
 def remove(name, force):
-    """Remove the remote named <name>."""
+    """Remove a workflow named <name>."""
     remove_workflow_command().build().execute(name=name, force=force)
 
 
@@ -497,3 +498,55 @@ def compose(
 
     if not result.error:
         _print_composite_plan(result.output)
+
+
+def _kv_to_dict(ctx, param, values):
+    return dict([value.split("=") for value in values])
+
+
+@workflow.command()
+@click.argument("workflow_name", metavar="<name or uuid>")
+@click.option("--name", metavar="<new name>", help="New name of the workflow")
+@click.option("--description", metavar="<new desc>", help="New description of the workflow")
+@click.option(
+    "--set",
+    "set_params",
+    multiple=True,
+    metavar="<parameter>=<value>",
+    callback=_kv_to_dict,
+    help="Set default <value> for a <parameter>/add new parameter",
+)
+@click.option(
+    "--map",
+    "map_params",
+    multiple=True,
+    metavar="<parameter>=<parameter or expression>",
+    help="New mapping on the workflow",
+)
+@click.option(
+    "--rename-param",
+    "rename_params",
+    multiple=True,
+    metavar='<parameter>="name"',
+    callback=_kv_to_dict,
+    help="New description of the workflow",
+)
+@click.option(
+    "--describe-param",
+    "describe_params",
+    multiple=True,
+    metavar='<parameter>="description"',
+    callback=_kv_to_dict,
+    help="New description of the workflow",
+)
+def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params):
+    """Edit workflow details."""
+    edit_workflow_command().build().execute(
+        name=workflow_name,
+        new_name=name,
+        description=description,
+        set_params=set_params,
+        map_params=set_params,
+        rename_params=rename_params,
+        describe_params=describe_params,
+    )
