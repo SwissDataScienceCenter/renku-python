@@ -19,7 +19,7 @@
 
 import urllib
 from pathlib import PurePosixPath
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional
 from uuid import uuid4
 
 from marshmallow import EXCLUDE

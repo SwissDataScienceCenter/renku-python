@@ -178,7 +178,7 @@ class Plan(Persistent):
     @staticmethod
     def validate_name(name: str):
         """Check a name for invalid characters."""
-        if re.match("[\.,=]+", name):
+        if re.match("[.,=]+", name):
             raise errors.ParameterError(f"Name {name} contains illegal characters. '.,=' are not allowed.")
 
     def assign_new_id(self):

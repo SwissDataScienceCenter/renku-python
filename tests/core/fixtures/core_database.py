@@ -70,6 +70,6 @@ def database() -> Tuple[Database, DummyStorage]:
 
     database.add_index(name="activities", object_type=Activity, attribute="id")
     database.add_index(name="plans", object_type=AbstractPlan, attribute="id")
-    database.add_index(name="plans_by_name", object_type=AbstractPlan, attribute="name")
+    database.add_index(name="plans-by-name", object_type=AbstractPlan, attribute="name")
 
     yield database, storage

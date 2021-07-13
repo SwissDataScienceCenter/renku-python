@@ -79,6 +79,92 @@ by using:
 You can use ``--revision`` to specify the revision of the output file to
 generate the workflow for. You can also export to a file directly with
 ``-o <path>``.
+
+
+Composing workflows into larger workflows
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For more complex workflows consisting of several steps, you can use the
+``renku workflow group`` command. This creates a new workflow that has
+substeps.
+
+The basic usage is:
+
+.. code-block:: console
+
+   $ renku run --name workflow1 -- command
+   $ renku run --name workflow2 -- command
+   $ renku workflow group my-grouped-workflow workflow1 workflow2
+
+This would create a new workflow ``my-grouped-workflow`` that consists
+of ``workflow1`` and ``workflow2`` as steps. This new workflow is just
+like any other workflow in renku in that it can be executed, exported
+or grouped with other workflows.
+
+You can expose parameters of child steps on the parent workflow using
+``--map``/``-m``  arguments followed by a mapping expression. Mapping expressions
+take the form of ``<name>=<expression>`` where ``name`` is the name of the
+property to be created on the parent workflow and expression points to one
+or more fields on the child steps that should be mapped to this property.
+The expressions come in two flavors, absolute references using the names
+of workflows and properties, and relative references specifying the
+position within a workflow.
+
+An absolute expression in the example above could be ``workflow1.my_dataset``
+to refer to the input, output or argument named ``my_dataset` on the step
+``workflow1``. A relative expression could be ``@step2.@output1`` to refer
+to the first output of the second step of the grouped workflow.
+
+Valid relative expressions are ``@input<n>``, ``@output<n>`` and ``@param<n>``
+for the n'th input, output or argument of a step, respectively. For referring
+to steps inside a grouped workflow, you can use ``@step<n>``. For referencing
+a mapping on a grouped workflow, you can use ``@mapping<n>``. Of course, the
+names of the objects for all these cases also work.
+
+The expressions can also be combined using ``,`` if a mapping should point
+to more than one parameter of a child step.
+
+You can mix absolute and relative reference in the same expression, as you see fit.
+
+A full example of this would be:
+
+.. code-block:: console
+
+   $ renku workflow group --map input_file=workflow1.@input2 \
+       --map output_file=@step1.my-output,@step2.step2s_output \
+       my-grouped-workflow workflow1 workflow2
+
+This would create a mapping called ``input_file`` on the parent workflow that
+points to the second input of ``workflow1`` and a mapping called ``output_file``
+that points to both the output ``my-output`` on ``workflow1`` and
+``step2s_output`` on ``workflow2``.
+
+You can also set default values for mappings, which override the default values
+of the parameters they're pointing to by using the ``--set``/``-s`` parameter, for
+instance:
+
+.. code-block:: console
+
+   $ renku workflow group --map input_file=workflow1.@input2 \
+       --set input_file=data.csv
+       my-grouped-workflow workflow1 workflow2
+
+
+This would lead to ``data.csv`` being used for the second input of
+``workflow1`` when ``my-grouped-workflow`` is executed (if it isn't overridden
+at execution time).
+
+You can add a description to the mappings to make them more human-readable
+by using the ``--describe-param``/``-p`` parameter, as shown here:
+
+
+
+.. code-block:: console
+
+   $ renku workflow group --map input_file=workflow1.@input2 \
+       -p input_file="The dataset to process"
+       my-grouped-workflow workflow1 workflow2
+
 """
 
 

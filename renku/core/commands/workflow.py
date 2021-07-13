@@ -140,7 +140,7 @@ def _group_workflow(
 ):
     """Group workflows into a GroupedRun."""
 
-    if database.get("plans_by_name").get(name):
+    if database.get("plans-by-name").get(name):
         raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
 
     child_workflows = []
@@ -149,7 +149,7 @@ def _group_workflow(
         child_workflow = database.get("plans").get(workflow_name_or_id)
 
         if not child_workflow:
-            child_workflow = database.get("plans_by_name").get(workflow_name_or_id)
+            child_workflow = database.get("plans-by-name").get(workflow_name_or_id)
 
         if not child_workflow:
             raise errors.ObjectNotFoundError(f"Plan with name or id {workflow_name_or_id} doesn't exist.")
@@ -170,7 +170,7 @@ def _group_workflow(
         run.set_mapping_descriptions(param_descriptions)
 
     database.get("plans")[run.id] = run
-    database.get("plans_by_name")[run.name] = run
+    database.get("plans-by-name")[run.name] = run
 
 
 def group_workflow_command():
