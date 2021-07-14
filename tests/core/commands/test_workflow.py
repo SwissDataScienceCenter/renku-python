@@ -69,7 +69,7 @@ def test_grouped_run_resolve_absolute_mapping(grouped_run):
     [
         (["prop1=@step1.@input1"], {"prop1"}),
         (
-            ["prop_abcdefg123A=run2.run2_output1", "prop47=run2.@output1", "something=@step1.run1_param1"],
+            ["prop_abcdefg123A=run2.run2_output1", "prop47=run2.@output2", "something=@step1.run1_param1"],
             {"prop_abcdefg123A", "prop47", "something"},
         ),
         (["prop1=@step1.@input1", "prop2=prop1"], {"prop1", "prop2"}),
@@ -90,20 +90,21 @@ def test_grouped_run_create_mapping_nested(grouped_run):
     """Test parsing of mapping strings."""
     grouped, run1, _ = grouped_run
 
-    grouped.set_mappings_from_strings(["prop1=@step1.@input1"])
+    grouped.set_mappings_from_strings(["prop1=@step1.@input1", "prop2=@step2.@output2"])
 
     grouped2 = GroupedRun(id=GroupedRun.generate_id(), plans=[run1, grouped], name="grouped2")
 
-    grouped2.set_mappings_from_strings(
-        ["prop2=grouped1.@mapping1", "prop3=grouped1.prop1", "direct=run1.@input1", "nested=grouped1.run1.@input1"]
-    )
+    with pytest.raises(errors.MappingExistsError):
+        grouped2.set_mappings_from_strings(["prop2=grouped1.@mapping1", "prop3=grouped1.prop1"])
+
+    grouped2.set_mappings_from_strings(["prop3=grouped1.prop2", "direct=run1.@input1", "nested=grouped1.run1.@input2"])
 
     assert len(grouped2.mappings) == 4
 
     assert next(filter(lambda m: m.name == "prop2", grouped2.mappings)).mapped_parameters[0] == grouped.mappings[0]
-    assert next(filter(lambda m: m.name == "prop3", grouped2.mappings)).mapped_parameters[0] == grouped.mappings[0]
+    assert next(filter(lambda m: m.name == "prop3", grouped2.mappings)).mapped_parameters[0] == grouped.mappings[1]
     assert next(filter(lambda m: m.name == "direct", grouped2.mappings)).mapped_parameters[0] == run1.inputs[0]
-    assert next(filter(lambda m: m.name == "nested", grouped2.mappings)).mapped_parameters[0] == run1.inputs[0]
+    assert next(filter(lambda m: m.name == "nested", grouped2.mappings)).mapped_parameters[0] == run1.inputs[1]
 
 
 def test_grouped_run_set_defaults(grouped_run):
@@ -138,3 +139,42 @@ def test_grouped_run_set_description(grouped_run):
 
     with pytest.raises(errors.ParameterNotFoundError):
         grouped.set_mapping_descriptions(["@step1.@param1=xyz", "run2.run2_input1=7.89"])
+
+
+def test_grouped_run_map_all_inputs(grouped_run):
+    """Test automatic mapping of all child inputs."""
+
+    grouped, run1, run2 = grouped_run
+
+    grouped.map_all_inputs()
+    assert len(grouped.mappings) == 4
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run1.inputs[0])
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run1.inputs[1])
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.inputs[0])
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.inputs[1])
+
+
+def test_grouped_run_map_all_outputs(grouped_run):
+    """Test automatic mapping of all child outputs."""
+
+    grouped, run1, run2 = grouped_run
+
+    grouped.map_all_outputs()
+    assert len(grouped.mappings) == 4
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run1.outputs[0])
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run1.outputs[1])
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.outputs[0])
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.outputs[1])
+
+
+def test_grouped_run_map_all_parameters(grouped_run):
+    """Test automatic mapping of all child parameters."""
+
+    grouped, run1, run2 = grouped_run
+
+    grouped.map_all_parameters()
+    assert len(grouped.mappings) == 4
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run1.parameters[0])
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run1.parameters[1])
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.parameters[0])
+    assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.parameters[1])

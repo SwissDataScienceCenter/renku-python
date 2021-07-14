@@ -490,3 +490,15 @@ class ParameterNotFoundError(RenkuException):
     def __init__(self, parameter, workflow):
         """Embed exception and build a custom message."""
         super().__init__(f"Cannot find parameter '{parameter}' on workflow {workflow}")
+
+
+class MappingExistsError(RenkuException):
+    """Raised when a parameter mapping exists already."""
+
+    def __init__(self, existing_mappings):
+        """Embed exception and build a custom message."""
+        existing = "\n\t".join(existing_mappings)
+        super().__init__(
+            "Duplicate mapping detected. The following mapping targets "
+            f"already exist on these mappings: \n\t{existing}"
+        )

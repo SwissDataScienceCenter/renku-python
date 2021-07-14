@@ -17,8 +17,9 @@
 # limitations under the License.
 """Represent a group of run templates."""
 
+from collections import defaultdict
 from datetime import datetime
-from typing import List
+from typing import Callable, Dict, List
 from uuid import uuid4
 
 from marshmallow import EXCLUDE
@@ -61,6 +62,19 @@ class GroupedRun(Persistent):
         uuid = uuid or str(uuid4())
         return f"/plans/{uuid}"
 
+    def _find_existing_mapping(
+        self, targets: List[CommandParameterBase]
+    ) -> Dict[CommandParameterBase, List[ParameterMapping]]:
+        """Find if any mapping already exists for any of the targets."""
+        existing = defaultdict(list)
+        for target in targets:
+            found = [m for m in self.mappings if target in m.mapped_parameters]
+
+            if found:
+                existing[target].extend(found)
+
+        return dict(existing)
+
     def set_mappings_from_strings(self, mapping_strings: List[str]) -> None:
         """Set mappings by parsing mapping strings."""
         for mapping_string in mapping_strings:
@@ -72,7 +86,14 @@ class GroupedRun(Persistent):
             for target in targets:
                 target_params.append(self.resolve_mapping_path(target))
 
-            self.mappings.append(
+            existing = self._find_existing_mapping(target_params)
+
+            if existing:
+                raise errors.MappingExistsError(
+                    [k.name + ": " + ", ".join(m.name for m in v) for k, v in existing.items()]
+                )
+
+            self.add_mapping(
                 ParameterMapping(
                     name=name,
                     mapped_parameters=target_params,
@@ -92,6 +113,44 @@ class GroupedRun(Persistent):
 
         if new:
             existing.mapped_parameters.extend(new)
+
+    def _map_all(self, selector: Callable[[Plan], CommandParameterBase]) -> None:
+        """Automatically map all base parameters matched by selection_lambda on this run."""
+
+        for step in self.plans:
+            if not isinstance(step, Plan):
+                continue
+
+            params = selector(step)
+
+            existing = self._find_existing_mapping(params)
+            non_mapped = set(params) - existing.keys()
+
+            for param in non_mapped:
+                name = f"{step.name}_{param.name}"
+                self.add_mapping(
+                    ParameterMapping(
+                        name=name,
+                        mapped_parameters=[param],
+                        id=ParameterMapping.generate_id(
+                            plan_id=self.id,
+                            postfix=name,
+                        ),
+                        default_value=param.default_value,
+                    )
+                )
+
+    def map_all_inputs(self) -> None:
+        """Map all unmapped inputs from child steps to the parent."""
+        self._map_all(lambda x: x.inputs)
+
+    def map_all_outputs(self) -> None:
+        """Map all unmapped outputs from child steps to the parent."""
+        self._map_all(lambda x: x.outputs)
+
+    def map_all_parameters(self) -> None:
+        """Map all unmapped parameters from child steps to the parent."""
+        self._map_all(lambda x: x.parameters)
 
     def set_mapping_defaults(self, default_strings: List[str]) -> None:
         """Set default value based on a default specification string."""

@@ -169,6 +169,15 @@ def _group_workflow(
     if param_descriptions:
         run.set_mapping_descriptions(param_descriptions)
 
+    if map_inputs:
+        run.map_all_inputs()
+
+    if map_outputs:
+        run.map_all_outputs()
+
+    if map_params:
+        run.map_all_parameters()
+
     database.get("plans")[run.id] = run
     database.get("plans-by-name")[run.name] = run
 

@@ -165,6 +165,9 @@ by using the ``--describe-param``/``-p`` parameter, as shown here:
        -p input_file="The dataset to process"
        my-grouped-workflow workflow1 workflow2
 
+You can also expose all inputs, outputs or parameters of child steps by
+using ``--map-inputs``, ``--map-outputs`` or ``--map-params``, respectively.
+
 """
 
 
