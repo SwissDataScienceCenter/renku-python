@@ -24,6 +24,19 @@ from renku.core import errors
 from renku.core.models.workflow.grouped_run import GroupedRun
 
 
+def _get_nested_actual_values(run):
+    """Get a dict of parameter -> actual values mappings from a run."""
+    result = dict()
+    if isinstance(run, GroupedRun):
+        for step in run.plans:
+            result[step.name] = _get_nested_actual_values(step)
+    else:
+        for param in run.inputs + run.outputs + run.parameters:
+            result[param.name] = param.actual_value
+
+    return result
+
+
 def test_grouped_run_resolve_relative_mapping(grouped_run):
     """Test if resolving a relative command parameter mapping works."""
 
@@ -178,3 +191,223 @@ def test_grouped_run_map_all_parameters(grouped_run):
     assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run1.parameters[1])
     assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.parameters[0])
     assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.parameters[1])
+
+
+@pytest.mark.parametrize(
+    "mappings, defaults, values, expected",
+    [
+        # NOTE: Test without anything
+        (
+            [],
+            [],
+            {},
+            {
+                "run1": {
+                    "run1_input1": 1,
+                    "run1_input2": 2,
+                    "run1_output1": 3,
+                    "run1_output2": 4,
+                    "run1_param1": 5,
+                    "run1_param2": 6,
+                },
+                "run2": {
+                    "run2_input1": 1,
+                    "run2_input2": 2,
+                    "run2_output1": 3,
+                    "run2_output2": 4,
+                    "run2_param1": 5,
+                    "run2_param2": 6,
+                },
+            },
+        ),
+        # NOTE: Test with values applied
+        (
+            [],
+            [],
+            {
+                "steps": {
+                    "run1": {
+                        "run1_param2": "f",
+                    },
+                    "run2": {
+                        "run2_input2": "h",
+                    },
+                }
+            },
+            {
+                "run1": {
+                    "run1_input1": 1,
+                    "run1_input2": 2,
+                    "run1_output1": 3,
+                    "run1_output2": 4,
+                    "run1_param1": 5,
+                    "run1_param2": "f",
+                },
+                "run2": {
+                    "run2_input1": 1,
+                    "run2_input2": "h",
+                    "run2_output1": 3,
+                    "run2_output2": 4,
+                    "run2_param1": 5,
+                    "run2_param2": 6,
+                },
+            },
+        ),
+        # NOTE: Test with mappings
+        (
+            ["m1=@step1.@input1", "m2=@step2.@output2"],
+            [],
+            {},
+            {
+                "run1": {
+                    "run1_input1": 1,
+                    "run1_input2": 2,
+                    "run1_output1": 3,
+                    "run1_output2": 4,
+                    "run1_param1": 5,
+                    "run1_param2": 6,
+                },
+                "run2": {
+                    "run2_input1": 1,
+                    "run2_input2": 2,
+                    "run2_output1": 3,
+                    "run2_output2": 4,
+                    "run2_param1": 5,
+                    "run2_param2": 6,
+                },
+            },
+        ),
+        # NOTE: Test with mappings and defaults
+        (
+            ["m1=@step1.@input1", "m2=@step2.@output2"],
+            ["m1=x", "m2=y"],
+            {},
+            {
+                "run1": {
+                    "run1_input1": "x",
+                    "run1_input2": 2,
+                    "run1_output1": 3,
+                    "run1_output2": 4,
+                    "run1_param1": 5,
+                    "run1_param2": 6,
+                },
+                "run2": {
+                    "run2_input1": 1,
+                    "run2_input2": 2,
+                    "run2_output1": 3,
+                    "run2_output2": "y",
+                    "run2_param1": 5,
+                    "run2_param2": 6,
+                },
+            },
+        ),
+        # NOTE: Test with mappings, defaults and values
+        (
+            ["m1=@step1.@input1", "m2=@step2.@output2"],
+            ["m1=x", "m2=y"],
+            {
+                "steps": {
+                    "run1": {
+                        "run1_param2": "f",
+                    },
+                    "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
+                }
+            },
+            {
+                "run1": {
+                    "run1_input1": "x",
+                    "run1_input2": 2,
+                    "run1_output1": 3,
+                    "run1_output2": 4,
+                    "run1_param1": 5,
+                    "run1_param2": "f",
+                },
+                "run2": {
+                    "run2_input1": 1,
+                    "run2_input2": "h",
+                    "run2_output1": 3,
+                    "run2_output2": "a",
+                    "run2_param1": 5,
+                    "run2_param2": 6,
+                },
+            },
+        ),
+        # NOTE: Test with mappings, defaults and values for mappings and params
+        (
+            ["m1=@step1.@input1", "m2=@step2.@output2"],
+            ["m1=x", "m2=y"],
+            {
+                "parameters": {"m2": "z"},
+                "steps": {
+                    "run1": {
+                        "run1_param2": "f",
+                    },
+                    "run2": {"run2_input2": "h"},  # NOTE: Override value provided by mapping
+                },
+            },
+            {
+                "run1": {
+                    "run1_input1": "x",
+                    "run1_input2": 2,
+                    "run1_output1": 3,
+                    "run1_output2": 4,
+                    "run1_param1": 5,
+                    "run1_param2": "f",
+                },
+                "run2": {
+                    "run2_input1": 1,
+                    "run2_input2": "h",
+                    "run2_output1": 3,
+                    "run2_output2": "z",
+                    "run2_param1": 5,
+                    "run2_param2": 6,
+                },
+            },
+        ),
+        # NOTE: Test with mappings, defaults and values for mappings and params
+        (
+            ["m1=@step1.@input1", "m2=@step2.@output2"],
+            ["m1=x", "m2=y"],
+            {
+                "parameters": {"m1": "42"},
+                "steps": {
+                    "run1": {
+                        "run1_param2": "f",
+                    },
+                    "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
+                },
+            },
+            {
+                "run1": {
+                    "run1_input1": "42",
+                    "run1_input2": 2,
+                    "run1_output1": 3,
+                    "run1_output2": 4,
+                    "run1_param1": 5,
+                    "run1_param2": "f",
+                },
+                "run2": {
+                    "run2_input1": 1,
+                    "run2_input2": "h",
+                    "run2_output1": 3,
+                    "run2_output2": "a",
+                    "run2_param1": 5,
+                    "run2_param2": 6,
+                },
+            },
+        ),
+    ],
+)
+def test_grouped_run_actual_values(grouped_run, mappings, defaults, values, expected):
+    """Test resolving actual values on a grouped run."""
+    from renku.core.management.workflow.value_resolution import apply_run_values
+
+    grouped, _, _ = grouped_run
+
+    grouped.set_mappings_from_strings(mappings)
+    grouped.set_mapping_defaults(defaults)
+    apply_run_values(grouped, values)
+
+    actual = _get_nested_actual_values(grouped)
+
+    assert actual == expected

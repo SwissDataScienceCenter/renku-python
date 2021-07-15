@@ -17,8 +17,6 @@
 # limitations under the License.
 """Renku core fixtures for workflow testing."""
 
-from uuid import uuid4
-
 import pytest
 
 from renku.core.models.workflow.grouped_run import GroupedRun
@@ -32,39 +30,39 @@ def _create_run(name: str) -> Plan:
     input1 = CommandInput(
         id=CommandInput.generate_id(run_id, 1),
         position=1,
-        default_value=uuid4().hex,
+        default_value=1,
         name=f"{name}_input1",
     )
     input2 = CommandInput(
         id=CommandInput.generate_id(run_id, 2),
         position=2,
-        default_value=uuid4().hex,
+        default_value=2,
         name=f"{name}_input2",
     )
 
     output1 = CommandOutput(
         id=CommandOutput.generate_id(run_id, 3),
         position=3,
-        default_value=uuid4().hex,
+        default_value=3,
         name=f"{name}_output1",
     )
     output2 = CommandOutput(
         id=CommandOutput.generate_id(run_id, 4),
         position=4,
-        default_value=uuid4().hex,
+        default_value=4,
         name=f"{name}_output2",
     )
 
     param1 = CommandParameter(
         id=CommandParameter.generate_id(run_id, 5),
         position=5,
-        default_value=uuid4().hex,
+        default_value=5,
         name=f"{name}_param1",
     )
     param2 = CommandParameter(
         id=CommandParameter.generate_id(run_id, 6),
         position=6,
-        default_value=uuid4().hex,
+        default_value=6,
         name=f"{name}_param2",
     )
 

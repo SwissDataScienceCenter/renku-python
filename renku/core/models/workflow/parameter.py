@@ -99,6 +99,22 @@ class CommandParameterBase:
 
         return [self.default_value]
 
+    @property
+    def actual_value(self):
+        """Get the actual value to be used for execution."""
+        return getattr(self, "_v_actual_value", self.default_value)
+
+    @actual_value.setter
+    def actual_value(self, value):
+        """Set the actual value to be used for execution."""
+        self._v_actual_value = value
+        self._v_actual_value_set = True
+
+    @property
+    def actual_value_set(self):
+        """Whether the actual_value on this parameter has been set at least once."""
+        return getattr(self, "_v_actual_value_set", False)
+
     def _generate_name(self, base) -> str:
         name = get_slug(self.prefix.strip(" -=")) if self.prefix else base
         position = self.position or uuid4().hex[:RANDOM_ID_LENGTH]

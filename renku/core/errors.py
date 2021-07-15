@@ -502,3 +502,11 @@ class MappingExistsError(RenkuException):
             "Duplicate mapping detected. The following mapping targets "
             f"already exist on these mappings: \n\t{existing}"
         )
+
+
+class ChildWorkflowNotFoundError(RenkuException):
+    """Raised when a parameter reference cannot be resolved to a parameter."""
+
+    def __init__(self, child, workflow):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Cannot find child step '{child}' on workflow {workflow}")

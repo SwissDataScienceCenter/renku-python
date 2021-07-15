@@ -230,21 +230,15 @@ class Plan(Persistent):
 
     def resolve_direct_reference(self, reference: str) -> CommandParameterBase:
         """Resolve a direct parameter reference."""
-        if reference.startswith("@input"):
-            try:
+        try:
+            if reference.startswith("@input"):
                 return self.inputs[int(reference[6:]) - 1]
-            except (ValueError, IndexError):
-                raise errors.ParameterNotFoundError(reference, self.name)
-        elif reference.startswith("@output"):
-            try:
+            elif reference.startswith("@output"):
                 return self.outputs[int(reference[7:]) - 1]
-            except (ValueError, IndexError):
-                raise errors.ParameterNotFoundError(reference, self.name)
-        elif reference.startswith("@param"):
-            try:
+            elif reference.startswith("@param"):
                 return self.parameters[int(reference[6:]) - 1]
-            except (ValueError, IndexError):
-                raise errors.ParameterNotFoundError(reference, self.name)
+        except (ValueError, IndexError):
+            raise errors.ParameterNotFoundError(reference, self.name)
 
         for parameter in self.inputs + self.outputs + self.parameters:
             if parameter.name == reference:

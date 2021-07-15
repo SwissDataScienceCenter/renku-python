@@ -197,7 +197,7 @@ class GroupedRun(Persistent):
 
         raise errors.ParameterNotFoundError(mapping_path, self.name)
 
-    def resolve_direct_reference(self, reference) -> CommandParameterBase:
+    def resolve_direct_reference(self, reference: str) -> CommandParameterBase:
         """Resolve a direct parameter reference."""
         if reference.startswith("@mapping"):
             try:
