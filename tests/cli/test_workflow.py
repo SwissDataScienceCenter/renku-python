@@ -50,6 +50,8 @@ def test_workflow_group(runner, project, run_shell, client):
             "input_str=@step1.@param1",
             "--map",
             "output_file=run2.@output1",
+            "--link",
+            "@step1.@output1=@step2.@input1",
             "--set",
             "input_str=b",
             "--set",
@@ -68,7 +70,7 @@ def test_workflow_group(runner, project, run_shell, client):
 
     database = Database.from_path(client.database_path)
 
-    grouped_run = database.get("plans_by_name").get("grouped_workflow")
+    grouped_run = database.get("plans-by-name").get("grouped_workflow")
 
     assert grouped_run
 

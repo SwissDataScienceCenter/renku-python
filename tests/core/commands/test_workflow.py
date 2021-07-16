@@ -21,6 +21,7 @@
 import pytest
 
 from renku.core import errors
+from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.models.workflow.grouped_run import GroupedRun
 
 
@@ -42,19 +43,19 @@ def test_grouped_run_resolve_relative_mapping(grouped_run):
 
     grouped, run1, run2 = grouped_run
 
-    assert grouped.resolve_mapping_path("@step1.@input1") == run1.inputs[0]
-    assert grouped.resolve_mapping_path("@step1.@input2") == run1.inputs[1]
-    assert grouped.resolve_mapping_path("@step1.@output1") == run1.outputs[0]
-    assert grouped.resolve_mapping_path("@step1.@output2") == run1.outputs[1]
-    assert grouped.resolve_mapping_path("@step1.@param1") == run1.parameters[0]
-    assert grouped.resolve_mapping_path("@step1.@param2") == run1.parameters[1]
+    assert grouped.resolve_mapping_path("@step1.@input1")[0] == run1.inputs[0]
+    assert grouped.resolve_mapping_path("@step1.@input2")[0] == run1.inputs[1]
+    assert grouped.resolve_mapping_path("@step1.@output1")[0] == run1.outputs[0]
+    assert grouped.resolve_mapping_path("@step1.@output2")[0] == run1.outputs[1]
+    assert grouped.resolve_mapping_path("@step1.@param1")[0] == run1.parameters[0]
+    assert grouped.resolve_mapping_path("@step1.@param2")[0] == run1.parameters[1]
 
-    assert grouped.resolve_mapping_path("@step2.@input1") == run2.inputs[0]
-    assert grouped.resolve_mapping_path("@step2.@input2") == run2.inputs[1]
-    assert grouped.resolve_mapping_path("@step2.@output1") == run2.outputs[0]
-    assert grouped.resolve_mapping_path("@step2.@output2") == run2.outputs[1]
-    assert grouped.resolve_mapping_path("@step2.@param1") == run2.parameters[0]
-    assert grouped.resolve_mapping_path("@step2.@param2") == run2.parameters[1]
+    assert grouped.resolve_mapping_path("@step2.@input1")[0] == run2.inputs[0]
+    assert grouped.resolve_mapping_path("@step2.@input2")[0] == run2.inputs[1]
+    assert grouped.resolve_mapping_path("@step2.@output1")[0] == run2.outputs[0]
+    assert grouped.resolve_mapping_path("@step2.@output2")[0] == run2.outputs[1]
+    assert grouped.resolve_mapping_path("@step2.@param1")[0] == run2.parameters[0]
+    assert grouped.resolve_mapping_path("@step2.@param2")[0] == run2.parameters[1]
 
 
 def test_grouped_run_resolve_absolute_mapping(grouped_run):
@@ -62,19 +63,19 @@ def test_grouped_run_resolve_absolute_mapping(grouped_run):
 
     grouped, run1, run2 = grouped_run
 
-    assert grouped.resolve_mapping_path("run1.run1_input1") == run1.inputs[0]
-    assert grouped.resolve_mapping_path("run1.run1_input2") == run1.inputs[1]
-    assert grouped.resolve_mapping_path("run1.run1_output1") == run1.outputs[0]
-    assert grouped.resolve_mapping_path("run1.run1_output2") == run1.outputs[1]
-    assert grouped.resolve_mapping_path("run1.run1_param1") == run1.parameters[0]
-    assert grouped.resolve_mapping_path("run1.run1_param2") == run1.parameters[1]
+    assert grouped.resolve_mapping_path("run1.run1_input1")[0] == run1.inputs[0]
+    assert grouped.resolve_mapping_path("run1.run1_input2")[0] == run1.inputs[1]
+    assert grouped.resolve_mapping_path("run1.run1_output1")[0] == run1.outputs[0]
+    assert grouped.resolve_mapping_path("run1.run1_output2")[0] == run1.outputs[1]
+    assert grouped.resolve_mapping_path("run1.run1_param1")[0] == run1.parameters[0]
+    assert grouped.resolve_mapping_path("run1.run1_param2")[0] == run1.parameters[1]
 
-    assert grouped.resolve_mapping_path("run2.run2_input1") == run2.inputs[0]
-    assert grouped.resolve_mapping_path("run2.run2_input2") == run2.inputs[1]
-    assert grouped.resolve_mapping_path("run2.run2_output1") == run2.outputs[0]
-    assert grouped.resolve_mapping_path("run2.run2_output2") == run2.outputs[1]
-    assert grouped.resolve_mapping_path("run2.run2_param1") == run2.parameters[0]
-    assert grouped.resolve_mapping_path("run2.run2_param2") == run2.parameters[1]
+    assert grouped.resolve_mapping_path("run2.run2_input1")[0] == run2.inputs[0]
+    assert grouped.resolve_mapping_path("run2.run2_input2")[0] == run2.inputs[1]
+    assert grouped.resolve_mapping_path("run2.run2_output1")[0] == run2.outputs[0]
+    assert grouped.resolve_mapping_path("run2.run2_output2")[0] == run2.outputs[1]
+    assert grouped.resolve_mapping_path("run2.run2_param1")[0] == run2.parameters[0]
+    assert grouped.resolve_mapping_path("run2.run2_param2")[0] == run2.parameters[1]
 
 
 @pytest.mark.parametrize(
@@ -411,3 +412,30 @@ def test_grouped_run_actual_values(grouped_run, mappings, defaults, values, expe
     actual = _get_nested_actual_values(grouped)
 
     assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "links,raises,cycles",
+    [
+        ([], False, False),
+        (["@mapping1=@mapping2"], True, False),
+        (["@mapping1=@step1.@input1"], True, False),
+        (["@step1.@input1=@step2.@output2"], True, False),
+        (["@step2.@output2=@step1.@input1"], False, False),
+        (["@step2.@output2=@step1.@input1", "@step2.@output1=@step1.@input1"], False, False),
+        (["@step2.@output2=@step1.@input1", "@step1.@output1=@step2.@input1"], False, True),
+    ],
+)
+def test_grouped_run_links(grouped_run, links, raises, cycles):
+    """Test adding links to grouped runs."""
+
+    grouped, _, _ = grouped_run
+    grouped.set_mappings_from_strings(["prop1=@step1.@input1", "prop2=run2.@output2"])
+
+    if raises:
+        with pytest.raises(errors.ParameterLinkError):
+            grouped.set_links_from_strings(links)
+    else:
+        grouped.set_links_from_strings(links)
+        found_cycles = ExecutionGraph(grouped).cycles
+        assert bool(found_cycles) == cycles, found_cycles

@@ -269,6 +269,7 @@ def create(output_file, revision, paths):
 @click.option("-d", "--description", help="Workflow step's description.")
 @click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
 @click.option("defaults", "-s", "--set", multiple=True, help="Default value for a workflow parameter.")
+@click.option("links", "-l", "--link", multiple=True, help="Link source and sink parameters to connect steps.")
 @click.option("-p", "--describe-param", multiple=True, help="Default value for a workflow parameter.")
 @click.option("--map-inputs", is_flag=True, help="Exposes all child inputs as inputs on the GroupedRun.")
 @click.option("--map-outputs", is_flag=True, help="Exposes all child outputs as inputs on the GroupedRun.")
@@ -281,6 +282,7 @@ def group(
     description,
     mappings,
     defaults,
+    links,
     describe_param,
     map_inputs,
     map_outputs,
@@ -300,6 +302,7 @@ def group(
         description=description,
         mappings=mappings,
         defaults=defaults,
+        links=links,
         param_descriptions=describe_param,
         map_inputs=map_inputs,
         map_outputs=map_outputs,

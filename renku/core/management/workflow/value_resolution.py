@@ -50,7 +50,7 @@ def apply_composite_run_values(workflow: GroupedRun, values: Dict[str, Any] = No
     if values:
         if "parameters" in values:
             # NOTE: Set mapping parameter values
-            apply_parameters_values(workflow, values["parameters"], override=True)
+            apply_parameters_values(workflow, values["parameters"])
 
         if "steps" in values:
             for name, step in values["steps"].items():
@@ -79,7 +79,7 @@ def apply_parameter_defaults(mapping: ParameterMapping) -> None:
                     mapped_to.actual_value = mapping.default_value
 
 
-def apply_parameters_values(workflow: GroupedRun, values: Dict[str, str], override: bool = False) -> None:
+def apply_parameters_values(workflow: GroupedRun, values: Dict[str, str]) -> None:
     """Apply values to mappings of a GroupedRun."""
     for k, v in values.items():
         mapping = next((m for m in workflow.mappings if m.name == k), None)
@@ -87,18 +87,4 @@ def apply_parameters_values(workflow: GroupedRun, values: Dict[str, str], overri
         if not mapping:
             raise errors.ParameterNotFoundError(k, workflow.name)
 
-        apply_value_recursively(mapping, v, override)
-
-
-def apply_value_recursively(mapping: ParameterMapping, value: Any, override: bool = False) -> None:
-    """Apply a value to a ParameterMapping's children recursively."""
-
-    if override or not mapping.actual_value_set:
-        mapping.actual_value = value
-
-    for m in mapping.mapped_parameters:
-        if override or not m.actual_value_set:
-            m.actual_value = value
-
-        if isinstance(m, ParameterMapping):
-            apply_value_recursively(m, value, override)
+        mapping.actual_value = v

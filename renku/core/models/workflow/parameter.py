@@ -296,6 +296,37 @@ class ParameterMapping(CommandParameterBase):
     def _get_default_name(self) -> str:
         return self._generate_name(base="mapping")
 
+    @CommandParameterBase.actual_value.setter
+    def actual_value(self, value):
+        """Set the actual value to be used for execution."""
+        self._v_actual_value = value
+        self._v_actual_value_set = True
+
+        for mapped_to in self.mapped_parameters:
+            if not mapped_to.actual_value_set:
+                mapped_to.actual_value = value
+
+    def leaf_parameters(self):
+        """Return leaf (non-Mapping) parameters contained by this Mapping."""
+        for mapped_to in self.mappings:
+            if isinstance(mapped_to, ParameterMapping):
+                yield mapped_to.leaf_parameters
+            else:
+                yield mapped_to
+
+
+class ParameterLink:
+    """A link between a source and one or more sink parameters."""
+
+    def __init__(self, source: CommandParameterBase, sinks: List[CommandParameterBase]):
+        self.source = source
+        self.sinks = sinks
+
+    def apply(self):
+        """Apply source value to sinks."""
+        for s in self.sinks:
+            s.actual_value = self.source.actual_value
+
 
 class MappedIOStreamSchema(JsonLDSchema):
     """MappedIOStream schema."""

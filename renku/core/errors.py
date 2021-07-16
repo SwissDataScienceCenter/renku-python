@@ -510,3 +510,20 @@ class ChildWorkflowNotFoundError(RenkuException):
     def __init__(self, child, workflow):
         """Embed exception and build a custom message."""
         super().__init__(f"Cannot find child step '{child}' on workflow {workflow}")
+
+
+class ParameterLinkError(RenkuException):
+    """Raised when a parameter link cannot be created."""
+
+    def __init__(self, reason):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Can't create parameter link, reason: {reason}")
+
+
+class GraphCycleError(RenkuException):
+    """Raised when a parameter reference cannot be resolved to a parameter."""
+
+    def __init__(self, cycles):
+        """Embed exception and build a custom message."""
+        cycles = "), (".join(", ".join(map(lambda x: x.name, cycle)) for cycle in cycles)
+        super().__init__(f"Cycles detected in execution graph: ({cycles})")

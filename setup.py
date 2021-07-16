@@ -170,6 +170,7 @@ install_requires = [
     "inject>=4.3.0,<4.4.0",
     "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
+    "networkx>=2.6.0,<2.7",
     "pathspec>=0.8.0,<1.0.0",
     "patool==1.12",
     "pluggy==0.13.1",

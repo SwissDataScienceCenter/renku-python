@@ -27,6 +27,7 @@ from renku.core.commands.graph import Graph
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.metadata.database import Database
 from renku.core.models.workflow.converters.cwl import CWLConverter
 from renku.core.models.workflow.grouped_run import GroupedRun
@@ -130,6 +131,7 @@ def _group_workflow(
     description: str,
     mappings: List[str],
     defaults: List[str],
+    links: List[str],
     param_descriptions: List[str],
     map_inputs: bool,
     map_outputs: bool,
@@ -152,7 +154,7 @@ def _group_workflow(
             child_workflow = database.get("plans-by-name").get(workflow_name_or_id)
 
         if not child_workflow:
-            raise errors.ObjectNotFoundError(f"Plan with name or id {workflow_name_or_id} doesn't exist.")
+            raise errors.ObjectNotFoundError(workflow_name_or_id)
 
         child_workflows.append(child_workflow)
 
@@ -165,6 +167,13 @@ def _group_workflow(
 
     if defaults:
         run.set_mapping_defaults(defaults)
+
+    if links:
+        run.set_links_from_strings(links)
+        graph = ExecutionGraph(run)
+        cycles = graph.cycles
+        if cycles:
+            raise errors.GraphCycleError(cycles)
 
     if param_descriptions:
         run.set_mapping_descriptions(param_descriptions)

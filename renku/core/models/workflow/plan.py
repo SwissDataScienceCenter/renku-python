@@ -226,7 +226,7 @@ class Plan(Persistent):
         if len(parts) > 1:
             raise errors.ParameterNotFoundError(mapping_path, self.name)
 
-        return self.resolve_direct_reference(parts[0])
+        return self.resolve_direct_reference(parts[0]), self
 
     def resolve_direct_reference(self, reference: str) -> CommandParameterBase:
         """Resolve a direct parameter reference."""
@@ -245,6 +245,15 @@ class Plan(Persistent):
                 return parameter
 
         raise errors.ParameterNotFoundError(reference, self.name)
+
+    def find_parameter(self, parameter: CommandParameterBase) -> bool:
+        """Find if a parameter exists on this plan."""
+        return parameter in self.inputs + self.outputs + self.parameters
+
+    def find_parameter_workflow(self, parameter: CommandParameterBase) -> "Plan":
+        """Return the workflow a parameter belongs to."""
+        if self.find_parameter(parameter):
+            return self
 
     def to_argv(self) -> List[Any]:
         """Convert a Plan into argv list."""
