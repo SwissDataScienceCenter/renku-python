@@ -316,7 +316,7 @@ class GroupedRunSchema(JsonLDSchema):
 
     description = fields.String(schema.description, missing=None)
     id = fields.Id()
-    mappings = Nested(renku.hasMapping, [ParameterMappingSchema], many=True, missing=None)
+    mappings = Nested(renku.hasMappings, [ParameterMappingSchema], many=True, missing=None)
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, add_value_types=True)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)

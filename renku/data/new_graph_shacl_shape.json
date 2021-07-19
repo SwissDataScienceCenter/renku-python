@@ -1310,6 +1310,170 @@
                ]
             }
          ]
+      },
+      {
+         "@id": "_:renkuGroupedRunShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:GroupedRun",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:MappingParameter"
+               },
+               "path": "renku:hasMappings"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:keywords",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "sh:class": {
+                  "id": "prov:Plan"
+               },
+               "path": "renku:hasSubprocesses"
+            },
+            {
+               "sh:class": {
+                  "id": "renku:ParameterLink"
+               },
+               "path": "renku:workflowLinks"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:invalidatedAtTime",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:parameterMappingShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:ParameterMapping",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:position",
+               "datatype": {
+                  "@id": "xsd:integer"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:prefix",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "path": "schema:mapsTo",
+               "sh:class": {
+                  "@id": "renku:CommandParameterBase"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:parameterLinkShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:ParameterLink",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "renku:linkSource",
+               "sh:class": {
+                  "@id": "renku:CommandParameterBase"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "renku:linkSink",
+               "sh:class": {
+                  "@id": "renku:CommandParameterBase"
+               },
+               "minCount": 1
+            }
+         ]
       }
    ]
 }

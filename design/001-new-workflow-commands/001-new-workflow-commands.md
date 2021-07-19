@@ -103,6 +103,10 @@ renku workflow group [<options>] <name> [paths...]      Create a new workflow cr
 
 --map-all                   Combination of --map-inputs, --map-outputs, --map-params
 
+-l|--link <parameter>=<parameters> Explicit link between two child steps, to enforce an order
+
+--link-all                  automatically link all steps based on default values
+
 -f|--from                      File/Folder to start the DAG from. Only valid when specifying
                             <paths>
 ```
@@ -394,7 +398,8 @@ On the dependency graph side, we rename `renku:CommandParameter` to `renku:Comma
 
 ![grouped run metadata](grouped-run-metadata.svg)
 
-A new type `renku:GroupedRun` is introduced to keep track of workflows composed of steps. Instead of `renku:CommandParameterBase` entries, this has `renku:ParameterMapping` entries that expose parameter of child steps on the grouped run. A `renku:ParameterMapping` can point to multiple mapped parameters, but can only be pointed to by one `renku:GroupedRun`.
+A new type `renku:GroupedRun` is introduced to keep track of workflows composed of steps. Instead of `renku:CommandParameterBase` entries, this has `renku:ParameterMapping` entries that expose parameter of child steps on the grouped run. A `renku:ParameterMapping` can point to multiple mapped parameters, but can only be pointed to by one `renku:GroupedRun`. Also allows defining links between child steps' parameter to enforce an executon order, using the `renku:ParameterLink` node pointed to by `renku:workflowLinks`. A `ParameterLink` has a `renku:linkSource` originating in a `renku:CommandOutput` and points to one or more `renku:CommandInput`
+as a `renku:linkSink`.
 
 #### looped runs
 
