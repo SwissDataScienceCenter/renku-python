@@ -197,8 +197,11 @@ linked in the grouped run. To do this, pass the ``--link-all`` flag.
 
 
 import click
+from rich.console import Console
+from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
+from renku.core.commands.echo import ERROR
 from renku.core.commands.workflow import (
     create_workflow_command,
     group_workflow_command,
@@ -206,7 +209,143 @@ from renku.core.commands.workflow import (
     remove_workflow_command,
     rename_workflow_command,
     set_workflow_name_command,
+    show_workflow_command,
 )
+from renku.core.models.workflow.grouped_run import GroupedRun
+from renku.core.models.workflow.plan import Plan
+
+
+def _print_plan(plan: Plan):
+    """Print a plan to stdout."""
+    click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(plan.id, bold=True))
+    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(plan.name, bold=True))
+
+    if plan.description:
+        Console().print(Markdown(plan.description))
+
+    click.echo(click.style("Command: ", bold=True, fg="magenta") + click.style(plan.full_command, bold=True))
+    click.echo(click.style("Success Codes: ", bold=True, fg="magenta") + click.style(plan.success_codes, bold=True))
+
+    if plan.inputs:
+        click.echo(click.style("Inputs: ", bold=True, fg="magenta"))
+        for run_input in plan.inputs:
+            click.echo(click.style(f"\t- {run_input.name}:", bold=True))
+
+            if run_input.description:
+                click.echo(click.style(f"\t\t{run_input.description}"))
+
+            click.echo(
+                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                + click.style(run_input.default_value, bold=True)
+            )
+
+            if run_input.position:
+                click.echo(
+                    click.style("\t\tPosition: ", bold=True, fg="magenta") + click.style(run_input.position, bold=True)
+                )
+
+            if run_input.prefix:
+                click.echo(
+                    click.style("\t\tPrefix: ", bold=True, fg="magenta") + click.style(run_input.prefix, bold=True)
+                )
+
+    if plan.outputs:
+        click.echo(click.style("Outputs: ", bold=True, fg="magenta"))
+        for run_output in plan.outputs:
+            click.echo(click.style(f"\t- {run_output.name}:", bold=True))
+
+            if run_output.description:
+                click.echo(click.style(f"\t\t{run_output.description}"))
+
+            click.echo(
+                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                + click.style(run_output.default_value, bold=True)
+            )
+
+            if run_output.position:
+                click.echo(
+                    click.style("\t\tPosition: ", bold=True, fg="magenta") + click.style(run_output.position, bold=True)
+                )
+
+            if run_output.prefix:
+                click.echo(
+                    click.style("\t\tPrefix: ", bold=True, fg="magenta") + click.style(run_output.prefix, bold=True)
+                )
+
+    if plan.parameters:
+        click.echo(click.style("Outputs: ", bold=True, fg="magenta"))
+        for run_parameter in plan.parameters:
+            click.echo(click.style(f"\t- {run_parameter.name}:", bold=True))
+
+            if run_parameter.description:
+                click.echo(click.style(f"\t\t{run_parameter.description}"))
+
+            click.echo(
+                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                + click.style(run_parameter.default_value, bold=True)
+            )
+
+            if run_parameter.position:
+                click.echo(
+                    click.style("\t\tPosition: ", bold=True, fg="magenta")
+                    + click.style(run_parameter.position, bold=True)
+                )
+
+            if run_parameter.prefix:
+                click.echo(
+                    click.style("\t\tPrefix: ", bold=True, fg="magenta") + click.style(run_parameter.prefix, bold=True)
+                )
+
+
+def _print_grouped_run(grouped_run: GroupedRun):
+    """Print a GroupedRun to stdout."""
+    click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(grouped_run.id, bold=True))
+    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(grouped_run.name, bold=True))
+
+    if grouped_run.description:
+        Console().print(Markdown(grouped_run.description))
+
+    click.echo(click.style("Steps: ", bold=True, fg="magenta"))
+    for step in grouped_run.plans:
+        click.echo(click.style(f"\t- {step.name}:", bold=True))
+        click.echo(click.style("\t\tId: ", bold=True, fg="magenta") + click.style(f"{step.id}", bold=True))
+
+    for mapping in grouped_run.mappings:
+        click.echo(click.style(f"\t- {mapping.name}:", bold=True))
+
+        if mapping.description:
+            click.echo(click.style(f"\t\t{mapping.description}"))
+
+        click.echo(
+            click.style("\t\tDefault Value: ", bold=True, fg="magenta") + click.style(mapping.default_value, bold=True)
+        )
+        click.echo(click.style("\tMaps to: ", bold=True, fg="magenta"))
+        for maps_to in mapping.mapped_parameters:
+            click.style(maps_to.name, bold=True)
+
+    if grouped_run.mappings:
+        click.echo(click.style("Mappings: ", bold=True, fg="magenta"))
+        for mapping in grouped_run.mappings:
+            click.echo(click.style(f"\t- {mapping.name}:", bold=True))
+
+            if mapping.description:
+                click.echo(click.style(f"\t\t{mapping.description}"))
+
+            click.echo(
+                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                + click.style(mapping.default_value, bold=True)
+            )
+            click.echo(click.style("\tMaps to: ", bold=True, fg="magenta"))
+            for maps_to in mapping.mapped_parameters:
+                click.style(maps_to.name, bold=True)
+
+    if grouped_run.links:
+        click.echo(click.style("Links: ", bold=True, fg="magenta"))
+        for link in grouped_run.links:
+            click.echo(click.style("\t- From: ", bold=True, fg="magenta") + click.style(link.source.name, bold=True))
+            click.echo(click.style("\t\t To: ", bold=True, fg="magenta"))
+            for sink in link.sinks:
+                click.echo(click.style(f"\t\t- {sink.name}", bold=True))
 
 
 @click.group()
@@ -220,6 +359,21 @@ def list_workflows():
     """List or manage workflows with subcommands."""
     communicator = ClickCallback()
     list_workflows_command().with_communicator(communicator).build().execute()
+
+
+@workflow.command()
+@click.argument("name_or_id", metavar="<name_or_id>")
+def show(name_or_id):
+    """Show details for workflow <name_or_id>."""
+    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+
+    if plan:
+        if isinstance(plan, Plan):
+            _print_plan(plan)
+        else:
+            _print_grouped_run(plan)
+    else:
+        click.secho(ERROR + f"Workflow '{name_or_id}' not found.")
 
 
 def validate_path(ctx, param, value):
@@ -324,17 +478,24 @@ def group(
     if map_all:
         map_inputs, map_outputs, map_params = True
 
-    group_workflow_command().build().execute(
-        name=name,
-        description=description,
-        mappings=mappings,
-        defaults=defaults,
-        links=links,
-        param_descriptions=describe_param,
-        map_inputs=map_inputs,
-        map_outputs=map_outputs,
-        map_params=map_params,
-        link_all=link_all,
-        keywords=keyword,
-        workflows=workflow,
+    result = (
+        group_workflow_command()
+        .build()
+        .execute(
+            name=name,
+            description=description,
+            mappings=mappings,
+            defaults=defaults,
+            links=links,
+            param_descriptions=describe_param,
+            map_inputs=map_inputs,
+            map_outputs=map_outputs,
+            map_params=map_params,
+            link_all=link_all,
+            keywords=keyword,
+            workflows=workflow,
+        )
     )
+
+    if not result.error:
+        _print_grouped_run(result.output)

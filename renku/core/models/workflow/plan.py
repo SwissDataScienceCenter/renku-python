@@ -156,7 +156,7 @@ class Plan(Persistent):
             keywords=run.keywords,
             name=run.name,
             outputs=[convert_output(o) for o in run.outputs],
-            parameters=[convert_argument(a) for a in run.arguments],
+            parameters=[convert_argument(a) for a in run.parameters],
             success_codes=run.successcodes,
         )
 
@@ -265,6 +265,32 @@ class Plan(Persistent):
         argv.extend(e for a in arguments for e in a.to_argv())
 
         return argv
+
+    @property
+    def full_command(self):
+        """Full command of this plan."""
+        argv = []
+
+        if self.command:
+            argv.extend(self.command.split(" "))
+
+        arguments = self.inputs + self.outputs + self.parameters
+
+        arguments = filter(lambda x: x.position, arguments)
+        arguments = sorted(arguments, key=lambda x: x.position)
+        argv.extend(e for a in arguments for e in a.to_argv())
+
+        stream_repr = []
+
+        for input_ in self.inputs:
+            if input_.mapped_to:
+                stream_repr.append(input_.to_stream_representation())
+
+        for output in self.outputs:
+            if output.mapped_to:
+                stream_repr.append(output.to_stream_representation())
+
+        return "".join(argv) + "".join(stream_repr)
 
     @inject.params(client="LocalClient")
     def to_run(self, client, entities_cache: Dict[str, Entity]) -> Run:

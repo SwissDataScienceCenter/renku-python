@@ -126,6 +126,25 @@ def create_workflow_command():
 
 
 @inject.autoparams()
+def _show_workflow(
+    name_or_id: str,
+    database: Database,
+):
+    """Show the details of a workflow."""
+    workflow = database.get("plans").get(name_or_id)
+
+    if not workflow:
+        workflow = database.get("plans-by-name").get(name_or_id)
+
+    return workflow
+
+
+def show_workflow_command():
+    """Command that the details of a workflow."""
+    return Command().command(_show_workflow).require_migration().with_database(write=False)
+
+
+@inject.autoparams()
 def _group_workflow(
     name: str,
     description: str,
@@ -200,6 +219,8 @@ def _group_workflow(
 
     database.get("plans")[run.id] = run
     database.get("plans-by-name")[run.name] = run
+
+    return run
 
 
 def group_workflow_command():

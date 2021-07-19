@@ -84,3 +84,69 @@ def test_workflow_group(runner, project, run_shell, client):
     assert grouped_run.mappings[1].name == "output_file"
     assert grouped_run.mappings[1].default_value == "other_output.csv"
     assert grouped_run.mappings[1].description == "the final output file produced"
+
+
+def test_workflow_show(runner, project, run_shell, client):
+    """Test renku workflow group."""
+    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
+
+    # Run a shell command with pipe.
+    output = run_shell('renku run --name run1 --description "my workflow" -- echo "a" > output1')
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Run a shell command with pipe.
+    output = run_shell("renku run --name run2 -- cp output1 output2")
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    result = runner.invoke(cli, ["workflow", "show", "run1"])
+    assert 0 == result.exit_code
+    assert "run1" in result.output
+    assert "output1" in result.output
+    assert "my workflow" in result.output
+
+    result = runner.invoke(
+        cli,
+        [
+            "workflow",
+            "group",
+            "--description",
+            "My grouped workflow",
+            "--map",
+            "input_str=@step1.@param1",
+            "--map",
+            "output_file=run2.@output1",
+            "--link",
+            "@step1.@output1=@step2.@input1",
+            "--set",
+            "input_str=b",
+            "--set",
+            "output_file=other_output.csv",
+            "-p",
+            "input_str=the input string for the workflow",
+            "-p",
+            "output_file=the final output file produced",
+            "grouped_workflow",
+            "run1",
+            "run2",
+        ],
+    )
+
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["workflow", "show", "grouped_workflow"])
+
+    assert 0 == result.exit_code
+    assert "grouped_workflow" in result.output
+    assert "input_str" in result.output
+    assert "output_file" in result.output
+    assert "Links:" in result.output
+    assert "Mappings:" in result.output
+    assert "My grouped workflow" in result.output
