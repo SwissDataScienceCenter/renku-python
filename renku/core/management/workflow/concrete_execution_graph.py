@@ -30,10 +30,11 @@ from renku.core.models.workflow import grouped_run, parameter, plan
 class ExecutionGraph:
     """Represents an execution graph for one or more workflow steps."""
 
-    def __init__(self, workflow: Union["plan.Plan", "grouped_run.GroupedRun"]):
+    def __init__(self, workflow: Union["plan.Plan", "grouped_run.GroupedRun"], virtual_links: bool = False):
         self.workflow: Union["plan.Plan", "grouped_run.GroupedRun"] = workflow
+        self.virtual_links = []
 
-        self.calculate_concrete_execution_graph()
+        self.calculate_concrete_execution_graph(virtual_links=virtual_links)
 
     def calculate_concrete_execution_graph(self, virtual_links: bool = False):
         """Create an execution DAG between Plans showing dependencies between them.
@@ -43,6 +44,7 @@ class ExecutionGraph:
         """
 
         self.graph = nx.DiGraph()
+        self.virtual_links = []
 
         workflow_stack = [self.workflow]
 
@@ -61,19 +63,25 @@ class ExecutionGraph:
                     continue
 
                 for input_ in workflow.inputs:
-                    inputs[input_.actual_value] = input_
-                    self.graph.add_edge(input_, workflow)
+                    inputs[input_.actual_value].append(input_)
+                    if not self.graph.has_edge(input_, input_):
+                        self.graph.add_edge(input_, workflow)
 
                 for output in workflow.outputs:
-                    outputs[output.actual_value] = output
-                    self.graph.add_edge(workflow, output)
+                    outputs[output.actual_value].append(output)
+                    if not self.graph.has_edge(workflow, output):
+                        self.graph.add_edge(workflow, output)
 
-        for av, nodes in outputs:
-            if av not in inputs:
+        for av, nodes in outputs.items():
+            if av not in inputs.keys():
                 continue
 
             edges = product(nodes, inputs[av])
-            self.graph.add_edges_from(edges)
+
+            for edge in edges:
+                if not self.graph.has_edge(*edge):
+                    self.graph.add_edge(*edge)
+                    self.virtual_links.append(edge)
 
     def _add_grouped_run_links_to_graph(self, workflow: "grouped_run.GroupedRun") -> None:
         """Adds links for a grouped run to the graph."""

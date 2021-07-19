@@ -168,6 +168,31 @@ by using the ``--describe-param``/``-p`` parameter, as shown here:
 You can also expose all inputs, outputs or parameters of child steps by
 using ``--map-inputs``, ``--map-outputs`` or ``--map-params``, respectively.
 
+On execution, renku will automatically detect links between steps, if an input
+of one step uses the same path as an output of another step, and execute
+them in the correct order. Since this depends on what values are passed
+at runtime, you might want to enforce a certain order of steps by explicitely
+mapping outputs to inputs.
+
+You can do that using the ``--link <source>=<sink>`` parameters, e.g.
+``--link step1.myoutput=step2.myinput``. This gets recorded on the workflow
+template and forces ``step2.myinput`` to always be set to the same path as
+``step1.myoutput``, irrespective of which values are passed at execution time.
+
+This way, you can ensure that the steps in your workflow are always executed
+in the correct order and that the dependencies between steps are modelled
+correctly.
+
+Renku can also add links for you automatically based on the default values
+of inputs and outputs, where inputs/outputs that have the same path get
+linked in the grouped run. To do this, pass the ``--link-all`` flag.
+
+.. warning:: Due to workflows having to be directed acyclic graphs, cycles
+   in the dependencies are not allowed. E.g. step1 depending on step2
+   depending on step1 is not allowed. Additionally, the flow of information
+   has to be from outputs to inputs or parameters, so you cannot map an input
+   to an output, only the other way around.
+
 """
 
 
@@ -275,6 +300,7 @@ def create(output_file, revision, paths):
 @click.option("--map-outputs", is_flag=True, help="Exposes all child outputs as inputs on the GroupedRun.")
 @click.option("--map-params", is_flag=True, help="Exposes all child parameters as inputs on the GroupedRun.")
 @click.option("--map-all", is_flag=True, help="Combination of --map-inputs, --map-outputs, --map-params.")
+@click.option("--link-all", is_flag=True, help="Automatically link steps based on default values.")
 @click.option("--keyword", multiple=True, help="List of keywords for the workflow.")
 @click.argument("name", required=True)
 @click.argument("workflow", nargs=-1, required=True, type=click.UNPROCESSED)
@@ -288,6 +314,7 @@ def group(
     map_outputs,
     map_params,
     map_all,
+    link_all,
     keyword,
     name,
     workflow,
@@ -307,6 +334,7 @@ def group(
         map_inputs=map_inputs,
         map_outputs=map_outputs,
         map_params=map_params,
+        link_all=link_all,
         keywords=keyword,
         workflows=workflow,
     )

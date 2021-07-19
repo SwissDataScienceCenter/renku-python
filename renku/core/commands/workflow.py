@@ -136,6 +136,7 @@ def _group_workflow(
     map_inputs: bool,
     map_outputs: bool,
     map_params: bool,
+    link_all: bool,
     keywords: List[str],
     workflows: List[str],
     database: Database,
@@ -186,6 +187,16 @@ def _group_workflow(
 
     if map_params:
         run.map_all_parameters()
+
+    if link_all:
+        graph = ExecutionGraph(run, virtual_links=True)
+
+        cycles = graph.cycles
+        if cycles:
+            raise errors.GraphCycleError(cycles)
+
+        for virtual_link in graph.virtual_links:
+            run.add_link(virtual_link[0], [virtual_link[1]])
 
     database.get("plans")[run.id] = run
     database.get("plans-by-name")[run.name] = run

@@ -33,6 +33,7 @@ from renku.core.models.workflow.parameter import (
     CommandParameter,
     CommandParameterBase,
     ParameterLink,
+    ParameterLinkSchema,
     ParameterMapping,
     ParameterMappingSchema,
 )
@@ -124,7 +125,7 @@ class GroupedRun(Persistent):
         if new:
             existing.mapped_parameters.extend(new)
 
-    def set_links_from_strings(self, link_strings: List[str]):
+    def set_links_from_strings(self, link_strings: List[str]) -> None:
         """Set links between parameters of child steps."""
         for link_string in link_strings:
             source, sinks = link_string.split("=", maxsplit=1)
@@ -149,26 +150,37 @@ class GroupedRun(Persistent):
             for sink in sinks:
                 resolved_sink, sink_wf = self.resolve_mapping_path(sink)
 
-                if isinstance(resolved_sink, CommandOutput):
-                    raise errors.ParameterLinkError(
-                        f"A parameter link can't end in a command output: {resolved_sink.name}"
-                    )
-
-                if resolved_sink in self.mappings:
-                    raise errors.ParameterLinkError(
-                        f"Parameter links can only be between child steps, sink '{resolved_sink.name}' is on "
-                        "the parent."
-                    )
-
-                if source_wf.find_parameter(resolved_sink) or sink_wf.find_parameter(source):
-                    raise errors.ParameterLinkError(
-                        f"Parameter links have to link between different workflows, source '{source.name}' and "
-                        f"sink '{resolved_sink.name}' are on the same workflow."
-                    )
-
                 sink_params.append(resolved_sink)
 
-            self.links.append(ParameterLink(source, sink_params))
+            self.add_link(source, sink_params)
+
+    def add_link(self, source: CommandParameterBase, sinks: List[CommandParameterBase]) -> None:
+        """Validate and add a ParameterLink."""
+        if not source:
+            raise errors.ParameterLinkError("Parameter Link has no source.")
+
+        if not sinks:
+            raise errors.ParameterLinkError("Parameter Link has no sink(s).")
+
+        for sink in sinks:
+            if isinstance(sink, CommandOutput):
+                raise errors.ParameterLinkError(f"A parameter link can't end in a command output: '{sink.name}'.")
+
+            if sink in self.mappings:
+                raise errors.ParameterLinkError(
+                    f"Parameter links can only be between child steps, sink '{sink.name}' is on " "the parent."
+                )
+
+            source_wf = self.find_parameter_workflow(source)
+            sink_wf = self.find_parameter_workflow(sink)
+
+            if source_wf.find_parameter(sink) or sink_wf.find_parameter(source):
+                raise errors.ParameterLinkError(
+                    f"Parameter links have to link between different workflows, source '{source.name}' and "
+                    f"sink '{sink.name}' are on the same workflow."
+                )
+
+        self.links.append(ParameterLink(source=source, sinks=sinks, id=ParameterLink.generate_id(self.id)))
 
     def find_parameter(self, parameter: CommandParameterBase):
         """Check if a parameter exists on this run or one of its children."""
@@ -309,3 +321,4 @@ class GroupedRunSchema(JsonLDSchema):
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
     plans = Nested(renku.hasSubprocess, [PlanSchema, "GroupedRunSchema"], many=True)
+    links = Nested(renku.workflowLinks, [ParameterLinkSchema], many=True, missing=None)

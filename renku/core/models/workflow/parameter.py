@@ -318,14 +318,35 @@ class ParameterMapping(CommandParameterBase):
 class ParameterLink:
     """A link between a source and one or more sink parameters."""
 
-    def __init__(self, source: CommandParameterBase, sinks: List[CommandParameterBase]):
+    def __init__(
+        self,
+        source: CommandParameterBase,
+        sinks: List[CommandParameterBase],
+        id: str,
+        label: str = None,
+    ):
         self.source = source
         self.sinks = sinks
+        self.id: str = id
+        self.label: str = label
+
+        if not self.label:
+            self.label = self._get_default_label()
 
     def apply(self):
         """Apply source value to sinks."""
         for s in self.sinks:
             s.actual_value = self.source.actual_value
+
+    def _get_default_label(self) -> str:
+        sinks = ", ".join(s.name for s in self.sinks)
+        return f"Command Parameter link '{self.source.name}' -> [{sinks}] "
+
+    @staticmethod
+    def generate_id(plan_id: str) -> str:
+        """Generate an id for parameters."""
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/links/dda5fcbf-0098-4917-be46-dc12f5f7b675
+        return f"{plan_id}/links/{uuid4()}"
 
 
 class MappedIOStreamSchema(JsonLDSchema):
@@ -414,3 +435,19 @@ class ParameterMappingSchema(CommandParameterBaseSchema):
         ["ParameterMappingSchema", CommandInputSchema, CommandOutputSchema, CommandParameterSchema],
         many=True,
     )
+
+
+class ParameterLinkSchema(JsonLDSchema):
+    """ParameterLink schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.ParameterLink, schema.Property]
+        model = ParameterLink
+        unknown = EXCLUDE
+
+    id = fields.Id()
+    label = fields.String(rdfs.label, missing=None)
+    source = fields.Nested(renku.linkSource, [CommandOutputSchema])
+    sinks = fields.Nested(renku.linkSink, [CommandInputSchema, CommandParameterSchema], many=True)

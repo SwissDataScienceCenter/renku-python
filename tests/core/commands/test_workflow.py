@@ -18,10 +18,13 @@
 """Renku workflow commands tests."""
 
 
+from contextlib import nullcontext
+
 import pytest
 
 from renku.core import errors
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.management.workflow.value_resolution import apply_run_values
 from renku.core.models.workflow.grouped_run import GroupedRun
 
 
@@ -401,7 +404,6 @@ def test_grouped_run_map_all_parameters(grouped_run):
 )
 def test_grouped_run_actual_values(grouped_run, mappings, defaults, values, expected):
     """Test resolving actual values on a grouped run."""
-    from renku.core.management.workflow.value_resolution import apply_run_values
 
     grouped, _, _ = grouped_run
 
@@ -439,3 +441,67 @@ def test_grouped_run_links(grouped_run, links, raises, cycles):
         grouped.set_links_from_strings(links)
         found_cycles = ExecutionGraph(grouped).cycles
         assert bool(found_cycles) == cycles, found_cycles
+
+
+@pytest.mark.parametrize(
+    "mappings,defaults,links,raises,cycles",
+    [
+        ([], [], False, False, False),
+        ([], ["@step1.@output1=myfile.txt", "@step2.@input1=myfile.txt"], True, False, False),
+        (
+            [],
+            ["@step1.@output1=myfile.txt", "@step2.@input1=myfile.txt", "@step1.@input1=myfile.txt"],
+            True,
+            True,
+            True,
+        ),
+        (
+            [],
+            [
+                "@step1.@output1=myfile.txt",
+                "@step2.@input1=myfile.txt",
+                "@step1.@input1=otherfile.txt",
+                "@step2.@output2=otherfile.txt",
+            ],
+            True,
+            False,
+            True,
+        ),
+        (
+            ["input=@step1.@input1", "output=@step2.@output2"],
+            ["input=myfile.txt", "output=myfile.txt"],
+            True,
+            False,
+            False,
+        ),
+        (
+            ["input=@step1.@input1,@step2.@input2", "output=@step2.@output2"],
+            ["input=myfile.txt", "output=myfile.txt"],
+            True,
+            True,
+            True,
+        ),
+        (["map=@step1.@input1,@step2.@input2,@step1.@output1,@step2.@output2"], ["map=myfile.txt"], True, True, True),
+    ],
+)
+def test_grouped_run_auto_links(grouped_run, mappings, defaults, links, raises, cycles):
+    """Test automatically detecting links between steps."""
+    grouped, _, _ = grouped_run
+
+    if raises:
+        maybe_raises = pytest.raises(errors.ParameterLinkError)
+    else:
+        maybe_raises = nullcontext()
+
+    grouped.set_mappings_from_strings(mappings)
+    grouped.set_mapping_defaults(defaults)
+
+    apply_run_values(grouped)
+    graph = ExecutionGraph(grouped, virtual_links=True)
+
+    assert bool(graph.virtual_links) == links
+    assert bool(graph.cycles) == cycles
+
+    with maybe_raises:
+        for virtual_link in graph.virtual_links:
+            grouped.add_link(virtual_link[0], [virtual_link[1]])
