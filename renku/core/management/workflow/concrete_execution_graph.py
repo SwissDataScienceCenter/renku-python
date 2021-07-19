@@ -19,7 +19,7 @@
 
 from collections import defaultdict
 from itertools import product
-from typing import Union
+from typing import Dict, List, Union
 
 import networkx as nx
 from networkx.algorithms.cycles import simple_cycles
@@ -72,6 +72,12 @@ class ExecutionGraph:
                     if not self.graph.has_edge(workflow, output):
                         self.graph.add_edge(workflow, output)
 
+        self._create_virtual_links(outputs, inputs)
+
+    def _create_virtual_links(
+        self, outputs: Dict[str, List["parameter.CommandOutput"]], inputs: Dict[str, List["parameter.CommandInput"]]
+    ) -> None:
+        """Add virtual links to graph based on matching inputs/outputs."""
         for av, nodes in outputs.items():
             if av not in inputs.keys():
                 continue

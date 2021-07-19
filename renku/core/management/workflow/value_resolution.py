@@ -36,10 +36,12 @@ def apply_run_values(workflow: Union[GroupedRun, Plan], values: Dict[str, Any] =
 
 def apply_single_run_values(workflow: Plan, values: Dict[str, Any] = None) -> None:
     """Applies values and default_values to a workflow."""
-    if values:
-        for param in workflow.inputs + workflow.outputs + workflow.parameters:
-            if param.name in values:
-                param.actual_value = values[param.name]
+    if not values:
+        return workflow
+
+    for param in workflow.inputs + workflow.outputs + workflow.parameters:
+        if param.name in values:
+            param.actual_value = values[param.name]
 
     return workflow
 
