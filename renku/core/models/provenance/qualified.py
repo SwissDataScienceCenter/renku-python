@@ -24,8 +24,8 @@ import attr
 from marshmallow import EXCLUDE
 
 from renku.core.management.command_builder.command import inject
+from renku.core.management.migrations.models.v9 import DatasetFileSchema, DatasetSchema
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov
-from renku.core.models.datasets import DatasetFileSchema, DatasetSchema
 from renku.core.models.entities import CollectionSchema, EntitySchema
 from renku.core.models.provenance.agents import PersonSchema, SoftwareAgentSchema
 from renku.core.models.workflow.plan import PlanSchema

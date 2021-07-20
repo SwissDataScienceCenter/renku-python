@@ -17,25 +17,49 @@
 # limitations under the License.
 """Models representing datasets."""
 
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
+import marshmallow
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
-from renku.core.management.command_builder.command import inject
 from renku.core.metadata.database import Database, Index, Persistent
 from renku.core.metadata.immutable import Immutable, Slots
-from renku.core.models import datasets as old_datasets
-from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema
-from renku.core.models.datasets import is_dataset_name_valid
+from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema, wfprov
 from renku.core.models.entity import Entity, NewEntitySchema
-from renku.core.models.provenance.agent import NewPersonSchema, Person
+from renku.core.models.provenance.agent import NewPersonSchema, Person, SoftwareAgent
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
+from renku.core.utils.urls import get_slug
+
+
+def is_dataset_name_valid(name):
+    """Check if name is a valid slug."""
+    return name and name == get_slug(name)
+
+
+def generate_default_name(dataset_title, dataset_version=None):
+    """Get dataset name."""
+    max_length = 24
+    # For compatibility with older versions use name as name
+    # if it is valid; otherwise, use encoded name
+    if is_dataset_name_valid(dataset_title):
+        return dataset_title
+
+    slug = get_slug(dataset_title)
+    name = slug[:max_length]
+
+    if dataset_version:
+        max_version_length = 10
+        version_slug = get_slug(dataset_version)[:max_version_length]
+        name = f"{name[:-(len(version_slug) + 1)]}_{version_slug}"
+
+    return get_slug(name)
 
 
 class Url:
@@ -111,6 +135,10 @@ class DatasetTag(Slots):
         name = quote(f"{name}@{commit}", safe="")
         return f"/dataset-tags/{name}"
 
+    def to_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetTagSchema().dump(self)
+
 
 class Language(Immutable):
     """Represent a language of an object."""
@@ -133,7 +161,7 @@ class ImageObject(Slots):
 
     __slots__ = ("content_url", "id", "position")
 
-    def __init__(self, *, content_url: str, position: int, id: str = None):
+    def __init__(self, *, content_url: str, id: str, position: int):
         # TODO: Remove scheme://hostname from id
         super().__init__(content_url=content_url, position=position, id=id)
 
@@ -151,13 +179,20 @@ class ImageObject(Slots):
 class RemoteEntity(Slots):
     """Reference to an Entity in a remote repo."""
 
-    __slots__ = ("commit_sha", "id", "path", "url")
+    __slots__ = ("checksum", "commit_sha", "id", "path", "url")
 
-    def __init__(self, *, commit_sha: str, id: str = None, path: Union[Path, str], url: str):
+    def __init__(
+        self, *, checksum: str = None, commit_sha: str = None, id: str = None, path: Union[Path, str], url: str
+    ):
         super().__init__()
+        entity_hash = commit_sha or checksum
+        assert entity_hash, "One of checksum or commit_sha must be provided."
+        assert checksum is None or commit_sha is None, "Either checksum or commit_sha must be provided, not both."
 
+        # NOTE: For compatibility we use commit_sha when migrating old projects. For all new instances use checksum.
         self.commit_sha: str = commit_sha
-        self.id: str = id or RemoteEntity.generate_id(commit_sha, path)
+        self.checksum: str = checksum
+        self.id: str = id or RemoteEntity.generate_id(entity_hash, path)
         self.path: str = str(path)
         self.url: str = url
 
@@ -207,13 +242,15 @@ class DatasetFile(Slots):
         self.source: str = str(source)
 
     @classmethod
-    def from_path(cls, client, path: Union[str, Path]) -> Optional["DatasetFile"]:
+    def from_path(
+        cls, client, path: Union[str, Path], source=None, based_on: RemoteEntity = None
+    ) -> Optional["DatasetFile"]:
         """Return an instance from a path."""
         entity = Entity.from_revision(client=client, path=path)
         if not entity:
             return
 
-        return cls(entity=entity, is_external=client.is_external_file(path))
+        return cls(entity=entity, is_external=client.is_external_file(path), source=source, based_on=based_on)
 
     @staticmethod
     def generate_id():
@@ -223,6 +260,18 @@ class DatasetFile(Slots):
         So, it should be marked by different DatasetFiles.
         """
         return f"/dataset-files/{uuid4().hex}"
+
+    def copy(self) -> "DatasetFile":
+        """Return a clone of this object."""
+        return DatasetFile(
+            based_on=self.based_on,
+            date_added=self.date_added,
+            date_removed=self.date_removed,
+            entity=self.entity,
+            id=self.id,
+            is_external=self.is_external,
+            source=self.source,
+        )
 
     def is_equal_to(self, other: "DatasetFile"):
         """Compare content.
@@ -247,6 +296,10 @@ class DatasetFile(Slots):
         """Return true if dataset is removed and should not be accessed."""
         return self.date_removed is not None
 
+    def to_jsonld(self):
+        """Create JSON-LD."""
+        return NewDatasetFileSchema(flattened=True).dump(self)
+
 
 class Dataset(Persistent):
     """Represent a dataset."""
@@ -254,46 +307,52 @@ class Dataset(Persistent):
     def __init__(
         self,
         *,
-        identifier: str,
-        name: str,
         creators: List[Person] = None,
+        dataset_files: List[DatasetFile] = None,
         date_created: datetime = None,
         date_published: datetime = None,
         date_removed: datetime = None,
         derived_from: str = None,
         description: str = None,
-        files: List[DatasetFile] = None,
         id: str = None,
+        identifier: str = None,
         images: List[ImageObject] = None,
         in_language: Language = None,
         initial_identifier: str = None,
         keywords: List[str] = None,
         license: str = None,
+        name: str = None,
         same_as: Url = None,
         tags: List[DatasetTag] = None,
         title: str = None,
         version: str = None,
     ):
-        if not is_dataset_name_valid(name):
-            raise errors.ParameterError(f"Invalid dataset name: '{name}'")
+        if not name:
+            assert title, "Either 'name' or 'title' must be set."
+            name = generate_default_name(title, version)
+
+        self._validate_name(name)
+        self._validate_creator(creators)
 
         # if `date_published` is set, we are probably dealing with an imported dataset so `date_created` is not needed
         if date_published:
             date_created = None
+        if initial_identifier is None:
+            assert identifier is None, "Initial identifier can be None only when creating a new Dataset."
+            initial_identifier = identifier = str(uuid4())
 
-        # TODO Verify identifier to be valid
         self.identifier = identifier or str(uuid4())
         self.id = id or Dataset.generate_id(identifier=self.identifier)
         self.name = name
 
         self.creators: List[Person] = creators or []
+        # `dataset_files` includes existing files and those that have been removed in the previous version
+        self.dataset_files: List[DatasetFile] = dataset_files or []
         self.date_created: datetime = fix_timezone(date_created) or local_now()
         self.date_published: datetime = fix_timezone(date_published)
         self.date_removed: datetime = fix_timezone(date_removed)
         self.derived_from: str = derived_from
         self.description: str = description
-        """`files` includes existing files and those that have been removed in the previous version."""
-        self.files: List[DatasetFile] = files or []
         self.images: List[ImageObject] = images or []
         self.in_language: Language = in_language
         self.initial_identifier: str = initial_identifier
@@ -304,10 +363,80 @@ class Dataset(Persistent):
         self.title: str = title
         self.version: str = version
 
+    @classmethod
+    def from_jsonld(cls, data, schema_class=None):
+        """Create an instance from JSON-LD data."""
+        assert isinstance(data, (dict, list)), f"Invalid data type: {data}"
+
+        schema_class = schema_class or NewDatasetSchema
+        self = schema_class(flattened=True).load(data)
+        return self
+
     @staticmethod
     def generate_id(identifier: str) -> str:
         """Generate an identifier for Dataset."""
         return f"/datasets/{identifier}"
+
+    @staticmethod
+    def _validate_name(name):
+        if not is_dataset_name_valid(name):
+            raise errors.ParameterError(f"Invalid dataset name: '{name}'")
+
+    @staticmethod
+    def _validate_creator(creators):
+        creators = creators or []
+        for creator in creators:
+            if not isinstance(creator, (Person, SoftwareAgent)):
+                raise ValueError(f"Invalid creator type: {creator}")
+
+    @property
+    def files(self):
+        """Return list of existing files."""
+        return [f for f in self.dataset_files if not f.is_removed()]
+
+    @property
+    def creators_csv(self):
+        """Comma-separated list of creators associated with dataset."""
+        return ", ".join(creator.name for creator in self.creators)
+
+    @property
+    def creators_full_csv(self):
+        """Comma-separated list of creators with full identity."""
+        return ", ".join(creator.full_identity for creator in self.creators)
+
+    @property
+    def keywords_csv(self):
+        """Comma-separated list of keywords associated with dataset."""
+        return ", ".join(self.keywords)
+
+    @property
+    def tags_csv(self):
+        """Comma-separated list of tags associated with dataset."""
+        return ",".join(tag.name for tag in self.tags)
+
+    def copy(self) -> "Dataset":
+        """Return a clone of this dataset."""
+        return Dataset(
+            creators=self.creators.copy(),
+            dataset_files=[f.copy() for f in self.dataset_files],
+            date_created=self.date_created,
+            date_published=self.date_published,
+            date_removed=self.date_removed,
+            derived_from=self.derived_from,
+            description=self.description,
+            id=self.id,
+            identifier=self.identifier,
+            images=list(self.images or []),
+            in_language=self.in_language,
+            initial_identifier=self.initial_identifier,
+            keywords=list(self.keywords or []),
+            license=self.license,
+            name=self.name,
+            same_as=self.same_as,
+            tags=list(self.tags or []),
+            title=self.title,
+            version=self.version,
+        )
 
     def replace_identifier(self):
         """Replace dataset's identifier and update relevant fields.
@@ -317,12 +446,12 @@ class Dataset(Persistent):
         """
         assert (
             self.derived_from is None
-        ), f"Replacing identifier to dataset '{self.name}:{self.identifier}' that is derived from {self.derived_from}"
+        ), f"Replacing identifier of dataset '{self.name}:{self.identifier}' that is derived from {self.derived_from}"
 
         self._assign_new_identifier()
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
 
-    def derive_from(self, dataset: "Dataset"):
+    def derive_from(self, dataset: "Dataset", creator: Person):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"
 
@@ -331,33 +460,39 @@ class Dataset(Persistent):
         self.initial_identifier = dataset.initial_identifier
         self.derived_from = dataset.id
         self.same_as = None
+        self.date_created = local_now()
+        self.date_published = None
+
+        if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
+            self.creators.append(creator)
 
     def _assign_new_identifier(self):
         identifier = str(uuid4())
         self.initial_identifier = identifier
         self.identifier = identifier
         self.id = Dataset.generate_id(identifier)
+        # NOTE: We also need to re-assign the _p_oid since identifier has changed
+        self.reassign_oid()
 
     def remove(self, date: datetime = None):
         """Mark the dataset as removed."""
         self.date_removed = fix_timezone(date) or local_now()
-        self._p_changed = True
 
     def is_removed(self) -> bool:
         """Return true if dataset is removed."""
         return self.date_removed is not None
 
     def find_file(self, path: Union[Path, str]) -> Optional[DatasetFile]:
-        """Find a file in files container using its relative path."""
+        """Find a file in the dataset using its relative path."""
         path = str(path)
-        for file in self.files:
-            if file.entity.path == path and not file.is_removed():
+        for file in self.dataset_files:
+            if str(file.entity.path) == path and not file.is_removed():
                 return file
 
-    def update_files_from(self, current_files: List[DatasetFile], date: datetime = None):
+    def update_files_from(self, current_dataset: "Dataset", date: datetime = None):
         """Check `current_files` to reuse existing entries and mark removed files."""
-        new_files: Dict[str, DatasetFile] = {f.entity.path: f for f in self.files if not f.is_removed()}
-        current_files: Dict[str, DatasetFile] = {f.entity.path: f for f in current_files if not f.is_removed()}
+        new_files: Dict[str, DatasetFile] = {f.entity.path: f for f in self.files}
+        current_files: Dict[str, DatasetFile] = {f.entity.path: f for f in current_dataset.files}
 
         files = []
 
@@ -374,7 +509,82 @@ class Dataset(Persistent):
             removed_file.remove(date)
             files.append(removed_file)
 
-        self.files = files
+        self.dataset_files = files
+
+    def update_metadata_from(self, other: "Dataset"):
+        """Update metadata from another dataset."""
+        editable_fields = [
+            "creators",
+            "date_created",
+            "date_published",
+            "derived_from",
+            "description",
+            "images",
+            "in_language",
+            "keywords",
+            "license",
+            "same_as",
+            "title",
+            "version",
+        ]
+        for name in editable_fields:
+            value = getattr(other, name)
+            setattr(self, name, value)
+
+    def update_metadata(self, **kwargs):
+        """Updates metadata."""
+        editable_attributes = ["creators", "description", "keywords", "title"]
+        for name, value in kwargs.items():
+            if name not in editable_attributes:
+                raise errors.ParameterError(f"Cannot edit field: '{name}'")
+            if value and value != getattr(self, name):
+                setattr(self, name, value)
+
+    def unlink_file(self, path, missing_ok=False) -> Optional[DatasetFile]:
+        """Mark a file as removed using its relative path."""
+        assert not self.immutable, f"Dataset is immutable {self}"
+
+        file = self.find_file(path)
+
+        if not file:
+            if not missing_ok:
+                raise errors.InvalidFileOperation(f"File cannot be found: {path}")
+            return
+
+        file.remove()
+
+        return file
+
+    def add_or_update_files(self, files: Union[DatasetFile, List[DatasetFile]]):
+        """Add new files or update existing files."""
+        assert not self.immutable, f"Dataset is immutable {self}"
+
+        if isinstance(files, DatasetFile):
+            files = [files]
+
+        new_files = []
+
+        for file in files:
+            existing_file = self.find_file(file.entity.path)
+            if not existing_file:
+                new_files.append(file)
+            elif file.entity.checksum != existing_file.entity.checksum or file.date_added != existing_file.date_added:
+                self.dataset_files.remove(existing_file)
+                new_files.append(file)
+
+        if not new_files:
+            return
+
+        self.dataset_files += new_files
+        self._p_changed = True
+
+    def clear_files(self):
+        """Remove all files."""
+        self.dataset_files = []
+
+    def to_jsonld(self):
+        """Create JSON-LD."""
+        return NewDatasetSchema(flattened=True).dump(self)
 
 
 class DatasetsProvenance:
@@ -387,23 +597,37 @@ class DatasetsProvenance:
         self._provenance_tails: Index = database["datasets-provenance-tails"]
         self._database: Database = database
 
-    def get_by_id(self, id: str) -> Optional[Dataset]:
+    @property
+    def datasets(self) -> List[Dataset]:
+        """Return an iterator of datasets."""
+        return list(self._datasets.values())
+
+    def get_by_id(self, id: str, immutable=False) -> Optional[Dataset]:
         """Return a dataset by its id."""
         try:
-            object = self._database.get_by_id(id)
+            dataset = self._database.get_by_id(id)
         except errors.ObjectNotFoundError:
             pass
         else:
-            assert isinstance(object, Dataset)
-            return object
+            assert isinstance(dataset, Dataset)
+            if dataset.immutable and immutable:
+                return dataset
 
-    def get_by_name(self, name: str) -> Optional[Dataset]:
+            return dataset.copy()
+
+    def get_by_name(self, name: str, immutable=False) -> Optional[Dataset]:
         """Return a dataset by its name."""
-        return self._datasets.get(name)
+        dataset = self._datasets.get(name)
+        if not dataset:
+            return
+        if not dataset.immutable or immutable:
+            return dataset
+
+        return dataset.copy()
 
     def get_provenance(self):
         """Return the provenance for all datasets."""
-        return self._provenance_tails.values()
+        return list(self._provenance_tails.values())
 
     def get_previous_version(self, dataset: Dataset) -> Optional[Dataset]:
         """Return the previous version of a dataset if any."""
@@ -411,62 +635,78 @@ class DatasetsProvenance:
             return
         return self.get_by_id(dataset.derived_from)
 
-    @inject.params(client="LocalClient")
-    def add_or_update(
-        self,
-        dataset: old_datasets.Dataset,
-        client,
-        revision: str = None,
-        date: datetime = None,
-    ):
+    def add_or_update(self, dataset: Dataset, date: datetime = None, creator: Person = None):
         """Add/update a dataset according to its new content.
 
         NOTE: This functions always mutates the dataset.
         """
-        revision = revision or "HEAD"
+        assert isinstance(dataset, Dataset)
 
-        new_dataset = Dataset.from_dataset(dataset, client, revision, self._database)
         # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
         current_dataset = self.get_by_name(dataset.name)
 
         if current_dataset:
             assert (
                 not current_dataset.is_removed()
-            ), f"Adding/Updating a removed dataset '{dataset.name}:{dataset.identifier}' at '{revision}'"
+            ), f"Adding/Updating a removed dataset '{dataset.name}:{dataset.identifier}'"
 
-            new_dataset.update_files_from(current_dataset.files, date=date)
+            dataset.update_files_from(current_dataset, date=date)
 
             # NOTE: Always mutate a dataset to make sure an old identifier is not reused
-            new_dataset.derive_from(current_dataset)
+            dataset.derive_from(current_dataset, creator=creator)
         else:
             assert (
                 dataset.derived_from is None
             ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
 
             # NOTE: This happens in migrations of broken projects
-            current_dataset = self.get_by_id(new_dataset.id)
+            current_dataset = self.get_by_id(dataset.id)
             if current_dataset:
-                new_dataset.replace_identifier()
+                dataset.replace_identifier()
 
-        self._datasets.add(new_dataset)
-        self._provenance_tails.pop(new_dataset.derived_from, None)
-        self._provenance_tails.add(new_dataset)
+        self._datasets.add(dataset)
 
-    def remove(self, dataset, client, revision=None, date=None):
+        self._update_database(dataset)
+
+    def add_or_replace(self, dataset: Dataset, date: datetime = None):
+        """Add/replace a dataset."""
+        assert isinstance(dataset, Dataset)
+
+        current_dataset = self.get_by_name(dataset.name, immutable=True)
+
+        if current_dataset:
+            dataset.update_files_from(current_dataset, date=date)
+
+            # NOTE: Copy metadata to the current dataset
+            current_dataset.update_metadata_from(dataset)
+            current_dataset.dataset_files = dataset.dataset_files
+            dataset = current_dataset
+        else:
+            assert (
+                dataset.derived_from is None
+            ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
+
+            # NOTE: This happens in migrations of broken projects
+            current_dataset = self.get_by_id(dataset.id)
+            if current_dataset:
+                dataset.replace_identifier()
+
+        self._datasets.add(dataset)
+
+        self._update_database(dataset)
+
+    def remove(self, dataset, date: datetime = None, creator: Person = None):
         """Remove a dataset."""
-        revision = revision or "HEAD"
+        assert isinstance(dataset, Dataset)
 
-        new_dataset = Dataset.from_dataset(dataset, client, revision, self._database)
         # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
         current_dataset = self._datasets.pop(dataset.name, None)
 
         if current_dataset:
-            assert (
-                not current_dataset.is_removed()
-            ), f"Removing a removed dataset '{dataset.name}:{dataset.identifier}' at '{revision}'"
+            assert not current_dataset.is_removed(), f"Removing a removed dataset '{dataset.name}:{dataset.identifier}'"
 
             # NOTE: We always assign a new identifier to make sure an old identifier is not reused
-            new_dataset.derive_from(current_dataset)
+            dataset.derive_from(current_dataset, creator=creator)
         else:
             # TODO: Should we raise here when migrating
             communication.warn(f"Deleting non-existing dataset '{dataset.name}'")
@@ -476,13 +716,17 @@ class DatasetsProvenance:
             ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
 
             # NOTE: This happens in migrations of broken projects
-            current_dataset = self.get_by_id(new_dataset.id)
+            current_dataset = self.get_by_id(dataset.id)
             if current_dataset:
-                new_dataset.replace_identifier()
+                dataset.replace_identifier()
 
-        new_dataset.remove(date)
-        self._provenance_tails.pop(new_dataset.derived_from, None)
-        self._provenance_tails.add(new_dataset)
+        dataset.remove(date)
+
+        self._update_database(dataset)
+
+    def _update_database(self, dataset):
+        self._provenance_tails.pop(dataset.derived_from, None)
+        self._provenance_tails.add(dataset)
 
 
 class UrlSchema(JsonLDSchema):
@@ -576,7 +820,7 @@ class NewDatasetFileSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Entity, schema.DigitalDocument]
+        rdf_type = [prov.Entity, schema.DigitalDocument, wfprov.Artifact]
         model = DatasetFile
         unknown = EXCLUDE
 
@@ -587,7 +831,6 @@ class NewDatasetFileSchema(JsonLDSchema):
     id = fields.Id()
     is_external = fields.Boolean(renku.external, missing=False)
     source = fields.String(renku.source, missing=None)
-    url = fields.String(schema.url, missing=None)
 
 
 class NewDatasetSchema(JsonLDSchema):
@@ -606,19 +849,79 @@ class NewDatasetSchema(JsonLDSchema):
     date_published = fields.DateTime(
         schema.datePublished, missing=None, format="%Y-%m-%d", extra_formats=("iso", "%Y-%m-%dT%H:%M:%S")
     )
-    derived_from = Nested(prov.wasDerivedFrom, UrlSchema, missing=None)
+    # FIXME: Implement proper export
+    # derived_from = Nested(prov.wasDerivedFrom, UrlSchema, missing=None)
+    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
     description = fields.String(schema.description, missing=None)
-    files = Nested(schema.hasPart, NewDatasetFileSchema, many=True)
+    dataset_files = Nested(schema.hasPart, NewDatasetFileSchema, many=True)
     id = fields.Id(missing=None)
     identifier = fields.String(schema.identifier)
     images = fields.Nested(schema.image, ImageObjectSchema, missing=None, many=True)
     in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     license = Uri(schema.license, missing=None)
-    name = fields.String(schema.alternateName)
+    name = fields.String(renku.slug)
     initial_identifier = fields.String(renku.originalIdentifier)
     same_as = Nested(schema.sameAs, UrlSchema, missing=None)
     tags = Nested(schema.subjectOf, DatasetTagSchema, many=True)
     title = fields.String(schema.name)
-    url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
+
+
+class DatasetCreatorsJson(marshmallow.Schema):
+    """Schema for the dataset creators."""
+
+    name = marshmallow.fields.String()
+    email = marshmallow.fields.String()
+    affiliation = marshmallow.fields.String()
+
+
+class DatasetDetailsJson(marshmallow.Schema):
+    """Serialize a dataset to a response object."""
+
+    name = marshmallow.fields.String(required=True)
+    version = marshmallow.fields.String(allow_none=True)
+    created_at = marshmallow.fields.String(allow_none=True, attribute="date_created")
+
+    title = marshmallow.fields.String()
+    creators = marshmallow.fields.List(marshmallow.fields.Nested(DatasetCreatorsJson))
+    description = marshmallow.fields.String()
+    keywords = marshmallow.fields.List(marshmallow.fields.String())
+    identifier = marshmallow.fields.String()
+
+
+class DatasetFileDetailsJson(marshmallow.Schema):
+    """Serialize dataset files to a response object."""
+
+    path = marshmallow.fields.String()
+    created = marshmallow.fields.DateTime()
+    added = marshmallow.fields.DateTime()
+
+    size = marshmallow.fields.String()
+    is_lfs = marshmallow.fields.Boolean()
+
+    dataset_id = marshmallow.fields.String()
+    dataset_name = marshmallow.fields.String()
+
+    creators = marshmallow.fields.List(marshmallow.fields.Nested(DatasetCreatorsJson))
+
+
+class ImageObjectJson(marshmallow.Schema):
+    """ImageObject json schema."""
+
+    content_url = marshmallow.fields.String()
+    position = marshmallow.fields.Integer()
+
+
+class ImageObjectRequestJson(marshmallow.Schema):
+    """ImageObject json schema."""
+
+    file_id = marshmallow.fields.String()
+    content_url = marshmallow.fields.String()
+    position = marshmallow.fields.Integer()
+    mirror_locally = marshmallow.fields.Bool(default=False)
+
+
+def get_dataset_data_dir(client, dataset: Dataset) -> str:
+    """Return default data directory for a dataset."""
+    return os.path.join(client.data_dir, dataset.name)

@@ -147,7 +147,7 @@ class Activity(CommitMixin):
 
             is_dataset = any(
                 [
-                    path_.resolve() == (self.client.path / f.path).resolve()
+                    path_.resolve() == (self.client.path / f.entity.path).resolve()
                     for d in self.client.datasets.values()
                     for f in d.files
                 ]
@@ -160,7 +160,7 @@ class Activity(CommitMixin):
                     d
                     for d in self.client.datasets.values()
                     for f in d.files
-                    if path_.resolve() == (self.client.path / f.path).resolve()
+                    if path_.resolve() == (self.client.path / f.entity.path).resolve()
                 )
                 path_ = self.client.path / dataset.path / self.client.METADATA
 
@@ -191,11 +191,7 @@ class Activity(CommitMixin):
         if (self.client.path / path).is_dir():
             entity_cls = Collection
 
-        # TODO: use a factory method to generate the entity
-        if path.startswith(os.path.join(client.renku_home, client.DATASETS)) and not deleted and output_path.exists():
-            entity = client.load_dataset_from_path(path, commit=commit)
-        else:
-            entity = entity_cls(commit=commit, client=client, path=path, parent=collection)
+        entity = entity_cls(commit=commit, client=client, path=path, parent=collection)
 
         if collection:
             collection.members.append(entity)
@@ -254,7 +250,7 @@ class Activity(CommitMixin):
 
             is_dataset = any(
                 [
-                    path_.resolve() == (self.client.path / f.path).resolve()
+                    path_.resolve() == (self.client.path / f.entity.path).resolve()
                     for d in self.client.datasets.values()
                     for f in d.files
                 ]
@@ -267,7 +263,7 @@ class Activity(CommitMixin):
                     d
                     for d in self.client.datasets
                     for f in d.files
-                    if path_.resolve() == (self.client.path / f.path).resolve()
+                    if path_.resolve() == (self.client.path / f.entity.path).resolve()
                 )
                 path_ = self.client.path / dataset.path / self.client.METADATA
 

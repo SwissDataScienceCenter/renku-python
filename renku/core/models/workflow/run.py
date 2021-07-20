@@ -54,10 +54,7 @@ def _entity_from_path(client, path, commit):
     if (client.path / path).is_dir():
         entity_cls = Collection
 
-    if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)):
-        return client.load_dataset_from_path(path, commit=commit)
-    else:
-        return entity_cls(commit=commit, client=client, path=str(path))
+    return entity_cls(commit=commit, client=client, path=str(path))
 
 
 def _convert_cmd_binding(binding, client, commit):

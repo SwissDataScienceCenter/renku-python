@@ -445,9 +445,11 @@ class CommandLineToolFactory(object):
                 # Remove files from the input directory
                 candidates[:] = (path for path in candidates if path not in subpaths)
                 # Include input path in the candidates to check
-                candidates.append(str(input_path))
+                input_path = str(input_path)
+                if input_path not in candidates:
+                    candidates.append(input_path)
 
-                input_candidates[str(input_path)] = input
+                    input_candidates[input_path] = input
             elif input.type not in PATH_OBJECTS:
                 # Input need to be changed if an output is detected
                 input_candidates[str(input_path)] = input

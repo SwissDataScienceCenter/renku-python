@@ -19,7 +19,7 @@
 
 import os.path
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Union
 from urllib.parse import quote
 
 from renku.core.metadata.immutable import Immutable
@@ -35,6 +35,8 @@ class Entity(Immutable):
     __slots__ = ("checksum", "path")
 
     def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], **kwargs):
+        path = str(path)
+
         assert id is None or isinstance(id, str)
         assert not os.path.isabs(path), f"Entity is being created with absolute path: '{path}'"
 
@@ -59,31 +61,19 @@ class Entity(Immutable):
         return f"/entities/{checksum}/{quoted_path}"
 
     @classmethod
-    def from_revision(
-        cls, client, path: Union[Path, str], revision: str = None, find_previous: bool = True
-    ) -> Optional["Entity"]:
+    def from_revision(cls, client, path: Union[Path, str], revision: str = None) -> "Entity":
         """Return dependency from given path and revision."""
         revision = revision or "HEAD"
         assert isinstance(revision, str), f"Invalid revision: {revision}"
 
-        if find_previous:
-            try:
-                commit = client.find_previous_commit(path, revision=revision)
-                revision = commit.hexsha
-            except KeyError:
-                return
-        else:
-            # TODO: This might raise git.BadName: What should we do?
-            commit = client.repo.commit(revision)
-
-        client, commit, path = client.resolve_in_submodules(commit, path)
-
+        # FIXME: Implement the cache properly: It's mainly used in migrations
         global _entity_cache
         key = (revision, str(path))
         cached_entry = _entity_cache.get(key)
         if cached_entry:
             return cached_entry
 
+        # TODO: What checksum we get at "HEAD" if object is staged but not committed
         checksum = get_object_hash(repo=client.repo, revision=revision, path=path)
         # NOTE: If object was not found at a revision it's either removed or exists in a different revision; keep the
         # entity and use revision as checksum
@@ -93,7 +83,7 @@ class Entity(Immutable):
 
         absolute_path = client.path / path
         if str(path) != "." and absolute_path.is_dir():
-            members = cls.get_directory_members(client, commit, absolute_path)
+            members = cls.get_directory_members(client, revision, absolute_path)
             entity = Collection(id=id, checksum=checksum, path=path, members=members)
         else:
             entity = cls(id=id, checksum=checksum, path=path)
@@ -103,9 +93,8 @@ class Entity(Immutable):
         return entity
 
     @classmethod
-    def get_directory_members(cls, client, commit, absolute_path: Path) -> List["Entity"]:
+    def get_directory_members(cls, client, revision, absolute_path: Path) -> List["Entity"]:
         """Return first-level files/directories in a directory."""
-        files_in_commit = commit.stats.files
         members: List[Entity] = []
 
         for member in absolute_path.iterdir():
@@ -113,16 +102,12 @@ class Entity(Immutable):
                 continue
 
             member_path = str(member.relative_to(client.path))
-            find_previous = True
-
-            if member_path in files_in_commit:
-                # we already know the newest commit, no need to look it up
-                find_previous = False
 
             try:
                 assert all(member_path != m.path for m in members)
 
-                entity = cls.from_revision(client, member_path, commit.hexsha, find_previous=find_previous)
+                entity = cls.from_revision(client, member_path, revision)
+                # NOTE: If a path is not found at a revision we assume that it didn't exist at that revision
                 if entity:
                     members.append(entity)
             except KeyError:
