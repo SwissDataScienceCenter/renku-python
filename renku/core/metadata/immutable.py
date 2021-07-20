@@ -31,6 +31,8 @@ class Slots:
     __all_slots__ = None
 
     def __init__(self, **kwargs):
+        if not self.__class__.__all_slots__:
+            self.__class__.__all_slots__ = self._get_all_slots()
         for key, value in kwargs.items():
             object.__setattr__(self, key, value)
 
@@ -40,8 +42,6 @@ class Slots:
         return cls(**kwargs)
 
     def __getstate__(self):
-        if not self.__class__.__all_slots__:
-            self.__class__.__all_slots__ = self._get_all_slots()
         return {name: getattr(self, name, None) for name in self.__class__.__all_slots__ if name != "__weakref__"}
 
     def _get_all_slots(self):
@@ -93,3 +93,22 @@ class Immutable(Slots):
             raise TypeError(f"Cannot modify an immutable class {self} {self.__class__}")
 
         object.__setattr__(self, name, value)
+
+
+class DynamicProxy:
+    """A proxy class to allow adding dynamic fields to slots/immutable classes."""
+
+    def __init__(self, subject, update=True):
+        self._subject = subject
+        self._update = update
+
+    def __getattr__(self, name):
+        return getattr(self._subject, name)
+
+    def __setattr__(self, name, value):
+        if name == "_subject" or not hasattr(self._subject, name):
+            super().__setattr__(name, value)
+        else:
+            if not self._update:
+                raise ValueError(f"Cannot set attribute '{name}' on {self._subject}.")
+            setattr(self._subject, name, value)
