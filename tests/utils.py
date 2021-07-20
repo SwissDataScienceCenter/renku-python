@@ -20,11 +20,12 @@ import os
 import traceback
 import uuid
 from contextlib import contextmanager
+from typing import Optional
 
 import pytest
 
 from renku.core.metadata.database import Database
-from renku.core.models.dataset import DatasetsProvenance
+from renku.core.models.dataset import Dataset, DatasetsProvenance
 
 
 def raises(error):
@@ -62,23 +63,22 @@ def make_dataset_add_payload(project_id, urls, name=None):
     }
 
 
-def assert_dataset_is_mutated(old, new, mutator=None):
+def assert_dataset_is_mutated(old: Dataset, new: Dataset, mutator=None):
     """Check metadata is updated correctly after dataset mutation."""
-    assert old._id != new._id
+    assert old.name == new.name
+    assert old.initial_identifier == new.initial_identifier
+    assert old.id != new.id
     assert old.identifier != new.identifier
-    assert old.path == new.path
-    assert old._id == new.derived_from.url["@id"]
+    assert old.id == new.derived_from
     assert old.date_created != new.date_created
     assert new.same_as is None
     assert new.date_published is None
-    assert new.identifier in new._id
-    assert new.identifier in new._label
-    assert new.identifier in new.url
+    assert new.identifier in new.id
 
     if mutator:
         old_creators = {c.email for c in old.creators}
         new_creators = {c.email for c in new.creators}
-        assert new_creators == old_creators | {mutator.email}
+        assert new_creators == old_creators | {mutator.email}, f"{new_creators} {old_creators}"
 
 
 @contextmanager
@@ -128,3 +128,24 @@ def format_result_exception(result):
         stacktrace = ""
 
     return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output}"
+
+
+def load_dataset(client, name: str) -> Optional[Dataset]:
+    """Load dataset from disk."""
+    database = Database.from_path(client.database_path)
+    datasets_provenance = DatasetsProvenance(database)
+
+    return datasets_provenance.get_by_name(name)
+
+
+@contextmanager
+def with_dataset(client, name=None, commit=False):
+    """Yield an editable metadata object for a dataset."""
+    dataset = client.get_dataset(name=name, strict=True, immutable=True)
+    dataset._v_immutable = False
+
+    yield dataset
+
+    if commit:
+        client.get_database().register(dataset)
+        client.get_database().commit()

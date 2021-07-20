@@ -58,5 +58,5 @@ def test_list_dataset_files(client_with_datasets, dataset, files_paths):
     with Project() as project:
         dataset = next(d for d in Dataset.list() if d.name == dataset)
 
-        assert set(files_paths) == {d.path for d in dataset.files}
+        assert set(files_paths) == {f.path for f in dataset.files}
         assert set(project.path / p for p in files_paths) == {d.full_path for d in dataset.files}

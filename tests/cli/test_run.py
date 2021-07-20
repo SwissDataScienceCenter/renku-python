@@ -78,7 +78,7 @@ def test_run_clean(runner, project, run_shell):
     assert ".renku/workflow/" in result.output
 
 
-def test_run_metadata(renku_cli, client_with_new_graph):
+def test_run_metadata(renku_cli, client):
     """Test run with workflow metadata."""
     exit_code, activity = renku_cli(
         "run", "--name", "run-1", "--description", "first run", "--keyword", "key1", "--keyword", "key2", "touch", "foo"
@@ -89,7 +89,7 @@ def test_run_metadata(renku_cli, client_with_new_graph):
     assert "first run" == activity.description
     assert {"key1", "key2"} == set(activity.keywords)
 
-    database = Database.from_path(client_with_new_graph.database_path)
+    database = Database.from_path(client.database_path)
     plan = DependencyGraph.from_database(database).plans[0]
     assert "run-1" == plan.name
     assert "first run" == plan.description
@@ -105,8 +105,6 @@ def test_run_metadata(renku_cli, client_with_new_graph):
 )
 def test_generated_run_name(runner, client, command, name):
     """Test generated run name."""
-    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
-
     result = runner.invoke(cli, ["run", "--no-output"] + command)
 
     assert 0 == result.exit_code, format_result_exception(result)
@@ -127,8 +125,6 @@ def test_run_invalid_name(runner, client):
 
 def test_run_argument_parameters(runner, client):
     """Test names and values of workflow/provenance arguments and parameters."""
-    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
-
     result = runner.invoke(
         cli,
         [
@@ -179,6 +175,7 @@ def test_run_argument_parameters(runner, client):
     parameters_values = {p.parameter.default_value for p in activity.parameters}
     assert {42, "Dockerfile", "README.md", "requirements.txt", "some message"} == parameters_values
 
-    result = runner.invoke(cli, ["graph", "export", "--format", "jsonld", "--strict"])
-
-    assert 0 == result.exit_code, format_result_exception(result)
+    # FIXME: Uncomment these line once graph export is implemented using the new graph
+    # result = runner.invoke(cli, ["graph", "export", "--format", "jsonld", "--strict"])
+    #
+    # assert 0 == result.exit_code, format_result_exception(result)

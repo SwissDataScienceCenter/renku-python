@@ -27,28 +27,20 @@ from renku.core.metadata.database import PERSISTED, Database
 from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Activity, Association, Usage
 from renku.core.models.workflow.plan import Plan
-from tests.utils import format_result_exception
 
 
-def test_database_create(client, runner):
-    """Test database files are created in an empty project."""
-    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
+@pytest.mark.skip
+def test_database_recreate(client, runner):
+    """Test can force re-create the database."""
+    result = runner.invoke(cli, ["graph", "generate", "-f"])
+
+    assert 0 == result.exit_code, result.output
 
     assert not client.repo.is_dirty()
     root_objects = ["root", "activities", "plans"]
     for filename in root_objects:
         assert (client.database_path / filename).exists()
 
-    assert client.has_graph_files()
-
-
-def test_database_recreate(client, runner):
-    """Test can force re-create the database."""
-    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
-
-    result = runner.invoke(cli, ["graph", "generate", "-f"])
-
-    assert 0 == result.exit_code, format_result_exception(result)
     assert client.has_graph_files()
 
 
@@ -218,7 +210,7 @@ def test_database_loads_only_required_objects(database):
     # Access a field to make sure that activity is loaded
     _ = activity.id
 
-    assert UPTODATE == activity._p_state
+    assert UPTODATE == activity._p_state, activity._p_status
     assert PERSISTED == activity._p_serial
     assert GHOST == activity.association.plan._p_state
 
