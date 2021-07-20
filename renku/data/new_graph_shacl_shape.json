@@ -1354,13 +1354,13 @@
             },
             {
                "sh:class": {
-                  "id": "prov:Plan"
+                  "@id": "prov:Plan"
                },
                "path": "renku:hasSubprocesses"
             },
             {
                "sh:class": {
-                  "id": "renku:ParameterLink"
+                  "@id": "renku:ParameterLink"
                },
                "path": "renku:workflowLinks"
             },

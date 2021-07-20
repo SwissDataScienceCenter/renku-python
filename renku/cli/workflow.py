@@ -92,12 +92,12 @@ The basic usage is:
 
 .. code-block:: console
 
-   $ renku run --name workflow1 -- command
-   $ renku run --name workflow2 -- command
-   $ renku workflow group my-grouped-workflow workflow1 workflow2
+   $ renku run --name step1 -- command
+   $ renku run --name step2 -- command
+   $ renku workflow group my-grouped-workflow step1 step2
 
 This would create a new workflow ``my-grouped-workflow`` that consists
-of ``workflow1`` and ``workflow2`` as steps. This new workflow is just
+of ``step1`` and ``step2`` as steps. This new workflow is just
 like any other workflow in renku in that it can be executed, exported
 or grouped with other workflows.
 
@@ -110,9 +110,9 @@ The expressions come in two flavors, absolute references using the names
 of workflows and properties, and relative references specifying the
 position within a workflow.
 
-An absolute expression in the example above could be ``workflow1.my_dataset``
+An absolute expression in the example above could be ``step1.my_dataset``
 to refer to the input, output or argument named ``my_dataset` on the step
-``workflow1``. A relative expression could be ``@step2.@output1`` to refer
+``step1``. A relative expression could be ``@step2.@output1`` to refer
 to the first output of the second step of the grouped workflow.
 
 Valid relative expressions are ``@input<n>``, ``@output<n>`` and ``@param<n>``
@@ -130,14 +130,14 @@ A full example of this would be:
 
 .. code-block:: console
 
-   $ renku workflow group --map input_file=workflow1.@input2 \
+   $ renku workflow group --map input_file=step1.@input2 \
        --map output_file=@step1.my-output,@step2.step2s_output \
-       my-grouped-workflow workflow1 workflow2
+       my-grouped-workflow step1 step2
 
 This would create a mapping called ``input_file`` on the parent workflow that
-points to the second input of ``workflow1`` and a mapping called ``output_file``
-that points to both the output ``my-output`` on ``workflow1`` and
-``step2s_output`` on ``workflow2``.
+points to the second input of ``step1`` and a mapping called ``output_file``
+that points to both the output ``my-output`` on ``step1`` and
+``step2s_output`` on ``step2``.
 
 You can also set default values for mappings, which override the default values
 of the parameters they're pointing to by using the ``--set``/``-s`` parameter, for
@@ -145,13 +145,13 @@ instance:
 
 .. code-block:: console
 
-   $ renku workflow group --map input_file=workflow1.@input2 \
+   $ renku workflow group --map input_file=step1.@input2 \
        --set input_file=data.csv
-       my-grouped-workflow workflow1 workflow2
+       my-grouped-workflow step1 step2
 
 
 This would lead to ``data.csv`` being used for the second input of
-``workflow1`` when ``my-grouped-workflow`` is executed (if it isn't overridden
+``step1`` when ``my-grouped-workflow`` is executed (if it isn't overridden
 at execution time).
 
 You can add a description to the mappings to make them more human-readable
@@ -161,9 +161,9 @@ by using the ``--describe-param``/``-p`` parameter, as shown here:
 
 .. code-block:: console
 
-   $ renku workflow group --map input_file=workflow1.@input2 \
+   $ renku workflow group --map input_file=step1.@input2 \
        -p input_file="The dataset to process"
-       my-grouped-workflow workflow1 workflow2
+       my-grouped-workflow step1 step2
 
 You can also expose all inputs, outputs or parameters of child steps by
 using ``--map-inputs``, ``--map-outputs`` or ``--map-params``, respectively.
@@ -175,9 +175,10 @@ at runtime, you might want to enforce a certain order of steps by explicitely
 mapping outputs to inputs.
 
 You can do that using the ``--link <source>=<sink>`` parameters, e.g.
-``--link step1.myoutput=step2.myinput``. This gets recorded on the workflow
-template and forces ``step2.myinput`` to always be set to the same path as
-``step1.myoutput``, irrespective of which values are passed at execution time.
+``--link step1.@output1=step2.@input1``. This gets recorded on the
+workflow template and forces ``step2.@input1`` to always be set to the same
+path as ``step1.@output1``, irrespective of which values are passed at
+execution time.
 
 This way, you can ensure that the steps in your workflow are always executed
 in the correct order and that the dependencies between steps are modelled
@@ -192,6 +193,15 @@ linked in the grouped run. To do this, pass the ``--link-all`` flag.
    depending on step1 is not allowed. Additionally, the flow of information
    has to be from outputs to inputs or parameters, so you cannot map an input
    to an output, only the other way around.
+
+Values on inputs/outputs/parameters get set according to the following
+order of precedence (lower precedence first):
+
+- Default value on a input/output/parameter
+- Default value on a mapping to the input/output/parameter
+- Value passed to a mapping to the input/output/parameter
+- Value passed to the input/output/parameter
+- Value propagated to an input from the source of a workflow link
 
 """
 
@@ -451,13 +461,13 @@ def create(output_file, revision, paths):
 @click.option("links", "-l", "--link", multiple=True, help="Link source and sink parameters to connect steps.")
 @click.option("-p", "--describe-param", multiple=True, help="Default value for a workflow parameter.")
 @click.option("--map-inputs", is_flag=True, help="Exposes all child inputs as inputs on the GroupedRun.")
-@click.option("--map-outputs", is_flag=True, help="Exposes all child outputs as inputs on the GroupedRun.")
-@click.option("--map-params", is_flag=True, help="Exposes all child parameters as inputs on the GroupedRun.")
+@click.option("--map-outputs", is_flag=True, help="Exposes all child outputs as outputs on the GroupedRun.")
+@click.option("--map-params", is_flag=True, help="Exposes all child parameters as parameters on the GroupedRun.")
 @click.option("--map-all", is_flag=True, help="Combination of --map-inputs, --map-outputs, --map-params.")
 @click.option("--link-all", is_flag=True, help="Automatically link steps based on default values.")
 @click.option("--keyword", multiple=True, help="List of keywords for the workflow.")
 @click.argument("name", required=True)
-@click.argument("workflow", nargs=-1, required=True, type=click.UNPROCESSED)
+@click.argument("step", nargs=-1, required=True, type=click.UNPROCESSED)
 def group(
     description,
     mappings,
@@ -471,7 +481,7 @@ def group(
     link_all,
     keyword,
     name,
-    workflow,
+    step,
 ):
     """Create a grouped workflow consisting of multiple steps."""
 
@@ -493,7 +503,7 @@ def group(
             map_params=map_params,
             link_all=link_all,
             keywords=keyword,
-            workflows=workflow,
+            workflows=step,
         )
     )
 

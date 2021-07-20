@@ -156,7 +156,7 @@ class Plan(Persistent):
             keywords=run.keywords,
             name=run.name,
             outputs=[convert_output(o) for o in run.outputs],
-            parameters=[convert_argument(a) for a in run.parameters],
+            parameters=[convert_argument(a) for a in run.arguments],
             success_codes=run.successcodes,
         )
 
