@@ -19,16 +19,10 @@
 
 import click
 
+from renku.cli import dataset as dataset_cli
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
-from renku.core.incubation.graph import (
-    FORMATS,
-    add_to_dataset,
-    create_dataset,
-    export_graph,
-    generate_graph,
-    remove_workflow,
-)
+from renku.core.incubation.graph import FORMATS, export_graph, generate_graph, remove_workflow
 from renku.core.incubation.graph import status as get_status
 from renku.core.incubation.graph import update as perform_update
 from renku.core.management.command_builder.command import Command, inject
@@ -156,19 +150,7 @@ def dataset():
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
 def create(name, title, description, creators, keyword):
     """Create a new dataset."""
-    communicator = ClickCallback()
-
-    result = (
-        create_dataset()
-        .with_communicator(communicator)
-        .build()
-        .execute(name=name, title=title, description=description, creators=creators, keywords=keyword)
-    )
-
-    new_dataset = result.output
-
-    click.echo(f"Use the name ``{new_dataset.name}`` to refer to this dataset.")
-    click.secho("OK", fg="green")
+    dataset_cli.create(name=name, title=title, description=description, creators=creators, keyword=keyword)
 
 
 @dataset.command()
@@ -183,11 +165,9 @@ def create(name, title, description, creators, keyword):
 @click.option("--ref", default=None, help="Add files from a specific commit/tag/branch.")
 def add(name, urls, external, force, overwrite, create, sources, destination, ref):
     """Add data to a dataset."""
-    communicator = ClickCallback()
-
-    add_to_dataset().with_communicator(communicator).build().execute(
-        urls=urls,
+    dataset_cli.add(
         name=name,
+        urls=urls,
         external=external,
         force=force,
         overwrite=overwrite,
@@ -196,7 +176,6 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
         destination=destination,
         ref=ref,
     )
-    click.secho("OK", fg="green")
 
 
 @graph.group()

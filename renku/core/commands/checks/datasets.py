@@ -49,10 +49,10 @@ def check_missing_files(client):
 
     for dataset in client.datasets.values():
         for file_ in dataset.files:
-            path = client.path / file_.path
-            file_exists = path.exists() or (file_.external and os.path.lexists(path))
+            path = client.path / file_.entity.path
+            file_exists = path.exists() or (file_.is_external and os.path.lexists(path))
             if not file_exists:
-                missing[dataset.name].append(file_.path)
+                missing[dataset.name].append(file_.entity.path)
 
     if not missing:
         return True, None

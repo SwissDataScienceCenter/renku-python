@@ -99,7 +99,7 @@ class OLOSExporter(ExporterApi):
         """Endpoint for creation of access token."""
         return urllib.parse.urljoin(self._server_url, "/portal by clicking on the top-right menu and selecting 'token'")
 
-    def export(self, publish, **kwargs):
+    def export(self, publish, client=None, **kwargs):
         """Execute export process."""
         deposition = _OLOSDeposition(server_url=self._server_url, access_token=self.access_token)
 
@@ -111,12 +111,12 @@ class OLOSExporter(ExporterApi):
         communication.start_progress(progress_text, total=len(self.dataset.files))
 
         try:
-            for file_ in self.dataset.files:
+            for file in self.dataset.files:
                 try:
-                    path = Path(file_.path).relative_to(self.dataset.data_dir)
+                    path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
                 except ValueError:
-                    path = Path(file_.path)
-                deposition.upload_file(full_path=file_.full_path, path_in_dataset=path)
+                    path = Path(file.entity.path)
+                deposition.upload_file(full_path=client.path / file.entity.path, path_in_dataset=path)
                 communication.update_progress(progress_text, amount=1)
         finally:
             communication.finalize_progress(progress_text)

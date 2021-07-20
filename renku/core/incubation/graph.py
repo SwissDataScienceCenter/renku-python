@@ -26,21 +26,18 @@ from pathlib import Path
 from typing import Dict
 from urllib.parse import urlparse
 
-import git
 from git import GitCommandError
 from pkg_resources import resource_filename
 
 from renku.core import errors
-from renku.core.commands.dataset import create_dataset_helper
 from renku.core.commands.update import execute_workflow
 from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.datasets import DATASET_METADATA_PATHS, DatasetsApiMixin
+from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.migrate import migrate
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.metadata.database import Database
-from renku.core.models.dataset import DatasetsProvenance
 from renku.core.models.entities import Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
@@ -72,7 +69,7 @@ def _generate_graph(client: LocalClient, force=False):
     from renku.core.management.migrations.m_0009__new_metadata_storage import generate_new_metadata
 
     try:
-        generate_new_metadata(client=client, force=force, remove=False)
+        generate_new_metadata(force=force, remove=False)
     except errors.OperationError:
         raise errors.OperationError("Graph metadata exists. Use ``--force`` to regenerate it.")
 
@@ -214,7 +211,7 @@ def _get_modified_paths(plans_usages, client: LocalClient):
 
 @inject.autoparams()
 def _fetch_datasets(revision, paths, deleted_paths, client: LocalClient):
-    from renku.core.models.datasets import Dataset
+    from renku.core.models.dataset import Dataset
 
     datasets_path = client.path / ".renku" / "tmp" / "datasets"
     shutil.rmtree(datasets_path, ignore_errors=True)
@@ -334,78 +331,6 @@ def _validate_graph(rdf_graph, format):
         raise errors.SHACLValidationError(f"{t}\nCouldn't export: Invalid Knowledge Graph data")
 
 
-def create_dataset():
-    """Return a command for creating an empty dataset in the current repo."""
-    command = Command().command(_create_dataset).lock_dataset()
-    return command.require_migration().with_database(write=True).with_commit(commit_only=DATASET_METADATA_PATHS)
-
-
-@inject.autoparams()
-def _create_dataset(name, client: LocalClient, title=None, description="", creators=None, keywords=None):
-    """Create a dataset in the repository."""
-    if not client.has_graph_files():
-        raise errors.OperationError("Dataset provenance is not generated. Run `renku graph generate`.")
-
-    return create_dataset_helper(name=name, title=title, description=description, creators=creators, keywords=keywords)
-
-
-def add_to_dataset():
-    """Return a command for adding data to a dataset."""
-    command = Command().command(_add_to_dataset).lock_dataset()
-    return (
-        command.require_migration()
-        .with_database(write=True)
-        .with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
-    )
-
-
-@inject.autoparams()
-def _add_to_dataset(
-    client: LocalClient,
-    urls,
-    name,
-    datasets_provenance: DatasetsProvenance,
-    external=False,
-    force=False,
-    overwrite=False,
-    create=False,
-    sources=(),
-    destination="",
-    ref=None,
-):
-    """Add data to a dataset."""
-    if not client.has_graph_files():
-        raise errors.OperationError("Dataset provenance is not generated. Run `renku graph generate`.")
-
-    if len(urls) == 0:
-        raise errors.UsageError("No URL is specified")
-    if sources and len(urls) > 1:
-        raise errors.UsageError("Cannot use `--source` with multiple URLs.")
-
-    try:
-        with client.with_dataset_provenance(name=name, create=create) as dataset:
-            client.add_data_to_dataset(
-                dataset,
-                urls=urls,
-                external=external,
-                force=force,
-                overwrite=overwrite,
-                sources=sources,
-                destination=destination,
-                ref=ref,
-            )
-
-        datasets_provenance.add_or_update(dataset)
-    except errors.DatasetNotFound:
-        raise errors.DatasetNotFound(
-            message=f"Dataset `{name}` does not exist.\nUse `renku dataset create {name}` to create the dataset or "
-            f"retry with `--create` option for automatic dataset creation."
-        )
-    except (FileNotFoundError, git.exc.NoSuchPathError) as e:
-        message = "\n\t".join(urls)
-        raise errors.ParameterError(f"Could not find paths/URLs: \n\t{message}") from e
-
-
 def remove_workflow():
     """Return a command for removing workflow."""
     command = Command().command(_remove_workflow).lock_project()
@@ -417,7 +342,7 @@ def _remove_workflow(name: str, force: bool, client: LocalClient, database: Data
     """Remove the given workflow."""
     now = datetime.utcnow()
     # TODO: refactor this once we switch to Database
-    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
+    provenance_graph = ProvenanceGraph.from_database(database)
     pg_workflows = unique_workflow(provenance_graph)
 
     not_found_text = f'The specified workflow is "{name}" is not an active workflow.'
@@ -433,13 +358,17 @@ def _remove_workflow(name: str, force: bool, client: LocalClient, database: Data
         communication.confirm(prompt_text, abort=True, warning=True)
 
     plan = plan or pg_workflows[name]
+    # FIXME: Remove this once plans are made immutable
+    plan._v_immutable = False
     plan.invalidated_at = now
+    plan.freeze()
     dependency_graph = DependencyGraph.from_database(database)
     for p in dependency_graph.plans:
         if p.id == plan.id:
+            # FIXME: Remove this once plans are made immutable
+            p._v_immutable = False
             p.invalidated_at = now
-
-    provenance_graph.to_json()
+            p.freeze()
 
 
 def unique_workflow(provenance_graph: ProvenanceGraph) -> Dict[str, Plan]:

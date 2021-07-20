@@ -55,3 +55,8 @@ def parse_file_size(size_str):
     unit = units[res.group(2).lower()]
 
     return int(value * unit)
+
+
+def to_megabytes(size):
+    """Return size in megabytes."""
+    return None if size is None else size * 1e-6

@@ -19,10 +19,10 @@
 import marshmallow
 from marshmallow import Schema, fields, post_load, pre_load
 
-from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
-from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
-from renku.core.models.datasets import ImageObjectJson as ImageObject
-from renku.core.models.datasets import ImageObjectRequestJson as ImageObjectRequest
+from renku.core.models.dataset import DatasetCreatorsJson as DatasetCreators
+from renku.core.models.dataset import DatasetDetailsJson as DatasetDetails
+from renku.core.models.dataset import ImageObjectJson as ImageObject
+from renku.core.models.dataset import ImageObjectRequestJson as ImageObjectRequest
 from renku.service.serializers.common import JobDetailsResponse, RenkuSyncSchema, RepositoryContext
 from renku.service.serializers.rpc import JsonRPCResponse
 

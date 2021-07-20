@@ -433,7 +433,6 @@ def dataset():
 
 
 @dataset.command("ls")
-@click.option("--revision", default=None)
 @click.option("--format", type=click.Choice(DATASETS_FORMATS), default="tabular", help="Choose an output format.")
 @click.option(
     "-c",
@@ -444,9 +443,9 @@ def dataset():
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASETS_COLUMNS.keys())),
     show_default=True,
 )
-def list_dataset(revision, format, columns):
+def list_dataset(format, columns):
     """List datasets."""
-    result = list_datasets().lock_dataset().build().execute(revision=revision, format=format, columns=columns)
+    result = list_datasets().lock_dataset().build().execute(format=format, columns=columns)
     click.echo(result.output)
 
 
@@ -609,7 +608,12 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 )
 def ls_files(names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    result = list_files().lock_dataset().build().execute(names, creators, include, exclude, format, columns)
+    result = (
+        list_files()
+        .lock_dataset()
+        .build()
+        .execute(datasets=names, creators=creators, include=include, exclude=exclude, format=format, columns=columns)
+    )
     click.echo(result.output)
 
 

@@ -23,6 +23,7 @@ import shutil
 import urllib
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
+from typing import List
 
 import attr
 import requests
@@ -31,8 +32,11 @@ from renku import LocalClient
 from renku.core import errors
 from renku.core.commands.login import read_renku_token
 from renku.core.commands.providers.api import ProviderApi
-from renku.core.management.command_builder.command import inject, replace_injected_client
+from renku.core.management.command_builder.command import inject, replace_injection
 from renku.core.management.migrate import is_project_unsupported, migrate
+from renku.core.metadata.database import Database
+from renku.core.metadata.immutable import DynamicProxy
+from renku.core.models.dataset import DatasetsProvenance, get_dataset_data_dir
 from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 
@@ -229,6 +233,7 @@ class _RenkuRecordSerializer:
         self._project_url = None
         self._project_repo = None
         self._remote_client = None
+        self._files_info = []
 
     @staticmethod
     def _get_file_size(remote_client, path):
@@ -268,7 +273,15 @@ class _RenkuRecordSerializer:
 
         # Return size of the file on disk
         full_path = remote_client.path / path
-        return os.path.getsize(full_path)
+        return float(os.path.getsize(full_path))
+
+    @property
+    def files_info(self) -> List[DynamicProxy]:
+        """Return list of dataset file proxies.
+
+        NOTE: This is only valid after a call to ``as_dataset``.
+        """
+        return self._files_info
 
     def as_dataset(self, client):
         """Return encapsulated dataset instance."""
@@ -291,7 +304,7 @@ class _RenkuRecordSerializer:
 
             shutil.copy(remote_image_path, local_image_path)
 
-        dataset.images = self._dataset.images
+        dataset.images = self._dataset.images or []
 
     def is_last_version(self, uri):
         """Check if dataset is at last possible version."""
@@ -344,6 +357,7 @@ class _RenkuRecordSerializer:
                     gitlab_token=self._gitlab_token,
                     renku_token=self._renku_token,
                     deployment_hostname=parsed_uri.netloc,
+                    depth=None,
                 )
             except errors.GitError:
                 pass
@@ -356,19 +370,36 @@ class _RenkuRecordSerializer:
 
         self._remote_client = LocalClient(repo_path)
 
-        with replace_injected_client(self._remote_client):
+        database = Database.from_path(self._remote_client.database_path)
+
+        bindings = {
+            "LocalClient": self._remote_client,
+            LocalClient: self._remote_client,
+            Database: database,
+        }
+        constructor_bindings = {DatasetsProvenance: lambda: DatasetsProvenance(database)}
+
+        with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
             self._migrate_project()
             self._project_repo = repo
 
-        self._dataset = self._remote_client.load_dataset(self._name)
+            self._dataset = self._remote_client.get_dataset(self._name)
 
         if not self._dataset:
             raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
 
-        for file_ in self._dataset.files:
-            file_.checksum = self._remote_client.repo.git.hash_object(file_.path)
-            file_.filesize = _RenkuRecordSerializer._get_file_size(self._remote_client, file_.path)
-            file_.filetype = Path(file_.path).suffix.replace(".", "")
+        self._dataset.data_dir = get_dataset_data_dir(self._remote_client, self._dataset)
+
+        files_info = []
+        for file in self._dataset.files:
+            file_info = DynamicProxy(file)
+            file_info.checksum = file.entity.checksum
+            file_info.filename = Path(file.entity.path).name
+            file_info.size_in_mb = _RenkuRecordSerializer._get_file_size(self._remote_client, file.entity.path)
+            file_info.filetype = Path(file.entity.path).suffix.replace(".", "")
+            files_info.append(file_info)
+
+        self._files_info = files_info
 
     @staticmethod
     @inject.autoparams()

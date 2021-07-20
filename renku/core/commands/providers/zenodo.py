@@ -21,6 +21,7 @@ import os
 import pathlib
 import urllib
 from pathlib import Path
+from typing import List
 from urllib.parse import urlparse
 
 import attr
@@ -31,8 +32,12 @@ from tqdm import tqdm
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
-from renku.core.models.datasets import Dataset, DatasetFile, DatasetSchema
-from renku.core.models.provenance.agents import PersonSchema
+from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
+from renku.core.metadata.immutable import DynamicProxy
+from renku.core.models.dataset import DatasetFile
+from renku.core.models.entity import Entity
+from renku.core.models.provenance.agent import NewPersonSchema
+from renku.core.utils.file_size import to_megabytes
 from renku.core.utils.requests import retry
 
 ZENODO_BASE_URL = "https://zenodo.org"
@@ -49,7 +54,7 @@ ZENODO_FILES_URL = "depositions/{0}/files"
 ZENODO_NEW_DEPOSIT_URL = "depositions"
 
 
-class _ZenodoDatasetSchema(DatasetSchema):
+class _ZenodoDatasetSchema(ProviderDatasetSchema):
     """Schema for Dataverse datasets."""
 
     @pre_load
@@ -65,7 +70,7 @@ class _ZenodoDatasetSchema(DatasetSchema):
         # Add type to creators
         creators = data.get("creator", [])
         for c in creators:
-            c["@type"] = [str(t) for t in PersonSchema.opts.rdf_type]
+            c["@type"] = [str(t) for t in NewPersonSchema.opts.rdf_type]
 
         # Fix license to be a string
         license = data.get("license")
@@ -235,6 +240,8 @@ class ZenodoRecordSerializer:
 
     _uri = attr.ib(default=None, kw_only=True)
 
+    _files_info = attr.ib(default=None, kw_only=True)
+
     @property
     def version(self):
         """Get record version."""
@@ -244,6 +251,14 @@ class ZenodoRecordSerializer:
     def latest_uri(self):
         """Get uri of latest version."""
         return self.links.get("latest_html")
+
+    @property
+    def files_info(self) -> List[DynamicProxy]:
+        """Return list of dataset file proxies.
+
+        NOTE: This is only valid after a call to ``as_dataset``.
+        """
+        return self._files_info
 
     def is_last_version(self, uri):
         """Check if this record is the latest version."""
@@ -275,27 +290,25 @@ class ZenodoRecordSerializer:
         """Deserialize `ZenodoRecordSerializer` to `Dataset`."""
         files = self.get_files()
         metadata = self.get_jsonld()
-        dataset = Dataset.from_jsonld(metadata, client=client, schema_class=_ZenodoDatasetSchema)
+        dataset = ProviderDataset.from_jsonld(metadata, schema_class=_ZenodoDatasetSchema)
 
-        serialized_files = []
-        for file_ in files:
-            remote_ = file_.remote_url
-            dataset_file = DatasetFile(
-                source=remote_.geturl(),
-                id=file_.id,
-                checksum=file_.checksum,
-                filename=file_.filename,
-                filesize=file_.filesize,
-                filetype=file_.type,
-                path="",
-            )
-            serialized_files.append(dataset_file)
+        dataset_files = []
+        files_info = []
+        dummy_entity = Entity(checksum="", path="UNKNOWN")
+        for file in files:
+            remote = file.remote_url
+            dataset_file = DatasetFile(entity=dummy_entity, source=remote.geturl())
+            file_info = DynamicProxy(dataset_file)
+            file_info.checksum = file.checksum
+            file_info.filename = Path(file.filename).name
+            file_info.size_in_mb = to_megabytes(file.filesize)
+            file_info.filetype = file.type
 
-        dataset.files = serialized_files
+            dataset_files.append(dataset_file)
+            files_info.append(file_info)
 
-        if isinstance(dataset.url, dict) and "_id" in dataset.url:
-            dataset.url = urllib.parse.urlparse(dataset.url.pop("_id"))
-            dataset.url = dataset.url.geturl()
+        dataset.dataset_files = dataset_files
+        self._files_info = files_info
 
         return dataset
 
@@ -451,11 +464,11 @@ class ZenodoExporter(ExporterApi):
 
     def dataset_to_request(self):
         """Prepare dataset metadata for request."""
-        jsonld = self.dataset.as_jsonld()
+        jsonld = self.dataset.to_jsonld()
         jsonld["upload_type"] = "dataset"
         return jsonld
 
-    def export(self, publish, tag=None, **kwargs):
+    def export(self, publish, tag=None, client=None, **kwargs):
         """Execute entire export process."""
         # Step 1. Create new deposition
         deposition = ZenodoDeposition(exporter=self)
@@ -465,8 +478,8 @@ class ZenodoExporter(ExporterApi):
 
         # Step 3. Upload all files to created deposition
         with tqdm(total=len(self.dataset.files)) as progressbar:
-            for file_ in self.dataset.files:
-                deposition.upload_file(file_.full_path)
+            for file in self.dataset.files:
+                deposition.upload_file(client.path / file.entity.path)
                 progressbar.update(1)
 
         # Step 4. Publish newly created deposition

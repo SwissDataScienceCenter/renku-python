@@ -25,15 +25,17 @@ from renku.core import errors
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.models.dataset import DatasetsProvenance
+from renku.core.models.provenance.agent import Person
 from renku.core.utils import communication
 
 
 @inject.autoparams()
-def _remove(sources, edit_command, client: LocalClient):
+def _remove(sources, edit_command, client: LocalClient, datasets_provenance: DatasetsProvenance):
     """Remove files and check repository for potential problems."""
     from renku.core.management.git import _expand_directories
 
-    def fmt_path(path):
+    def get_relative_path(path):
         """Format path as relative to the client path."""
         abs_path = os.path.abspath(client.path / path)
         try:
@@ -42,7 +44,7 @@ def _remove(sources, edit_command, client: LocalClient):
             raise errors.ParameterError(f"File {abs_path} is not within the project.")
 
     files = {
-        fmt_path(source): fmt_path(file_or_dir)
+        get_relative_path(source): get_relative_path(file_or_dir)
         for file_or_dir in sources
         for source in _expand_directories((file_or_dir,))
     }
@@ -53,18 +55,19 @@ def _remove(sources, edit_command, client: LocalClient):
     try:
         for dataset in client.datasets.values():
             remove = []
-            for file_ in dataset.files:
-                key = file_.path
-                filepath = fmt_path(file_.path)
+            for file in dataset.files:
+                key = file.entity.path
+                filepath = get_relative_path(key)
                 if filepath in files:
                     remove.append(key)
 
             if remove:
+                dataset = dataset.copy()
                 for key in remove:
                     dataset.unlink_file(key)
                     client.remove_file(client.path / key)
 
-                dataset.to_yaml()
+                datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
             communication.update_progress(progress_text, amount=1)
     finally:
         communication.finalize_progress(progress_text)
@@ -88,4 +91,4 @@ def _remove(sources, edit_command, client: LocalClient):
 
 def remove_command():
     """Command to remove a file."""
-    return Command().command(_remove).require_clean().with_commit()
+    return Command().command(_remove).require_clean().with_database(write=True).with_commit()
