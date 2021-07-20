@@ -306,9 +306,10 @@ class ParameterMapping(CommandParameterBase):
             if not mapped_to.actual_value_set:
                 mapped_to.actual_value = value
 
+    @property
     def leaf_parameters(self):
         """Return leaf (non-Mapping) parameters contained by this Mapping."""
-        for mapped_to in self.mappings:
+        for mapped_to in self.mapped_parameters:
             if isinstance(mapped_to, ParameterMapping):
                 yield mapped_to.leaf_parameters
             else:

@@ -424,7 +424,7 @@ def test_grouped_run_actual_values(grouped_run, mappings, defaults, values, expe
         (["@mapping1=@step1.@input1"], True, False),
         (["@step1.@input1=@step2.@output2"], True, False),
         (["@step2.@output2=@step1.@input1"], False, False),
-        (["@step2.@output2=@step1.@input1", "@step2.@output1=@step1.@input1"], False, False),
+        (["@step2.@output2=@step1.@input1", "@step2.@output1=@step1.@input1"], True, False),
         (["@step2.@output2=@step1.@input1", "@step1.@output1=@step2.@input1"], False, True),
     ],
 )

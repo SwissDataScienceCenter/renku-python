@@ -86,7 +86,7 @@ class ExecutionGraph:
 
             for edge in edges:
                 if not self.graph.has_edge(*edge):
-                    self.graph.add_edge(*edge)
+                    self._add_leaf_parameter_link(*edge)
                     self.virtual_links.append(edge)
 
     def _add_grouped_run_links_to_graph(self, workflow: "grouped_run.GroupedRun") -> None:
@@ -129,3 +129,20 @@ class ExecutionGraph:
     def cycles(self):
         """Get potential cycles in execution graph."""
         return list(simple_cycles(self.graph))
+
+    @property
+    def workflow_graph(self):
+        """Return a subgraph with only workflows and their dependencies."""
+        workflow_graph = nx.DiGraph()
+
+        for node in self.graph.nodes:
+            if not isinstance(node, parameter.CommandInput):
+                if isinstance(node, (grouped_run.GroupedRun, plan.Plan)):
+                    workflow_graph.add_node(node)
+                continue
+
+            target = self.graph.successors(node)[0]
+            source = self.graph.predecessors(self.graph.predecessors(node)[0])[0]
+            workflow_graph.add_edge(source, target)
+
+        return workflow_graph

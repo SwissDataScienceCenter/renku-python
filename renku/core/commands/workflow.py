@@ -28,6 +28,7 @@ from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.management.workflow.value_resolution import apply_run_values
 from renku.core.metadata.database import Database
 from renku.core.models.workflow.converters.cwl import CWLConverter
 from renku.core.models.workflow.grouped_run import GroupedRun
@@ -208,6 +209,9 @@ def _group_workflow(
         run.map_all_parameters()
 
     if link_all:
+        # NOTE: propagate values to for linking to use
+        apply_run_values(run)
+
         graph = ExecutionGraph(run, virtual_links=True)
 
         cycles = graph.cycles

@@ -130,29 +130,28 @@ class GroupedRun(Persistent):
         for link_string in link_strings:
             source, sinks = link_string.split("=", maxsplit=1)
 
-            source, source_wf = self.resolve_mapping_path(source)
+            source, _ = self.resolve_mapping_path(source)
 
-            if isinstance(source, (CommandInput, CommandParameter)):
-                # TODO: Change this once parameters can be calculated and serve as output
-                raise errors.ParameterLinkError(
-                    f"A parameter link can't originate in a command input or command parameter: {source.name}"
-                )
-
-            if source in self.mappings:
-                raise errors.ParameterLinkError(
-                    f"Parameter links can only be between child steps, source '{source.name}' is on the parent."
-                )
+            if isinstance(source, ParameterMapping):
+                sources = source.leaf_parameters
+            else:
+                sources = [source]
 
             sinks = sinks.split(",")
 
             sink_params = []
 
             for sink in sinks:
-                resolved_sink, sink_wf = self.resolve_mapping_path(sink)
+                resolved_sink, _ = self.resolve_mapping_path(sink)
 
-                sink_params.append(resolved_sink)
+                if isinstance(resolved_sink, ParameterMapping):
+                    # NOTE: can't link between mappings, only the parameters they map to
+                    sink_params.extend(resolved_sink.leaf_parameters)
+                else:
+                    sink_params.append(resolved_sink)
 
-            self.add_link(source, sink_params)
+            for souce in sources:
+                self.add_link(source, sink_params)
 
     def add_link(self, source: CommandParameterBase, sinks: List[CommandParameterBase]) -> None:
         """Validate and add a ParameterLink."""
@@ -162,14 +161,15 @@ class GroupedRun(Persistent):
         if not sinks:
             raise errors.ParameterLinkError("Parameter Link has no sink(s).")
 
+        if isinstance(source, (CommandInput, CommandParameter)):
+            # TODO: Change this once parameters can be calculated and serve as output
+            raise errors.ParameterLinkError(
+                f"A parameter link can't originate in a command input or command parameter: {source.name}"
+            )
+
         for sink in sinks:
             if isinstance(sink, CommandOutput):
                 raise errors.ParameterLinkError(f"A parameter link can't end in a command output: '{sink.name}'.")
-
-            if sink in self.mappings:
-                raise errors.ParameterLinkError(
-                    f"Parameter links can only be between child steps, sink '{sink.name}' is on " "the parent."
-                )
 
             source_wf = self.find_parameter_workflow(source)
             sink_wf = self.find_parameter_workflow(sink)
@@ -178,6 +178,16 @@ class GroupedRun(Persistent):
                 raise errors.ParameterLinkError(
                     f"Parameter links have to link between different workflows, source '{source.name}' and "
                     f"sink '{sink.name}' are on the same workflow."
+                )
+
+            existing = list(self.find_link_by_target(sink))
+
+            if existing:
+                _, existing_wfs = zip(*existing)
+                existing_wfs = ", ".join(w.name for w in existing_wfs)
+
+                raise errors.ParameterLinkError(
+                    f"Parameter link to sink '{sink.name}' already exists in workflows: {existing_wfs}"
                 )
 
         self.links.append(ParameterLink(source=source, sinks=sinks, id=ParameterLink.generate_id(self.id)))
@@ -205,6 +215,16 @@ class GroupedRun(Persistent):
                 return found
 
         return None
+
+    def find_link_by_target(self, target: CommandInput):
+        """Find a link on this or a child workflow that has target as a sink."""
+        for link in self.links:
+            if target in link.sinks:
+                yield link, self
+
+        for plan in self.plans:
+            if isinstance(plan, GroupedRun):
+                yield plan.find_link_by_target(target)
 
     def _map_all(self, selector: Callable[[Plan], CommandParameterBase]) -> None:
         """Automatically map all base parameters matched by selection_lambda on this run."""
