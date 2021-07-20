@@ -89,6 +89,7 @@ def migrate(
     skip_docker_update=False,
     skip_migrations=False,
     project_version=None,
+    max_version=None,
 ):
     """Apply all migration files to the project."""
     template_updated = docker_updated = False
@@ -123,6 +124,8 @@ def migrate(
 
     version = 1
     for version, path in get_migrations():
+        if max_version and version > max_version:
+            break
         if version > project_version:
             module = importlib.import_module(path)
             module_name = module.__name__.split(".")[-1]

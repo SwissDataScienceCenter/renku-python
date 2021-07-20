@@ -174,10 +174,10 @@ def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: 
         if is_last_commit:
             datasets_provenance.add_or_replace(dataset, date=date)
         else:
-            datasets_provenance.add_or_update(dataset, revision=revision, date=date)
+            datasets_provenance.add_or_update(dataset, date=date)
     for dataset in deleted_datasets:
         dataset = convert_dataset(dataset=dataset, client=client, revision=revision)
-        datasets_provenance.remove(dataset, revision=revision, date=date)
+        datasets_provenance.remove(dataset, date=date)
 
 
 def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):
