@@ -91,7 +91,7 @@ def test_workflow_show(runner, project, run_shell, client):
     assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
 
     # Run a shell command with pipe.
-    output = run_shell('renku run --name run1 --description "my workflow" -- echo "a" > output1')
+    output = run_shell('renku run --name run1 --description "my workflow" --success-code 0 -- echo "a" > output1')
 
     # Assert expected empty stdout.
     assert b"" == output[0]

@@ -234,7 +234,10 @@ def _print_plan(plan: Plan):
         Console().print(Markdown(plan.description))
 
     click.echo(click.style("Command: ", bold=True, fg="magenta") + click.style(plan.full_command, bold=True))
-    click.echo(click.style("Success Codes: ", bold=True, fg="magenta") + click.style(plan.success_codes, bold=True))
+    click.echo(
+        click.style("Success Codes: ", bold=True, fg="magenta")
+        + click.style(", ".join((str(c) for c in plan.success_codes)), bold=True)
+    )
 
     if plan.inputs:
         click.echo(click.style("Inputs: ", bold=True, fg="magenta"))

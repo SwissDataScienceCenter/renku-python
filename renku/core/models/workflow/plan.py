@@ -290,7 +290,7 @@ class Plan(Persistent):
             if output.mapped_to:
                 stream_repr.append(output.to_stream_representation())
 
-        return "".join(argv) + "".join(stream_repr)
+        return " ".join(argv) + " ".join(stream_repr)
 
     @inject.params(client="LocalClient")
     def to_run(self, client, entities_cache: Dict[str, Entity]) -> Run:
