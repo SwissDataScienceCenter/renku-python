@@ -25,6 +25,7 @@ import pytest
 
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from tests.utils import format_result_exception
 
 
 def test_move(runner, client):
@@ -40,7 +41,7 @@ def test_move(runner, client):
 
     result = runner.invoke(cli, ["mv", "-v", "src1", "src2", "dst/sub"])
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not src1.exists()
     assert not src2.exists()
     dst1 = Path("dst") / "sub" / "src1" / "sub" / "src1.txt"
@@ -101,7 +102,7 @@ def test_move_existing_destination(runner, client):
     # Use ``--force``
     result = runner.invoke(cli, ["mv", "--force", "-v", "source", "README.md"])
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "source -> README.md" in result.output
     assert not Path("source").exists()
     assert "123" == Path("README.md").read_text()
@@ -111,7 +112,7 @@ def test_move_to_ignored_file(runner, client):
     """Test move to an ignored pattern."""
     result = runner.invoke(cli, ["mv", "README.md", "ignored.so"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "The following moved path match .gitignore" in result.output
     assert "ignored.so" in result.output
 
@@ -163,7 +164,7 @@ def test_move_in_the_same_dataset(runner, client_with_datasets, args):
     file_before = client_with_datasets.load_dataset("dataset-2").find_file(dst)
 
     result = runner.invoke(cli, ["mv", "-f", src, dst] + args)
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
 
     dataset = client_with_datasets.load_dataset("dataset-2")
     assert {dst, dst.replace("file2", "file3")} == {f.path for f in dataset.files}
@@ -174,7 +175,7 @@ def test_move_in_the_same_dataset(runner, client_with_datasets, args):
     assert "123" == Path(dst).read_text()
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not client_with_datasets.repo.is_dirty()
 
 
@@ -190,7 +191,7 @@ def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets)
     file_before = dataset_before.find_file(dst)
 
     result = runner.invoke(cli, ["mv", "-f", "source", dst])
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
 
     dataset_after = client_with_datasets.load_dataset("dataset-2")
     file_after = dataset_after.find_file(dst)
@@ -205,7 +206,7 @@ def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets)
     }
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not client_with_datasets.repo.is_dirty()
 
 

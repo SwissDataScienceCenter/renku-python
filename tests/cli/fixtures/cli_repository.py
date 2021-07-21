@@ -23,6 +23,8 @@ import shutil
 
 import pytest
 
+from tests.utils import format_result_exception
+
 
 @contextlib.contextmanager
 def _isolated_filesystem(tmpdir, name=None, delete=True):
@@ -83,7 +85,7 @@ def repository(tmpdir):
                 global_config.set_value("user", "email", "renku@datascience.ch")
 
             result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
-            assert 0 == result.exit_code
+            assert 0 == result.exit_code, format_result_exception(result)
 
             yield os.path.realpath(project_path)
         finally:

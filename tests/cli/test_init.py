@@ -27,7 +27,7 @@ from renku.cli import cli
 from renku.cli.init import parse_parameters
 from renku.core import errors
 from renku.core.commands.init import create_template_sentence
-from tests.utils import raises
+from tests.utils import format_result_exception, raises
 
 
 def test_parse_parameters(project_init):
@@ -92,7 +92,7 @@ def test_list_templates(isolated_runner, project_init, template):
     new_project = Path(data["test_project"])
     assert not new_project.exists()
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["list"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not new_project.exists()
     assert template["id"] in result.output
 
@@ -105,7 +105,7 @@ def test_init(isolated_runner, project_init):
     new_project = Path(data["test_project"])
     assert not new_project.exists()
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
@@ -119,7 +119,7 @@ def test_init(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
@@ -128,7 +128,7 @@ def test_init(isolated_runner, project_init):
     # init using index instead of id
     new_project_2 = Path(data["test_project_alt"])
     result = isolated_runner.invoke(cli, commands["init_alt"] + commands["index"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project_2.exists()
     assert (new_project_2 / ".renku").exists()
     assert (new_project_2 / ".renku" / "renku.ini").exists()
@@ -158,7 +158,7 @@ def test_init_initial_branch(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["initial_branch_main"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
@@ -197,7 +197,7 @@ def test_init_with_git_remote(isolated_runner, project_init, remote):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
@@ -214,7 +214,7 @@ def test_init_force_in_empty_dir(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_init_force_in_dirty_dir(isolated_runner, project_init):
@@ -231,7 +231,7 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     assert random_file.exists()
 
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Project initialized" in result.output
 
     shutil.rmtree(new_project)
@@ -269,7 +269,7 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert random_file.exists()
     assert dockerfile.exists()
@@ -292,7 +292,7 @@ def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
 
     # try to create in a dirty folder
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
@@ -310,7 +310,7 @@ def test_init_remote(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
@@ -341,7 +341,7 @@ def test_init_with_parameters(isolated_runner, project_init, template):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["parameters"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "The template requires a value for" in result.output
     for param in set(template["metadata"].keys()):
         assert param in result.output
@@ -357,7 +357,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 
     new_project = Path(data["test_project"])
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert (new_project / data_dir).exists()
     assert (new_project / data_dir / ".gitkeep").exists()
@@ -365,7 +365,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 
     os.chdir(new_project.resolve())
     result = isolated_runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert (Path(data_dir) / "my-data" / directory_tree.name / "file1").exists()
 
 
@@ -400,7 +400,7 @@ def test_default_init_parameters(isolated_runner, mocker, project_init, template
     new_project = Path(data["test_project"])
     assert not new_project.exists()
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     create_from_template.assert_called_once()
     metadata = create_from_template.call_args[1]["metadata"]
     assert {

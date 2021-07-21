@@ -25,6 +25,7 @@ from renku.cli import cli
 from renku.core.metadata.database import Database
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.workflow.dependency_graph import DependencyGraph
+from tests.utils import format_result_exception
 
 
 def test_run_simple(runner, project):
@@ -32,16 +33,16 @@ def test_run_simple(runner, project):
     cmd = ["echo", "test"]
 
     result = runner.invoke(cli, ["run", "--no-output"] + cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # There are no output files.
     result = runner.invoke(cli, ["log"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert 1 == len(result.output.strip().split("\n"))
 
     # Display tools with no outputs.
     result = runner.invoke(cli, ["log", "--no-output"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert ".renku/workflow/" in result.output
 
 
@@ -108,7 +109,7 @@ def test_generated_run_name(runner, client, command, name):
 
     result = runner.invoke(cli, ["run", "--no-output"] + command)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     database = Database.from_path(client.database_path)
     dependency_graph = DependencyGraph.from_database(database)
     assert 1 == len(dependency_graph.plans)
@@ -146,7 +147,7 @@ def test_run_argument_parameters(runner, client):
         ],
     )
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     database = Database.from_path(client.database_path)
     dependency_graph = DependencyGraph.from_database(database)
     assert 1 == len(dependency_graph.plans)
@@ -180,4 +181,4 @@ def test_run_argument_parameters(runner, client):
 
     result = runner.invoke(cli, ["graph", "export", "--format", "jsonld", "--strict"])
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)

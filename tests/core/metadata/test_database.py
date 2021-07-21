@@ -27,6 +27,7 @@ from renku.core.metadata.database import PERSISTED, Database
 from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Activity, Association, Usage
 from renku.core.models.workflow.plan import Plan
+from tests.utils import format_result_exception
 
 
 def test_database_create(client, runner):
@@ -48,7 +49,7 @@ def test_database_recreate(client, runner):
 
     result = runner.invoke(cli, ["graph", "generate", "-f"])
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert client.has_graph_files()
 
 

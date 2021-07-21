@@ -17,6 +17,7 @@
 # limitations under the License.
 """Test utility functions."""
 import os
+import traceback
 import uuid
 from contextlib import contextmanager
 
@@ -116,3 +117,14 @@ def get_datasets_provenance(client) -> DatasetsProvenance:
 
     database = Database.from_path(client.database_path)
     return DatasetsProvenance(database)
+
+
+def format_result_exception(result):
+    """Format a `runner.invoke` exception result into a nice string repesentation."""
+
+    if getattr(result, "exc_info", None):
+        stacktrace = "".join(traceback.format_exception(*result.exc_info))
+    else:
+        stacktrace = ""
+
+    return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output}"
