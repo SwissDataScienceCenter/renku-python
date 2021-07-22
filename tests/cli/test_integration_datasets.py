@@ -33,7 +33,7 @@ from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.datasets import Url
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
-from tests.utils import assert_dataset_is_mutated, get_datasets_provenance
+from tests.utils import assert_dataset_is_mutated, format_result_exception, get_datasets_provenance
 
 
 @pytest.mark.integration
@@ -72,17 +72,17 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
     """Test dataset import for existing DOI."""
     uri = prefix + doi["doi"]
     result = runner.invoke(cli, ["dataset", "import", uri], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "ls", "-c", "name,creators"])
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert doi["name"] in result.output
     assert doi["creator"] in result.output
 
     result = runner.invoke(cli, ["dataset", "ls-tags", doi["name"]])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert doi["version"] in result.output
 
     with client.with_dataset(doi["name"]) as dataset:
@@ -125,7 +125,7 @@ def test_dataset_import_real_param(doi, runner, project, sleep_after, client):
     result = runner.invoke(cli, ["dataset", "import", "--short-name", "remote", doi[0]], input=doi[1])
 
     if "y" == doi[1]:
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert "OK" in result.output
         with client.with_dataset("remote") as dataset:
             assert dataset.url == dataset._id
@@ -133,7 +133,7 @@ def test_dataset_import_real_param(doi, runner, project, sleep_after, client):
         assert 1 == result.exit_code
 
     result = runner.invoke(cli, ["dataset", "ls"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
 
 @pytest.mark.parametrize(
@@ -147,7 +147,7 @@ def test_dataset_import_uri_404(doi, runner, project, sleep_after):
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "ls"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
 
 @pytest.mark.integration
@@ -155,7 +155,7 @@ def test_dataset_import_uri_404(doi, runner, project, sleep_after):
 def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     """Test dataset import for existing DOI and dataset"""
     result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.1438326"], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Warning: Newer version found" in result.output
     assert "OK" in result.output
 
@@ -165,13 +165,13 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     assert "Error: Dataset exists:" in result.output
 
     result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.597964"], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Warning: Newer version found" not in result.output
     assert "Error: Dataset exists:" not in result.output
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "ls"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "pyndl_naive_discr_v0.8.1" in result.output
 
 
@@ -208,7 +208,7 @@ def test_dataset_import_real_http(runner, project, url, sleep_after):
     """Test dataset import through HTTPS."""
     result = runner.invoke(cli, ["dataset", "import", "-y", url], input="n")
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Do you wish to download this version?" not in result.output
     assert "OK" in result.output
 
@@ -219,7 +219,7 @@ def test_dataset_import_and_extract(runner, project, client, sleep_after):
     """Test dataset import and extract files."""
     url = "https://zenodo.org/record/2658634"
     result = runner.invoke(cli, ["dataset", "import", "--extract", "--short-name", "remote", url], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client.with_dataset("remote") as dataset:
         extracted_file = "data/remote/quantling-pyndl-c34259c/doc/make.bat"
@@ -232,11 +232,11 @@ def test_dataset_import_different_names(runner, client, sleep_after):
     """Test can import same DOI under different names."""
     doi = "10.5281/zenodo.2658634"
     result = runner.invoke(cli, ["dataset", "import", "--short-name", "name-1", doi], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "import", "--short-name", "name-2", doi], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
 
 
@@ -246,7 +246,7 @@ def test_dataset_import_ignore_uncompressed_files(runner, project, sleep_after):
     """Test dataset import ignores uncompressed files."""
     url = "https://zenodo.org/record/3251128"
     result = runner.invoke(cli, ["dataset", "import", "--extract", url], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Gorne_Diaz_database_2019.csv" in result.output
 
 
@@ -256,13 +256,13 @@ def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
     """Test re-importing of deleted datasets works."""
     doi = "10.5281/zenodo.2658634"
     result = runner.invoke(cli, ["dataset", "import", doi, "--short-name", "my-dataset"], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "rm", "my-dataset"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "import", doi, "--short-name", "my-dataset"], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
 
 @pytest.mark.integration
@@ -271,10 +271,10 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
     """Test import keeps original file names."""
     doi = "10.7910/DVN/F4NUMR"
     result = runner.invoke(cli, ["dataset", "import", doi], input="y")
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "ls-files"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Data Key 2002-2006" in result.output
 
 
@@ -294,7 +294,7 @@ def test_dataset_import_renku_provider(runner, client, uri):
     """Test dataset import from Renku datasets."""
     result = runner.invoke(cli, ["dataset", "import", "--name", "my-dataset", uri], input="y")
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "d66d5e766eeaa69bee06b96e061e3bfc23978b11" in result.output
     assert "business-employment-data-december-2020-quarter-csv.zip" in result.output
     assert "OK" in result.output
@@ -323,7 +323,7 @@ def test_dataset_import_renku_provider_with_subgroups(runner, client, uri):
     """Test dataset import from Renku datasets in projects within subgroups."""
     result = runner.invoke(cli, ["dataset", "import", "--name", "my-dataset", uri], input="y")
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     dataset = client.load_dataset("my-dataset")
 
@@ -342,14 +342,14 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client):
         cli, ["dataset", "import", "https://dev.renku.ch/datasets/4f36f891-bb7c-4b2b-ab13-7633cc270a40"], input="y"
     )
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391" in result.output
 
     assert "0.00" in result.output
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "ls-files"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "bla" in result.output
 
     dataset = [d for d in client.datasets.values()][0]
@@ -423,7 +423,7 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
     assert exit_code == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
 
     result = runner.invoke(cli, ["dataset", "ls"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.integration
@@ -492,7 +492,7 @@ def test_dataset_export_upload_file(
     """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
 
     # create data file
@@ -501,7 +501,7 @@ def test_dataset_export_upload_file(
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client.with_dataset("my-dataset") as dataset:
         dataset.description = "awesome dataset"
@@ -513,7 +513,7 @@ def test_dataset_export_upload_file(
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params)
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
 
@@ -533,7 +533,7 @@ def test_dataset_export_upload_tag(
 ):
     """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
 
     # create data file
@@ -542,7 +542,7 @@ def test_dataset_export_upload_tag(
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client.with_dataset("my-dataset") as dataset:
         dataset.description = "awesome dataset"
@@ -554,7 +554,7 @@ def test_dataset_export_upload_tag(
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # create data file
     new_file = tmpdir.join("datafile2.csv")
@@ -562,27 +562,27 @@ def test_dataset_export_upload_tag(
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "2.0"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "2.0"] + params)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Exported to:" in result.output
     assert output in result.output
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "1.0"] + params)
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="1")  # HEAD
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
 
@@ -603,7 +603,7 @@ def test_dataset_export_upload_multiple(
     """Test successful uploading of a files to Zenodo deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
 
     # create data file
@@ -615,7 +615,7 @@ def test_dataset_export_upload_multiple(
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False)
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client.with_dataset("my-dataset") as dataset:
         dataset.description = "awesome dataset"
@@ -627,7 +627,7 @@ def test_dataset_export_upload_multiple(
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params)
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
 
@@ -638,7 +638,7 @@ def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
     """Test failed uploading of a file to Zenodo deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
 
     # create data file
@@ -647,7 +647,7 @@ def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", "zenodo"])
 
@@ -668,7 +668,7 @@ def test_dataset_export_published_url(
     """Test publishing of dataset."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
 
     # create data file
@@ -677,7 +677,7 @@ def test_dataset_export_published_url(
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client.with_dataset("my-dataset") as dataset:
         dataset.description = "awesome dataset"
@@ -689,7 +689,7 @@ def test_dataset_export_published_url(
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "--publish"] + params)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Exported to:" in result.output
     assert output in result.output
 
@@ -700,7 +700,7 @@ def test_export_dataset_wrong_provider(runner, project, tmpdir, client):
     """Test non-existing provider."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
 
     # create data file
@@ -709,7 +709,7 @@ def test_export_dataset_wrong_provider(runner, project, tmpdir, client):
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", "unsupported-provider"])
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -746,7 +746,7 @@ def test_export_dataset_unauthorized(
     client.repo.index.commit("update renku.ini")
 
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
 
     # create data file
@@ -755,7 +755,7 @@ def test_export_dataset_unauthorized(
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params)
 
@@ -771,7 +771,7 @@ def test_export_dataset_unauthorized(
 def test_export_dataverse_no_dataverse_name(runner, project, client, dataverse_demo):
     """Test export without providing a dataverse name."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", "dataverse"])
 
@@ -788,7 +788,7 @@ def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo, globa
     client.repo.index.commit("renku.ini")
 
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(
         cli, ["dataset", "export", "my-dataset", "dataverse", "--dataverse-name", "sdsc-test-dataverse"]
@@ -803,13 +803,13 @@ def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo, globa
 def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, zenodo_sandbox):
     """Test exporting an imported Zenodo dataset to dataverse."""
     result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.2658634", "--short-name", "my-data"], input="y")
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(
         cli, ["dataset", "export", "my-data", "dataverse", "--dataverse-name", "sdsc-test-dataverse"], input="2"
     )
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
 
@@ -843,11 +843,11 @@ def test_add_data_from_git(runner, client_with_new_graph, params, path, use_grap
         command + ["remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", "-d", "existing/LICENSE", remote],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, command + ["remote", "--ref", "0.3.0", remote] + params, catch_exceptions=False)
 
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert Path(path).exists()
 
     file_ = read_dataset_file_metadata(client_with_new_graph, "remote", path)
@@ -876,13 +876,13 @@ def test_add_data_from_git_with_wildcards(runner, client, params, files):
     result = runner.invoke(
         cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", remote] + params, catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert files == set(os.listdir("data/remote"))
 
     result = runner.invoke(
         cli, ["dataset", "add", "remote", "--ref", "0.5.2", "-d", "new", remote] + params, catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert files == set(os.listdir("data/remote/new"))
 
 
@@ -935,7 +935,7 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
         ["dataset", "add", "remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", remote],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     urls = n_urls * [remote]
 
@@ -963,7 +963,7 @@ def test_dataset_update(client, runner, params):
 
     # Add dataset to project
     result = runner.invoke(cli, ["dataset", "add", "--create", "remote", "--ref", "0.3.0", "-s", "README.md", url])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     before = read_dataset_file_metadata(client, "remote", "README.md")
 
@@ -986,7 +986,7 @@ def test_dataset_update(client, runner, params):
     assert commit_sha in after.based_on._id
 
     result = runner.invoke(cli, ["doctor"])
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.integration
@@ -997,12 +997,12 @@ def test_dataset_update_zenodo(client, runner, doi):
     result = runner.invoke(
         cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     before_dataset = client.load_dataset("imported_dataset")
 
     result = runner.invoke(cli, ["dataset", "update", "imported_dataset"], catch_exceptions=False)
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     after_dataset = client.load_dataset("imported_dataset")
     assert after_dataset.version != before_dataset.version
@@ -1024,7 +1024,7 @@ def test_dataset_update_dataverse(client, runner, doi):
     result = runner.invoke(
         cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client.with_dataset("imported_dataset") as dataset:
         dataset.version = "0.1"
@@ -1036,7 +1036,7 @@ def test_dataset_update_dataverse(client, runner, doi):
     before_dataset = client.load_dataset("imported_dataset")
 
     result = runner.invoke(cli, ["dataset", "update", "imported_dataset"], catch_exceptions=False)
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     after_dataset = client.load_dataset("imported_dataset")
     assert after_dataset.version != before_dataset.version
@@ -1063,7 +1063,7 @@ def test_dataset_update_renku(client, runner):
     before_dataset = client.load_dataset("remote-dataset")
 
     result = runner.invoke(cli, ["dataset", "update"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     after_dataset = client.load_dataset("remote-dataset")
     assert after_dataset._id != before_dataset._id
@@ -1095,19 +1095,19 @@ def test_dataset_update_remove_file(client, runner):
         ],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     file_path = client.path / DATA_DIR / "remote" / "authors.rst"
     assert file_path.exists()
 
     # docs/authors.rst does not exists in v0.5.0
 
     result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.5.0"], catch_exceptions=False)
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Some files are deleted." in result.output
     assert file_path.exists()
 
     result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.5.0", "--delete"], catch_exceptions=False)
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert not file_path.exists()
 
 
@@ -1132,7 +1132,7 @@ def test_dataset_invalid_update(client, runner, params):
         ],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "update"] + params, catch_exceptions=False)
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -1161,7 +1161,7 @@ def test_dataset_update_multiple_datasets(client, runner, data_repository, param
         ],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     result = runner.invoke(
         cli,
         [
@@ -1177,13 +1177,13 @@ def test_dataset_update_multiple_datasets(client, runner, data_repository, param
         ],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     assert "v0.4.0" not in path1.read_text()
     assert "v0.4.0" not in path2.read_text()
 
     result = runner.invoke(cli, ["dataset", "update"] + params, catch_exceptions=False)
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     assert "v0.4.0" in path1.read_text()
     assert "v0.4.0" in path2.read_text()
@@ -1209,11 +1209,11 @@ def test_empty_update(client, runner, data_repository):
         ],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     commit_sha_before = client.repo.head.object.hexsha
     result = runner.invoke(cli, ["dataset", "update", "--ref", "0.3.0"], catch_exceptions=False)
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after == commit_sha_before
 
@@ -1252,7 +1252,7 @@ def test_import_from_renku_project(tmpdir, client, runner, url):
         ],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     path = "new-directory/ie_data_with_TRCAPE.xls"
     metadata = read_dataset_file_metadata(client, "remote-dataset", path)
@@ -1272,7 +1272,7 @@ def test_add_specific_refs(ref, runner, client):
 
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # add data from a git repo
     result = runner.invoke(
@@ -1288,7 +1288,7 @@ def test_add_specific_refs(ref, runner, client):
             "https://github.com/SwissDataScienceCenter/renku-python.git",
         ],
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     content = (client.path / DATA_DIR / "dataset" / filename).read_text()
     assert "v0.3.0" in content
     assert "v0.3.1" not in content
@@ -1302,7 +1302,7 @@ def test_update_specific_refs(ref, runner, client):
     filename = "CHANGES.rst"
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # add data from a git repo
     result = runner.invoke(
@@ -1318,13 +1318,13 @@ def test_update_specific_refs(ref, runner, client):
             "https://github.com/SwissDataScienceCenter/renku-python.git",
         ],
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     content = (client.path / DATA_DIR / "dataset" / filename).read_text()
     assert "v0.3.1" not in content
 
     # update data to a later version
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     content = (client.path / DATA_DIR / "dataset" / filename).read_text()
     assert "v0.3.1" in content
     assert "v0.3.2" not in content
@@ -1336,7 +1336,7 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
     """Test updating fails when ref is ambiguous."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # add data from a git repo
     result = runner.invoke(
@@ -1350,14 +1350,14 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
             "https://github.com/SwissDataScienceCenter/renku-project-template.git",
         ],
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # add data from another git repo
     result = runner.invoke(
         cli,
         ["dataset", "add", "dataset", "-s", "LICENSE", "https://github.com/SwissDataScienceCenter/renku-notebooks.git"],
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # update data to a later version
     result = runner.invoke(cli, ["dataset", "update", "--ref", "any-value"])
@@ -1372,13 +1372,13 @@ def test_files_are_tracked_in_lfs(runner, client, no_lfs_size_limit):
     filename = "requirements-devel.txt"
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # add data from a git repo
     result = runner.invoke(
         cli, ["dataset", "add", "dataset", "-s", filename, "https://github.com/SwissDataScienceCenter/renku-python.git"]
     )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     path = "data/dataset/{}".format(filename)
     assert path in subprocess.check_output(["git", "lfs", "ls-files"]).decode()
 
@@ -1394,7 +1394,7 @@ def test_add_removes_credentials(runner, client, url):
     from urllib.parse import urlparse
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", url])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client.with_dataset("my-dataset") as dataset:
         file_ = dataset.files[0]
@@ -1429,7 +1429,7 @@ def test_add_with_content_disposition(runner, client, monkeypatch, disposition, 
 
         monkey.setattr(renku.core.management.datasets, "_filename_from_headers", _fake_disposition)
         result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", url])
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client.with_dataset("my-dataset") as dataset:
         file_ = dataset.files[0]
@@ -1472,7 +1472,7 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
     assert {"remote-renku-project"} == {s.name for s in old_repository_with_submodules.submodules}
 
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert [] == old_repository_with_submodules.submodules
 
@@ -1495,7 +1495,7 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
 def test_dataset_add_dropbox(runner, client, project, url, size):
     """Test importing data from dropbox."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dropbox-data", url], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     filename = Path(parse.urlparse(url).path).name
     assert url
@@ -1537,7 +1537,7 @@ def test_immutability_after_update(client, runner):
     url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     result = runner.invoke(cli, ["dataset", "add", "--create", "my-data", "--ref", "0.3.0", "-s", "README.md", url])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     old_dataset = client.load_dataset("my-data")
 
@@ -1588,7 +1588,7 @@ def test_datasets_provenance_after_git_update(client_with_new_graph, runner):
     url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     result = runner.invoke(cli, ["dataset", "add", "--create", "my-data", "--ref", "0.3.0", "-s", "README.md", url])
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     assert 0 == runner.invoke(cli, ["dataset", "update"], catch_exceptions=False).exit_code
 

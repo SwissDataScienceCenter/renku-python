@@ -24,6 +24,7 @@ import git
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.entities import Collection
+from tests.utils import format_result_exception
 
 
 def update_and_commit(data, file_, repo):
@@ -58,7 +59,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
         assert f.read().strip() == "1"
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     update_and_commit("12", source, repo)
 
@@ -72,7 +73,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
     previous_run_id = run._id
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with output.open("r") as f:
         assert f.read().strip() == "2"
@@ -89,7 +90,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
     assert previous_run_id == run._id
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with output.open("r") as f:
         assert f.read().strip() == "2"
@@ -99,7 +100,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
     for output_format in FORMATS:
         # Make sure the log contains the original parent.
         result = runner.invoke(cli, ["log", "--format", output_format], catch_exceptions=False)
-        assert 0 == result.exit_code, result.output
+        assert 0 == result.exit_code, format_result_exception(result)
         assert source.name in result.output, output_format
 
         if output_format == "nt":
@@ -128,7 +129,7 @@ def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
         assert f.read().strip() == "1"
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     exit_code, run = renku_cli("run", "cp", str(intermediate), str(output))
     assert 0 == exit_code
@@ -138,7 +139,7 @@ def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
         assert f.read().strip() == "1"
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     update_and_commit("2", source, repo)
 
@@ -153,7 +154,7 @@ def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
     assert "(part of" in result.output, result.output
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with output.open("r") as f:
         assert f.read().strip() == "2"
@@ -172,11 +173,11 @@ def test_workflow_without_outputs(runner, project, run):
 
     cmd = ["run", "cat", "--no-output", input_.name]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     cmd = ["status", "--no-output"]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with input_.open("w") as f:
         f.write("second")
@@ -191,7 +192,7 @@ def test_workflow_without_outputs(runner, project, run):
 
     cmd = ["status", "--no-output"]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_siblings_update(runner, project, run, no_lfs_warning):
@@ -339,7 +340,7 @@ def test_update_no_args(runner, project, renku_cli, no_lfs_warning):
     assert 0 == exit_code
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     update_and_commit("12", source, repo)
 

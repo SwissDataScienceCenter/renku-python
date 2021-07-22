@@ -18,12 +18,13 @@
 """Test references created using CLI."""
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 def test_workflow_naming(runner, client):
     """Test naming of CWL tools and workflows."""
     result = runner.invoke(cli, ["run", "touch", "data.txt"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     cmd = ["workflow", "set-name", ".invalid"]
     result = runner.invoke(cli, cmd)
@@ -31,24 +32,24 @@ def test_workflow_naming(runner, client):
 
     cmd = ["workflow", "set-name", "first"]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     tools = list(client.workflow_path.glob("*.yaml"))
     assert 1 == len(tools)
 
     cmd = ["workflow", "set-name", "group/second", str(tools[0])]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     #: Show all CWL files with aliases.
     result = runner.invoke(cli, ["workflow", "ls"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "first" in result.output
     assert "group/second" in result.output
 
     #: Rename an alias and verify in output.
     result = runner.invoke(cli, ["workflow", "rename", "first", "third"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "ls"])
     assert "first" not in result.output
@@ -56,7 +57,7 @@ def test_workflow_naming(runner, client):
 
     #: Create/Override alias with the same name.
     result = runner.invoke(cli, ["run", "touch", "output.txt"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     cmd = ["workflow", "set-name", "group/second"]
     result = runner.invoke(cli, cmd)
@@ -64,17 +65,17 @@ def test_workflow_naming(runner, client):
 
     cmd = ["workflow", "set-name", "group/second", "--force"]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "rename", "group/second", "third"])
     assert 0 != result.exit_code
 
     result = runner.invoke(cli, ["workflow", "rename", "group/second", "third", "--force"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     #: Remove an alias and verify in output.
     result = runner.invoke(cli, ["workflow", "remove", "third"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "ls"])
     assert "group/second" not in result.output

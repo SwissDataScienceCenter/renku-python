@@ -37,14 +37,14 @@ from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.dataset import Dataset
 from renku.core.models.refs import LinkReference
 from renku.core.utils.urls import get_slug
-from tests.utils import assert_dataset_is_mutated, get_datasets_provenance
+from tests.utils import assert_dataset_is_mutated, format_result_exception, get_datasets_provenance
 
 
 def test_datasets_create_clean(runner, project, client):
     """Test creating a dataset in clean repository."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     dataset = client.load_dataset("dataset")
@@ -81,7 +81,7 @@ def test_datasets_create_with_metadata(runner, client, subdirectory):
             "keyword-2",
         ],
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     dataset = client.load_dataset("my-dataset")
@@ -117,11 +117,11 @@ def test_dataset_show(runner, client, subdirectory):
             "keyword-2",
         ],
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "some description here" in result.output
     assert "Long Title" in result.output
     assert "keyword-1" in result.output
@@ -135,18 +135,18 @@ def test_dataset_show(runner, client, subdirectory):
 def test_datasets_create_different_names(runner, client):
     """Test creating datasets with same title but different name."""
     result = runner.invoke(cli, ["dataset", "create", "dataset-1", "--title", "title"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "create", "dataset-2", "--title", "title"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
 
 def test_datasets_create_with_same_name(runner, client):
     """Test creating datasets with same name."""
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
@@ -182,7 +182,7 @@ def test_datasets_create_dirty(runner, project, client):
         fp.write("a")
 
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     dataset = client.load_dataset("dataset")
@@ -319,7 +319,7 @@ def test_dataset_creator_is_invalid(client, runner, creator, field):
 def test_dataset_url_in_different_domain(runner, client):
     """Test URL is set correctly in a different Renku domain."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     renku_domain = os.environ.get("RENKU_DOMAIN")
     try:
@@ -340,7 +340,7 @@ def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""
     format_option = "--format={0}".format(output_format)
     result = runner.invoke(cli, ["dataset", "ls", format_option])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize("output_format", DATASETS_FORMATS.keys())
@@ -348,15 +348,15 @@ def test_datasets_list_non_empty(output_format, runner, project):
     """Test listing with datasets."""
     format_option = "--format={0}".format(output_format)
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "ls", format_option])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "my-dataset" in result.output
 
     result = runner.invoke(cli, ["dataset", "ls", "--revision=HEAD~1", format_option])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "my-dataset" not in result.output
 
 
@@ -373,10 +373,10 @@ def test_datasets_list_with_columns(runner, project, columns, headers, values):
     result = runner.invoke(
         cli, ["dataset", "create", "my-dataset", "--title", "Long Title", "-c", "John Doe <john.doe@mail.ch>"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "ls", "--columns", columns])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert headers == result.output.split("\n").pop(0).split()
     for value in values:
         assert value in result.output
@@ -388,7 +388,7 @@ def test_datasets_list_columns_correctly(runner, project, column):
     assert 0 == runner.invoke(cli, ["dataset", "create", "test"]).exit_code
 
     result = runner.invoke(cli, ["dataset", "ls", "--columns", column])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     header = result.output.split("\n").pop(0)
     name, display_name = DATASETS_COLUMNS[column]
     display_name = display_name or name
@@ -412,7 +412,7 @@ def test_datasets_list_description(runner, project):
 
     result = runner.invoke(cli, ["dataset", "ls", "--columns=name,description"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     line = next(line for line in result.output.split("\n") if "test" in line)
     assert short_description in line
     assert description[: len(short_description) + 1] not in line
@@ -428,7 +428,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client, subdire
     result = runner.invoke(
         cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)], catch_exceptions=False
     )
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Further, add with --create fails
     result = runner.invoke(
@@ -444,7 +444,7 @@ def test_add_and_create_dataset_with_lfs_warning(directory_tree, runner, project
     result = runner.invoke(
         cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)], catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Adding these files to Git LFS" in result.output
     assert "dir1/file2" in result.output
     assert "file" in result.output
@@ -465,7 +465,7 @@ def test_add_to_dirty_repo(directory_tree, runner, project, client):
     result = runner.invoke(
         cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)], catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert client.repo.is_dirty()
     assert ["untracked"] == client.repo.untracked_files
@@ -482,7 +482,7 @@ def test_add_unicode_file(tmpdir, runner, project, client):
     """Test adding files with unicode special characters in their names."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     filename = "filéàèû爱ಠ_ಠ.txt"
@@ -491,10 +491,10 @@ def test_add_unicode_file(tmpdir, runner, project, client):
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["log", "--format", "json-ld", "--strict", f"data/my-dataset/{filename}"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert filename in result.output.encode("latin1").decode("unicode-escape")
 
 
@@ -502,7 +502,7 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     """Test importing multiple data into a dataset at once."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     with client.with_dataset("dataset") as dataset:
@@ -516,7 +516,7 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client):
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "dataset"] + paths, catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize("use_graph", [False, True])
@@ -535,7 +535,7 @@ def test_repository_file_to_dataset(runner, client_with_new_graph, subdirectory,
     # add data
     command = ["graph"] if use_graph else []
     result = runner.invoke(cli, command + ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with client.with_dataset("dataset") as dataset:
         assert dataset.title == "dataset"
@@ -546,7 +546,7 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory):
     """Test importing data from a directory structure."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     with client.with_dataset("dataset") as dataset:
@@ -567,7 +567,7 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory):
     paths = [str(zero_data), str(first_level), str(second_level)]
 
     result = runner.invoke(cli, ["dataset", "add", "dataset"] + paths, catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert os.stat(client.path / DATA_DIR / "dataset" / "zero.txt")
     assert os.stat(client.path / DATA_DIR / "dataset" / "first" / "first.txt")
@@ -591,14 +591,14 @@ def test_usage_error_in_add_from_url(runner, client, params, message):
 def test_add_from_local_repo_warning(runner, client, data_repository, directory_tree):
     """Test a warning is printed when adding from a local git repo."""
     result = runner.invoke(cli, ["dataset", "add", "dataset", "--create", str(directory_tree)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Use remote's Git URL instead to enable lineage " in result.output
 
 
 def test_add_data_directory(runner, client):
     """Test adding a dataset's data directory to it prints an error."""
     result = runner.invoke(cli, ["dataset", "create", "new-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "add", "new-dataset", "data/new-dataset"], catch_exceptions=False)
     assert 2 == result.exit_code
@@ -612,7 +612,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
 
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     paths = []
@@ -625,7 +625,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     received_inodes = []
     with client.with_dataset("my-dataset") as dataset:
@@ -646,7 +646,7 @@ def test_dataset_add_many(tmpdir, runner, project, client):
 
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     paths = []
@@ -657,7 +657,7 @@ def test_dataset_add_many(tmpdir, runner, project, client):
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert len(client.repo.head.commit.message) <= 100
 
@@ -667,7 +667,7 @@ def test_dataset_file_path_from_subdirectory(runner, client, subdirectory):
     of the CWD"""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     a_path = client.path / "a"
@@ -678,7 +678,7 @@ def test_dataset_file_path_from_subdirectory(runner, client, subdirectory):
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with client.with_dataset("dataset") as dataset:
         file_ = dataset.find_file("a")
@@ -690,12 +690,12 @@ def test_datasets_ls_files_tabular_empty(runner, project):
     """Test listing of data within empty dataset."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # list all files in dataset
     result = runner.invoke(cli, ["dataset", "ls-files", "--columns", "added,creators,dataset,path", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # check output
     output = result.output.split("\n")
@@ -710,14 +710,14 @@ def test_datasets_ls_files_check_exit_code(output_format, runner, project):
     """Test file listing exit codes for different formats."""
     format_option = "--format={0}".format(output_format)
     result = runner.invoke(cli, ["dataset", "ls-files", format_option])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_datasets_ls_files_lfs(tmpdir, large_file, runner, project):
     """Test file listing lfs status."""
     # NOTE: create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # NOTE: create some data
@@ -731,11 +731,11 @@ def test_datasets_ls_files_lfs(tmpdir, large_file, runner, project):
 
     # NOTE: add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # NOTE: check files
     result = runner.invoke(cli, ["dataset", "ls-files"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     lines = result.output.split("\n")
     file1_entry = next(line for line in lines if "file_1" in line)
@@ -751,7 +751,7 @@ def test_datasets_ls_files_json(tmpdir, large_file, runner, project):
     """Test file listing lfs status."""
     # NOTE: create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # NOTE: create some data
@@ -765,11 +765,11 @@ def test_datasets_ls_files_json(tmpdir, large_file, runner, project):
 
     # NOTE: add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # NOTE: check files
     result = runner.invoke(cli, ["dataset", "ls-files", "--format", "json"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = json.loads(result.output)
 
@@ -797,7 +797,7 @@ def test_datasets_ls_files_columns_correctly(runner, project, column, directory_
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "-c", str(directory_tree)]).exit_code
 
     result = runner.invoke(cli, ["dataset", "ls-files", "--columns", column])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     header = result.output.split("\n").pop(0).strip()
     name, display_name = DATASET_FILES_COLUMNS[column]
     display_name = display_name or name
@@ -818,7 +818,7 @@ def test_datasets_ls_files_tabular_dataset_filter(runner, project, directory_tre
 
     # list all files in non empty dataset
     result = runner.invoke(cli, ["dataset", "ls-files", "--columns", "added,path", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # check output from ls-files command
     output = result.output.split("\n")
@@ -844,7 +844,7 @@ def test_datasets_ls_files_tabular_patterns(runner, project, directory_tree):
     # check include / exclude filters
     result = runner.invoke(cli, ["dataset", "ls-files", "--include=**/file*", "--exclude=**/file2"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     # check output
     assert "file1" in result.output
     assert "file2" not in result.output
@@ -853,7 +853,7 @@ def test_datasets_ls_files_tabular_patterns(runner, project, directory_tree):
     # check directory pattern
     result = runner.invoke(cli, ["dataset", "ls-files", "--include=**/dir1/*"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     # check output
     assert "file1" not in result.output
     assert "file2" in result.output
@@ -870,7 +870,7 @@ def test_datasets_ls_files_tabular_creators(runner, client, directory_tree):
 
     # check creators filters
     result = runner.invoke(cli, ["dataset", "ls-files", "--creators={0}".format(creator)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # check output
     for file_ in directory_tree.rglob("*file*"):
@@ -883,7 +883,7 @@ def test_datasets_ls_files_correct_paths(runner, client, directory_tree):
 
     # check include / exclude filters
     result = runner.invoke(cli, ["dataset", "ls-files", "--format=json-ld"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     output = json.loads(result.output)
     for record in output:
@@ -894,15 +894,15 @@ def test_datasets_ls_files_with_name(directory_tree, runner, project):
     """Test listing of data within dataset with include/exclude filters."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset", "--title", "Long Title"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(directory_tree)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # list files with name
     result = runner.invoke(cli, ["dataset", "ls-files", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "dir1/file2" in result.output
 
 
@@ -915,7 +915,7 @@ def test_datasets_ls_files_correct_size(runner, client, directory_tree, large_fi
 
     # check include / exclude filters
     result = runner.invoke(cli, ["dataset", "ls-files", "--columns=size, path"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     line = next(line for line in result.output.split("\n") if "file1" in line)
     size = int(line.split()[0])
@@ -931,7 +931,7 @@ def test_datasets_ls_files_correct_commit(runner, client, directory_tree):
 
     # check include / exclude filters
     result = runner.invoke(cli, ["dataset", "ls-files", "--columns=commit,path"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     line = next(line for line in result.output.split("\n") if "file1" in line)
     commit_sha = line.split()[0]
@@ -943,7 +943,7 @@ def test_dataset_unlink_file_not_found(runner, project):
     """Test unlinking of file from dataset with no files found."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "unlink", "my-dataset", "--include", "notthere.csv"])
@@ -955,7 +955,7 @@ def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):
     """Test unlinking of file from dataset and aborting."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # create data file
@@ -964,7 +964,7 @@ def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # unlink file from dataset
     result = runner.invoke(cli, ["dataset", "unlink", "my-dataset", "--include", new_file.basename], input="n")
@@ -978,7 +978,7 @@ def test_dataset_unlink_file(tmpdir, runner, client, subdirectory):
     """Test unlinking of file and check removal from dataset"""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # create data file
@@ -987,7 +987,7 @@ def test_dataset_unlink_file(tmpdir, runner, client, subdirectory):
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not client.repo.is_dirty()
 
     with client.with_dataset("my-dataset") as dataset:
@@ -996,7 +996,7 @@ def test_dataset_unlink_file(tmpdir, runner, client, subdirectory):
     commit_sha_before = client.repo.head.object.hexsha
 
     result = runner.invoke(cli, ["dataset", "unlink", "my-dataset", "--include", new_file.basename, "-y"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not client.repo.is_dirty()
 
     commit_sha_after = client.repo.head.object.hexsha
@@ -1016,13 +1016,13 @@ def test_dataset_rm(runner, client, directory_tree, subdirectory):
 
     result = runner.invoke(cli, ["dataset", "rm", "my-dataset"])
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
     assert not client.load_dataset("my-dataset")
     assert not (client.path / dataset.path).exists()
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_dataset_rm_failure(runner, client):
@@ -1034,7 +1034,7 @@ def test_dataset_rm_failure(runner, client):
 def test_dataset_overwrite_no_confirm(runner, project):
     """Check dataset overwrite behaviour without confirmation."""
     result = runner.invoke(cli, ["dataset", "create", "rokstar"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "create", "rokstar"])
@@ -1050,7 +1050,7 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
             fp.write("a")
 
     result = runner.invoke(cli, ["dataset", "create", "dataset", "-t", "original title", "-k", "keyword-1"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     creator1 = "Forename1 Surname1 <name.1@mail.com> [Affiliation 1]"
     creator2 = "Forename2 Surname2"
@@ -1060,7 +1060,7 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
         ["dataset", "edit", "dataset", "-d", " new description ", "-c", creator1, "-c", creator2],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully updated: creators, description." in result.output
     warning_msg = "Warning: No email or wrong format for: Forename2 Surname2"
     assert warning_msg in result.output
@@ -1071,13 +1071,13 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
     assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
 
     result = runner.invoke(cli, ["dataset", "edit", "dataset", "-t", " new title "], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully updated: title." in result.output
 
     result = runner.invoke(
         cli, ["dataset", "edit", "dataset", "-k", "keyword-2", "-k", "keyword-3"], catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully updated: keywords." in result.output
 
     dataset = client.load_dataset("dataset")
@@ -1091,7 +1091,7 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
 def test_dataset_edit_no_change(runner, client, project, dirty):
     """Check metadata editing does not commit when there is no change."""
     result = runner.invoke(cli, ["dataset", "create", "dataset", "-t", "original title"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     if dirty:
         with client.with_metadata() as project:
@@ -1100,7 +1100,7 @@ def test_dataset_edit_no_change(runner, client, project, dirty):
     commit_sha_before = client.repo.head.object.hexsha
 
     result = runner.invoke(cli, ["dataset", "edit", "dataset"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Nothing to update." in result.output
 
     commit_sha_after = client.repo.head.object.hexsha
@@ -1133,7 +1133,7 @@ def test_dataset_provider_resolution_dataverse(doi_responses, uri):
 
 def test_dataset_tag(tmpdir, runner, project, client, subdirectory):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # create some data
@@ -1142,25 +1142,25 @@ def test_dataset_tag(tmpdir, runner, project, client, subdirectory):
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(
         cli, ["dataset", "tag", "my-dataset", "A", "-d", "short descriptiön"], catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize("form", ["tabular", "json-ld"])
 def test_dataset_ls_tags(tmpdir, runner, project, client, form):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # create some data
@@ -1169,23 +1169,23 @@ def test_dataset_ls_tags(tmpdir, runner, project, client, form):
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     commit1 = client.repo.head.commit.hexsha
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     commit2 = client.repo.head.commit.hexsha
 
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(
         cli, ["dataset", "ls-tags", "my-dataset", "--format={}".format(form)], catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "1.0" in result.output
     assert "aBc9.34-11_55.t" in result.output
     assert "first tag!" in result.output
@@ -1195,7 +1195,7 @@ def test_dataset_ls_tags(tmpdir, runner, project, client, form):
 
 def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # create some data
@@ -1204,16 +1204,16 @@ def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     commit1 = client.repo.head.commit.hexsha
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "ls-tags", "my-dataset"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "1.0" in result.output
     assert "first tag!" in result.output
     assert commit1 in result.output
@@ -1223,7 +1223,7 @@ def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
     assert "not found" in result.output
 
     result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1.0"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1.0"], catch_exceptions=False)
     assert 2 == result.exit_code
@@ -1232,7 +1232,7 @@ def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
 
 def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # create some data
@@ -1241,15 +1241,15 @@ def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     for i in range(1, 4):
         # tag dataset
         result = runner.invoke(cli, ["dataset", "tag", "my-dataset", str(i)], catch_exceptions=False)
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1", "2", "3"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "1" not in result.output
     assert "2" not in result.output
     assert "3" not in result.output
@@ -1260,7 +1260,7 @@ def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
 
     assert 1 == result.exit_code
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # create some data
@@ -1269,7 +1269,7 @@ def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1"], catch_exceptions=False)
     assert 2 == result.exit_code
@@ -1294,7 +1294,7 @@ def test_avoid_empty_commits(runner, client, directory_tree):
     commit_sha_before = client.repo.head.object.hexsha
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(directory_tree)])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_before != commit_sha_after
@@ -1313,14 +1313,14 @@ def test_multiple_dataset_commits(runner, client, directory_tree):
     commit_sha_before = client.repo.head.object.hexsha
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset1", str(directory_tree)])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_before != commit_sha_after
 
     commit_sha_before = commit_sha_after
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset2", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_before != commit_sha_after
@@ -1343,13 +1343,13 @@ def test_add_nonprotected_file(runner, client, tmpdir, filename, subdirectory):
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset1", str(new_file)])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_add_removes_local_path_information(runner, client, directory_tree):
     """Test added local paths are stored as relative path."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with client.with_dataset("my-dataset") as dataset:
         relative_path = os.path.relpath(directory_tree, client.path)
@@ -1365,7 +1365,7 @@ def test_pull_data_from_lfs(runner, client, tmpdir, subdirectory, no_lfs_size_li
     data.write("DATA")
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(data)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     attributes = (client.path / ".gitattributes").read_text().split()
     assert "data/my-data/data.txt" in attributes
 
@@ -1373,7 +1373,7 @@ def test_pull_data_from_lfs(runner, client, tmpdir, subdirectory, no_lfs_size_li
     relative_path = os.path.relpath(path, os.getcwd())
 
     result = runner.invoke(cli, ["storage", "pull", relative_path])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_lfs_hook(runner, client, subdirectory, large_file):
@@ -1399,7 +1399,7 @@ def test_lfs_hook(runner, client, subdirectory, large_file):
 def test_lfs_hook_autocommit(runner, client, subdirectory, large_file):
     """Test committing large files to Git gets automatically added to lfs."""
     result = runner.invoke(cli, ["config", "set", "autocommit_lfs", "true"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     shutil.copy(large_file, client.path)
     client.repo.git.add("--all")
@@ -1440,7 +1440,7 @@ def test_lfs_hook_autocommit_env(runner, client, subdirectory, large_file):
 def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
     """Test committing large files to Git."""
     result = runner.invoke(cli, ["--no-external-storage", "dataset", "add", "-c", "my-dataset", str(large_file)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
 
@@ -1451,7 +1451,7 @@ def test_add_existing_files(runner, client, directory_tree, external, no_lfs_siz
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", str(directory_tree)] + param)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     path = Path(DATA_DIR) / "my-dataset" / directory_tree.name / "file1"
 
@@ -1466,7 +1466,7 @@ def test_add_existing_files(runner, client, directory_tree, external, no_lfs_siz
     assert "Error: There is nothing to commit." in result.output
 
     result = runner.invoke(cli, ["dataset", "add", "--overwrite", "my-dataset", str(directory_tree)] + param)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "These existing files were not overwritten" not in result.output
     assert str(path) not in result.output
     assert external or "Warning: No new file was added to project" in result.output
@@ -1484,7 +1484,7 @@ def test_add_existing_and_new_files(runner, client, directory_tree, external):
 
     # Add existing files and files within same project
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(directory_tree), "README.md"] + param)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "These existing files were not overwritten" in result.output
     assert str(path) in result.output
 
@@ -1492,7 +1492,7 @@ def test_add_existing_and_new_files(runner, client, directory_tree, external):
     directory_tree.joinpath("new-file").write_text("new-file")
 
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(directory_tree)] + param)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "These existing files were not overwritten" in result.output
     assert str(path) in result.output
     assert "OK" in result.output
@@ -1530,7 +1530,7 @@ def test_add_ignored_files(runner, client, directory_tree):
     relative_path = str(path.relative_to(client.path))
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Theses paths are ignored" in result.output
     assert str(source_path) in result.output
     assert "OK" in result.output
@@ -1539,7 +1539,7 @@ def test_add_ignored_files(runner, client, directory_tree):
         assert dataset.find_file(relative_path) is None
 
     result = runner.invoke(cli, ["dataset", "add", "--force", "my-dataset", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Theses paths are ignored" not in result.output
     assert str(source_path) not in result.output
     assert "OK" in result.output
@@ -1551,7 +1551,7 @@ def test_add_ignored_files(runner, client, directory_tree):
 def test_add_external_files(runner, client, directory_tree, no_lfs_size_limit):
     """Check adding external files."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     path = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
     assert path.exists()
@@ -1571,7 +1571,7 @@ def test_overwrite_external_file(runner, client, directory_tree, subdirectory):
     """Check overwriting external and normal files."""
     # Add external file
     result = runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Cannot add the same file
     result = runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree)])
@@ -1580,13 +1580,13 @@ def test_overwrite_external_file(runner, client, directory_tree, subdirectory):
 
     # Can add the same file with --overwrite
     result = runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     pointer_files_deleted = list(client.renku_pointers_path.rglob("*")) == []
     assert pointer_files_deleted
 
     # Can add the same external file
     result = runner.invoke(cli, ["dataset", "add", "--external", "my-data", "--overwrite", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     pointer_files_exist = len(list(client.renku_pointers_path.rglob("*"))) > 0
     assert pointer_files_exist
 
@@ -1594,13 +1594,13 @@ def test_overwrite_external_file(runner, client, directory_tree, subdirectory):
 def test_remove_external_file(runner, client, directory_tree, subdirectory):
     """Test removal of external files."""
     result = runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     targets_before = {str(p.resolve()) for p in client.renku_pointers_path.rglob("*")}
     path = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
 
     result = runner.invoke(cli, ["rm", str(path)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     targets_after = {str(p.resolve()) for p in client.renku_pointers_path.rglob("*")}
 
@@ -1612,7 +1612,7 @@ def test_remove_external_file(runner, client, directory_tree, subdirectory):
 def test_unavailable_external_files(runner, client, directory_tree, subdirectory):
     """Check for external files that are not available."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     path = Path(DATA_DIR) / "my-data" / directory_tree.name / "file1"
     target = (client.path / path).resolve()
@@ -1637,7 +1637,7 @@ def test_unavailable_external_files(runner, client, directory_tree, subdirectory
 def test_external_file_update(runner, client, directory_tree, subdirectory):
     """Check updating external files."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     directory_tree.joinpath("file1").write_text("some updates")
 
@@ -1645,7 +1645,7 @@ def test_external_file_update(runner, client, directory_tree, subdirectory):
     previous_commit = client.find_previous_commit(path)
 
     result = runner.invoke(cli, ["dataset", "update", "--external", "my-data"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     current_commit = client.find_previous_commit(path)
     assert current_commit != previous_commit
@@ -1655,7 +1655,7 @@ def test_external_file_update(runner, client, directory_tree, subdirectory):
 def test_workflow_with_external_file(runner, client, directory_tree, run, subdirectory, no_lfs_size_limit):
     """Check using external files in workflows."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     source = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
     output = client.path / DATA_DIR / "output.txt"
@@ -1669,17 +1669,17 @@ def test_workflow_with_external_file(runner, client, directory_tree, run, subdir
 
     # Nothing is changed unless external files are updated
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "update", "--external", "my-data"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
     assert 0 == run(args=("update", "--all"))
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     current_commit = client.find_previous_commit(source)
     assert current_commit != previous_commit
@@ -2108,7 +2108,7 @@ def test_update_local_file(runner, client, directory_tree):
 
     result = runner.invoke(cli, ["dataset", "update", "my-data"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     dataset = client.load_dataset("my-data")
     assert commit_sha_after_file1 in dataset.find_file(file1)._label
     assert commit_sha_after_file2 in dataset.find_file(file2)._label
@@ -2127,7 +2127,7 @@ def test_update_local_deleted_file(runner, client, directory_tree):
 
     result = runner.invoke(cli, ["dataset", "update", "my-data"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Some files are deleted." in result.output
     assert "Updated 0 files" in result.output
     assert commit_sha_after_file1_delete == client.repo.head.object.hexsha
@@ -2137,7 +2137,7 @@ def test_update_local_deleted_file(runner, client, directory_tree):
     # NOTE: Update with `--delete`
     result = runner.invoke(cli, ["dataset", "update", "--delete", "my-data"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Updated 0 files and deleted 1 files" in result.output
     assert commit_sha_after_file1_delete != client.repo.head.object.hexsha
     dataset = client.load_dataset("my-data")
@@ -2146,5 +2146,5 @@ def test_update_local_deleted_file(runner, client, directory_tree):
 
     result = runner.invoke(cli, ["dataset", "update", "--delete", "my-data"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Updated 0 files and deleted 0 files" in result.output

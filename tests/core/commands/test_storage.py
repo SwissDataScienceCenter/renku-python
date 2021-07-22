@@ -22,6 +22,7 @@ import subprocess
 from pathlib import Path
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 def test_lfs_storage_clean_no_remote(runner, project, client):
@@ -46,7 +47,7 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
     client.repo.index.commit("tracked file")
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "These paths were ignored as they are not tracked" in result.output
 
     subprocess.call(["git", "lfs", "track", "tracked"])
@@ -66,7 +67,7 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
     assert 1 == len(lfs_objects)
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert "version https://git-lfs.github.com/spec/v1" in (client.path / "tracked").read_text()
 
@@ -78,7 +79,7 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
 
     # already clean file should be ignored on clean
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
@@ -91,7 +92,7 @@ def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "These paths were ignored as they are not pushed" in result.output
 
 
@@ -105,21 +106,21 @@ def test_lfs_migrate(runner, project, client):
     client.repo.index.commit("add files")
 
     result = runner.invoke(cli, ["graph", "generate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     previous_head = client.repo.head.commit.hexsha
 
-    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y", catch_exceptions=False)
-    assert 0 == result.exit_code, result.output
+    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "dataset_file" in result.output
     assert "workflow_file" in result.output
     assert "regular_file" in result.output
@@ -140,18 +141,18 @@ def test_lfs_migrate_no_changes(runner, project, client):
     client.repo.index.commit("add files")
 
     result = runner.invoke(cli, ["graph", "generate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     previous_head = client.repo.head.commit.hexsha
 
-    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y", catch_exceptions=False)
-    assert 0 == result.exit_code
+    result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "All files are already in LFS" in result.output
 
     assert previous_head == client.repo.head.commit.hexsha
@@ -167,18 +168,18 @@ def test_lfs_migrate_explicit_path(runner, project, client):
     client.repo.index.commit("add files")
 
     result = runner.invoke(cli, ["graph", "generate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     previous_head = client.repo.head.commit.hexsha
 
     result = runner.invoke(cli, ["storage", "migrate", "regular_file"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert previous_head != client.repo.head.commit.hexsha
 
