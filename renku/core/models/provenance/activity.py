@@ -26,13 +26,14 @@ from marshmallow import EXCLUDE
 
 from renku.core.management.command_builder import inject
 from renku.core.metadata.database import Persistent
+from renku.core.metadata.immutable import Immutable
 from renku.core.models import entities as old_entities
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
 from renku.core.models.cwl.annotation import Annotation, AnnotationSchema
 from renku.core.models.entity import Collection, Entity, NewCollectionSchema, NewEntitySchema
 from renku.core.models.provenance import qualified as old_qualified
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
-from renku.core.models.provenance.agents import Person, PersonSchema, SoftwareAgent, SoftwareAgentSchema
+from renku.core.models.provenance.agent import Agent, NewPersonSchema, NewSoftwareAgentSchema, Person, SoftwareAgent
 from renku.core.models.provenance.parameter import (
     ParameterValueSchema,
     PathParameterValue,
@@ -42,7 +43,10 @@ from renku.core.models.provenance.parameter import (
 )
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.plan import Plan, PlanSchema
+from renku.core.utils import communication
 from renku.core.utils.git import get_object_hash
+
+NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 
 
 class Association:
@@ -59,12 +63,16 @@ class Association:
         return f"{activity_id}/association"  # TODO: Does it make sense to use plural name here?
 
 
-class Usage:
+class Usage(Immutable):
     """Represent a dependent path."""
 
+    __slots__ = ("entity",)
+
+    entity: Union[Collection, Entity]
+    id: str
+
     def __init__(self, *, entity: Union[Collection, Entity], id: str):
-        self.entity: Union[Collection, Entity] = entity
-        self.id: str = id
+        super().__init__(entity=entity, id=id)
 
     @staticmethod
     def generate_id(activity_id: str) -> str:
@@ -72,12 +80,16 @@ class Usage:
         return f"{activity_id}/usages/{uuid4()}"
 
 
-class Generation:
+class Generation(Immutable):
     """Represent an act of generating a path."""
 
+    __slots__ = ("entity",)
+
+    entity: Union[Collection, Entity]
+    id: str
+
     def __init__(self, *, entity: Union[Collection, Entity], id: str):
-        self.entity: Union[Collection, Entity] = entity
-        self.id: str = id
+        super().__init__(entity=entity, id=id)
 
     @staticmethod
     def generate_id(activity_id: str) -> str:
@@ -100,7 +112,6 @@ class Activity(Persistent):
         invalidations: List[Entity] = None,
         order: Optional[int] = None,  # TODO: Remove order and use ended_at_time for ordering
         parameters: List[Union[PathParameterValue, VariableParameterValue]] = None,
-        # project=None,  # TODO: project._id gets messed up when generating and then running commands
         started_at_time: datetime = None,
         usages: List[Usage] = None,
     ):
@@ -122,13 +133,15 @@ class Activity(Persistent):
 
     @classmethod
     @inject.params(client="LocalClient")
-    def from_process_run(cls, process_run: ProcessRun, plan: Plan, client, order: Optional[int] = None):
+    def from_process_run(
+        cls, process_run: ProcessRun, plan: Plan, rerun_plan: Plan, client, order: Optional[int] = None
+    ):
         """Create an Activity from a ProcessRun."""
         activity_id = Activity.generate_id()
 
-        association = Association(
-            agent=process_run.association.agent, id=Association.generate_id(activity_id), plan=plan
-        )
+        agents = [Agent.from_agent(a) for a in process_run.agents or []]
+        association_agent = Agent.from_agent(process_run.association.agent)
+        association = Association(agent=association_agent, id=Association.generate_id(activity_id), plan=plan)
 
         # NOTE: The same entity can have the same id during different times in its lifetime (e.g. different commit_sha,
         # but the same content). When it gets flattened, some fields will have multiple values which will cause an error
@@ -139,10 +152,12 @@ class Activity(Persistent):
         generations = [_convert_generation(g, activity_id, client) for g in process_run.generated]
         usages = [_convert_usage(u, activity_id, client) for u in process_run.qualified_usage]
 
-        parameters = _create_parameters(activity_id=activity_id, plan=plan, usages=usages, generations=generations)
+        parameters = _create_parameters(
+            activity_id=activity_id, plan=rerun_plan, usages=usages, generations=generations
+        )
 
         return cls(
-            agents=process_run.agents,
+            agents=agents,
             annotations=process_run.annotations,
             association=association,
             ended_at_time=process_run.ended_at_time,
@@ -160,7 +175,7 @@ class Activity(Persistent):
     def generate_id() -> str:
         """Generate an identifier for an activity."""
         # TODO: make id generation idempotent
-        return f"/activities/{uuid4()}"
+        return f"/activities/{uuid4().hex}"
 
 
 def _convert_usage(usage: old_qualified.Usage, activity_id: str, client) -> Usage:
@@ -181,7 +196,7 @@ def _convert_generation(generation: old_qualified.Generation, activity_id: str, 
     return Generation(id=Generation.generate_id(activity_id), entity=entity)
 
 
-def _convert_used_entity(entity: old_entities.Entity, revision: str, activity_id: str, client) -> Optional[Entity]:
+def _convert_used_entity(entity: old_entities.Entity, revision: str, activity_id: str, client) -> Entity:
     """Convert an old Entity to one with proper metadata.
 
     For Collections, add members that are modified in the same commit or before the revision.
@@ -190,7 +205,8 @@ def _convert_used_entity(entity: old_entities.Entity, revision: str, activity_id
 
     checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
     if not checksum:
-        return None
+        communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
+        checksum = NON_EXISTING_ENTITY_CHECKSUM
 
     if isinstance(entity, old_entities.Collection):
         members = []
@@ -225,7 +241,8 @@ def _convert_generated_entity(entity: old_entities.Entity, revision: str, activi
 
     checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
     if not checksum:
-        return None
+        communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
+        checksum = NON_EXISTING_ENTITY_CHECKSUM
 
     if isinstance(entity, old_entities.Collection):
         members = []
@@ -257,8 +274,8 @@ def _convert_invalidated_entity(entity: old_entities.Entity, client) -> Optional
         # Entity was deleted at revision; get the one before it to have object_id
         checksum = get_object_hash(repo=client.repo, revision=f"{revision}~", path=entity.path)
         if not checksum:
-            print(f"Cannot find invalidated entity hash for {entity._id} at {revision}:{entity.path}")
-            return
+            communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
+            checksum = NON_EXISTING_ENTITY_CHECKSUM
 
     new_entity = Entity(checksum=checksum, path=entity.path)
 
@@ -343,9 +360,9 @@ class ActivityCollection:
                 run = run.subprocesses[0]
 
             plan = Plan.from_run(run=run)
-            plan = dependency_graph.add(plan)
+            base_plan = dependency_graph.add(plan)
 
-            activity = Activity.from_process_run(process_run=process_run, plan=plan)
+            activity = Activity.from_process_run(process_run=process_run, plan=base_plan, rerun_plan=plan)
             self.add(activity)
 
         return self
@@ -365,7 +382,7 @@ class AssociationSchema(JsonLDSchema):
         model = Association
         unknown = EXCLUDE
 
-    agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
+    agent = Nested(prov.agent, [NewSoftwareAgentSchema, NewPersonSchema])
     id = fields.Id()
     plan = Nested(prov.hadPlan, PlanSchema)
 
@@ -410,7 +427,7 @@ class ActivitySchema(JsonLDSchema):
         model = Activity
         unknown = EXCLUDE
 
-    agents = Nested(prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True)
+    agents = Nested(prov.wasAssociatedWith, [NewPersonSchema, NewSoftwareAgentSchema], many=True)
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     association = Nested(prov.qualifiedAssociation, AssociationSchema)
     ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)

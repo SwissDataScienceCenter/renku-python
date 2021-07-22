@@ -497,7 +497,7 @@ class RepositoryApiMixin(GitCore):
         if not self.has_graph_files():
             return None
 
-        dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
+        dependency_graph = DependencyGraph.from_database(database)
         provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
 
         activity_collection = ActivityCollection.from_activity(activity, dependency_graph)
@@ -508,7 +508,6 @@ class RepositoryApiMixin(GitCore):
             database.get("activities").add(activity)
             database.get("plans").add(activity.association.plan)
 
-        dependency_graph.to_json()
         provenance_graph.to_json()
 
     def has_graph_files(self):
@@ -517,25 +516,9 @@ class RepositoryApiMixin(GitCore):
             f for f in self.database_path.iterdir() if f != self.database_path / "root"
         )
 
-    @inject.autoparams()
-    def initialize_graph(self, database: Database):
-        """Create empty graph files."""
-        self.dependency_graph_path.write_text("[]")
-        self.provenance_graph_path.write_text("[]")
-
-        self.database_path.mkdir(parents=True, exist_ok=True)
-
-        from renku.core.models.dataset import Dataset
-        from renku.core.models.provenance.activity import Activity
-        from renku.core.models.workflow.plan import Plan
-
-        database.add_index(name="activities", object_type=Activity, attribute="id")
-        database.add_index(name="plans", object_type=Plan, attribute="id")
-        database.add_index(name="datasets", object_type=Dataset, attribute="name")
-        database.add_index(name="datasets-provenance", object_type=Dataset, attribute="id")
-
     def remove_graph_files(self):
         """Remove all graph files."""
+        # NOTE: These are required for projects that have new graph files
         try:
             self.dependency_graph_path.unlink()
         except FileNotFoundError:

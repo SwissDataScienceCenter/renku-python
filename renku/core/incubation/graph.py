@@ -20,7 +20,6 @@
 import functools
 import shutil
 import sys
-import traceback
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -28,7 +27,7 @@ from typing import Dict
 from urllib.parse import urlparse
 
 import git
-from git import NULL_TREE, Commit, GitCommandError
+from git import GitCommandError
 from pkg_resources import resource_filename
 
 from renku.core import errors
@@ -44,7 +43,6 @@ from renku.core.metadata.database import Database
 from renku.core.models.dataset import DatasetsProvenance
 from renku.core.models.entities import Entity
 from renku.core.models.jsonld import load_yaml
-from renku.core.models.provenance.activities import Activity
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.plan import Plan
@@ -52,7 +50,6 @@ from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
 from renku.core.utils.contexts import measure
 from renku.core.utils.migrate import MigrationType, read_project_version_from_yaml
-from renku.core.utils.scm import git_unicode_unescape
 from renku.core.utils.shacl import validate_graph
 
 GRAPH_METADATA_PATHS = [
@@ -66,71 +63,18 @@ GRAPH_METADATA_PATHS = [
 def generate_graph():
     """Return a command for generating the graph."""
     command = Command().command(_generate_graph).lock_project().require_migration()
-    return command.with_database(write=True, create=True).with_commit(commit_only=GRAPH_METADATA_PATHS)
+    return command.with_commit(commit_only=GRAPH_METADATA_PATHS)
 
 
-@inject.autoparams()
-def _generate_graph(client: LocalClient, database: Database, force=False):
+@inject.autoparams("client")
+def _generate_graph(client: LocalClient, force=False):
     """Generate graph and dataset provenance metadata."""
+    from renku.core.management.migrations.m_0009__new_metadata_storage import generate_new_metadata
 
-    def process_workflows(commit: Commit):
-        for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.yaml"):
-            # Ignore deleted files (they appear as ADDED in this backwards diff)
-            if file_.change_type == "A":
-                continue
-
-            path: str = git_unicode_unescape(file_.a_path)
-
-            if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
-                continue
-
-            if not (client.path / path).exists():
-                communication.warn(f"Workflow file does not exists: '{path}'")
-                continue
-
-            workflow = Activity.from_yaml(path=path, client=client)
-            client.update_graphs(workflow)
-
-    def process_datasets(commit):
-        files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
-        paths = [git_unicode_unescape(f.a_path) for f in files_diff]
-        paths = [p for p in paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
-        deleted_paths = [git_unicode_unescape(f.a_path) for f in files_diff if f.change_type == "A"]
-
-        datasets, deleted_datasets = _fetch_datasets(commit.hexsha, paths=paths, deleted_paths=deleted_paths)
-
-        revision = commit.hexsha
-        date = commit.authored_datetime
-
-        for dataset in datasets:
-            datasets_provenance.add_or_update(dataset, revision=revision, date=date)
-        for dataset in deleted_datasets:
-            datasets_provenance.remove(dataset, revision=revision, date=date, client=client)
-
-    commits = list(client.repo.iter_commits(paths=[f"{client.workflow_path}/*.yaml", ".renku/datasets/*/*.yml"]))
-    n_commits = len(commits)
-    commits = reversed(commits)
-
-    if force:
-        client.remove_graph_files()
-    elif client.has_graph_files():
+    try:
+        generate_new_metadata(client=client, force=force, remove=False)
+    except errors.OperationError:
         raise errors.OperationError("Graph metadata exists. Use ``--force`` to regenerate it.")
-
-    client.initialize_graph()
-    datasets_provenance = DatasetsProvenance(database)
-
-    for n, commit in enumerate(commits, start=1):
-        communication.echo(f"Processing commits {n}/{n_commits}", end="\r")
-
-        try:
-            process_workflows(commit)
-            process_datasets(commit)
-        except errors.MigrationError:
-            communication.echo("")
-            communication.warn(f"Cannot process commit '{commit.hexsha}' - Migration failed: {traceback.format_exc()}")
-        except Exception:
-            communication.echo("")
-            communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
 
 def status():
@@ -465,11 +409,11 @@ def _add_to_dataset(
 def remove_workflow():
     """Return a command for removing workflow."""
     command = Command().command(_remove_workflow).lock_project()
-    return command.require_migration().with_commit(commit_only=GRAPH_METADATA_PATHS)
+    return command.require_migration().with_database(write=True).with_commit(commit_only=GRAPH_METADATA_PATHS)
 
 
 @inject.autoparams()
-def _remove_workflow(name: str, force: bool, client: LocalClient):
+def _remove_workflow(name: str, force: bool, client: LocalClient, database: Database):
     """Remove the given workflow."""
     now = datetime.utcnow()
     # TODO: refactor this once we switch to Database
@@ -490,12 +434,11 @@ def _remove_workflow(name: str, force: bool, client: LocalClient):
 
     plan = plan or pg_workflows[name]
     plan.invalidated_at = now
-    dependency_graph = DependencyGraph.from_json(client.dependency_graph_path)
+    dependency_graph = DependencyGraph.from_database(database)
     for p in dependency_graph.plans:
         if p.id == plan.id:
             p.invalidated_at = now
 
-    dependency_graph.to_json()
     provenance_graph.to_json()
 
 

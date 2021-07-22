@@ -778,7 +778,7 @@
          "property": [
             {
                "nodeKind": "sh:Literal",
-               "path": "rdfs:label",
+               "path": "schema:name",
                "datatype": {
                   "@id": "xsd:string"
                },
