@@ -92,12 +92,17 @@ class CommandParameterBase:
 
     def to_argv(self) -> List[Any]:
         """String representation (sames as cmd argument)."""
+        value = self.actual_value
+
+        if " " in value:
+            value = f'"{value}"'
+
         if self.prefix:
             if self.prefix.endswith(" "):
-                return [self.prefix[:-1], self.default_value]
-            return [f"{self.prefix}{self.default_value}"]
+                return [self.prefix[:-1], value]
+            return [f"{self.prefix}{value}"]
 
-        return [self.default_value]
+        return [value]
 
     @property
     def actual_value(self):
