@@ -521,7 +521,7 @@ def _kv_to_dict(ctx, param, values):
     multiple=True,
     metavar='<parameter>="name"',
     callback=_kv_to_dict,
-    help="New description of the workflow",
+    help="New name for parameter",
 )
 @click.option(
     "--describe-param",
