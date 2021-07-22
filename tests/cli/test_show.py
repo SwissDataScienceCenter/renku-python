@@ -18,6 +18,7 @@
 """Test ``show`` command."""
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 def test_show_outputs_with_directory(runner, client, run):
@@ -30,19 +31,19 @@ def test_show_outputs_with_directory(runner, client, run):
 
     cmd = ["show", "outputs"]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert {"output"} == set(result.output.strip().split("\n"))
 
     result = runner.invoke(cli, cmd + ["output"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert {"output"} == set(result.output.strip().split("\n"))
 
     result = runner.invoke(cli, cmd + ["output/foo"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert {"output"} == set(result.output.strip().split("\n"))
 
     result = runner.invoke(cli, cmd + ["output/foo", "output/bar"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert {"output"} == set(result.output.strip().split("\n"))
 
 
@@ -57,14 +58,14 @@ def test_show_verbose(runner, client, run):
     workflow_partial_name = "_ls.yaml"
 
     result = runner.invoke(cli, ["show", "inputs", "-v"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert input_commit in result.output
     assert workflow_partial_name in result.output
     for header in ("PATH", "COMMIT", "USAGE TIME", "WORKFLOW"):
         assert header in result.output.split("\n")[0]
 
     result = runner.invoke(cli, ["show", "outputs", "-v", "baz"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert output_commit in result.output
     assert workflow_partial_name in result.output
     for header in ("PATH", "COMMIT", "GENERATION TIME", "WORKFLOW"):

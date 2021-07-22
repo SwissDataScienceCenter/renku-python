@@ -26,13 +26,14 @@ from renku import LocalClient
 from renku.cli import cli
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
+from tests.utils import format_result_exception
 
 
 @pytest.mark.migration
 def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty()
 
 
@@ -40,7 +41,7 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
 def test_migrate_project(isolated_runner, old_project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty()
 
     client = LocalClient(path=old_project.working_dir)
@@ -54,7 +55,7 @@ def test_migrate_duplicated_input_binding(isolated_runner, old_project):
     """Check migrating CWLs with multiple outputs binding to the same input."""
     result = isolated_runner.invoke(cli, ["migrate", "--no-commit"])
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.migration
@@ -62,7 +63,7 @@ def test_migrate_duplicated_input_binding(isolated_runner, old_project):
 def test_migration_check(isolated_runner, project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrationscheck"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     output = json.loads(result.output)
     assert output.keys() == {
         "latest_version",
@@ -84,7 +85,7 @@ def test_migration_check(isolated_runner, project):
 def test_correct_path_migrated(isolated_runner, old_project):
     """Check if path on dataset files has been correctly migrated."""
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     client = LocalClient(path=old_project.working_dir)
     assert client.datasets
@@ -104,7 +105,7 @@ def test_correct_path_migrated(isolated_runner, old_project):
 def test_author_to_creator_migration(isolated_runner, old_project):
     """Check renaming of author to creator migration."""
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     client = LocalClient(path=old_project.working_dir)
     for dataset in client.datasets.values():
@@ -117,7 +118,7 @@ def test_author_to_creator_migration(isolated_runner, old_project):
 def test_correct_relative_path(isolated_runner, old_project):
     """Check if path on dataset has been correctly migrated."""
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     client = LocalClient(path=old_project.working_dir)
     assert client.datasets
@@ -139,7 +140,7 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
     repo.index.commit("locked")
 
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert not (repo_path / ".renku.lock").exists()
     assert not repo.is_dirty()
@@ -152,22 +153,22 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
 def test_graph_building_after_migration(isolated_runner, old_project):
     """Check that structural migration did not break graph building."""
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = isolated_runner.invoke(cli, ["log"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.migration
 def test_migrations_runs(isolated_runner, old_project):
     """Check that migration can be run more than once."""
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully applied" in result.output
     assert "OK" in result.output
 
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "No migrations required." in result.output
 
 
@@ -187,7 +188,7 @@ def test_migrations_no_commit(isolated_runner, old_project):
     sha_before = client.repo.head.object.hexsha
 
     result = isolated_runner.invoke(cli, ["migrate", "--no-commit"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
     assert sha_before == client.repo.head.object.hexsha
 
@@ -197,11 +198,11 @@ def test_workflow_migration(isolated_runner, old_workflow_project):
     """Check that *.cwl workflows can be migrated."""
     result = isolated_runner.invoke(cli, ["migrate"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     result = isolated_runner.invoke(cli, ["log", old_workflow_project["log_path"]])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     for expected in old_workflow_project["expected_strings"]:
         assert expected in result.output
@@ -211,7 +212,7 @@ def test_workflow_migration(isolated_runner, old_workflow_project):
 def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
     """Test migration of old project with all dataset variations."""
     result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     client = old_dataset_project
@@ -287,7 +288,7 @@ def test_migrate_non_renku_repository(isolated_runner):
 
     result = isolated_runner.invoke(cli, ["migrate"])
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Error: Not a renku project." in result.output
 
 
@@ -319,7 +320,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
 
     result = isolated_runner.invoke(cli, ["migrate", "--check"])
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Error: Not a renku project." in result.output
 
 
