@@ -48,6 +48,7 @@ from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.command_builder import inject
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.repository import RepositoryApiMixin
 from renku.core.metadata.database import Database
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models import dataset as new_datasets
@@ -183,7 +184,7 @@ class DatasetsApiMixin(object):
         return dataset
 
     @contextmanager
-    def with_dataset(self, name=None, create=False, commit=False, creator: Person = None):
+    def with_dataset(self, name=None, create=False, commit_database=False, creator: Person = None):
         """Yield an editable metadata object for a dataset."""
         dataset = self.get_dataset(name=name)
 
@@ -202,7 +203,7 @@ class DatasetsApiMixin(object):
             # TODO use a general clean-up strategy: https://github.com/SwissDataScienceCenter/renku-python/issues/736
             raise
 
-        if commit:
+        if commit_database:
             self.get_datasets_provenance().add_or_update(dataset, creator=creator)
             self.get_database().commit()
 
@@ -1383,7 +1384,7 @@ def _check_url(url):
 
 
 DATASET_METADATA_PATHS = [
-    Path(RENKU_HOME) / "metadata",  # TODO: Replace with proper constant RepositoryApiMixin.DATABASE_PATH
+    Path(RENKU_HOME) / RepositoryApiMixin.DATABASE_PATH,
     Path(RENKU_HOME) / DatasetsApiMixin.DATASETS,
     Path(RENKU_HOME) / DatasetsApiMixin.DATASET_IMAGES,
     Path(RENKU_HOME) / DatasetsApiMixin.POINTERS,

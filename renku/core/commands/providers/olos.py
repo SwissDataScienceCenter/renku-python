@@ -127,7 +127,7 @@ class OLOSExporter(ExporterApi):
         try:
             identifier = UUID(self.dataset.identifier, version=4)
         except ValueError:
-            identifier = uuid4()
+            identifier = uuid4().hex
         metadata = {
             "publicationDate": datetime.date.today().isoformat(),
             "description": self.dataset.description,

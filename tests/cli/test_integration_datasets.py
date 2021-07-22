@@ -128,13 +128,13 @@ def test_dataset_import_real_param(doi, input, runner, project, sleep_after, cli
     """Test dataset import and check metadata parsing."""
     result = runner.invoke(cli, ["dataset", "import", "--name", "remote", doi], input=input)
 
-    if "y" == doi[1]:
+    if "y" == input:
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert "OK" in result.output
         dataset = load_dataset(client, "remote")
         assert doi in dataset.same_as.url
     else:
-        assert 1 == result.exit_code
+        assert 1 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -508,7 +508,7 @@ def test_dataset_export_upload_file(
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    with with_dataset(client, "my-dataset", commit=True) as dataset:
+    with with_dataset(client, "my-dataset", commit_database=True) as dataset:
         dataset.description = "awesome dataset"
         dataset.creators[0].affiliation = "eth"
 
@@ -548,7 +548,7 @@ def test_dataset_export_upload_tag(
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    with with_dataset(client, "my-dataset", commit=True) as dataset:
+    with with_dataset(client, "my-dataset", commit_database=True) as dataset:
         dataset.description = "awesome dataset"
         dataset.creators[0].affiliation = "eth"
 
@@ -620,7 +620,7 @@ def test_dataset_export_upload_multiple(
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    with with_dataset(client, "my-dataset", commit=True) as dataset:
+    with with_dataset(client, "my-dataset", commit_database=True) as dataset:
         dataset.description = "awesome dataset"
         dataset.creators[0].affiliation = "eth"
 
@@ -679,7 +679,7 @@ def test_dataset_export_published_url(runner, tmpdir, client, zenodo_sandbox, da
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    with with_dataset(client, "my-dataset", commit=True) as dataset:
+    with with_dataset(client, "my-dataset", commit_database=True) as dataset:
         dataset.description = "awesome dataset"
         dataset.creators[0].affiliation = "eth"
 
@@ -1004,7 +1004,7 @@ def test_dataset_update_dataverse(client, runner, doi):
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    with with_dataset(client, "imported_dataset", commit=True) as dataset:
+    with with_dataset(client, "imported_dataset", commit_database=True) as dataset:
         dataset.version = "0.1"
         dataset.tags = []
 
@@ -1030,7 +1030,7 @@ def test_dataset_update_renku(client, runner):
     uri = "https://dev.renku.ch/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0"
     assert 0 == runner.invoke(cli, ["dataset", "import", "--name", "remote-dataset", uri], input="y").exit_code
 
-    with with_dataset(client, "remote-dataset", commit=True) as dataset:
+    with with_dataset(client, "remote-dataset", commit_database=True) as dataset:
         # NOTE: To mock an update we schema:sameAs to a dataset that has an update
         update_uri = "https://dev.renku.ch/datasets/04b463b0-1b51-4833-b236-186a941f6259"
         dataset.same_as = Url(url_id=update_uri)

@@ -55,7 +55,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         if path == "temp":
             path = str(directory_tree / "file1")
 
-        with client_with_injection.with_dataset("dataset", create=True, commit=True) as d:
+        with client_with_injection.with_dataset("dataset", create=True, commit_database=True) as d:
             d.creators = [Person(name="me", email="me@example.com", id="me_id")]
             client_with_injection.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=overwrite)
 
@@ -111,7 +111,7 @@ def test_creator_parse(creators):
 
 def test_creators_with_same_email(client_with_injection):
     """Test creators with different names and same email address."""
-    with client_with_injection.with_dataset("dataset", create=True, commit=True) as dataset:
+    with client_with_injection.with_dataset("dataset", create=True, commit_database=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
         client_with_injection.get_datasets_provenance().add_or_update(dataset)
 

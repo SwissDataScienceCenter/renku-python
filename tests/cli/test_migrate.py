@@ -51,15 +51,6 @@ def test_migrate_project(isolated_runner, old_project):
 
 
 @pytest.mark.migration
-@pytest.mark.parametrize("old_project", ["old-workflows-v0.10.0.git"], indirect=["old_project"])
-def test_migrate_duplicated_input_binding(isolated_runner, old_project):
-    """Check migrating CWLs with multiple outputs binding to the same input."""
-    result = isolated_runner.invoke(cli, ["migrate", "--no-commit"])
-
-    assert 0 == result.exit_code, format_result_exception(result)
-
-
-@pytest.mark.migration
 @pytest.mark.serial
 def test_migration_check(isolated_runner, project):
     """Test migrate on old repository."""
@@ -97,20 +88,6 @@ def test_correct_path_migrated(isolated_runner, old_project):
             assert path.exists()
             assert not path.is_absolute()
             assert file.id
-
-
-@pytest.mark.skip
-@pytest.mark.migration
-def test_author_to_creator_migration(isolated_runner, old_project):
-    """Check renaming of author to creator migration."""
-    result = isolated_runner.invoke(cli, ["migrate"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    client = LocalClient(path=old_project.working_dir)
-    for dataset in client.datasets.values():
-        after_metadata = (Path(dataset.path) / client.METADATA).read_text()
-        assert "creator:" in after_metadata
-        assert "authors:" not in after_metadata
 
 
 @pytest.mark.migration
@@ -180,19 +157,6 @@ def test_migration_version():
     assert max_migration_version == SUPPORTED_PROJECT_VERSION
 
 
-@pytest.mark.skip
-@pytest.mark.migration
-def test_migrations_no_commit(isolated_runner, old_project):
-    """Check --no-commit flag doesn't commit changes."""
-    client = LocalClient(path=old_project.working_dir)
-    sha_before = client.repo.head.object.hexsha
-
-    result = isolated_runner.invoke(cli, ["migrate", "--no-commit"])
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "OK" in result.output
-    assert sha_before == client.repo.head.object.hexsha
-
-
 @pytest.mark.migration
 def test_workflow_migration(isolated_runner, old_workflow_project):
     """Check that *.cwl workflows can be migrated."""
@@ -218,8 +182,8 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
     client = old_dataset_project
 
     dataset = load_dataset(client, "dataverse")
-    assert "/datasets/1d2ed1e4-3aeb-4f25-90b2-38084ee3d86c" == dataset.id
-    assert "1d2ed1e4-3aeb-4f25-90b2-38084ee3d86c" == dataset.identifier
+    assert "/datasets/1d2ed1e43aeb4f2590b238084ee3d86c" == dataset.id
+    assert "1d2ed1e43aeb4f2590b238084ee3d86c" == dataset.identifier
     assert "Cornell University" == dataset.creators[0].affiliation
     assert "Rooth, Mats" == dataset.creators[0].name
     assert dataset.date_published is None

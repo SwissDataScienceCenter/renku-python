@@ -454,6 +454,7 @@ class RepositoryApiMixin(GitCore):
 
         self.repo.git.checkout(commit)
 
+        # FIXME: This won't work if the project is not migrated at the commit. Don't use with_commit function.
         database = Database.from_path(self.database_path)
         bindings = {
             "LocalClient": self,

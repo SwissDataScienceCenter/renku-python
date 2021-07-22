@@ -77,7 +77,7 @@ def client_with_datasets(client, directory_tree):
     with replace_injection(bindings):
         client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
 
-        with client.with_dataset("dataset-2", create=True, commit=True) as dataset:
+        with client.with_dataset("dataset-2", create=True, commit_database=True) as dataset:
             dataset.keywords = ["dataset", "2"]
             dataset.creators = [person_1, person_2]
 

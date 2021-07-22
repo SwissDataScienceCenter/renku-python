@@ -184,7 +184,7 @@ class Person(Agent):
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return NewPersonSchema().load(data)
+        return PersonSchema().load(data)
 
     @staticmethod
     def generate_id(email, full_identity):
@@ -232,7 +232,7 @@ class Person(Agent):
         return self.get_full_identity(self.email, self.affiliation, self.name)
 
 
-class NewPersonSchema(JsonLDSchema):
+class PersonSchema(JsonLDSchema):
     """Person schema."""
 
     class Meta:
@@ -249,7 +249,7 @@ class NewPersonSchema(JsonLDSchema):
     name = StringList(schema.name, missing=None)
 
 
-class NewSoftwareAgentSchema(JsonLDSchema):
+class SoftwareAgentSchema(JsonLDSchema):
     """SoftwareAgent schema."""
 
     class Meta:

@@ -123,6 +123,8 @@ def generate_new_metadata(client: LocalClient, database: Database, force=True, r
         # NOTE: Commit changes after each step
         database.commit()
 
+    database.commit()
+
 
 def _process_workflows(
     client: LocalClient, commit: Commit, database: Database, dependency_graph: DependencyGraph, remove: bool
@@ -181,7 +183,6 @@ def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: 
 
 
 def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):
-    # TODO: Make Datasets as v9 models and use them here
     from renku.core.management.migrations.models.v9 import Dataset
 
     datasets_path = client.path / ".renku" / "tmp" / "datasets"

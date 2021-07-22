@@ -208,7 +208,7 @@ def create_backup_branch(path, client: LocalClient):
 
                 for ref in client.repo.references:
                     if branch_name == ref.name:
-                        branch_name = f"pre_renku_init_{hexsha}_{uuid4().hexsha}"
+                        branch_name = f"pre_renku_init_{hexsha}_{uuid4().hex}"
                         break
 
                 with client.worktree(

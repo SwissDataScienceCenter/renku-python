@@ -416,6 +416,7 @@ def _export_dataset(name, provider_name, publish, tag, client: LocalClient, **kw
             selected_tag = tag_result
             selected_commit = tag_result.commit
 
+            # FIXME: This won't work and needs to be fixed in #renku-python/issues/2210
             # If the tag is created automatically for imported datasets, it
             # does not have the dataset yet and we need to use the next commit
             with client.with_commit(selected_commit):
@@ -484,7 +485,7 @@ def _import_dataset(
                     files,
                     headers=OrderedDict(
                         (
-                            ("entity.checksum", "checksum"),
+                            ("checksum", "checksum"),
                             ("filename", "name"),
                             ("size_in_mb", "size (mb)"),
                             ("filetype", "type"),
@@ -547,7 +548,7 @@ def _import_dataset(
                 dataset=dataset,
                 tag=tag_name,
                 description=f"Tag {dataset.version} created by renku import",
-                no_update=True,
+                update_provenance=False,
             )
     else:
         name = name or dataset.name
@@ -798,10 +799,12 @@ def _filter(
 
 
 @inject.autoparams()
-def _tag_dataset(name, tag, description, client: LocalClient, no_update=False, force=False):
+def _tag_dataset(name, tag, description, client: LocalClient, update_provenance=True, force=False):
     """Creates a new tag for a dataset."""
     dataset = client.get_dataset(name, strict=True)
-    _tag_dataset_helper(dataset=dataset, tag=tag, description=description, no_update=no_update, force=force)
+    _tag_dataset_helper(
+        dataset=dataset, tag=tag, description=description, update_provenance=update_provenance, force=force
+    )
 
 
 @inject.autoparams()
@@ -811,7 +814,7 @@ def _tag_dataset_helper(
     description,
     client: LocalClient,
     datasets_provenance: DatasetsProvenance,
-    no_update=False,
+    update_provenance=True,
     force=False,
 ):
     try:
@@ -819,7 +822,7 @@ def _tag_dataset_helper(
     except ValueError as e:
         raise ParameterError(e)
     else:
-        if not no_update:
+        if update_provenance:
             datasets_provenance.add_or_update(dataset)
 
 

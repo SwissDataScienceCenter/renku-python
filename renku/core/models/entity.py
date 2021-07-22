@@ -126,7 +126,7 @@ class Collection(Entity):
         super().__init__(checksum=checksum, id=id, path=path, members=members)
 
 
-class NewEntitySchema(JsonLDSchema):
+class EntitySchema(JsonLDSchema):
     """Entity Schema."""
 
     class Meta:
@@ -141,7 +141,7 @@ class NewEntitySchema(JsonLDSchema):
     path = fields.String(prov.atLocation)
 
 
-class NewCollectionSchema(NewEntitySchema):
+class CollectionSchema(EntitySchema):
     """Entity Schema."""
 
     class Meta:
@@ -150,4 +150,4 @@ class NewCollectionSchema(NewEntitySchema):
         rdf_type = prov.Collection
         model = Collection
 
-    members = Nested(prov.hadMember, [NewEntitySchema, "NewCollectionSchema"], many=True)
+    members = Nested(prov.hadMember, [EntitySchema, "CollectionSchema"], many=True)

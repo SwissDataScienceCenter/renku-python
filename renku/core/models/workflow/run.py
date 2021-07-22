@@ -32,7 +32,7 @@ from marshmallow import EXCLUDE
 from renku.core.management.command_builder.command import inject
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.cwl.types import PATH_OBJECTS
-from renku.core.models.entities import Collection, CommitMixin, CommitMixinSchema, Entity
+from renku.core.models.entities import Collection, CommitMixin, Entity, OldCommitMixinSchema
 from renku.core.models.workflow.parameters import (
     CommandArgument,
     CommandArgumentSchema,
@@ -416,7 +416,7 @@ class OrderedSubprocess:
         return self.index < other.index
 
 
-class RunSchema(CommitMixinSchema):
+class RunSchema(OldCommitMixinSchema):
     """Run schema."""
 
     class Meta:

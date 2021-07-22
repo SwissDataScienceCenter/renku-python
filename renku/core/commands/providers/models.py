@@ -17,7 +17,7 @@
 
 from marshmallow import EXCLUDE
 
-from renku.core.models.dataset import Dataset, NewDatasetSchema
+from renku.core.models.dataset import Dataset, DatasetSchema
 
 
 class ProviderDataset(Dataset):
@@ -28,7 +28,7 @@ class ProviderDataset(Dataset):
         super().__init__(**kwargs)
 
 
-class ProviderDatasetSchema(NewDatasetSchema):
+class ProviderDatasetSchema(DatasetSchema):
     """ProviderDataset schema."""
 
     class Meta:

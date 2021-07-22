@@ -139,13 +139,13 @@ def load_dataset(client, name: str) -> Optional[Dataset]:
 
 
 @contextmanager
-def with_dataset(client, name=None, commit=False):
+def with_dataset(client, name=None, commit_database=False):
     """Yield an editable metadata object for a dataset."""
     dataset = client.get_dataset(name=name, strict=True, immutable=True)
     dataset._v_immutable = False
 
     yield dataset
 
-    if commit:
+    if commit_database:
         client.get_database().register(dataset)
         client.get_database().commit()

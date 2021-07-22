@@ -51,16 +51,6 @@ def test_dataset_deserialization(client_with_datasets):
         assert type(getattr(creator, attribute)) is type_
 
 
-@pytest.mark.skip
-def test_dataset_files_empty_metadata(dataset_metadata):
-    """Check parsing metadata of dataset files with empty filename."""
-    dataset = old_datasets.Dataset.from_jsonld(dataset_metadata)
-    files = [file.filename for file in dataset.files if not file.filename]
-
-    if files:
-        assert None in files
-
-
 @pytest.mark.xfail
 def test_uuid_migration(dataset_metadata, client):
     """Test migration of id with UUID."""

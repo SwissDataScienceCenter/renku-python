@@ -18,7 +18,6 @@
 """Dependency and Provenance graph building."""
 
 import functools
-import shutil
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -35,18 +34,15 @@ from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
-from renku.core.management.migrate import migrate
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.metadata.database import Database
 from renku.core.models.entities import Entity
-from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.plan import Plan
 from renku.core.models.workflow.run import Run
 from renku.core.utils import communication
 from renku.core.utils.contexts import measure
-from renku.core.utils.migrate import MigrationType, read_project_version_from_yaml
 from renku.core.utils.shacl import validate_graph
 
 GRAPH_METADATA_PATHS = [
@@ -55,23 +51,6 @@ GRAPH_METADATA_PATHS = [
     Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE_GRAPH),
     Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS_PROVENANCE),
 ]
-
-
-def generate_graph():
-    """Return a command for generating the graph."""
-    command = Command().command(_generate_graph).lock_project().require_migration()
-    return command.with_commit(commit_only=GRAPH_METADATA_PATHS)
-
-
-@inject.autoparams("client")
-def _generate_graph(client: LocalClient, force=False):
-    """Generate graph and dataset provenance metadata."""
-    from renku.core.management.migrations.m_0009__new_metadata_storage import generate_new_metadata
-
-    try:
-        generate_new_metadata(force=force, remove=False)
-    except errors.OperationError:
-        raise errors.OperationError("Graph metadata exists. Use ``--force`` to regenerate it.")
 
 
 def status():
@@ -207,78 +186,6 @@ def _get_modified_paths(plans_usages, client: LocalClient):
                 modified.add(plan_usage)
 
     return modified, deleted
-
-
-@inject.autoparams()
-def _fetch_datasets(revision, paths, deleted_paths, client: LocalClient):
-    from renku.core.models.dataset import Dataset
-
-    datasets_path = client.path / ".renku" / "tmp" / "datasets"
-    shutil.rmtree(datasets_path, ignore_errors=True)
-    datasets_path.mkdir(parents=True, exist_ok=True)
-
-    def read_project_version():
-        """Read project version at revision."""
-        try:
-            project_file_content = client.repo.git.show(f"{revision}:.renku/metadata.yml")
-        except GitCommandError:  # Project metadata file does not exist
-            return 1
-
-        try:
-            yaml_data = load_yaml(project_file_content)
-            return int(read_project_version_from_yaml(yaml_data))
-        except ValueError:
-            return 1
-
-    def copy_and_migrate_datasets():
-        existing = []
-        deleted = []
-
-        for path in paths:
-            rev = revision
-            if path in deleted_paths:
-                rev = client.find_previous_commit(path, revision=f"{revision}~")
-            identifier = Path(path).parent.name
-            new_path = datasets_path / identifier / "metadata.yml"
-            new_path.parent.mkdir(parents=True, exist_ok=True)
-            content = client.repo.git.show(f"{rev}:{path}")
-            new_path.write_text(content)
-            if path in deleted_paths:
-                deleted.append(new_path)
-            else:
-                existing.append(new_path)
-
-        try:
-            project_version = read_project_version()
-            client.set_temporary_datasets_path(datasets_path)
-            communication.disable()
-            client.migration_type = MigrationType.DATASETS
-            migrate(project_version=project_version, skip_template_update=True, skip_docker_update=True)
-        finally:
-            communication.enable()
-            client.clear_temporary_datasets_path()
-
-        return existing, deleted
-
-    paths, deleted_paths = copy_and_migrate_datasets()
-
-    datasets = []
-    for path in paths:
-        dataset = Dataset.from_yaml(path, client)
-        # NOTE: Fixing dataset path after migration
-        initial_identifier = Path(dataset.path).name
-        dataset.path = f".renku/datasets/{initial_identifier}"
-        datasets.append(dataset)
-
-    deleted_datasets = []
-    for path in deleted_paths:
-        dataset = Dataset.from_yaml(path, client)
-        # NOTE: Fixing dataset path after migration
-        initial_identifier = Path(dataset.path).name
-        dataset.path = f".renku/datasets/{initial_identifier}"
-        deleted_datasets.append(dataset)
-
-    return datasets, deleted_datasets
 
 
 def _dot(rdf_graph, simple=True, debug=False, landscape=False):

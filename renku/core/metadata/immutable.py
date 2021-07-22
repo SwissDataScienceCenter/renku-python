@@ -44,6 +44,10 @@ class Slots:
     def __getstate__(self):
         return {name: getattr(self, name, None) for name in self.__class__.__all_slots__ if name != "__weakref__"}
 
+    def __setstate__(self, state):
+        for name, value in state.items():
+            setattr(self, name, value)
+
     def _get_all_slots(self):
         all_slots = set()
         for cls in self.__class__.mro():

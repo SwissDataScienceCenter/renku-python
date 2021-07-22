@@ -22,26 +22,10 @@ from persistent import GHOST, UPTODATE
 from persistent.list import PersistentList
 from persistent.mapping import PersistentMapping
 
-from renku.cli import cli
 from renku.core.metadata.database import PERSISTED, Database
 from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Activity, Association, Usage
 from renku.core.models.workflow.plan import Plan
-
-
-@pytest.mark.skip
-def test_database_recreate(client, runner):
-    """Test can force re-create the database."""
-    result = runner.invoke(cli, ["graph", "generate", "-f"])
-
-    assert 0 == result.exit_code, result.output
-
-    assert not client.repo.is_dirty()
-    root_objects = ["root", "activities", "plans"]
-    for filename in root_objects:
-        assert (client.database_path / filename).exists()
-
-    assert client.has_graph_files()
 
 
 def test_database_add(database):

@@ -35,9 +35,8 @@ from renku.core.commands.providers.doi import DOIProvider
 from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import DatasetFile
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.agent import NewPersonSchema
-from renku.core.utils.file_size import to_megabytes
+from renku.core.models.provenance.agent import PersonSchema
+from renku.core.utils.file_size import bytes_to_unit
 from renku.core.utils.requests import retry
 
 ZENODO_BASE_URL = "https://zenodo.org"
@@ -70,7 +69,7 @@ class _ZenodoDatasetSchema(ProviderDatasetSchema):
         # Add type to creators
         creators = data.get("creator", [])
         for c in creators:
-            c["@type"] = [str(t) for t in NewPersonSchema.opts.rdf_type]
+            c["@type"] = [str(t) for t in PersonSchema.opts.rdf_type]
 
         # Fix license to be a string
         license = data.get("license")
@@ -294,14 +293,13 @@ class ZenodoRecordSerializer:
 
         dataset_files = []
         files_info = []
-        dummy_entity = Entity(checksum="", path="UNKNOWN")
         for file in files:
             remote = file.remote_url
-            dataset_file = DatasetFile(entity=dummy_entity, source=remote.geturl())
+            dataset_file = DatasetFile(entity=None, source=remote.geturl())
             file_info = DynamicProxy(dataset_file)
             file_info.checksum = file.checksum
             file_info.filename = Path(file.filename).name
-            file_info.size_in_mb = to_megabytes(file.filesize)
+            file_info.size_in_mb = bytes_to_unit(file.filesize, "mi")
             file_info.filetype = file.type
 
             dataset_files.append(dataset_file)

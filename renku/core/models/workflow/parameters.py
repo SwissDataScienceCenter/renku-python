@@ -26,7 +26,7 @@ import attr
 from marshmallow import EXCLUDE
 
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
-from renku.core.models.entities import CollectionSchema, EntitySchema
+from renku.core.models.entities import OldCollectionSchema, OldEntitySchema
 from renku.core.utils.urls import get_slug
 
 RANDOM_ID_LENGTH = 4
@@ -411,7 +411,7 @@ class CommandInputSchema(CommandParameterSchema):
         model = CommandInput
         unknown = EXCLUDE
 
-    consumes = Nested(renku.consumes, [EntitySchema, CollectionSchema])
+    consumes = Nested(renku.consumes, [OldEntitySchema, OldCollectionSchema])
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
 
 
@@ -426,7 +426,7 @@ class CommandOutputSchema(CommandParameterSchema):
         unknown = EXCLUDE
 
     create_folder = fields.Boolean(renku.createFolder)
-    produces = Nested(renku.produces, [EntitySchema, CollectionSchema])
+    produces = Nested(renku.produces, [OldEntitySchema, OldCollectionSchema])
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
 
 

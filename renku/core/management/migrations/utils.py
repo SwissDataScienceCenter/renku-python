@@ -25,11 +25,9 @@ from urllib.parse import ParseResult, quote, urljoin, urlparse
 
 def generate_url_id(client, url_str, url_id):
     """Generate @id field for Url."""
-    if url_str:
-        parsed_result = urlparse(url_str)
-        id_ = ParseResult("", *parsed_result[1:]).geturl()
-    elif url_id:
-        parsed_result = urlparse(url_id)
+    url = url_str or url_id
+    if url:
+        parsed_result = urlparse(url)
         id_ = ParseResult("", *parsed_result[1:]).geturl()
     else:
         id_ = str(uuid.uuid4())

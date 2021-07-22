@@ -33,18 +33,18 @@ from renku.core.models.calamus import Nested, fields, oa, prov, rdfs, renku, wfp
 from renku.core.models.cwl.annotation import AnnotationSchema
 from renku.core.models.entities import (
     Collection,
-    CollectionSchema,
     CommitMixin,
-    CommitMixinSchema,
     Entity,
-    EntitySchema,
+    OldCollectionSchema,
+    OldCommitMixinSchema,
+    OldEntitySchema,
 )
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.run import Run
 from renku.core.utils.scm import git_unicode_unescape
 
 from ..workflow.parameters import RunParameter, RunParameterSchema
-from .agents import Person, PersonSchema, SoftwareAgentSchema, renku_agent
+from .agents import OldPersonSchema, OldSoftwareAgentSchema, Person, renku_agent
 from .qualified import Association, AssociationSchema, Generation, GenerationSchema, Usage, UsageSchema
 
 
@@ -728,7 +728,7 @@ class WorkflowRun(ProcessRun):
         return WorkflowRunSchema(flattened=True).dump(self)
 
 
-class ActivitySchema(CommitMixinSchema):
+class ActivitySchema(OldCommitMixinSchema):
     """Activity schema."""
 
     class Meta:
@@ -741,11 +741,13 @@ class ActivitySchema(CommitMixinSchema):
     _message = fields.String(rdfs.comment, init_name="message", missing=None)
     _was_informed_by = fields.List(prov.wasInformedBy, fields.IRI(), init_name="was_informed_by")
     generated = Nested(prov.activity, GenerationSchema, reverse=True, many=True, missing=None)
-    invalidated = Nested(prov.wasInvalidatedBy, [EntitySchema, CollectionSchema], reverse=True, many=True, missing=None)
-    influenced = Nested(prov.influenced, CollectionSchema, many=True)
+    invalidated = Nested(
+        prov.wasInvalidatedBy, [OldEntitySchema, OldCollectionSchema], reverse=True, many=True, missing=None
+    )
+    influenced = Nested(prov.influenced, OldCollectionSchema, many=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
     ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
-    agents = Nested(prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True)
+    agents = Nested(prov.wasAssociatedWith, [OldPersonSchema, OldSoftwareAgentSchema], many=True)
 
 
 class ProcessRunSchema(ActivitySchema):

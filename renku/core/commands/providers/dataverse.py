@@ -43,10 +43,9 @@ from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import DatasetFile
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.agent import NewPersonSchema
+from renku.core.models.provenance.agent import PersonSchema
 from renku.core.utils.doi import extract_doi, is_doi
-from renku.core.utils.file_size import to_megabytes
+from renku.core.utils.file_size import bytes_to_unit
 from renku.core.utils.requests import retry
 
 DATAVERSE_API_PATH = "api/v1"
@@ -74,7 +73,7 @@ class _DataverseDatasetSchema(ProviderDatasetSchema):
         # Add type to creators
         creators = data.get("creator", [])
         for c in creators:
-            c["@type"] = [str(t) for t in NewPersonSchema.opts.rdf_type]
+            c["@type"] = [str(t) for t in PersonSchema.opts.rdf_type]
 
         # Fix license to be a string
         license = data.get("license")
@@ -333,13 +332,13 @@ class DataverseRecordSerializer:
 
         dataset_files = []
         files_info = []
-        dummy_entity = Entity(checksum="", path="UNKNOWN")
         for file in files:
             remote = file.remote_url
-            dataset_file = DatasetFile(entity=dummy_entity, source=remote.geturl())
+            dataset_file = DatasetFile(entity=None, source=remote.geturl())
             file_info = DynamicProxy(dataset_file)
             file_info.filename = Path(file.name).name
-            file_info.size_in_mb = to_megabytes(file.content_size)
+            file_info.checksum = ""
+            file_info.size_in_mb = bytes_to_unit(file.content_size, "mi")
             file_info.filetype = file.file_format
 
             dataset_files.append(dataset_file)

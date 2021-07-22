@@ -80,7 +80,7 @@ class CommandParameterBase:
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/1
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/stdin
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/dda5fcbf-0098-4917-be46-dc12f5f7b675
-        position = str(position) if position is not None else str(uuid4())
+        position = str(position) if position is not None else str(uuid4().hex)
         postfix = urllib.parse.quote(postfix) if postfix else position
         return f"{plan_id}/{parameter_type}/{postfix}"
 

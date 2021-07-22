@@ -17,6 +17,7 @@
 # limitations under the License.
 """Models representing datasets."""
 
+import copy
 import os
 from datetime import datetime
 from pathlib import Path
@@ -31,8 +32,8 @@ from renku.core import errors
 from renku.core.metadata.database import Database, Index, Persistent
 from renku.core.metadata.immutable import Immutable, Slots
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema, wfprov
-from renku.core.models.entity import Entity, NewEntitySchema
-from renku.core.models.provenance.agent import NewPersonSchema, Person, SoftwareAgent
+from renku.core.models.entity import Entity, EntitySchema
+from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
 from renku.core.utils.urls import get_slug
@@ -46,8 +47,7 @@ def is_dataset_name_valid(name):
 def generate_default_name(dataset_title, dataset_version=None):
     """Get dataset name."""
     max_length = 24
-    # For compatibility with older versions use name as name
-    # if it is valid; otherwise, use encoded name
+    # For compatibility with older versions use title as name if it is valid; otherwise, use encoded title
     if is_dataset_name_valid(dataset_title):
         return dataset_title
 
@@ -224,12 +224,12 @@ class DatasetFile(Slots):
         based_on: RemoteEntity = None,
         date_added: datetime = None,
         date_removed: datetime = None,
-        entity: Entity,
+        entity: Entity = None,
         id: str = None,
         is_external: bool = False,
         source: Union[Path, str] = None,
     ):
-        assert isinstance(entity, Entity), f"Invalid entity type: '{entity}'"
+        assert entity is None or isinstance(entity, Entity), f"Invalid entity type: '{entity}'"
 
         super().__init__()
 
@@ -263,15 +263,7 @@ class DatasetFile(Slots):
 
     def copy(self) -> "DatasetFile":
         """Return a clone of this object."""
-        return DatasetFile(
-            based_on=self.based_on,
-            date_added=self.date_added,
-            date_removed=self.date_removed,
-            entity=self.entity,
-            id=self.id,
-            is_external=self.is_external,
-            source=self.source,
-        )
+        return copy.copy(self)
 
     def is_equal_to(self, other: "DatasetFile"):
         """Compare content.
@@ -298,7 +290,7 @@ class DatasetFile(Slots):
 
     def to_jsonld(self):
         """Create JSON-LD."""
-        return NewDatasetFileSchema(flattened=True).dump(self)
+        return DatasetFileSchema(flattened=True).dump(self)
 
 
 class Dataset(Persistent):
@@ -339,9 +331,9 @@ class Dataset(Persistent):
             date_created = None
         if initial_identifier is None:
             assert identifier is None, "Initial identifier can be None only when creating a new Dataset."
-            initial_identifier = identifier = str(uuid4())
+            initial_identifier = identifier = str(uuid4().hex)
 
-        self.identifier = identifier or str(uuid4())
+        self.identifier = identifier or str(uuid4().hex)
         self.id = id or Dataset.generate_id(identifier=self.identifier)
         self.name = name
 
@@ -368,7 +360,7 @@ class Dataset(Persistent):
         """Create an instance from JSON-LD data."""
         assert isinstance(data, (dict, list)), f"Invalid data type: {data}"
 
-        schema_class = schema_class or NewDatasetSchema
+        schema_class = schema_class or DatasetSchema
         self = schema_class(flattened=True).load(data)
         return self
 
@@ -467,7 +459,7 @@ class Dataset(Persistent):
             self.creators.append(creator)
 
     def _assign_new_identifier(self):
-        identifier = str(uuid4())
+        identifier = str(uuid4().hex)
         self.initial_identifier = identifier
         self.identifier = identifier
         self.id = Dataset.generate_id(identifier)
@@ -584,7 +576,7 @@ class Dataset(Persistent):
 
     def to_jsonld(self):
         """Create JSON-LD."""
-        return NewDatasetSchema(flattened=True).dump(self)
+        return DatasetSchema(flattened=True).dump(self)
 
 
 class DatasetsProvenance:
@@ -814,7 +806,7 @@ class RemoteEntitySchema(JsonLDSchema):
     url = fields.String(schema.url)
 
 
-class NewDatasetFileSchema(JsonLDSchema):
+class DatasetFileSchema(JsonLDSchema):
     """DatasetFile schema."""
 
     class Meta:
@@ -827,13 +819,13 @@ class NewDatasetFileSchema(JsonLDSchema):
     based_on = Nested(schema.isBasedOn, RemoteEntitySchema, missing=None)
     date_added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
-    entity = Nested(prov.entity, NewEntitySchema)
+    entity = Nested(prov.entity, EntitySchema)
     id = fields.Id()
     is_external = fields.Boolean(renku.external, missing=False)
     source = fields.String(renku.source, missing=None)
 
 
-class NewDatasetSchema(JsonLDSchema):
+class DatasetSchema(JsonLDSchema):
     """Dataset schema."""
 
     class Meta:
@@ -843,7 +835,7 @@ class NewDatasetSchema(JsonLDSchema):
         model = Dataset
         unknown = EXCLUDE
 
-    creators = Nested(schema.creator, NewPersonSchema, many=True)
+    creators = Nested(schema.creator, PersonSchema, many=True)
     date_created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
     date_published = fields.DateTime(
@@ -853,7 +845,7 @@ class NewDatasetSchema(JsonLDSchema):
     # derived_from = Nested(prov.wasDerivedFrom, UrlSchema, missing=None)
     derived_from = fields.String(prov.wasDerivedFrom, missing=None)
     description = fields.String(schema.description, missing=None)
-    dataset_files = Nested(schema.hasPart, NewDatasetFileSchema, many=True)
+    dataset_files = Nested(schema.hasPart, DatasetFileSchema, many=True)
     id = fields.Id(missing=None)
     identifier = fields.String(schema.identifier)
     images = fields.Nested(schema.image, ImageObjectSchema, missing=None, many=True)

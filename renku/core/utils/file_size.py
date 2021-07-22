@@ -57,6 +57,9 @@ def parse_file_size(size_str):
     return int(value * unit)
 
 
-def to_megabytes(size):
-    """Return size in megabytes."""
-    return None if size is None else size * 1e-6
+def bytes_to_unit(size_in_bytes, unit: str):
+    """Return size in the provided unit."""
+    unit = unit.lower()
+    if unit not in units:
+        raise ValueError(f"Invalid unit '{unit}'. Valid units are: [{', '.join(units)}]")
+    return None if size_in_bytes is None else size_in_bytes / units[unit]

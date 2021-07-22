@@ -26,7 +26,7 @@ from renku.core import errors
 from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import replace_injection
 from renku.core.management.migrations.models.v3 import DatasetFileSchemaV3, get_client_datasets
-from renku.core.management.migrations.models.v9 import DatasetFile, DatasetFileSchema
+from renku.core.management.migrations.models.v9 import DatasetFile, OldDatasetFileSchema
 from renku.core.metadata.database import Database
 from renku.core.models.dataset import DatasetsProvenance
 from renku.core.models.entities import generate_file_id, generate_label
@@ -111,7 +111,7 @@ def _migrate_submodule_based_datasets(client):
                 based_on.based_on = None
             else:
                 based_on = DatasetFile.from_revision(remote_client, path=path_within_repo, url=url)
-            data = DatasetFileSchema(client=remote_client).dump(based_on)
+            data = OldDatasetFileSchema(client=remote_client).dump(based_on)
             based_on = DatasetFileSchemaV3(client=remote_client).load(data)
         else:
             if url:

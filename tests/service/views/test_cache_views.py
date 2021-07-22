@@ -765,7 +765,7 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
 
     with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
         with client.commit(commit_message="Create dataset"):
-            with client.with_dataset("my_dataset", create=True, commit=True) as dataset:
+            with client.with_dataset("my_dataset", create=True, commit_database=True) as dataset:
                 dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote.push()

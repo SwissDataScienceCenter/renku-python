@@ -38,8 +38,8 @@ from renku.core.management.migrations.utils import (
 from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, rdfs, renku, schema
 from renku.core.models.dataset import generate_default_name, is_dataset_name_valid
-from renku.core.models.entities import Entity, EntitySchema
-from renku.core.models.provenance.agents import Person, PersonSchema
+from renku.core.models.entities import Entity, OldEntitySchema
+from renku.core.models.provenance.agents import OldPersonSchema, Person
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
@@ -104,11 +104,11 @@ class Url:
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return UrlSchema().load(data)
+        return OldUrlSchema().load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
-        return UrlSchema().dump(self)
+        return OldUrlSchema().dump(self)
 
 
 def _convert_creators(value):
@@ -187,11 +187,11 @@ class DatasetTag(object):
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return DatasetTagSchema().load(data)
+        return OldDatasetTagSchema().load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
-        return DatasetTagSchema().dump(self)
+        return OldDatasetTagSchema().dump(self)
 
 
 @attr.s(slots=True)
@@ -209,7 +209,7 @@ class Language:
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return LanguageSchema().load(data)
+        return OldLanguageSchema().load(data)
 
 
 def convert_filename_path(p):
@@ -319,11 +319,11 @@ class DatasetFile(Entity):
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return DatasetFileSchema().load(data)
+        return OldDatasetFileSchema().load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
-        return DatasetFileSchema().dump(self)
+        return OldDatasetFileSchema().dump(self)
 
 
 def _convert_dataset_files(value):
@@ -673,7 +673,7 @@ class Dataset(Entity, CreatorMixin):
         if not isinstance(data, (dict, list)):
             raise ValueError(data)
 
-        schema_class = schema_class or DatasetSchema
+        schema_class = schema_class or OldDatasetSchema
         return schema_class(client=client, commit=commit, flattened=True).load(data)
 
     def to_yaml(self, path=None, immutable=False):
@@ -682,12 +682,12 @@ class Dataset(Entity, CreatorMixin):
             self.mutate()
 
         self._metadata_path = path or self._metadata_path
-        data = DatasetSchema(flattened=True).dump(self)
+        data = OldDatasetSchema(flattened=True).dump(self)
         jsonld.write_yaml(path=self._metadata_path, data=data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
-        return DatasetSchema(flattened=True).dump(self)
+        return OldDatasetSchema(flattened=True).dump(self)
 
 
 class ImageObject:
@@ -709,7 +709,7 @@ class ImageObject:
         return bool(urlparse(self.content_url).netloc)
 
 
-class CreatorMixinSchema(JsonLDSchema):
+class OldCreatorMixinSchema(JsonLDSchema):
     """CreatorMixin schema."""
 
     class Meta:
@@ -717,10 +717,10 @@ class CreatorMixinSchema(JsonLDSchema):
 
         unknown = EXCLUDE
 
-    creators = Nested(schema.creator, PersonSchema, many=True)
+    creators = Nested(schema.creator, OldPersonSchema, many=True)
 
 
-class UrlSchema(JsonLDSchema):
+class OldUrlSchema(JsonLDSchema):
     """Url schema."""
 
     class Meta:
@@ -734,7 +734,7 @@ class UrlSchema(JsonLDSchema):
     _id = fields.Id(init_name="id", missing=None)
 
 
-class DatasetTagSchema(JsonLDSchema):
+class OldDatasetTagSchema(JsonLDSchema):
     """DatasetTag schema."""
 
     class Meta:
@@ -760,7 +760,7 @@ class DatasetTagSchema(JsonLDSchema):
         return obj
 
 
-class LanguageSchema(JsonLDSchema):
+class OldLanguageSchema(JsonLDSchema):
     """Language schema."""
 
     class Meta:
@@ -774,7 +774,7 @@ class LanguageSchema(JsonLDSchema):
     name = fields.String(schema.name)
 
 
-class DatasetFileSchema(EntitySchema):
+class OldDatasetFileSchema(OldEntitySchema):
     """DatasetFile schema."""
 
     class Meta:
@@ -787,7 +787,7 @@ class DatasetFileSchema(EntitySchema):
     added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     name = fields.String(schema.name, missing=None)
     url = fields.String(schema.url, missing=None)
-    based_on = Nested(schema.isBasedOn, "DatasetFileSchema", missing=None, propagate_client=False)
+    based_on = Nested(schema.isBasedOn, "OldDatasetFileSchema", missing=None, propagate_client=False)
     external = fields.Boolean(renku.external, missing=False)
     source = fields.String(renku.source, missing=None)
 
@@ -800,7 +800,7 @@ class DatasetFileSchema(EntitySchema):
         return obj
 
 
-class ImageObjectSchema(JsonLDSchema):
+class OldImageObjectSchema(JsonLDSchema):
     """ImageObject schema."""
 
     class Meta:
@@ -815,7 +815,7 @@ class ImageObjectSchema(JsonLDSchema):
     position = fields.Integer(schema.position)
 
 
-class DatasetSchema(EntitySchema, CreatorMixinSchema):
+class OldDatasetSchema(OldEntitySchema, OldCreatorMixinSchema):
     """Dataset schema."""
 
     class Meta:
@@ -836,8 +836,8 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     )
     description = fields.String(schema.description, missing=None)
     identifier = fields.String(schema.identifier)
-    in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
-    images = fields.Nested(schema.image, ImageObjectSchema, many=True, missing=None, allow_none=True)
+    in_language = Nested(schema.inLanguage, OldLanguageSchema, missing=None)
+    images = fields.Nested(schema.image, OldImageObjectSchema, many=True, missing=None, allow_none=True)
     keywords = fields.List(schema.keywords, fields.String(), allow_none=True, missing=None)
     license = Uri(schema.license, allow_none=True, missing=None)
     title = fields.String(schema.name)
@@ -846,11 +846,11 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     date_created = fields.DateTime(
         schema.dateCreated, missing=None, allow_none=True, format="iso", extra_formats=("%Y-%m-%d",)
     )
-    files = Nested(schema.hasPart, DatasetFileSchema, many=True)
-    tags = Nested(schema.subjectOf, DatasetTagSchema, many=True)
-    same_as = Nested(schema.sameAs, UrlSchema, missing=None)
+    files = Nested(schema.hasPart, OldDatasetFileSchema, many=True)
+    tags = Nested(schema.subjectOf, OldDatasetTagSchema, many=True)
+    same_as = Nested(schema.sameAs, OldUrlSchema, missing=None)
     name = fields.String(schema.alternateName)
-    derived_from = Nested(prov.wasDerivedFrom, UrlSchema, missing=None)
+    derived_from = Nested(prov.wasDerivedFrom, OldUrlSchema, missing=None)
 
     @pre_dump
     def fix_datetimes(self, obj, many=False, **kwargs):

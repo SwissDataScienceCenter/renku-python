@@ -870,7 +870,7 @@ def test_datasets_ls_files_correct_size(runner, client, directory_tree, large_fi
     assert 3 == size
 
 
-@pytest.mark.skip
+@pytest.mark.skip(reason="FIXME: We don't have commit shas for files. What should be listed here?")
 def test_datasets_ls_files_correct_commit(runner, client, directory_tree):
     """Test ls-files shows the size stored in git and not the current file size."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "-c", str(directory_tree / "file1")]).exit_code

@@ -19,10 +19,9 @@
 
 import click
 
-from renku.cli import dataset as dataset_cli
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
-from renku.core.incubation.graph import FORMATS, export_graph, generate_graph, remove_workflow
+from renku.core.incubation.graph import FORMATS, export_graph, remove_workflow
 from renku.core.incubation.graph import status as get_status
 from renku.core.incubation.graph import update as perform_update
 from renku.core.management.command_builder.command import Command, inject
@@ -34,17 +33,6 @@ from renku.core.utils.contexts import measure
 @click.group(hidden=True)
 def graph():
     """Proof-of-Concept command for testing the new graph design."""
-
-
-@graph.command()
-@click.option("-f", "--force", is_flag=True, help="Delete existing metadata and regenerate all.")
-def generate(force):
-    """Create new graph metadata."""
-
-    communicator = ClickCallback()
-    generate_graph().with_communicator(communicator).build().execute(force=force)
-
-    click.secho("\nOK", fg="green")
 
 
 @graph.command()
@@ -127,54 +115,6 @@ def export(format, strict, workflows_only):
     communicator = ClickCallback()
     export_graph().with_communicator(communicator).build().execute(
         format=format, workflows_only=workflows_only, strict=strict
-    )
-
-
-@graph.group()
-def dataset():
-    """Proof-of-Concept command for dataset operations using new metadata."""
-
-
-@dataset.command()
-@click.argument("name")
-@click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
-@click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
-@click.option(
-    "-c",
-    "--creator",
-    "creators",
-    default=None,
-    multiple=True,
-    help="Creator's name, email, and affiliation. Accepted format is ``Forename Surname <email> [affiliation]``.",
-)
-@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
-def create(name, title, description, creators, keyword):
-    """Create a new dataset."""
-    dataset_cli.create(name=name, title=title, description=description, creators=creators, keyword=keyword)
-
-
-@dataset.command()
-@click.argument("name")
-@click.argument("urls", nargs=-1)
-@click.option("-e", "--external", is_flag=True, help="Creates a link to external data.")
-@click.option("--force", is_flag=True, help="Allow adding otherwise ignored files.")
-@click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
-@click.option("-c", "--create", is_flag=True, help="Create dataset if it does not exist.")
-@click.option("-s", "--source", "sources", default=None, multiple=True, help="Paths within remote git repo to be added")
-@click.option("-d", "--destination", "destination", default="", help="Destination directory within the dataset path")
-@click.option("--ref", default=None, help="Add files from a specific commit/tag/branch.")
-def add(name, urls, external, force, overwrite, create, sources, destination, ref):
-    """Add data to a dataset."""
-    dataset_cli.add(
-        name=name,
-        urls=urls,
-        external=external,
-        force=force,
-        overwrite=overwrite,
-        create=create,
-        sources=sources,
-        destination=destination,
-        ref=ref,
     )
 
 

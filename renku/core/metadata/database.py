@@ -79,7 +79,11 @@ def get_attribute(object, name: Union[List[str], str]):
 
 
 class Persistent(persistent.Persistent):
-    """Base Persistent class."""
+    """Base Persistent class for renku classes.
+
+    Subclasses are assumed to be immutable once persisted to the database. If a class shouldn't be immutable then
+    subclass it directly from persistent.Persistent.
+    """
 
     _v_immutable = False
 
@@ -168,10 +172,11 @@ class Database:
 
     def clear(self):
         """Remove all objects and clear all caches. Objects won't be deleted in the storage."""
-        self._root.clear()
         self._cache.clear()
         self._pre_cache.clear()
         self._objects_to_commit.clear()
+        # NOTE: Clear root at the end because it will be added to _objects_to_commit when `register` is called.
+        self._root.clear()
 
     def _initialize_root(self):
         """Initialize root object."""
