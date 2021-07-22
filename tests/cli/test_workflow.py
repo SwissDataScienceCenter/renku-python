@@ -19,6 +19,7 @@
 
 from renku.cli import cli
 from renku.core.metadata.database import Database
+from tests.utils import format_result_exception
 
 
 def test_workflow_group(runner, project, run_shell, client):
@@ -66,7 +67,7 @@ def test_workflow_group(runner, project, run_shell, client):
         ],
     )
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     database = Database.from_path(client.database_path)
 
@@ -107,7 +108,7 @@ def test_workflow_show(runner, project, run_shell, client):
     assert output[1] is None
 
     result = runner.invoke(cli, ["workflow", "show", "run1"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "run1" in result.output
     assert "output1" in result.output
     assert "my workflow" in result.output
@@ -139,11 +140,11 @@ def test_workflow_show(runner, project, run_shell, client):
         ],
     )
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "show", "grouped_workflow"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "grouped_workflow" in result.output
     assert "input_str" in result.output
     assert "output_file" in result.output
