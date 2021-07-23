@@ -5,7 +5,9 @@
       "sh": "http://www.w3.org/ns/shacl#",
       "xsd": "http://www.w3.org/2001/XMLSchema#",
       "schema": "http://schema.org/",
+      "foaf": "http://xmlns.com/foaf/0.1/",
       "prov": "http://www.w3.org/ns/prov#",
+      "wfprov": "http://purl.org/wf4ever/wfprov#",
       "renku": "https://swissdatasciencecenter.github.io/renku-ontology#",
       "closed": {
          "@id": "sh:closed",
@@ -77,6 +79,20 @@
                      "@type": "xsd:anyURI"
                   }
                ]
+            }
+         ]
+      },
+      {
+         "@id": "_:oldProjecShape",
+         "@type": "sh:NodeShape",
+         "targetClass": "foaf:Project",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "ex:CheckOldProjectMetadata",
+               "minCount": 99999,
+               "maxCount": 99999,
+               "sh:message": "Project should be schema:Project, not foaf:Project"
             }
          ]
       },
@@ -258,17 +274,35 @@
          "ignoredProperties": [
             {
                "@id": "rdf:type"
+            },
+            {
+               "@id": "schema:license"
             }
          ],
          "closed": true,
-         "targetClass": "schema:Dataset",
+         "target": [
+            {
+               "@type": "sh:SPARQLTarget",
+               "sh:prefixes": [
+                  {
+                     "@id": "schema:"
+                  }
+               ],
+               "sh:select": [
+                  {
+                     "@value": "SELECT ?this\nWHERE {\n  ?this a schema:Dataset .\n  MINUS { ?x schema:license ?this .}\n}\n"
+                  }
+               ]
+            }
+         ],
          "property": [
             {
-               "path": "schema:creator",
-               "sh:class": {
-                  "@id": "schema:Person"
+               "nodeKind": "sh:Literal",
+               "path": "schema:isBasedOn",
+               "datatype": {
+                  "@id": "xsd:string"
                },
-               "minCount": 1
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -282,15 +316,11 @@
                }
             },
             {
-               "nodeKind": "sh:Literal",
-               "path": "prov:invalidatedAtTime",
-               "datatype": {
-                  "@id": "xsd:string"
+               "path": "schema:creator",
+               "sh:class": {
+                  "@id": "schema:Person"
                },
-               "maxCount": 1,
-               "sh:moreThanOrEquals": {
-                  "@id": "schema:dateCreated"
-               }
+               "minCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -309,18 +339,6 @@
                "maxCount": 1
             },
             {
-               "path": "prov:wasDerivedFrom",
-               "sh:class": {
-                  "@id": "schema:URL"
-               }
-            },
-            {
-               "path": "schema:hasPart",
-               "sh:class": {
-                  "@id": "schema:DigitalDocument"
-               }
-            },
-            {
                "nodeKind": "sh:Literal",
                "path": "schema:identifier",
                "datatype": {
@@ -328,12 +346,6 @@
                },
                "minCount": 1,
                "maxCount": 1
-            },
-            {
-               "path": "schema:inLanguage",
-               "sh:class": {
-                  "@id": "schema:Language"
-               }
             },
             {
                "nodeKind": "sh:Literal",
@@ -344,22 +356,7 @@
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "schema:license",
-               "or": [
-                  {
-                     "nodeKind": "sh:Literal",
-                     "datatype": {
-                        "@id": "xsd:string"
-                     }
-                  },
-                  {
-                     "nodeKind": "sh:BlankNodeOrIRI"
-                  }
-               ]
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:slug",
+               "path": "schema:name",
                "datatype": {
                   "@id": "xsd:string"
                },
@@ -368,17 +365,9 @@
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "renku:originalIdentifier",
+               "path": "prov:atLocation",
                "datatype": {
                   "@id": "xsd:string"
-               },
-               "minCount": 0,
-               "maxCount": 1
-            },
-            {
-               "path": "schema:isPartOf",
-               "sh:class": {
-                  "@id": "schema:Project"
                },
                "minCount": 1,
                "maxCount": 1
@@ -390,19 +379,10 @@
                }
             },
             {
-               "path": "schema:subjectOf",
+               "path": "prov:wasDerivedFrom",
                "sh:class": {
-                  "@id": "schema:PublicationEvent"
+                  "@id": "schema:URL"
                }
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:name",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 1,
-               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -417,6 +397,59 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "path": "schema:isPartOf",
+               "sh:class": {
+                  "@id": "schema:Project"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "schema:subjectOf",
+               "sh:class": {
+                  "@id": "schema:PublicationEvent"
+               }
+            },
+            {
+               "path": "schema:hasPart",
+               "sh:class": {
+                  "@id": "schema:DigitalDocument"
+               }
+            },
+            {
+               "path": "schema:image",
+               "sh:class": {
+                  "@id": "schema:ImageObject"
+               }
+            },
+            {
+               "path": "schema:inLanguage",
+               "sh:class": {
+                  "@id": "schema:Language"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "prov:qualifiedGeneration",
+               "sh:class": {
+                  "@id": "prov:Generation"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:alternateName",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             }
          ]
       },
@@ -474,6 +507,138 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            }
+         ]
+      },
+      {
+         "@id": "_:datasetFileShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "schema:DigitalDocument",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "schema:isBasedOn",
+               "sh:class": {
+                  "@id": "schema:DigitalDocument"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:dateCreated",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:url",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:atLocation",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "schema:isPartOf",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "schema:Project"
+                     }
+                  },
+                  {
+                     "nodeKind": "sh:Literal",
+                     "datatype": {
+                        "@id": "xsd:string"
+                     }
+                  }
+               ]
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:external",
+               "datatype": {
+                  "@id": "xsd:boolean"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:source",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "prov:qualifiedGeneration",
+               "sh:class": {
+                  "@id": "prov:Generation"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:imageObjectShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "schema:ImageObject",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:contentUrl",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:position",
+               "datatype": {
+                  "@id": "xsd:integer"
+               },
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },
@@ -536,7 +701,7 @@
          ]
       },
       {
-         "@id": "_:datasetFileShape",
+         "@id": "_:activityShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
             {
@@ -544,18 +709,19 @@
             }
          ],
          "closed": true,
-         "targetClass": "schema:DigitalDocument",
+         "targetClass": "prov:Activity",
          "property": [
             {
-               "path": "schema:isBasedOn",
+               "path": "schema:isPartOf",
                "sh:class": {
-                  "@id": "schema:DigitalDocument"
+                  "@id": "schema:Project"
                },
+               "minCount": 1,
                "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "schema:dateCreated",
+               "path": "rdfs:comment",
                "datatype": {
                   "@id": "xsd:string"
                },
@@ -564,41 +730,113 @@
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "prov:invalidatedAtTime",
+               "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "path": "prov:entity",
-               "sh:class": {
-                  "@id": "prov:Entity"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:external",
-               "datatype": {
-                  "@id": "xsd:boolean"
                }
             },
             {
+               "nodeKind": "sh:IRI",
+               "path": "prov:wasInformedBy",
+               "minCount": 0
+            },
+            {
                "nodeKind": "sh:Literal",
-               "path": "renku:source",
+               "path": "prov:influenced"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:startedAtTime",
                "datatype": {
-                  "@id": "xsd:string"
+                  "@id": "xsd:dateTime"
                },
                "minCount": 1,
                "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "schema:url",
+               "path": "prov:endedAtTime",
+               "datatype": {
+                  "@id": "xsd:dateTime"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "prov:wasAssociatedWith",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "prov:SoftwareAgent"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "schema:Person"
+                     }
+                  },
+                  {
+                     "nodeKind": "sh:IRI"
+                  }
+               ],
+               "minCount": 2,
+               "maxCount": 2
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:atLocation",
                "datatype": {
                   "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "prov:qualifiedUsage",
+               "sh:class": {
+                  "@id": "prov:Usage"
+               }
+            },
+            {
+               "path": "prov:qualifiedAssociation",
+               "sh:class": {
+                  "@id": "prov:Association"
+               }
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:RunParameter"
+               },
+               "path": "renku:hasRunParameter"
+            },
+            {
+               "path": "wfprov:wasPartOfWorkflowRun",
+               "sh:class": {
+                  "@id": "wfprov:WorkflowRun"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:associationShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "prov:Association",
+         "property": [
+            {
+               "path": "prov:hadPlan",
+               "sh:class": {
+                  "@id": "renku:Run"
+               },
+               "minCount": 1
+            },
+            {
+               "path": "prov:agent",
+               "sh:class": {
+                  "@id": "prov:SoftwareAgent"
                },
                "minCount": 1,
                "maxCount": 1
@@ -630,142 +868,6 @@
          ]
       },
       {
-         "@id": "_:activityShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "prov:Activity",
-         "property": [
-            {
-               "path": "prov:wasAssociatedWith",
-               "or": [
-                  {
-                     "sh:class": {
-                        "@id": "prov:SoftwareAgent"
-                     }
-                  },
-                  {
-                     "sh:class": {
-                        "@id": "schema:Person"
-                     }
-                  },
-                  {
-                     "nodeKind": "sh:IRI"
-                  }
-               ],
-               "minCount": 2,
-               "maxCount": 2
-            },
-            {
-               "path": "prov:qualifiedAssociation",
-               "sh:class": {
-                  "@id": "prov:Association"
-               }
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "prov:endedAtTime",
-               "datatype": {
-                  "@id": "xsd:dateTime"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "path": "prov:qualifiedGeneration",
-               "sh:class": {
-                  "@id": "prov:Generation"
-               }
-            },
-            {
-               "path": "renku:order",
-               "datatype": {
-                  "@id": "xsd:integer"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "path": "schema:isPartOf",
-               "sh:class": {
-                  "@id": "schema:Project"
-               },
-               "minCount": 0,
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "prov:atLocation",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            },
-            {
-               "path": "prov:qualifiedUsage",
-               "sh:class": {
-                  "@id": "prov:Usage"
-               }
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "prov:startedAtTime",
-               "datatype": {
-                  "@id": "xsd:dateTime"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "path": "renku:parameter",
-               "or": [
-                  {
-                     "sh:class": {
-                        "@id": "renku:PathParameterValue"
-                     }
-                  },
-                  {
-                     "sh:class": {
-                        "@id": "renku:VariableParameterValue"
-                     }
-                  }
-               ]
-            }
-         ]
-      },
-      {
-         "@id": "_:associationShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "prov:Association",
-         "property": [
-            {
-               "path": "prov:hadPlan",
-               "sh:class": {
-                  "@id": "prov:Plan"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "path": "prov:agent",
-               "sh:class": {
-                  "@id": "prov:SoftwareAgent"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            }
-         ]
-      },
-      {
          "@id": "_:softwareAgentShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
@@ -778,7 +880,7 @@
          "property": [
             {
                "nodeKind": "sh:Literal",
-               "path": "schema:name",
+               "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
                },
@@ -833,125 +935,34 @@
             }
          ],
          "closed": false,
-         "target": [
-            {
-               "@type": "sh:SPARQLTarget",
-               "sh:prefixes": [
-                  {
-                     "@id": "schema:"
-                  }
-               ],
-               "sh:select": [
-                  {
-                     "@value": "SELECT ?this WHERE { ?this a prov:Entity . FILTER NOT EXISTS { ?this a schema:Dataset } FILTER NOT EXISTS { ?this a schema:DigitalDocument } }"
-                  }
-               ]
-            }
-         ],
+         "targetClass": "prov:Entity",
          "property": [
             {
                "sh:class": {
                   "@id": "prov:Activity"
                },
                "path": "prov:wasInvalidatedBy"
-            },
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuRunShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:Run",
+         "property": [
             {
                "nodeKind": "sh:Literal",
                "path": "prov:atLocation",
                "datatype": {
                   "@id": "xsd:string"
                },
-               "minCount": 1,
-               "maxCount": 1
-            }
-         ]
-      },
-      {
-         "@id": "_:planShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "prov:Plan",
-         "property": [
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:description",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "sh:class": {
-                  "@id": "renku:CommandParameter"
-               },
-               "path": "renku:hasArguments"
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:keywords",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:command",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            },
-            {
-               "sh:class": {
-                  "@id": "renku:CommandInput"
-               },
-               "path": "renku:hasInputs"
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:name",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
                "minCount": 0,
-               "maxCount": 1
-            },
-            {
-               "sh:class": {
-                  "@id": "renku:CommandOutput"
-               },
-               "path": "renku:hasOutputs"
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:successCodes",
-               "datatype": {
-                  "@id": "xsd:integer"
-               }
-            }
-         ]
-      },
-      {
-         "@id": "_:renkuCommandParameterShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "renku:CommandParameter",
-         "property": [
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:description",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
                "maxCount": 1
             },
             {
@@ -962,13 +973,136 @@
                }
             },
             {
+               "path": "schema:isPartOf",
+               "sh:class": {
+                  "@id": "schema:Project"
+               },
+               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:OrderedSubprocess"
+               },
+               "path": "renku:hasSubprocess"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:command",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:processOrder",
+               "datatype": {
+                  "@id": "xsd:integer"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:successCodes",
+               "datatype": {
+                  "@id": "xsd:integer"
+               }
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:CommandArgument"
+               },
+               "path": "renku:hasArguments"
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:RunParameter"
+               },
+               "path": "renku:hasRunParameters"
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:CommandInput"
+               },
+               "path": "renku:hasInputs"
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:CommandOutput"
+               },
+               "path": "renku:hasOutputs"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
                "nodeKind": "sh:Literal",
                "path": "schema:name",
                "datatype": {
                   "@id": "xsd:string"
                },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:keywords",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuOrderedSubprocessShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:OrderedSubprocess",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:index",
+               "datatype": {
+                  "@id": "xsd:integer"
+               },
                "minCount": 1,
                "maxCount": 1
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:Run"
+               },
+               "path": "renku:process",
+               "minCount": 1,
+               "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuCommandArgumentShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:CommandArgument",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             },
             {
                "nodeKind": "sh:Literal",
@@ -994,32 +1128,24 @@
             {
                "nodeKind": "sh:Literal",
                "path": "schema:defaultValue",
-               "or": [
-                  {
-                     "datatype": {
-                        "@id": "xsd:decimal"
-                     }
-                  },
-                  {
-                     "datatype": {
-                        "@id": "xsd:integer"
-                     }
-                  },
-                  {
-                     "datatype": {
-                        "@id": "xsd:string"
-                     }
-                  }
-               ],
-               "minCount": 0,
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
                "maxCount": 1
             },
             {
-               "path": "schema:valueReference",
-               "sh:class": {
-                  "@id": "renku:VariableParameterValue"
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
                },
-               "minCount": 1,
                "maxCount": 1
             }
          ]
@@ -1068,11 +1194,18 @@
                },
                "minCount": 1,
                "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       },
       {
-         "@id": "_:commandInputShape",
+         "@id": "_:renkuCommandInputShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
             {
@@ -1084,6 +1217,50 @@
          "property": [
             {
                "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:position",
+               "datatype": {
+                  "@id": "xsd:integer"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:prefix",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "renku:consumes",
+               "sh:class": {
+                  "@id": "prov:Entity"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "renku:mappedTo",
+               "sh:class": {
+                  "@id": "renku:IOStream"
+               },
+               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "schema:description",
                "datatype": {
                   "@id": "xsd:string"
@@ -1092,62 +1269,16 @@
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "rdfs:label",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            },
-            {
-               "nodeKind": "sh:Literal",
                "path": "schema:name",
                "datatype": {
                   "@id": "xsd:string"
                },
                "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:position",
-               "datatype": {
-                  "@id": "xsd:integer"
-               },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:prefix",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "path": "renku:mappedTo",
-               "sh:class": {
-                  "@id": "renku:IOStream"
-               },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:defaultValue",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "path": "schema:valueReference",
-               "sh:class": {
-                  "@id": "renku:PathParameterValue"
-               },
-               "minCount": 1,
-               "maxCount": 1
             }
          ]
       },
       {
-         "@id": "_:commandOutputShape",
+         "@id": "_:renkuCommandOutputShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
             {
@@ -1159,15 +1290,58 @@
          "property": [
             {
                "nodeKind": "sh:Literal",
-               "path": "schema:description",
+               "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:position",
+               "datatype": {
+                  "@id": "xsd:integer"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:prefix",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "renku:produces",
+               "sh:class": {
+                  "@id": "prov:Entity"
                },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "renku:mappedTo",
+               "sh:class": {
+                  "@id": "renku:IOStream"
+               },
+               "minCount": 0,
                "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "rdfs:label",
+               "path": "renku:createFolder",
+               "datatype": {
+                  "@id": "xsd:boolean"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:defaultValue",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
                "datatype": {
                   "@id": "xsd:string"
                },
@@ -1179,53 +1353,6 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:position",
-               "datatype": {
-                  "@id": "xsd:integer"
-               },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:prefix",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:createFolder",
-               "datatype": {
-                  "@id": "xsd:boolean"
-               },
-               "maxCount": 1
-            },
-            {
-               "path": "renku:mappedTo",
-               "sh:class": {
-                  "@id": "renku:IOStream"
-               },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:defaultValue",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "path": "schema:valueReference",
-               "sh:class": {
-                  "@id": "renku:PathParameterValue"
-               },
-               "minCount": 1,
                "maxCount": 1
             }
          ]
@@ -1254,224 +1381,6 @@
                "datatype": {
                   "@id": "xsd:string"
                }
-            }
-         ]
-      },
-      {
-         "@id": "_:renkuPathParameterValueShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "renku:PathParameterValue",
-         "property": [
-            {
-               "nodeKind": "sh:Literal",
-               "path": "prov:atLocation",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            }
-         ]
-      },
-      {
-         "@id": "_:renkuVariableParameterValueShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "renku:VariableParameterValue",
-         "property": [
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:value",
-               "or": [
-                  {
-                     "datatype": {
-                        "@id": "xsd:decimal"
-                     }
-                  },
-                  {
-                     "datatype": {
-                        "@id": "xsd:integer"
-                     }
-                  },
-                  {
-                     "datatype": {
-                        "@id": "xsd:string"
-                     }
-                  }
-               ]
-            }
-         ]
-      },
-      {
-         "@id": "_:renkuGroupedRunShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "renku:GroupedRun",
-         "property": [
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:description",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "sh:class": {
-                  "@id": "renku:MappingParameter"
-               },
-               "path": "renku:hasMappings"
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:keywords",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:name",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 0,
-               "maxCount": 1
-            },
-            {
-               "sh:class": {
-                  "@id": "prov:Plan"
-               },
-               "path": "renku:hasSubprocesses"
-            },
-            {
-               "sh:class": {
-                  "@id": "renku:ParameterLink"
-               },
-               "path": "renku:workflowLinks"
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "prov:invalidatedAtTime",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            }
-         ]
-      },
-      {
-         "@id": "_:parameterMappingShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "renku:ParameterMapping",
-         "property": [
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:description",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "rdfs:label",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:name",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:position",
-               "datatype": {
-                  "@id": "xsd:integer"
-               },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:prefix",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:defaultValue",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "maxCount": 1
-            },
-            {
-               "path": "schema:mapsTo",
-               "sh:class": {
-                  "@id": "renku:CommandParameterBase"
-               }
-            }
-         ]
-      },
-      {
-         "@id": "_:parameterLinkShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "renku:ParameterLink",
-         "property": [
-            {
-               "nodeKind": "sh:Literal",
-               "path": "rdfs:label",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            },
-            {
-               "path": "renku:linkSource",
-               "sh:class": {
-                  "@id": "renku:CommandParameterBase"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "path": "renku:linkSink",
-               "sh:class": {
-                  "@id": "renku:CommandParameterBase"
-               },
-               "minCount": 1
             }
          ]
       }

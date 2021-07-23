@@ -23,6 +23,7 @@ from pathlib import Path
 from git import GitCommandError, Repo
 
 from renku.core import errors
+from renku.core.management.command_builder.command import update_injected_client
 from renku.core.models.git import GitURL
 
 
@@ -53,6 +54,7 @@ def clone(
     """Clone Renku project repo, install Git hooks and LFS."""
     from renku.core.management.client import LocalClient
     from renku.core.management.githooks import install
+    from renku.core.management.migrate import is_renku_project
 
     path = path or GitURL.parse(url).name
 
@@ -114,6 +116,7 @@ def clone(
         config_writer.release()
 
     client = LocalClient(path)
+    update_injected_client(client)
 
     if install_githooks:
         install(client=client, force=True)
@@ -127,4 +130,6 @@ def clone(
         except GitCommandError as e:
             raise errors.GitError("Cannot install Git LFS") from e
 
-    return repo, bool(client.project)
+    project_initialized = is_renku_project(client)
+
+    return repo, project_initialized

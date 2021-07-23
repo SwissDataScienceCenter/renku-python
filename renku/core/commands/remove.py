@@ -25,7 +25,7 @@ from renku.core import errors
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
-from renku.core.models.dataset import DatasetsProvenance
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.models.provenance.agent import Person
 from renku.core.utils import communication
 

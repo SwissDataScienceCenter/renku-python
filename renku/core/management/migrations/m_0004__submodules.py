@@ -25,11 +25,17 @@ from git import GitError, Repo
 from renku.core import errors
 from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import replace_injection
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.management.migrations.models.v3 import DatasetFileSchemaV3, get_client_datasets
-from renku.core.management.migrations.models.v9 import DatasetFile, OldDatasetFileSchema
+from renku.core.management.migrations.models.v9 import (
+    DatasetFile,
+    OldDatasetFileSchema,
+    generate_file_id,
+    generate_label,
+)
 from renku.core.metadata.database import Database
-from renku.core.models.dataset import DatasetsProvenance
-from renku.core.models.entities import generate_file_id, generate_label
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.utils.urls import remove_credentials
 
 
@@ -86,7 +92,10 @@ def _migrate_submodule_based_datasets(client):
             LocalClient: remote_client,
             Database: database,
         }
-        constructor_bindings = {DatasetsProvenance: lambda: DatasetsProvenance(database)}
+        constructor_bindings = {
+            IDatasetGateway: lambda: DatasetGateway(),
+            DatasetsProvenance: lambda: DatasetsProvenance(),
+        }
 
         with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
             if not is_project_unsupported():

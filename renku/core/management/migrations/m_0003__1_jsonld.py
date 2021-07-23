@@ -25,11 +25,12 @@ from pathlib import Path
 import pyld
 
 from renku.core.models.jsonld import read_yaml, write_yaml
-from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
+from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata, old_metadata_path
 
 
 def migrate(client):
     """Migration function."""
+
     _migrate_project_metadata(client)
     _migrate_datasets_metadata(client)
 
@@ -41,13 +42,14 @@ def _migrate_project_metadata(client):
         "http://schema.org/Project": "http://xmlns.com/foaf/0.1/Project",
     }
 
-    _apply_on_the_fly_jsonld_migrations(
-        path=client.renku_metadata_path,
-        jsonld_context=_INITIAL_JSONLD_PROJECT_CONTEXT,
-        fields=_PROJECT_FIELDS,
-        jsonld_translate=jsonld_translate,
-        persist_changes=not client.is_using_temporary_datasets_path(),
-    )
+    if client.renku_path.joinpath(old_metadata_path).exists():
+        _apply_on_the_fly_jsonld_migrations(
+            path=client.renku_path.joinpath(old_metadata_path),
+            jsonld_context=_INITIAL_JSONLD_PROJECT_CONTEXT,
+            fields=_PROJECT_FIELDS,
+            jsonld_translate=jsonld_translate,
+            persist_changes=not client.is_using_temporary_datasets_path(),
+        )
 
 
 def _migrate_datasets_metadata(client):
@@ -63,7 +65,7 @@ def _migrate_datasets_metadata(client):
     }
 
     old_metadata_paths = get_pre_0_3_4_datasets_metadata(client)
-    new_metadata_paths = client.renku_datasets_path.rglob(client.METADATA)
+    new_metadata_paths = client.renku_datasets_path.rglob(old_metadata_path)
 
     for path in itertools.chain(old_metadata_paths, new_metadata_paths):
         _apply_on_the_fly_jsonld_migrations(

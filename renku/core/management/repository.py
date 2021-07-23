@@ -21,31 +21,29 @@ import json
 import os
 import shutil
 import subprocess
-import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 from subprocess import check_output
-from typing import Union
 
 import attr
 import filelock
 import yaml
 from jinja2 import Template
-from werkzeug.utils import cached_property, secure_filename
+from werkzeug.utils import cached_property
 
 from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import replace_injection
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
+from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.metadata.database import Database
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.models.enums import ConfigFilter
-from renku.core.models.projects import Project
-from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
-from renku.core.models.provenance.activity import ActivityCollection
-from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+from renku.core.models.project import Project
 from renku.core.models.refs import LinkReference
-from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
@@ -105,9 +103,6 @@ class RepositoryApiMixin(GitCore):
         default=DEFAULT_DATA_DIR, kw_only=True, converter=lambda value: str(value) if value else DEFAULT_DATA_DIR
     )
     """Define a name of the folder for storing datasets."""
-
-    METADATA = "metadata.yml"
-    """Default name of Renku config file."""
 
     LOCK_SUFFIX = ".lock"
     """Default suffix for Renku lock file."""
@@ -209,11 +204,6 @@ class RepositoryApiMixin(GitCore):
         self._migration_type = value
 
     @property
-    def renku_metadata_path(self):
-        """Return a ``Path`` instance of Renku metadata file."""
-        return self.renku_path.joinpath(self.METADATA)
-
-    @property
     def workflow_path(self):
         """Return a ``Path`` instance of the workflow folder."""
         return self.renku_path / self.WORKFLOW
@@ -255,10 +245,11 @@ class RepositoryApiMixin(GitCore):
         return str(self.workflow_path.resolve().relative_to(self.path))
 
     @property
-    def project(self):
+    @inject.autoparams()
+    def project(self, project_gateway: IProjectGateway):
         """Return the Project instance."""
-        if self.renku_metadata_path.exists() and self._project is None:
-            self._project = Project.from_yaml(self.renku_metadata_path, client=self)
+        if self._project is None:
+            self._project = project_gateway.get_project()
 
         return self._project
 
@@ -306,12 +297,12 @@ class RepositoryApiMixin(GitCore):
         return self._project is not None
 
     def process_commit(self, commit=None, path=None):
-        """Build an :class:`~renku.core.models.provenance.activities.Activity`.
+        """Build an :class:`~renku.core.models.provenance.activity.Activity`.
 
         :param commit: Commit to process. (default: ``HEAD``)
         :param path: Process a specific CWL file.
         """
-        from renku.core.models.provenance.activities import Activity
+        from renku.core.models.provenance.activity import Activity
 
         commit = commit or self.repo.head.commit
         if len(commit.parents) > 1:
@@ -438,7 +429,7 @@ class RepositoryApiMixin(GitCore):
     def with_commit(self, commit):
         """Yield the state of the repo at a specific commit."""
         from renku import LocalClient
-        from renku.core.models.dataset import DatasetsProvenance
+        from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 
         current_branch = None
         current_commit = None
@@ -461,7 +452,11 @@ class RepositoryApiMixin(GitCore):
             LocalClient: self,
             Database: database,
         }
-        constructor_bindings = {DatasetsProvenance: lambda: DatasetsProvenance(database)}
+        # FIXME: We shouldn't know about implementation here
+        constructor_bindings = {
+            IDatasetGateway: lambda: DatasetGateway(),
+            DatasetsProvenance: lambda: DatasetsProvenance(),
+        }
 
         with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
             try:
@@ -477,56 +472,29 @@ class RepositoryApiMixin(GitCore):
                     self.repo.git.checkout(current_commit)
 
     @contextmanager
-    def with_metadata(self, read_only=False, name=None):
+    @inject.autoparams()
+    def with_metadata(
+        self,
+        project_gateway: IProjectGateway,
+        database_gateway: IDatabaseGateway,
+        read_only=False,
+        name=None,
+    ):
         """Yield an editable metadata object."""
-        metadata_path = self.renku_metadata_path
 
-        if metadata_path.exists():
-            metadata = Project.from_yaml(metadata_path, client=self)
-        else:
-            metadata = Project(name=name, client=self)
+        try:
+            project = project_gateway.get_project()
+        except ValueError:
+            project = Project.from_client(name=name, client=self)
 
-        yield metadata
+        yield project
 
         if not read_only:
-            metadata.to_yaml(path=metadata_path)
-
-    def process_and_store_run(self, command_line_tool, name, description, keywords):
-        """Create Plan and Activity from CommandLineTool and store them."""
-        filename = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(command_line_tool.baseCommand)))
-
-        # Store Run and ProcessRun as before
-        self.workflow_path.mkdir(exist_ok=True)
-        path = self.workflow_path / filename
-
-        process_run = command_line_tool.generate_process_run(
-            commit=self.repo.head.commit, path=path, name=name, description=description, keywords=keywords
-        )
-        process_run.to_yaml(path=path)
-        self.add_to_activity_index(process_run)
-
-        self.update_graphs(process_run)
-
-    @inject.autoparams()
-    def update_graphs(self, activity: Union[ProcessRun, WorkflowRun], database: Database):
-        """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
-        if not self.has_graph_files():
-            return None
-
-        dependency_graph = DependencyGraph.from_database(database)
-        provenance_graph = ProvenanceGraph.from_database(database)
-
-        activity_collection = ActivityCollection.from_activity(activity, dependency_graph)
-
-        provenance_graph.add(activity_collection)
-
-        for activity in activity_collection.activities:
-            database["activities"].add(activity)
-            database["plans"].add(activity.association.plan)
-            database["plans-by-name"].add(activity.association.plan)
+            project_gateway.update_project(project)
+            database_gateway.commit()
 
     def has_graph_files(self):
-        """Return true if dependency or provenance graph exists."""
+        """Return true if database exists."""
         return self.database_path.exists() and any(
             f for f in self.database_path.iterdir() if f != self.database_path / "root"
         )
@@ -555,7 +523,7 @@ class RepositoryApiMixin(GitCore):
         """Initialize an empty Renku repository."""
         from git import Repo
 
-        from renku.core.models.provenance.agents import Person
+        from renku.core.models.provenance.agent import Person
 
         # initialize repo and set user data
         kwargs = {}
@@ -613,7 +581,7 @@ class RepositoryApiMixin(GitCore):
 
     def activities_for_paths(self, paths, file_commit=None, revision="HEAD"):
         """Get all activities involving a path."""
-        from renku.core.models.provenance.activities import Activity
+        from renku.core.models.provenance.activity import Activity
 
         result = set()
 

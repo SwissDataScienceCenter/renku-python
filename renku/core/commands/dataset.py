@@ -38,12 +38,12 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, OperationErro
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import (
     Dataset,
     DatasetDetailsJson,
-    DatasetsProvenance,
     DatasetTag,
     Url,
     generate_default_name,

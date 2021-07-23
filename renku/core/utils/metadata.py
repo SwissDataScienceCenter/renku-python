@@ -18,7 +18,7 @@
 """Helpers functions for metadata conversion."""
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 from urllib.parse import urlparse
 
 from renku.core.management.migrations.models import v9 as old_datasets
@@ -80,6 +80,31 @@ def convert_dataset_file(dataset_file: old_datasets.DatasetFile, client, revisio
     )
 
 
+def convert_person(person: Optional[old_datasets.Person]) -> Optional[new_agents.Person]:
+    """Create a Person from and old Person."""
+    if not person:
+        return
+
+    return new_agents.Person(
+        affiliation=person.affiliation,
+        alternate_name=person.alternate_name,
+        email=person.email,
+        id=None,
+        name=person.name,
+    )
+
+
+def convert_agent(
+    agent: Optional[Union[old_datasets.Person, old_datasets.SoftwareAgent]]
+) -> Optional[Union[new_agents.Person, new_agents.SoftwareAgent]]:
+    """Create an instance from Person/SoftwareAgent."""
+    if isinstance(agent, old_datasets.SoftwareAgent):
+        return new_agents.SoftwareAgent.from_software_agent(agent)
+
+    assert not agent or isinstance(agent, old_datasets.Person), f"Invalid type {type(agent)}"
+    return convert_person(agent)
+
+
 def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Dataset:
     """Convert old Dataset to new Dataset."""
 
@@ -108,7 +133,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Dat
         return Dataset.generate_id(identifier=Path(path).name)
 
     return Dataset(
-        creators=[new_agents.Agent.from_agent(creator) for creator in dataset.creators],
+        creators=[convert_agent(creator) for creator in dataset.creators],
         dataset_files=convert_dataset_files(dataset.files),
         date_created=dataset.date_created,
         date_published=dataset.date_published,

@@ -22,12 +22,6 @@ import click
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
 from renku.core.incubation.graph import FORMATS, export_graph, remove_workflow
-from renku.core.incubation.graph import status as get_status
-from renku.core.incubation.graph import update as perform_update
-from renku.core.management.command_builder.command import Command, inject
-from renku.core.metadata.database import Database
-from renku.core.models.workflow.dependency_graph import DependencyGraph
-from renku.core.utils.contexts import measure
 
 
 @click.group(hidden=True)
@@ -35,75 +29,17 @@ def graph():
     """Proof-of-Concept command for testing the new graph design."""
 
 
-@graph.command()
-@click.pass_context
-def status(ctx):
-    r"""Equivalent of `renku status`."""
+# @graph.command()
+# @click.argument("path", type=click.Path(exists=False, dir_okay=False))
+# def save(path):
+#     r"""Save dependency graph as PNG."""
+#     with measure("CREATE DEPENDENCY GRAPH"):
 
-    communicator = ClickCallback()
-    result = get_status().with_communicator(communicator).build().execute()
+#         @inject.autoparams()
+#         def _to_png(path, database: Database):
+#             DependencyGraph.from_database(database).to_png(path=path)
 
-    stales, modified, deleted = result.output
-
-    if not modified and not deleted:
-        click.secho("Everything is up-to-date.", fg="green")
-        return
-
-    if stales:
-        click.echo(
-            f"Outdated outputs({len(stales)}):\n"
-            "  (use `renku log [<file>...]` to see the full lineage)\n"
-            "  (use `renku update [<file>...]` to generate the file from its latest inputs)\n"
-        )
-        for k, v in stales.items():
-            paths = click.style(", ".join(sorted(v)), fg="red", bold=True)
-            click.echo(f"\t{k}:{paths}")
-        click.echo()
-    else:
-        click.secho("All files were generated from the latest inputs.", fg="green")
-
-    if modified:
-        click.echo(
-            f"Modified inputs({len(modified)}):\n"
-            "  (use `renku log --revision <sha1> <file>` to see a lineage for the given revision)\n"
-        )
-        for v in modified:
-            click.echo(click.style(f"\t{v}", fg="blue", bold=True))
-        click.echo()
-
-    if deleted:
-        click.echo(
-            "Deleted files used to generate outputs:\n"
-            "  (use `git show <sha1>:<file>` to see the file content for the given revision)\n"
-        )
-        for v in deleted:
-            click.echo(click.style(f"\t{v}", fg="blue", bold=True))
-
-        click.echo()
-
-    ctx.exit(1 if stales else 0)
-
-
-@graph.command()
-@click.option("-n", "--dry-run", is_flag=True, help="Show steps that will be updated without running them.")
-def update(dry_run):
-    r"""Equivalent of `renku update`."""
-
-    communicator = ClickCallback()
-    perform_update().with_communicator(communicator).build().execute(dry_run=dry_run)
-
-
-@graph.command()
-@click.argument("path", type=click.Path(exists=False, dir_okay=False))
-def save(path):
-    r"""Save dependency graph as PNG."""
-    with measure("CREATE DEPENDENCY GRAPH"):
-
-        @inject.autoparams()
-        def _to_png(path, database: Database):
-            DependencyGraph.from_database(database).to_png(path=path)
-
-        Command().command(_to_png).build().execute(path=path)
+#         Command().command(_to_png).build().execute(path=path)
 
 
 @graph.command()

@@ -18,6 +18,7 @@
 """Helpers utils for interacting with remote source code management tools."""
 import re
 from functools import reduce
+from pathlib import Path
 
 from renku.core.errors import ParameterError
 
@@ -91,3 +92,22 @@ def shorten_message(message: str, line_length: int = 100, body_length: int = 650
         ("", 0),
     )[0]
     return wrapped_message[1:]
+
+
+def safe_path(filepath, can_be_database=False):
+    """Check if the path should be used in output."""
+    if isinstance(filepath, Path):
+        filepath = str(filepath)
+
+    # Should not be in ignore paths.
+    if filepath in {".gitignore", ".gitattributes"}:
+        return False
+
+    # Ignore everything in .renku ...
+    if filepath.startswith(".renku"):
+        # ... unless it can be a CWL.
+        if can_be_database and filepath.startswith(".renku/metadata/"):
+            return True
+        return False
+
+    return True

@@ -16,19 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku graph jobs."""
-import tempfile
 from urllib.parse import urlparse
 
-from git import GitError, Repo
 from marshmallow import EXCLUDE
-from requests import RequestException
 from sentry_sdk import capture_exception
 
-from renku.core.commands.format.graph import jsonld
-from renku.core.commands.graph import build_graph_command
-from renku.core.commands.migrate import migrate_project
-from renku.core.errors import MigrationError, RenkuException
-from renku.core.utils.contexts import chdir
 from renku.core.utils.requests import retry
 from renku.service.errors import RenkuOpTimeoutError
 from renku.service.serializers.cache import ProjectCloneContext
@@ -79,38 +71,40 @@ def report_success(request_payload, graph_payload, callback_url):
 
 def _build_and_report(callback_payload, callback_url, ctx):
     """Build graph and report on result."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        try:
-            repo = Repo.clone_from(ctx["url_with_auth"], tmpdir)
+    pass
+    # TODO: implement with new database
+    # with tempfile.TemporaryDirectory() as tmpdir:
+    #     try:
+    #         repo = Repo.clone_from(ctx["url_with_auth"], tmpdir)
 
-            if "commit_id" in callback_payload:
-                repo.git.checkout(callback_payload["commit_id"])
+    #         if "commit_id" in callback_payload:
+    #             repo.git.checkout(callback_payload["commit_id"])
 
-        except GitError as e:
-            report_recoverable(callback_payload, e, callback_url)
+    #     except GitError as e:
+    #         report_recoverable(callback_payload, e, callback_url)
 
-        with chdir(tmpdir):
-            try:
-                command = migrate_project().with_commit().build()
+    #     with chdir(tmpdir):
+    #         try:
+    #             command = migrate_project().with_commit().build()
 
-                result = command.execute(skip_template_update=True, skip_docker_update=True)
-                result, _, _ = result.output
+    #             result = command.execute(skip_template_update=True, skip_docker_update=True)
+    #             result, _, _ = result.output
 
-                if result:
-                    graph = build_graph_command().build().execute().output
-                    graph_payload = {"payload": jsonld(graph, strict=True, to_stdout=False)}
-                else:
-                    report_unrecoverable(callback_payload, MigrationError("migration failed"), callback_url)
+    #             if result:
+    #                 graph = build_graph_command().build().execute().output
+    #                 graph_payload = {"payload": jsonld(graph, strict=True, to_stdout=False)}
+    #             else:
+    #                 report_unrecoverable(callback_payload, MigrationError("migration failed"), callback_url)
 
-                return report_success(callback_payload, graph_payload, callback_url)
+    #             return report_success(callback_payload, graph_payload, callback_url)
 
-            except (RequestException, RenkuException, MemoryError) as e:
-                report_recoverable(callback_payload, e, callback_url)
+    #         except (RequestException, RenkuException, MemoryError) as e:
+    #             report_recoverable(callback_payload, e, callback_url)
 
-            except BaseException as e:
-                report_unrecoverable(callback_payload, e, callback_url)
+    #         except BaseException as e:
+    #             report_unrecoverable(callback_payload, e, callback_url)
 
-        return callback_payload
+    #     return callback_payload
 
 
 def graph_build_job(revision, git_url, callback_url, token, timeout_sec=None):

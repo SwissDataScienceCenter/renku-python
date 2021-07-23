@@ -26,8 +26,10 @@ import pytest
 from git import Repo
 
 from renku.core.management.command_builder.command import replace_injection
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.metadata.database import Database
-from renku.core.models.dataset import DatasetsProvenance
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
@@ -779,7 +781,10 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
         LocalClient: client,
         Database: database,
     }
-    constructor_bindings = {DatasetsProvenance: lambda: DatasetsProvenance(database)}
+    constructor_bindings = {
+        IDatasetGateway: lambda: DatasetGateway(),
+        DatasetsProvenance: lambda: DatasetsProvenance(),
+    }
 
     with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
         with client.commit(commit_message="Create dataset"):

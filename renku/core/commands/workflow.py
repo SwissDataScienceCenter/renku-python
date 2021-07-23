@@ -19,21 +19,18 @@
 
 
 from collections import defaultdict
-from pathlib import Path
 from typing import List
 
 from renku.core import errors
-from renku.core.commands.graph import Graph
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
 from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.value_resolution import apply_run_values
-from renku.core.metadata.database import Database
 from renku.core.models.workflow.composite_plan import CompositePlan
-from renku.core.models.workflow.converters.cwl import CWLConverter
 from renku.core.utils import communication
 
 
@@ -65,7 +62,7 @@ def _list_workflows(client: LocalClient):
 
 def list_workflows_command():
     """Command to list or manage workflows with subcommands."""
-    return Command().command(_list_workflows).require_migration()
+    return Command().command(_list_workflows).require_migration().with_database()
 
 
 @inject.autoparams()
@@ -110,17 +107,19 @@ def remove_workflow_command():
 @inject.autoparams()
 def _create_workflow(output_file, revision, paths, client: LocalClient):
     """Create a workflow description for a file."""
-    graph = Graph()
-    outputs = graph.build(paths=paths, revision=revision)
+    pass
+    # TODO: implement with new database
+    # graph = Graph()
+    # outputs = graph.build(paths=paths, revision=revision)
 
-    workflow = graph.as_workflow(outputs=outputs)
+    # workflow = graph.as_workflow(outputs=outputs)
 
-    if output_file:
-        output_file = Path(output_file)
+    # if output_file:
+    #     output_file = Path(output_file)
 
-    wf, path = CWLConverter.convert(workflow, client.path, path=output_file)
+    # wf, path = CWLConverter.convert(workflow, client.path, path=output_file)
 
-    return wf.export_string()
+    # return wf.export_string()
 
 
 def create_workflow_command():
@@ -129,12 +128,12 @@ def create_workflow_command():
 
 
 @inject.autoparams()
-def _show_workflow(name_or_id: str, database: Database):
+def _show_workflow(name_or_id: str, plan_gateway: IPlanGateway):
     """Show the details of a workflow."""
-    workflow = database["plans"].get(name_or_id)
+    workflow = plan_gateway.get_by_id(name_or_id)
 
     if not workflow:
-        workflow = database["plans-by-name"].get(name_or_id)
+        workflow = plan_gateway.get_by_name(name_or_id)
 
     if isinstance(workflow, CompositePlan):
         return CompositePlanViewModel.from_composite_plan(workflow)
@@ -161,20 +160,20 @@ def _group_workflow(
     link_all: bool,
     keywords: List[str],
     steps: List[str],
-    database: Database,
+    plan_gateway: IPlanGateway,
 ) -> CompositePlan:
     """Group workflows into a CompositePlan."""
 
-    if database["plans-by-name"].get(name):
+    if plan_gateway.get_by_name(name):
         raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
 
     child_workflows = []
 
     for workflow_name_or_id in steps:
-        child_workflow = database["plans"].get(workflow_name_or_id)
+        child_workflow = plan_gateway.get_by_id(workflow_name_or_id)
 
         if not child_workflow:
-            child_workflow = database["plans-by-name"].get(workflow_name_or_id)
+            child_workflow = plan_gateway.get_by_name(workflow_name_or_id)
 
         if not child_workflow:
             raise errors.ObjectNotFoundError(workflow_name_or_id)
@@ -225,8 +224,7 @@ def _group_workflow(
         for virtual_link in graph.virtual_links:
             plan.add_link(virtual_link[0], [virtual_link[1]])
 
-    database["plans"].add(plan)
-    database["plans-by-name"].add(plan)
+    plan_gateway.add(plan)
 
     return CompositePlanViewModel.from_composite_plan(plan)
 

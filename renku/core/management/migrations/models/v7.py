@@ -23,6 +23,7 @@ from marshmallow import EXCLUDE
 
 from renku.core.models import jsonld
 from renku.core.models.calamus import fields, prov, renku, schema
+from renku.core.utils.migrate import old_metadata_path
 
 from .v3 import Base, DatasetFileSchemaV3, DatasetSchemaV3, UrlSchemaV3
 
@@ -40,10 +41,8 @@ class Dataset(Base):
 
     def to_yaml(self, path=None):
         """Write content to a YAML file."""
-        from renku.core.management import LocalClient
-
         data = DatasetSchemaV7().dump(self)
-        path = path or self._metadata_path or os.path.join(self.path, LocalClient.METADATA)
+        path = path or self._metadata_path or os.path.join(self.path, old_metadata_path)
         jsonld.write_yaml(path=path, data=data)
 
 
@@ -70,5 +69,5 @@ class DatasetSchemaV7(DatasetSchemaV3):
 
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
-    paths = client.renku_datasets_path.rglob(client.METADATA)
+    paths = client.renku_datasets_path.rglob(old_metadata_path)
     return [Dataset.from_yaml(path=path, client=client) for path in paths]

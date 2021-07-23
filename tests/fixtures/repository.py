@@ -121,3 +121,43 @@ def client(project, global_config_dir):
     yield LocalClient(path=project)
 
     LocalClient.get_value = original_get_value
+
+
+@pytest.fixture
+def client_injection_bindings():
+    """Return bindings needed for client dependency injection."""
+
+    def _create_client_bindings(client):
+        from renku.core.management import LocalClient
+
+        return {"bindings": {LocalClient: client, "LocalClient": client}, "constructor_bindings": {}}
+
+    return _create_client_bindings
+
+
+@pytest.fixture
+def injection_binder(request):
+    """Return a binder that can work with bindings."""
+
+    def _binder(bindings):
+        from renku.core.management.command_builder.command import inject, remove_injector
+
+        def _bind(binder):
+            for key, value in bindings["bindings"].items():
+                binder.bind(key, value)
+            for key, value in bindings["constructor_bindings"].items():
+                binder.bind_to_constructor(key, value)
+
+            return binder
+
+        inject.configure(_bind)
+        request.addfinalizer(lambda: remove_injector())
+        return
+
+    return _binder
+
+
+@pytest.fixture
+def injected_client(client, client_injection_bindings, injection_binder):
+    """Inject a client."""
+    injection_binder(client_injection_bindings(client))

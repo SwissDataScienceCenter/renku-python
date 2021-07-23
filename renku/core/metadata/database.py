@@ -22,6 +22,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+from types import BuiltinFunctionType, FunctionType
 from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
@@ -36,6 +37,8 @@ from renku.core import errors
 from renku.core.metadata.immutable import Immutable
 
 OID_TYPE = str
+TYPE_TYPE = "type"
+FUNCTION_TYPE = "function"
 MARKER = object()
 
 """NOTE: These are used as _p_serial to mark if an object was read from storage or is new"""
@@ -60,7 +63,7 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
     components = type_name.split(".")
     module_name = components[0]
 
-    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku"]:
+    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc"]:
         raise TypeError(f"Objects of type '{type_name}' are not allowed")
 
     module = __import__(module_name)
@@ -190,7 +193,7 @@ class Database:
 
     def add_index(self, name: str, object_type: type, attribute: str = None, key_type: type = None) -> "Index":
         """Add an index."""
-        assert name not in self._root, f"Index already exists: '{name}'"
+        assert name not in self._root, f"Index or object already exists: '{name}'"
 
         index = Index(name=name, object_type=object_type, attribute=attribute, key_type=key_type)
         index._p_jar = self
@@ -198,6 +201,15 @@ class Database:
         self._root[name] = index
 
         return index
+
+    def add_root_object(self, name: str, obj: Persistent):
+        """Add an object to the DB root."""
+        assert name not in self._root, f"Index or object already exists: '{name}'"
+
+        obj._p_jar = self
+        obj._p_oid = name
+
+        self._root[name] = obj
 
     def add(self, object: persistent.Persistent, oid: OID_TYPE = None):
         """Add a new object to the database.
@@ -234,7 +246,6 @@ class Database:
         """Get the object by oid."""
         if oid != Database.ROOT_OID and oid in self._root:  # NOTE: Avoid looping if getting "root"
             return self._root[oid]
-
         object = self.get_cached(oid)
         if object is not None:
             return object
@@ -271,6 +282,15 @@ class Database:
         object = self._objects_to_commit.get(oid)
         if object is not None:
             return object
+
+    def remove_root_object(self, name: str) -> None:
+        """Remove a root object from the database."""
+        assert name in self._root, f"Index or object doesn't exist in root: '{name}'"
+
+        obj = self.get(name)
+        self.remove_from_cache(obj)
+
+        del self._root[name]
 
     def new_ghost(self, oid: OID_TYPE, object: persistent.Persistent):
         """Create a new ghost object."""
@@ -591,12 +611,13 @@ class ObjectWriter:
         elif isinstance(object, list):
             return [self._serialize_helper(value) for value in object]
         elif isinstance(object, dict):
+            result = dict()
             for key, value in object.items():
-                object[key] = self._serialize_helper(value)
-            return object
+                result[key] = self._serialize_helper(value)
+            return result
         elif isinstance(object, Index):
             # NOTE: Index objects are not stored as references and are included in their parent object (i.e. root)
-            state = object.__getstate__()
+            state = object.__getstate__().copy()
             state = self._serialize_helper(state)
             return {"@type": get_type_name(object), "@oid": object._p_oid, **state}
         elif isinstance(object, persistent.Persistent):
@@ -609,8 +630,15 @@ class ObjectWriter:
             value = object.isoformat()
         elif isinstance(object, tuple):
             value = tuple(self._serialize_helper(value) for value in object)
+        elif isinstance(object, type):
+            # NOTE: We're storing a type, not an instance
+            return {"@type": TYPE_TYPE, "@value": get_type_name(object)}
+        elif isinstance(object, (FunctionType, BuiltinFunctionType)):
+            name = object.__name__
+            module = getattr(object, "__module__", None)
+            return {"@type": FUNCTION_TYPE, "@value": f"{module}.{name}"}
         elif hasattr(object, "__getstate__"):
-            value = object.__getstate__()
+            value = object.__getstate__().copy()
             value = {k: v for k, v in value.items() if not k.startswith("_v_")}
             value = self._serialize_helper(value)
             assert not isinstance(value, dict) or "id" in value, f"Invalid object state: {value} for {object}"
@@ -663,8 +691,10 @@ class ObjectReader:
             return data
         elif isinstance(data, list):
             return [self._deserialize_helper(value) for value in data]
+        elif isinstance(data, tuple):
+            return tuple([self._deserialize_helper(value) for value in data])
         else:
-            assert isinstance(data, dict), f"Data must be a list: '{type(data)}'"
+            assert isinstance(data, dict), f"Data must be a dict: '{type(data)}'"
 
             if "@type" not in data:  # NOTE: A normal dict value
                 assert "@oid" not in data
@@ -673,6 +703,10 @@ class ObjectReader:
                 return data
 
             object_type = data.pop("@type")
+            if object_type in (TYPE_TYPE, FUNCTION_TYPE):
+                # NOTE: if we stored a type (not instance), return the type
+                return self._get_class(data["@value"])
+
             cls = self._get_class(object_type)
 
             if issubclass(cls, datetime.datetime):
@@ -708,15 +742,16 @@ class ObjectReader:
             if "@value" in data:
                 data = data["@value"]
 
-            data = self._deserialize_helper(data)
-
             if not create:
+                data = self._deserialize_helper(data)
                 return data
 
             if issubclass(cls, persistent.Persistent):
                 object = cls.__new__(cls)
-                object.__setstate__(data)
+                object._p_oid = oid
+                self.set_ghost_state(object, data)
             else:
+                data = self._deserialize_helper(data)
                 assert isinstance(data, dict)
 
                 if issubclass(cls, Immutable):

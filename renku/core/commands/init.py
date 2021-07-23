@@ -36,9 +36,8 @@ from renku.core.commands.git import set_git_home
 from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import Command, inject, update_injected_client
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.metadata import initialize_database
+from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
-from renku.core.metadata.database import Database
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
 from renku.version import __version__, is_release
@@ -312,9 +311,8 @@ def _init(
     branch_name = create_backup_branch(path=path)
 
     # Initialize an empty database
-    database = Database.from_path(client.database_path)
-    initialize_database(database)
-    database.commit()
+    database_gateway = inject.instance(IDatabaseGateway)
+    database_gateway.initialize()
 
     # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")
@@ -345,7 +343,7 @@ def _init(
 
 def init_command():
     """Init command builder."""
-    return Command().command(_init)
+    return Command().command(_init).with_database()
 
 
 def fetch_template_from_git(source, ref=None, tempdir=None):
@@ -554,6 +552,10 @@ def _create_from_template_local(
 
     client.init_repository(False, user, initial_branch=initial_branch)
 
+    # Initialize an empty database
+    database_gateway = inject.instance(IDatabaseGateway)
+    database_gateway.initialize()
+
     create_from_template(
         template_path=template_path,
         client=client,
@@ -570,4 +572,4 @@ def _create_from_template_local(
 
 def create_from_template_local_command():
     """Command to initialize a new project from a template."""
-    return Command().command(_create_from_template_local)
+    return Command().command(_create_from_template_local).with_database()

@@ -24,10 +24,10 @@ import pytest
 
 from renku import LocalClient
 from renku.cli import cli
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
-from renku.core.metadata.database import Database
-from renku.core.models.dataset import DatasetsProvenance, RemoteEntity
-from tests.utils import format_result_exception, load_dataset
+from renku.core.models.dataset import RemoteEntity
+from tests.utils import format_result_exception
 
 
 @pytest.mark.migration
@@ -39,15 +39,16 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
 
 
 @pytest.mark.migration
-def test_migrate_project(isolated_runner, old_project):
+def test_migrate_project(isolated_runner, old_project, client_database_injection_manager):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty()
 
     client = LocalClient(path=old_project.working_dir)
-    assert client.project
-    assert client.project.name
+    with client_database_injection_manager(client):
+        assert client.project
+        assert client.project.name
 
 
 @pytest.mark.migration
@@ -74,34 +75,35 @@ def test_migration_check(isolated_runner, project):
 
 
 @pytest.mark.migration
-def test_correct_path_migrated(isolated_runner, old_project):
+def test_correct_path_migrated(isolated_runner, old_project, client_database_injection_manager):
     """Check if path on dataset files has been correctly migrated."""
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     client = LocalClient(path=old_project.working_dir)
-    assert client.datasets
+    with client_database_injection_manager(client):
+        assert client.datasets
 
-    for ds in client.datasets.values():
-        for file in ds.files:
-            path = Path(file.entity.path)
-            assert path.exists()
-            assert not path.is_absolute()
-            assert file.id
+        for ds in client.datasets.values():
+            for file in ds.files:
+                path = Path(file.entity.path)
+                assert path.exists()
+                assert not path.is_absolute()
+                assert file.id
 
 
 @pytest.mark.migration
-def test_correct_relative_path(isolated_runner, old_project):
+def test_correct_relative_path(isolated_runner, old_project, client_database_injection_manager):
     """Check if path on dataset has been correctly migrated."""
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     client = LocalClient(path=old_project.working_dir)
 
-    database = Database.from_path(client.database_path)
-    datasets_provenance = DatasetsProvenance(database)
+    with client_database_injection_manager(client):
+        datasets_provenance = DatasetsProvenance()
 
-    assert len(list(datasets_provenance.datasets)) > 0
+        assert len(list(datasets_provenance.datasets)) > 0
 
 
 @pytest.mark.migration
@@ -125,6 +127,7 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
     assert ".renku.lock" in ignored
 
 
+@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.migration
 def test_graph_building_after_migration(isolated_runner, old_project):
     """Check that structural migration did not break graph building."""
@@ -157,6 +160,7 @@ def test_migration_version():
     assert max_migration_version == SUPPORTED_PROJECT_VERSION
 
 
+@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.migration
 def test_workflow_migration(isolated_runner, old_workflow_project):
     """Check that *.cwl workflows can be migrated."""
@@ -173,7 +177,7 @@ def test_workflow_migration(isolated_runner, old_workflow_project):
 
 
 @pytest.mark.migration
-def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
+def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project, load_dataset_with_injection):
     """Test migration of old project with all dataset variations."""
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -181,7 +185,7 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
 
     client = old_dataset_project
 
-    dataset = load_dataset(client, "dataverse")
+    dataset = load_dataset_with_injection("dataverse", client)
     assert "/datasets/1d2ed1e43aeb4f2590b238084ee3d86c" == dataset.id
     assert "1d2ed1e43aeb4f2590b238084ee3d86c" == dataset.identifier
     assert "Cornell University" == dataset.creators[0].affiliation
@@ -201,7 +205,7 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
     assert file_.based_on is None
     assert not hasattr(file_, "creators")
 
-    dataset = load_dataset(client, "mixed")
+    dataset = load_dataset_with_injection("mixed", client)
     assert "v1" == dataset.tags[0].name
 
     file_ = dataset.find_file("data/mixed/Makefile")
@@ -224,11 +228,11 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
 
 
 @pytest.mark.migration
-def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_project):
+def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_project, load_dataset_with_injection):
     """Test migration of datasets with blank nodes creates IRI identifiers."""
     assert 0 == isolated_runner.invoke(cli, ["migrate"]).exit_code
 
-    dataset = load_dataset(old_dataset_project, "2019-01_us_fligh_1")
+    dataset = load_dataset_with_injection("2019-01_us_fligh_1", old_dataset_project)
 
     assert not dataset.creators[0].id.startswith("_:")
     assert not dataset.same_as.id.startswith("_:")
@@ -300,7 +304,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
         ["dataset", "show", "new"],
         ["dataset", "unlink", "new"],
         ["dataset", "update"],
-        ["log"],
+        # ["log"], TODO: add this back
         ["mv", "news"],
         ["rerun", "data"],
         ["run", "echo"],

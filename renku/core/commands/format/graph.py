@@ -321,18 +321,12 @@ def _rdf2dot_reduced(g, stream):
 
 def makefile(graph, strict=False):
     """Format graph as Makefile."""
-    from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 
     if strict:
         raise SHACLValidationError("--strict not supported for json-ld-graph")
 
     for activity in graph.activities.values():
-        if not isinstance(activity, ProcessRun):
-            continue
-        elif isinstance(activity, WorkflowRun):
-            steps = activity.subprocesses.values()
-        else:
-            steps = [activity]
+        steps = [activity]
 
         for step in steps:
             plan = step.association.plan

@@ -17,10 +17,13 @@
 # limitations under the License.
 """Test ``show`` command."""
 
+import pytest
+
 from renku.cli import cli
 from tests.utils import format_result_exception
 
 
+@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_show_outputs_with_directory(runner, client, run):
     """Output files in directory are not shown as separate outputs."""
     base_sh = ["bash", "-c", 'DIR="$0"; mkdir -p "$DIR"; ' 'for x in "$@"; do touch "$DIR/$x"; done']
@@ -47,6 +50,7 @@ def test_show_outputs_with_directory(runner, client, run):
     assert {"output"} == set(result.output.strip().split("\n"))
 
 
+@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_show_verbose(runner, client, run):
     """Show with verbose option."""
     base_sh = ["bash", "-c", 'DIR="$0"; mkdir -p "$DIR"; ' 'for x in "$@"; do touch "$DIR/$x"; done']

@@ -25,6 +25,7 @@ from renku.cli import cli
 from tests.utils import format_result_exception
 
 
+@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.serial
 @pytest.mark.shelled
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
@@ -62,6 +63,7 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirector
     assert all(p in result.output for p in test_paths), result.output
 
 
+@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
 def test_dataset_log_invalidation_strict(tmpdir, runner, project, client, format, subdirectory):
     """Test output of log for dataset add."""

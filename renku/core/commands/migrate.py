@@ -46,23 +46,35 @@ def migrations_check():
 @inject.autoparams()
 def _migrations_check(client: LocalClient):
     template_update_possible, current_version, new_version = is_template_update_possible()
+
+    try:
+        template_source = client.project.template_source
+        template_ref = client.project.template_ref
+        template_id = client.project.template_id
+        automated_update = bool(client.project.automated_update)
+    except ValueError:
+        template_source = None
+        template_ref = None
+        template_id = None
+        automated_update = False
+
     return (
         is_migration_required(),
         not is_project_unsupported(),
         template_update_possible,
         current_version,
         new_version,
-        client.project.template_source,
-        client.project.template_ref,
-        client.project.template_id,
-        bool(client.project.automated_update),
+        template_source,
+        template_ref,
+        template_id,
+        automated_update,
         is_docker_update_possible(),
     )
 
 
 def migrations_versions():
     """Return a command to get source and destination migration versions."""
-    return Command().command(_migrations_versions).lock_project()
+    return Command().command(_migrations_versions).lock_project().with_database()
 
 
 @inject.autoparams()
@@ -70,7 +82,15 @@ def _migrations_versions(client: LocalClient):
     """Return source and destination migration versions."""
     from renku import __version__
 
-    return __version__, client.latest_agent
+    try:
+        latest_agent = client.latest_agent
+    except ValueError:
+        # NOTE: maybe olf project
+        from renku.core.utils.migrate import read_latest_agent
+
+        latest_agent = read_latest_agent(client)
+
+    return __version__, latest_agent
 
 
 def migrate_project():
@@ -92,7 +112,7 @@ def _migrate_project(
 
 def check_project():
     """Return a command to check if repository is a renku project, unsupported, or requires migration."""
-    return Command().command(_check_project)
+    return Command().command(_check_project).with_database(write=False)
 
 
 @inject.autoparams()
@@ -101,6 +121,11 @@ def _check_project(client: LocalClient):
         return NON_RENKU_REPOSITORY
     elif is_project_unsupported():
         return UNSUPPORTED_PROJECT
+
+    try:
+        client.project
+    except ValueError:
+        return MIGRATION_REQUIRED
 
     status = 0
 
@@ -129,4 +154,4 @@ def _check_immutable_template_files(paths, client: LocalClient):
 
 def check_immutable_template_files_command():
     """Command for checking immutable template files."""
-    return Command().command(_check_immutable_template_files)
+    return Command().command(_check_immutable_template_files).with_database()

@@ -48,11 +48,12 @@ from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.command_builder import inject
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.metadata.database import Database
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models import dataset as new_datasets
-from renku.core.models.dataset import DatasetsProvenance, get_dataset_data_dir, is_dataset_name_valid
+from renku.core.models.dataset import get_dataset_data_dir, is_dataset_name_valid
 from renku.core.models.provenance.agent import Person
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
@@ -136,8 +137,7 @@ class DatasetsApiMixin(object):
     @property
     def datasets(self) -> Dict[str, new_datasets.Dataset]:
         """A map from datasets name to datasets."""
-        database = Database.from_path(self.database_path)
-        datasets_provenance = DatasetsProvenance(database)
+        datasets_provenance = DatasetsProvenance()
         return {d.name: d for d in datasets_provenance.datasets}
 
     # FIXME: Remove this method and use proper injection
@@ -159,16 +159,8 @@ class DatasetsApiMixin(object):
     def get_datasets_provenance(self) -> DatasetsProvenance:
         """Return a DatasetsProvenance instance."""
 
-        @inject.autoparams()
-        def get_injected_datasets_provenance(datasets_provenance: DatasetsProvenance):
-            return datasets_provenance
-
         if not self._datasets_provenance:
-            try:
-                self._datasets_provenance = get_injected_datasets_provenance()
-            except InjectorException:
-                database = self.get_database()
-                self._datasets_provenance = DatasetsProvenance(database)
+            self._datasets_provenance = DatasetsProvenance()
 
         return self._datasets_provenance
 
