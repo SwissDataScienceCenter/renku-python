@@ -583,11 +583,24 @@ class DatasetsProvenance:
     """A set of datasets."""
 
     def __init__(self, database: Database):
-        # A map from name to datasets for current datasets
-        self._datasets: Index = database["datasets"]
-        # A map from id to datasets that keeps provenance chain tails for all current and removed datasets
-        self._provenance_tails: Index = database["datasets-provenance-tails"]
+        # NOTE: If the database is not initialized yet, DatasetsProvenance should do/return nothing.
+
+        try:
+            has_database = database.get("datasets") is not None
+        except errors.ObjectNotFoundError:
+            has_database = False
+
+        if has_database:
+            # A map from name to datasets for current datasets
+            self._datasets: Index = database["datasets"]
+            # A map from id to datasets that keeps provenance chain tails for all current and removed datasets
+            self._provenance_tails: Index = database["datasets-provenance-tails"]
+        else:
+            self._datasets = Index(name="datasets", object_type=Dataset, attribute="name")
+            self._provenance_tails = Index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
+
         self._database: Database = database
+        self._has_database = has_database
 
     @property
     def datasets(self) -> List[Dataset]:
@@ -596,6 +609,9 @@ class DatasetsProvenance:
 
     def get_by_id(self, id: str, immutable=False) -> Optional[Dataset]:
         """Return a dataset by its id."""
+        if not self._has_database:
+            return
+
         try:
             dataset = self._database.get_by_id(id)
         except errors.ObjectNotFoundError:
@@ -634,6 +650,9 @@ class DatasetsProvenance:
         """
         assert isinstance(dataset, Dataset)
 
+        if not self._has_database:
+            return
+
         # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
         current_dataset = self.get_by_name(dataset.name)
 
@@ -664,6 +683,9 @@ class DatasetsProvenance:
         """Add/replace a dataset."""
         assert isinstance(dataset, Dataset)
 
+        if not self._has_database:
+            return
+
         current_dataset = self.get_by_name(dataset.name, immutable=True)
 
         if current_dataset:
@@ -690,6 +712,9 @@ class DatasetsProvenance:
     def remove(self, dataset, date: datetime = None, creator: Person = None):
         """Remove a dataset."""
         assert isinstance(dataset, Dataset)
+
+        if not self._has_database:
+            return
 
         # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
         current_dataset = self._datasets.pop(dataset.name, None)

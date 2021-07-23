@@ -70,7 +70,7 @@ def _list_datasets(datasets_provenance: DatasetsProvenance, format=None, columns
 
 def list_datasets():
     """Command for listing datasets."""
-    return Command().command(_list_datasets).with_database()
+    return Command().command(_list_datasets).with_database().require_migration()
 
 
 @inject.autoparams()
@@ -172,7 +172,7 @@ def _show_dataset(name, client: LocalClient):
 
 def show_dataset():
     """Command for showing detailed dataset information."""
-    return Command().command(_show_dataset).with_database()
+    return Command().command(_show_dataset).with_database().require_migration()
 
 
 def _construct_creators(creators, ignore_email=False):
@@ -318,7 +318,7 @@ def _list_files(
 
 def list_files():
     """Command for listing dataset files."""
-    return Command().command(_list_files).with_database()
+    return Command().command(_list_files).with_database().require_migration()
 
 
 @inject.autoparams()
@@ -863,7 +863,7 @@ def _list_tags(name, format, client: LocalClient):
 
 def list_tags():
     """Command for listing a dataset's tags."""
-    return Command().command(_list_tags).with_database()
+    return Command().command(_list_tags).with_database().require_migration()
 
 
 def _prompt_access_token(exporter):

@@ -146,3 +146,17 @@ def unsupported_project(client):
     client.repo.index.commit("update renku.ini", skip_hooks=True)
 
     yield client
+
+
+@pytest.fixture
+def old_client_before_database(tmp_path):
+    """A renku project from last version without Database."""
+    from renku import LocalClient
+    from renku.core.utils.contexts import chdir
+
+    name = "old-datasets-v0.16.0.git"
+    base_path = tmp_path / name
+    repository = clone_compressed_repository(base_path=base_path, name=name)
+
+    with chdir(repository.working_dir):
+        yield LocalClient(path=repository.working_dir)

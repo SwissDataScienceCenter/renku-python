@@ -258,3 +258,23 @@ def test_mutate_is_done_once():
 def test_dataset_name_slug(name, slug):
     """Test slug generation from name."""
     assert slug == get_slug(name)
+
+
+def test_datasets_provenance_for_old_projects(old_client_before_database):
+    """Test accessing DatasetsProvenance in an un-migrated project."""
+    datasets_provenance = old_client_before_database.get_datasets_provenance()
+
+    assert datasets_provenance.get_by_name("local") is None
+    assert [] == datasets_provenance.datasets
+    assert [] == datasets_provenance.get_provenance()
+
+    dataset = Dataset(name="my-data")
+    datasets_provenance.add_or_update(dataset)
+
+    assert datasets_provenance.get_by_name("my-data") is None
+    assert [] == datasets_provenance.datasets
+    assert [] == datasets_provenance.get_provenance()
+
+    datasets_provenance.remove(dataset)
+
+    assert [] == datasets_provenance.get_provenance()
