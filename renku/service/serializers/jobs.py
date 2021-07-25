@@ -18,6 +18,7 @@
 """Renku service cache serializers for jobs."""
 from marshmallow import Schema, fields
 
+from renku.service.serializers.common import CreationSchema
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -33,10 +34,9 @@ class ProjectJobDetails(Schema):
     ref = fields.String()
 
 
-class JobDetails(Schema):
+class JobDetails(CreationSchema, Schema):
     """Response job details."""
 
-    created_at = fields.DateTime()
     updated_at = fields.DateTime()
 
     job_id = fields.String(required=True)

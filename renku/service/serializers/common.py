@@ -16,31 +16,107 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service parent serializers."""
+from datetime import datetime
+import uuid
+
 from marshmallow import Schema, fields
 
 from renku.service.serializers.rpc import JsonRPCResponse
+
+
+class LocalRepositorySchema(Schema):
+    """Schema for identifying a locally stored repository"""
+
+    # In the long term, the id should be used only for internal operations
+    project_id = fields.String(description="Reference to access the project in the local cache.")
+
+
+class RemoteRepositorySchema(Schema):
+    """Schema for tracking a remote repository"""
+
+    git_url = fields.String(description="Remote git repository url.")
+    branch = fields.String(description="Remote git branch.")
+
+    # ? Add early validation?
+    # @validates("git_url")
+    # def validate_git_url(self, value):
+    #     """Validates git url."""
+    #     try:
+    #         yagup.parse(value)
+    #     except yagup.exceptions.InvalidURL as e:
+    #         raise ValidationError("Invalid `git_url`") from e
+
+    #     return value
+
+
+class CommitSchema(Schema):
+    """Schema for specifying a commit message."""
+
+    commit_message = fields.String(description="Commit message to use for the commit.")
+
+
+class AsyncSchema(Schema):
+    """Schema for adding a commit at the end of the operation"""
+
+    is_delayed = fields.Boolean(description="Whether the job should be delayed or not.")
+
+
+class MigrateSchema(Schema):
+    """Schema for adding a commit at the end of the operation"""
+
+    migrate_project = fields.Boolean(
+        default=False,
+        missing=False,
+        description="Whether the project should be migrated before the other operations take place.",
+    )
+
+
+class ArchiveSchema(Schema):
+    """Schema for adding a commit at the end of the operation"""
+
+    unpack_archive = fields.Boolean(
+        missing=False,
+        description="Whether to automatically extract archive content.",
+    )
+
+
+class MandatoryUserSchema(Schema):
+    """Schema for adding user as requirement"""
+
+    user_id = fields.String(
+        required=True,
+        description="Mandatory user id.",
+    )
+
+
+class CreationSchema(Schema):
+    """Schema for adding user as requirement"""
+
+    created_at = fields.DateTime(
+        missing=datetime.utcnow,
+        description="Creation date.",
+    )
+
+
+class FileDetailsSchema(ArchiveSchema, CreationSchema):
+    """Schema for file details."""
+
+    file_id = fields.String(missing=lambda: uuid.uuid4().hex)
+    content_type = fields.String(missing="unknown")
+    file_name = fields.String(required=True)
+
+    # measured in bytes (comes from stat() - st_size)
+    file_size = fields.Integer(required=True)
+
+    relative_path = fields.String(required=True)
+    is_archive = fields.Boolean(missing=False)
+    is_dir = fields.Boolean(required=True)
 
 
 class RenkuSyncSchema(Schema):
     """Parent schema for all Renku write operations."""
 
     remote_branch = fields.String()
-
-
-class RepositoryContext(Schema):
-    """Parent schema for Renku repository support."""
-
-    git_url = fields.String()
-    project_id = fields.String()
-
-    ref = fields.String()
-    commit_message = fields.String()
-    client_extras = fields.String()
-
-    is_delayed = fields.Boolean()
-
-    # NOTE: Migration execution is always false by default, unless explicitly asked by a client.
-    migrate_project = fields.Boolean(default=False, missing=False)
 
 
 class JobDetailsResponse(Schema):

@@ -19,12 +19,12 @@
 from marshmallow import Schema, fields, post_load
 
 from renku.service.cache.models.user import User
+from renku.service.serializers.common import MandatoryUserSchema
 
 
-class UserSchema(Schema):
+class UserSchema(MandatoryUserSchema, Schema):
     """User identity schema."""
 
-    user_id = fields.String(required=True)
     fullname = fields.String()
     email = fields.String()
     token = fields.String()

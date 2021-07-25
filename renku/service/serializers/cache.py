@@ -18,7 +18,6 @@
 """Renku service cache serializers."""
 import time
 import uuid
-from datetime import datetime
 from urllib.parse import urlparse
 
 import yagup
@@ -28,7 +27,15 @@ from werkzeug.utils import secure_filename
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
-from renku.service.serializers.common import RenkuSyncSchema, RepositoryContext
+from renku.service.serializers.common import (
+    ArchiveSchema,
+    AsyncSchema,
+    CommitSchema,
+    FileDetailsSchema,
+    LocalRepositorySchema,
+    RemoteRepositorySchema,
+    RenkuSyncSchema,
+)
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -50,35 +57,19 @@ def extract_file(request):
         return file
 
 
-class FileUploadRequest(Schema):
+class FileUploadRequest(ArchiveSchema):
     """Request schema for file upload."""
 
-    override_existing = fields.Boolean(missing=False)
-    unpack_archive = fields.Boolean(missing=False)
-
-
-class FileUploadContext(Schema):
-    """Context schema for file upload."""
-
-    created_at = fields.DateTime(missing=datetime.utcnow)
-    file_id = fields.String(missing=lambda: uuid.uuid4().hex)
-
-    content_type = fields.String(missing="unknown")
-    file_name = fields.String(required=True)
-
-    # measured in bytes (comes from stat() - st_size)
-    file_size = fields.Integer(required=True)
-
-    relative_path = fields.String(required=True)
-    is_archive = fields.Boolean(missing=False)
-    is_dir = fields.Boolean(required=True)
-    unpack_archive = fields.Boolean(missing=False)
+    override_existing = fields.Boolean(
+        missing=False,
+        description="Overried files. Useful when extracting from archives.",
+    )
 
 
 class FileUploadResponse(Schema):
     """Response schema for file upload."""
 
-    files = fields.List(fields.Nested(FileUploadContext), required=True)
+    files = fields.List(fields.Nested(FileDetailsSchema), required=True)
 
 
 class FileUploadResponseRPC(JsonRPCResponse):
@@ -90,7 +81,7 @@ class FileUploadResponseRPC(JsonRPCResponse):
 class FileListResponse(Schema):
     """Response schema for files listing."""
 
-    files = fields.List(fields.Nested(FileUploadContext), required=True)
+    files = fields.List(fields.Nested(FileDetailsSchema), required=True)
 
 
 class FileListResponseRPC(JsonRPCResponse):
@@ -99,12 +90,11 @@ class FileListResponseRPC(JsonRPCResponse):
     result = fields.Nested(FileListResponse)
 
 
-class RepositoryCloneRequest(Schema):
+class RepositoryCloneRequest(RemoteRepositorySchema):
     """Request schema for repository clone."""
 
-    git_url = fields.String(required=True)
-    depth = fields.Integer(missing=PROJECT_CLONE_DEPTH_DEFAULT)
-    ref = fields.String(missing=None)
+    depth = fields.Integer(description="Git fetch depth", missing=PROJECT_CLONE_DEPTH_DEFAULT)
+    ref = fields.String(description="Repository reference (branch, commit or tag)", missing=None)
 
 
 class RepositoryCloneContext(RepositoryCloneRequest):
@@ -124,16 +114,23 @@ class RepositoryCloneContext(RepositoryCloneRequest):
 class ProjectCloneContext(RepositoryCloneContext):
     """Context schema for project clone."""
 
-    project_id = fields.String(missing=lambda: uuid.uuid4().hex)
-
     # measured in ms
     timestamp = fields.Integer(missing=time.time() * 1e3)
 
+    # user data
     name = fields.String()
     fullname = fields.String()
     email = fields.String()
     owner = fields.String()
     token = fields.String()
+
+    @pre_load()
+    def set_missing_id(self, data, **kwargs):
+        """Set project_id when missing."""
+        if not data.get("project_id"):
+            data["project_id"] = lambda: uuid.uuid4().hex
+
+        return data
 
     @pre_load()
     def set_owner_name(self, data, **kwargs):
@@ -210,7 +207,7 @@ class ProjectListResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectListResponse)
 
 
-class ProjectMigrateRequest(RepositoryContext):
+class ProjectMigrateRequest(AsyncSchema, CommitSchema, LocalRepositorySchema, RemoteRepositorySchema):
     """Request schema for project migrate."""
 
     force_template_update = fields.Boolean(default=False)
@@ -218,11 +215,21 @@ class ProjectMigrateRequest(RepositoryContext):
     skip_docker_update = fields.Boolean(default=False)
     skip_migrations = fields.Boolean(default=False)
 
+    # ! temporary -- should be removed but there are tests to update
+    migrate_project = fields.Boolean(default=False, missing=False)
+
     @pre_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
+        # ? Should we move this to MigrateProjectCtrl?
         if not data.get("commit_message"):
             data["commit_message"] = "service: renku migrate"
+
+        # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field
+        # even if interally it gets converted to "ref" later.
+        if data.get("ref"):
+            data["branch"] = data["ref"]
+            del data["ref"]
 
         return data
 
@@ -242,13 +249,8 @@ class ProjectMigrateResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectMigrateResponse)
 
 
-class ProjectMigrationCheckRequest(Schema):
+class ProjectMigrationCheckRequest(LocalRepositorySchema, RemoteRepositorySchema):
     """Request schema for project migration check."""
-
-    project_id = fields.String()
-
-    git_url = fields.String()
-    branch = fields.String()
 
 
 class ProjectMigrationCheckResponse(Schema):
