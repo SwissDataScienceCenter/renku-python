@@ -331,9 +331,9 @@ class Dataset(Persistent):
             date_created = None
         if initial_identifier is None:
             assert identifier is None, "Initial identifier can be None only when creating a new Dataset."
-            initial_identifier = identifier = str(uuid4().hex)
+            initial_identifier = identifier = uuid4().hex
 
-        self.identifier = identifier or str(uuid4().hex)
+        self.identifier = identifier or uuid4().hex
         self.id = id or Dataset.generate_id(identifier=self.identifier)
         self.name = name
 
@@ -459,7 +459,7 @@ class Dataset(Persistent):
             self.creators.append(creator)
 
     def _assign_new_identifier(self):
-        identifier = str(uuid4().hex)
+        identifier = uuid4().hex
         self.initial_identifier = identifier
         self.identifier = identifier
         self.id = Dataset.generate_id(identifier)
