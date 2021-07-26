@@ -44,7 +44,7 @@ def normalize_to_ascii(input_string, sep="-"):
     )
 
 
-def git_unicode_unescape(s, encoding="utf-8"):
+def git_unicode_unescape(s: str, encoding: str = "utf-8") -> str:
     """Undoes git/gitpython unicode encoding."""
     if s.startswith('"'):
         return s.strip('"').encode("latin1").decode("unicode-escape").encode("latin1").decode(encoding)

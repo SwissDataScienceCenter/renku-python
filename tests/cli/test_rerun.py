@@ -28,6 +28,7 @@ import pytest
 from click.testing import CliRunner
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 @pytest.mark.parametrize(
@@ -204,7 +205,7 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
         result = runner.invoke(
             cli, ["rerun", "--show-inputs", "--from", str(first), str(second)], catch_exceptions=False
         )
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
         assert result.output.startswith("https://")
         assert result.output[:-1].endswith(first.name)
         assert 0 == run(args=("rerun", "--edit-inputs", "--from", str(first), str(second)), stdin=stdin)
@@ -253,7 +254,7 @@ def test_output_directory(runner, project, run, no_lfs_size_limit):
 
     cmd = ["run", "cp", "-LRf", str(source), str(destination)]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     destination_source = destination / data.name
     assert destination_source.exists()

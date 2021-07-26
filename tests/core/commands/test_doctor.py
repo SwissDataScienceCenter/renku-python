@@ -19,20 +19,21 @@
 from pathlib import Path
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 def test_new_project_is_ok(runner, project):
     """Test renku doctor initially is OK on a new project."""
     # Initially, every thing is OK
     result = runner.invoke(cli, ["doctor"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Everything seems to be ok." in result.output
 
 
 def test_git_hooks_not_available(runner, project):
     """Test detection of not-installed git hooks."""
     result = runner.invoke(cli, ["githooks", "uninstall"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["doctor"])
     assert 1 == result.exit_code
@@ -42,7 +43,7 @@ def test_git_hooks_not_available(runner, project):
 def test_git_hooks_modified(runner, project):
     """Test detection of modified git hooks."""
     result = runner.invoke(cli, ["githooks", "install", "--force"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     hook_path = Path(project) / ".git" / "hooks" / "pre-commit"
     lines = hook_path.read_text().split("\n")
@@ -53,7 +54,7 @@ def test_git_hooks_modified(runner, project):
 
     # Check passes as long as Renku hook is not modified
     result = runner.invoke(cli, ["doctor"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Everything seems to be ok." in result.output
 
     # Modify Renku hook
@@ -78,7 +79,7 @@ def test_lfs_broken_history(runner, client, tmp_path):
         ["--no-external-storage", "dataset", "add", "--create", "new-dataset", str(big_file)],
         catch_exceptions=False,
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["doctor"])
     assert 1 == result.exit_code
@@ -89,5 +90,5 @@ def test_lfs_broken_history(runner, client, tmp_path):
     (client.path / client.RENKU_LFS_IGNORE_PATH).write_text("\n".join(["*swp", "*.bin", ".DS_Store"]))
 
     result = runner.invoke(cli, ["doctor"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Git history contains large files" not in result.output

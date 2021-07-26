@@ -25,6 +25,7 @@ from renku.core.commands.login import read_renku_token
 from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.utils.contexts import chdir
 from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT, USER_CODE
+from tests.utils import format_result_exception
 
 
 def test_login(runner, client_with_remote, mock_login):
@@ -33,7 +34,7 @@ def test_login(runner, client_with_remote, mock_login):
 
     result = runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with replace_injected_client(client_with_remote):
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
@@ -86,7 +87,7 @@ def test_login_with_config_endpoint(runner, client, mock_login):
 
     result = runner.invoke(cli, ["login"], input=USER_CODE)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully logged in." in result.output
 
 
@@ -96,7 +97,7 @@ def test_logout(runner, client, mock_login):
 
     result = runner.invoke(cli, ["logout"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with replace_injected_client(client):
         assert read_renku_token(ENDPOINT) is None
@@ -214,7 +215,7 @@ def test_repeated_git_login(runner, client_with_remote, mock_login):
 
     result = runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Backup remove 'renku-backup-origin' already exists. Ignoring '--git' flag." in result.output
     assert "Error: Cannot create backup remote 'renku-backup-origin' for" not in result.output
     assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repo.remotes}
@@ -231,7 +232,7 @@ def test_logout_git(runner, client_with_remote, mock_login):
 
     result = runner.invoke(cli, ["logout"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert {"origin"} == {r.name for r in client_with_remote.repo.remotes}
     assert remote_url == client_with_remote.repo.remotes["origin"].url
     try:
@@ -247,7 +248,7 @@ def test_token(runner, client_with_remote, mock_login):
 
     result = runner.invoke(cli, ["token", "--hostname", ENDPOINT, "get"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "username=renku\n" in result.output
     assert f"password={ACCESS_TOKEN}\n" in result.output
 
@@ -258,7 +259,7 @@ def test_token_non_existing_hostname(runner, client_with_remote, mock_login):
 
     result = runner.invoke(cli, ["token", "--hostname", "non-existing", "get"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "username=renku\n" in result.output
     assert "password=\n" in result.output
 
@@ -269,7 +270,7 @@ def test_token_no_credential(runner, client_with_remote, mock_login):
 
     result = runner.invoke(cli, ["token", "--hostname", ENDPOINT, "get"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "username=renku\n" in result.output
     assert "password=\n" in result.output
 
@@ -280,7 +281,7 @@ def test_token_invalid_command(runner, client_with_remote, mock_login):
 
     result = runner.invoke(cli, ["token", "--hostname", ENDPOINT, "non-get-command"])
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "" == result.output
 
     with replace_injected_client(client_with_remote):

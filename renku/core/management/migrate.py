@@ -50,7 +50,7 @@ from renku.core.management.command_builder.command import inject
 from renku.core.utils import communication
 from renku.core.utils.migrate import read_project_version
 
-SUPPORTED_PROJECT_VERSION = 8
+SUPPORTED_PROJECT_VERSION = 9
 
 
 def check_for_migration():

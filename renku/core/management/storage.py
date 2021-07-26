@@ -26,6 +26,7 @@ from collections import defaultdict
 from pathlib import Path
 from shutil import move, which
 from subprocess import PIPE, STDOUT, check_output, run
+from typing import Optional
 
 import attr
 import pathspec
@@ -34,7 +35,8 @@ from werkzeug.utils import cached_property
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.metadata.database import Database
-from renku.core.models.provenance.activity import Collection
+from renku.core.models.entity import Entity
+from renku.core.models.provenance.activity import Collection, Generation, Usage
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.utils import communication
 from renku.core.utils.file_size import parse_file_size
@@ -534,21 +536,26 @@ class StorageApiMixin(RepositoryApiMixin):
                     processed.add(path_obj)
                     path_obj = path_obj.parent
 
-        def _map_checksum(entity, checksum_mapping):
+        def _map_checksum(entity, checksum_mapping) -> Optional[Entity]:
             """Update the checksum and id of an entity based on a mapping."""
             if entity.checksum not in checksum_mapping:
-                return False
+                return
 
             new_checksum = checksum_mapping[entity.checksum]
 
-            entity.id = entity.id.replace(entity.checksum, new_checksum)
-            entity.checksum = new_checksum
-
             if isinstance(entity, Collection) and entity.members:
+                members = []
                 for member in entity.members:
-                    _map_checksum(member, checksum_mapping)
+                    new_member = _map_checksum(member, checksum_mapping)
+                    if new_member:
+                        member.append(new_member)
+                    else:
+                        members.append(member)
+                new_entity = Collection(checksum=new_checksum, path=entity.path, members=members)
+            else:
+                new_entity = Entity(checksum=new_checksum, path=entity.path)
 
-            return True
+            return new_entity
 
         def _map_checksum_old(entity, checksum_mapping):
             """Update the checksum and id of an entity based on a mapping."""
@@ -565,29 +572,43 @@ class StorageApiMixin(RepositoryApiMixin):
 
             if isinstance(entity, Collection) and entity.members:
                 for member in entity.members:
-                    _map_checksum(member, checksum_mapping)
+                    _map_checksum_old(member, checksum_mapping)
 
         # NOTE: Update workflow provenance
         provenance_graph = ProvenanceGraph.from_database(database)
 
         for activity in provenance_graph.activities:
-            changed = False
             if activity.generations:
+                generations = []
                 for generation in activity.generations:
-                    entity = generation.entity
-                    changed |= _map_checksum(entity, sha_mapping)
+                    new_entity = _map_checksum(generation.entity, sha_mapping)
+                    if new_entity:
+                        new_generation = Generation(id=generation.id, entity=new_entity)
+                        generations.append(new_generation)
+                    else:
+                        generations.append(generation)
+                activity.generations = generations
 
             if activity.usages:
+                usages = []
                 for usage in activity.usages:
-                    entity = usage.entity
-                    changed |= _map_checksum(entity, sha_mapping)
+                    new_entity = _map_checksum(usage.entity, sha_mapping)
+                    if new_entity:
+                        new_usage = Usage(id=usage.id, entity=new_entity)
+                        usages.append(new_usage)
+                    else:
+                        usages.append(usage)
+                activity.usages = usages
 
             if activity.invalidations:
+                invalidations = []
                 for entity in activity.invalidations:
-                    changed |= _map_checksum(entity, sha_mapping)
-
-            if changed:
-                activity._p_changed = True
+                    new_entity = _map_checksum(entity, sha_mapping)
+                    if new_entity:
+                        invalidations.append(new_entity)
+                    else:
+                        invalidations.append(entity)
+                activity.invalidations = invalidations
 
         # NOTE: Update datasets provenance
         # TODO: Fix dataset provenance

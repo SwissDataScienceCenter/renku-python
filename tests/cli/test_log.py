@@ -22,6 +22,7 @@ import git
 import pytest
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 @pytest.mark.serial
@@ -34,7 +35,7 @@ def test_run_log_strict(runner, project, run_shell, format):
 
     # Assert created output file.
     result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert ".renku/workflow/" in result.output
 
 
@@ -42,7 +43,7 @@ def test_run_log_strict(runner, project, run_shell, format):
 def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirectory):
     """Test output of log for dataset add."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     paths = []
     test_paths = []
     for i in range(3):
@@ -53,10 +54,10 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirector
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert all(p in result.output for p in test_paths)
 
 
@@ -76,5 +77,5 @@ def test_dataset_log_invalidation_strict(tmpdir, runner, project, client, format
 
     result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "wasInvalidatedBy" in result.output

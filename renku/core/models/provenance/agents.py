@@ -33,6 +33,8 @@ from renku.version import __version__, version_url
 class Person:
     """Represent a person."""
 
+    __slots__ = ("affiliation", "alternate_name", "email", "id", "label", "name")
+
     def __init__(
         self,
         *,
@@ -45,16 +47,17 @@ class Person:
     ):
         self.validate_email(email)
 
+        if id == "mailto:None" or not id or id.startswith("_:"):
+            full_identity = Person.get_full_identity(email, affiliation, name)
+            id = Person.generate_id(email, full_identity, hostname=get_host(client=None))
+        label = label or name
+
         self.affiliation: str = affiliation
         self.alternate_name: str = alternate_name
         self.email: str = email
         self.id: str = id
-        self.label: str = label or name
+        self.label: str = label
         self.name: str = name
-
-        # handle the case where ids were improperly set
-        if self.id == "mailto:None" or not self.id or self.id.startswith("_:"):
-            self.id = Person.generate_id(self.email, self.full_identity, hostname=get_host(client=None))
 
     def __eq__(self, other):
         if self is other:
@@ -107,9 +110,14 @@ class Person:
     @property
     def full_identity(self):
         """Return name, email, and affiliation."""
-        email = f" <{self.email}>" if self.email else ""
-        affiliation = f" [{self.affiliation}]" if self.affiliation else ""
-        return f"{self.name}{email}{affiliation}"
+        return self.get_full_identity(self.email, self.affiliation, self.name)
+
+    @staticmethod
+    def get_full_identity(email, affiliation, name):
+        """Return name, email, and affiliation."""
+        email = f" <{email}>" if email else ""
+        affiliation = f" [{affiliation}]" if affiliation else ""
+        return f"{name}{email}{affiliation}"
 
     @classmethod
     def from_git(cls, git):
@@ -166,6 +174,8 @@ class PersonSchema(JsonLDSchema):
 
 class SoftwareAgent:
     """Represent executed software."""
+
+    __slots__ = ("id", "label")
 
     def __init__(self, *, id: str, label: str):
         self.id: str = id

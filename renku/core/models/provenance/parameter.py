@@ -43,7 +43,7 @@ class ParameterValue:
     @staticmethod
     def generate_id(activity_id: str) -> str:
         """Generate a default id."""
-        return f"{activity_id}/parameter-value/{uuid4()}"
+        return f"{activity_id}/parameter-value/{uuid4().hex}"
 
 
 class PathParameterValue(ParameterValue):

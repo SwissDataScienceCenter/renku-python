@@ -19,6 +19,7 @@
 
 from renku.cli import cli
 from renku.core.plugins import pluginmanager as pluginmanager
+from tests.utils import format_result_exception
 
 
 def test_renku_pre_run_hook(monkeypatch, dummy_pre_run_plugin_hook, runner, project):
@@ -32,7 +33,7 @@ def test_renku_pre_run_hook(monkeypatch, dummy_pre_run_plugin_hook, runner, proj
 
         result = runner.invoke(cli, ["run", "--no-output"] + cmd)
 
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
         assert 1 == dummy_pre_run_plugin_hook.called
 
 
@@ -45,7 +46,7 @@ def test_renku_run_cwl_hook(monkeypatch, dummy_run_plugin_hook, runner, project)
         m.setattr(pluginmanager, "get_plugin_manager", lambda: pm)
         cmd = ["echo", "test"]
         result = runner.invoke(cli, ["run", "--no-output"] + cmd)
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
 
         # check for dummy plugin
         result = runner.invoke(cli, ["log", "--format", "json-ld"])
@@ -62,7 +63,7 @@ def test_renku_processrun_cwl_hook(monkeypatch, dummy_processrun_plugin_hook, ru
         m.setattr(pluginmanager, "get_plugin_manager", lambda: pm)
         cmd = ["echo", "test"]
         result = runner.invoke(cli, ["run", "--no-output"] + cmd)
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
 
         # check for dummy plugin
         result = runner.invoke(cli, ["log", "--format", "json-ld"])

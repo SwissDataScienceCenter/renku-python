@@ -21,7 +21,8 @@ import shutil
 import urllib
 from pathlib import Path
 
-from renku.core.management.migrations.models.v3 import Dataset, Project, get_client_datasets
+from renku.core.management.config import RENKU_HOME
+from renku.core.management.migrations.models.v3 import Collection, Dataset, Project, get_client_datasets
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.datasets import generate_dataset_id, generate_default_name
 from renku.core.models.entities import generate_file_id, generate_label
@@ -43,6 +44,9 @@ def migrate(client):
 
 def _ensure_clean_lock(client):
     """Make sure Renku lock file is not part of repository."""
+    if client.is_using_temporary_datasets_path():
+        return
+
     lock_file = client.path / ".renku.lock"
     try:
         lock_file.unlink()
@@ -53,6 +57,9 @@ def _ensure_clean_lock(client):
 def _do_not_track_lock_file(client):
     """Add lock file to .gitingore if not already exists."""
     # Add lock file to .gitignore.
+    if client.is_using_temporary_datasets_path():
+        return
+
     lock_file = ".renku.lock"
     gitignore = client.path / ".gitignore"
     if not gitignore.exists() or lock_file not in gitignore.read_text():
@@ -113,21 +120,37 @@ def _migrate_broken_dataset_paths(client):
                 shutil.move(old_dataset_path, expected_path)
             else:
                 expected_path.mkdir(parents=True, exist_ok=True)
-                shutil.copy(Path(old_dataset_path) / client.METADATA, expected_path)
+                shutil.move(str(Path(old_dataset_path) / client.METADATA), expected_path)
 
         dataset.path = os.path.relpath(expected_path, client.path)
 
-        for file_ in dataset.files:
-            file_path = Path(file_.path)
-            if not file_path.exists() or file_.path.startswith(".."):
-                if file_.path.startswith(".."):
-                    new_path = Path(
-                        os.path.abspath(client.renku_datasets_path / dataset.identifier / file_path)
-                    ).relative_to(client.path)
-                else:
-                    new_path = (client.path / DATA_DIR / file_path).relative_to(client.path)
+        if not client.is_using_temporary_datasets_path():
+            base_path = client.path
+        else:
+            base_path = client.path / RENKU_HOME
 
-                file_.path = new_path
+        collections = [f for f in dataset.files if isinstance(f, Collection)]
+        files = [f for f in dataset.files if not isinstance(f, Collection)]
+
+        while collections:
+            collection = collections.pop()
+            for file in collection.members:
+                if isinstance(file, Collection):
+                    collections.append(file)
+                else:
+                    files.append(file)
+
+        dataset.files = files
+
+        for file_ in dataset.files:
+            if _is_dir(client=client, path=file_.path):
+                continue
+            if file_.path.startswith(".."):
+                file_.path = Path(
+                    os.path.abspath(client.renku_datasets_path / dataset.identifier / file_.path)
+                ).relative_to(base_path)
+            elif not _exists(client=client, path=file_.path):
+                file_.path = (client.path / DATA_DIR / file_.path).relative_to(client.path)
 
             file_.name = os.path.basename(file_.path)
 
@@ -141,10 +164,10 @@ def _fix_labels_and_ids(client):
         dataset._label = dataset.identifier
 
         for file_ in dataset.files:
-            if not Path(file_.path).exists():
+            if not _exists(client=client, path=file_.path):
                 continue
             _, commit, _ = client.resolve_in_submodules(
-                client.find_previous_commit(file_.path, revision="HEAD"), file_.path
+                _find_previous_commit(client, file_.path, revision="HEAD"), file_.path
             )
 
             if not _is_file_id_valid(file_._id, file_.path, commit.hexsha):
@@ -189,3 +212,24 @@ def _is_file_id_valid(id_, path, hexsha):
 
     u = urllib.parse.urlparse(id_)
     return u.scheme and u.netloc and u.path.startswith("/blob") and hexsha in u.path and path in u.path
+
+
+def _exists(client, path):
+    dmc = getattr(client, "dataset_migration_context", None)
+    if dmc:
+        return dmc.exists(path)
+    return Path(path).exists()
+
+
+def _is_dir(client, path):
+    dmc = getattr(client, "dataset_migration_context", None)
+    if dmc:
+        return dmc.is_dir(path)
+    return Path(path).is_dir()
+
+
+def _find_previous_commit(client, path, revision):
+    dmc = getattr(client, "dataset_migration_context", None)
+    if dmc:
+        return dmc.find_previous_commit(path)
+    return client.find_previous_commit(path, revision=revision)

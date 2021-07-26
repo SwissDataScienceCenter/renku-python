@@ -24,6 +24,7 @@ from flaky import flaky
 from renku.cli import cli
 from renku.core.commands.clone import project_clone_command
 from renku.core.utils.contexts import chdir
+from tests.utils import format_result_exception
 
 
 @pytest.mark.integration
@@ -35,16 +36,16 @@ def test_renku_clone(runner, monkeypatch, url):
 
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(cli, ["clone", url, project_path])
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert (Path(project_path) / "Dockerfile").exists()
 
         # Check Git hooks are installed
         result = runner.invoke(cli, ["githooks", "install"])
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert "Hook already exists." in result.output
 
         result = runner.invoke(cli, ["migrate"])
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
         # Check Git LFS is enabled
         with monkeypatch.context() as monkey:
@@ -129,7 +130,7 @@ def test_renku_clone_uses_project_name(runner, path, expected_path):
 
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(cli, ["clone", remote, path])
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert (Path(project_path) / expected_path / "Dockerfile").exists()
 
 

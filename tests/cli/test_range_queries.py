@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 def test_limit_log(runner, project, run, subdirectory):
@@ -38,12 +39,12 @@ def test_limit_log(runner, project, run, subdirectory):
     relative_path = os.path.relpath(output, os.getcwd())
     cmd = ["log", "--revision", "HEAD^^..", relative_path]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert data.name not in result.output
     assert output.name in result.output
 
     cmd = ["log", "--revision", "HEAD^^^"]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert data.name in result.output
     assert output.name not in result.output

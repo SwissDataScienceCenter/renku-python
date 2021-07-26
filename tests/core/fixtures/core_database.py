@@ -34,7 +34,7 @@ class DummyStorage:
         self._files = {}
         self._modification_dates = {}
 
-    def store(self, filename: str, data):
+    def store(self, filename: str, data, compress=False):
         """Store object."""
         assert isinstance(filename, str)
 
