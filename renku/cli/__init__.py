@@ -72,6 +72,7 @@ from click_plugins import with_plugins
 from pkg_resources import iter_entry_points
 
 from renku.cli.clone import clone
+from renku.cli.cluster import cluster
 from renku.cli.config import config
 from renku.cli.dataset import dataset
 from renku.cli.doctor import doctor
@@ -192,6 +193,7 @@ def help(ctx):
 
 # Register subcommands:
 cli.add_command(clone)
+cli.add_command(cluster)
 cli.add_command(config)
 cli.add_command(dataset)
 cli.add_command(doctor)
