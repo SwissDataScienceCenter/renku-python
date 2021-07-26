@@ -519,14 +519,16 @@ def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: 
     date = commit.authored_datetime
 
     for dataset in datasets:
-        dataset = convert_dataset(dataset=dataset, client=client, revision=revision)
+        dataset, tags = convert_dataset(dataset=dataset, client=client, revision=revision)
         if is_last_commit:
-            datasets_provenance.add_or_replace(dataset, date=date)
+            datasets_provenance.update_during_migration(
+                dataset, commit_sha=revision, date=date, tags=tags, replace=True
+            )
         else:
-            datasets_provenance.add_or_update(dataset, date=date)
+            datasets_provenance.update_during_migration(dataset, commit_sha=revision, date=date, tags=tags)
     for dataset in deleted_datasets:
-        dataset = convert_dataset(dataset=dataset, client=client, revision=revision)
-        datasets_provenance.remove(dataset, date=date)
+        dataset, _ = convert_dataset(dataset=dataset, client=client, revision=revision)
+        datasets_provenance.update_during_migration(dataset, commit_sha=revision, date=date, remove=True)
 
 
 def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):

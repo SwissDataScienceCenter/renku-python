@@ -39,6 +39,8 @@ from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.dataset import get_dataset
+from renku.core.management.dataset.tag import add_dataset_tag, remove_dataset_tags
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.metadata.immutable import DynamicProxy
@@ -60,13 +62,19 @@ from renku.core.utils.urls import remove_credentials
 @inject.autoparams()
 def _list_datasets(datasets_provenance: DatasetsProvenance, format=None, columns=None):
     """List all datasets."""
+    datasets = [DynamicProxy(d) for d in datasets_provenance.datasets]
+    for dataset in datasets:
+        tags = datasets_provenance.get_all_tags(dataset)
+        dataset.tags = tags
+        dataset.tags_csv = ",".join(tag.name for tag in tags)
+
     if format is None:
-        return list(datasets_provenance.datasets)
+        return list(datasets)
 
     if format not in DATASETS_FORMATS:
         raise UsageError("format not supported")
 
-    return DATASETS_FORMATS[format](datasets_provenance.datasets, columns=columns)
+    return DATASETS_FORMATS[format](datasets, columns=columns)
 
 
 def list_datasets():
@@ -386,18 +394,19 @@ def remove_dataset():
 
 
 @inject.autoparams()
-def _export_dataset(name, provider_name, publish, tag, client: LocalClient, **kwargs):
+def _export_dataset(
+    name, provider_name, publish, tag, client: LocalClient, datasets_provenance: DatasetsProvenance, **kwargs
+):
     """Export data to 3rd party provider.
 
-    :raises: ``ValueError``, ``HTTPError``, ``InvalidAccessToken``,
-             ``DatasetNotFound``
+    :raises: ``ParameterError``, ``HTTPError``, ``InvalidAccessToken``, ``DatasetNotFound``
     """
     provider_name = provider_name.lower()
 
     # TODO: all these callbacks are ugly, improve in #737
     config_key_secret = "access_token"
 
-    dataset_ = client.get_dataset(name, strict=True)
+    dataset = client.get_dataset(name, strict=True, immutable=True)
 
     try:
         provider = ProviderFactory.from_id(provider_name)
@@ -407,60 +416,43 @@ def _export_dataset(name, provider_name, publish, tag, client: LocalClient, **kw
     provider.set_parameters(**kwargs)
 
     selected_tag = None
-    selected_commit = client.repo.head.commit
+    tags = datasets_provenance.get_all_tags(dataset)
 
     if tag:
-        selected_tag = next((t for t in dataset_.tags if t.name == tag), None)
+        selected_tag = next((t for t in tags if t.name == tag), None)
 
         if not selected_tag:
-            raise ValueError("Tag {} not found".format(tag))
+            raise errors.ParameterError(f"Tag '{tag}' not found for dataset '{name}'")
+    elif tags:
+        selected_tag = _prompt_tag_selection(tags)
 
-        selected_commit = selected_tag.commit
-    elif dataset_.tags and len(dataset_.tags) > 0:
-        tag_result = _prompt_tag_selection(dataset_.tags)
+    if selected_tag:
+        dataset = datasets_provenance.get_by_id(selected_tag.dataset_id, immutable=True)
 
-        if tag_result:
-            selected_tag = tag_result
-            selected_commit = tag_result.commit
+        if not dataset:
+            raise DatasetNotFound(message=f"Cannot find dataset with id: '{selected_tag.dataset_id}'")
 
-            # FIXME: This won't work and needs to be fixed in #renku-python/issues/2210
-            # If the tag is created automatically for imported datasets, it
-            # does not have the dataset yet and we need to use the next commit
-            with client.with_commit(selected_commit):
-                test_ds = client.get_dataset(name)
-            if not test_ds:
-                commits = client.dataset_commits(dataset_)
-                next_commit = selected_commit
-                for commit in commits:
-                    if commit.hexsha == selected_commit:
-                        selected_commit = next_commit.hexsha
-                        break
-                    next_commit = commit
+    data_dir = get_dataset_data_dir(client, dataset)
+    dataset = DynamicProxy(dataset)
+    dataset.data_dir = data_dir
 
-    with client.with_commit(selected_commit):
-        dataset_ = client.get_dataset(name)
-        if not dataset_:
-            raise DatasetNotFound(name=name)
+    access_token = client.get_value(provider_name, config_key_secret)
+    exporter = provider.get_exporter(dataset, access_token=access_token)
 
-        dataset_.data_dir = get_dataset_data_dir(client, dataset_)
+    if access_token is None:
+        access_token = _prompt_access_token(exporter)
 
-        access_token = client.get_value(provider_name, config_key_secret)
-        exporter = provider.get_exporter(dataset_, access_token=access_token)
+        if access_token is None or len(access_token) == 0:
+            raise InvalidAccessToken()
 
-        if access_token is None:
-            access_token = _prompt_access_token(exporter)
+        client.set_value(provider_name, config_key_secret, access_token, global_only=True)
+        exporter.set_access_token(access_token)
 
-            if access_token is None or len(access_token) == 0:
-                raise InvalidAccessToken()
-
-            client.set_value(provider_name, config_key_secret, access_token, global_only=True)
-            exporter.set_access_token(access_token)
-
-        try:
-            destination = exporter.export(publish=publish, tag=selected_tag, client=client)
-        except errors.AuthenticationError:
-            client.remove_value(provider_name, config_key_secret, global_only=True)
-            raise
+    try:
+        destination = exporter.export(publish=publish, tag=selected_tag, client=client)
+    except errors.AuthenticationError:
+        client.remove_value(provider_name, config_key_secret, global_only=True)
+        raise
 
     communication.echo(f"Exported to: {destination}")
 
@@ -558,12 +550,7 @@ def _import_dataset(
 
         if dataset.version:
             tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", dataset.version)
-            _tag_dataset_helper(
-                dataset=dataset,
-                tag=tag_name,
-                description=f"Tag {dataset.version} created by renku import",
-                update_provenance=False,
-            )
+            add_dataset_tag(dataset=dataset, tag=tag_name, description=f"Tag {dataset.version} created by renku import")
     else:
         name = name or dataset.name
 
@@ -815,72 +802,47 @@ def _filter(
     return sorted(records, key=lambda r: r.date_added)
 
 
-@inject.autoparams()
-def _tag_dataset(name, tag, description, client: LocalClient, update_provenance=True, force=False):
+def _add_dataset_tag(name, tag, description, force=False):
     """Creates a new tag for a dataset."""
-    dataset = client.get_dataset(name, strict=True)
-    _tag_dataset_helper(
-        dataset=dataset, tag=tag, description=description, update_provenance=update_provenance, force=force
-    )
+    dataset = get_dataset(name, strict=True)
+    add_dataset_tag(dataset=dataset, tag=tag, description=description, force=force)
 
 
-@inject.autoparams()
-def _tag_dataset_helper(
-    dataset,
-    tag,
-    description,
-    client: LocalClient,
-    datasets_provenance: DatasetsProvenance,
-    update_provenance=True,
-    force=False,
-):
-    try:
-        client.add_dataset_tag(dataset, tag, description, force)
-    except ValueError as e:
-        raise ParameterError(e)
-    else:
-        if update_provenance:
-            datasets_provenance.add_or_update(dataset)
-
-
-def tag_dataset():
+def add_dataset_tag_command():
     """Command for creating a new tag for a dataset."""
-    command = Command().command(_tag_dataset).lock_dataset().with_database(write=True)
+    command = Command().command(add_dataset_tag).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-@inject.autoparams()
-def _remove_dataset_tags(name, tags, client: LocalClient, datasets_provenance: DatasetsProvenance):
+def _remove_dataset_tags(name, tags):
     """Removes tags from a dataset."""
-    dataset = client.get_dataset(name, strict=True)
-
-    try:
-        client.remove_dataset_tags(dataset, tags)
-    except ValueError as e:
-        raise ParameterError(e)
-    else:
-        datasets_provenance.add_or_update(dataset)
+    dataset = get_dataset(name, strict=True)
+    remove_dataset_tags(dataset, tags)
 
 
-def remove_dataset_tags():
+def remove_dataset_tags_command():
     """Command for removing tags from a dataset."""
     command = Command().command(_remove_dataset_tags).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
 @inject.autoparams()
-def _list_tags(name, format, client: LocalClient):
+def _list_dataset_tags(name, format, datasets_provenance: DatasetsProvenance):
     """List all tags for a dataset."""
-    dataset = client.get_dataset(name, strict=True)
+    dataset = get_dataset(name, strict=True)
 
-    tags = sorted(dataset.tags, key=lambda t: t.date_created)
+    tags = datasets_provenance.get_all_tags(dataset)
+    tags = sorted(tags, key=lambda t: t.date_created)
+    tags = [DynamicProxy(t) for t in tags]
+    for tag in tags:
+        tag.dataset = dataset.title
 
     return DATASET_TAGS_FORMATS[format](tags)
 
 
-def list_tags():
+def list_tags_command():
     """Command for listing a dataset's tags."""
-    return Command().command(_list_tags).with_database().require_migration()
+    return Command().command(_list_dataset_tags).with_database().require_migration()
 
 
 def _prompt_access_token(exporter):
@@ -897,13 +859,10 @@ def _prompt_access_token(exporter):
 
 def _prompt_tag_selection(tags) -> Optional[DatasetTag]:
     """Prompt user to chose a tag or <HEAD>."""
-    # Prompt user to select a tag to export
     tags = sorted(tags, key=lambda t: t.date_created)
 
     text_prompt = "Tag to export: \n\n<HEAD>\t[1]\n"
-
-    text_prompt += "\n".join("{}\t[{}]".format(t.name, i) for i, t in enumerate(tags, start=2))
-
+    text_prompt += "\n".join(f"{t.name}\t[{i}]" for i, t in enumerate(tags, start=2))
     text_prompt += "\n\nTag"
     selection = communication.prompt(text_prompt, type=click.IntRange(1, len(tags) + 1), default=1)
 

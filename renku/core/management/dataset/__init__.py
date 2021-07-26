@@ -16,3 +16,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku management dataset logic."""
+
+from typing import Optional
+
+from renku.core import errors
+from renku.core.management.command_builder import inject
+from renku.core.models.dataset import Dataset, DatasetsProvenance
+
+
+@inject.autoparams()
+def get_dataset(name, datasets_provenance: DatasetsProvenance, strict=False, immutable=False) -> Optional[Dataset]:
+    """Return a dataset based on its name."""
+    dataset = datasets_provenance.get_by_name(name, immutable=immutable)
+
+    if not dataset and strict:
+        raise errors.DatasetNotFound(name=name)
+
+    return dataset

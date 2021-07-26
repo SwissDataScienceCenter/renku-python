@@ -31,6 +31,7 @@ from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.utils import communication
+from renku.core.utils.git import get_content
 from renku.core.utils.requests import retry
 
 
@@ -116,7 +117,8 @@ class OLOSExporter(ExporterApi):
                     path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
                 except ValueError:
                     path = Path(file.entity.path)
-                deposition.upload_file(full_path=client.path / file.entity.path, path_in_dataset=path)
+                filepath = get_content(repo=client.repo, path=file.entity.path, checksum=file.entity.checksum)
+                deposition.upload_file(full_path=filepath, path_in_dataset=path)
                 communication.update_progress(progress_text, amount=1)
         finally:
             communication.finalize_progress(progress_text)

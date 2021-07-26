@@ -1119,13 +1119,13 @@ def test_dataset_ls_tags(tmpdir, runner, project, client, form):
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    commit1 = client.repo.head.commit.hexsha
+    id1 = client.get_dataset("my-dataset", immutable=True).id
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    commit2 = client.repo.head.commit.hexsha
+    id2 = client.get_dataset("my-dataset", immutable=True).id
 
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1137,8 +1137,8 @@ def test_dataset_ls_tags(tmpdir, runner, project, client, form):
     assert "1.0" in result.output
     assert "aBc9.34-11_55.t" in result.output
     assert "first tag!" in result.output
-    assert commit1 in result.output
-    assert commit2 in result.output
+    assert id1 in result.output
+    assert id2 in result.output
 
 
 def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
@@ -1154,7 +1154,7 @@ def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    commit1 = client.repo.head.commit.hexsha
+    id1 = client.get_dataset("my-dataset", immutable=True).id
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"], catch_exceptions=False)
@@ -1164,7 +1164,7 @@ def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "1.0" in result.output
     assert "first tag!" in result.output
-    assert commit1 in result.output
+    assert id1 in result.output
 
     result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "2.0"], catch_exceptions=False)
     assert 2 == result.exit_code
@@ -1695,26 +1695,6 @@ def test_immutability_after_no_update(runner, client, directory_tree, load_datas
     assert dataset.id == old_dataset.id
 
 
-def test_immutability_for_tags(runner, client, load_dataset_with_injection):
-    """Test dataset is mutated after a change to dataset tags."""
-    assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
-
-    old_dataset = load_dataset_with_injection("my-data", client)
-
-    # Add a tag
-    assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "new-tag"]).exit_code
-
-    dataset = load_dataset_with_injection("my-data", client)
-    assert old_dataset.id != dataset.id
-    old_dataset = dataset
-
-    # Remove a tag
-    assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "my-data", "new-tag"]).exit_code
-
-    dataset = load_dataset_with_injection("my-data", client)
-    assert old_dataset.id != dataset.id
-
-
 def test_datasets_provenance_after_create(runner, client, get_datasets_provenance_with_injection):
     """Test datasets provenance is updated after creating a dataset."""
     args = [
@@ -1914,30 +1894,31 @@ def test_datasets_provenance_after_update(runner, client, directory_tree, get_da
     assert current_version.identifier != current_version.initial_identifier
 
 
-def test_datasets_provenance_after_adding_tag(runner, client, get_datasets_provenance_with_injection):
+def test_datasets_provenance_after_adding_tag(runner, client, get_datasets_provenance_with_injection, load_dataset_with_injection):
     """Test datasets provenance is updated after tagging a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
 
-    commit_sha_before = client.repo.head.object.hexsha
+    old_dataset = load_dataset_with_injection("my-data", client)
 
     assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "42.0"]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         provenance = datasets_provenance.get_provenance()
         current_version = datasets_provenance.get_by_name("my-data")
-    commit_sha_after = client.repo.head.object.hexsha
 
     assert 1 == len(provenance)
-    assert current_version.identifier != current_version.initial_identifier
-    assert current_version.derived_from is not None
-    assert commit_sha_before != commit_sha_after
+    assert current_version.identifier == current_version.initial_identifier
+    assert current_version.derived_from is None
+    assert current_version.identifier == old_dataset.identifier
     assert not client.repo.is_dirty()
 
 
-def test_datasets_provenance_after_removing_tag(runner, client, get_datasets_provenance_with_injection):
+def test_datasets_provenance_after_removing_tag(runner, client, get_datasets_provenance_with_injection, load_dataset_with_injection):
     """Test datasets provenance is updated after removing a dataset's tag."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
     assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "42.0"]).exit_code
+
+    old_dataset = load_dataset_with_injection("my-data", client)
 
     assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "my-data", "42.0"]).exit_code
 
@@ -1946,8 +1927,10 @@ def test_datasets_provenance_after_removing_tag(runner, client, get_datasets_pro
         current_version = datasets_provenance.get_by_name("my-data")
 
     assert 1 == len(provenance)
-    assert current_version.identifier != current_version.initial_identifier
-    assert current_version.derived_from is not None
+    assert current_version.identifier == current_version.initial_identifier
+    assert current_version.derived_from is None
+    assert current_version.identifier == old_dataset.identifier
+    assert not client.repo.is_dirty()
 
 
 def test_datasets_provenance_multiple(

@@ -27,7 +27,7 @@ from renku.cli import cli
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.core.models.dataset import RemoteEntity
-from tests.utils import format_result_exception
+from tests.utils import format_result_exception, get_datasets_provenance
 
 
 @pytest.mark.migration
@@ -184,8 +184,10 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project, l
     assert "OK" in result.output
 
     client = old_dataset_project
+    datasets_provenance = get_datasets_provenance(client)
 
     dataset = load_dataset_with_injection("dataverse", client)
+    tags = datasets_provenance.get_all_tags(dataset)
     assert "/datasets/1d2ed1e43aeb4f2590b238084ee3d86c" == dataset.id
     assert "1d2ed1e43aeb4f2590b238084ee3d86c" == dataset.identifier
     assert "Cornell University" == dataset.creators[0].affiliation
@@ -194,8 +196,8 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project, l
     assert "2020-08-10T21:35:05.115412+00:00" == dataset.date_created.isoformat("T")
     assert "Replication material for a paper to be presented" in dataset.description
     assert "https://doi.org/10.7910/DVN/EV6KLF" == dataset.same_as.url
-    assert "1" == dataset.tags[0].name
-    assert "Tag 1 created by renku import" == dataset.tags[0].description
+    assert "1" == tags[0].name
+    assert "Tag 1 created by renku import" == tags[0].description
     assert isinstance(dataset.license, str)
     assert "https://creativecommons.org/publicdomain/zero/1.0/" in str(dataset.license)
 
@@ -206,7 +208,8 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project, l
     assert not hasattr(file_, "creators")
 
     dataset = load_dataset_with_injection("mixed", client)
-    assert "v1" == dataset.tags[0].name
+    tags = datasets_provenance.get_all_tags(dataset)
+    assert "v1" == tags[0].name
 
     file_ = dataset.find_file("data/mixed/Makefile")
     assert file_.entity.id.endswith("/data/mixed/Makefile")
@@ -236,7 +239,6 @@ def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_proj
 
     assert not dataset.creators[0].id.startswith("_:")
     assert not dataset.same_as.id.startswith("_:")
-    assert not dataset.tags[0].id.startswith("_:")
     assert isinstance(dataset.license, str)
 
 

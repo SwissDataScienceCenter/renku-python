@@ -1021,18 +1021,18 @@ def test_dataset_update_zenodo(client, runner, doi, load_dataset_with_injection)
 def test_dataset_update_dataverse(client, runner, doi, load_dataset_with_injection, client_database_injection_manager):
     """Test updating datasets from external providers.
 
-    Since dataverse does not have DOIs/IDs for each version,
-    we need to fake the check.
+    Since dataverse does not have DOIs/IDs for each version, we need to fake the check.
     """
     result = runner.invoke(
         cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
+    assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "imported_dataset", "2.2"], catch_exceptions=False).exit_code
+
     with client_database_injection_manager(client):
         with with_dataset(client, "imported_dataset", commit_database=True) as dataset:
             dataset.version = "0.1"
-            dataset.tags = []
 
     client.repo.git.add(all=True)
     client.repo.index.commit("metadata updated")

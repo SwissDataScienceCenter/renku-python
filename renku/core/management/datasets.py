@@ -21,7 +21,6 @@ import concurrent.futures
 import fnmatch
 import imghdr
 import os
-import re
 import shlex
 import shutil
 import tempfile
@@ -49,6 +48,7 @@ from renku.core.management.clone import clone
 from renku.core.management.command_builder.command import inject, update_injected_client
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.dataset import get_dataset
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.metadata.database import Database
 from renku.core.metadata.immutable import DynamicProxy
@@ -164,16 +164,10 @@ class DatasetsApiMixin(object):
 
         return self._datasets_provenance
 
-    def get_dataset(self, name, strict=False, immutable=False) -> Optional[new_datasets.Dataset]:
+    @staticmethod
+    def get_dataset(name, strict=False, immutable=False) -> Optional[new_datasets.Dataset]:
         """Load dataset reference file."""
-        datasets_provenance = self.get_datasets_provenance()
-
-        dataset = datasets_provenance.get_by_name(name, immutable=immutable)
-
-        if not dataset and strict:
-            raise errors.DatasetNotFound(name=name)
-
-        return dataset
+        return get_dataset(name=name, strict=strict, immutable=immutable)
 
     @contextmanager
     def with_dataset(self, name=None, create=False, commit_database=False, creator: Person = None):
@@ -824,67 +818,6 @@ class DatasetsApiMixin(object):
             raise
         except SubprocessError as e:
             raise errors.GitError(f"Cannot pull LFS objects from server: {e}")
-
-    def dataset_commits(self, dataset, max_results=None):
-        """Gets the newest commit for a dataset or its files.
-
-        Commits are returned sorted from newest to oldest.
-        """
-        # FIXME: Return correct hash/dataset id in https://github.com/SwissDataScienceCenter/renku-python/issues/2210
-        # paths = [(self.path / dataset.path / self.METADATA).resolve()]
-        #
-        # paths.extend(self.path / f.path for f in dataset.files)
-        #
-        # commits = self.repo.iter_commits(paths=paths, max_count=max_results)
-        #
-        # return commits
-        return [self.repo.head.commit]
-
-    def add_dataset_tag(self, dataset, tag, description="", force=False):
-        """Adds a new tag to a dataset.
-
-        Validates if the tag already exists and that the tag follows
-        the same rules as docker tags.
-        See https://docs.docker.com/engine/reference/commandline/tag/
-        for a documentation of docker tag syntax.
-
-        :raises: errors.ParameterError
-        """
-        if len(tag) > 128:
-            raise errors.ParameterError("Tags can be at most 128 characters long.")
-
-        if not re.match("^(?![.-])[a-zA-Z0-9_.-]{1,128}$", tag):
-            raise errors.ParameterError(
-                (
-                    "Tag {} is invalid. \n"
-                    "Only characters a-z, A-Z, 0-9, ., - and _ "
-                    "are allowed. \nTag can't start with a . or -"
-                ).format(tag)
-            )
-
-        if any(t for t in dataset.tags if t.name == tag):
-            if force:
-                # remove duplicate tag
-                dataset.tags = [t for t in dataset.tags if t.name != tag]
-            else:
-                raise errors.ParameterError("Tag {} already exists".format(tag))
-
-        latest_commit = list(self.dataset_commits(dataset, max_results=1))[0]
-
-        tag = new_datasets.DatasetTag(
-            name=tag, description=description, commit=latest_commit.hexsha, dataset=dataset.title
-        )
-
-        dataset.tags.append(tag)
-
-    def remove_dataset_tags(self, dataset, tags):
-        """Removes tags from a dataset."""
-        tag_names = {t.name for t in dataset.tags}
-        not_found = set(tags).difference(tag_names)
-
-        if len(not_found) > 0:
-            raise errors.ParameterError("Tags {} not found".format(", ".join(not_found)))
-        dataset.tags = [t for t in dataset.tags if t.name not in tags]
 
     @inject.autoparams()
     def move_files(self, files, to_dataset, datasets_provenance: DatasetsProvenance):

@@ -34,20 +34,15 @@ from werkzeug.utils import cached_property
 from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.command_builder import inject
-from renku.core.management.command_builder.command import replace_injection
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.database_gateway import IDatabaseGateway
-from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.metadata.database import Database
-from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.project import Project
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
-
 from .git import GitCore
 
 DEFAULT_DATA_DIR = "data"
@@ -424,52 +419,6 @@ class RepositoryApiMixin(GitCore):
                         pass
 
         return self, commit, path
-
-    @contextmanager
-    def with_commit(self, commit):
-        """Yield the state of the repo at a specific commit."""
-        from renku import LocalClient
-        from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-
-        current_branch = None
-        current_commit = None
-
-        try:
-            current_branch = self.repo.active_branch
-        except TypeError as e:
-            # not on a branch, detached head
-            if "HEAD is a detached" in str(e):
-                current_commit = self.repo.head.commit
-            else:
-                raise ValueError("Couldn't get active branch or commit", e)
-
-        self.repo.git.checkout(commit)
-
-        # FIXME: This won't work if the project is not migrated at the commit. Don't use with_commit function.
-        database = Database.from_path(self.database_path)
-        bindings = {
-            "LocalClient": self,
-            LocalClient: self,
-            Database: database,
-        }
-        # FIXME: We shouldn't know about implementation here
-        constructor_bindings = {
-            IDatasetGateway: lambda: DatasetGateway(),
-            DatasetsProvenance: lambda: DatasetsProvenance(),
-        }
-
-        with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
-            try:
-                self._database = None
-                self._datasets_provenance = None
-                yield
-            finally:
-                self._database = None
-                self._datasets_provenance = None
-                if current_branch:
-                    self.repo.git.checkout(current_branch)
-                elif current_commit:
-                    self.repo.git.checkout(current_commit)
 
     @contextmanager
     @inject.autoparams()

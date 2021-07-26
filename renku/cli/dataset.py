@@ -406,6 +406,7 @@ from rich.markdown import Markdown
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
 from renku.core.commands.dataset import (
+    add_dataset_tag_command,
     add_to_dataset,
     create_dataset,
     edit_dataset,
@@ -414,11 +415,10 @@ from renku.core.commands.dataset import (
     import_dataset,
     list_datasets,
     list_files,
-    list_tags,
+    list_tags_command,
     remove_dataset,
-    remove_dataset_tags,
+    remove_dataset_tags_command,
     show_dataset,
-    tag_dataset,
     update_datasets,
 )
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
@@ -644,7 +644,7 @@ def remove(name):
 @click.option("--force", is_flag=True, help="Allow overwriting existing tags.")
 def tag(name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset().build().execute(name, tag, description, force=force)
+    add_dataset_tag_command().build().execute(name=name, tag=tag, description=description, force=force)
     click.secho("OK", fg="green")
 
 
@@ -653,7 +653,7 @@ def tag(name, tag, description, force):
 @click.argument("tags", nargs=-1)
 def remove_tags(name, tags):
     """Remove tags from a dataset."""
-    remove_dataset_tags().build().execute(name, tags)
+    remove_dataset_tags_command().build().execute(name=name, tags=tags)
     click.secho("OK", fg="green")
 
 
@@ -662,7 +662,7 @@ def remove_tags(name, tags):
 @click.option("--format", type=click.Choice(DATASET_TAGS_FORMATS), default="tabular", help="Choose an output format.")
 def ls_tags(name, format):
     """List all tags of a dataset."""
-    result = list_tags().lock_dataset().build().execute(name, format)
+    result = list_tags_command().lock_dataset().build().execute(name=name, format=format)
     click.echo(result.output)
 
 
