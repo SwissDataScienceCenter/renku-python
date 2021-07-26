@@ -26,7 +26,7 @@ from tests.service.views.test_dataset_views import assert_rpc_response
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_graph_build_view(svc_client_cache, authentication_headers_raw, it_remote_repo_url):
     """Create a new graph build job successfully."""
     svc_client, _, cache = svc_client_cache
@@ -56,7 +56,7 @@ def test_graph_build_view(svc_client_cache, authentication_headers_raw, it_remot
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_graph_build_no_callback(svc_client_cache, authentication_headers_raw, it_remote_repo_url):
     """Try to create a new graph build job."""
     svc_client, _, cache = svc_client_cache
@@ -72,7 +72,7 @@ def test_graph_build_no_callback(svc_client_cache, authentication_headers_raw, i
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_graph_build_no_revision(svc_client_cache, authentication_headers_raw, it_remote_repo_url):
     """Create a new graph build job successfully."""
     svc_client, _, cache = svc_client_cache

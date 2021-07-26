@@ -63,7 +63,7 @@ def test_auth_headers_exc(service_allowed_endpoint):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_migration_required_flag(svc_client_setup):
     """Check migration required failure."""
     svc_client, headers, project_id, _, _ = svc_client_setup
@@ -80,7 +80,7 @@ def test_migration_required_flag(svc_client_setup):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_headers):
     """Check migration required failure."""
     payload = {"git_url": it_non_renku_repo_url}
@@ -111,7 +111,7 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers):
     """Check migration required failure."""
     payload = {"git_url": it_no_commit_repo_url}
@@ -142,7 +142,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 @pytest.mark.parametrize(
     "git_url,expected",
     [

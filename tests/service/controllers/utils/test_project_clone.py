@@ -29,7 +29,7 @@ from tests.utils import modified_environ
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_service_user_project_clone(svc_client_cache):
     """Test service user project clone."""
     client, _, cache = svc_client_cache

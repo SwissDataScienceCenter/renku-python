@@ -35,7 +35,7 @@ from tests.utils import modified_environ
 @pytest.mark.service
 @pytest.mark.integration
 @pytest.mark.jobs
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_cleanup_old_files(datapack_zip, svc_client_with_repo, service_job):
     """Upload archive and add its contents to a dataset."""
     svc_client, headers, _, _ = svc_client_with_repo
@@ -103,7 +103,7 @@ def test_cleanup_files_old_keys(svc_client_with_user, service_job, tmp_path):
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_cleanup_old_project(datapack_zip, svc_client_with_repo, service_job):
     """Upload archive and add its contents to a dataset."""
     svc_client, headers, _, _ = svc_client_with_repo
@@ -195,7 +195,7 @@ def test_job_constructor_lock(svc_client_with_user, service_job):
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_project_cleanup_success(svc_client_cache):
     """Test project cleanup through the job."""
     client, _, cache = svc_client_cache

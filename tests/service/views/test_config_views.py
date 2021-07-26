@@ -25,7 +25,7 @@ from flaky import flaky
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_config_view_show(svc_client_with_repo):
     """Check config show view."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -45,7 +45,7 @@ def test_config_view_show(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_config_view_show_remote(svc_client_with_repo, it_remote_repo_url):
     """Check config show view."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -63,7 +63,7 @@ def test_config_view_show_remote(svc_client_with_repo, it_remote_repo_url):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_config_view_set(svc_client_with_repo):
     """Check config set view."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -115,7 +115,7 @@ def test_config_view_set(svc_client_with_repo):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_remote_config_set_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed config set."""
     config = {

@@ -201,7 +201,7 @@ def test_config_read_concurrency(runner, project, client, run):
     assert all(p.stdout.read().decode("utf8") == "value\n" for p in processes)
 
 
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 def test_config_write_concurrency(runner, project, client, run):
     """Test config can be read concurrently."""
     result = runner.invoke(cli, ["config", "set", "test", "value"])
