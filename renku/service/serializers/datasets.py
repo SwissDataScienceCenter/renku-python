@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets serializers."""
-from marshmallow import Schema, fields, post_load, pre_load, ValidationError
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load
 
 from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
 from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
@@ -262,7 +262,13 @@ class DatasetEditResponseRPC(JsonRPCResponse):
 
 
 class DatasetUnlinkRequest(
-    AsyncSchema, CommitSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
+    AsyncSchema,
+    CommitSchema,
+    DatasetNameSchema,
+    DatasetRefSchema,
+    LocalRepositorySchema,
+    RemoteRepositorySchema,
+    MigrateSchema,
 ):
     """Dataset unlink file request."""
 

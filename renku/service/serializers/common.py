@@ -16,8 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service parent serializers."""
-from datetime import datetime
 import uuid
+from datetime import datetime
 
 from marshmallow import Schema, fields
 
@@ -25,14 +25,14 @@ from renku.service.serializers.rpc import JsonRPCResponse
 
 
 class LocalRepositorySchema(Schema):
-    """Schema for identifying a locally stored repository"""
+    """Schema for identifying a locally stored repository."""
 
     # In the long term, the id should be used only for internal operations
     project_id = fields.String(description="Reference to access the project in the local cache.")
 
 
 class RemoteRepositorySchema(Schema):
-    """Schema for tracking a remote repository"""
+    """Schema for tracking a remote repository."""
 
     git_url = fields.String(description="Remote git repository url.")
     branch = fields.String(description="Remote git branch.")
@@ -56,13 +56,13 @@ class CommitSchema(Schema):
 
 
 class AsyncSchema(Schema):
-    """Schema for adding a commit at the end of the operation"""
+    """Schema for adding a commit at the end of the operation."""
 
     is_delayed = fields.Boolean(description="Whether the job should be delayed or not.")
 
 
 class MigrateSchema(Schema):
-    """Schema for adding a commit at the end of the operation"""
+    """Schema for allowing preliminary repository migration."""
 
     migrate_project = fields.Boolean(
         default=False,
@@ -72,7 +72,7 @@ class MigrateSchema(Schema):
 
 
 class ArchiveSchema(Schema):
-    """Schema for adding a commit at the end of the operation"""
+    """Schema for adding a commit at the end of the operation."""
 
     unpack_archive = fields.Boolean(
         missing=False,
@@ -81,7 +81,7 @@ class ArchiveSchema(Schema):
 
 
 class MandatoryUserSchema(Schema):
-    """Schema for adding user as requirement"""
+    """Schema for adding user as requirement."""
 
     user_id = fields.String(
         required=True,
@@ -90,7 +90,7 @@ class MandatoryUserSchema(Schema):
 
 
 class CreationSchema(Schema):
-    """Schema for adding user as requirement"""
+    """Schema for creation date."""
 
     created_at = fields.DateTime(
         missing=datetime.utcnow,
