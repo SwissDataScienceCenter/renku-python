@@ -19,7 +19,7 @@
 
 import pytest
 
-from renku.core.models.workflow.grouped_run import GroupedRun
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.core.models.workflow.plan import Plan
 
@@ -77,11 +77,11 @@ def _create_run(name: str) -> Plan:
 
 
 @pytest.fixture
-def grouped_run():
-    """Fixture for a basic GroupedRun."""
+def composite_plan():
+    """Fixture for a basic CompositePlan."""
     run1 = _create_run("run1")
     run2 = _create_run("run2")
 
-    grouped = GroupedRun(id=GroupedRun.generate_id(), plans=[run1, run2], name="grouped1")
+    grouped = CompositePlan(id=CompositePlan.generate_id(), plans=[run1, run2], name="grouped1")
 
     return grouped, run1, run2

@@ -24,14 +24,14 @@ from typing import Dict, List, Union
 import networkx as nx
 from networkx.algorithms.cycles import simple_cycles
 
-from renku.core.models.workflow import grouped_run, parameter, plan
+from renku.core.models.workflow import composite_plan, parameter, plan
 
 
 class ExecutionGraph:
     """Represents an execution graph for one or more workflow steps."""
 
-    def __init__(self, workflow: Union["plan.Plan", "grouped_run.GroupedRun"], virtual_links: bool = False):
-        self.workflow: Union["plan.Plan", "grouped_run.GroupedRun"] = workflow
+    def __init__(self, workflow: Union["plan.Plan", "composite_plan.CompositePlan"], virtual_links: bool = False):
+        self.workflow: Union["plan.Plan", "composite_plan.CompositePlan"] = workflow
         self.virtual_links = []
 
         self.calculate_concrete_execution_graph(virtual_links=virtual_links)
@@ -54,17 +54,17 @@ class ExecutionGraph:
         while workflow_stack:
             workflow = workflow_stack.pop()
 
-            if isinstance(workflow, grouped_run.GroupedRun):
+            if isinstance(workflow, composite_plan.CompositePlan):
                 workflow_stack.extend(workflow.plans)
 
-                self._add_grouped_run_links_to_graph(workflow)
+                self._add_composite_plan_links_to_graph(workflow)
             else:
                 if not virtual_links:
                     continue
 
                 for input_ in workflow.inputs:
                     inputs[input_.actual_value].append(input_)
-                    if not self.graph.has_edge(input_, input_):
+                    if not self.graph.has_edge(input_, workflow):
                         self.graph.add_edge(input_, workflow)
 
                 for output in workflow.outputs:
@@ -89,7 +89,7 @@ class ExecutionGraph:
                     self._add_leaf_parameter_link(*edge)
                     self.virtual_links.append(edge)
 
-    def _add_grouped_run_links_to_graph(self, workflow: "grouped_run.GroupedRun") -> None:
+    def _add_composite_plan_links_to_graph(self, workflow: "composite_plan.CompositePlan") -> None:
         """Adds links for a grouped run to the graph."""
         if not workflow.links:
             return
@@ -137,7 +137,7 @@ class ExecutionGraph:
 
         for node in self.graph.nodes:
             if not isinstance(node, parameter.CommandInput):
-                if isinstance(node, (grouped_run.GroupedRun, plan.Plan)):
+                if isinstance(node, (composite_plan.CompositePlan, plan.Plan)):
                     workflow_graph.add_node(node)
                 continue
 

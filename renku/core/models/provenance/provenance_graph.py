@@ -69,7 +69,7 @@ class ProvenanceGraph:
     @inject.autoparams()
     def from_database(cls, database: Database):
         """Return an instance from a metadata database."""
-        activity_tree = database.get("activities")
+        activity_tree = database["activities"]
         activities = list(activity_tree.values())
         self = ProvenanceGraph(activities=activities)
         # NOTE: If we sort then all ghost objects will be loaded which is not what we want

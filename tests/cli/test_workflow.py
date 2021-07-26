@@ -22,8 +22,8 @@ from renku.core.metadata.database import Database
 from tests.utils import format_result_exception
 
 
-def test_workflow_group(runner, project, run_shell, client):
-    """Test renku workflow group."""
+def test_workflow_compose(runner, project, run_shell, client):
+    """Test renku workflow compose."""
     assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
 
     # Run a shell command with pipe.
@@ -46,7 +46,7 @@ def test_workflow_group(runner, project, run_shell, client):
         cli,
         [
             "workflow",
-            "group",
+            "compose",
             "--map",
             "input_str=@step1.@param1",
             "--map",
@@ -61,7 +61,7 @@ def test_workflow_group(runner, project, run_shell, client):
             "input_str=the input string for the workflow",
             "-p",
             "output_file=the final output file produced",
-            "grouped_workflow",
+            "composite_workflow",
             "run1",
             "run2",
         ],
@@ -71,24 +71,24 @@ def test_workflow_group(runner, project, run_shell, client):
 
     database = Database.from_path(client.database_path)
 
-    grouped_run = database.get("plans-by-name").get("grouped_workflow")
+    composite_plan = database["plans-by-name"]["composite_workflow"]
 
-    assert grouped_run
+    assert composite_plan
 
-    assert len(grouped_run.plans) == 2
-    assert len(grouped_run.mappings) == 2
+    assert len(composite_plan.plans) == 2
+    assert len(composite_plan.mappings) == 2
 
-    assert grouped_run.mappings[0].name == "input_str"
-    assert grouped_run.mappings[0].default_value == "b"
-    assert grouped_run.mappings[0].description == "the input string for the workflow"
+    assert composite_plan.mappings[0].name == "input_str"
+    assert composite_plan.mappings[0].default_value == "b"
+    assert composite_plan.mappings[0].description == "the input string for the workflow"
 
-    assert grouped_run.mappings[1].name == "output_file"
-    assert grouped_run.mappings[1].default_value == "other_output.csv"
-    assert grouped_run.mappings[1].description == "the final output file produced"
+    assert composite_plan.mappings[1].name == "output_file"
+    assert composite_plan.mappings[1].default_value == "other_output.csv"
+    assert composite_plan.mappings[1].description == "the final output file produced"
 
 
 def test_workflow_show(runner, project, run_shell, client):
-    """Test renku workflow group."""
+    """Test renku workflow show."""
     assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
 
     # Run a shell command with pipe.
@@ -117,9 +117,9 @@ def test_workflow_show(runner, project, run_shell, client):
         cli,
         [
             "workflow",
-            "group",
+            "compose",
             "--description",
-            "My grouped workflow",
+            "My composite workflow",
             "--map",
             "input_str=@step1.@param1",
             "--map",
@@ -134,7 +134,7 @@ def test_workflow_show(runner, project, run_shell, client):
             "input_str=the input string for the workflow",
             "-p",
             "output_file=the final output file produced",
-            "grouped_workflow",
+            "composite_workflow",
             "run1",
             "run2",
         ],
@@ -142,12 +142,12 @@ def test_workflow_show(runner, project, run_shell, client):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["workflow", "show", "grouped_workflow"])
+    result = runner.invoke(cli, ["workflow", "show", "composite_workflow"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "grouped_workflow" in result.output
+    assert "composite_workflow" in result.output
     assert "input_str" in result.output
     assert "output_file" in result.output
     assert "Links:" in result.output
     assert "Mappings:" in result.output
-    assert "My grouped workflow" in result.output
+    assert "My composite workflow" in result.output

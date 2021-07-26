@@ -213,15 +213,15 @@ from rich.markdown import Markdown
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import ERROR
 from renku.core.commands.workflow import (
+    compose_workflow_command,
     create_workflow_command,
-    group_workflow_command,
     list_workflows_command,
     remove_workflow_command,
     rename_workflow_command,
     set_workflow_name_command,
     show_workflow_command,
 )
-from renku.core.models.workflow.grouped_run import GroupedRun
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import Plan
 
 
@@ -286,7 +286,7 @@ def _print_plan(plan: Plan):
                 )
 
     if plan.parameters:
-        click.echo(click.style("Outputs: ", bold=True, fg="magenta"))
+        click.echo(click.style("Parameters: ", bold=True, fg="magenta"))
         for run_parameter in plan.parameters:
             click.echo(click.style(f"\t- {run_parameter.name}:", bold=True))
 
@@ -310,20 +310,20 @@ def _print_plan(plan: Plan):
                 )
 
 
-def _print_grouped_run(grouped_run: GroupedRun):
-    """Print a GroupedRun to stdout."""
-    click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(grouped_run.id, bold=True))
-    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(grouped_run.name, bold=True))
+def _print_composite_plan(composite_plan: CompositePlan):
+    """Print a CompositePlan to stdout."""
+    click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(composite_plan.id, bold=True))
+    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(composite_plan.name, bold=True))
 
-    if grouped_run.description:
-        Console().print(Markdown(grouped_run.description))
+    if composite_plan.description:
+        Console().print(Markdown(composite_plan.description))
 
     click.echo(click.style("Steps: ", bold=True, fg="magenta"))
-    for step in grouped_run.plans:
+    for step in composite_plan.plans:
         click.echo(click.style(f"\t- {step.name}:", bold=True))
         click.echo(click.style("\t\tId: ", bold=True, fg="magenta") + click.style(f"{step.id}", bold=True))
 
-    for mapping in grouped_run.mappings:
+    for mapping in composite_plan.mappings:
         click.echo(click.style(f"\t- {mapping.name}:", bold=True))
 
         if mapping.description:
@@ -336,9 +336,9 @@ def _print_grouped_run(grouped_run: GroupedRun):
         for maps_to in mapping.mapped_parameters:
             click.style(maps_to.name, bold=True)
 
-    if grouped_run.mappings:
+    if composite_plan.mappings:
         click.echo(click.style("Mappings: ", bold=True, fg="magenta"))
-        for mapping in grouped_run.mappings:
+        for mapping in composite_plan.mappings:
             click.echo(click.style(f"\t- {mapping.name}:", bold=True))
 
             if mapping.description:
@@ -352,9 +352,9 @@ def _print_grouped_run(grouped_run: GroupedRun):
             for maps_to in mapping.mapped_parameters:
                 click.style(maps_to.name, bold=True)
 
-    if grouped_run.links:
+    if composite_plan.links:
         click.echo(click.style("Links: ", bold=True, fg="magenta"))
-        for link in grouped_run.links:
+        for link in composite_plan.links:
             click.echo(click.style("\t- From: ", bold=True, fg="magenta") + click.style(link.source.name, bold=True))
             click.echo(click.style("\t\t To: ", bold=True, fg="magenta"))
             for sink in link.sinks:
@@ -384,7 +384,7 @@ def show(name_or_id):
         if isinstance(plan, Plan):
             _print_plan(plan)
         else:
-            _print_grouped_run(plan)
+            _print_composite_plan(plan)
     else:
         click.secho(ERROR + f"Workflow '{name_or_id}' not found.")
 
@@ -462,16 +462,16 @@ def create(output_file, revision, paths):
 @click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
 @click.option("defaults", "-s", "--set", multiple=True, help="Default value for a workflow parameter.")
 @click.option("links", "-l", "--link", multiple=True, help="Link source and sink parameters to connect steps.")
-@click.option("-p", "--describe-param", multiple=True, help="Default value for a workflow parameter.")
-@click.option("--map-inputs", is_flag=True, help="Exposes all child inputs as inputs on the GroupedRun.")
-@click.option("--map-outputs", is_flag=True, help="Exposes all child outputs as outputs on the GroupedRun.")
-@click.option("--map-params", is_flag=True, help="Exposes all child parameters as parameters on the GroupedRun.")
+@click.option("-p", "--describe-param", multiple=True, help="Add description for a workflow parameter.")
+@click.option("--map-inputs", is_flag=True, help="Exposes all child inputs as inputs on the CompositePlan.")
+@click.option("--map-outputs", is_flag=True, help="Exposes all child outputs as outputs on the CompositePlan.")
+@click.option("--map-params", is_flag=True, help="Exposes all child parameters as parameters on the CompositePlan.")
 @click.option("--map-all", is_flag=True, help="Combination of --map-inputs, --map-outputs, --map-params.")
 @click.option("--link-all", is_flag=True, help="Automatically link steps based on default values.")
 @click.option("--keyword", multiple=True, help="List of keywords for the workflow.")
 @click.argument("name", required=True)
-@click.argument("step", nargs=-1, required=True, type=click.UNPROCESSED)
-def group(
+@click.argument("steps", nargs=-1, required=True, type=click.UNPROCESSED)
+def compose(
     description,
     mappings,
     defaults,
@@ -484,15 +484,15 @@ def group(
     link_all,
     keyword,
     name,
-    step,
+    steps,
 ):
-    """Create a grouped workflow consisting of multiple steps."""
+    """Create a composite workflow consisting of multiple steps."""
 
     if map_all:
-        map_inputs, map_outputs, map_params = True
+        map_inputs = map_outputs = map_params = True
 
     result = (
-        group_workflow_command()
+        compose_workflow_command()
         .build()
         .execute(
             name=name,
@@ -506,9 +506,9 @@ def group(
             map_params=map_params,
             link_all=link_all,
             keywords=keyword,
-            workflows=step,
+            steps=steps,
         )
     )
 
     if not result.error:
-        _print_grouped_run(result.output)
+        _print_composite_plan(result.output)

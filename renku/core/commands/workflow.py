@@ -30,8 +30,8 @@ from renku.core.management.command_builder.command import Command
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.value_resolution import apply_run_values
 from renku.core.metadata.database import Database
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.converters.cwl import CWLConverter
-from renku.core.models.workflow.grouped_run import GroupedRun
 from renku.core.utils import communication
 
 
@@ -127,15 +127,12 @@ def create_workflow_command():
 
 
 @inject.autoparams()
-def _show_workflow(
-    name_or_id: str,
-    database: Database,
-):
+def _show_workflow(name_or_id: str, database: Database):
     """Show the details of a workflow."""
-    workflow = database.get("plans").get(name_or_id)
+    workflow = database["plans"].get(name_or_id)
 
     if not workflow:
-        workflow = database.get("plans-by-name").get(name_or_id)
+        workflow = database["plans-by-name"].get(name_or_id)
 
     return workflow
 
@@ -158,76 +155,78 @@ def _group_workflow(
     map_params: bool,
     link_all: bool,
     keywords: List[str],
-    workflows: List[str],
+    steps: List[str],
     database: Database,
-):
-    """Group workflows into a GroupedRun."""
+) -> CompositePlan:
+    """Group workflows into a CompositePlan."""
 
-    if database.get("plans-by-name").get(name):
+    if database["plans-by-name"].get(name):
         raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
 
     child_workflows = []
 
-    for workflow_name_or_id in workflows:
-        child_workflow = database.get("plans").get(workflow_name_or_id)
+    for workflow_name_or_id in steps:
+        child_workflow = database["plans"].get(workflow_name_or_id)
 
         if not child_workflow:
-            child_workflow = database.get("plans-by-name").get(workflow_name_or_id)
+            child_workflow = database["plans-by-name"].get(workflow_name_or_id)
 
         if not child_workflow:
             raise errors.ObjectNotFoundError(workflow_name_or_id)
 
         child_workflows.append(child_workflow)
 
-    run = GroupedRun(
-        description=description, id=GroupedRun.generate_id(), keywords=keywords, name=name, plans=child_workflows
+    plan = CompositePlan(
+        description=description, id=CompositePlan.generate_id(), keywords=keywords, name=name, plans=child_workflows
     )
 
     if mappings:
-        run.set_mappings_from_strings(mappings)
+        plan.set_mappings_from_strings(mappings)
 
     if defaults:
-        run.set_mapping_defaults(defaults)
+        plan.set_mapping_defaults(defaults)
 
     if links:
-        run.set_links_from_strings(links)
-        graph = ExecutionGraph(run)
+        plan.set_links_from_strings(links)
+        graph = ExecutionGraph(plan)
         cycles = graph.cycles
         if cycles:
+            cycles = [map(lambda x: x.name, cycle) for cycle in cycles]
             raise errors.GraphCycleError(cycles)
 
     if param_descriptions:
-        run.set_mapping_descriptions(param_descriptions)
+        plan.set_mapping_descriptions(param_descriptions)
 
     if map_inputs:
-        run.map_all_inputs()
+        plan.map_all_inputs()
 
     if map_outputs:
-        run.map_all_outputs()
+        plan.map_all_outputs()
 
     if map_params:
-        run.map_all_parameters()
+        plan.map_all_parameters()
 
     if link_all:
         # NOTE: propagate values to for linking to use
-        apply_run_values(run)
+        apply_run_values(plan)
 
-        graph = ExecutionGraph(run, virtual_links=True)
+        graph = ExecutionGraph(plan, virtual_links=True)
 
         cycles = graph.cycles
         if cycles:
+            cycles = [map(lambda x: x.name, cycle) for cycle in cycles]
             raise errors.GraphCycleError(cycles)
 
         for virtual_link in graph.virtual_links:
-            run.add_link(virtual_link[0], [virtual_link[1]])
+            plan.add_link(virtual_link[0], [virtual_link[1]])
 
-    database.get("plans")[run.id] = run
-    database.get("plans-by-name")[run.name] = run
+    database["plans"].add(plan)
+    database["plans-by-name"].add(plan)
 
-    return run
+    return plan
 
 
-def group_workflow_command():
+def compose_workflow_command():
     """Command that creates a group of several workflows."""
     return (
         Command().command(_group_workflow).require_migration().require_clean().with_database(write=True).with_commit()

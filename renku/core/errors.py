@@ -18,6 +18,7 @@
 """Renku exceptions."""
 
 import os
+from typing import List
 
 import click
 import requests
@@ -487,7 +488,7 @@ class ObjectNotFoundError(RenkuException):
 class ParameterNotFoundError(RenkuException):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
-    def __init__(self, parameter, workflow):
+    def __init__(self, parameter: str, workflow: str):
         """Embed exception and build a custom message."""
         super().__init__(f"Cannot find parameter '{parameter}' on workflow {workflow}")
 
@@ -495,7 +496,7 @@ class ParameterNotFoundError(RenkuException):
 class MappingExistsError(RenkuException):
     """Raised when a parameter mapping exists already."""
 
-    def __init__(self, existing_mappings):
+    def __init__(self, existing_mappings: List[str]):
         """Embed exception and build a custom message."""
         existing = "\n\t".join(existing_mappings)
         super().__init__(
@@ -507,7 +508,7 @@ class MappingExistsError(RenkuException):
 class ChildWorkflowNotFoundError(RenkuException):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
-    def __init__(self, child, workflow):
+    def __init__(self, child: str, workflow: str):
         """Embed exception and build a custom message."""
         super().__init__(f"Cannot find child step '{child}' on workflow {workflow}")
 
@@ -515,7 +516,7 @@ class ChildWorkflowNotFoundError(RenkuException):
 class ParameterLinkError(RenkuException):
     """Raised when a parameter link cannot be created."""
 
-    def __init__(self, reason):
+    def __init__(self, reason: str):
         """Embed exception and build a custom message."""
         super().__init__(f"Can't create parameter link, reason: {reason}")
 
@@ -523,7 +524,7 @@ class ParameterLinkError(RenkuException):
 class GraphCycleError(RenkuException):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
-    def __init__(self, cycles):
+    def __init__(self, cycles: List[List[str]]):
         """Embed exception and build a custom message."""
-        cycles = "), (".join(", ".join(map(lambda x: x.name, cycle)) for cycle in cycles)
+        cycles = "), (".join(", ".join(cycle) for cycle in cycles)
         super().__init__(f"Cycles detected in execution graph: ({cycles})")

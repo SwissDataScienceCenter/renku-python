@@ -20,7 +20,7 @@
 from renku.core.metadata.database import Database
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.activity import Activity
-from renku.core.models.workflow.plan import Plan
+from renku.core.models.workflow.plan import AbstractPlan
 
 
 def initialize_database(database: Database):
@@ -28,7 +28,8 @@ def initialize_database(database: Database):
     database.clear()
 
     database.add_index(name="activities", object_type=Activity, attribute="id")
-    database.add_index(name="plans", object_type=Plan, attribute="id")
+    database.add_index(name="plans", object_type=AbstractPlan, attribute="id")
+    database.add_index(name="plans-by-name", object_type=AbstractPlan, attribute="name")
     database.add_index(name="datasets", object_type=Dataset, attribute="name")
     database.add_index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
 

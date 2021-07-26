@@ -209,7 +209,7 @@ def renku_scheme(version):
     if version.exact or version.node is None:
         return version.format_choice("", "+dirty")
     else:
-        return version.format_choice("+{node}", "+{node}+dirty")
+        return version.format_choice("+{node}", "+{node}.dirty")
 
 
 setup(

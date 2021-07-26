@@ -25,13 +25,13 @@ import pytest
 from renku.core import errors
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.value_resolution import apply_run_values
-from renku.core.models.workflow.grouped_run import GroupedRun
+from renku.core.models.workflow.composite_plan import CompositePlan
 
 
 def _get_nested_actual_values(run):
     """Get a dict of parameter -> actual values mappings from a run."""
     result = dict()
-    if isinstance(run, GroupedRun):
+    if isinstance(run, CompositePlan):
         for step in run.plans:
             result[step.name] = _get_nested_actual_values(step)
     else:
@@ -41,10 +41,10 @@ def _get_nested_actual_values(run):
     return result
 
 
-def test_grouped_run_resolve_relative_mapping(grouped_run):
+def test_composite_plan_resolve_relative_mapping(composite_plan):
     """Test if resolving a relative command parameter mapping works."""
 
-    grouped, run1, run2 = grouped_run
+    grouped, run1, run2 = composite_plan
 
     assert grouped.resolve_mapping_path("@step1.@input1")[0] == run1.inputs[0]
     assert grouped.resolve_mapping_path("@step1.@input2")[0] == run1.inputs[1]
@@ -61,10 +61,10 @@ def test_grouped_run_resolve_relative_mapping(grouped_run):
     assert grouped.resolve_mapping_path("@step2.@param2")[0] == run2.parameters[1]
 
 
-def test_grouped_run_resolve_absolute_mapping(grouped_run):
+def test_composite_plan_resolve_absolute_mapping(composite_plan):
     """Test if resolving an absolute command parameter mapping works."""
 
-    grouped, run1, run2 = grouped_run
+    grouped, run1, run2 = composite_plan
 
     assert grouped.resolve_mapping_path("run1.run1_input1")[0] == run1.inputs[0]
     assert grouped.resolve_mapping_path("run1.run1_input2")[0] == run1.inputs[1]
@@ -92,9 +92,9 @@ def test_grouped_run_resolve_absolute_mapping(grouped_run):
         (["prop1=@step1.@input1", "prop2=prop1"], {"prop1", "prop2"}),
     ],
 )
-def test_grouped_run_create_mapping(grouped_run, mappings, names):
+def test_composite_plan_create_mapping(composite_plan, mappings, names):
     """Test parsing of mapping strings."""
-    grouped, _, _ = grouped_run
+    grouped, _, _ = composite_plan
 
     grouped.set_mappings_from_strings(mappings)
 
@@ -103,13 +103,13 @@ def test_grouped_run_create_mapping(grouped_run, mappings, names):
     assert created_mappings == names
 
 
-def test_grouped_run_create_mapping_nested(grouped_run):
+def test_composite_plan_create_mapping_nested(composite_plan):
     """Test parsing of mapping strings."""
-    grouped, run1, _ = grouped_run
+    grouped, run1, _ = composite_plan
 
     grouped.set_mappings_from_strings(["prop1=@step1.@input1", "prop2=@step2.@output2"])
 
-    grouped2 = GroupedRun(id=GroupedRun.generate_id(), plans=[run1, grouped], name="grouped2")
+    grouped2 = CompositePlan(id=CompositePlan.generate_id(), plans=[run1, grouped], name="grouped2")
 
     with pytest.raises(errors.MappingExistsError):
         grouped2.set_mappings_from_strings(["prop2=grouped1.@mapping1", "prop3=grouped1.prop1"])
@@ -124,10 +124,10 @@ def test_grouped_run_create_mapping_nested(grouped_run):
     assert next(filter(lambda m: m.name == "nested", grouped2.mappings)).mapped_parameters[0] == run1.inputs[1]
 
 
-def test_grouped_run_set_defaults(grouped_run):
+def test_composite_plan_set_defaults(composite_plan):
     """Test setting default values on grouping runs."""
 
-    grouped, run1, run2 = grouped_run
+    grouped, run1, run2 = composite_plan
 
     grouped.set_mappings_from_strings(["prop1=@step1.@input1", "prop2=run2.@output2"])
 
@@ -142,10 +142,10 @@ def test_grouped_run_set_defaults(grouped_run):
     assert run2.outputs[1].default_value != "abcdefg"
 
 
-def test_grouped_run_set_description(grouped_run):
+def test_composite_plan_set_description(composite_plan):
     """Test setting description on grouping runs."""
 
-    grouped, run1, run2 = grouped_run
+    grouped, run1, run2 = composite_plan
 
     grouped.set_mappings_from_strings(["prop1=@step1.@input1", "prop2=run2.@output2"])
 
@@ -158,10 +158,10 @@ def test_grouped_run_set_description(grouped_run):
         grouped.set_mapping_descriptions(["@step1.@param1=xyz", "run2.run2_input1=7.89"])
 
 
-def test_grouped_run_map_all_inputs(grouped_run):
+def test_composite_plan_map_all_inputs(composite_plan):
     """Test automatic mapping of all child inputs."""
 
-    grouped, run1, run2 = grouped_run
+    grouped, run1, run2 = composite_plan
 
     grouped.map_all_inputs()
     assert len(grouped.mappings) == 4
@@ -171,10 +171,10 @@ def test_grouped_run_map_all_inputs(grouped_run):
     assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.inputs[1])
 
 
-def test_grouped_run_map_all_outputs(grouped_run):
+def test_composite_plan_map_all_outputs(composite_plan):
     """Test automatic mapping of all child outputs."""
 
-    grouped, run1, run2 = grouped_run
+    grouped, run1, run2 = composite_plan
 
     grouped.map_all_outputs()
     assert len(grouped.mappings) == 4
@@ -184,10 +184,10 @@ def test_grouped_run_map_all_outputs(grouped_run):
     assert any(m for m in grouped.mappings if m.mapped_parameters[0] == run2.outputs[1])
 
 
-def test_grouped_run_map_all_parameters(grouped_run):
+def test_composite_plan_map_all_parameters(composite_plan):
     """Test automatic mapping of all child parameters."""
 
-    grouped, run1, run2 = grouped_run
+    grouped, run1, run2 = composite_plan
 
     grouped.map_all_parameters()
     assert len(grouped.mappings) == 4
@@ -402,10 +402,10 @@ def test_grouped_run_map_all_parameters(grouped_run):
         ),
     ],
 )
-def test_grouped_run_actual_values(grouped_run, mappings, defaults, values, expected):
+def test_composite_plan_actual_values(composite_plan, mappings, defaults, values, expected):
     """Test resolving actual values on a grouped run."""
 
-    grouped, _, _ = grouped_run
+    grouped, _, _ = composite_plan
 
     grouped.set_mappings_from_strings(mappings)
     grouped.set_mapping_defaults(defaults)
@@ -428,10 +428,10 @@ def test_grouped_run_actual_values(grouped_run, mappings, defaults, values, expe
         (["@step2.@output2=@step1.@input1", "@step1.@output1=@step2.@input1"], False, True),
     ],
 )
-def test_grouped_run_links(grouped_run, links, raises, cycles):
+def test_composite_plan_links(composite_plan, links, raises, cycles):
     """Test adding links to grouped runs."""
 
-    grouped, _, _ = grouped_run
+    grouped, _, _ = composite_plan
     grouped.set_mappings_from_strings(["prop1=@step1.@input1", "prop2=run2.@output2"])
 
     if raises:
@@ -484,9 +484,9 @@ def test_grouped_run_links(grouped_run, links, raises, cycles):
         (["map=@step1.@input1,@step2.@input2,@step1.@output1,@step2.@output2"], ["map=myfile.txt"], True, True, True),
     ],
 )
-def test_grouped_run_auto_links(grouped_run, mappings, defaults, links, raises, cycles):
+def test_composite_plan_auto_links(composite_plan, mappings, defaults, links, raises, cycles):
     """Test automatically detecting links between steps."""
-    grouped, _, _ = grouped_run
+    grouped, _, _ = composite_plan
 
     if raises:
         maybe_raises = pytest.raises(errors.ParameterLinkError)

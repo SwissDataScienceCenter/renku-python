@@ -20,12 +20,12 @@
 from typing import Any, Dict, Union
 
 from renku.core import errors
-from renku.core.models.workflow.grouped_run import GroupedRun
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.parameter import ParameterMapping
 from renku.core.models.workflow.plan import Plan
 
 
-def apply_run_values(workflow: Union[GroupedRun, Plan], values: Dict[str, Any] = None) -> None:
+def apply_run_values(workflow: Union[CompositePlan, Plan], values: Dict[str, Any] = None) -> None:
     """Applies values and default_values to a potentially nested workflow.
 
     Order of precedence is as follows (from lowest to highest):
@@ -54,7 +54,7 @@ def apply_single_run_values(workflow: Plan, values: Dict[str, Any] = None) -> No
     return workflow
 
 
-def apply_composite_run_values(workflow: GroupedRun, values: Dict[str, Any] = None) -> None:
+def apply_composite_run_values(workflow: CompositePlan, values: Dict[str, Any] = None) -> None:
     """Applies values and default_values to a nested workflow."""
 
     if values:
@@ -91,8 +91,8 @@ def apply_parameter_defaults(mapping: ParameterMapping) -> None:
                     mapped_to.actual_value = mapping.default_value
 
 
-def apply_parameters_values(workflow: GroupedRun, values: Dict[str, str]) -> None:
-    """Apply values to mappings of a GroupedRun."""
+def apply_parameters_values(workflow: CompositePlan, values: Dict[str, str]) -> None:
+    """Apply values to mappings of a CompositePlan."""
     for k, v in values.items():
         mapping = next((m for m in workflow.mappings if m.name == k), None)
 
@@ -102,12 +102,12 @@ def apply_parameters_values(workflow: GroupedRun, values: Dict[str, str]) -> Non
         mapping.actual_value = v
 
 
-def apply_parameter_links(workflow: GroupedRun) -> None:
+def apply_parameter_links(workflow: CompositePlan) -> None:
     """Apply values from parameter links."""
     for link in workflow.links:
         for sink in link.sinks:
             sink.actual_value = link.source.actual_value
 
     for plan in workflow.plans:
-        if isinstance(plan, GroupedRun):
+        if isinstance(plan, CompositePlan):
             apply_parameter_links(plan)

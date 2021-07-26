@@ -19,13 +19,12 @@
 
 from collections import defaultdict
 from datetime import datetime
-from typing import Callable, Dict, List, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from marshmallow import EXCLUDE
 
 from renku.core import errors
-from renku.core.metadata.database import Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.workflow.parameter import (
     CommandInput,
@@ -37,10 +36,10 @@ from renku.core.models.workflow.parameter import (
     ParameterMapping,
     ParameterMappingSchema,
 )
-from renku.core.models.workflow.plan import Plan, PlanSchema
+from renku.core.models.workflow.plan import MAX_GENERATED_NAME_LENGTH, AbstractPlan, Plan, PlanSchema
 
 
-class GroupedRun(Persistent):
+class CompositePlan(AbstractPlan):
     """A plan containing child plans."""
 
     def __init__(
@@ -51,7 +50,7 @@ class GroupedRun(Persistent):
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str,
-        plans: List[Plan] = None,
+        plans: List[Union["CompositePlan", Plan]] = None,
         mappings: List[ParameterMapping] = None,
         links: List[ParameterLink] = None,
     ):
@@ -61,16 +60,16 @@ class GroupedRun(Persistent):
         self.keywords: List[str] = keywords or []
         self.name: str = name
 
-        Plan.validate_name(name)
+        AbstractPlan.validate_name(name)
 
-        self.plans: List[Plan] = plans
+        self.plans: List[Union["CompositePlan", Plan]] = plans
         self.mappings: List[ParameterMapping] = mappings or []
         self.links: List[ParameterLink] = links or []
 
     @staticmethod
     def generate_id(uuid: str = None) -> str:
         """Generate an identifier for Plan."""
-        uuid = uuid or str(uuid4())
+        uuid = uuid or uuid4().hex
         return f"/plans/{uuid}"
 
     def _find_existing_mapping(
@@ -197,14 +196,13 @@ class GroupedRun(Persistent):
         if parameter in self.mappings:
             return True
 
-        found = False
-
         for plan in self.plans:
-            found = found or plan.find_parameter(parameter)
+            if plan.find_parameter(parameter):
+                return True
 
-        return found
+        return False
 
-    def find_parameter_workflow(self, parameter: CommandParameterBase) -> Union["GroupedRun", Plan]:
+    def find_parameter_workflow(self, parameter: CommandParameterBase) -> Optional[Union["CompositePlan", Plan]]:
         """Return the workflow a parameter belongs to."""
         if parameter in self.mappings:
             return self
@@ -223,7 +221,7 @@ class GroupedRun(Persistent):
                 yield link, self
 
         for plan in self.plans:
-            if isinstance(plan, GroupedRun):
+            if isinstance(plan, CompositePlan):
                 yield plan.find_link_by_target(target)
 
     def _map_all(self, selector: Callable[[Plan], CommandParameterBase]) -> None:
@@ -282,7 +280,7 @@ class GroupedRun(Persistent):
             mapping = self.resolve_direct_reference(target)
             mapping.description = value.strip(' "')
 
-    def resolve_mapping_path(self, mapping_path: str) -> CommandParameterBase:
+    def resolve_mapping_path(self, mapping_path: str) -> Tuple[CommandParameterBase, Union["CompositePlan", Plan]]:
         """Resolve a mapping path to its reference parameter."""
 
         parts = mapping_path.split(".", maxsplit=1)
@@ -298,7 +296,7 @@ class GroupedRun(Persistent):
                 workflow = self.plans[int(prefix[5:]) - 1]
             except (ValueError, IndexError):
                 raise errors.ParameterNotFoundError(mapping_path, self.name)
-            if isinstance(workflow, GroupedRun):
+            if isinstance(workflow, CompositePlan):
                 return workflow.resolve_mapping_path(suffix)
             else:
                 return workflow.resolve_direct_reference(suffix), workflow
@@ -323,15 +321,18 @@ class GroupedRun(Persistent):
 
         raise errors.ParameterNotFoundError(reference, self.name)
 
+    def _get_default_name(self) -> str:
+        return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
-class GroupedRunSchema(JsonLDSchema):
+
+class CompositePlanSchema(JsonLDSchema):
     """Plan schema."""
 
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork, renku.GroupedRun]
-        model = GroupedRun
+        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork, renku.CompositePlan]
+        model = CompositePlan
         unknown = EXCLUDE
 
     description = fields.String(schema.description, missing=None)
@@ -340,5 +341,5 @@ class GroupedRunSchema(JsonLDSchema):
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, add_value_types=True)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
-    plans = Nested(renku.hasSubprocess, [PlanSchema, "GroupedRunSchema"], many=True)
+    plans = Nested(renku.hasSubprocess, [PlanSchema, "CompositePlanSchema"], many=True)
     links = Nested(renku.workflowLinks, [ParameterLinkSchema], many=True, missing=None)

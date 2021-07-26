@@ -149,7 +149,8 @@ def _process_workflows(
 
         for activity in activity_collection.activities:
             database["activities"].add(activity)
-            # database["plans"].add(activity.association.plan)  # TODO: Plan should be added by dependency_graph
+            database["plans"].add(activity.association.plan)
+            database["plans-by-name"].add(activity.association.plan)
 
         if remove:
             try:
