@@ -36,7 +36,9 @@ from renku.core.commands.git import set_git_home
 from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import Command, inject, update_injected_client
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.metadata import initialize_database
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
+from renku.core.metadata.database import Database
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
 from renku.version import __version__, is_release
@@ -206,7 +208,7 @@ def create_backup_branch(path, client: LocalClient):
 
                 for ref in client.repo.references:
                     if branch_name == ref.name:
-                        branch_name = f"pre_renku_init_{hexsha}_{uuid4().hexsha}"
+                        branch_name = f"pre_renku_init_{hexsha}_{uuid4().hex}"
                         break
 
                 with client.worktree(
@@ -309,6 +311,11 @@ def _init(
 
     branch_name = create_backup_branch(path=path)
 
+    # Initialize an empty database
+    database = Database.from_path(client.database_path)
+    initialize_database(database)
+    database.commit()
+
     # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")
     with client.lock:
@@ -400,8 +407,8 @@ def fetch_template(template_source, template_ref):
     else:
         from renku import __version__
 
-        if template_ref:
-            raise errors.ParameterError("Templates included in renku don't support specifying a template_ref")
+        # if template_ref:
+        #     raise errors.ParameterError("Templates included in renku don't support specifying a template_ref")
 
         template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
         template_manifest = read_template_manifest(template_folder)

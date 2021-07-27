@@ -399,7 +399,7 @@ class CommandLineToolFactory(object):
     def guess_outputs(self, candidates):
         """Yield detected output and changed command input parameter."""
         # TODO what to do with duplicate paths & inputs with same defaults
-        candidates = list(candidates)
+        candidates = set(candidates)
         tree = DirectoryTree.from_list(candidates)
 
         input_candidates = {}
@@ -443,11 +443,12 @@ class CommandLineToolFactory(object):
                         )
 
                 # Remove files from the input directory
-                candidates[:] = (path for path in candidates if path not in subpaths)
+                candidates = {path for path in candidates if path not in subpaths}
                 # Include input path in the candidates to check
-                candidates.append(str(input_path))
+                input_path = str(input_path)
+                candidates.add(input_path)
 
-                input_candidates[str(input_path)] = input
+                input_candidates[input_path] = input
             elif input.type not in PATH_OBJECTS:
                 # Input need to be changed if an output is detected
                 input_candidates[str(input_path)] = input

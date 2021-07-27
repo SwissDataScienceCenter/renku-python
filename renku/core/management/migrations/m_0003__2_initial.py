@@ -23,8 +23,9 @@ from pathlib import Path
 
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrations.models.v3 import Collection, Dataset, Project, get_client_datasets
+from renku.core.management.migrations.utils import generate_dataset_id
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.models.datasets import generate_dataset_id, generate_default_name
+from renku.core.models.dataset import generate_default_name
 from renku.core.models.entities import generate_file_id, generate_label
 from renku.core.models.refs import LinkReference
 from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
@@ -71,7 +72,10 @@ def _migrate_datasets_pre_v0_3(client):
     if client.is_using_temporary_datasets_path():
         return
 
+    changed = False
+
     for old_path in get_pre_0_3_4_datasets_metadata(client):
+        changed = True
         name = str(old_path.parent.relative_to(client.path / DATA_DIR))
 
         dataset = Dataset.from_yaml(old_path, client)
@@ -96,6 +100,14 @@ def _migrate_datasets_pre_v0_3(client):
         Path(old_path).unlink()
         ref = LinkReference.create(name="datasets/{0}".format(name), force=True)
         ref.set_reference(new_path)
+
+    if changed:
+        client._project = None  # NOTE: force reloading of project metadata
+        client.project.version = "3"
+        client.project.to_yaml()
+
+        client.repo.git.add("--all")
+        client.repo.index.commit("renku migrate: committing structural changes")
 
 
 def _migrate_broken_dataset_paths(client):

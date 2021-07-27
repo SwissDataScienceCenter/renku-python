@@ -78,7 +78,7 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
             return result_response(DatasetsUnlinkCtrl.JOB_RESPONSE_SERIALIZER, op_result)
 
         response = {
-            "unlinked": [record.path for record in op_result],
+            "unlinked": [record.entity.path for record in op_result],
             "remote_branch": remote_branch,
         }
 

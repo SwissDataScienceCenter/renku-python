@@ -20,6 +20,7 @@
 import os
 from pathlib import Path
 
+from renku.cli import cli
 from renku.core.models.entities import Collection
 
 
@@ -84,14 +85,14 @@ def test_explicit_outputs_and_std_output_streams(renku_cli, client, subdirectory
     assert 0 == exit_code
 
 
-def test_output_directory_with_output_option(renku_cli, client, subdirectory):
+def test_output_directory_with_output_option(runner, renku_cli, client, subdirectory):
     """Test output directories are not deleted with --output"""
     outdir = os.path.relpath(client.path / "outdir", os.getcwd())
     a_script = ("sh", "-c", 'mkdir -p "$0"; touch "$0/$1"')
-    exit_code, wf = renku_cli("run", *a_script, outdir, "foo")
-    exit_code, _ = renku_cli("run", "--output", outdir, *a_script, outdir, "bar")
+    assert 0 == runner.invoke(cli, ["run", *a_script, outdir, "foo"]).exit_code
+    result = runner.invoke(cli, ["run", "--output", outdir, *a_script, outdir, "bar"], catch_exceptions=False)
 
-    assert 0 == exit_code
+    assert 0 == result.exit_code
     assert (client.path / "outdir" / "foo").exists()
     assert (client.path / "outdir" / "bar").exists()
 
