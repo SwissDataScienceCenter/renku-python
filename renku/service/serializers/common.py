@@ -19,7 +19,8 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import Schema, fields
+import yagup
+from marshmallow import Schema, ValidationError, fields, validates
 
 from renku.service.serializers.rpc import JsonRPCResponse
 
@@ -37,16 +38,16 @@ class RemoteRepositorySchema(Schema):
     git_url = fields.String(description="Remote git repository url.")
     branch = fields.String(description="Remote git branch.")
 
-    # ? Add early validation?
-    # @validates("git_url")
-    # def validate_git_url(self, value):
-    #     """Validates git url."""
-    #     try:
-    #         yagup.parse(value)
-    #     except yagup.exceptions.InvalidURL as e:
-    #         raise ValidationError("Invalid `git_url`") from e
+    @validates("git_url")
+    def validate_git_url(self, value):
+        """Validates git url."""
+        if (value):
+            try:
+                yagup.parse(value)
+            except yagup.exceptions.InvalidURL as e:
+                raise ValidationError("Invalid `git_url`") from e
 
-    #     return value
+        return value
 
 
 class CommitSchema(Schema):

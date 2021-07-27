@@ -20,8 +20,7 @@ import time
 import uuid
 from urllib.parse import urlparse
 
-import yagup
-from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load
 from werkzeug.utils import secure_filename
 
 from renku.core.errors import ConfigurationError
@@ -97,21 +96,7 @@ class RepositoryCloneRequest(RemoteRepositorySchema):
     ref = fields.String(description="Repository reference (branch, commit or tag)", missing=None)
 
 
-class RepositoryCloneContext(RepositoryCloneRequest):
-    """Context schema for a git repository clone."""
-
-    @validates("git_url")
-    def validate_git_url(self, value):
-        """Validates git url."""
-        try:
-            yagup.parse(value)
-        except yagup.exceptions.InvalidURL as e:
-            raise ValidationError("Invalid `git_url`") from e
-
-        return value
-
-
-class ProjectCloneContext(RepositoryCloneContext):
+class ProjectCloneContext(RepositoryCloneRequest):
     """Context schema for project clone."""
 
     # measured in ms
