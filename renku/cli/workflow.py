@@ -523,7 +523,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 )
 def export(workflow_name, format, output, values):
     """Export workflow."""
-    result = export_workflow_command().build().execute(name=workflow_name, format=format, values=values)
+    result = export_workflow_command().build().execute(name_or_id=workflow_name, format=format, values=values)
 
     if not output:
         click.echo(result.output)

@@ -19,7 +19,7 @@
 
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
@@ -33,6 +33,7 @@ from renku.core.management.workflow.concrete_execution_graph import ExecutionGra
 from renku.core.management.workflow.value_resolution import apply_run_values
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.parameter import CommandParameter
+from renku.core.models.workflow.plan import AbstractPlan
 from renku.core.utils import communication
 
 
@@ -47,6 +48,24 @@ def _deref(ref):
     return ref[len("workflows/") :]
 
 
+def _to_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewModel]:
+    if isinstance(workflow, CompositePlan):
+        return CompositePlanViewModel.from_composite_plan(workflow)
+    return PlanViewModel.from_plan(workflow)
+
+
+@inject.autoparams()
+def _find_workflow(name_or_id: str, plan_gateway: IPlanGateway) -> AbstractPlan:
+    workflow = plan_gateway.get_by_id(name_or_id)
+
+    if not workflow:
+        workflow = plan_gateway.get_by_name(name_or_id)
+
+    if not workflow:
+        raise errors.ParameterError(f'The specified workflow "{name_or_id}" cannot be found.')
+    return workflow
+
+
 @inject.autoparams()
 def _list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str]):
     """List or manage workflows with subcommands."""
@@ -55,7 +74,7 @@ def _list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str])
     if format not in WORKFLOW_FORMATS:
         raise errors.UsageError(f'Provided format "{format}" is not supported ({", ".join(WORKFLOW_FORMATS.keys())})"')
 
-    return WORKFLOW_FORMATS[format](workflows.values(), columns=columns)
+    return WORKFLOW_FORMATS[format](list(map(lambda x: _to_view(x), workflows.values())), columns=columns)
 
 
 def list_workflows_command():
@@ -88,18 +107,10 @@ def remove_workflow_command():
     return Command().command(_remove_workflow).require_clean().with_database(write=True).with_commit()
 
 
-@inject.autoparams()
-def _show_workflow(name_or_id: str, plan_gateway: IPlanGateway):
+def _show_workflow(name_or_id: str):
     """Show the details of a workflow."""
-    workflow = plan_gateway.get_by_id(name_or_id)
-
-    if not workflow:
-        workflow = plan_gateway.get_by_name(name_or_id)
-
-    if isinstance(workflow, CompositePlan):
-        return CompositePlanViewModel.from_composite_plan(workflow)
-
-    return PlanViewModel.from_plan(workflow)
+    workflow = _find_workflow(name_or_id)
+    return _to_view(workflow)
 
 
 def show_workflow_command():
@@ -254,12 +265,10 @@ def edit_workflow_command():
 
 
 @inject.autoparams()
-def _export_workflow(name, plan_gateway: IPlanGateway, client: LocalClient, format: str, values: Optional[str]):
+def _export_workflow(name_or_id, client: LocalClient, format: str, values: Optional[str]):
     """Export a workflow to a given format."""
 
-    workflows = plan_gateway.get_newest_plans_by_names()
-    if name not in workflows.keys():
-        errors.ParameterError(f'The specified workflow is "{name}" is not an active workflow.')
+    workflow = _find_workflow(name_or_id)
 
     from renku.core.plugins.pluginmanager import get_plugin_manager
 
@@ -274,7 +283,6 @@ def _export_workflow(name, plan_gateway: IPlanGateway, client: LocalClient, form
             f"The specified format '{format}' is supported by more than one export plugins!"
         )
 
-    workflow = workflows[name]
     if values:
         from renku.core.models import jsonld as jsonld
 

@@ -21,7 +21,7 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
-from renku.core.incubation.graph import FORMATS, export_graph, remove_workflow
+from renku.core.incubation.graph import FORMATS, export_graph
 
 
 @click.group(hidden=True)

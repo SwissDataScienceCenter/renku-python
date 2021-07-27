@@ -18,17 +18,21 @@
 """Converter for workflows to cwl."""
 
 import os
+import re
 import tempfile
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 from uuid import uuid4
 
 import cwlgen
 
+from renku.core import errors
+from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.models.entities import Collection
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.converters import WorkflowConverter
-from renku.core.models.workflow.parameters import CommandOutput, CommandParameter
+from renku.core.models.workflow.parameters import CommandInput, CommandOutput, CommandParameter
 from renku.core.models.workflow.plan import Plan
 from renku.core.plugins import hookimpl
 
@@ -432,7 +436,7 @@ class CWLConverter(object):
 
 
 class CWLExporter(WorkflowConverter):
-    """Converts a ``Plan`` to cwl format."""
+    """Converts a ``CompositePlan`` or a ``Plan`` to cwl format."""
 
     @hookimpl
     def workflow_format(self):
@@ -440,7 +444,122 @@ class CWLExporter(WorkflowConverter):
         return (self, ["cwl"])
 
     @hookimpl
-    def workflow_convert(self, workflow: Plan, basedir: Path, output_format: Optional[str]):
+    def workflow_convert(self, workflow: Union[CompositePlan, Plan], basedir: Path, output_format: Optional[str]):
+        """Converts the specified workflow to cwl format."""
+        if isinstance(workflow, CompositePlan):
+            return CWLExporter._convert_composite(workflow=workflow, basedir=basedir, output_format=output_format)
+        else:
+            return CWLExporter._convert_step(workflow=workflow, basedir=basedir, output_format=output_format)
+
+    @staticmethod
+    def _sanitize_id(id):
+        return re.sub(r"/|-", "_", id)
+
+    def _recurse_plans(workflow: Union[CompositePlan, Plan], index):
+        """Recursively get actual steps (not ``WorkflowRun``) for execution."""
+        if isinstance(workflow, Plan):
+            return [(index, workflow)], index + 1
+
+        workflows = []
+        for s in workflow.plans:
+            result, index = CWLExporter._recurse_plans(s, index)
+            workflows.extend(result)
+
+        return workflows, index
+
+    @staticmethod
+    def _convert_composite(workflow: CompositePlan, basedir: Path, output_format: Optional[str]):
+        """Converts a composite plan to a cwl file."""
+        inputs = {}
+        arguments = {}
+        outputs = {}
+        consumed_outputs = set()
+        steps = []
+
+        input_index = 1
+        argument_index = 1
+
+        graph = ExecutionGraph(workflow, virtual_links=True)
+        cycles = graph.cycles
+        if cycles:
+            cycles = [map(lambda x: x.name, cycle) for cycle in cycles]
+            raise errors.GraphCycleError(cycles)
+
+        out = []
+        for i, wf in enumerate(graph.workflow_graph.nodes):
+            cwl_output = CWLExporter._convert_step(workflow=wf, basedir=basedir, output_format=output_format)
+            out.append(cwl_output)
+            step = WorkflowStep("step_{}".format(i), "step_{}".format(i))
+
+            for input in wf.inputs:
+                input_path = input.default_value
+
+                sanitized_id = CWLExporter._sanitize_id(input.id)
+                if input_path in inputs:
+                    # already used as top-level input elsewhere, reuse
+                    step.inputs.append(cwlgen.WorkflowStepInput(sanitized_id, source=inputs[input_path]))
+                elif input_path in outputs:
+                    # output of a previous step, refer to it
+                    consumed_outputs.add(outputs[input_path][0])
+                    step.inputs.append(
+                        cwlgen.WorkflowStepInput(
+                            sanitized_id, source="{}/{}".format(outputs[input_path][1], outputs[input_path][0])
+                        )
+                    )
+                else:
+                    # input isn't output and doesn't exist yet, add new
+                    inputs[input_path] = "input_{}".format(input_index)
+                    step.inputs.append(cwlgen.WorkflowStepInput(sanitized_id, source=inputs[input_path]))
+                    input_index += 1
+
+            for parameter in wf.parameters:
+                argument_id = "argument_{}".format(argument_index)
+                arguments[argument_id] = parameter.default_value
+                step.inputs.append(cwlgen.WorkflowStepInput(CWLExporter._sanitize_id(parameter.id), source=argument_id))
+                argument_index += 1
+
+            for output in wf.outputs:
+                sanitized_id = CWLExporter._sanitize_id(output.id)
+
+                if output.mapped_to:
+                    sanitized_id = "output_{}".format(output.mapped_to.stream_type)
+                outputs[output.default_value] = (sanitized_id, step.id)
+                step.out.append(cwlgen.WorkflowStepOutput(sanitized_id))
+
+            steps.append(step)
+
+        workflow_object = cwlgen.Workflow(str(uuid4()), cwl_version="v1.0")
+        workflow_object.hints = []
+        workflow_object.requirements = []
+
+        # check types of paths and add as top level inputs/outputs
+        for path, id_ in inputs.items():
+            type_ = "Directory" if os.path.isdir(path) else "File"
+            workflow_object.inputs.append(
+                cwlgen.InputParameter(
+                    id_,
+                    param_type=type_,
+                    default={"path": os.path.abspath(os.path.join(basedir, path)), "class": type_},
+                )
+            )
+
+        for id_, value in arguments.items():
+            value, type_ = _get_argument_type(value)
+            workflow_object.inputs.append(cwlgen.InputParameter(id_, param_type=type_, default=value))
+
+        for index, (path, (id_, step_id)) in enumerate(outputs.items(), 1):
+            type_ = "Directory" if os.path.isdir(path) else "File"
+            workflow_object.outputs.append(
+                cwlgen.WorkflowOutputParameter(
+                    "output_{}".format(index), output_source="{}/{}".format(step_id, id_), param_type=type_
+                )
+            )
+        workflow_object.steps.extend(steps)
+        out.append(workflow_object.export_string())
+        return "---\n".join(out)
+
+    @staticmethod
+    def _convert_step(workflow: Plan, basedir: Path, output_format: Optional[str]):
         """Converts a single workflow step to a cwl file."""
         stdin, stdout, stderr = None, None, None
 
@@ -482,17 +601,17 @@ class CWLExporter(WorkflowConverter):
                 )
                 dirents.append(path)
                 jsrequirement = True
-            outp, arg = CWLConverter._convert_output(output)
+            outp, arg = CWLExporter._convert_output(output)
             tool_object.outputs.append(outp)
             if arg:
                 tool_object.inputs.append(arg)
 
         for input_ in inputs:
-            tool_input = CWLConverter._convert_input(input_, basedir)
+            tool_input = CWLExporter._convert_input(input_, basedir)
 
             workdir_req.listing.append(
                 cwlgen.InitialWorkDirRequirement.Dirent(
-                    entry="$(inputs.{})".format(tool_input.id), entryname=input_.consumes.path, writable=False
+                    entry="$(inputs.{})".format(tool_input.id), entryname=input_.default_value, writable=False
                 )
             )
 
@@ -542,7 +661,7 @@ class CWLExporter(WorkflowConverter):
 
     @staticmethod
     def _convert_parameter(parameter: CommandParameter):
-        """Converts an argument to a CWL input."""
+        """Converts an parameter to a CWL input."""
         value, type_ = _get_argument_type(parameter.default_value)
 
         separate = None
@@ -556,8 +675,84 @@ class CWLExporter(WorkflowConverter):
                 separate = True
 
         return cwlgen.CommandInputParameter(
-            parameter.id.replace("/", "_"),
+            CWLExporter._sanitize_id(parameter.id),
             param_type=type_,
             input_binding=cwlgen.CommandLineBinding(position=parameter.position, prefix=prefix, separate=separate),
             default=value,
+        )
+
+    @staticmethod
+    def _convert_input(input: CommandInput, basedir):
+        """Converts an input to a CWL input."""
+        type_ = "File"
+
+        sanitized_id = CWLExporter._sanitize_id(input.id)
+        if input.mapped_to:
+            sanitized_id = "input_stdin"
+
+        separate = None
+        prefix = None
+        if input.prefix:
+            prefix = input.prefix
+            separate = False
+
+            if prefix.endswith(" "):
+                prefix = prefix[:-1]
+                separate = True
+
+        return cwlgen.CommandInputParameter(
+            sanitized_id,
+            param_type=type_,
+            input_binding=cwlgen.CommandLineBinding(position=input.position, prefix=prefix, separate=separate),
+            default={"path": os.path.abspath(os.path.join(basedir, input.default_value)), "class": type_},
+        )
+
+    @staticmethod
+    def _convert_output(output: CommandInput):
+        """Converts an output to a CWL output."""
+        if output.mapped_to:
+            return (
+                cwlgen.CommandOutputParameter(
+                    "output_{}".format(output.mapped_to.stream_type),
+                    param_type=output.mapped_to.stream_type,
+                    streamable=False,
+                ),
+                None,
+            )
+
+        # type_ = "Directory" if isinstance(entity, Collection) else "File"
+        type_ = "File"
+
+        sanitized_id = CWLExporter._sanitize_id(output.id)
+
+        if output.position:
+            # output is specified as a parameter, create an input as well
+            separate = None
+            prefix = None
+            if output.prefix:
+                prefix = output.prefix
+                separate = False
+
+                if prefix.endswith(" "):
+                    prefix = prefix[:-1]
+                    separate = True
+
+            arg = cwlgen.CommandInputParameter(
+                "{}_arg".format(sanitized_id),
+                param_type="string",
+                input_binding=cwlgen.CommandLineBinding(position=output.position, prefix=prefix, separate=separate),
+                default=output.default_value,
+            )
+            outp = cwlgen.CommandOutputParameter(
+                sanitized_id,
+                param_type=type_,
+                output_binding=cwlgen.CommandOutputBinding(glob="$(inputs.{})".format(arg.id)),
+            )
+            return outp, arg
+
+        return (
+            cwlgen.CommandOutputParameter(
+                sanitized_id, param_type=type_, output_binding=cwlgen.CommandOutputBinding(glob=output.default_value)
+            ),
+            None,
         )

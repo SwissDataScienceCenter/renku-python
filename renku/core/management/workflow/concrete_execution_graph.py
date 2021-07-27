@@ -141,8 +141,8 @@ class ExecutionGraph:
                     workflow_graph.add_node(node)
                 continue
 
-            target = self.graph.successors(node)[0]
-            source = self.graph.predecessors(self.graph.predecessors(node)[0])[0]
+            target = next(self.graph.successors(node), None)
+            source = next(self.graph.predecessors(next(self.graph.predecessors(node), None)), None)
             workflow_graph.add_edge(source, target)
 
         return workflow_graph
