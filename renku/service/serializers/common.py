@@ -41,7 +41,7 @@ class RemoteRepositorySchema(Schema):
     @validates("git_url")
     def validate_git_url(self, value):
         """Validates git url."""
-        if (value):
+        if value:
             try:
                 yagup.parse(value)
             except yagup.exceptions.InvalidURL as e:
