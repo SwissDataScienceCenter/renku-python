@@ -212,6 +212,8 @@ from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import ERROR
+from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
+from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.commands.workflow import (
     compose_workflow_command,
     create_workflow_command,
@@ -221,11 +223,9 @@ from renku.core.commands.workflow import (
     set_workflow_name_command,
     show_workflow_command,
 )
-from renku.core.models.workflow.composite_plan import CompositePlan
-from renku.core.models.workflow.plan import Plan
 
 
-def _print_plan(plan: Plan):
+def _print_plan(plan: PlanViewModel):
     """Print a plan to stdout."""
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(plan.name, bold=True))
@@ -234,10 +234,7 @@ def _print_plan(plan: Plan):
         Console().print(Markdown(plan.description))
 
     click.echo(click.style("Command: ", bold=True, fg="magenta") + click.style(plan.full_command, bold=True))
-    click.echo(
-        click.style("Success Codes: ", bold=True, fg="magenta")
-        + click.style(", ".join((str(c) for c in plan.success_codes)), bold=True)
-    )
+    click.echo(click.style("Success Codes: ", bold=True, fg="magenta") + click.style(plan.success_codes, bold=True))
 
     if plan.inputs:
         click.echo(click.style("Inputs: ", bold=True, fg="magenta"))
@@ -310,7 +307,7 @@ def _print_plan(plan: Plan):
                 )
 
 
-def _print_composite_plan(composite_plan: CompositePlan):
+def _print_composite_plan(composite_plan: CompositePlanViewModel):
     """Print a CompositePlan to stdout."""
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(composite_plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(composite_plan.name, bold=True))
@@ -319,22 +316,9 @@ def _print_composite_plan(composite_plan: CompositePlan):
         Console().print(Markdown(composite_plan.description))
 
     click.echo(click.style("Steps: ", bold=True, fg="magenta"))
-    for step in composite_plan.plans:
+    for step in composite_plan.steps:
         click.echo(click.style(f"\t- {step.name}:", bold=True))
         click.echo(click.style("\t\tId: ", bold=True, fg="magenta") + click.style(f"{step.id}", bold=True))
-
-    for mapping in composite_plan.mappings:
-        click.echo(click.style(f"\t- {mapping.name}:", bold=True))
-
-        if mapping.description:
-            click.echo(click.style(f"\t\t{mapping.description}"))
-
-        click.echo(
-            click.style("\t\tDefault Value: ", bold=True, fg="magenta") + click.style(mapping.default_value, bold=True)
-        )
-        click.echo(click.style("\tMaps to: ", bold=True, fg="magenta"))
-        for maps_to in mapping.mapped_parameters:
-            click.style(maps_to.name, bold=True)
 
     if composite_plan.mappings:
         click.echo(click.style("Mappings: ", bold=True, fg="magenta"))
@@ -349,16 +333,16 @@ def _print_composite_plan(composite_plan: CompositePlan):
                 + click.style(mapping.default_value, bold=True)
             )
             click.echo(click.style("\tMaps to: ", bold=True, fg="magenta"))
-            for maps_to in mapping.mapped_parameters:
-                click.style(maps_to.name, bold=True)
+            for maps_to in mapping.maps_to:
+                click.style(maps_to, bold=True)
 
     if composite_plan.links:
         click.echo(click.style("Links: ", bold=True, fg="magenta"))
         for link in composite_plan.links:
-            click.echo(click.style("\t- From: ", bold=True, fg="magenta") + click.style(link.source.name, bold=True))
+            click.echo(click.style("\t- From: ", bold=True, fg="magenta") + click.style(link.source, bold=True))
             click.echo(click.style("\t\t To: ", bold=True, fg="magenta"))
             for sink in link.sinks:
-                click.echo(click.style(f"\t\t- {sink.name}", bold=True))
+                click.echo(click.style(f"\t\t- {sink}", bold=True))
 
 
 @click.group()
@@ -381,7 +365,7 @@ def show(name_or_id):
     plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
 
     if plan:
-        if isinstance(plan, Plan):
+        if isinstance(plan, PlanViewModel):
             _print_plan(plan)
         else:
             _print_composite_plan(plan)

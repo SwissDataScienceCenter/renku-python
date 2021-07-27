@@ -91,7 +91,7 @@ class CommandParameterBase:
         """String representation (sames as cmd argument)."""
         value = self.actual_value
 
-        if " " in value:
+        if isinstance(value, str) and " " in value:
             value = f'"{value}"'
 
         if self.prefix:

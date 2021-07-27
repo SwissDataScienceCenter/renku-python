@@ -24,6 +24,8 @@ from typing import List
 
 from renku.core import errors
 from renku.core.commands.graph import Graph
+from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
+from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
@@ -134,7 +136,10 @@ def _show_workflow(name_or_id: str, database: Database):
     if not workflow:
         workflow = database["plans-by-name"].get(name_or_id)
 
-    return workflow
+    if isinstance(workflow, CompositePlan):
+        return CompositePlanViewModel.from_composite_plan(workflow)
+
+    return PlanViewModel.from_plan(workflow)
 
 
 def show_workflow_command():
@@ -223,7 +228,7 @@ def _group_workflow(
     database["plans"].add(plan)
     database["plans-by-name"].add(plan)
 
-    return plan
+    return CompositePlanViewModel.from_composite_plan(plan)
 
 
 def compose_workflow_command():
