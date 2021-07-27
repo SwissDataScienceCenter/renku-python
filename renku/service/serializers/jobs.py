@@ -34,7 +34,7 @@ class ProjectJobDetails(Schema):
     ref = fields.String()
 
 
-class JobDetails(CreationSchema, Schema):
+class JobDetails(CreationSchema):
     """Response job details."""
 
     updated_at = fields.DateTime()

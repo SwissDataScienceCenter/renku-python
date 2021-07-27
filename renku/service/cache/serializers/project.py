@@ -19,13 +19,13 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import Schema, fields, post_load
+from marshmallow import fields, post_load
 
 from renku.service.cache.models.project import Project
 from renku.service.serializers.common import CreationSchema, MandatoryUserSchema
 
 
-class ProjectSchema(CreationSchema, MandatoryUserSchema, Schema):
+class ProjectSchema(CreationSchema, MandatoryUserSchema):
     """Context schema for project clone."""
 
     last_fetched_at = fields.DateTime(missing=datetime.utcnow)

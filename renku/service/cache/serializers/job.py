@@ -19,13 +19,13 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import Schema, fields, post_load
+from marshmallow import fields, post_load
 
 from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, Job
 from renku.service.serializers.common import CreationSchema, MandatoryUserSchema
 
 
-class JobSchema(CreationSchema, MandatoryUserSchema, Schema):
+class JobSchema(CreationSchema, MandatoryUserSchema):
     """Job serialization."""
 
     updated_at = fields.DateTime(missing=datetime.utcnow)
