@@ -35,7 +35,7 @@ from renku.service.serializers.rpc import JsonRPCResponse
 
 
 class DatasetRefSchema(Schema):
-    """Schema for dataset name."""
+    """Schema for specifying a reference."""
 
     ref = fields.String(description="Target reference.")
 

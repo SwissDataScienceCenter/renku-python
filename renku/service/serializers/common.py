@@ -72,7 +72,7 @@ class MigrateSchema(Schema):
 
 
 class ArchiveSchema(Schema):
-    """Schema for adding a commit at the end of the operation."""
+    """Schema for unpacking archives."""
 
     unpack_archive = fields.Boolean(
         missing=False,

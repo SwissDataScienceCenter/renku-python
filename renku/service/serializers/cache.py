@@ -221,7 +221,6 @@ class ProjectMigrateRequest(AsyncSchema, CommitSchema, LocalRepositorySchema, Re
     @pre_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
-        # ? Should we move this to MigrateProjectCtrl?
         if not data.get("commit_message"):
             data["commit_message"] = "service: renku migrate"
 
