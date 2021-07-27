@@ -24,8 +24,6 @@ from tests.utils import format_result_exception
 
 def test_workflow_compose(runner, project, run_shell, client):
     """Test renku workflow compose."""
-    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
-
     # Run a shell command with pipe.
     output = run_shell('renku run --name run1 -- echo "a" > output1')
 
@@ -89,8 +87,6 @@ def test_workflow_compose(runner, project, run_shell, client):
 
 def test_workflow_show(runner, project, run_shell, client):
     """Test renku workflow show."""
-    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
-
     # Run a shell command with pipe.
     output = run_shell('renku run --name run1 --description "my workflow" --success-code 0 -- echo "a" > output1')
 
