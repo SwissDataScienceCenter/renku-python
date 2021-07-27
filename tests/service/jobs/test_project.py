@@ -17,12 +17,13 @@
 # limitations under the License.
 """Renku service project related job tests."""
 import pytest
-from flaky import flaky
+
+from tests.utils import retry_failed
 
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=5, min_passes=1)
+@retry_failed
 def test_delay_migration_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset failure."""
     from renku.service.serializers.cache import ProjectMigrateRequest

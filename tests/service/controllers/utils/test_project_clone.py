@@ -20,16 +20,15 @@ import time
 import uuid
 
 import pytest
-from flaky import flaky
 from marshmallow import EXCLUDE
 
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.serializers.templates import ProjectTemplateRequest
-from tests.utils import modified_environ
+from tests.utils import modified_environ, retry_failed
 
 
 @pytest.mark.integration
-@flaky(max_runs=5, min_passes=1)
+@retry_failed
 def test_service_user_project_clone(svc_client_cache):
     """Test service user project clone."""
     client, _, cache = svc_client_cache

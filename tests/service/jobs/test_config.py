@@ -17,14 +17,14 @@
 # limitations under the License.
 """Test config jobs."""
 import pytest
-from flaky import flaky
 
 from renku.core.errors import MigrationRequired
+from tests.utils import retry_failed
 
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=5, min_passes=1)
+@retry_failed
 def test_delay_config_set(svc_client_cache, it_remote_repo_url, view_user_data):
     """Test delayed set config endpoint."""
     from renku.service.serializers.config import ConfigSetRequest
@@ -50,7 +50,7 @@ def test_delay_config_set(svc_client_cache, it_remote_repo_url, view_user_data):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=5, min_passes=1)
+@retry_failed
 def test_delay_config_set_failure(svc_client_cache, it_remote_repo_url, view_user_data):
     """Test delayed set config endpoint."""
     from renku.service.serializers.config import ConfigSetRequest

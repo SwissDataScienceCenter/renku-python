@@ -20,10 +20,9 @@ import subprocess
 import sys
 
 import pytest
-from flaky import flaky
 
 from renku.cli import cli
-from tests.utils import format_result_exception
+from tests.utils import format_result_exception, retry_failed
 
 
 def test_config_value_locally(client, runner, project, global_config_dir):
@@ -201,7 +200,7 @@ def test_config_read_concurrency(runner, project, client, run):
     assert all(p.stdout.read().decode("utf8") == "value\n" for p in processes)
 
 
-@flaky(max_runs=5, min_passes=1)
+@retry_failed(extended=True)
 def test_config_write_concurrency(runner, project, client, run):
     """Test config can be read concurrently."""
     result = runner.invoke(cli, ["config", "set", "test", "value"])
