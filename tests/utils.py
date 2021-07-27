@@ -135,6 +135,8 @@ def format_result_exception(result):
 def retry_failed(fn=None, extended: bool = False):
     """
     Decorator to run flaky with same number of max and min repetitions across all tests.
+
+    :param extended: allow more repetitions than usual.
     """
 
     def decorate(fn):
