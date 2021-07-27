@@ -20,13 +20,13 @@
 from renku.core.metadata.database import Database
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.activity import Activity
-from renku.core.models.provenance.agent import Agent
 from renku.core.models.workflow.plan import Plan
 
 
 def initialize_database(database: Database):
     """Initialize Database."""
-    database.add_index(name="agents", object_type=Agent, attribute="id")
+    database.clear()
+
     database.add_index(name="activities", object_type=Activity, attribute="id")
     database.add_index(name="plans", object_type=Plan, attribute="id")
     database.add_index(name="datasets", object_type=Dataset, attribute="name")

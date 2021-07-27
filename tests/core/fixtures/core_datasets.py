@@ -16,7 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku core fixtures for datasets testing."""
+
 import pytest
+
+from renku.core.management.command_builder.command import replace_injection
 
 
 @pytest.fixture
@@ -40,20 +43,45 @@ def dataset_responses():
 
 
 @pytest.fixture
+def client_with_injection(client):
+    """Return a Renku repository with injected dependencies."""
+    from renku.core.management import LocalClient
+    from renku.core.metadata.database import Database
+    from renku.core.models.dataset import DatasetsProvenance
+
+    database = Database.from_path(client.database_path)
+    datasets_provenance = DatasetsProvenance(database)
+
+    bindings = {"LocalClient": client, LocalClient: client, Database: database, DatasetsProvenance: datasets_provenance}
+
+    with replace_injection(bindings):
+        yield client
+
+
+@pytest.fixture
 def client_with_datasets(client, directory_tree):
     """A client with datasets."""
-    from renku.core.models.provenance.agents import Person
+    from renku.core.management import LocalClient
+    from renku.core.metadata.database import Database
+    from renku.core.models.dataset import DatasetsProvenance
+    from renku.core.models.provenance.agent import Person
+
+    database = Database.from_path(client.database_path)
+    datasets_provenance = DatasetsProvenance(database)
+
+    bindings = {"LocalClient": client, LocalClient: client, Database: database, DatasetsProvenance: datasets_provenance}
 
     person_1 = Person.from_string("P1 <p1@example.com> [IANA]")
     person_2 = Person.from_string("P2 <p2@example.com>")
 
-    client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+    with replace_injection(bindings):
+        client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
 
-    with client.with_dataset("dataset-2", create=True) as dataset:
-        dataset.keywords = ["dataset", "2"]
-        dataset.creators = [person_1, person_2]
+        with client.with_dataset("dataset-2", create=True, commit_database=True) as dataset:
+            dataset.keywords = ["dataset", "2"]
+            dataset.creators = [person_1, person_2]
 
-        client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
+            client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
 
     client.repo.git.add("--all")
     client.repo.index.commit("add files to datasets")

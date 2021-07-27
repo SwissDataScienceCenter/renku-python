@@ -584,7 +584,7 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset successfully."""
     from renku.service.serializers.datasets import DatasetUnlinkRequest
@@ -651,7 +651,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset successfully."""
     from renku.service.serializers.datasets import DatasetUnlinkRequest

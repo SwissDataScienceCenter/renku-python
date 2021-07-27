@@ -42,15 +42,6 @@ class DatabaseCommand(Command):
 
         client = context["client"]
 
-        # TODO: Remove this block once we switched to use new graph
-        if not client.has_graph_files() and not self._create:
-            from unittest.mock import Mock
-
-            self.database = Mock()
-            context["bindings"][Database] = self.database
-            context["bindings"][DatasetsProvenance] = Mock()
-            return
-
         self.database = Database.from_path(path=self._path or client.database_path)
 
         context["bindings"][Database] = self.database

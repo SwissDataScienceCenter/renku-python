@@ -21,6 +21,7 @@ import os
 
 from marshmallow import EXCLUDE, post_load, pre_load
 
+from renku.core.management.migrations.utils import generate_dataset_tag_id, generate_url_id
 from renku.core.models import jsonld
 from renku.core.models.calamus import (
     DateTimeList,
@@ -34,7 +35,6 @@ from renku.core.models.calamus import (
     schema,
     wfprov,
 )
-from renku.core.models.datasets import generate_dataset_tag_id, generate_url_id
 from renku.core.models.git import get_user_info
 from renku.core.models.projects import generate_project_id
 from renku.core.models.provenance import agents

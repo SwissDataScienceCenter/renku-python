@@ -39,6 +39,7 @@ def test_run_log_strict(runner, project, run_shell, format):
     assert ".renku/workflow/" in result.output
 
 
+@pytest.mark.skip(reason="Fix this once renku log works for datasets")
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
 def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirectory):
     """Test output of log for dataset add."""
@@ -56,9 +57,9 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirector
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
+    result = runner.invoke(cli, ["log", "--strict", f"--format={format}"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert all(p in result.output for p in test_paths)
+    assert all(p in result.output for p in test_paths), result.output
 
 
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])

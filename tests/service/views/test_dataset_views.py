@@ -757,9 +757,11 @@ def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers={})
-    assert_rpc_response(response)
-    assert {"datasets"} == set(response.json["result"].keys())
-    assert 1 == len(response.json["result"]["datasets"])
+    assert response
+    assert_rpc_response(response, with_key="error")
+    # NOTE: We don't migrate remote projects; the fact that this operation fails with a migration error means that the
+    # project could be cloned for the anonymous user
+    assert {"code", "migration_required", "reason"} == set(response.json["error"].keys())
 
 
 @pytest.mark.service
@@ -837,10 +839,11 @@ def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     params = {"git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku", "name": "mydata"}
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
-    assert_rpc_response(response)
-
-    assert {"files", "name"} == set(response.json["result"].keys())
-    assert 1 == len(response.json["result"]["files"])
+    assert response
+    assert_rpc_response(response, with_key="error")
+    # NOTE: We don't migrate remote projects; the fact that this operation fails with a migration error means that the
+    # project could be cloned for the anonymous user
+    assert {"code", "migration_required", "reason"} == set(response.json["error"].keys())
 
 
 @pytest.mark.service

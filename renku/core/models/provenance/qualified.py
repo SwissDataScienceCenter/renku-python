@@ -24,10 +24,10 @@ import attr
 from marshmallow import EXCLUDE
 
 from renku.core.management.command_builder.command import inject
+from renku.core.management.migrations.models.v9 import OldDatasetFileSchema, OldDatasetSchema
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov
-from renku.core.models.datasets import DatasetFileSchema, DatasetSchema
-from renku.core.models.entities import CollectionSchema, EntitySchema
-from renku.core.models.provenance.agents import PersonSchema, SoftwareAgentSchema
+from renku.core.models.entities import OldCollectionSchema, OldEntitySchema
+from renku.core.models.provenance.agents import OldPersonSchema, OldSoftwareAgentSchema
 from renku.core.models.workflow.plan import PlanSchema
 from renku.core.models.workflow.run import RunSchema
 
@@ -168,7 +168,7 @@ class AssociationSchema(JsonLDSchema):
 
     _id = fields.Id(init_name="id")
     plan = Nested(prov.hadPlan, [PlanSchema, RunSchema])
-    agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
+    agent = Nested(prov.agent, [OldSoftwareAgentSchema, OldPersonSchema])
 
 
 class UsageSchema(JsonLDSchema):
@@ -182,7 +182,7 @@ class UsageSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     _id = fields.Id(init_name="id")
-    entity = Nested(prov.entity, [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema])
+    entity = Nested(prov.entity, [OldEntitySchema, OldCollectionSchema, OldDatasetSchema, OldDatasetFileSchema])
     role = fields.String(prov.hadRole, missing=None)
 
 
@@ -198,6 +198,8 @@ class GenerationSchema(JsonLDSchema):
 
     _id = fields.Id(init_name="id")
     entity = Nested(
-        prov.qualifiedGeneration, [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema], reverse=True
+        prov.qualifiedGeneration,
+        [OldEntitySchema, OldCollectionSchema, OldDatasetSchema, OldDatasetFileSchema],
+        reverse=True,
     )
     role = fields.String(prov.hadRole, missing=None)

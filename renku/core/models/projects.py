@@ -28,7 +28,7 @@ from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, prov, renku, schema
 from renku.core.models.datastructures import Collection
-from renku.core.models.provenance.agents import Person, PersonSchema
+from renku.core.models.provenance.agents import OldPersonSchema, Person
 from renku.core.utils.datetime8601 import parse_date
 
 PROJECT_URL_PATH = "projects"
@@ -194,7 +194,7 @@ class ProjectSchema(JsonLDSchema):
     template_metadata = fields.String(renku.templateMetadata, missing=None)
     immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
     automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=False)
-    creator = Nested(schema.creator, PersonSchema, missing=None)
+    creator = Nested(schema.creator, OldPersonSchema, missing=None)
     _id = fields.Id(init_name="id", missing=None)
 
     @pre_dump

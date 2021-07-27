@@ -578,6 +578,8 @@ class StorageApiMixin(RepositoryApiMixin):
         provenance_graph = ProvenanceGraph.from_database(database)
 
         for activity in provenance_graph.activities:
+            # NOTE: This is a valid use-case since history will be re-written
+            activity._v_immutable = False
             if activity.generations:
                 generations = []
                 for generation in activity.generations:
@@ -609,6 +611,8 @@ class StorageApiMixin(RepositoryApiMixin):
                     else:
                         invalidations.append(entity)
                 activity.invalidations = invalidations
+
+            activity._v_immutable = True
 
         # NOTE: Update datasets provenance
         # TODO: Fix dataset provenance
