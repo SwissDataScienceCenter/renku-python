@@ -22,7 +22,9 @@ from subprocess import PIPE, STDOUT, run
 
 from jinja2 import Template
 
-from renku.core.incubation.command import Command
+from renku.core.management import LocalClient
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
 from renku.core.management.config import CONFIG_LOCAL_PATH
 from renku.core.commands.docker import detect_registry_url
 
@@ -30,7 +32,8 @@ CONFIG_SECTION = "cluster"
 IMAGE_SHA = 7
 
 
-def _prepare_cluster_config(client, sbatch_options, gitlab_token):
+@inject.autoparams()
+def _prepare_cluster_config(client: LocalClient, sbatch_options, gitlab_token):
     """Set up configuration for cluster execution"""
     registry_url = detect_registry_url(client, auto_login=False)
     # get the latest commit SHA at remote
@@ -57,7 +60,8 @@ def prepare_cluster_config():
     return Command().command(_prepare_cluster_config).with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH)
 
 
-def _read_cluster_config(client):
+@inject.autoparams()
+def _read_cluster_config(client: LocalClient):
     """Read cluster section of config."""
     config = client.get_config(as_string=False)
     return {k.partition(".")[2]: v for k, v in config.items() if k.partition(".")[0] == CONFIG_SECTION}
@@ -71,7 +75,8 @@ def _write_script(file, script):
     Path(file).write_text(script)
 
 
-def _compose_sbatch_script(client, command):
+@inject.autoparams()
+def _compose_sbatch_script(client: LocalClient, command):
     """Compose sbatch script."""
     # read cluster configuration
     cluster_config = _read_cluster_config(client)
@@ -85,7 +90,8 @@ def _compose_sbatch_script(client, command):
     _write_script(cluster_config["sbatch_script"], sbatch_script)
 
 
-def _submit_sbatch_script(client):
+@inject.autoparams()
+def _submit_sbatch_script(client: LocalClient):
     """Submit sbatch script."""
     script = client.get_value(section=CONFIG_SECTION, key="sbatch_script")
     # TODO: add error handling
@@ -93,7 +99,8 @@ def _submit_sbatch_script(client):
     return sbatch_run.stdout
 
 
-def _execute_cluster_command(client, command):
+@inject.autoparams()
+def _execute_cluster_command(client: LocalClient, command):
     _compose_sbatch_script(client, command)
     sbatch_output = _submit_sbatch_script(client)
     return sbatch_output
