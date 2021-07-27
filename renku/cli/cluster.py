@@ -41,10 +41,10 @@ def prepare(sbatch_options, gitlab_token):
 
 
 @cluster.command("update", context_settings=dict(ignore_unknown_options=True))
-@click.argument('args', nargs=-1, type=click.UNPROCESSED)
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
 def update(args):
     # TODO: check the validity of arguments
-    command = " ".join(('renku', 'update') + args)
+    command = " ".join(("renku", "update") + args)
     value = execute_cluster_command().build().execute(command)
     click.secho(value.output)
     click.secho("OK", fg="green")
