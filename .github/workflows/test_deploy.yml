@@ -574,7 +574,7 @@ jobs:
         echo "GIT_USER=Renku Bot" >> $GITHUB_ENV
         echo "GIT_EMAIL=renku@datascience.ch" >> $GITHUB_ENV
     - name: Push chart and images
-      uses: SwissDataScienceCenter/renku-actions/publish-chart@v0.1.0
+      uses: SwissDataScienceCenter/renku-actions/publish-chart@v0.2.0
       env:
         CHART_NAME: renku-core
         GITHUB_TOKEN: ${{ secrets.RENKU_CI_TOKEN }}
@@ -583,7 +583,7 @@ jobs:
     - name: Wait for chart to be available
       run: sleep 120
     - name: Update component version
-      uses: SwissDataScienceCenter/renku-actions/update-component-version@v0.1.0
+      uses: SwissDataScienceCenter/renku-actions/update-component-version@v0.2.0
       env:
         CHART_NAME: renku-core
         GITHUB_TOKEN: ${{ secrets.RENKU_CI_TOKEN }}
