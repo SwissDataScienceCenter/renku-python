@@ -22,6 +22,7 @@ import re
 import urllib
 from pathlib import Path
 from string import Template
+from typing import List
 from urllib import parse as urlparse
 
 import attr
@@ -31,15 +32,21 @@ from tqdm import tqdm
 
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
+from renku.core.commands.providers.dataverse_metadata_templates import (
+    AUTHOR_METADATA_TEMPLATE,
+    CONTACT_METADATA_TEMPLATE,
+    DATASET_METADATA_TEMPLATE,
+)
 from renku.core.commands.providers.doi import DOIProvider
+from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
-from renku.core.models.datasets import Dataset, DatasetFile, DatasetSchema
-from renku.core.models.provenance.agents import PersonSchema
+from renku.core.metadata.immutable import DynamicProxy
+from renku.core.models.dataset import DatasetFile
+from renku.core.models.provenance.agent import PersonSchema
 from renku.core.utils.doi import extract_doi, is_doi
+from renku.core.utils.file_size import bytes_to_unit
 from renku.core.utils.requests import retry
-
-from .dataverse_metadata_templates import AUTHOR_METADATA_TEMPLATE, CONTACT_METADATA_TEMPLATE, DATASET_METADATA_TEMPLATE
 
 DATAVERSE_API_PATH = "api/v1"
 
@@ -50,7 +57,7 @@ DATAVERSE_FILE_API = "access/datafile/:persistentId/"
 DATAVERSE_EXPORTER = "schema.org"
 
 
-class _DataverseDatasetSchema(DatasetSchema):
+class _DataverseDatasetSchema(ProviderDatasetSchema):
     """Schema for Dataverse datasets."""
 
     @pre_load
@@ -257,6 +264,8 @@ class DataverseRecordSerializer:
 
     _json = attr.ib(default=None, kw_only=True)
 
+    _files_info = attr.ib(default=None, kw_only=True)
+
     def is_last_version(self, uri):
         """Check if record is at last possible version."""
         return True
@@ -266,6 +275,14 @@ class DataverseRecordSerializer:
         property_name = property_name.strip("@")
         property_name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", property_name)
         return re.sub("([a-z0-9])([A-Z])", r"\1_\2", property_name).lower()
+
+    @property
+    def files_info(self) -> List[DynamicProxy]:
+        """Return list of dataset file proxies.
+
+        NOTE: This is only valid after a call to ``as_dataset``.
+        """
+        return self._files_info
 
     @property
     def files(self):
@@ -293,15 +310,16 @@ class DataverseRecordSerializer:
 
     def get_files(self):
         """Get Dataverse files metadata as ``DataverseFileSerializer``."""
-        if not self.files:
+        files = self.files
+        if not files:
             raise LookupError("no files have been found - deposit is empty or protected")
 
-        return [DataverseFileSerializer(**file_) for file_ in self.files]
+        return [DataverseFileSerializer(**file_) for file_ in files]
 
-    def as_dataset(self, client):
-        """Deserialize `DataverseRecordSerializer` to `Dataset`."""
+    def as_dataset(self, client) -> ProviderDataset:
+        """Deserialize ``DataverseRecordSerializer`` to ``Dataset``."""
         files = self.get_files()
-        dataset = Dataset.from_jsonld(self._json, client=client, schema_class=_DataverseDatasetSchema)
+        dataset = ProviderDataset.from_jsonld(data=self._json, schema_class=_DataverseDatasetSchema)
 
         dataset.version = self.version
 
@@ -312,20 +330,22 @@ class DataverseRecordSerializer:
             if creator.affiliation == "":
                 creator.affiliation = None
 
-        serialized_files = []
-        for file_ in files:
-            remote_ = file_.remote_url
-            dataset_file = DatasetFile(
-                source=remote_.geturl(),
-                id=file_._id if file_._id else file_.name,
-                filename=file_.name,
-                filesize=file_.content_size,
-                filetype=file_.file_format,
-                path="",
-            )
-            serialized_files.append(dataset_file)
+        dataset_files = []
+        files_info = []
+        for file in files:
+            remote = file.remote_url
+            dataset_file = DatasetFile(entity=None, source=remote.geturl())
+            file_info = DynamicProxy(dataset_file)
+            file_info.filename = Path(file.name).name
+            file_info.checksum = ""
+            file_info.size_in_mb = bytes_to_unit(file.content_size, "mi")
+            file_info.filetype = file.file_format
 
-        dataset.files = serialized_files
+            dataset_files.append(dataset_file)
+            files_info.append(file_info)
+
+        dataset.dataset_files = dataset_files
+        self._files_info = files_info
 
         return dataset
 
@@ -391,7 +411,7 @@ class DataverseExporter(ExporterApi):
         """Endpoint for creation of access token."""
         return urllib.parse.urljoin(self._server_url, "/dataverseuser.xhtml?selectTab=apiTokenTab")
 
-    def export(self, publish, **kwargs):
+    def export(self, publish, client=None, **kwargs):
         """Execute export process."""
         deposition = _DataverseDeposition(server_url=self._server_url, access_token=self.access_token)
         metadata = self._get_dataset_metadata()
@@ -399,12 +419,12 @@ class DataverseExporter(ExporterApi):
         dataset_pid = response.json()["data"]["persistentId"]
 
         with tqdm(total=len(self.dataset.files)) as progressbar:
-            for file_ in self.dataset.files:
+            for file in self.dataset.files:
                 try:
-                    path = Path(file_.path).relative_to(self.dataset.data_dir)
+                    path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
                 except ValueError:
-                    path = Path(file_.path)
-                deposition.upload_file(full_path=file_.full_path, path_in_dataset=path)
+                    path = Path(file.entity.path)
+                deposition.upload_file(full_path=client.path / file.entity.path, path_in_dataset=path)
                 progressbar.update(1)
 
         if publish:

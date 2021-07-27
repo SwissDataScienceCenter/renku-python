@@ -72,6 +72,7 @@ def test_safe_class_attributes(tmpdir):
         "PROVENANCE_GRAPH",
         "RENKU_LFS_IGNORE_PATH",
         "RENKU_PROTECTED_PATHS",
+        "SUPPORTED_SCHEMES",
         "TEMPLATE_CHECKSUMS",
         "WORKFLOW",
         "_CMD_STORAGE_CHECKOUT",

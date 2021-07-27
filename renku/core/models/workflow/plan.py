@@ -158,7 +158,7 @@ class Plan(Persistent):
     @staticmethod
     def generate_id(uuid: str) -> str:
         """Generate an identifier for Plan."""
-        uuid = uuid or str(uuid4())
+        uuid = uuid or uuid4().hex
         return f"/plans/{uuid}"
 
     def _get_default_name(self) -> str:
@@ -176,7 +176,7 @@ class Plan(Persistent):
         This is required only when there is another plan which is exactly the same except the parameters' list.
         """
         current_uuid = self._extract_uuid()
-        new_uuid = str(uuid4())
+        new_uuid = uuid4().hex
         self.id = self.id.replace(current_uuid, new_uuid)
         self.parameters = copy.deepcopy(self.parameters)
         for a in self.parameters:

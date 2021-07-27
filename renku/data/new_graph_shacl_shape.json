@@ -359,7 +359,7 @@
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "schema:alternateName",
+               "path": "renku:slug",
                "datatype": {
                   "@id": "xsd:string"
                },

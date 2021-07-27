@@ -23,7 +23,7 @@ from humanize import naturalsize
 
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
-from renku.core.models.datasets import DatasetFileDetailsJson
+from renku.core.models.dataset import DatasetFileDetailsJson
 
 from .tabulate import tabulate
 
@@ -31,7 +31,6 @@ from .tabulate import tabulate
 def tabular(records, *, columns=None):
     """Format dataset files with a tabular output.
 
-    :param client: LocalClient instance.
     :param records: Filtered collection.
     :param columns: List of columns to display
     """
@@ -109,7 +108,7 @@ def jsonld(records, **kwargs):
     """
     from renku.core.models.json import dumps
 
-    data = [record.as_jsonld() for record in records]
+    data = [record.to_jsonld() for record in records]
     return dumps(data, indent=2)
 
 
@@ -138,8 +137,8 @@ DATASET_FILES_FORMATS = {
 """Valid formatting options."""
 
 DATASET_FILES_COLUMNS = {
-    "added": ("added", None),
-    "commit": ("commit_sha", "commit"),
+    "added": ("date_added", "added"),
+    "commit": ("entity.checksum", "commit"),
     "creators": ("creators_csv", "creators"),
     "creators_full": ("creators_full_csv", "creators"),
     "dataset": ("title", "dataset"),

@@ -25,19 +25,23 @@ from urllib.parse import quote
 from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE
 
-from renku.core.metadata.database import Persistent
+from renku.core.metadata.immutable import Slots
 from renku.core.models.calamus import StringList, fields, prov, schema, wfprov
 from renku.core.models.git import get_user_info
 from renku.core.models.provenance import agents as old_agents
 from renku.version import __version__, version_url
 
 
-class Agent(Persistent):
+class Agent(Slots):
     """Represent executed software."""
 
-    def __init__(self, *, id: str, name: str):
-        self.id: str = id
-        self.name: str = name
+    __slots__ = ("id", "name")
+
+    id: str
+    name: str
+
+    def __init__(self, *, id: str, name: str, **kwargs):
+        super().__init__(id=id, name=name, **kwargs)
 
     def __eq__(self, other):
         if self is other:
@@ -89,6 +93,12 @@ RENKU_AGENT = SoftwareAgent(id=version_url, name=f"renku {__version__}")
 class Person(Agent):
     """Represent a person."""
 
+    __slots__ = ("affiliation", "alternate_name", "email")
+
+    affiliation: str
+    alternate_name: str
+    email: str
+
     def __init__(
         self,
         *,
@@ -98,17 +108,16 @@ class Person(Agent):
         id: str = None,
         name: str,
     ):
-        self.validate_email(email)
+        self._validate_email(email)
 
         if not id or id == "mailto:None" or id.startswith("_:"):
             full_identity = Person.get_full_identity(email, affiliation, name)
             id = Person.generate_id(email, full_identity)
 
-        super().__init__(id=id, name=name)
+        affiliation = affiliation or None
+        alternate_name = alternate_name or None
 
-        self.affiliation: str = affiliation
-        self.alternate_name: str = alternate_name
-        self.email: str = email
+        super().__init__(affiliation=affiliation, alternate_name=alternate_name, email=email, id=id, name=name)
 
     def __eq__(self, other):
         if self is other:
@@ -146,6 +155,12 @@ class Person(Agent):
         return cls(email=email, name=name)
 
     @classmethod
+    def from_client(cls, client) -> Optional["Person"]:
+        """Create an instance from a Renku project repo."""
+        if client.repo:
+            return cls.from_git(client.repo)
+
+    @classmethod
     def from_string(cls, string):
         """Create an instance from a 'Name <email>' string."""
         regex_pattern = r"([^<>\[\]]*)" r"(?:<{1}\s*(\S+@\S+\.\S+){0,1}\s*>{1}){0,1}\s*" r"(?:\[{1}(.*)\]{1}){0,1}"
@@ -163,6 +178,14 @@ class Person(Agent):
         """Create and instance from a dictionary."""
         return cls(**data)
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return PersonSchema().load(data)
+
     @staticmethod
     def generate_id(email, full_identity):
         """Generate identifier for Person."""
@@ -176,7 +199,7 @@ class Person(Agent):
         return f"/persons/{id}"
 
     @staticmethod
-    def validate_email(email):
+    def _validate_email(email):
         """Check that the email is valid."""
         if not email:
             return
@@ -209,7 +232,7 @@ class Person(Agent):
         return self.get_full_identity(self.email, self.affiliation, self.name)
 
 
-class NewPersonSchema(JsonLDSchema):
+class PersonSchema(JsonLDSchema):
     """Person schema."""
 
     class Meta:
@@ -226,7 +249,7 @@ class NewPersonSchema(JsonLDSchema):
     name = StringList(schema.name, missing=None)
 
 
-class NewSoftwareAgentSchema(JsonLDSchema):
+class SoftwareAgentSchema(JsonLDSchema):
     """SoftwareAgent schema."""
 
     class Meta:
