@@ -32,14 +32,14 @@ from renku.core.utils.git import add_to_git
 
 def move_command():
     """Command to move or rename a file, a directory, or a symlink."""
-    return Command().command(_move).require_migration().require_clean().with_commit()
+    return Command().command(_move).require_migration().require_clean().with_database(write=True).with_commit()
 
 
 @inject.autoparams()
 def _move(sources, destination, force, verbose, to_dataset, client: LocalClient):
     """Move files and check repository for potential problems."""
     if to_dataset:
-        client.load_dataset(to_dataset, strict=True)
+        client.get_dataset(to_dataset, strict=True)
 
     absolute_destination = _get_absolute_path(destination)
     absolute_sources = [_get_absolute_path(src) for src in sources]
@@ -91,9 +91,9 @@ def _move(sources, destination, force, verbose, to_dataset, client: LocalClient)
 
     # NOTE: Force-add to include possible ignored files
     add_to_git(client.repo.git, *files.values(), force=True)
-    commit = client.repo.index.commit(f"renku mv: committing {len(files)} moved files")
+    client.repo.index.commit(f"renku mv: committing {len(files)} moved files")
 
-    client.move_files(files=files, to_dataset=to_dataset, commit=commit)
+    client.move_files(files=files, to_dataset=to_dataset)
 
     if verbose:
         _show_moved_files(client.path, files)

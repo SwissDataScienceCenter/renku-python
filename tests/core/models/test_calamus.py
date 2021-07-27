@@ -32,7 +32,7 @@ def test_uri_field_serialization(value):
 
     schema = fields.Namespace("http://schema.org/")
 
-    class EntitySchema(JsonLDSchema):
+    class OldEntitySchema(JsonLDSchema):
         field = Uri(schema.field, allow_none=True)
 
         class Meta:
@@ -41,7 +41,7 @@ def test_uri_field_serialization(value):
 
     entity = Entity(field=value)
 
-    data = EntitySchema().dump(entity)
+    data = OldEntitySchema().dump(entity)
 
     if "@id" in data:
         del data["@id"]
@@ -59,7 +59,7 @@ def test_uri_field_deserialization(value):
 
     schema = fields.Namespace("http://schema.org/")
 
-    class EntitySchema(JsonLDSchema):
+    class OldEntitySchema(JsonLDSchema):
         field = Uri(schema.field, allow_none=True)
 
         class Meta:
@@ -68,6 +68,6 @@ def test_uri_field_deserialization(value):
 
     data = {"@type": ["http://schema.org/Entity"], "http://schema.org/field": value}
 
-    entity = EntitySchema().load(data)
+    entity = OldEntitySchema().load(data)
 
     assert entity.field == value

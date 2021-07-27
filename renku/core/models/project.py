@@ -25,14 +25,14 @@ from urllib.parse import quote, urlparse
 from marshmallow import EXCLUDE
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
-from renku.core.metadata.database import Persistent
+from renku.core.metadata.database import persistent
 from renku.core.models import projects as old_projects
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, prov, renku, schema
-from renku.core.models.provenance.agent import NewPersonSchema, Person
+from renku.core.models.provenance.agent import Person, PersonSchema
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
 
 
-class Project(Persistent):
+class Project(persistent.Persistent):
     """Represent a project."""
 
     def __init__(
@@ -160,7 +160,7 @@ class ProjectSchema(JsonLDSchema):
 
     agent_version = StringList(schema.agent, missing="pre-0.11.0")
     automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=False)
-    creator = Nested(schema.creator, NewPersonSchema, missing=None)
+    creator = Nested(schema.creator, PersonSchema, missing=None)
     date_created = DateTimeList(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     id = fields.Id(missing=None)
     immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])

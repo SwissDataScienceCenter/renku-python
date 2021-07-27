@@ -27,10 +27,10 @@ def check_missing_external_files(client):
 
     for path, dataset in client.datasets.items():
         for file_ in dataset.files:
-            if file_.external:
-                target = (client.path / file_.path).resolve()
+            if file_.is_external:
+                target = (client.path / file_.entity.path).resolve()
                 if not target.exists():
-                    missing.append((file_.path, str(target)))
+                    missing.append((file_.entity.path, str(target)))
 
     if not missing:
         return True, None

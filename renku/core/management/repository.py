@@ -36,6 +36,7 @@ from werkzeug.utils import cached_property, secure_filename
 from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import replace_injection
 from renku.core.management.config import RENKU_HOME
 from renku.core.metadata.database import Database
 from renku.core.models.enums import ConfigFilter
@@ -153,8 +154,6 @@ class RepositoryApiMixin(GitCore):
     _remote_cache = attr.ib(factory=dict)
 
     _migration_type = attr.ib(default=MigrationType.ALL)
-
-    _database = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
@@ -438,6 +437,9 @@ class RepositoryApiMixin(GitCore):
     @contextmanager
     def with_commit(self, commit):
         """Yield the state of the repo at a specific commit."""
+        from renku import LocalClient
+        from renku.core.models.dataset import DatasetsProvenance
+
         current_branch = None
         current_commit = None
 
@@ -452,13 +454,27 @@ class RepositoryApiMixin(GitCore):
 
         self.repo.git.checkout(commit)
 
-        try:
-            yield
-        finally:
-            if current_branch:
-                self.repo.git.checkout(current_branch)
-            elif current_commit:
-                self.repo.git.checkout(current_commit)
+        # FIXME: This won't work if the project is not migrated at the commit. Don't use with_commit function.
+        database = Database.from_path(self.database_path)
+        bindings = {
+            "LocalClient": self,
+            LocalClient: self,
+            Database: database,
+        }
+        constructor_bindings = {DatasetsProvenance: lambda: DatasetsProvenance(database)}
+
+        with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
+            try:
+                self._database = None
+                self._datasets_provenance = None
+                yield
+            finally:
+                self._database = None
+                self._datasets_provenance = None
+                if current_branch:
+                    self.repo.git.checkout(current_branch)
+                elif current_commit:
+                    self.repo.git.checkout(current_commit)
 
     @contextmanager
     def with_metadata(self, read_only=False, name=None):
@@ -498,7 +514,7 @@ class RepositoryApiMixin(GitCore):
             return None
 
         dependency_graph = DependencyGraph.from_database(database)
-        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+        provenance_graph = ProvenanceGraph.from_database(database)
 
         activity_collection = ActivityCollection.from_activity(activity, dependency_graph)
 
@@ -507,8 +523,6 @@ class RepositoryApiMixin(GitCore):
         for activity in activity_collection.activities:
             database.get("activities").add(activity)
             database.get("plans").add(activity.association.plan)
-
-        provenance_graph.to_json()
 
     def has_graph_files(self):
         """Return true if dependency or provenance graph exists."""

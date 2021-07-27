@@ -30,7 +30,7 @@ def tabular(tags):
     return tabulate(
         tags,
         headers=OrderedDict(
-            (("created", None), ("name", None), ("description", None), ("dataset", None), ("commit", None))
+            (("date_created", "created"), ("name", None), ("description", None), ("dataset", None), ("commit", None))
         ),
         # workaround for tabulate issue 181
         # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
@@ -45,7 +45,7 @@ def jsonld(tags):
     """
     from renku.core.models.json import dumps
 
-    data = [tag.as_jsonld() for tag in tags]
+    data = [tag.to_jsonld() for tag in tags]
     return dumps(data, indent=2)
 
 

@@ -75,7 +75,7 @@ class Person:
         if email:
             return f"mailto:{email}"
 
-        id = full_identity or str(uuid.uuid4())
+        id = full_identity or str(uuid.uuid4().hex)
         id = quote(id, safe="")
 
         # TODO: Remove hostname part once migrating to new metadata
@@ -151,10 +151,10 @@ class Person:
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return PersonSchema().load(data)
+        return OldPersonSchema().load(data)
 
 
-class PersonSchema(JsonLDSchema):
+class OldPersonSchema(JsonLDSchema):
     """Person schema."""
 
     class Meta:
@@ -206,7 +206,7 @@ class SoftwareAgent:
 renku_agent = SoftwareAgent(label="renku {0}".format(__version__), id=version_url)
 
 
-class SoftwareAgentSchema(JsonLDSchema):
+class OldSoftwareAgentSchema(JsonLDSchema):
     """SoftwareAgent schema."""
 
     class Meta:

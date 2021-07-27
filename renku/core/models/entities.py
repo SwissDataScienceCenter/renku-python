@@ -216,7 +216,7 @@ class Collection(Entity):
             member._parent = weakref.ref(self)
 
 
-class CommitMixinSchema(JsonLDSchema):
+class OldCommitMixinSchema(JsonLDSchema):
     """CommitMixin schema."""
 
     class Meta:
@@ -230,7 +230,7 @@ class CommitMixinSchema(JsonLDSchema):
     _project = Nested(schema.isPartOf, ProjectSchema, init_name="project", missing=None)
 
 
-class EntitySchema(CommitMixinSchema):
+class OldEntitySchema(OldCommitMixinSchema):
     """Entity Schema."""
 
     class Meta:
@@ -242,7 +242,7 @@ class EntitySchema(CommitMixinSchema):
     checksum = fields.String(renku.checksum, missing=None)
 
 
-class CollectionSchema(EntitySchema):
+class OldCollectionSchema(OldEntitySchema):
     """Entity Schema."""
 
     class Meta:
@@ -251,7 +251,7 @@ class CollectionSchema(EntitySchema):
         rdf_type = [prov.Collection]
         model = Collection
 
-    members = Nested(prov.hadMember, [EntitySchema, "CollectionSchema"], many=True)
+    members = Nested(prov.hadMember, [OldEntitySchema, "OldCollectionSchema"], many=True)
 
 
 def generate_label(path, hexsha):

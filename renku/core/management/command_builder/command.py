@@ -79,13 +79,12 @@ inject.configure = _patched_configure
 inject.get_injector_or_die = _patched_get_injector_or_die
 
 
-def _bind_local_client(binder: inject.Binder, client) -> inject.Binder:
+def _bind_local_client(binder: inject.Binder, client):
     """Bind a LocalClient to an Injector."""
     from renku.core.management import LocalClient
 
     binder.bind(LocalClient, client)
     binder.bind("LocalClient", client)
-    return binder
 
 
 def remove_injector():
@@ -97,11 +96,36 @@ def remove_injector():
 @contextlib.contextmanager
 def replace_injected_client(new_client):
     """Temporarily inject a different client into dependency injection."""
+    old_injector = getattr(_LOCAL, "injector", None)
     try:
-        old_injector = getattr(_LOCAL, "injector", None)
         if old_injector:
             remove_injector()
         inject.configure(lambda binder: _bind_local_client(binder, new_client))
+
+        yield
+    finally:
+        remove_injector()
+
+        if old_injector:
+            _LOCAL.injector = old_injector
+
+
+@contextlib.contextmanager
+def replace_injection(bindings, constructor_bindings=None):
+    """Temporarily inject various test objects."""
+    constructor_bindings = constructor_bindings or {}
+
+    def bind(binder):
+        for key, value in bindings.items():
+            binder.bind(key, value)
+        for key, value in constructor_bindings.items():
+            binder.bind_to_constructor(key, value)
+
+    old_injector = getattr(_LOCAL, "injector", None)
+    try:
+        if old_injector:
+            remove_injector()
+        inject.configure(bind)
 
         yield
     finally:

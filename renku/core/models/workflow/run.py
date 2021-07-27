@@ -32,7 +32,7 @@ from marshmallow import EXCLUDE
 from renku.core.management.command_builder.command import inject
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.cwl.types import PATH_OBJECTS
-from renku.core.models.entities import Collection, CommitMixin, CommitMixinSchema, Entity
+from renku.core.models.entities import Collection, CommitMixin, Entity, OldCommitMixinSchema
 from renku.core.models.workflow.parameters import (
     CommandArgument,
     CommandArgumentSchema,
@@ -54,10 +54,7 @@ def _entity_from_path(client, path, commit):
     if (client.path / path).is_dir():
         entity_cls = Collection
 
-    if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)):
-        return client.load_dataset_from_path(path, commit=commit)
-    else:
-        return entity_cls(commit=commit, client=client, path=str(path))
+    return entity_cls(commit=commit, client=client, path=str(path))
 
 
 def _convert_cmd_binding(binding, client, commit):
@@ -419,7 +416,7 @@ class OrderedSubprocess:
         return self.index < other.index
 
 
-class RunSchema(CommitMixinSchema):
+class RunSchema(OldCommitMixinSchema):
     """Run schema."""
 
     class Meta:
