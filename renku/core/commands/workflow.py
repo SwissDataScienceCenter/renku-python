@@ -19,6 +19,7 @@
 
 
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from renku.core import errors
@@ -281,7 +282,7 @@ def edit_workflow_command():
 
 
 @inject.autoparams()
-def _export_workflow(name, plan_gateway: IPlanGateway, client: LocalClient, format: str):
+def _export_workflow(name, plan_gateway: IPlanGateway, client: LocalClient, format: str, values: Optional[Path]):
     """Export a workflow to a given format."""
 
     workflows = plan_gateway.get_newest_plans_by_names()
@@ -301,9 +302,16 @@ def _export_workflow(name, plan_gateway: IPlanGateway, client: LocalClient, form
             f'The specified format "{format}" is supported by more than one export plugins!'
         )
 
+    workflow = workflows[name]
+    if values:
+        from renku.core.models import jsonld as jsonld
+
+        values = jsonld.read_yaml(values)
+        workflow = apply_run_values(workflow, values)
+
     export_plugins.remove(converter[0])
     converter = pm.subset_hook_caller("workflow_convert", export_plugins)
-    return converter(workflow=workflows[name], basedir=client.path, output_format=format)
+    return converter(workflow=workflow, basedir=client.path, output_format=format)
 
 
 def export_workflow_command():

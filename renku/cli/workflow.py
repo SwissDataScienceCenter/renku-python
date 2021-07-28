@@ -205,12 +205,12 @@ order of precedence (lower precedence first):
 
 """
 
+from pathlib import Path
 
 import click
 from rich.console import Console
 from rich.markdown import Markdown
 
-from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import ERROR
 from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
@@ -560,9 +560,16 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
     default=None,
     help="Save to <path> instead of printing to terminal",
 )
-def export(workflow_name, format, output):
+@click.option(
+    "--values",
+    metavar="<file>",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    help="YAML file containing parameter mappings to be used.",
+)
+def export(workflow_name, format, output, values):
     """Export workflow."""
-    result = export_workflow_command().build().execute(name=workflow_name, format=format)
+    result = export_workflow_command().build().execute(name=workflow_name, format=format, values=Path(values))
 
     if not output:
         click.echo(result.output)
