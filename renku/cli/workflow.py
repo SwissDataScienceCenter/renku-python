@@ -219,8 +219,6 @@ from renku.core.commands.workflow import (
     export_workflow_command,
     list_workflows_command,
     remove_workflow_command,
-    rename_workflow_command,
-    set_workflow_name_command,
     show_workflow_command,
 )
 
@@ -381,48 +379,6 @@ def show(name_or_id):
             _print_composite_plan(plan)
     else:
         click.secho(ERROR + f"Workflow '{name_or_id}' not found.")
-
-
-def validate_path(ctx, param, value):
-    """Detect a workflow path if it is not passed."""
-    # client = ctx.obj
-
-    # if value is None:
-    #     from renku.core.models.provenance.activity import ProcessRun
-
-    #     activity = client.process_commit()
-
-    #     if not isinstance(activity, ProcessRun):
-    #         raise click.BadParameter("No tool was found.")
-
-    #     return activity.path
-
-    return value
-
-
-@workflow.command("set-name")
-@click.argument("name", metavar="<name>")
-@click.argument(
-    "path",
-    metavar="<path>",
-    type=click.Path(exists=True, dir_okay=False),
-    callback=validate_path,
-    default=None,
-    required=False,
-)
-@click.option("--force", is_flag=True, help="Override the existence check.")
-def set_name(name, path, force):
-    """Sets the <name> for remote <path>."""
-    set_workflow_name_command().build().execute(name=name, path=path, force=force)
-
-
-@workflow.command()
-@click.argument("old", metavar="<old>")
-@click.argument("new", metavar="<new>")
-@click.option("--force", is_flag=True, help="Override the existence check.")
-def rename(old, new, force):
-    """Rename the workflow named <old> to <new>."""
-    rename_workflow_command().build().execute(old=old, new=new, force=force)
 
 
 @workflow.command()

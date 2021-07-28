@@ -64,32 +64,6 @@ def list_workflows_command():
 
 
 @inject.autoparams()
-def _set_workflow_name(name, path, force, client: LocalClient):
-    """Sets the <name> for remote <path>."""
-    from renku.core.models.refs import LinkReference
-
-    LinkReference.create(client=client, name=_ref(name), force=force).set_reference(path)
-
-
-def set_workflow_name_command():
-    """Command that sets the <name> for remote <path>."""
-    return Command().command(_set_workflow_name).require_clean().with_commit()
-
-
-@inject.autoparams()
-def _rename_workflow(old, new, force, client: LocalClient):
-    """Rename the workflow named <old> to <new>."""
-    from renku.core.models.refs import LinkReference
-
-    LinkReference(client=client, name=_ref(old)).rename(_ref(new), force=force)
-
-
-def rename_workflow_command():
-    """Command that renames the workflow named <old> to <new>."""
-    return Command().command(_rename_workflow).require_clean().with_commit()
-
-
-@inject.autoparams()
 def _remove_workflow(name, force, plan_gateway: IPlanGateway):
     """Remove the remote named <name>."""
     workflows = plan_gateway.get_newest_plans_by_names()
