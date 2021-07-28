@@ -231,8 +231,11 @@ class RenkuOperationMixin(metaclass=ABCMeta):
     def reset_local_repo(self, project):
         """Reset the local repo to be up to date with the remote."""
 
-        # NOTE: Only do a fetch every >30s to get eventual consistency but not slow things down too much
-        if project.fetch_age < PROJECT_FETCH_TIME:
+        from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
+
+        # NOTE: Only do a fetch every >30s to get eventual consistency but not slow things down too much,
+        # except for MigrateProject since that is likely to require to unshallow the repository
+        if project.fetch_age < PROJECT_FETCH_TIME and not isinstance(self, MigrateProjectCtrl):
             return
 
         lock = project.write_lock()
