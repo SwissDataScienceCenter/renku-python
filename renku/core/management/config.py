@@ -141,6 +141,11 @@ class ConfigManagerMixin:
         config = self.load_config(config_filter=config_filter)
         return config.get(section, key, fallback=None)
 
+    def get_section(self, section, config_filter=ConfigFilter.ALL):
+        """Get items of a specified section."""
+        config = self.load_config(config_filter=ConfigFilter.ALL)
+        return dict(config.items(section)) if section in config else {}
+
     def set_value(self, section, key, value, global_only=False):
         """Set value to specified section and key."""
         config_filter = ConfigFilter.GLOBAL_ONLY
