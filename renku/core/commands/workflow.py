@@ -19,7 +19,6 @@
 
 
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, List, Optional
 
 from renku.core import errors
@@ -54,7 +53,7 @@ def _list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str])
     workflows = plan_gateway.get_newest_plans_by_names()
 
     if format not in WORKFLOW_FORMATS:
-        raise errors.UsageError(f'Provided format "{format}" is not supported.')
+        raise errors.UsageError(f'Provided format "{format}" is not supported ({", ".join(WORKFLOW_FORMATS.keys())})"')
 
     return WORKFLOW_FORMATS[format](workflows.values(), columns=columns)
 
@@ -94,12 +93,11 @@ def rename_workflow_command():
 def _remove_workflow(name, force, plan_gateway: IPlanGateway):
     """Remove the remote named <name>."""
     workflows = plan_gateway.get_newest_plans_by_names()
-    not_found_text = f'The specified workflow is "{name}" is not an active workflow.'
     plan = None
     if name.startswith("/plans/"):
         plan = next(filter(lambda x: x.id == name, workflows.values()), None)
     if not plan and name not in workflows:
-        raise errors.ParameterError(not_found_text)
+        raise errors.ParameterError(f'The specified workflow is "{name}" is not an active workflow.')
 
     if not force:
         prompt_text = f'You are about to remove the following workflow "{name}".' + "\n" + "\nDo you wish to continue?"
@@ -282,7 +280,7 @@ def edit_workflow_command():
 
 
 @inject.autoparams()
-def _export_workflow(name, plan_gateway: IPlanGateway, client: LocalClient, format: str, values: Optional[Path]):
+def _export_workflow(name, plan_gateway: IPlanGateway, client: LocalClient, format: str, values: Optional[str]):
     """Export a workflow to a given format."""
 
     workflows = plan_gateway.get_newest_plans_by_names()
@@ -296,10 +294,10 @@ def _export_workflow(name, plan_gateway: IPlanGateway, client: LocalClient, form
     export_plugins = list(map(lambda x: x[0], supported_formats))
     converter = list(map(lambda x: x[0], filter(lambda x: format in x[1], supported_formats)))
     if not any(converter):
-        raise errors.ParameterError(f'The specified workflow exporter format "{format}" is not available.')
+        raise errors.ParameterError(f"The specified workflow exporter format '{format}' is not available.")
     elif len(converter) > 1:
         raise errors.ConfigurationError(
-            f'The specified format "{format}" is supported by more than one export plugins!'
+            f"The specified format '{format}' is supported by more than one export plugins!"
         )
 
     workflow = workflows[name]

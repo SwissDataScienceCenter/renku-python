@@ -147,3 +147,19 @@ def test_workflow_show(runner, project, run_shell, client):
     assert "Links:" in result.output
     assert "Mappings:" in result.output
     assert "My composite workflow" in result.output
+
+
+def test_workflow_remove_command(runner, project):
+    """test workflow remove with builder."""
+    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
+
+    workflow_name = "test_workflow"
+
+    result = runner.invoke(cli, ["workflow", "remove", workflow_name])
+    assert 2 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", workflow_name, "echo", "foo"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["workflow", "remove", "--force", workflow_name])
+    assert 0 == result.exit_code
