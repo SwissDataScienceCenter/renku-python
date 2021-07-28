@@ -200,10 +200,10 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                         with project.write_lock():
                             # NOTE: Add new ref to remote branches
                             repo.git.remote("set-branches", "--add", origin, ref)
-                            if self.migrate_project:
+                            if self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH:
                                 repo.git.fetch(origin, ref)
                             else:
-                                repo.git.fetch("--depth=1", origin, ref)
+                                repo.git.fetch("--depth={}".format(self.clone_depth), origin, ref)
 
                             # NOTE: Switch to new ref
                             repo.git.checkout("--track", "-f", "-b", ref, remote_branch)
@@ -253,19 +253,20 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 elif repo.remotes and len(repo.remotes) == 1:
                     origin = repo.remotes[0]
 
-                if origin and not self.migrate_project:
-                    origin.fetch(repo.active_branch)
-                    repo.git.reset("--hard", f"{origin}/{repo.active_branch.name}")
+                if origin:
+                    unshallow = self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH
+                    if unshallow:
+                        try:
+                            # NOTE: It could happen that repository is already un-shallowed,
+                            # in this case we don't want to leak git exception, but still want to fetch.
+                            origin.fetch(repo.active_branch, unshallow=True)
+                        except GitCommandError:
+                            origin.fetch(repo.active_branch)
 
-                elif origin and self.migrate_project:
-                    try:
-                        # NOTE: It could happen that repository is already un-shallowed,
-                        # in this case we don't want to leak git exception, but still want to fetch.
-                        origin.fetch(repo.active_branch, unshallow=True)
-                    except GitCommandError:
+                        repo.git.reset("--hard", f"{origin}/{repo.active_branch}")
+                    else:
                         origin.fetch(repo.active_branch)
-
-                    repo.git.reset("--hard", f"{origin}/{repo.active_branch}")
+                        repo.git.reset("--hard", f"{origin}/{repo.active_branch.name}")
 
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
