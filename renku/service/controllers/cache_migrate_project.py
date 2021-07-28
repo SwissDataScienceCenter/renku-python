@@ -18,6 +18,7 @@
 """Renku service migrate project controller."""
 from renku.core.utils.contexts import click_context
 from renku.service.cache.models.job import Job
+from renku.service.config import PROJECT_CLONE_NO_DEPTH
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.logger import worker_log
@@ -73,7 +74,12 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.commit_message = self.ctx.get("commit_message", None)
 
         super(MigrateProjectCtrl, self).__init__(
-            cache, user_data, request_data, migrate_project=migrate_project, skip_lock=skip_lock
+            cache,
+            user_data,
+            request_data,
+            migrate_project=migrate_project,
+            skip_lock=skip_lock,
+            clone_depth=PROJECT_CLONE_NO_DEPTH,
         )
 
     @property

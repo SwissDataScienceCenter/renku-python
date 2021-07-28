@@ -200,9 +200,6 @@ class ProjectMigrateRequest(AsyncSchema, CommitSchema, LocalRepositorySchema, Re
     skip_docker_update = fields.Boolean(default=False)
     skip_migrations = fields.Boolean(default=False)
 
-    # ! temporary -- should be removed but there are tests to update
-    migrate_project = fields.Boolean(default=False, missing=False)
-
     @pre_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""

@@ -32,7 +32,7 @@ from renku.core.utils.contexts import click_context
 from renku.service.cache.models.job import Job
 from renku.service.cache.models.project import Project
 from renku.service.cache.models.user import User
-from renku.service.config import PROJECT_CLONE_NO_DEPTH
+from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT, PROJECT_CLONE_NO_DEPTH
 from renku.service.controllers.utils.remote_project import RemoteProject
 from renku.service.errors import (
     AuthenticationTokenMissing,
@@ -70,18 +70,26 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
     JOB_RESPONSE_SERIALIZER = DelayedResponseRPC()
 
-    def __init__(self, cache, user_data, request_data, migrate_project=False, skip_lock=False):
+    def __init__(
+        self,
+        cache,
+        user_data,
+        request_data,
+        migrate_project=False,
+        skip_lock=False,
+        clone_depth=PROJECT_CLONE_DEPTH_DEFAULT,
+    ):
         """Read operation mixin for controllers."""
         if user_data and "user_id" in user_data and cache is not None:
             self.user = cache.ensure_user(user_data)
 
         self.is_write = False
+        self.migrate_project = migrate_project
         self.skip_lock = skip_lock
-
+        self.clone_depth = clone_depth
         self.cache = cache
         self.user_data = user_data
         self.request_data = request_data
-        self.migrate_project = migrate_project
 
         # NOTE: Manually set `migrate_project` flag takes higher precedence
         # than `migrate_project` flag from the request. Reason for this is
@@ -170,6 +178,8 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 # only to be executed from delayed tasks.
                 if self.migrate_project:
                     clone_context["depth"] = PROJECT_CLONE_NO_DEPTH
+                elif self.clone_depth:
+                    clone_context["depth"] = self.clone_depth
 
                 project = ProjectCloneCtrl(self.cache, self.user_data, clone_context).project_clone()
 
