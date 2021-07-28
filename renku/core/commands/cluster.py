@@ -60,13 +60,6 @@ def prepare_cluster_config():
     return Command().command(_prepare_cluster_config).with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH)
 
 
-@inject.autoparams()
-def _read_cluster_config(client: LocalClient):
-    """Read cluster section of config."""
-    config = client.get_config(as_string=False)
-    return {k.partition(".")[2]: v for k, v in config.items() if k.partition(".")[0] == CONFIG_SECTION}
-
-
 def _read_template(file):
     return Template(Path(file).read_text())
 
@@ -79,7 +72,7 @@ def _write_script(file, script):
 def _compose_sbatch_script(client: LocalClient, command):
     """Compose sbatch script."""
     # read cluster configuration
-    cluster_config = _read_cluster_config(client)
+    cluster_config = client.get_section(CONFIG_SECTION)
     # add renku commnand
     cluster_config["renku_command"] = command
     # read template
