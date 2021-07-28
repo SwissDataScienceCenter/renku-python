@@ -21,12 +21,16 @@ import os
 import tempfile
 from collections import defaultdict
 from pathlib import Path
+from typing import Optional
 from uuid import uuid4
 
 import cwlgen
 
-from renku.core.models.entity import Collection
-from renku.core.models.workflow.parameter import CommandOutput
+from renku.core.models.entities import Collection
+from renku.core.models.workflow.converters import WorkflowConverter
+from renku.core.models.workflow.parameters import CommandOutput, CommandParameter
+from renku.core.models.workflow.plan import Plan
+from renku.core.plugins import hookimpl
 
 
 class CommandLineTool(cwlgen.CommandLineTool):
@@ -421,6 +425,138 @@ class CWLConverter(object):
 
         return cwlgen.CommandInputParameter(
             parameter.id,
+            param_type=type_,
+            input_binding=cwlgen.CommandLineBinding(position=parameter.position, prefix=prefix, separate=separate),
+            default=value,
+        )
+
+
+class CWLExporter(WorkflowConverter):
+    """Converts a ``Plan`` to cwl format."""
+
+    @hookimpl
+    def workflow_format(self):
+        """Workflow format name."""
+        return (self, ["cwl"])
+
+    @hookimpl
+    def workflow_convert(self, workflow: Plan, basedir: Path, output_format: Optional[str]):
+        """Converts a single workflow step to a cwl file."""
+        stdin, stdout, stderr = None, None, None
+
+        inputs = list(workflow.inputs)
+
+        for output in workflow.outputs:
+            if not output.mapped_to:
+                continue
+            if output.mapped_to.stream_type == "stderr":
+                stderr = output.default_value
+            if output.mapped_to.stream_type == "stdout":
+                stdout = output.default_value
+
+        tool_object = CommandLineTool(
+            tool_id=str(uuid4()),
+            base_command=workflow.command.split(" "),
+            stdin=stdin,
+            stderr=stderr,
+            stdout=stdout,
+            cwl_version="v1.0",
+        )
+
+        workdir_req = cwlgen.InitialWorkDirRequirement([])
+        jsrequirement = False
+
+        dirents = []
+
+        for output in workflow.outputs:
+            path = output.default_value
+            if not os.path.isdir(path):
+                path = str(Path(path).parent)
+            if path != "." and path not in dirents and output.create_folder:
+                # workflow needs to create subdirectory for output file,
+                # if the directory was not already present
+                workdir_req.listing.append(
+                    cwlgen.InitialWorkDirRequirement.Dirent(
+                        entry='$({"listing": [], "class": "Directory"})', entryname=path, writable=True
+                    )
+                )
+                dirents.append(path)
+                jsrequirement = True
+            outp, arg = CWLConverter._convert_output(output)
+            tool_object.outputs.append(outp)
+            if arg:
+                tool_object.inputs.append(arg)
+
+        for input_ in inputs:
+            tool_input = CWLConverter._convert_input(input_, basedir)
+
+            workdir_req.listing.append(
+                cwlgen.InitialWorkDirRequirement.Dirent(
+                    entry="$(inputs.{})".format(tool_input.id), entryname=input_.consumes.path, writable=False
+                )
+            )
+
+            tool_object.inputs.append(tool_input)
+            if input_.mapped_to:
+                tool_object.stdin = "$(inputs.{}.path)".format(tool_input.id)
+                jsrequirement = True
+        for parameter in workflow.parameters:
+            tool_object.inputs.append(CWLExporter._convert_parameter(parameter))
+
+        workdir_req.listing.append(
+            cwlgen.InitialWorkDirRequirement.Dirent(
+                entry="$(inputs.input_renku_metadata)", entryname=".renku", writable=False
+            )
+        )
+        tool_object.inputs.append(
+            cwlgen.CommandInputParameter(
+                "input_renku_metadata",
+                param_type="Directory",
+                input_binding=None,
+                default={"path": os.path.abspath(os.path.join(basedir, ".renku")), "class": "Directory"},
+            )
+        )
+
+        # TODO: ".git" is not required once https://github.com/SwissDataScienceCenter/renku-python/issues/1043 is done
+        # because we won't need the git history to correctly load metadata. The following two statements can be removed.
+        workdir_req.listing.append(
+            cwlgen.InitialWorkDirRequirement.Dirent(
+                entry="$(inputs.input_git_directory)", entryname=".git", writable=False
+            )
+        )
+        tool_object.inputs.append(
+            cwlgen.CommandInputParameter(
+                "input_git_directory",
+                param_type="Directory",
+                input_binding=None,
+                default={"path": os.path.abspath(os.path.join(basedir, ".git")), "class": "Directory"},
+            )
+        )
+
+        if workdir_req.listing:
+            tool_object.requirements.append(workdir_req)
+        if jsrequirement:
+            tool_object.requirements.append(cwlgen.InlineJavascriptRequirement())
+
+        return tool_object.export_string()
+
+    @staticmethod
+    def _convert_parameter(parameter: CommandParameter):
+        """Converts an argument to a CWL input."""
+        value, type_ = _get_argument_type(parameter.default_value)
+
+        separate = None
+        prefix = None
+        if parameter.prefix:
+            prefix = parameter.prefix
+            separate = False
+
+            if prefix.endswith(" "):
+                prefix = prefix[:-1]
+                separate = True
+
+        return cwlgen.CommandInputParameter(
+            parameter.id.replace("/", "_"),
             param_type=type_,
             input_binding=cwlgen.CommandLineBinding(position=parameter.position, prefix=prefix, separate=separate),
             default=value,

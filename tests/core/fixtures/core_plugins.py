@@ -16,7 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku core fixtures for plugins testing."""
+from pathlib import Path
+from typing import Optional
+
 import pytest
+
+from renku.core.models.workflow.converters import WorkflowConverter
+from renku.core.models.workflow.plan import Plan
 
 
 @pytest.fixture
@@ -71,3 +77,22 @@ def dummy_processrun_plugin_hook():
             return [Annotation(id="_:annotation", source="Dummy Activity Hook", body="dummy Activity hook body")]
 
     return _ActivityAnnotations()
+
+
+@pytest.fixture
+def dummy_workflow_exporter_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class DummyWorkflowExporter(WorkflowConverter):
+        """CmdlineTool Hook implementation namespace."""
+
+        @hookimpl
+        def workflow_format(self):
+            return (self, ["dummy"])
+
+        @hookimpl
+        def workflow_convert(self, workflow: Plan, basedir: Path, output_format: Optional[str]) -> str:
+            return "dummy"
+
+    return DummyWorkflowExporter()

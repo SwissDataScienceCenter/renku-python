@@ -112,29 +112,6 @@ def remove_workflow_command():
 
 
 @inject.autoparams()
-def _create_workflow(output_file, revision, paths, client: LocalClient):
-    """Create a workflow description for a file."""
-    pass
-    # TODO: implement with new database
-    # graph = Graph()
-    # outputs = graph.build(paths=paths, revision=revision)
-
-    # workflow = graph.as_workflow(outputs=outputs)
-
-    # if output_file:
-    #     output_file = Path(output_file)
-
-    # wf, path = CWLConverter.convert(workflow, client.path, path=output_file)
-
-    # return wf.export_string()
-
-
-def create_workflow_command():
-    """Command that create a workflow description for a file."""
-    return Command().command(_create_workflow)
-
-
-@inject.autoparams()
 def _show_workflow(name_or_id: str, plan_gateway: IPlanGateway):
     """Show the details of a workflow."""
     workflow = plan_gateway.get_by_id(name_or_id)
@@ -297,3 +274,34 @@ def _edit_workflow(
 def edit_workflow_command():
     """Command that edits the properties of a given workflow."""
     return Command().command(_edit_workflow).require_clean().with_database(write=True).with_commit()
+
+
+@inject.autoparams()
+def _export_workflow(name, plan_gateway: IPlanGateway, client: LocalClient, format: str):
+    """Export a workflow to a given format."""
+
+    workflows = plan_gateway.get_newest_plans_by_names()
+    if name not in workflows.keys():
+        errors.ParameterError(f'The specified workflow is "{name}" is not an active workflow.')
+
+    from renku.core.plugins.pluginmanager import get_plugin_manager
+
+    pm = get_plugin_manager()
+    supported_formats = pm.hook.workflow_format()
+    export_plugins = list(map(lambda x: x[0], supported_formats))
+    converter = list(map(lambda x: x[0], filter(lambda x: format in x[1], supported_formats)))
+    if not any(converter):
+        raise errors.ParameterError(f'The specified workflow exporter format "{format}" is not available.')
+    elif len(converter) > 1:
+        raise errors.ConfigurationError(
+            f'The specified format "{format}" is supported by more than one export plugins!'
+        )
+
+    export_plugins.remove(converter[0])
+    converter = pm.subset_hook_caller("workflow_convert", export_plugins)
+    return converter(workflow=workflows[name], basedir=client.path, output_format=format)
+
+
+def export_workflow_command():
+    """Command that exports a workflow into a given format."""
+    return Command().command(_export_workflow).require_clean().with_database(write=False)

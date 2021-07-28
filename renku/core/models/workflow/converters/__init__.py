@@ -16,3 +16,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Define classes for converting workflows to workflow languages."""
+
+from __future__ import annotations
+
+from abc import ABCMeta, abstractmethod
+from pathlib import Path
+from typing import List, Optional, Tuple
+
+from renku.core.models.workflow.plan import Plan
+
+
+class WorkflowConverter(metaclass=ABCMeta):
+    """Abstract class for converting ``Plan`` to a workflow format."""
+
+    @abstractmethod
+    def workflow_format(self) -> Tuple[WorkflowConverter, List[str]]:
+        """Supported workflow description formats."""
+        pass
+
+    @abstractmethod
+    def workflow_convert(self, workflow: Plan, basedir: Path, output_format: Optional[str]) -> str:
+        """Converts a single workflow step to a desired workflow format."""
+        pass
