@@ -25,7 +25,7 @@ from datetime import datetime
 from typing import Any, List, Tuple
 from uuid import uuid4
 
-from marshmallow import EXCLUDE
+import marshmallow
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
@@ -205,6 +205,11 @@ class Plan(AbstractPlan):
         if self.find_parameter(parameter):
             return self
 
+    @property
+    def keywords_csv(self):
+        """Comma-separated list of keywords associated with workflow."""
+        return ", ".join(self.keywords)
+
     def to_argv(self) -> List[Any]:
         """Convert a Plan into argv list."""
         arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
@@ -225,7 +230,7 @@ class PlanSchema(JsonLDSchema):
 
         rdf_type = [prov.Plan, schema.Action, schema.CreativeWork]
         model = Plan
-        unknown = EXCLUDE
+        unknown = marshmallow.EXCLUDE
 
     command = fields.String(renku.command, missing=None)
     description = fields.String(schema.description, missing=None)
@@ -237,3 +242,13 @@ class PlanSchema(JsonLDSchema):
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
     parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
+
+
+class PlanDetailsJson(marshmallow.Schema):
+    """Serialize a plan to a response object."""
+
+    name = marshmallow.fields.String(required=True)
+    title = marshmallow.fields.String()
+    description = marshmallow.fields.String()
+    keywords = marshmallow.fields.List(marshmallow.fields.String())
+    id = marshmallow.fields.String()

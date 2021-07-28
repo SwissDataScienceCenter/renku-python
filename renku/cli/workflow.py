@@ -212,6 +212,7 @@ from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import ERROR
+from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
 from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.commands.workflow import (
@@ -353,10 +354,20 @@ def workflow():
 
 
 @workflow.command("ls")
-def list_workflows():
+@click.option("--format", type=click.Choice(WORKFLOW_FORMATS), default="tabular", help="Choose an output format.")
+@click.option(
+    "-c",
+    "--columns",
+    type=click.STRING,
+    default="id,name",
+    metavar="<columns>",
+    help="Comma-separated list of column to display: {}.".format(", ".join(WORKFLOW_COLUMNS.keys())),
+    show_default=True,
+)
+def list_workflows(format, columns):
     """List or manage workflows with subcommands."""
-    communicator = ClickCallback()
-    list_workflows_command().with_communicator(communicator).build().execute()
+    result = list_workflows_command().build().execute(format=format, columns=columns)
+    click.echo(result.output)
 
 
 @workflow.command()

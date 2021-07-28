@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from renku.core import errors
+from renku.core.commands.format.workflow import WORKFLOW_FORMATS
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
 from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.management import LocalClient
@@ -47,11 +48,14 @@ def _deref(ref):
 
 
 @inject.autoparams()
-def _list_workflows(plan_gateway: IPlanGateway):
+def _list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str]):
     """List or manage workflows with subcommands."""
     workflows = plan_gateway.get_newest_plans_by_names()
-    for name in workflows.keys():
-        communication.echo(f"{name}")
+
+    if format not in WORKFLOW_FORMATS:
+        raise errors.UsageError(f'Provided format "{format}" is not supported.')
+
+    return WORKFLOW_FORMATS[format](workflows.values(), columns=columns)
 
 
 def list_workflows_command():
