@@ -417,9 +417,10 @@ def rename(old, new, force):
 
 @workflow.command()
 @click.argument("name", metavar="<name>")
-def remove(name):
+@click.option("--force", is_flag=True, help="Override the existence check.")
+def remove(name, force):
     """Remove the remote named <name>."""
-    remove_workflow_command().build().execute(name=name)
+    remove_workflow_command().build().execute(name=name, force=force)
 
 
 @workflow.command()

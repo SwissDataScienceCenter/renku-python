@@ -19,7 +19,8 @@
 
 
 from collections import defaultdict
-from typing import List
+from datetime import datetime
+from typing import Dict, List
 
 from renku.core import errors
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
@@ -46,23 +47,16 @@ def _deref(ref):
 
 
 @inject.autoparams()
-def _list_workflows(client: LocalClient):
+def _list_workflows(plan_gateway: IPlanGateway):
     """List or manage workflows with subcommands."""
-    from renku.core.models.refs import LinkReference
-
-    names = defaultdict(list)
-    for ref in LinkReference.iter_items(common_path="workflows"):
-        names[ref.reference.name].append(ref.name)
-
-    for path in client.workflow_path.glob("*.yaml"):
-        communication.echo(
-            "{path}: {names}".format(path=path.name, names=", ".join(_deref(name) for name in names[path.name]))
-        )
+    workflows = plan_gateway.get_newest_plans_by_names()
+    for name in workflows.keys():
+        communication.echo(f"{name}")
 
 
 def list_workflows_command():
     """Command to list or manage workflows with subcommands."""
-    return Command().command(_list_workflows).require_migration().with_database()
+    return Command().command(_list_workflows).require_migration().with_database(write=False)
 
 
 @inject.autoparams()
@@ -92,16 +86,30 @@ def rename_workflow_command():
 
 
 @inject.autoparams()
-def _remove_workflow(name, client: LocalClient):
+def _remove_workflow(name, force, plan_gateway: IPlanGateway):
     """Remove the remote named <name>."""
-    from renku.core.models.refs import LinkReference
+    now = datetime.utcnow()
+    workflows = plan_gateway.get_newest_plans_by_names()
+    not_found_text = f'The specified workflow is "{name}" is not an active workflow.'
+    plan = None
+    if name.startswith("/plans/"):
+        plan = next(filter(lambda x: x.id == name, workflows.values()), None)
+    if not plan and name not in workflows:
+        raise errors.ParameterError(not_found_text)
 
-    LinkReference(client=client, name=_ref(name)).delete()
+    if not force:
+        prompt_text = f'You are about to remove the following workflow "{name}".' + "\n" + "\nDo you wish to continue?"
+        communication.confirm(prompt_text, abort=True, warning=True)
+
+    plan = plan or workflows[name]
+    plan._v_immutable = False
+    plan.invalidated_at = now
+    plan.freeze()
 
 
 def remove_workflow_command():
     """Command that removes the remote named <name>."""
-    return Command().command(_remove_workflow).require_clean().with_commit()
+    return Command().command(_remove_workflow).require_clean().with_database(write=True).with_commit()
 
 
 @inject.autoparams()

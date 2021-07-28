@@ -52,17 +52,3 @@ def export(format, strict, workflows_only):
     export_graph().with_communicator(communicator).build().execute(
         format=format, workflows_only=workflows_only, strict=strict
     )
-
-
-@graph.group()
-def workflow():
-    """Proof-of-Concept command for workflow operations using new metadata."""
-
-
-@workflow.command()
-@click.argument("name", metavar="<name or uuid>")
-@click.option("-f", "--force", is_flag=True, help="Force remove (don't prompt user to confirm).")
-def remove(name, force):
-    """Remove the workflow named <name>."""
-    communicator = ClickCallback()
-    remove_workflow().with_communicator(communicator).build().execute(name=name, force=force)
