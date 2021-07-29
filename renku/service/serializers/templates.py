@@ -25,11 +25,11 @@ from yagup.exceptions import InvalidURL
 
 from renku.core.utils.scm import normalize_to_ascii
 from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
-from renku.service.serializers.cache import ProjectCloneContext, RepositoryCloneContext
+from renku.service.serializers.cache import ProjectCloneContext, RepositoryCloneRequest
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class ManifestTemplatesRequest(RepositoryCloneContext):
+class ManifestTemplatesRequest(RepositoryCloneRequest):
     """Request schema for listing manifest templates."""
 
     url = fields.String(required=True)

@@ -19,24 +19,30 @@
 
 from marshmallow import Schema, fields
 
-from renku.service.serializers.common import RenkuSyncSchema, RepositoryContext
+from renku.service.serializers.common import (
+    AsyncSchema,
+    LocalRepositorySchema,
+    MigrateSchema,
+    RemoteRepositorySchema,
+    RenkuSyncSchema,
+)
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class ConfigShowRequest(Schema):
+class ConfigShowRequest(LocalRepositorySchema, RemoteRepositorySchema):
     """Request schema for config show."""
 
-    project_id = fields.String()
 
-    git_url = fields.String()
-    branch = fields.String()
+class ConfigShowSchema(Schema):
+    """Config generic schema."""
+
+    config = fields.Dict(description="Dictionary of configuration items.", required=True)
 
 
-class ConfigShowResponse(Schema):
+class ConfigShowResponse(ConfigShowSchema):
     """Response schema for project config show."""
 
-    config = fields.Dict(required=True)
-    default = fields.Dict(required=True)
+    default = fields.Dict(description="Dictionary of default configuration items.", required=True)
 
 
 class ConfigShowResponseRPC(JsonRPCResponse):
@@ -45,17 +51,14 @@ class ConfigShowResponseRPC(JsonRPCResponse):
     result = fields.Nested(ConfigShowResponse)
 
 
-class ConfigSetRequest(RepositoryContext):
+class ConfigSetRequest(AsyncSchema, ConfigShowSchema, LocalRepositorySchema, MigrateSchema, RemoteRepositorySchema):
     """Request schema for config set."""
 
-    config = fields.Dict(required=True)
 
-
-class ConfigSetResponse(RenkuSyncSchema):
+class ConfigSetResponse(ConfigShowSchema, RenkuSyncSchema):
     """Response schema for project config set."""
 
-    config = fields.Dict(required=True)
-    default = fields.Dict()
+    default = fields.Dict(description="Dictionary of default configuration items.")
 
 
 class ConfigSetResponseRPC(JsonRPCResponse):
