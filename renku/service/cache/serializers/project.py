@@ -19,19 +19,18 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import Schema, fields, post_load
+from marshmallow import fields, post_load
 
 from renku.service.cache.models.project import Project
+from renku.service.serializers.common import CreationSchema, MandatoryUserSchema
 
 
-class ProjectSchema(Schema):
+class ProjectSchema(CreationSchema, MandatoryUserSchema):
     """Context schema for project clone."""
 
-    created_at = fields.DateTime(missing=datetime.utcnow)
     last_fetched_at = fields.DateTime(missing=datetime.utcnow)
 
     project_id = fields.String(missing=lambda: uuid.uuid4().hex)
-    user_id = fields.String(required=True)
 
     clone_depth = fields.Integer()
     git_url = fields.String()
