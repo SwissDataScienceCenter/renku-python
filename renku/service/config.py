@@ -74,3 +74,4 @@ API_SPEC_URL = SERVICE_PREFIX.lstrip("/") + "/spec.json"
 OIDC_URL = os.getenv("OIDC_URL", "/auth/realms/Renku/.well-known/openid-configuration")
 
 LOGGER_CONFIG_FILE = Path(pkg_resources.resource_filename("renku", "service/logging.yaml"))
+MESSAGE_PREFIX = os.environ.get("RENKU_DOMAIN", "service") + ":"

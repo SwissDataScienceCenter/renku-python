@@ -18,7 +18,7 @@
 """Renku service datasets edit controller."""
 from renku.core.commands.dataset import edit_dataset
 from renku.service.cache.models.job import Job
-from renku.service.config import CACHE_UPLOADS_PATH
+from renku.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetEditRequest, DatasetEditResponseRPC
@@ -34,9 +34,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets edit list controller."""
         self.ctx = DatasetsEditCtrl.REQUEST_SERIALIZER.load(request_data)
-
-        if self.ctx.get("commit_message") is None:
-            self.ctx["commit_message"] = "service: dataset edit {0}".format(self.ctx["name"])
+        self.ctx["commit_message"] = "{0} dataset edit {1}".format(MESSAGE_PREFIX, self.ctx["name"])
 
         super(DatasetsEditCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 

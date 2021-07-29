@@ -18,7 +18,7 @@
 """Renku service datasets create controller."""
 from renku.core.commands.dataset import create_dataset
 from renku.service.cache.models.job import Job
-from renku.service.config import CACHE_UPLOADS_PATH
+from renku.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetCreateRequest, DatasetCreateResponseRPC
@@ -34,9 +34,7 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets create controller."""
         self.ctx = DatasetsCreateCtrl.REQUEST_SERIALIZER.load(request_data)
-
-        if self.ctx.get("commit_message") is None:
-            self.ctx["commit_message"] = "service: dataset create {0}".format(self.ctx["name"])
+        self.ctx["commit_message"] = "{0} dataset create {1}".format(MESSAGE_PREFIX, self.ctx["name"])
 
         super(DatasetsCreateCtrl, self).__init__(cache, user_data, request_data, migrate_project)
 

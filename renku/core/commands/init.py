@@ -540,15 +540,9 @@ def _create_from_template_local(
     ref=None,
     invoked_from=None,
     initial_branch=None,
+    commit_message=None,
 ):
-    """Initialize a new project from a template.
-
-    It creates a custom commit message and accepts custom user data.
-    """
-    command = "renku init" f' -n "{name}"' f' -s "{source}"' f' -r "{ref}"' f' -t "{template_path.name}"'
-    parameters = "".join([f' -p "{key}"="{value}"' for key, value in metadata.items()])
-    prefix = f"{invoked_from}: " if invoked_from else ""
-    commit_message = f"{prefix}{command}{parameters}"
+    """Initialize a new project from a template."""
 
     metadata = {**default_metadata, **metadata}
 
