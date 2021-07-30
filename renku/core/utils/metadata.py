@@ -15,16 +15,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helpers functions for metadata conversion."""
+"""Helpers functions for metadata conversion/parsing."""
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
+from renku.core import errors
 from renku.core.management.migrations.models import v9 as old_datasets
 from renku.core.models.dataset import Dataset, DatasetFile, DatasetTag, ImageObject, Language, RemoteEntity, Url
 from renku.core.models.entity import Entity
 from renku.core.models.provenance import agent as new_agents
+from renku.core.models.provenance.agent import Person
 
 
 def convert_url(url: Optional[old_datasets.Url]) -> Optional[Url]:
@@ -155,3 +158,51 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
         ),
         tags,
     )
+
+
+def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
+    """Parse input and return a list of Person."""
+    creators = creators or ()
+
+    if not isinstance(creators, Iterable) or isinstance(creators, str):
+        raise errors.ParameterError("Invalid creators type")
+
+    people = []
+    no_email_warnings = []
+    for creator in creators:
+        person, no_email_warning = construct_creator(creator, ignore_email=ignore_email)
+
+        people.append(person)
+
+        if no_email_warning:
+            no_email_warnings.append(no_email_warning)
+
+    return people, no_email_warnings
+
+
+def construct_creator(creator: Union[dict, str], ignore_email):
+    """Parse input and return an instance of Person."""
+    if not creator:
+        return None, None
+
+    if isinstance(creator, str):
+        person = Person.from_string(creator)
+    elif isinstance(creator, dict):
+        person = Person.from_dict(creator)
+    else:
+        raise errors.ParameterError("Invalid creator type")
+
+    message = 'A valid format is "Name <email> [affiliation]"'
+
+    if not person.name:  # pragma: no cover
+        raise errors.ParameterError(f'Name is invalid: "{creator}".\n{message}')
+
+    if not person.email:
+        if not ignore_email:  # pragma: no cover
+            raise errors.ParameterError(f'Email is invalid: "{creator}".\n{message}')
+        else:
+            no_email_warning = creator
+    else:
+        no_email_warning = None
+
+    return person, no_email_warning

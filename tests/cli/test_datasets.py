@@ -994,8 +994,7 @@ def test_dataset_overwrite_no_confirm(runner, project):
 def test_dataset_edit(runner, client, project, dirty, subdirectory, load_dataset_with_injection):
     """Check dataset metadata editing."""
     if dirty:
-        with (client.path / "dirty_file").open("w") as fp:
-            fp.write("a")
+        (client.path / "README.md").write_text("Make repo dirty.")
 
     result = runner.invoke(cli, ["dataset", "create", "dataset", "-t", "original title", "-k", "keyword-1"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1042,8 +1041,7 @@ def test_dataset_edit_no_change(runner, client, project, dirty):
     assert 0 == result.exit_code, format_result_exception(result)
 
     if dirty:
-        with (client.path / "README.md").open("w") as fp:
-            fp.write("a")
+        (client.path / "README.md").write_text("Make repo dirty.")
 
     commit_sha_before = client.repo.head.object.hexsha
 

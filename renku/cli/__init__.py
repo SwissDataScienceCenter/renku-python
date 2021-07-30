@@ -81,6 +81,7 @@ from renku.cli.init import init as init_command
 from renku.cli.login import login, logout, token
 from renku.cli.migrate import check_immutable_template_files, migrate, migrationscheck
 from renku.cli.move import move
+from renku.cli.project import project
 from renku.cli.remove import remove
 from renku.cli.rerun import rerun
 from renku.cli.run import run
@@ -203,6 +204,7 @@ cli.add_command(migrate)
 cli.add_command(migrationscheck)
 cli.add_command(check_immutable_template_files)
 cli.add_command(move)
+cli.add_command(project)
 cli.add_command(remove)
 cli.add_command(rerun)
 cli.add_command(run)

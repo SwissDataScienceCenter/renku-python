@@ -90,6 +90,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "clone_depth": self.ctx["depth"],
             "git_url": self.ctx["new_project_url"],
             "name": self.ctx["project_name_stripped"],
+            "description": self.ctx["project_description"],
             "fullname": self.ctx["fullname"],
             "email": self.ctx["email"],
             "owner": self.ctx["project_namespace"],
@@ -153,6 +154,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 invoked_from="service",
                 initial_branch=self.ctx["initial_branch"],
                 commit_message=self.ctx["commit_message"],
+                description=self.ctx["project_description"],
             )
 
         self.new_project_push(new_project_path)
