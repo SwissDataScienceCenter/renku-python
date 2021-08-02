@@ -18,10 +18,9 @@
 """Renku service project related job tests."""
 import pytest
 
-from tests.utils import retry_failed
-
 from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
 from renku.service.serializers.cache import ProjectMigrateRequest
+from tests.utils import retry_failed
 
 
 @pytest.mark.service
