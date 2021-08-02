@@ -634,6 +634,24 @@ def test_execute_migrations_job(svc_client_setup):
 
 @pytest.mark.service
 @pytest.mark.integration
+def test_execute_migrations_remote(svc_client, identity_headers, it_remote_repo_url):
+    """Check execution of all migrations."""
+
+    response = svc_client.post(
+        "/cache.migrate",
+        data=json.dumps(dict(git_url=it_remote_repo_url, skip_docker_update=True)),
+        headers=identity_headers,
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["was_migrated"]
+    assert any(
+        m.startswith("Successfully applied") and m.endswith("migrations.") for m in response.json["result"]["messages"]
+    )
+
+
+@pytest.mark.service
+@pytest.mark.integration
 def test_check_migrations_local(svc_client_setup):
     """Check if migrations are required for a local project."""
     svc_client, headers, project_id, _, _ = svc_client_setup

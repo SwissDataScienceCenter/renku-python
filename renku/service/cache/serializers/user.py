@@ -16,15 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache user related models."""
-from marshmallow import Schema, fields, post_load
+from marshmallow import fields, post_load
 
 from renku.service.cache.models.user import User
+from renku.service.serializers.common import MandatoryUserSchema
 
 
-class UserSchema(Schema):
+class UserSchema(MandatoryUserSchema):
     """User identity schema."""
 
-    user_id = fields.String(required=True)
     fullname = fields.String()
     email = fields.String()
     token = fields.String()

@@ -32,7 +32,7 @@ from renku.core.utils.contexts import click_context
 from renku.service.cache.models.job import Job
 from renku.service.cache.models.project import Project
 from renku.service.cache.models.user import User
-from renku.service.config import PROJECT_CLONE_NO_DEPTH
+from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT, PROJECT_CLONE_NO_DEPTH
 from renku.service.controllers.utils.remote_project import RemoteProject
 from renku.service.errors import (
     AuthenticationTokenMissing,
@@ -70,18 +70,26 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
     JOB_RESPONSE_SERIALIZER = DelayedResponseRPC()
 
-    def __init__(self, cache, user_data, request_data, migrate_project=False, skip_lock=False):
+    def __init__(
+        self,
+        cache,
+        user_data,
+        request_data,
+        migrate_project=False,
+        skip_lock=False,
+        clone_depth=PROJECT_CLONE_DEPTH_DEFAULT,
+    ):
         """Read operation mixin for controllers."""
         if user_data and "user_id" in user_data and cache is not None:
             self.user = cache.ensure_user(user_data)
 
         self.is_write = False
+        self.migrate_project = migrate_project
         self.skip_lock = skip_lock
-
+        self.clone_depth = clone_depth
         self.cache = cache
         self.user_data = user_data
         self.request_data = request_data
-        self.migrate_project = migrate_project
 
         # NOTE: Manually set `migrate_project` flag takes higher precedence
         # than `migrate_project` flag from the request. Reason for this is
@@ -170,6 +178,8 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 # only to be executed from delayed tasks.
                 if self.migrate_project:
                     clone_context["depth"] = PROJECT_CLONE_NO_DEPTH
+                elif self.clone_depth:
+                    clone_context["depth"] = self.clone_depth
 
                 project = ProjectCloneCtrl(self.cache, self.user_data, clone_context).project_clone()
 
@@ -190,10 +200,10 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                         with project.write_lock():
                             # NOTE: Add new ref to remote branches
                             repo.git.remote("set-branches", "--add", origin, ref)
-                            if self.migrate_project:
+                            if self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH:
                                 repo.git.fetch(origin, ref)
                             else:
-                                repo.git.fetch("--depth=1", origin, ref)
+                                repo.git.fetch("--depth={}".format(self.clone_depth), origin, ref)
 
                             # NOTE: Switch to new ref
                             repo.git.checkout("--track", "-f", "-b", ref, remote_branch)
@@ -221,8 +231,11 @@ class RenkuOperationMixin(metaclass=ABCMeta):
     def reset_local_repo(self, project):
         """Reset the local repo to be up to date with the remote."""
 
-        # NOTE: Only do a fetch every >30s to get eventual consistency but not slow things down too much
-        if project.fetch_age < PROJECT_FETCH_TIME:
+        from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
+
+        # NOTE: Only do a fetch every >30s to get eventual consistency but not slow things down too much,
+        # except for MigrateProject since that is likely to require to unshallow the repository
+        if project.fetch_age < PROJECT_FETCH_TIME and not isinstance(self, MigrateProjectCtrl):
             return
 
         lock = project.write_lock()
@@ -243,19 +256,20 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 elif repo.remotes and len(repo.remotes) == 1:
                     origin = repo.remotes[0]
 
-                if origin and not self.migrate_project:
-                    origin.fetch(repo.active_branch)
-                    repo.git.reset("--hard", f"{origin}/{repo.active_branch.name}")
+                if origin:
+                    unshallow = self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH
+                    if unshallow:
+                        try:
+                            # NOTE: It could happen that repository is already un-shallowed,
+                            # in this case we don't want to leak git exception, but still want to fetch.
+                            origin.fetch(repo.active_branch, unshallow=True)
+                        except GitCommandError:
+                            origin.fetch(repo.active_branch)
 
-                elif origin and self.migrate_project:
-                    try:
-                        # NOTE: It could happen that repository is already un-shallowed,
-                        # in this case we don't want to leak git exception, but still want to fetch.
-                        origin.fetch(repo.active_branch, unshallow=True)
-                    except GitCommandError:
+                        repo.git.reset("--hard", f"{origin}/{repo.active_branch}")
+                    else:
                         origin.fetch(repo.active_branch)
-
-                    repo.git.reset("--hard", f"{origin}/{repo.active_branch}")
+                        repo.git.reset("--hard", f"{origin}/{repo.active_branch.name}")
 
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
