@@ -51,25 +51,35 @@ def git_unicode_unescape(s: str, encoding: str = "utf-8") -> str:
     return s
 
 
-def shorten_message(message, max_length=100, cut=True):
-    """Shortens or wraps a commit message to be at most `max_len` characters per line."""
+def shorten_message(message: str, line_length: int = 100, body_length: int = 65000):
+    """Wraps and shortens a commit message.
 
-    if len(message) < max_length:
+    :param message: message to adjust.
+    :param line_length: maximum line length before wrapping. 0 for infinite.
+    :param body_length: maximum body length before cut. 0 for infinite.
+    :return: message wrapped and trimmed.
+    """
+
+    if body_length and len(message) > body_length:
+        message = message[: body_length - 3] + "..."
+
+    if not line_length or len(message) <= line_length:
         return message
-
-    if cut:
-        return message[: max_length - 3] + "..."
 
     lines = message.split(" ")
     lines = [
         line
-        if len(line) < max_length
-        else "\n\t".join(line[o : o + max_length] for o in range(0, len(line), max_length))
+        if len(line) < line_length
+        else "\n\t".join(line[o : o + line_length] for o in range(0, len(line), line_length))
         for line in lines
     ]
 
-    return reduce(
-        lambda c, x: (f"{c[0]} {x}", c[1] + len(x) + 1) if c[1] + len(x) <= max_length else (f"{c[0]}\n\t" + x, len(x)),
+    # NOTE: tries to preserve message spacing.
+    wrapped_message = reduce(
+        lambda c, x: (f"{c[0]} {x}", c[1] + len(x) + 1)
+        if c[1] + len(x) <= line_length
+        else (f"{c[0]}\n\t" + x, len(x)),
         lines,
         ("", 0),
-    )
+    )[0]
+    return wrapped_message[1:]
