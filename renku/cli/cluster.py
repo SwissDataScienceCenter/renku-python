@@ -31,12 +31,41 @@ def cluster():
 
 
 @cluster.command("prepare")
-@click.option("--token", "gitlab_token", required=True, metavar="TOKEN", help="Token for accessing GitLab.")
-@click.option("--options", "sbatch_options", required=True, metavar="'K1=V1 K2 ...'", help="Set sbatch options.")
-def prepare(sbatch_options, gitlab_token):
-    """Prepare options used in cluster execution."""
+@click.option(
+    "--token",
+    "gitlab_token",
+    required=True,
+    metavar="TOKEN",
+    prompt="Please enter your Renku GitLab token",
+    hide_input=True,
+    help="Token for Renku GitLab.",
+)
+@click.option("--options", "sbatch_options", required=True, metavar="'K1 K2=V2 ...'", help="Options for sbatch script.")
+@click.option(
+    "--template",
+    "sbatch_template",
+    default="sbatch_template.sh",
+    required=False,
+    help="Script template.",
+    show_default=True,
+)
+@click.option(
+    "--script",
+    "sbatch_script",
+    default="sbatch_script.sh",
+    required=False,
+    help="Script to be created.",
+    show_default=True,
+)
+def prepare(gitlab_token, sbatch_options, sbatch_script, sbatch_template):
+    """Prepare cluster execution."""
     # ?: should use renku login to generate the token?
-    prepare_cluster_config().build().execute(sbatch_options=sbatch_options, gitlab_token=gitlab_token)
+    prepare_cluster_config().build().execute(
+        gitlab_token=gitlab_token,
+        sbatch_options=sbatch_options,
+        sbatch_template=sbatch_template,
+        sbatch_script=sbatch_script,
+    )
     click.secho("OK", fg="green")
 
 
@@ -44,6 +73,7 @@ def prepare(sbatch_options, gitlab_token):
 @click.argument("args", nargs=-1, type=click.UNPROCESSED)
 def update(args):
     # TODO: check the validity of arguments
+    # TODO: pre-execution check of renku-update (if path exists, for example)
     command = " ".join(("renku", "update") + args)
     value = execute_cluster_command().build().execute(command)
     click.secho(value.output)
