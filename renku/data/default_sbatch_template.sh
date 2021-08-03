@@ -13,6 +13,9 @@ export RENKU_PROJ_NAME=`echo $RENKU_REMOTE | sed "s/.*\/\(.*\)\.git$/\1/"`
 export GIT_AUTHOR_NAME={{ git_username }}
 export EMAIL={{ git_email }}
 
+export SINGULARITY_DOCKER_USERNAME=$GIT_AUTHOR_NAME
+export SINGULARITY_DOCKER_PASSWORD=$RENKU_TOKEN
+
 cd ${SCRATCH}
 
 mkdir -p ${HOME}/runs/
@@ -45,4 +48,5 @@ rm -rf \${RENKU_PROJ_NAME}
 rm ${HOME}/runs/${SLURM_JOB_ID}-run_HPC.sh
 END
 
-srun singularity run -C -B ${SCRATCH} docker://${RENKU_IMAGE} bash ${HOME}/runs/${SLURM_JOB_ID}-run_HPC.sh
+export SINGULARITY_BIND="${HOME}/runs/,${SCRATCH}"
+srun singularity run -C docker://${RENKU_IMAGE} bash ${HOME}/runs/${SLURM_JOB_ID}-run_HPC.sh
