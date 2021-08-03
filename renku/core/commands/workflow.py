@@ -19,6 +19,7 @@
 
 
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 from renku.core import errors
@@ -265,10 +266,12 @@ def edit_workflow_command():
 
 
 @inject.autoparams()
-def _export_workflow(name_or_id, client: LocalClient, format: str, values: Optional[str]):
+def _export_workflow(name_or_id, client: LocalClient, format: str, output: Optional[str], values: Optional[str]):
     """Export a workflow to a given format."""
 
     workflow = _find_workflow(name_or_id)
+    if output:
+        output = Path(output)
 
     from renku.core.plugins.pluginmanager import get_plugin_manager
 
@@ -291,7 +294,7 @@ def _export_workflow(name_or_id, client: LocalClient, format: str, values: Optio
 
     export_plugins.remove(converter[0])
     converter = pm.subset_hook_caller("workflow_convert", export_plugins)
-    return converter(workflow=workflow, basedir=client.path, output_format=format)
+    return converter(workflow=workflow, basedir=client.path, output=output, output_format=format)
 
 
 def export_workflow_command():

@@ -40,13 +40,14 @@ def workflow_format() -> Tuple[WorkflowConverter, List[str]]:
 
 
 @hookspec(firstresult=True)
-def workflow_convert(workflow: Plan, basedir: Path, output_format: Optional[str]) -> str:
+def workflow_convert(workflow: Plan, basedir: Path, output: Optional[Path], output_format: Optional[str]) -> str:
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.
 
     :param workflow: A ``Plan`` object that describes the given workflow.
     :param basedir: .
+    :param output: The output file, which will contain the workflow.
     :param output_format: Output format supported by the given plugin.
     :returns: The string representation of the given Plan in the specific
               workflow format.

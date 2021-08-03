@@ -28,7 +28,6 @@ def test_renku_workflow_exporter_hook(monkeypatch, dummy_workflow_exporter_hook,
 
     with monkeypatch.context() as m:
         m.setattr(pluginmanager, "get_plugin_manager", lambda: pm)
-        assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
 
         cmd = ["echo", "test"]
         run_name = "run_1"

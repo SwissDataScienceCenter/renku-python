@@ -17,6 +17,10 @@
 # limitations under the License.
 """Test ``workflow`` commands."""
 
+from pathlib import Path
+
+from cwl_utils import parser_v1_2 as cwlgen
+
 from renku.cli import cli
 from renku.core.metadata.database import Database
 from tests.utils import format_result_exception
@@ -151,8 +155,6 @@ def test_workflow_show(runner, project, run_shell, client):
 
 def test_workflow_remove_command(runner, project):
     """test workflow remove with builder."""
-    assert 0 == runner.invoke(cli, ["graph", "generate"]).exit_code
-
     workflow_name = "test_workflow"
 
     result = runner.invoke(cli, ["workflow", "remove", workflow_name])
@@ -163,3 +165,18 @@ def test_workflow_remove_command(runner, project):
 
     result = runner.invoke(cli, ["workflow", "remove", "--force", workflow_name])
     assert 0 == result.exit_code
+
+
+def test_workflow_export_command(runner, project):
+    """test workflow export with builder."""
+    result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", "run1", "touch", "data.csv"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["workflow", "export", "run1", "-o", "run1.cwl"])
+    assert 0 == result.exit_code
+    assert Path("run1.cwl").exists()
+
+    workflow = cwlgen.load_document("run1.cwl")
+    assert workflow.baseCommand[0] == "touch"
+    assert len(workflow.inputs) == 3
+    assert len(workflow.outputs) == 1

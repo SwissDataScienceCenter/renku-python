@@ -37,7 +37,7 @@ class WorkflowConverter(metaclass=ABCMeta):
 
     @abstractmethod
     def workflow_convert(
-        self, workflow: Union[CompositePlan, Plan], basedir: Path, output_format: Optional[str]
+        self, workflow: Union[CompositePlan, Plan], basedir: Path, output: Optional[Path], output_format: Optional[str]
     ) -> str:
         """Converts a single workflow step to a desired workflow format."""
         pass

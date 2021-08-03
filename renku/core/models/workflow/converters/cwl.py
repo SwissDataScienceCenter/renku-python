@@ -444,12 +444,30 @@ class CWLExporter(WorkflowConverter):
         return (self, ["cwl"])
 
     @hookimpl
-    def workflow_convert(self, workflow: Union[CompositePlan, Plan], basedir: Path, output_format: Optional[str]):
+    def workflow_convert(
+        self, workflow: Union[CompositePlan, Plan], basedir: Path, output: Optional[Path], output_format: Optional[str]
+    ):
         """Converts the specified workflow to cwl format."""
-        if isinstance(workflow, CompositePlan):
-            return CWLExporter._convert_composite(workflow=workflow, basedir=basedir, output_format=output_format)
+        filename = None
+        if output:
+            if output.is_dir():
+                tmpdir = output
+            else:
+                tmpdir = output.parent
+                filename = output
         else:
-            return CWLExporter._convert_step(workflow=workflow, basedir=basedir, output_format=output_format)
+            tmpdir = Path(tempfile.mkdtemp())
+
+        if isinstance(workflow, CompositePlan):
+            tool_object, path = CWLExporter._convert_composite(
+                workflow, tmpdir, basedir, filename=filename, output_format=output_format
+            )
+        else:
+            tool_object, path = CWLExporter._convert_step(
+                workflow, tmpdir, basedir, filename=filename, output_format=output_format
+            )
+
+        return tool_object.export_string()
 
     @staticmethod
     def _sanitize_id(id):
@@ -468,7 +486,9 @@ class CWLExporter(WorkflowConverter):
         return workflows, index
 
     @staticmethod
-    def _convert_composite(workflow: CompositePlan, basedir: Path, output_format: Optional[str]):
+    def _convert_composite(
+        workflow: CompositePlan, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
+    ):
         """Converts a composite plan to a cwl file."""
         inputs = {}
         arguments = {}
@@ -485,11 +505,11 @@ class CWLExporter(WorkflowConverter):
             cycles = [map(lambda x: x.name, cycle) for cycle in cycles]
             raise errors.GraphCycleError(cycles)
 
-        out = []
         for i, wf in enumerate(graph.workflow_graph.nodes):
-            cwl_output = CWLExporter._convert_step(workflow=wf, basedir=basedir, output_format=output_format)
-            out.append(cwl_output)
-            step = WorkflowStep("step_{}".format(i), "step_{}".format(i))
+            _, path = CWLExporter._convert_step(
+                workflow=wf, tmpdir=tmpdir, basedir=basedir, filename=None, output_format=output_format
+            )
+            step = WorkflowStep("step_{}".format(i), str(path.resolve()))
 
             for input in wf.inputs:
                 input_path = input.default_value
@@ -539,7 +559,7 @@ class CWLExporter(WorkflowConverter):
                 cwlgen.InputParameter(
                     id_,
                     param_type=type_,
-                    default={"path": os.path.abspath(os.path.join(basedir, path)), "class": type_},
+                    default={"location": path.resolve().as_uri(), "class": type_},
                 )
             )
 
@@ -555,23 +575,29 @@ class CWLExporter(WorkflowConverter):
                 )
             )
         workflow_object.steps.extend(steps)
-        out.append(workflow_object.export_string())
-        return "---\n".join(out)
+        if not filename:
+            filename = "parent_{}.cwl".format(uuid4())
+        path = tmpdir / filename
+        workflow_object.export(path.resolve())
+
+        return workflow_object, path
 
     @staticmethod
-    def _convert_step(workflow: Plan, basedir: Path, output_format: Optional[str]):
+    def _convert_step(
+        workflow: CompositePlan, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
+    ):
         """Converts a single workflow step to a cwl file."""
         stdin, stdout, stderr = None, None, None
 
         inputs = list(workflow.inputs)
 
-        for output in workflow.outputs:
-            if not output.mapped_to:
+        for output_ in workflow.outputs:
+            if not output_.mapped_to:
                 continue
-            if output.mapped_to.stream_type == "stderr":
-                stderr = output.default_value
-            if output.mapped_to.stream_type == "stdout":
-                stdout = output.default_value
+            if output_.mapped_to.stream_type == "stderr":
+                stderr = output_.default_value
+            if output_.mapped_to.stream_type == "stdout":
+                stdout = output_.default_value
 
         tool_object = CommandLineTool(
             tool_id=str(uuid4()),
@@ -587,11 +613,11 @@ class CWLExporter(WorkflowConverter):
 
         dirents = []
 
-        for output in workflow.outputs:
-            path = output.default_value
+        for output_ in workflow.outputs:
+            path = output_.default_value
             if not os.path.isdir(path):
                 path = str(Path(path).parent)
-            if path != "." and path not in dirents and output.create_folder:
+            if path != "." and path not in dirents and output_.create_folder:
                 # workflow needs to create subdirectory for output file,
                 # if the directory was not already present
                 workdir_req.listing.append(
@@ -601,7 +627,7 @@ class CWLExporter(WorkflowConverter):
                 )
                 dirents.append(path)
                 jsrequirement = True
-            outp, arg = CWLExporter._convert_output(output)
+            outp, arg = CWLExporter._convert_output(output_)
             tool_object.outputs.append(outp)
             if arg:
                 tool_object.inputs.append(arg)
@@ -632,7 +658,7 @@ class CWLExporter(WorkflowConverter):
                 "input_renku_metadata",
                 param_type="Directory",
                 input_binding=None,
-                default={"path": os.path.abspath(os.path.join(basedir, ".renku")), "class": "Directory"},
+                default={"location": (basedir / ".renku").resolve().as_uri(), "class": "Directory"},
             )
         )
 
@@ -648,7 +674,7 @@ class CWLExporter(WorkflowConverter):
                 "input_git_directory",
                 param_type="Directory",
                 input_binding=None,
-                default={"path": os.path.abspath(os.path.join(basedir, ".git")), "class": "Directory"},
+                default={"location": (basedir / ".git").resolve().as_uri(), "class": "Directory"},
             )
         )
 
@@ -657,7 +683,11 @@ class CWLExporter(WorkflowConverter):
         if jsrequirement:
             tool_object.requirements.append(cwlgen.InlineJavascriptRequirement())
 
-        return tool_object.export_string()
+        if not filename:
+            filename = "{}.cwl".format(uuid4())
+        path = tmpdir / filename
+        tool_object.export(path.resolve())
+        return tool_object, path
 
     @staticmethod
     def _convert_parameter(parameter: CommandParameter):
@@ -682,7 +712,7 @@ class CWLExporter(WorkflowConverter):
         )
 
     @staticmethod
-    def _convert_input(input: CommandInput, basedir):
+    def _convert_input(input: CommandInput, basedir: Path):
         """Converts an input to a CWL input."""
         type_ = "File"
 
@@ -704,7 +734,7 @@ class CWLExporter(WorkflowConverter):
             sanitized_id,
             param_type=type_,
             input_binding=cwlgen.CommandLineBinding(position=input.position, prefix=prefix, separate=separate),
-            default={"path": os.path.abspath(os.path.join(basedir, input.default_value)), "class": type_},
+            default={"location": (basedir / input.default_value).resolve().as_uri(), "class": type_},
         )
 
     @staticmethod

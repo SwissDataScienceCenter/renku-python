@@ -92,7 +92,9 @@ def dummy_workflow_exporter_hook():
             return (self, ["dummy"])
 
         @hookimpl
-        def workflow_convert(self, workflow: Plan, basedir: Path, output_format: Optional[str]) -> str:
+        def workflow_convert(
+            self, workflow: Plan, basedir: Path, output: Optional[Path], output_format: Optional[str]
+        ) -> str:
             return "dummy"
 
     return DummyWorkflowExporter()

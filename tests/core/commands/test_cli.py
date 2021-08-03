@@ -29,7 +29,6 @@ from pathlib import Path
 import git
 import pytest
 from click.testing import CliRunner
-from cwlgen import parse_cwl
 
 from renku import __version__
 from renku.cli import cli
@@ -161,33 +160,6 @@ def test_git_pre_commit_hook_in_unsupported_project(unsupported_project):
     assert "You are trying to update generated files" not in str(e.value.stdout)
 
 
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
-def test_workflow(runner, project):
-    """Test workflow command."""
-    result = runner.invoke(cli, ["run", "touch", "data.csv"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    with open("counted.txt", "w") as stdout:
-        with contextlib.redirect_stdout(stdout):
-            try:
-                cli.main(args=("run", "wc", "data.csv"), prog_name=runner.get_default_prog_name(cli))
-            except SystemExit as e:
-                assert e.code in {None, 0}
-
-    result = runner.invoke(cli, ["workflow", "create", "counted.txt", "-o", "workflow.cwl"], catch_exceptions=False)
-    assert 0 == result.exit_code, format_result_exception(result)
-    workflow = parse_cwl("workflow.cwl")
-    assert 2 == len(workflow.steps)
-
-    # Compare default log and log for a specific file.
-    result_default = runner.invoke(cli, ["log"])
-    result_arg = runner.invoke(cli, ["log", "counted.txt"])
-
-    assert 0 == result_default.exit_code
-    assert 0 == result_arg.exit_code
-    assert result_default.output == result_arg.output
-
-
 @pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_streams(runner, project, capsys, no_lfs_warning):
     """Test redirection of std streams."""
@@ -199,6 +171,7 @@ def test_streams(runner, project, capsys, no_lfs_warning):
     repo.git.add("--all")
     repo.index.commit("Added source.txt")
 
+    workflow_name = "run1"
     with capsys.disabled():
         with open("source.txt", "rb") as stdin:
             with open("result.txt", "wb") as stdout:
@@ -207,7 +180,8 @@ def test_streams(runner, project, capsys, no_lfs_warning):
                     sys.stdin, sys.stdout = stdin, stdout
                     try:
                         cli.main(
-                            args=("run", "cut", "-d,", "-f", "2", "-s"), prog_name=runner.get_default_prog_name(cli)
+                            args=("run", "--name", workflow_name, "cut", "-d,", "-f", "2", "-s"),
+                            prog_name=runner.get_default_prog_name(cli),
                         )
                     except SystemExit as e:
                         assert e.code in {None, 0}
@@ -217,7 +191,7 @@ def test_streams(runner, project, capsys, no_lfs_warning):
     with open("result.txt", "r") as f:
         assert f.read().strip() == "second"
 
-    result = runner.invoke(cli, ["workflow", "create", "result.txt"])
+    result = runner.invoke(cli, ["workflow", "export", workflow_name])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["status"])
