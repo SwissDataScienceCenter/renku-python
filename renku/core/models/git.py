@@ -148,6 +148,11 @@ class GitURL(object):
             img += "/" + self.name
         return img
 
+    @property
+    def api_base(self):
+        """Return GitLab API base url."""
+        return "https://" + self.hostname + "/gitlab/api/v4"
+
 
 @attr.s
 class Range:
