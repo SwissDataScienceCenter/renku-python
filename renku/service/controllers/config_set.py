@@ -34,7 +34,9 @@ class SetConfigCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct controller."""
         self.ctx = SetConfigCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.commit_message = "{0} config set {1}".format(MESSAGE_PREFIX, ", ".join(request_data["config"].keys()))
+        self.ctx["commit_message"] = "{0} config set {1}".format(
+            MESSAGE_PREFIX, ", ".join(request_data["config"].keys())
+        )
 
         super(SetConfigCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
@@ -45,7 +47,7 @@ class SetConfigCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        update_config_command = update_multiple_config().build()
+        update_config_command = update_multiple_config().with_commit_message(self.ctx["commit_message"]).build()
         update_config_command.execute(self.ctx["config"])
 
         return self.context

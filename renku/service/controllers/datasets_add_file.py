@@ -59,7 +59,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
             local_path = None
 
             if "file_url" in _file:
-                commit_message = "{0}{1}".format(self.ctx["commit_message"], _file["file_url"])
+                commit_message = self.ctx["commit_message"]
 
                 job = self.cache.make_job(
                     self.user,
