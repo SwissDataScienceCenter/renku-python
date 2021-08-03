@@ -75,7 +75,7 @@ def update(args):
     # TODO: check the validity of arguments
     # TODO: pre-execution check of renku-update (if path exists, for example)
     command = " ".join(("renku", "update") + args)
-    value = execute_cluster_command().build().execute(command)
+    value = execute_cluster_command().build().execute(command=command)
     click.secho(value.output)
     click.secho("OK", fg="green")
 
