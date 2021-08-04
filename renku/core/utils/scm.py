@@ -19,6 +19,8 @@
 import re
 from functools import reduce
 
+from renku.core.errors import ParameterError
+
 
 def is_ascii(data):
     """Check if provided string contains only ascii characters."""
@@ -60,10 +62,16 @@ def shorten_message(message: str, line_length: int = 100, body_length: int = 650
     :return: message wrapped and trimmed.
     """
 
+    if line_length < 0:
+        raise ParameterError("the length can't be negative.", "line_length")
+
+    if body_length < 0:
+        raise ParameterError("the length can't be negative.", "body_length")
+
     if body_length and len(message) > body_length:
         message = message[: body_length - 3] + "..."
 
-    if not line_length or len(message) <= line_length:
+    if line_length == 0 or len(message) <= line_length:
         return message
 
     lines = message.split(" ")

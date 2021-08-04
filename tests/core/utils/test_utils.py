@@ -19,8 +19,10 @@
 
 import os
 
+from renku.core.errors import ParameterError
 from renku.core.utils.scm import shorten_message
 from renku.core.utils.urls import get_host
+from tests.utils import raises
 
 
 def test_hostname():
@@ -68,3 +70,18 @@ def test_shorten_message():
     assert len(shorten_message(long_message, max_line, body_length=max_line * 2)) < len(long_message)
     assert len(shorten_message(short_message, max_line, body_length=max_line * 2)) == len(short_message)
     assert shorten_message(long_message, max_line, body_length=max_line * 2).count("\n") == 1
+
+    # The message is not distored
+    restored_message = shorten_message(long_message, max_line).replace("\n\t", " ")
+    assert restored_message == long_message
+
+    restored_message = shorten_message(long_message, max_line, body_length=max_line * 2).replace("\n\t", " ")
+    restored_message = restored_message[: max_line * 2 - 3]
+    assert long_message.startswith(restored_message)
+    assert not restored_message.startswith(long_message)
+
+    # Negative lengths are not accepted
+    with raises(ParameterError):
+        shorten_message(short_message, -1)
+    with raises(ParameterError):
+        shorten_message(short_message, max_line, -1)
