@@ -221,11 +221,8 @@ def _edit_workflow(
     plan_gateway: IPlanGateway,
 ):
     """Edits a workflow details."""
-    workflow = plan_gateway.get_by_name(name)
-    if not workflow:
-        errors.ParameterError(f'The specified workflow is "{name}" is not an active workflow.')
-
-    workflow._v_immutable = False
+    derived_from = _find_workflow(name)
+    workflow = derived_from.derive()
     if new_name:
         workflow.name = new_name
 
@@ -257,7 +254,7 @@ def _edit_workflow(
                 param.description = description
                 break
 
-    workflow.freeze()
+    plan_gateway.add(workflow)
 
 
 def edit_workflow_command():

@@ -50,6 +50,7 @@ class CompositePlan(AbstractPlan):
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str,
+        derived_from: str = None,
         plans: List[Union["CompositePlan", Plan]] = None,
         mappings: List[ParameterMapping] = None,
         links: List[ParameterLink] = None,
@@ -59,6 +60,7 @@ class CompositePlan(AbstractPlan):
         self.invalidated_at: datetime = invalidated_at
         self.keywords: List[str] = keywords or []
         self.name: str = name
+        self.derived_from: str = derived_from
 
         AbstractPlan.validate_name(name)
 
@@ -324,6 +326,21 @@ class CompositePlan(AbstractPlan):
     def _get_default_name(self) -> str:
         return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
+    def derive(self) -> "CompositePlan":
+        """Create a new ``CompositePlan`` that is derived from self."""
+        derived = CompositePlan(
+            description=self.description,
+            id=self.id,
+            invalidated_at=self.invalidated_at,
+            name=self.name,
+            derived_from=self.derived_from,
+            plans=self.plans.copy(),
+            mappings=self.mappings.copy(),
+            links=self.links.copy(),
+        )
+        derived.assign_new_id()
+        return derived
+
 
 class CompositePlanSchema(JsonLDSchema):
     """Plan schema."""
@@ -341,5 +358,6 @@ class CompositePlanSchema(JsonLDSchema):
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, add_value_types=True)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
+    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
     plans = Nested(renku.hasSubprocess, [PlanSchema, "CompositePlanSchema"], many=True)
     links = Nested(renku.workflowLinks, [ParameterLinkSchema], many=True, missing=None)

@@ -71,6 +71,7 @@ class CompositePlanViewModel:
         self,
         id: str,
         name: str,
+        derived_from: str,
         mappings: List[ParameterMappingViewModel],
         links: List[ParameterLinkViewModel],
         steps: List[StepViewModel],
@@ -78,6 +79,7 @@ class CompositePlanViewModel:
     ):
         self.id = id
         self.name = name
+        self.derived_from = derived_from
         self.description = description
         self.mappings = mappings
         self.links = links
@@ -89,6 +91,7 @@ class CompositePlanViewModel:
         return cls(
             id=plan.id,
             name=plan.name,
+            derived_from=plan.derived_from,
             description=plan.description,
             mappings=[ParameterMappingViewModel.from_mapping(mapping) for mapping in plan.mappings],
             links=[ParameterLinkViewModel.from_link(link) for link in plan.links],

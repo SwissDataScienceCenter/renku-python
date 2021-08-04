@@ -55,12 +55,14 @@ class AbstractPlan(Persistent, ABC):
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str = None,
+        derived_from: str = None,
     ):
         self.description: str = description
         self.id: str = id
         self.invalidated_at: datetime = invalidated_at
         self.keywords: List[str] = keywords or []
         self.name: str = name
+        self.derived_from: str = derived_from
 
         if not self.name:
             self.name = self._get_default_name()
@@ -98,9 +100,11 @@ class AbstractPlan(Persistent, ABC):
         current_uuid = self._extract_uuid()
         new_uuid = uuid4().hex
         self.id = self.id.replace(current_uuid, new_uuid)
-        self.parameters = copy.deepcopy(self.parameters)
-        for a in self.parameters:
-            a.id = a.id.replace(current_uuid, new_uuid)
+        if self.parameters:
+            self.parameters = copy.deepcopy(self.parameters)
+
+            for a in self.parameters:
+                a.id = a.id.replace(current_uuid, new_uuid)
 
     def _extract_uuid(self) -> str:
         path_start = self.id.find("/plans/")
@@ -137,6 +141,7 @@ class Plan(AbstractPlan):
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str = None,
+        derived_from: str = None,
         outputs: List[CommandOutput] = None,
         success_codes: List[int] = None,
     ):
@@ -145,7 +150,14 @@ class Plan(AbstractPlan):
         self.outputs: List[CommandOutput] = outputs or []
         self.parameters: List[CommandParameter] = parameters or []
         self.success_codes: List[int] = success_codes or []
-        super().__init__(id=id, description=description, invalidated_at=invalidated_at, keywords=keywords, name=name)
+        super().__init__(
+            id=id,
+            description=description,
+            invalidated_at=invalidated_at,
+            keywords=keywords,
+            name=name,
+            derived_from=derived_from,
+        )
 
     def is_similar_to(self, other: "Plan") -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
@@ -205,6 +217,24 @@ class Plan(AbstractPlan):
         if self.find_parameter(parameter):
             return self
 
+    def derive(self) -> "Plan":
+        """Create a new ``Plan`` that is derived from self."""
+        derived = Plan(
+            parameters=self.parameters.copy(),
+            command=self.command,
+            description=self.description,
+            id=self.id,
+            inputs=self.inputs.copy(),
+            invalidated_at=self.invalidated_at,
+            keywords=self.keywords.copy(),
+            name=self.name,
+            derived_from=self.id,
+            outputs=self.outputs.copy(),
+            success_codes=self.success_codes.copy(),
+        )
+        derived.assign_new_id()
+        return derived
+
     @property
     def keywords_csv(self):
         """Comma-separated list of keywords associated with workflow."""
@@ -239,6 +269,7 @@ class PlanSchema(JsonLDSchema):
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, add_value_types=True)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
+    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
     parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
@@ -248,6 +279,7 @@ class PlanDetailsJson(marshmallow.Schema):
     """Serialize a plan to a response object."""
 
     name = marshmallow.fields.String(required=True)
+    derived_from = marshmallow.fields.String()
     title = marshmallow.fields.String()
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())

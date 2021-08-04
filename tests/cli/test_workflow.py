@@ -180,3 +180,40 @@ def test_workflow_export_command(runner, project):
     assert workflow.baseCommand[0] == "touch"
     assert len(workflow.inputs) == 3
     assert len(workflow.outputs) == 1
+
+
+def test_workflow_edit(runner, client):
+    """Test naming of CWL tools and workflows."""
+    workflow_name = "test"
+    result = runner.invoke(cli, ["run", "--name", "test", "touch", "data.txt"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    cmd = ["workflow", "edit", workflow_name, "--name", "first"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+
+    test_plan = database["plans-by-name"][workflow_name]
+    first_plan = database["plans-by-name"]["first"]
+
+    assert first_plan
+    assert first_plan.name == "first"
+    assert first_plan.derived_from == test_plan.id
+
+    cmd = ["workflow", "edit", workflow_name, "--description", "Test workflow"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    """
+    assert len(composite_plan.plans) == 2
+    assert len(composite_plan.mappings) == 2
+
+    assert composite_plan.mappings[0].name == "input_str"
+    assert composite_plan.mappings[0].default_value == "b"
+    assert composite_plan.mappings[0].description == "the input string for the workflow"
+
+    assert composite_plan.mappings[1].name == "output_file"
+    assert composite_plan.mappings[1].default_value == "other_output.csv"
+    assert composite_plan.mappings[1].description == "the final output file produced"
+    """
