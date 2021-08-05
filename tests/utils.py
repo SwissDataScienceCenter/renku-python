@@ -20,9 +20,11 @@ import os
 import traceback
 import uuid
 from contextlib import contextmanager
+from functools import wraps
 from typing import Optional
 
 import pytest
+from flaky import flaky
 
 from renku.core.metadata.database import Database
 from renku.core.models.dataset import Dataset, DatasetsProvenance
@@ -149,3 +151,25 @@ def with_dataset(client, name=None, commit_database=False):
     if commit_database:
         client.get_database().register(dataset)
         client.get_database().commit()
+
+
+def retry_failed(fn=None, extended: bool = False):
+    """
+    Decorator to run flaky with same number of max and min repetitions across all tests.
+
+    :param extended: allow more repetitions than usual.
+    """
+
+    def decorate(fn):
+        limit = 20 if extended else 5
+
+        @flaky(max_runs=limit, min_passes=1)
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    if fn:
+        return decorate(fn)
+    return decorate
