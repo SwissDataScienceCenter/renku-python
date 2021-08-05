@@ -45,6 +45,31 @@ def assert_rpc_response(response, with_key="result"):
     assert with_key in response_text
 
 
+def upload_file(svc_client, headers, filename) -> str:
+    """Upload a file to the service cache."""
+    content_type = headers.pop("Content-Type")
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(file=(io.BytesIO(b"Test file content"), filename)),
+        query_string={"override_existing": True},
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert_rpc_response(response)
+
+    assert 1 == len(response.json["result"]["files"])
+
+    file_id = response.json["result"]["files"][0]["file_id"]
+    assert isinstance(uuid.UUID(file_id), uuid.UUID)
+
+    headers["Content-Type"] = content_type
+
+    return file_id
+
+
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
@@ -337,41 +362,8 @@ def test_create_dataset_with_uploaded_images(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    content_type = headers.pop("Content-Type")
-
-    response = svc_client.post(
-        "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), "image1.jpg")),
-        query_string={"override_existing": True},
-        headers=headers,
-    )
-
-    assert response
-    assert 200 == response.status_code
-    assert_rpc_response(response)
-
-    assert 1 == len(response.json["result"]["files"])
-
-    file_id1 = response.json["result"]["files"][0]["file_id"]
-    assert isinstance(uuid.UUID(file_id1), uuid.UUID)
-
-    response = svc_client.post(
-        "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is another test"), "image2.png")),
-        query_string={"override_existing": True},
-        headers=headers,
-    )
-
-    assert response
-    assert 200 == response.status_code
-    assert_rpc_response(response)
-
-    assert 1 == len(response.json["result"]["files"])
-
-    file_id2 = response.json["result"]["files"][0]["file_id"]
-    assert isinstance(uuid.UUID(file_id2), uuid.UUID)
-
-    headers["Content-Type"] = content_type
+    file_id1 = upload_file(svc_client, headers, "image1.jpg")
+    file_id2 = upload_file(svc_client, headers, "image2.png")
 
     payload = {
         "project_id": project_id,
@@ -562,23 +554,8 @@ def test_add_file_view_with_no_identity(svc_client_with_repo):
 def test_add_file_view(svc_client_with_repo):
     """Check adding of uploaded file to dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
-    content_type = headers.pop("Content-Type")
 
-    response = svc_client.post(
-        "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt")),
-        query_string={"override_existing": True},
-        headers=headers,
-    )
-
-    assert response
-    assert 200 == response.status_code
-    assert_rpc_response(response)
-
-    assert 1 == len(response.json["result"]["files"])
-
-    file_id = response.json["result"]["files"][0]["file_id"]
-    assert isinstance(uuid.UUID(file_id), uuid.UUID)
+    file_id = upload_file(svc_client, headers, "datafile1.txt")
 
     payload = {
         "project_id": project_id,
@@ -586,7 +563,6 @@ def test_add_file_view(svc_client_with_repo):
         "create_dataset": True,
         "files": [{"file_id": file_id}],
     }
-    headers["Content-Type"] = content_type
 
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
@@ -605,17 +581,8 @@ def test_add_file_view(svc_client_with_repo):
 def test_add_file_commit_msg(svc_client_with_repo):
     """Check adding of uploaded file to dataset with custom commit message."""
     svc_client, headers, project_id, _ = svc_client_with_repo
-    content_type = headers.pop("Content-Type")
 
-    response = svc_client.post(
-        "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt")),
-        query_string={"override_existing": True},
-        headers=headers,
-    )
-
-    file_id = response.json["result"]["files"][0]["file_id"]
-    assert isinstance(uuid.UUID(file_id), uuid.UUID)
+    file_id = upload_file(svc_client, headers, "datafile1.txt")
 
     payload = {
         "commit_message": "my awesome data file",
@@ -624,7 +591,6 @@ def test_add_file_commit_msg(svc_client_with_repo):
         "create_dataset": True,
         "files": [{"file_id": file_id}],
     }
-    headers["Content-Type"] = content_type
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert response
@@ -660,17 +626,8 @@ def test_remote_add_view(svc_client, it_remote_repo_url, identity_headers):
 def test_add_file_failure(svc_client_with_repo):
     """Check adding of uploaded file to dataset with non-existing file."""
     svc_client, headers, project_id, _ = svc_client_with_repo
-    content_type = headers.pop("Content-Type")
 
-    response = svc_client.post(
-        "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt")),
-        query_string={"override_existing": True},
-        headers=headers,
-    )
-
-    file_id = response.json["result"]["files"][0]["file_id"]
-    assert isinstance(uuid.UUID(file_id), uuid.UUID)
+    file_id = upload_file(svc_client, headers, "datafile1.txt")
 
     payload = {
         "commit_message": "my awesome data file",
@@ -679,7 +636,6 @@ def test_add_file_failure(svc_client_with_repo):
         "create_dataset": True,
         "files": [{"file_id": file_id}, {"file_path": "my problem right here"}],
     }
-    headers["Content-Type"] = content_type
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert response
@@ -931,30 +887,15 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 def test_list_dataset_files(svc_client_with_repo):
     """Check listing of dataset files"""
     svc_client, headers, project_id, _ = svc_client_with_repo
-    content_type = headers.pop("Content-Type")
 
     file_name = uuid.uuid4().hex
-    response = svc_client.post(
-        "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), file_name)),
-        query_string={"override_existing": True},
-        headers=headers,
-    )
-
-    assert response
-    assert 200 == response.status_code
-    assert_rpc_response(response)
-
-    assert 1 == len(response.json["result"]["files"])
-    file_id = response.json["result"]["files"][0]["file_id"]
-    assert isinstance(uuid.UUID(file_id), uuid.UUID)
+    file_id = upload_file(svc_client, headers, file_name)
 
     payload = {
         "project_id": project_id,
         "name": "mydata",
         "files": [{"file_id": file_id}],
     }
-    headers["Content-Type"] = content_type
 
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
@@ -1483,6 +1424,8 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
+    file_id = upload_file(svc_client, headers, "image2.jpg")
+
     # NOTE: test edit reordering and add
     edit_payload = {
         "project_id": project_id,
@@ -1491,6 +1434,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
             {"content_url": "data/renku_logo.png", "position": 1},
             {"content_url": "https://example.com/image1.jpg", "position": 2},
             {"content_url": "https://example.com/other_image.jpg", "position": 3},
+            {"file_id": file_id, "position": 4},
         ],
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
@@ -1502,15 +1446,15 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     assert {"images"} == response.json["result"]["edited"].keys()
 
     images = response.json["result"]["edited"]["images"]
-    assert len(images) == 3
-    img1 = next(img for img in images if img["position"] == 1)
-    img2 = next(img for img in images if img["position"] == 2)
-    img3 = next(img for img in images if img["position"] == 3)
+    assert len(images) == 4
+    images.sort(key=lambda x: x["position"])
 
-    assert img1["content_url"].startswith(".renku/dataset_images/")
-    assert img1["content_url"].endswith("/1.png")
-    assert img2["content_url"] == "https://example.com/image1.jpg"
-    assert img3["content_url"] == "https://example.com/other_image.jpg"
+    assert images[0]["content_url"].startswith(".renku/dataset_images/")
+    assert images[0]["content_url"].endswith("/1.png")
+    assert images[1]["content_url"] == "https://example.com/image1.jpg"
+    assert images[2]["content_url"] == "https://example.com/other_image.jpg"
+    assert images[3]["content_url"].startswith(".renku/dataset_images/")
+    assert images[3]["content_url"].endswith("/4.jpg")
 
     # NOTE: test edit with duplicate position
     edit_payload = {
