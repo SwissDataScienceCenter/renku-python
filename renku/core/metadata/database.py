@@ -611,10 +611,12 @@ class ObjectWriter:
             value = tuple(self._serialize_helper(value) for value in object)
         elif hasattr(object, "__getstate__"):
             value = object.__getstate__()
+            value = {k: v for k, v in value.items() if not k.startswith("_v_")}
             value = self._serialize_helper(value)
             assert not isinstance(value, dict) or "id" in value, f"Invalid object state: {value} for {object}"
         else:
             value = object.__dict__.copy()
+            value = {k: v for k, v in value.items() if not k.startswith("_v_")}
             value = self._serialize_helper(value)
             assert "id" in value, f"Invalid object state: {value} for {object}"
 

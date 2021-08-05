@@ -44,14 +44,17 @@ from renku.core.commands.status import get_status
 @click.command()
 @click.option("--revision", default="HEAD", help="Display status as it was in the given revision")
 @click.option("--no-output", is_flag=True, default=False, help="Display commands without output files.")
-@click.argument("path", type=click.Path(exists=True, dir_okay=False), nargs=-1)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @click.pass_context
-def status(ctx, revision, no_output, path):
+def status(ctx, revision, no_output, paths):
     """Show a status of the repository."""
     communicator = ClickCallback()
 
     result = (
-        get_status().with_communicator(communicator).build().execute(revision=revision, no_output=no_output, path=path)
+        get_status()
+        .with_communicator(communicator)
+        .build()
+        .execute(revision=revision, no_output=no_output, paths=paths)
     )
 
     graph, status = result.output
