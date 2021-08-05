@@ -23,7 +23,6 @@ import uuid
 
 import jwt
 import pytest
-from flaky import flaky
 from git import Repo
 
 from renku.core.management.command_builder.command import replace_injection
@@ -32,6 +31,7 @@ from renku.core.models.dataset import DatasetsProvenance
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
+from tests.utils import retry_failed
 
 
 @pytest.mark.service
@@ -229,7 +229,7 @@ def test_file_upload_with_users(svc_client, identity_headers):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_no_auth(svc_client, identity_headers, it_remote_repo_url):
     """Check error on cloning of remote repository."""
     payload = {
@@ -253,7 +253,7 @@ def test_clone_projects_no_auth(svc_client, identity_headers, it_remote_repo_url
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_with_auth(svc_client, identity_headers, it_remote_repo_url):
     """Check cloning of remote repository."""
     payload = {
@@ -269,7 +269,7 @@ def test_clone_projects_with_auth(svc_client, identity_headers, it_remote_repo_u
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_multiple(svc_client, identity_headers, it_remote_repo_url):
     """Check multiple cloning of remote repository."""
     project_ids = []
@@ -316,7 +316,7 @@ def test_clone_projects_multiple(svc_client, identity_headers, it_remote_repo_ur
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote_repo_url):
     """Check cache state of cloned projects with no headers."""
     payload = {
@@ -351,7 +351,7 @@ def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_invalid_headers(svc_client, identity_headers, it_remote_repo_url):
     """Check cache state of cloned projects with invalid headers."""
     payload = {
@@ -707,7 +707,7 @@ def test_check_no_migrations(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @pytest.mark.serial
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
     """Check cache state is reset after pushing to a protected branch fails."""
     svc_client, headers, project_id, cache, user = svc_protected_old_repo
@@ -733,7 +733,7 @@ def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @pytest.mark.serial
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_migrating_protected_branch(svc_protected_old_repo):
     """Check migrating on a protected branch does not change cache state."""
     svc_client, headers, project_id, _, _ = svc_protected_old_repo
@@ -760,7 +760,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @pytest.mark.serial
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_cache_synchronization):
     """Test that the cache stays synchronized with the remote repo."""
     from renku.core.management.client import LocalClient
