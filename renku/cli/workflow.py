@@ -221,6 +221,7 @@ from renku.core.commands.workflow import (
     remove_workflow_command,
     show_workflow_command,
 )
+from renku.core.plugins.workflow import supported_formats
 
 
 def _print_plan(plan: PlanViewModel):
@@ -502,9 +503,10 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 @click.argument("workflow_name", metavar="<name or uuid>")
 @click.option(
     "--format",
-    metavar="<format>",
     default="cwl",
-    help="Workflow language to export (cwl, snakemake, etc.)",
+    type=click.Choice(supported_formats(), case_sensitive=False),
+    show_default=True,
+    help="Workflow language format.",
 )
 @click.option(
     "-o",

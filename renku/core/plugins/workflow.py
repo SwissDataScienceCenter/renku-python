@@ -53,3 +53,12 @@ def workflow_convert(workflow: Plan, basedir: Path, output: Optional[Path], outp
               workflow format.
     """
     pass
+
+
+def supported_formats():
+    """Returns the currently available workflow language format types."""
+    from renku.core.plugins.pluginmanager import get_plugin_manager
+
+    pm = get_plugin_manager()
+    supported_formats = pm.hook.workflow_format()
+    return [format for fs in supported_formats for format in fs[1]]
