@@ -1598,6 +1598,7 @@ def test_external_file_update(runner, client, directory_tree, subdirectory):
     assert current_commit != previous_commit
 
 
+@pytest.mark.skip("renku update doesn't support new database, reenable once it does")
 @pytest.mark.serial
 def test_workflow_with_external_file(runner, client, directory_tree, run, subdirectory, no_lfs_size_limit):
     """Check using external files in workflows."""

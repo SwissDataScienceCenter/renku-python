@@ -34,7 +34,7 @@ from renku.core.utils.contexts import measure
 
 def _get_relative_path(client, path):
     """Get a relative path to current working directory."""
-    return str((client.path / path).relative_to(os.getcwd()))
+    return str((client.path / path).resolve().relative_to(os.getcwd()))
 
 
 def get_status():
