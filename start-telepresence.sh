@@ -79,7 +79,7 @@ echo "Be sure to be in the local python context where you develop renku-python."
 echo -e ""
 echo ">>> COMMAND BEGIN <<<"
 echo "CACHE_DIR=temp/service_cache \
-DEBUG_MODE=1 DEBUG=1 FLASK_DEBUG=1 \
+DEBUG_MODE=true DEBUG=1 FLASK_DEBUG=1 \
 FLASK_ENV=development FLASK_APP=renku.service.entrypoint \
 flask run --no-reload"
 echo ">>> COMMAND END <<<"
