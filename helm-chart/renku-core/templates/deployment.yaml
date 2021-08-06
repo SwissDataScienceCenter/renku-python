@@ -45,7 +45,7 @@ spec:
           {{ if .Values.debug }}
           args: ["api", "--debug"]
           securityContext:
-            runAsGroup: 2000
+            runAsUser: 1000
           {{ else }}
           args: ["api"]
           {{ end }}

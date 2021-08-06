@@ -305,6 +305,17 @@ in editable mode using ``pipx``. Clone the repository and then do:
 
 This will install all the extras for testing and debugging.
 
+If you already use `pyenv <https://github.com/pyenv/pyenv>`__ to manage different python versions,
+you may be interested in installing `pyenv-virtualenv <https://github.com/pyenv/pyenv-virtualenv>`__ to
+create an ad-hoc virtual environment for developing renku.
+
+Once you have created an activated a virtual environment for renku-python, you can use the usual
+`pip` commands to install the required dependencies.
+
+::
+
+    $ pip install -e .[all]  # use `.[all]` for zsh
+
 
 Service
 -------
@@ -315,28 +326,24 @@ variable ``DEBUG_MODE=true`` either in your shell or in the ``.env`` file. Note 
 this case the local directory is mounted in the docker container and renku is re-installed
 so it may take a few minutes before the container is ready.
 
+If you have a full RenkuLab deployment at your disposal, you can
+use `telepresence <https://www.telepresence.io/>`__ to develop and debug locally.
+Just run the `start-telepresence.sh` script and follow the instructions. You can also
+attach a remote debugger using the "remote attach" method described later.
+
 
 Running tests
 -------------
 
-To run tests locally with specific version of Python:
+We use `pytest <https://docs.pytest.org>`__ for running tests.
+You can use our `run-tests.sh` script for running specific set of tests.
 
 ::
 
-    $ pyenv install 3.7.5rc1
-    $ pipenv --python ~/.pyenv/versions/3.7.5rc1/bin/python install
-    $ pipenv run tests
+    $ ./run-tests.sh -h
 
-
-To recreate environment with different version of Python, it's easy to do so with the following commands:
-
-::
-
-    $ pipenv --rm
-    $ pyenv install 3.6.9
-    $ pipenv --python ~/.pyenv/versions/3.6.9/bin/python install
-    $ pipenv run tests
-
+We lint the files using `black <https://github.com/psf/black>`__ and
+`isort <https://github.com/PyCQA/isort>`__. 
 
 
 Using External Debuggers
