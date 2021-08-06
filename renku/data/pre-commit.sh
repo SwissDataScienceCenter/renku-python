@@ -39,9 +39,9 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
 fi
 
 if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
-  IFS=$'\n' read -r -d '' -a MODIFIED_OUTPUTS \
-    <<< "$(renku show outputs "${MODIFIED_FILES[@]}")"
+  MODIFIED_OUTPUTS=$(renku show outputs "${MODIFIED_FILES[@]}")
   EXIT_CODE=$?
+  IFS=$'\n' read -r -d '' -a MODIFIED_OUTPUTS <<< "$(printf '%s\n' "${MODIFIED_OUTPUTS[@]}")"
   if [ $EXIT_CODE -eq 3 ]; then
     echo "Cannot verify validity of the commit: Project metadata is outdated."
     echo "Run 'renku migrate' command to fix the issue."
@@ -74,7 +74,7 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
     echo 'This would prevent the project from being updated with new versions of the template in the future.'
     echo
     echo 'Immutable files:'
-    for file in "${MODIFIED_OUTPUTS[@]}"; do
+    for file in "${IMMUTABLE_TEMPLATE_FILES[@]}"; do
       echo "$file"
     done
     echo
