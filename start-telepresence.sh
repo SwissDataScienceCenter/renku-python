@@ -21,28 +21,27 @@ set -e
 COLOR_RED="\033[0;31m"
 COLOR_RESET="\033[0m"
 
-CURRENT_CONTEXT=`kubectl config current-context`
+CURRENT_CONTEXT=$(kubectl config current-context)
 if [[ ! $CURRENT_CONTEXT ]]
 then
-    read -p "No default kubernetes context. Please specify one: "
+    read -p "No default kubernetes context. Please specify one: " -r
     CURRENT_CONTEXT=$REPLY
 else
     echo -e "Your current kubernetes context is: ${COLOR_RED}${CURRENT_CONTEXT}${COLOR_RESET}"
-    read -p "Press enter to use it, or type a different one [skip]: "
+    read -p "Press enter to use it, or type a different one [skip]: " -r
     if [[ $REPLY ]]
     then
         CURRENT_CONTEXT=$REPLY
     fi
 fi
-OLD_REPLY=$REPLY
 
 if [[ ! $DEV_NAMESPACE ]]
 then
-    read -p "No dev namespace found. Please specify one: "
+    read -p "No dev namespace found. Please specify one: " -r
     DEV_NAMESPACE=$REPLY
 else
     echo -e "Your current dev namespace is: ${COLOR_RED}${DEV_NAMESPACE}${COLOR_RESET}"
-    read -p "Press enter to use it, or type a different one [skip]: "
+    read -p "Press enter to use it, or type a different one [skip]: " -r
     if [[ $REPLY ]]
     then
         DEV_NAMESPACE=$REPLY
@@ -95,7 +94,7 @@ echo -e "\U0001F438 Enjoy Renku!"
 echo -e ""
 
 telepresence \
-    --swap-deployment ${POD_NAME} \
-    --namespace ${DEV_NAMESPACE} \
+    --swap-deployment "${POD_NAME}" \
+    --namespace "${DEV_NAMESPACE}" \
     --expose 5000:8080 \
     --run-shell
