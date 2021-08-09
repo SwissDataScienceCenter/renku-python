@@ -98,10 +98,16 @@ def migrate(
     if not is_renku_project():
         return False, template_updated, docker_updated
 
+    try:
+        project = client.project
+    except ValueError:
+        project = None
+
     if (
         not skip_template_update
-        and client.project.template_source
-        and (force_template_update or client.project.automated_update)
+        and project
+        and project.template_source
+        and (force_template_update or project.automated_update)
     ):
         try:
             template_updated, _, _ = _update_template()

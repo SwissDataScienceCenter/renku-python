@@ -348,6 +348,41 @@ class Collection(Entity):
         for member in self.members:
             member._parent = weakref.ref(self)
 
+    def default_members(self):
+        """Generate default members as entities from current path."""
+        if not self.client:
+            return []
+        dir_path = self.client.path / self.path
+
+        if not dir_path.exists():
+            # likely a directory deleted in a previous commit
+            return []
+
+        assert dir_path.is_dir()
+
+        members = []
+        for path in dir_path.iterdir():
+            if path.name == ".gitkeep":
+                continue  # ignore empty directories in Git repository
+            cls = Collection if path.is_dir() else Entity
+            members.append(
+                cls(commit=self.commit, client=self.client, path=str(path.relative_to(self.client.path)), parent=self)
+            )
+        return members
+
+    @property
+    def entities(self):
+        """Recursively return all files."""
+        for member in self.members:
+            if not member.client and self.client:
+                member.client = self.client
+            yield from member.entities
+
+        if self.client and not self.commit and self._label and "@UNCOMMITTED" not in self._label:
+            self.commit = self.client.repo.commit(self._label.rsplit("@", maxsplit=1)[-1])
+
+        yield self
+
 
 @attr.s(eq=False, order=False)
 class MappedIOStream(object):

@@ -40,6 +40,7 @@ from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.datasets import DATASET_METADATA_PATHS
+from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import (
     Dataset,
@@ -214,6 +215,7 @@ def _add_to_dataset(
     urls,
     name,
     client: LocalClient,
+    database_gateway: IDatabaseGateway,
     external=False,
     force=False,
     overwrite=False,
@@ -271,6 +273,11 @@ def _add_to_dataset(
             )
             if with_metadata:
                 dataset.update_metadata_from(with_metadata)
+
+        # TODO: Remove this once we have a proper database dispatcher for injection
+        # we need to commit because "project clone" changes injection, so tha database instance here
+        # is not the same as the one in CommandBuilder
+        database_gateway.commit()
 
         return dataset
     except DatasetNotFound:
@@ -524,7 +531,6 @@ def _import_dataset(
             dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", dataset.identifier))
 
         urls, names = zip(*[(f.source, f.filename) for f in files])
-
         dataset = _add_to_dataset(
             urls=urls,
             name=name,

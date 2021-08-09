@@ -46,7 +46,7 @@ from yagup import GitURL
 
 from renku.core import errors
 from renku.core.management.clone import clone
-from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import inject, update_injected_client
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.repository import RepositoryApiMixin
@@ -385,7 +385,6 @@ class DatasetsApiMixin(object):
         else:
             for url in urls:
                 is_remote, is_git, url = _check_url(url)
-
                 if is_git and is_remote:  # Remote git repo
                     sources = sources or ()
                     new_files = self._add_from_git(
@@ -513,7 +512,6 @@ class DatasetsApiMixin(object):
         if clear_files_before:
             dataset.clear_files()
         dataset.add_or_update_files(dataset_files)
-
         datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
 
     def is_protected_path(self, path):
@@ -1259,6 +1257,9 @@ class DatasetsApiMixin(object):
                 raise errors.InvalidFileOperation(f"Cannot delete files in {repo_path}: Permission denied")
 
         repo, _ = clone(git_url, path=str(repo_path), install_githooks=False, depth=depth)
+
+        # NOTE: clone updates injected client, undo that until we have a better solution
+        update_injected_client(self)
 
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It
