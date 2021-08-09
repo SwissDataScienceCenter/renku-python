@@ -473,7 +473,15 @@ def export_dataset():
 
 @inject.autoparams()
 def _import_dataset(
-    uri, client: LocalClient, name="", extract=False, yes=False, previous_dataset=None, delete=False, gitlab_token=None
+    uri,
+    client: LocalClient,
+    database_gateway: IDatabaseGateway,
+    name="",
+    extract=False,
+    yes=False,
+    previous_dataset=None,
+    delete=False,
+    gitlab_token=None,
 ):
     """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -591,6 +599,9 @@ def _import_dataset(
 
     if provider.supports_images:
         record.import_images(dataset)
+
+    # TODO: sometimes injections are updated and the CommandBuilder commits changes to the wrong Database instance
+    database_gateway.commit()
 
 
 def import_dataset():

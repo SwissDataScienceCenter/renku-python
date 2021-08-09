@@ -43,6 +43,7 @@ from renku.core.management.migrations.utils import (
     generate_url_id,
 )
 from renku.core.models import jsonld as jsonld
+from renku.core.models import project as new_project
 from renku.core.models.calamus import (
     DateTimeList,
     JsonLDSchema,
@@ -1888,7 +1889,7 @@ class OldCommitMixinSchema(JsonLDSchema):
     path = fields.String(prov.atLocation)
     _id = fields.Id(init_name="id")
     _label = fields.String(rdfs.label, init_name="label", missing=None)
-    _project = Nested(schema.isPartOf, ProjectSchema, init_name="project", missing=None)
+    _project = Nested(schema.isPartOf, [ProjectSchema, new_project.ProjectSchema], init_name="project", missing=None)
 
 
 class OldEntitySchema(OldCommitMixinSchema):

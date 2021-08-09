@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrate datasets based on Git submodules."""
+import glob
 import os
 import shutil
 from pathlib import Path
@@ -26,7 +27,12 @@ from renku.core import errors
 from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import replace_injection
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
+from renku.core.management.interface.plan_gateway import IPlanGateway
+from renku.core.management.interface.project_gateway import IProjectGateway
+from renku.core.management.migrations.m_0009__new_metadata_storage import _fetch_datasets
 from renku.core.management.migrations.models.v3 import DatasetFileSchemaV3, get_client_datasets
 from renku.core.management.migrations.models.v9 import (
     DatasetFile,
@@ -35,7 +41,11 @@ from renku.core.management.migrations.models.v9 import (
     generate_label,
 )
 from renku.core.metadata.database import Database
+from renku.core.metadata.gateway.activity_gateway import ActivityGateway
+from renku.core.metadata.gateway.database_gateway import DatabaseGateway
 from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
+from renku.core.metadata.gateway.plan_gateway import PlanGateway
+from renku.core.metadata.gateway.project_gateway import ProjectGateway
 from renku.core.utils.urls import remove_credentials
 
 
@@ -95,6 +105,10 @@ def _migrate_submodule_based_datasets(client):
         constructor_bindings = {
             IDatasetGateway: lambda: DatasetGateway(),
             DatasetsProvenance: lambda: DatasetsProvenance(),
+            IProjectGateway: lambda: ProjectGateway(),
+            IDatabaseGateway: lambda: DatabaseGateway(),
+            IActivityGateway: lambda: ActivityGateway(),
+            IPlanGateway: lambda: PlanGateway(),
         }
 
         with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
@@ -160,7 +174,8 @@ def _migrate_submodule_based_datasets(client):
 
 def _fetch_file_metadata(client, path):
     """Return metadata for a single file."""
-    for dataset in client.datasets.values():
+    paths = glob.glob(f"{client.path}/.renku/datasets/*/*.yml" "")
+    for dataset in _fetch_datasets(client, client.repo.head.commit, paths, [])[0]:
         for file in dataset.files:
             if file.entity.path == path:
                 return file

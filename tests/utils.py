@@ -160,7 +160,7 @@ def retry_failed(fn=None, extended: bool = False):
     """
 
     def decorate(fn):
-        limit = 20 if extended else 5
+        limit = 20 if extended else 1
 
         @flaky(max_runs=limit, min_passes=1)
         @wraps(fn)

@@ -305,7 +305,13 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
 
     activity_id = Activity.generate_id()
 
-    plan = _convert_run_to_plan(process_run.association.plan)
+    run = process_run.association.plan
+
+    if run.subprocesses:
+        assert len(run.subprocesses) == 1, f"Run in ProcessRun has multiple steps: {run._id}"
+        run = run.subprocesses[0].process
+
+    plan = _convert_run_to_plan(run)
 
     agents = [_old_agent_to_new_agent(a) for a in process_run.agents or []]
     association_agent = _old_agent_to_new_agent(process_run.association.agent)

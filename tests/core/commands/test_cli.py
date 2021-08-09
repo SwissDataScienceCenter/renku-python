@@ -529,7 +529,10 @@ def test_status_consistency(client, project):
     base_result = runner.invoke(cli, ["status"])
     os.chdir("somedirectory")
     comp_result = runner.invoke(cli, ["status"])
-    assert base_result.stdout.replace("somedirectory/", "") == comp_result.output
+
+    base_result_stdout = "\n".join(base_result.stdout.split("\n")[4:])
+    comp_result_stdout = "\n".join(comp_result.output.split("\n")[4:])
+    assert base_result_stdout.replace("somedirectory/", "") == comp_result_stdout
 
 
 def test_unchanged_output(runner, project):
