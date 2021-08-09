@@ -19,16 +19,15 @@
 from pathlib import Path
 
 import pytest
-from flaky import flaky
 
 from renku.cli import cli
 from renku.core.commands.clone import project_clone_command
 from renku.core.utils.contexts import chdir
-from tests.utils import format_result_exception
+from tests.utils import format_result_exception, retry_failed
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/gitlab/renku-testing/project-9"])
 def test_renku_clone(runner, monkeypatch, url):
     """Test cloning of a Renku repo and existence of required settings."""
@@ -59,7 +58,7 @@ def test_renku_clone(runner, monkeypatch, url):
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/gitlab/renku-testing/project-9"])
 def test_renku_clone_with_config(tmp_path, url):
     """Test cloning of a Renku repo and existence of required settings."""
@@ -79,7 +78,7 @@ def test_renku_clone_with_config(tmp_path, url):
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/gitlab/renku-testing/project-9"])
 def test_renku_clone_checkout_rev(tmp_path, url):
     """Test cloning of a repo checking out a rev with static config."""
@@ -103,7 +102,7 @@ def test_renku_clone_checkout_rev(tmp_path, url):
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 @pytest.mark.parametrize("rev,detached", [("test-branch", False), ("my-tag", True)])
 def test_renku_clone_checkout_revs(tmp_path, rev, detached):
     """Test cloning of a Renku repo checking out a rev."""
@@ -123,7 +122,7 @@ def test_renku_clone_checkout_revs(tmp_path, rev, detached):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("path,expected_path", [("", "project-9"), (".", "."), ("new-name", "new-name")])
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_renku_clone_uses_project_name(runner, path, expected_path):
     """Test renku clone uses project name as target-path by default."""
     remote = "https://dev.renku.ch/gitlab/renku-testing/project-9"
@@ -135,7 +134,7 @@ def test_renku_clone_uses_project_name(runner, path, expected_path):
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_renku_clone_private_project_error(runner):
     """Test renku clone prints proper error message when a project is private."""
     remote = "git@dev.renku.ch:mohammad.alisafaee/test-private-project.git"

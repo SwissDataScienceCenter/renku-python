@@ -19,16 +19,15 @@
 import time
 
 import pytest
-from flaky import flaky
 
 from renku.cli import cli
 from renku.cli.service import list_renku_processes
-from tests.utils import format_result_exception
+from tests.utils import format_result_exception, retry_failed
 
 
 @pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
 @pytest.mark.serial
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_service_up_down(runner, svc_client_cache):
     """Check bringing service components up and down in daemon mode."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
@@ -48,7 +47,7 @@ def test_service_up_down(runner, svc_client_cache):
 
 
 @pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_service_up_restart(runner, svc_client_cache):
     """Check bringing service components up in daemon mode and restarting them."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
@@ -80,7 +79,7 @@ def test_service_up_restart(runner, svc_client_cache):
 
 
 @pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_service_ps(runner, svc_client_cache):
     """Check bringing service components up and listing them."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
@@ -103,7 +102,7 @@ def test_service_ps(runner, svc_client_cache):
 
 
 @pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
-@flaky(max_runs=20, min_passes=1)
+@retry_failed
 def test_service_logs(runner, svc_client_cache):
     """Check service component logs."""
     result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)

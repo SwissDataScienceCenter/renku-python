@@ -25,7 +25,6 @@ import uuid
 from pathlib import Path
 
 import pytest
-from flaky import flaky
 from werkzeug.utils import secure_filename
 
 from renku.service.config import (
@@ -35,7 +34,7 @@ from renku.service.config import (
     RENKU_EXCEPTION_ERROR_CODE,
 )
 from renku.service.serializers.headers import encode_b64
-from tests.utils import make_dataset_add_payload
+from tests.utils import make_dataset_add_payload, retry_failed
 
 
 def assert_rpc_response(response, with_key="result"):
@@ -48,7 +47,7 @@ def assert_rpc_response(response, with_key="result"):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_create_dataset_view(svc_client_with_repo):
     """Create a new dataset successfully."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -68,7 +67,7 @@ def test_create_dataset_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
     """Create a new dataset successfully."""
     svc_client, headers, cache = svc_client_cache
@@ -86,7 +85,7 @@ def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_create_dataset_view(svc_client_cache, it_remote_repo_url):
     """Create a new job for dataset create operation."""
     svc_client, headers, cache = svc_client_cache
@@ -106,7 +105,7 @@ def test_delay_create_dataset_view(svc_client_cache, it_remote_repo_url):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_create_dataset_wrong_ref_view(svc_client_with_repo):
     """Create a new dataset successfully."""
     svc_client, headers, _, _ = svc_client_with_repo
@@ -126,7 +125,7 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_remove_dataset_view(svc_client_with_repo):
     """Create a new dataset successfully."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -152,7 +151,7 @@ def test_remove_dataset_view(svc_client_with_repo):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_remote_remove_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed remove."""
     response = svc_client.post(
@@ -168,7 +167,7 @@ def test_remote_remove_view(svc_client, it_remote_repo_url, identity_headers):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_create_dataset_with_metadata(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -209,7 +208,7 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_create_dataset_with_images(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -280,7 +279,7 @@ def test_create_dataset_with_images(svc_client_with_repo):
 )
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -333,7 +332,7 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_create_dataset_with_uploaded_images(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -417,7 +416,7 @@ def test_create_dataset_with_uploaded_images(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_create_dataset_invalid_creator(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -441,7 +440,7 @@ def test_create_dataset_invalid_creator(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_create_dataset_view_dataset_exists(svc_client_with_repo):
     """Create a new dataset which already exists."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -465,7 +464,7 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_create_dataset_view_unknown_param(svc_client_with_repo):
     """Create new dataset by specifying unknown parameters."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -485,7 +484,7 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_create_dataset_with_no_identity(svc_client_with_repo):
     """Create a new dataset with no identification provided."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -514,7 +513,7 @@ def test_create_dataset_with_no_identity(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_add_file_view_with_no_identity(svc_client_with_repo):
     """Check identity error raise in dataset add."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -541,7 +540,7 @@ def test_add_file_view_with_no_identity(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_add_file_view(svc_client_with_repo):
     """Check adding of uploaded file to dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -584,7 +583,7 @@ def test_add_file_view(svc_client_with_repo):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_remote_add_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed add."""
     response = svc_client.post(
@@ -602,7 +601,7 @@ def test_remote_add_view(svc_client, it_remote_repo_url, identity_headers):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_add_file_failure(svc_client_with_repo):
     """Check adding of uploaded file to dataset with non-existing file."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -636,7 +635,7 @@ def test_add_file_failure(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_list_datasets_view(svc_client_with_repo):
     """Check listing of existing datasets."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -668,7 +667,7 @@ def test_list_datasets_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing datasets."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -710,7 +709,7 @@ def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing datasets."""
     svc_client, headers, _, _ = svc_client_with_repo
@@ -740,7 +739,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_list_datasets_view_no_auth(svc_client_with_repo):
     """Check listing of existing datasets with no auth."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -757,7 +756,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing dataset files."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -792,7 +791,7 @@ def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing dataset files."""
     svc_client, headers, _, _ = svc_client_with_repo
@@ -812,7 +811,7 @@ def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo_url):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_remote_create_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed dataset create."""
     response = svc_client.post(
@@ -828,7 +827,7 @@ def test_remote_create_view(svc_client, it_remote_repo_url, identity_headers):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_create_and_list_datasets_view(svc_client_with_repo):
     """Create and list created dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -872,7 +871,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_list_dataset_files(svc_client_with_repo):
     """Check listing of dataset files"""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -927,7 +926,7 @@ def test_list_dataset_files(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     """Upload archive and add it to a dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -998,7 +997,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     """Upload archive and add its contents to a dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -1076,7 +1075,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_add_existing_file(svc_client_with_repo):
     """Upload archive and add it to a dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -1119,7 +1118,7 @@ def test_add_existing_file(svc_client_with_repo):
 )
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_cached_import_dataset_job(doi, svc_client_cache, project):
     """Test import a dataset."""
     client, headers, cache = svc_client_cache
@@ -1167,7 +1166,7 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
 @pytest.mark.parametrize("doi", ["10.5281/zenodo.3239980"])
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_remote_import_dataset_job(doi, svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed import of a dataset."""
     response = svc_client.post(
@@ -1184,7 +1183,7 @@ def test_remote_import_dataset_job(doi, svc_client, it_remote_repo_url, identity
 @pytest.mark.parametrize("url", ["https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3"])
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_dataset_add_remote(url, svc_client_cache, project_metadata):
     """Test import a dataset."""
     project, project_meta = project_metadata
@@ -1218,7 +1217,7 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_dataset_add_multiple_remote(svc_client_cache, project_metadata):
     """Test dataset add multiple remote files."""
     project, project_meta = project_metadata
@@ -1256,7 +1255,7 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_add_remote_and_local_file(svc_client_with_repo):
     """Test dataset add remote and local files."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -1280,7 +1279,7 @@ def test_add_remote_and_local_file(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_edit_datasets_view(svc_client_with_repo):
     """Test editing dataset metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -1330,7 +1329,7 @@ def test_edit_datasets_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_edit_datasets_view_without_modification(svc_client_with_repo):
     """Test editing dataset metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -1393,7 +1392,7 @@ def test_edit_datasets_view_without_modification(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_edit_dataset_with_images(svc_client_with_repo):
     """Edit images of a dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -1504,7 +1503,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed edit."""
     response = svc_client.post(
@@ -1519,7 +1518,7 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_protected_branch(svc_protected_repo):
     """Test adding a file to protected branch."""
     svc_client, headers, payload, response = svc_protected_repo
@@ -1541,7 +1540,7 @@ def test_protected_branch(svc_protected_repo):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_unlink_file(unlink_file_setup):
     """Check unlinking of a file from a dataset."""
     svc_client, headers, unlink_payload = unlink_file_setup
@@ -1555,7 +1554,7 @@ def test_unlink_file(unlink_file_setup):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_remote_unlink_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed unlink."""
     response = svc_client.post(
@@ -1571,7 +1570,7 @@ def test_remote_unlink_view(svc_client, it_remote_repo_url, identity_headers):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_unlink_file_no_filter_error(unlink_file_setup):
     """Check for correct exception raise when no filters specified."""
     svc_client, headers, unlink_payload = unlink_file_setup
@@ -1585,7 +1584,7 @@ def test_unlink_file_no_filter_error(unlink_file_setup):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_unlink_file_exclude(unlink_file_setup):
     """Check unlinking of a file from a dataset with exclude."""
     svc_client, headers, unlink_payload = unlink_file_setup

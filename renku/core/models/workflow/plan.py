@@ -19,14 +19,17 @@
 
 import copy
 import itertools
+import re
+from abc import ABC
 from datetime import datetime
 from pathlib import PurePosixPath
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from uuid import uuid4
 
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
+from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.metadata.database import Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
@@ -38,6 +41,7 @@ from renku.core.models.workflow.parameter import (
     CommandOutput,
     CommandOutputSchema,
     CommandParameter,
+    CommandParameterBase,
     CommandParameterSchema,
     MappedIOStream,
 )
@@ -47,7 +51,86 @@ from renku.core.utils.urls import get_host
 MAX_GENERATED_NAME_LENGTH = 25
 
 
-class Plan(Persistent):
+class AbstractPlan(Persistent, ABC):
+    """Abstract base class for all plans."""
+
+    def __init__(
+        self,
+        *,
+        description: str = None,
+        id: str,
+        invalidated_at: datetime = None,
+        keywords: List[str] = None,
+        name: str = None,
+    ):
+        self.description: str = description
+        self.id: str = id
+        self.invalidated_at: datetime = invalidated_at
+        self.keywords: List[str] = keywords or []
+        self.name: str = name
+
+        if not self.name:
+            self.name = self._get_default_name()
+        else:
+            AbstractPlan.validate_name(name)
+
+    @staticmethod
+    def generate_id(uuid: str = None) -> str:
+        """Generate an identifier for Plan."""
+        uuid = uuid or uuid4().hex
+        return f"/plans/{uuid}"
+
+    def _get_default_name(self) -> str:
+        name = "-".join(str(a) for a in self.to_argv())
+        if not name:
+            return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
+
+        name = secure_filename(name)
+        rand_length = 5
+        return f"{name[:MAX_GENERATED_NAME_LENGTH - rand_length -1]}-{uuid4().hex[:rand_length]}"
+
+    @staticmethod
+    def validate_name(name: str):
+        """Check a name for invalid characters."""
+        if not re.match("[a-zA-Z0-9-_]+", name):
+            raise errors.ParameterError(
+                f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
+            )
+
+    def assign_new_id(self):
+        """Assign a new UUID.
+
+        This is required only when there is another plan which is exactly the same except the parameters' list.
+        """
+        current_uuid = self._extract_uuid()
+        new_uuid = uuid4().hex
+        self.id = self.id.replace(current_uuid, new_uuid)
+        self.parameters = copy.deepcopy(self.parameters)
+        for a in self.parameters:
+            a.id = a.id.replace(current_uuid, new_uuid)
+
+    def _extract_uuid(self) -> str:
+        path_start = self.id.find("/plans/")
+        return self.id[path_start + len("/plans/") :]
+
+    def resolve_mapping_path(self, mapping_path: str) -> Tuple[CommandParameterBase, "Plan"]:
+        """Resolve a mapping path to its reference parameter."""
+        raise NotImplementedError()
+
+    def resolve_direct_reference(self, reference: str) -> CommandParameterBase:
+        """Resolve a direct parameter reference."""
+        raise NotImplementedError()
+
+    def find_parameter(self, parameter: CommandParameterBase) -> bool:
+        """Find if a parameter exists on this plan."""
+        raise NotImplementedError()
+
+    def find_parameter_workflow(self, parameter: CommandParameterBase) -> "Plan":
+        """Return the workflow a parameter belongs to."""
+        raise NotImplementedError()
+
+
+class Plan(AbstractPlan):
     """Represent a `renku run` execution template."""
 
     def __init__(
@@ -65,18 +148,11 @@ class Plan(Persistent):
         success_codes: List[int] = None,
     ):
         self.command: str = command
-        self.description: str = description
-        self.id: str = id
         self.inputs: List[CommandInput] = inputs or []
-        self.invalidated_at: datetime = invalidated_at
-        self.keywords: List[str] = keywords or []
-        self.name: str = name
         self.outputs: List[CommandOutput] = outputs or []
         self.parameters: List[CommandParameter] = parameters or []
         self.success_codes: List[int] = success_codes or []
-
-        if not self.name:
-            self.name = self._get_default_name()
+        super().__init__(id=id, description=description, invalidated_at=invalidated_at, keywords=keywords, name=name)
 
     @classmethod
     def from_run(cls, run: Run):
@@ -98,7 +174,6 @@ class Plan(Persistent):
                 default_value=argument.value,
                 description=argument.description,
                 id=CommandParameter.generate_id(plan_id=plan_id, postfix=PurePosixPath(argument._id).name),
-                label=None,
                 name=argument.name,
                 position=argument.position,
                 prefix=argument.prefix,
@@ -116,7 +191,6 @@ class Plan(Persistent):
                 default_value=input.consumes.path,
                 description=input.description,
                 id=CommandInput.generate_id(plan_id=plan_id, postfix=PurePosixPath(input._id).name),
-                label=None,
                 mapped_to=mapped_to,
                 name=input.name,
                 position=input.position,
@@ -136,7 +210,6 @@ class Plan(Persistent):
                 default_value=output.produces.path,
                 description=output.description,
                 id=CommandOutput.generate_id(plan_id=plan_id, postfix=PurePosixPath(output._id).name),
-                label=None,
                 mapped_to=mapped_to,
                 name=output.name,
                 position=output.position,
@@ -154,37 +227,6 @@ class Plan(Persistent):
             parameters=[convert_argument(a) for a in run.arguments],
             success_codes=run.successcodes,
         )
-
-    @staticmethod
-    def generate_id(uuid: str) -> str:
-        """Generate an identifier for Plan."""
-        uuid = uuid or uuid4().hex
-        return f"/plans/{uuid}"
-
-    def _get_default_name(self) -> str:
-        name = "-".join(str(a) for a in self.to_argv())
-        if not name:
-            return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
-
-        name = secure_filename(name)
-        rand_length = 5
-        return f"{name[:MAX_GENERATED_NAME_LENGTH - rand_length -1]}-{uuid4().hex[:rand_length]}"
-
-    def assign_new_id(self):
-        """Assign a new UUID.
-
-        This is required only when there is another plan which is exactly the same except the parameters' list.
-        """
-        current_uuid = self._extract_uuid()
-        new_uuid = uuid4().hex
-        self.id = self.id.replace(current_uuid, new_uuid)
-        self.parameters = copy.deepcopy(self.parameters)
-        for a in self.parameters:
-            a.id = a.id.replace(current_uuid, new_uuid)
-
-    def _extract_uuid(self) -> str:
-        path_start = self.id.find("/plans/")
-        return self.id[path_start + len("/plans/") :]
 
     def is_similar_to(self, other: "Plan") -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
@@ -206,6 +248,43 @@ class Plan(Persistent):
             and get_output_patterns(self) == get_output_patterns(other)
             and get_parameters(self) == get_parameters(other)
         )
+
+    def resolve_mapping_path(self, mapping_path: str) -> Tuple[CommandParameterBase, "Plan"]:
+        """Resolve a mapping path to its reference parameter."""
+
+        parts = mapping_path.split(".", maxsplit=1)
+
+        if len(parts) > 1:
+            raise errors.ParameterNotFoundError(mapping_path, self.name)
+
+        return self.resolve_direct_reference(parts[0]), self
+
+    def resolve_direct_reference(self, reference: str) -> CommandParameterBase:
+        """Resolve a direct parameter reference."""
+        try:
+            if reference.startswith("@input"):
+                return self.inputs[int(reference[6:]) - 1]
+            elif reference.startswith("@output"):
+                return self.outputs[int(reference[7:]) - 1]
+            elif reference.startswith("@param"):
+                return self.parameters[int(reference[6:]) - 1]
+        except (ValueError, IndexError):
+            raise errors.ParameterNotFoundError(reference, self.name)
+
+        for parameter in self.inputs + self.outputs + self.parameters:
+            if parameter.name == reference:
+                return parameter
+
+        raise errors.ParameterNotFoundError(reference, self.name)
+
+    def find_parameter(self, parameter: CommandParameterBase) -> bool:
+        """Find if a parameter exists on this plan."""
+        return parameter in self.inputs + self.outputs + self.parameters
+
+    def find_parameter_workflow(self, parameter: CommandParameterBase) -> "Plan":
+        """Return the workflow a parameter belongs to."""
+        if self.find_parameter(parameter):
+            return self
 
     def to_argv(self) -> List[Any]:
         """Convert a Plan into argv list."""
@@ -237,7 +316,6 @@ class Plan(Persistent):
             return old_parameter.CommandArgument(
                 description=argument.description,
                 id=argument.id.replace(self.id, run_id),
-                label=None,
                 name=argument.name,
                 position=argument.position,
                 prefix=argument.prefix,
@@ -253,7 +331,6 @@ class Plan(Persistent):
                 consumes=get_entity(input.default_value),
                 description=input.description,
                 id=input.id.replace(self.id, run_id),
-                label=None,
                 mapped_to=mapped_to,
                 name=input.name,
                 position=input.position,
@@ -269,7 +346,6 @@ class Plan(Persistent):
                 create_folder=output.create_folder,
                 description=output.description,
                 id=output.id.replace(self.id, run_id),
-                label=None,
                 mapped_to=mapped_to,
                 name=output.name,
                 position=output.position,

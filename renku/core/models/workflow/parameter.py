@@ -24,7 +24,7 @@ from uuid import uuid4
 
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, renku, schema
 from renku.core.utils.urls import get_slug
 
 RANDOM_ID_LENGTH = 4
@@ -56,23 +56,20 @@ class CommandParameterBase:
         default_value: Any,
         description: str,
         id: str,
-        label: str,
         name: str,
-        position: Optional[int],
-        prefix: str,
+        position: Optional[int] = None,
+        prefix: Optional[str] = None,
     ):
         self.default_value: Any = default_value
         self.description: str = description
         self.id: str = id
-        self.label: str = label
         self.name: str = name
         self.position: Optional[int] = position
         self.prefix: str = prefix
+        self._v_actual_value_set = False
 
         if not self.name:
             self.name = self._get_default_name()
-        if not self.label:
-            self.label = self._get_default_label()
 
     @staticmethod
     def _generate_id(plan_id: str, parameter_type: str, position: Optional[int], postfix: str = None) -> str:
@@ -92,20 +89,41 @@ class CommandParameterBase:
 
     def to_argv(self) -> List[Any]:
         """String representation (sames as cmd argument)."""
+        value = self.actual_value
+
+        if isinstance(value, str) and " " in value:
+            value = f'"{value}"'
+
         if self.prefix:
             if self.prefix.endswith(" "):
-                return [self.prefix[:-1], self.default_value]
-            return [f"{self.prefix}{self.default_value}"]
+                return [self.prefix[:-1], value]
+            return [f"{self.prefix}{value}"]
 
-        return [self.default_value]
+        return [value]
+
+    @property
+    def actual_value(self):
+        """Get the actual value to be used for execution."""
+        if self._v_actual_value_set:
+            return self._v_actual_value
+
+        return self.default_value
+
+    @actual_value.setter
+    def actual_value(self, value):
+        """Set the actual value to be used for execution."""
+        self._v_actual_value = value
+        self._v_actual_value_set = True
+
+    @property
+    def actual_value_set(self):
+        """Whether the actual_value on this parameter has been set at least once."""
+        return getattr(self, "_v_actual_value_set", False)
 
     def _generate_name(self, base) -> str:
         name = get_slug(self.prefix.strip(" -=")) if self.prefix else base
         position = self.position or uuid4().hex[:RANDOM_ID_LENGTH]
         return f"{name}-{position}"
-
-    def _get_default_label(self) -> str:
-        raise NotImplementedError
 
     def _get_default_name(self) -> str:
         raise NotImplementedError
@@ -120,7 +138,6 @@ class CommandParameter(CommandParameterBase):
         default_value: Any = None,
         description: str = None,
         id: str,
-        label: str = None,
         name: str = None,
         position: Optional[int] = None,
         prefix: str = None,
@@ -129,7 +146,6 @@ class CommandParameter(CommandParameterBase):
             default_value=default_value,
             description=description,
             id=id,
-            label=label,
             name=name,
             position=position,
             prefix=prefix,
@@ -141,9 +157,6 @@ class CommandParameter(CommandParameterBase):
         return CommandParameterBase._generate_id(
             plan_id, parameter_type="parameters", position=position, postfix=postfix
         )
-
-    def _get_default_label(self) -> str:
-        return f"Command Parameter '{self.default_value}'"
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="parameter")
@@ -158,7 +171,6 @@ class CommandInput(CommandParameterBase):
         default_value: Any = None,
         description: str = None,
         id: str,
-        label: str = None,
         mapped_to: MappedIOStream = None,
         name: str = None,
         position: Optional[int] = None,
@@ -168,7 +180,6 @@ class CommandInput(CommandParameterBase):
             default_value=default_value,
             description=description,
             id=id,
-            label=label,
             name=name,
             position=position,
             prefix=prefix,
@@ -184,9 +195,6 @@ class CommandInput(CommandParameterBase):
         """Input stream representation."""
         return f" < {self.default_value}" if self.mapped_to else ""
 
-    def _get_default_label(self) -> str:
-        return f"Command Input '{self.default_value}'"
-
     def _get_default_name(self) -> str:
         return self._generate_name(base="input")
 
@@ -201,7 +209,6 @@ class CommandOutput(CommandParameterBase):
         default_value: Any = None,
         description: str = None,
         id: str,
-        label: str = None,
         mapped_to: MappedIOStream = None,
         name: str = None,
         position: Optional[int] = None,
@@ -211,7 +218,6 @@ class CommandOutput(CommandParameterBase):
             default_value=default_value,
             description=description,
             id=id,
-            label=label,
             name=name,
             position=position,
             prefix=prefix,
@@ -231,11 +237,82 @@ class CommandOutput(CommandParameterBase):
 
         return f" > {self.default_value}" if self.mapped_to.stream_type == "stdout" else f" 2> {self.default_value}"
 
-    def _get_default_label(self) -> str:
-        return f"Command Output '{self.default_value}'"
-
     def _get_default_name(self) -> str:
         return self._generate_name(base="output")
+
+
+class ParameterMapping(CommandParameterBase):
+    """A mapping of child parameter(s) to a parent CompositePlan."""
+
+    def __init__(
+        self,
+        *,
+        default_value: Any = None,
+        description: str = None,
+        id: str,
+        name: str = None,
+        mapped_parameters: List[CommandParameterBase] = None,
+        **kwargs,
+    ):
+        super().__init__(default_value=default_value, description=description, id=id, name=name, **kwargs)
+
+        self.mapped_parameters: List[CommandParameterBase] = mapped_parameters
+
+    @staticmethod
+    def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
+        """Generate an id for CommandOutput."""
+        return CommandParameterBase._generate_id(plan_id, parameter_type="mappings", position=position, postfix=postfix)
+
+    def to_stream_representation(self) -> str:
+        """Input stream representation."""
+        return ""
+
+    def _get_default_name(self) -> str:
+        return self._generate_name(base="mapping")
+
+    @CommandParameterBase.actual_value.setter
+    def actual_value(self, value):
+        """Set the actual value to be used for execution."""
+        self._v_actual_value = value
+        self._v_actual_value_set = True
+
+        for mapped_to in self.mapped_parameters:
+            if not mapped_to.actual_value_set:
+                mapped_to.actual_value = value
+
+    @property
+    def leaf_parameters(self):
+        """Return leaf (non-Mapping) parameters contained by this Mapping."""
+        for mapped_to in self.mapped_parameters:
+            if isinstance(mapped_to, ParameterMapping):
+                yield mapped_to.leaf_parameters
+            else:
+                yield mapped_to
+
+
+class ParameterLink:
+    """A link between a source and one or more sink parameters."""
+
+    def __init__(
+        self,
+        source: CommandParameterBase,
+        sinks: List[CommandParameterBase],
+        id: str,
+    ):
+        self.source = source
+        self.sinks = sinks
+        self.id: str = id
+
+    def apply(self):
+        """Apply source value to sinks."""
+        for s in self.sinks:
+            s.actual_value = self.source.actual_value
+
+    @staticmethod
+    def generate_id(plan_id: str) -> str:
+        """Generate an id for parameters."""
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/links/dda5fcbf-0098-4917-be46-dc12f5f7b675
+        return f"{plan_id}/links/{uuid4()}"
 
 
 class MappedIOStreamSchema(JsonLDSchema):
@@ -265,7 +342,6 @@ class CommandParameterBaseSchema(JsonLDSchema):
     default_value = fields.Raw(schema.defaultValue, missing=None)
     description = fields.String(schema.description, missing=None)
     id = fields.Id()
-    label = fields.String(rdfs.label, missing=None)
     name = fields.String(schema.name, missing=None)
     position = fields.Integer(renku.position, missing=None)
     prefix = fields.String(renku.prefix, missing=None)
@@ -307,3 +383,35 @@ class CommandOutputSchema(CommandParameterBaseSchema):
 
     create_folder = fields.Boolean(renku.createFolder, missing=False)
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
+
+
+class ParameterMappingSchema(CommandParameterBaseSchema):
+    """ParameterMapping schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.ParameterMapping]
+        model = ParameterMapping
+        unknown = EXCLUDE
+
+    mapped_parameters = Nested(
+        renku.mapsTo,
+        ["ParameterMappingSchema", CommandInputSchema, CommandOutputSchema, CommandParameterSchema],
+        many=True,
+    )
+
+
+class ParameterLinkSchema(JsonLDSchema):
+    """ParameterLink schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.ParameterLink, schema.Property]
+        model = ParameterLink
+        unknown = EXCLUDE
+
+    id = fields.Id()
+    source = fields.Nested(renku.linkSource, [CommandOutputSchema])
+    sinks = fields.Nested(renku.linkSink, [CommandInputSchema, CommandParameterSchema], many=True)
