@@ -166,7 +166,7 @@ install_requires = [
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.18",
-    "humanize>=2.5.0,<3.8.0",
+    "humanize>=2.5.0,<3.12.0",
     "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.8.0,<1.0.0",
