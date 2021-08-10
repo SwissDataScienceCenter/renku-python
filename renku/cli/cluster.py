@@ -21,7 +21,7 @@ TODO
 """
 
 import click
-
+from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.cluster import prepare_cluster_config, execute_cluster_command
 
 
@@ -32,19 +32,16 @@ def cluster():
 
 @cluster.command("prepare")
 @click.option(
-    "--token",
-    "gitlab_token",
-    required=True,
-    metavar="TOKEN",
-    prompt="Please enter your Renku GitLab token",
-    hide_input=True,
-    help="Token for Renku GitLab.",
+    "--options",
+    "sbatch_options",
+    metavar="'K1 K2=V2 ...'",
+    default="",
+    help="Options for sbatch script (if empty, use the previously set options).",
 )
-@click.option("--options", "sbatch_options", required=True, metavar="'K1 K2=V2 ...'", help="Options for sbatch script.")
 @click.option(
     "--template",
     "sbatch_template",
-    default="sbatch_template.sh",
+    default="sbatch_script.sh.tpl",
     required=False,
     help="Script template.",
     show_default=True,
@@ -57,14 +54,16 @@ def cluster():
     help="Script to be created.",
     show_default=True,
 )
-def prepare(gitlab_token, sbatch_options, sbatch_script, sbatch_template):
+@click.option("--token", "gitlab_token", metavar="TOKEN", help="Token for Renku GitLab.")
+def prepare(sbatch_options, sbatch_script, sbatch_template, gitlab_token):
     """Prepare cluster execution."""
     # ?: should use renku login to generate the token?
-    prepare_cluster_config().build().execute(
-        gitlab_token=gitlab_token,
+    communicator = ClickCallback()
+    prepare_cluster_config().with_communicator(communicator).build().execute(
         sbatch_options=sbatch_options,
         sbatch_template=sbatch_template,
         sbatch_script=sbatch_script,
+        gitlab_token=gitlab_token,
     )
     click.secho("OK", fg="green")
 
