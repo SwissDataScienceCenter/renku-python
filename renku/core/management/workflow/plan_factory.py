@@ -53,13 +53,13 @@ class PlanFactory:
     def __init__(
         self,
         command_line: str,
-        explicit_inputs: List[str] = [],
-        explicit_outputs: List[str] = [],
+        explicit_inputs: List[str] = None,
+        explicit_outputs: List[str] = None,
         directory: Optional[str] = None,
         working_dir: Optional[str] = None,
         no_input_detection: bool = False,
         no_output_detection: bool = False,
-        success_codes: List[int] = [],
+        success_codes: List[int] = None,
         stdin: Optional[str] = None,
         stdout: Optional[str] = None,
         stderr: Optional[str] = None,
@@ -89,10 +89,10 @@ class PlanFactory:
         else:
             self.command_line = shlex.split(command_line)
 
-        self.success_codes = success_codes
+        self.success_codes = success_codes or []
 
-        self.explicit_inputs = [Path(os.path.abspath(p)) for p in explicit_inputs]
-        self.explicit_outputs = [Path(os.path.abspath(p)) for p in explicit_outputs]
+        self.explicit_inputs = [Path(os.path.abspath(p)) for p in explicit_inputs] if explicit_inputs else []
+        self.explicit_outputs = [Path(os.path.abspath(p)) for p in explicit_outputs] if explicit_outputs else []
 
         self.stdin = stdin
         self.stdout = stdout
@@ -305,7 +305,7 @@ class PlanFactory:
 
         return candidates
 
-    def guess_type(self, value: str, ignore_filenames: List[str] = None) -> Tuple[Any, str]:
+    def guess_type(self, value: str, ignore_filenames: Set[str] = None) -> Tuple[Any, str]:
         """Return new value and CWL parameter type."""
         candidate = self.is_existing_path(value, ignore=ignore_filenames)
         if candidate:

@@ -27,7 +27,7 @@ from renku.core.management.migrations.utils import generate_dataset_tag_id, gene
 from renku.core.models import jsonld
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, StringList, Uri, fields, prov, rdfs, renku, schema
 from renku.core.models.git import get_user_info
-from renku.core.utils.migrate import old_metadata_path
+from renku.core.utils.migrate import OLD_METADATA_PATH
 from renku.core.utils.urls import get_host
 
 
@@ -176,7 +176,7 @@ class Dataset(Base):
     def to_yaml(self, path=None):
         """Write content to a YAML file."""
         data = DatasetSchemaV3().dump(self)
-        path = path or self._metadata_path or os.path.join(self.path, old_metadata_path)
+        path = path or self._metadata_path or os.path.join(self.path, OLD_METADATA_PATH)
         jsonld.write_yaml(path=path, data=data)
 
 
@@ -381,7 +381,7 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
 
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
-    paths = client.renku_datasets_path.rglob(old_metadata_path)
+    paths = client.renku_datasets_path.rglob(OLD_METADATA_PATH)
     datasets = []
     for path in paths:
         dataset = Dataset.from_yaml(path=path, client=client)

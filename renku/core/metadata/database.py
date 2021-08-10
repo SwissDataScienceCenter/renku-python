@@ -617,7 +617,7 @@ class ObjectWriter:
             return result
         elif isinstance(object, Index):
             # NOTE: Index objects are not stored as references and are included in their parent object (i.e. root)
-            state = object.__getstate__().copy()
+            state = object.__getstate__()
             state = self._serialize_helper(state)
             return {"@type": get_type_name(object), "@oid": object._p_oid, **state}
         elif isinstance(object, persistent.Persistent):
@@ -691,8 +691,6 @@ class ObjectReader:
             return data
         elif isinstance(data, list):
             return [self._deserialize_helper(value) for value in data]
-        elif isinstance(data, tuple):
-            return tuple([self._deserialize_helper(value) for value in data])
         else:
             assert isinstance(data, dict), f"Data must be a dict: '{type(data)}'"
 

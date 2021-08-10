@@ -98,6 +98,7 @@ class DatabaseGateway(IDatabaseGateway):
         self.database.clear()
 
         self.database.add_index(name="activities", object_type=Activity, attribute="id")
+        self.database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
         self.database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
         self.database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
 

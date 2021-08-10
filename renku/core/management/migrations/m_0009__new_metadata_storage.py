@@ -50,7 +50,7 @@ from renku.core.models.workflow.plan import Plan
 from renku.core.utils import communication
 from renku.core.utils.git import get_object_hash
 from renku.core.utils.metadata import convert_dataset
-from renku.core.utils.migrate import MigrationType, old_metadata_path, read_project_version_from_yaml
+from renku.core.utils.migrate import OLD_METADATA_PATH, MigrationType, read_project_version_from_yaml
 from renku.core.utils.scm import git_unicode_unescape
 
 GRAPH_METADATA_PATHS = [
@@ -69,7 +69,7 @@ def migrate(client):
     # TODO: set remove=True once the migration to the new metadata is finalized
     generate_new_metadata(remove=False, committed=committed)
     _remove_dataset_metadata_files(client)
-    metadata_path = client.renku_path.joinpath(old_metadata_path)
+    metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
     metadata_path.unlink()
 
 
@@ -78,7 +78,7 @@ def _commit_previous_changes(client):
 
     staged_files = client.repo.index.diff("HEAD")
     if staged_files:
-        project_path = client.renku_path.joinpath(old_metadata_path)
+        project_path = client.renku_path.joinpath(OLD_METADATA_PATH)
         project = old_schema.Project.from_yaml(project_path, client)
         project.version = "8"
         project.to_yaml(client.renku_path.joinpath(project_path))
@@ -94,7 +94,7 @@ def _commit_previous_changes(client):
 @inject.autoparams()
 def maybe_migrate_project_to_database(client, project_gateway: IProjectGateway):
     """Migrate project to database if necessary."""
-    metadata_path = client.renku_path.joinpath(old_metadata_path)
+    metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
 
     if metadata_path.exists():
         old_project = old_schema.Project.from_yaml(metadata_path)

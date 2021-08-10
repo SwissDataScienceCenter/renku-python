@@ -222,7 +222,7 @@ def test_config_write_concurrency(runner, project, client, run):
 
     processes = []
 
-    for _ in range(20):
+    for _ in range(30):
         processes.append(subprocess.Popen(write_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
         processes.append(subprocess.Popen(write_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 

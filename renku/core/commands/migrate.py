@@ -85,7 +85,7 @@ def _migrations_versions(client: LocalClient):
     try:
         latest_agent = client.latest_agent
     except ValueError:
-        # NOTE: maybe olf project
+        # NOTE: maybe old project
         from renku.core.utils.migrate import read_latest_agent
 
         latest_agent = read_latest_agent(client)

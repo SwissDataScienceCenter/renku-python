@@ -33,6 +33,7 @@ from tests.utils import format_result_exception
         ["dataset"],
         ["doctor"],
         ["githooks"],
+        # TODO: reenable once log (or workflow export) is implemented
         # ["log"],
         ["migrate"],
         ["mv"],

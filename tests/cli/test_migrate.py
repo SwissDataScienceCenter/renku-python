@@ -304,7 +304,8 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
         ["dataset", "show", "new"],
         ["dataset", "unlink", "new"],
         ["dataset", "update"],
-        # ["log"], TODO: add this back
+        # TODO: reenable once log (or workflow export) is implemented
+        # ["log"]
         ["mv", "news"],
         ["rerun", "data"],
         ["run", "echo"],

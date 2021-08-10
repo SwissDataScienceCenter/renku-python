@@ -15,17 +15,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku plan gateway interface."""
+"""Renku activity gateway interface."""
 
 from abc import ABC
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from renku.core.models.provenance.activity import Activity, Usage
 from renku.core.models.workflow.plan import AbstractPlan
 
 
 class IActivityGateway(ABC):
-    """Interface for the PlanGateway."""
+    """Interface for the ActivityGateway."""
 
     def get_latest_activity_per_plan(self):
         """Get latest activity for each plan."""
@@ -33,6 +33,10 @@ class IActivityGateway(ABC):
 
     def get_plans_and_usages_for_latest_activities(self) -> Dict[AbstractPlan, List[Usage]]:
         """Get all usages associated with a plan by its latest activity."""
+        raise NotImplementedError
+
+    def get_downstream_activities(self, activity: Activity) -> Set[Activity]:
+        """Get downstream activities that depend on this activity."""
         raise NotImplementedError
 
     def add(self, activity: Activity) -> None:

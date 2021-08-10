@@ -21,7 +21,6 @@ import functools
 import sys
 from pathlib import Path
 
-from git import GitCommandError
 from pkg_resources import resource_filename
 
 from renku.core import errors
@@ -39,49 +38,6 @@ GRAPH_METADATA_PATHS = [
     Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE_GRAPH),
     Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS_PROVENANCE),
 ]
-
-
-# def status():
-#     """Return a command for getting workflow graph status."""
-#     return Command().command(_status).with_database(write=False)
-
-
-# @inject.autoparams()
-# def _status(client: LocalClient, database: Database):
-#     """Get status of workflows."""
-#     with measure("BUILD AND QUERY GRAPH"):
-#         pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
-#         plans_usages = pg.get_latest_plans_usages()
-
-#     if client.has_external_files():
-#         communication.warn(
-#             "Changes in external files are not detected automatically. To update external files run "
-#             "`renku dataset update -e`."
-#         )
-
-#     try:
-#         communication.echo("On branch {0}".format(client.repo.active_branch))
-#     except TypeError:
-#         communication.warn("Git HEAD is detached!\n Please move back to your working branch to use renku\n")
-
-#     with measure("CALCULATE MODIFIED"):
-#         modified, deleted = _get_modified_paths(plans_usages=plans_usages)
-
-#     if not modified and not deleted:
-#         return None, None, None
-
-#     stales = defaultdict(set)
-
-#     with measure("CALCULATE UPDATES"):
-#         for plan_id, path, _ in modified:
-#             paths = DependencyGraph.from_database(database).get_dependent_paths(plan_id, path)
-#             for p in paths:
-#                 stales[p].add(path)
-
-#     modified = {v[1] for v in modified}
-
-#     return stales, modified, deleted
-
 
 # def update():
 #     """Return a command for generating the graph."""
@@ -156,24 +112,6 @@ def _export_graph(format, workflows_only, strict, client: LocalClient):
     #     _validate_graph(graph, format)
 
     # return FORMATS[format](graph)
-
-
-@inject.autoparams()
-def _get_modified_paths(plans_usages, client: LocalClient):
-    """Get modified and deleted usages/inputs of a plan."""
-    modified = set()
-    deleted = set()
-    for plan_usage in plans_usages:
-        _, path, checksum = plan_usage
-        try:
-            current_checksum = client.repo.git.rev_parse(f"HEAD:{str(path)}")
-        except GitCommandError:
-            deleted.add(plan_usage)
-        else:
-            if current_checksum != checksum:
-                modified.add(plan_usage)
-
-    return modified, deleted
 
 
 def _dot(rdf_graph, simple=True, debug=False, landscape=False):

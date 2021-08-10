@@ -63,7 +63,7 @@ from renku.core.models.provenance.annotation import AnnotationSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
-from renku.core.utils.migrate import old_metadata_path
+from renku.core.utils.migrate import OLD_METADATA_PATH
 from renku.core.utils.urls import get_host, get_slug
 from renku.version import __version__, version_url
 
@@ -260,7 +260,7 @@ class CommitMixin:
             try:
                 self._project = self.client.project
             except ValueError:
-                metadata_path = self.client.renku_path.joinpath(old_metadata_path)
+                metadata_path = self.client.renku_path.joinpath(OLD_METADATA_PATH)
                 self._project = Project.from_yaml(metadata_path)
 
         if not self._id:
@@ -2085,7 +2085,7 @@ class OldDatasetSchema(OldEntitySchema, OldCreatorMixinSchema):
 
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
-    paths = client.renku_datasets_path.rglob(client)
+    paths = client.renku_datasets_path.rglob(OLD_METADATA_PATH)
     return [Dataset.from_yaml(path=path, client=client) for path in paths]
 
 

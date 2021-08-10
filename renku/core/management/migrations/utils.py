@@ -22,7 +22,7 @@ import pathlib
 import uuid
 from urllib.parse import ParseResult, quote, urljoin, urlparse
 
-from renku.core.utils.migrate import old_metadata_path
+from renku.core.utils.migrate import OLD_METADATA_PATH
 
 
 def generate_url_id(client, url_str, url_id):
@@ -80,7 +80,7 @@ def generate_dataset_file_url(client, filepath):
     except ValueError:
         from renku.core.management.migrations.models.v9 import Project
 
-        metadata_path = client.renku_path.joinpath(old_metadata_path)
+        metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
         project = Project.from_yaml(metadata_path)
 
         project_id = urlparse(project._id)

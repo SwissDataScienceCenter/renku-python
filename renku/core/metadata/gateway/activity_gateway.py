@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku activity database gateway implementation."""
 
-from operator import attrgetter
 from typing import Dict, List, Set
 
 from persistent.list import PersistentList
@@ -39,17 +38,15 @@ class ActivityGateway(IActivityGateway):
 
     def get_latest_activity_per_plan(self) -> Dict[AbstractPlan, Activity]:
         """Get latest activity for each plan."""
-        activities = self.database["activities"].values()
-        activities = sorted(activities, key=attrgetter("ended_at_time"))
+        plan_activities = self.database["latest-activity-by-plan"].values()
 
-        return {a.association.plan: a for a in activities}
+        return {a.association.plan: a for a in plan_activities}
 
     def get_plans_and_usages_for_latest_activities(self) -> Dict[AbstractPlan, List[Usage]]:
         """Get all usages associated with a plan by its latest activity."""
-        activities = self.database["activities"].values()
-        activities = sorted(activities, key=attrgetter("ended_at_time"))
+        plan_activities = self.database["latest-activity-by-plan"].values()
 
-        return {a.association.plan: a.usages for a in activities}
+        return {a.association.plan: a.usages for a in plan_activities}
 
     def get_downstream_activities(self, activity: Activity) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
@@ -90,3 +87,8 @@ class ActivityGateway(IActivityGateway):
         plan_gateway = inject.instance(IPlanGateway)
 
         plan_gateway.add(activity.association.plan)
+
+        existing_activity = self.database["latest-activity-by-plan"].get(activity.association.plan.id)
+
+        if not existing_activity or existing_activity.ended_at_time < activity.ended_at_time:
+            self.database["latest-activity-by-plan"].add(activity)

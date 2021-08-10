@@ -49,7 +49,7 @@ from renku.core.errors import (
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.utils import communication
-from renku.core.utils.migrate import old_metadata_path, read_project_version
+from renku.core.utils.migrate import OLD_METADATA_PATH, read_project_version
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -329,7 +329,7 @@ def is_renku_project(client):
     try:
         return client.project is not None
     except (ValueError):  # Error in loading due to an older schema
-        return client.renku_path.joinpath(old_metadata_path).exists()
+        return client.renku_path.joinpath(OLD_METADATA_PATH).exists()
 
 
 def get_migrations():

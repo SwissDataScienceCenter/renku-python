@@ -88,7 +88,7 @@ def _get_status(client: LocalClient, activity_gateway: IActivityGateway):
 def _get_modified_paths(
     activities: List[Activity], client: LocalClient
 ) -> Tuple[List[Tuple[Activity, Usage]], List[Tuple[Activity, Usage]]]:
-    """Get modified and deleted usages/inputs of a plan."""
+    """Get modified and deleted usages/inputs of a list of activities."""
     modified = set()
     deleted = set()
     for activity in activities:
