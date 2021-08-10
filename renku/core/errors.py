@@ -482,3 +482,7 @@ class ObjectNotFoundError(RenkuException):
     def __init__(self, filename):
         """Embed exception and build a custom message."""
         super().__init__(f"Cannot find object: '{filename}'")
+
+
+class SbatchError(RenkuException):
+    """Raise when sbatch submit fails."""
