@@ -21,6 +21,7 @@ from renku.service.cache.models.job import Job
 from renku.service.config import CACHE_UPLOADS_PATH
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
+from renku.service.controllers.utils.datasets import set_url_for_uploaded_images
 from renku.service.serializers.datasets import DatasetCreateRequest, DatasetCreateResponseRPC
 from renku.service.views import result_response
 
@@ -45,16 +46,11 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
         """Controller operation context."""
         return self.ctx
 
-    def _handle_uploaded_images(self):
-        """Handles uploaded or relative dataset images."""
-        for img in self.ctx.get("images", []):
-            if img.get("file_id"):
-                file = self.cache.get_file(self.user, img.pop("file_id"))
-                img["content_url"] = str(file.abs_path)
-
     def renku_op(self):
         """Renku operation for the controller."""
-        self._handle_uploaded_images()
+        images = self.ctx.get("images")
+        if images:
+            set_url_for_uploaded_images(images=images, cache=self.cache, user=self.user)
         user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
 
         return (
