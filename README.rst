@@ -309,7 +309,7 @@ If you already use `pyenv <https://github.com/pyenv/pyenv>`__ to manage differen
 you may be interested in installing `pyenv-virtualenv <https://github.com/pyenv/pyenv-virtualenv>`__ to
 create an ad-hoc virtual environment for developing renku.
 
-Once you have created an activated a virtual environment for renku-python, you can use the usual
+Once you have created and activated a virtual environment for renku-python, you can use the usual
 `pip` commands to install the required dependencies.
 
 ::
