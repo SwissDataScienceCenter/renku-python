@@ -124,13 +124,13 @@ service_requires = [
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
     "rq==1.8.1",
-    "sentry-sdk[flask]>=0.7.4,<1.1.1",
+    "sentry-sdk[flask]>=0.7.4,<1.3.2",
     "walrus==0.8.2",
 ]
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<3.0.2", "Sphinx>=1.6.3,<4.0.3", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<3.0.2", "Sphinx>=1.6.3,<4.1.3", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -166,7 +166,7 @@ install_requires = [
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.18",
-    "humanize>=2.5.0,<3.8.0",
+    "humanize>=2.5.0,<3.12.0",
     "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.8.0,<1.0.0",
@@ -178,7 +178,7 @@ install_requires = [
     "pyjwt==2.1.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
-    "pyshacl==0.14.4",
+    "pyshacl==0.15.0",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
     "PyYAML>=5.4,<=5.4.1",
@@ -188,7 +188,7 @@ install_requires = [
     "rich>=9.3.0,<10.7.0",
     "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
-    "tqdm>=4.48.1,<4.61.2",
+    "tqdm>=4.48.1,<4.62.1",
     "wcmatch>=6.0.0,<8.3",
     "werkzeug>=0.15.5,<2.0.2",
     "yagup>=0.1.1",
