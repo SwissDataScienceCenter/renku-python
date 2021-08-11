@@ -27,11 +27,11 @@ from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import Plan
 
 
-class WorkflowConverter(metaclass=ABCMeta):
+class IWorkflowConverter(metaclass=ABCMeta):
     """Abstract class for converting ``Plan`` to a workflow format."""
 
     @abstractmethod
-    def workflow_format(self) -> Tuple[WorkflowConverter, List[str]]:
+    def workflow_format(self) -> Tuple[IWorkflowConverter, List[str]]:
         """Supported workflow description formats."""
         pass
 

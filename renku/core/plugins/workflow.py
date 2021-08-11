@@ -21,14 +21,14 @@ from typing import List, Optional, Tuple
 
 import pluggy
 
-from renku.core.models.workflow.converters import WorkflowConverter
+from renku.core.models.workflow.converters import IWorkflowConverter
 from renku.core.models.workflow.plan import Plan
 
 hookspec = pluggy.HookspecMarker("renku")
 
 
 @hookspec
-def workflow_format() -> Tuple[WorkflowConverter, List[str]]:
+def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.

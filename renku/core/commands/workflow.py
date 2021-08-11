@@ -20,7 +20,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
@@ -33,8 +33,7 @@ from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.value_resolution import apply_run_values
 from renku.core.models.workflow.composite_plan import CompositePlan
-from renku.core.models.workflow.parameter import CommandParameter
-from renku.core.models.workflow.plan import AbstractPlan
+from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.utils import communication
 
 
@@ -214,10 +213,10 @@ def _edit_workflow(
     name,
     new_name: Optional[str],
     description: Optional[str],
-    set_params: Dict[str, str],
+    set_params: List[str],
     map_params: List[str],
-    rename_params: Dict[str, str],
-    describe_params: Dict[str, str],
+    rename_params: List[str],
+    describe_params: List[str],
     plan_gateway: IPlanGateway,
 ):
     """Edits a workflow details."""
@@ -229,32 +228,38 @@ def _edit_workflow(
     if description:
         workflow.description = description
 
-    for name, value in set_params.items():
-        for param in workflow.parameters:
-            if param.name == name:
-                param.default_value = value
-                break
-        else:
-            workflow.parameters.append(
-                CommandParameter(default_value=value, id=CommandParameter.generate_id(plan_id=workflow.id), name=name)
-            )
+    if isinstance(workflow, Plan):
+        workflow.set_parameters_from_strings(set_params)
 
-    if len(map_params) and isinstance(workflow, CompositePlan):
+        def _kv_extract(kv_string):
+            k, v = kv_string.split("=", maxsplit=1)
+            v = v.strip(' "')
+            return k, v
+
+        for param_string in rename_params:
+            name, new_name = _kv_extract(param_string)
+            for param in workflow.inputs + workflow.outputs + workflow.parameters:
+                if param.name == name:
+                    param.name = new_name
+                    break
+            else:
+                raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
+
+        for description_string in describe_params:
+            name, description = _kv_extract(description_string)
+            for param in workflow.inputs + workflow.outputs + workflow.parameters:
+                if param.name == name:
+                    param.description = description
+                    break
+            else:
+                raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
+        view = PlanViewModel.from_plan(workflow)
+    elif isinstance(workflow, CompositePlan) and len(map_params):
         workflow.set_mappings_from_strings(map_params)
-
-    for name, new_name in rename_params.items():
-        for param in workflow.parameters:
-            if param.name == name:
-                param.name = new_name
-                break
-
-    for name, descirption in describe_params.items():
-        for param in workflow.parameters:
-            if param.name == name:
-                param.description = description
-                break
+        view = CompositePlanViewModel.from_composite_plan(workflow)
 
     plan_gateway.add(workflow)
+    return view
 
 
 def edit_workflow_command():

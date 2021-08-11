@@ -100,7 +100,7 @@ class AbstractPlan(Persistent, ABC):
         current_uuid = self._extract_uuid()
         new_uuid = uuid4().hex
         self.id = self.id.replace(current_uuid, new_uuid)
-        if self.parameters:
+        if hasattr(self, "parameters"):
             self.parameters = copy.deepcopy(self.parameters)
 
             for a in self.parameters:
@@ -250,6 +250,19 @@ class Plan(AbstractPlan):
         argv.extend(e for a in arguments for e in a.to_argv())
 
         return argv
+
+    def set_parameters_from_strings(self, params_strings: List[str]) -> None:
+        """Set parameters by parsing parameters strings."""
+        for param_string in params_strings:
+            name, value = param_string.split("=", maxsplit=1)
+            for param in self.inputs + self.outputs + self.parameters:
+                if param.name == name:
+                    param.default_value = value
+                    break
+            else:
+                self.parameters.append(
+                    CommandParameter(default_value=value, id=CommandParameter.generate_id(plan_id=self.id), name=name)
+                )
 
 
 class PlanSchema(JsonLDSchema):

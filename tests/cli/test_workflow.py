@@ -182,10 +182,14 @@ def test_workflow_export_command(runner, project):
     assert len(workflow.outputs) == 1
 
 
-def test_workflow_edit(runner, client):
+def test_workflow_edit(runner, client, run_shell):
     """Test naming of CWL tools and workflows."""
-    workflow_name = "test"
-    result = runner.invoke(cli, ["run", "--name", "test", "touch", "data.txt"])
+
+    def _get_plan_id(output):
+        return output.split("\n")[0].split(":")[1].strip()
+
+    workflow_name = "run1"
+    result = runner.invoke(cli, ["run", "--name", workflow_name, "touch", "data.txt"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     cmd = ["workflow", "edit", workflow_name, "--name", "first"]
@@ -205,15 +209,89 @@ def test_workflow_edit(runner, client):
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    """
-    assert len(composite_plan.plans) == 2
-    assert len(composite_plan.mappings) == 2
+    database = Database.from_path(client.database_path)
+    first_plan = database["plans"][_get_plan_id(result.stdout)]
+    assert first_plan.description == "Test workflow"
 
-    assert composite_plan.mappings[0].name == "input_str"
-    assert composite_plan.mappings[0].default_value == "b"
-    assert composite_plan.mappings[0].description == "the input string for the workflow"
+    # edit parameter
+    cmd = ["workflow", "edit", workflow_name, "--rename-param", "param1=param2"]
+    result = runner.invoke(cli, cmd)
+    assert 0 != result.exit_code, format_result_exception(result)
 
-    assert composite_plan.mappings[1].name == "output_file"
-    assert composite_plan.mappings[1].default_value == "other_output.csv"
-    assert composite_plan.mappings[1].description == "the final output file produced"
-    """
+    cmd = ["workflow", "edit", workflow_name, "--set", "param1=0"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+    edited_plan_id = _get_plan_id(result.output)
+
+    database = Database.from_path(client.database_path)
+    renamed_param_plan = database["plans"][_get_plan_id(result.output)]
+    assert len(renamed_param_plan.parameters) > 0
+
+    cmd = ["workflow", "edit", workflow_name, "--rename-param", "param1=param2"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+    renamed_param_plan = database["plans"][_get_plan_id(result.output)]
+    parameter_names = list(map(lambda x: x.name, renamed_param_plan.parameters))
+    assert len(parameter_names) > 0
+    assert "param1" not in parameter_names
+    assert "param2" in parameter_names
+    param2_plan_id = _get_plan_id(result.stdout)
+
+    # edit parameter description
+    cmd = ["workflow", "edit", param2_plan_id, "--describe-param", "param1=Test"]
+    result = runner.invoke(cli, cmd)
+    assert 0 != result.exit_code, format_result_exception(result)
+
+    cmd = ["workflow", "edit", param2_plan_id, "--describe-param", 'param2="Test parameter"']
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+    renamed_param_plan = database["plans"][_get_plan_id(result.output)]
+    assert "Test parameter" == renamed_param_plan.parameters[0].description
+
+    # edit parameter mapping
+    cmd = ["run", "--name", "run2", "cp", "data.txt", "data2.txt"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(
+        cli,
+        [
+            "workflow",
+            "compose",
+            "--description",
+            "My composite workflow",
+            "--map",
+            "input_str=@step1.@param1",
+            "--map",
+            "output_file=run2.@output1",
+            "--link",
+            "@step1.@output1=@step2.@input1",
+            "--set",
+            "input_str=b",
+            "--set",
+            "output_file=other_output.csv",
+            "-p",
+            "input_str=the input string for the workflow",
+            "-p",
+            "output_file=the final output file produced",
+            "composite_workflow",
+            edited_plan_id,
+            "run2",
+        ],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    # remove mapping
+    cmd = ["workflow", "edit", "composite_workflow", "--map", "output_file="]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+    edited_composite_plan = database["plans"][_get_plan_id(result.output)]
+    assert len(edited_composite_plan.mappings) == 1
+    assert edited_composite_plan.mappings[0].mapped_parameters[0].name == "param1"

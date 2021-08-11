@@ -447,10 +447,6 @@ def compose(
         _print_composite_plan(result.output)
 
 
-def _kv_to_dict(ctx, param, values):
-    return dict([value.split("=") for value in values])
-
-
 @workflow.command()
 @click.argument("workflow_name", metavar="<name or uuid>")
 @click.option("--name", metavar="<new name>", help="New name of the workflow")
@@ -460,7 +456,6 @@ def _kv_to_dict(ctx, param, values):
     "set_params",
     multiple=True,
     metavar="<parameter>=<value>",
-    callback=_kv_to_dict,
     help="Set default <value> for a <parameter>/add new parameter",
 )
 @click.option(
@@ -475,7 +470,6 @@ def _kv_to_dict(ctx, param, values):
     "rename_params",
     multiple=True,
     metavar='<parameter>="name"',
-    callback=_kv_to_dict,
     help="New name for parameter",
 )
 @click.option(
@@ -483,20 +477,29 @@ def _kv_to_dict(ctx, param, values):
     "describe_params",
     multiple=True,
     metavar='<parameter>="description"',
-    callback=_kv_to_dict,
     help="New description of the workflow",
 )
 def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params):
     """Edit workflow details."""
-    edit_workflow_command().build().execute(
-        name=workflow_name,
-        new_name=name,
-        description=description,
-        set_params=set_params,
-        map_params=set_params,
-        rename_params=rename_params,
-        describe_params=describe_params,
+    result = (
+        edit_workflow_command()
+        .build()
+        .execute(
+            name=workflow_name,
+            new_name=name,
+            description=description,
+            set_params=set_params,
+            map_params=map_params,
+            rename_params=rename_params,
+            describe_params=describe_params,
+        )
     )
+    if not result.error:
+        plan = result.output
+        if isinstance(plan, PlanViewModel):
+            _print_plan(plan)
+        else:
+            _print_composite_plan(plan)
 
 
 @workflow.command()

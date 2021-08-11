@@ -91,6 +91,17 @@ class CompositePlan(AbstractPlan):
         """Set mappings by parsing mapping strings."""
         for mapping_string in mapping_strings:
             name, targets = mapping_string.split("=", maxsplit=1)
+
+            if not targets:
+                # remove mapping that has no target
+                for mapping in self.mappings:
+                    if mapping.name == name:
+                        self.mappings.remove(mapping)
+                        break
+                else:
+                    raise errors.MappingNotFoundError(mapping=name, workflow=self.name)
+                continue
+
             targets = targets.split(",")
 
             target_params = []

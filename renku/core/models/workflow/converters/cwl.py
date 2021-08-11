@@ -29,10 +29,10 @@ import cwlgen
 
 from renku.core import errors
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
-from renku.core.models.entities import Collection
+from renku.core.models.entity import Collection
 from renku.core.models.workflow.composite_plan import CompositePlan
-from renku.core.models.workflow.converters import WorkflowConverter
-from renku.core.models.workflow.parameters import CommandInput, CommandOutput, CommandParameter
+from renku.core.models.workflow.converters import IWorkflowConverter
+from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.core.models.workflow.plan import Plan
 from renku.core.plugins import hookimpl
 
@@ -435,7 +435,7 @@ class CWLConverter(object):
         )
 
 
-class CWLExporter(WorkflowConverter):
+class CWLExporter(IWorkflowConverter):
     """Converts a ``CompositePlan`` or a ``Plan`` to cwl format."""
 
     @hookimpl

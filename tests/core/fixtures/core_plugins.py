@@ -21,7 +21,7 @@ from typing import Optional
 
 import pytest
 
-from renku.core.models.workflow.converters import WorkflowConverter
+from renku.core.models.workflow.converters import IWorkflowConverter
 from renku.core.models.workflow.plan import Plan
 
 
@@ -84,7 +84,7 @@ def dummy_workflow_exporter_hook():
     """A dummy hook to be used with the renku run plugin."""
     from renku.core.plugins import hookimpl
 
-    class DummyWorkflowExporter(WorkflowConverter):
+    class DummyWorkflowExporter(IWorkflowConverter):
         """CmdlineTool Hook implementation namespace."""
 
         @hookimpl
