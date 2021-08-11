@@ -47,8 +47,8 @@ from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.command_builder.command import inject, update_injected_client
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.dataset import get_dataset
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.metadata.database import Database
 from renku.core.metadata.immutable import DynamicProxy

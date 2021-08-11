@@ -43,6 +43,7 @@ from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
+
 from .git import GitCore
 
 DEFAULT_DATA_DIR = "data"

@@ -1106,7 +1106,7 @@ def test_dataset_tag(tmpdir, runner, project, client, subdirectory):
 
 
 @pytest.mark.parametrize("form", ["tabular", "json-ld"])
-def test_dataset_ls_tags(tmpdir, runner, project, client, form):
+def test_dataset_ls_tags(tmpdir, runner, project, client, form, load_dataset_with_injection):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -1119,13 +1119,13 @@ def test_dataset_ls_tags(tmpdir, runner, project, client, form):
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    id1 = client.get_dataset("my-dataset", immutable=True).id
+    id1 = load_dataset_with_injection("my-dataset", client).id
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    id2 = client.get_dataset("my-dataset", immutable=True).id
+    id2 = load_dataset_with_injection("my-dataset", client).id
 
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1141,7 +1141,7 @@ def test_dataset_ls_tags(tmpdir, runner, project, client, form):
     assert id2 in result.output
 
 
-def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
+def test_dataset_rm_tag(tmpdir, runner, client, subdirectory, load_dataset_with_injection):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -1154,7 +1154,7 @@ def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    id1 = client.get_dataset("my-dataset", immutable=True).id
+    id1 = load_dataset_with_injection("my-dataset", client).id
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"], catch_exceptions=False)
@@ -1894,7 +1894,9 @@ def test_datasets_provenance_after_update(runner, client, directory_tree, get_da
     assert current_version.identifier != current_version.initial_identifier
 
 
-def test_datasets_provenance_after_adding_tag(runner, client, get_datasets_provenance_with_injection, load_dataset_with_injection):
+def test_datasets_provenance_after_adding_tag(
+    runner, client, get_datasets_provenance_with_injection, load_dataset_with_injection
+):
     """Test datasets provenance is updated after tagging a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
 
@@ -1913,7 +1915,9 @@ def test_datasets_provenance_after_adding_tag(runner, client, get_datasets_prove
     assert not client.repo.is_dirty()
 
 
-def test_datasets_provenance_after_removing_tag(runner, client, get_datasets_provenance_with_injection, load_dataset_with_injection):
+def test_datasets_provenance_after_removing_tag(
+    runner, client, get_datasets_provenance_with_injection, load_dataset_with_injection
+):
     """Test datasets provenance is updated after removing a dataset's tag."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
     assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "42.0"]).exit_code

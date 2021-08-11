@@ -21,8 +21,6 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from persistent.list import PersistentList
-
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
@@ -118,8 +116,6 @@ class DatasetsProvenance:
             ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
 
         dataset.remove(date)
-        # NOTE: Remove tags
-        self._tags.pop(dataset.name, None)
         self.dataset_gateway.add_or_remove(dataset)
 
     def update_during_migration(
@@ -166,52 +162,28 @@ class DatasetsProvenance:
                 dataset.replace_identifier(new_identifier)
 
         if remove:
-            self._datasets.pop(dataset.name, None)
             dataset.remove()
-            # NOTE: Remove tags
-            self._tags.pop(dataset.name, None)
         else:
             self._process_dataset_tags(dataset, tags)
-            self._datasets.add(dataset)
-        self._update_provenance(dataset)
+
+        self.dataset_gateway.add_or_remove(dataset)
 
     @staticmethod
     def _create_dataset_identifier(commit_sha: str, identifier: str) -> str:
         uuid = f"{commit_sha[:20]}{identifier[-12:]}"
         return UUID(uuid).hex
 
-    def _update_provenance(self, dataset):
-        self._provenance_tails.pop(dataset.derived_from, None)
-        self._provenance_tails.add(dataset)
-
     def get_all_tags(self, dataset: Dataset) -> List[DatasetTag]:
         """Return the list of all tags for a dataset."""
-        return list(self._tags.get(dataset.name, []))
+        return self.dataset_gateway.get_all_tags(dataset)
 
     def add_tag(self, dataset: Dataset, tag: DatasetTag):
         """Add a tag from a dataset."""
-        if not self._has_database:
-            return
-
-        tags: PersistentList = self._tags.get(dataset.name)
-        if not tags:
-            tags = PersistentList()
-            self._tags.add(tags, key=dataset.name)
-
-        assert tag.dataset_id == dataset.id, f"Tag has wrong dataset id: {tag.dataset_id} != {dataset.id}"
-
-        tags.append(tag)
+        self.dataset_gateway.add_tag(dataset, tag)
 
     def remove_tag(self, dataset: Dataset, tag: DatasetTag):
         """Remove a tag from a dataset."""
-        if not self._has_database:
-            return
-
-        tags: PersistentList = self._tags.get(dataset.name)
-        for t in tags:
-            if t.name == tag.name:
-                tags.remove(t)
-                break
+        self.dataset_gateway.remove_tag(dataset, tag)
 
     def _process_dataset_tags(self, dataset: Dataset, tags: List[DatasetTag]):
         if not tags:
@@ -225,4 +197,3 @@ class DatasetsProvenance:
                 dataset_id=dataset.id, date_created=tag.date_created, description=tag.description, name=tag.name
             )
             self.add_tag(dataset, tag)
-

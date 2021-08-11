@@ -38,8 +38,8 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, OperationErro
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.dataset import get_dataset
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.dataset.tag import add_dataset_tag, remove_dataset_tags
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.interface.database_gateway import IDatabaseGateway
@@ -810,7 +810,7 @@ def _add_dataset_tag(name, tag, description, force=False):
 
 def add_dataset_tag_command():
     """Command for creating a new tag for a dataset."""
-    command = Command().command(add_dataset_tag).lock_dataset().with_database(write=True)
+    command = Command().command(_add_dataset_tag).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 

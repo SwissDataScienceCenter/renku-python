@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Iterator
 
 import BTrees
+from persistent.list import PersistentList
 from zc.relation import RELATION
 from zc.relation.catalog import Catalog
 from zc.relation.queryfactory import TransposingTransitive
@@ -116,6 +117,7 @@ class DatabaseGateway(IDatabaseGateway):
 
         self.database.add_index(name="datasets", object_type=Dataset, attribute="name")
         self.database.add_index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
+        self.database.add_index(name="datasets-tags", object_type=PersistentList)
 
         self.database.commit()
 

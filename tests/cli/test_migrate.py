@@ -27,7 +27,7 @@ from renku.cli import cli
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.core.models.dataset import RemoteEntity
-from tests.utils import format_result_exception, get_datasets_provenance
+from tests.utils import format_result_exception
 
 
 @pytest.mark.migration
@@ -177,17 +177,19 @@ def test_workflow_migration(isolated_runner, old_workflow_project):
 
 
 @pytest.mark.migration
-def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project, load_dataset_with_injection):
+def test_comprehensive_dataset_migration(
+    isolated_runner, old_dataset_project, load_dataset_with_injection, get_datasets_provenance_with_injection
+):
     """Test migration of old project with all dataset variations."""
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     client = old_dataset_project
-    datasets_provenance = get_datasets_provenance(client)
-
     dataset = load_dataset_with_injection("dataverse", client)
-    tags = datasets_provenance.get_all_tags(dataset)
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        tags = datasets_provenance.get_all_tags(dataset)
+
     assert "/datasets/1d2ed1e43aeb4f2590b238084ee3d86c" == dataset.id
     assert "1d2ed1e43aeb4f2590b238084ee3d86c" == dataset.identifier
     assert "Cornell University" == dataset.creators[0].affiliation
@@ -208,7 +210,8 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project, l
     assert not hasattr(file_, "creators")
 
     dataset = load_dataset_with_injection("mixed", client)
-    tags = datasets_provenance.get_all_tags(dataset)
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        tags = datasets_provenance.get_all_tags(dataset)
     assert "v1" == tags[0].name
 
     file_ = dataset.find_file("data/mixed/Makefile")

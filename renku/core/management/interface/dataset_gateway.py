@@ -20,7 +20,7 @@
 from abc import ABC
 from typing import List, Optional
 
-from renku.core.models.dataset import Dataset
+from renku.core.models.dataset import Dataset, DatasetTag
 
 
 class IDatasetGateway(ABC):
@@ -40,6 +40,18 @@ class IDatasetGateway(ABC):
 
     def get_provenance(self) -> List[Dataset]:
         """Return the provenance for all datasets."""
+        raise NotImplementedError
+
+    def get_all_tags(self, dataset: Dataset) -> List[DatasetTag]:
+        """Return the list of all tags for a dataset."""
+        raise NotImplementedError
+
+    def add_tag(self, dataset: Dataset, tag: DatasetTag):
+        """Add a tag from a dataset."""
+        raise NotImplementedError
+
+    def remove_tag(self, dataset: Dataset, tag: DatasetTag):
+        """Remove a tag from a dataset."""
         raise NotImplementedError
 
     def add_or_remove(self, dataset: Dataset) -> None:

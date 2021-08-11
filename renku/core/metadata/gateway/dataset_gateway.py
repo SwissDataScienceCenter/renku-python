@@ -19,10 +19,12 @@
 
 from typing import List, Optional
 
+from persistent.list import PersistentList
+
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.metadata.database import Database
-from renku.core.models.dataset import Dataset
+from renku.core.models.dataset import Dataset, DatasetTag
 
 
 class DatasetGateway(IDatasetGateway):
@@ -46,11 +48,35 @@ class DatasetGateway(IDatasetGateway):
         """Return the provenance for all datasets."""
         return list(self.database["datasets-provenance-tails"].values())
 
+    def get_all_tags(self, dataset: Dataset) -> List[DatasetTag]:
+        """Return the list of all tags for a dataset."""
+        return list(self.database["datasets-tags"].get(dataset.name, []))
+
+    def add_tag(self, dataset: Dataset, tag: DatasetTag):
+        """Add a tag from a dataset."""
+        tags: PersistentList = self.database["datasets-tags"].get(dataset.name)
+        if not tags:
+            tags = PersistentList()
+            self.database["datasets-tags"].add(tags, key=dataset.name)
+
+        assert tag.dataset_id == dataset.id, f"Tag has wrong dataset id: {tag.dataset_id} != {dataset.id}"
+
+        tags.append(tag)
+
+    def remove_tag(self, dataset: Dataset, tag: DatasetTag):
+        """Remove a tag from a dataset."""
+        tags: PersistentList = self.database["datasets-tags"].get(dataset.name)
+        for t in tags:
+            if t.name == tag.name:
+                tags.remove(t)
+                break
+
     def add_or_remove(self, dataset: Dataset) -> None:
         """Add or remove a dataset."""
 
         if dataset.date_removed:
-            self.database["datasets"].pop(dataset.name)
+            self.database["datasets"].pop(dataset.name, None)
+            self.database["datasets-tags"].pop(dataset.name, None)
         else:
             self.database["datasets"].add(dataset)
 

@@ -21,7 +21,8 @@ from typing import Optional
 
 from renku.core import errors
 from renku.core.management.command_builder import inject
-from renku.core.models.dataset import Dataset, DatasetsProvenance
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.models.dataset import Dataset
 
 
 @inject.autoparams()
