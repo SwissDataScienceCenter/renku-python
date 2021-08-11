@@ -29,7 +29,6 @@ from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.repository import RepositoryApiMixin
-from renku.core.metadata.database import Database
 from renku.core.utils.shacl import validate_graph
 
 GRAPH_METADATA_PATHS = [

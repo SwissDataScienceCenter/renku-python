@@ -149,7 +149,6 @@ class PlanViewModel:
         self,
         id: str,
         name: str,
-        derived_from: str,
         full_command: str,
         inputs: List[CommandInputViewModel],
         outputs: List[CommandOutputViewModel],
@@ -159,7 +158,6 @@ class PlanViewModel:
     ):
         self.id = id
         self.name = name
-        self.derived_from = derived_from
         self.description = description
         self.full_command = full_command
         self.success_codes = success_codes
@@ -173,7 +171,6 @@ class PlanViewModel:
         return cls(
             id=plan.id,
             name=plan.name,
-            derived_from=plan.derived_from,
             description=plan.description,
             full_command=_get_full_command(plan),
             success_codes=", ".join(str(c) for c in plan.success_codes),
