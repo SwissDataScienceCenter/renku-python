@@ -327,9 +327,10 @@ this case the local directory is mounted in the docker container and renku is re
 so it may take a few minutes before the container is ready.
 
 If you have a full RenkuLab deployment at your disposal, you can
-use `telepresence <https://www.telepresence.io/>`__ to develop and debug locally.
+use `telepresence <https://www.telepresence.io/>`__ v1 to develop and debug locally.
 Just run the `start-telepresence.sh` script and follow the instructions. You can also
 attach a remote debugger using the "remote attach" method described later.
+Mind that the script doesn't work with telepresence v2.
 
 
 Running tests
@@ -375,18 +376,18 @@ If using Visual Studio Code, you may also want to set the ``Remote Attach`` conf
 ::
 
     {
-            "name": "Python: Remote Attach",
-            "type": "python",
-            "request": "attach",
-            "port": 5678,
-            "host": "localhost",
-            "pathMappings": [
-                {
-                    "localRoot": "<path-to-renku-python-source-code>",
-                    "remoteRoot": "<path-to-renku-python-source-code>"
-                }
-            ]
-        },
+        "name": "Python: Remote Attach",
+        "type": "python",
+        "request": "attach",
+        "port": 5678,
+        "host": "localhost",
+        "pathMappings": [
+            {
+                "localRoot": "<path-to-renku-python-source-code>",
+                "remoteRoot": "<path-to-renku-python-source-code>"
+            }
+        ]
+    }
 
 
 Kubernetes
@@ -398,6 +399,10 @@ To debug a running renku-core service in a Kubernetes cluster, the service has t
 
     core:
       debug: true
+
+Also, if you want to be able to modify the files remotely, you need to change
+the `security context` on the `deployment.yaml` file for the renku-core component
+from `runAsUser: 1000` to `runAsGroup: 2000`.
 
 Then install the `Kubernetes extension <https://github.com/Azure/vscode-kubernetes-tools>`_
 and configure your local kubectl with the credentials needed for your cluster.
