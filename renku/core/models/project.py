@@ -18,15 +18,12 @@
 """Project class."""
 
 from datetime import datetime
-from pathlib import Path
 from typing import List
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 from marshmallow import EXCLUDE
 
-from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.metadata.database import persistent
-from renku.core.models import projects as old_projects
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, prov, renku, schema
 from renku.core.models.provenance.agent import Person, PersonSchema
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
@@ -50,8 +47,11 @@ class Project(persistent.Persistent):
         template_ref: str = None,
         template_source: str = None,
         template_version: str = None,
-        version: str = str(SUPPORTED_PROJECT_VERSION),
+        version: str = None,
     ):
+        from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+
+        version = version or SUPPORTED_PROJECT_VERSION
         date_created = parse_date(date_created) or local_now()
 
         if not id:
@@ -73,40 +73,11 @@ class Project(persistent.Persistent):
         self.version: str = version
 
     @classmethod
-    def from_project(cls, project: old_projects.Project) -> "Project":
-        """Create an instance from an old Project."""
-
-        def convert_id(id):
-            id_path = urlparse(id).path
-            id_path = id_path.replace(f"/{old_projects.PROJECT_URL_PATH}/", "")
-            id_path = Path(id_path)
-            namespace, name = str(id_path.parent), id_path.name
-            return cls.generate_id(namespace=namespace, name=name)
-
-        return cls(
-            agent_version=project.agent_version,
-            automated_update=project.automated_update,
-            creator=Person.from_person(project.creator),
-            date_created=project.created,
-            id=convert_id(project._id),
-            immutable_template_files=project.immutable_template_files,
-            name=project.name,
-            template_id=project.template_id,
-            template_metadata=project.template_metadata,
-            template_ref=project.template_ref,
-            template_source=project.template_source,
-            template_version=project.template_version,
-            version=project.version,
-        )
-
-    @classmethod
     def from_client(cls, client, name: str = None, creator: Person = None) -> "Project":
         """Create an instance from a LocalClient."""
         namespace, name = cls.get_namespace_and_name(client=client, name=name, creator=creator)
-        creator = creator or Person.from_git(client.repo.git)
+        creator = creator or Person.from_git(client.repo)
 
-        if not name:
-            raise ValueError("Project name not set")
         if not creator:
             raise ValueError("Project Creator not set")
 
@@ -124,12 +95,7 @@ class Project(persistent.Persistent):
             name = remote.get("name") or name
 
             if not creator:
-                if client.renku_metadata_path.exists():
-                    commit = client.find_previous_commit(client.renku_metadata_path, return_first=True)
-                    creator = Person.from_commit(commit)
-                else:
-                    # this assumes the project is being newly created
-                    creator = Person.from_git(client.repo)
+                creator = Person.from_git(client.repo)
 
         if not namespace and creator:
             namespace = creator.email.split("@")[0]

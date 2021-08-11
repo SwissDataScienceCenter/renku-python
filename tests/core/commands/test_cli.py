@@ -97,6 +97,7 @@ def test_exit_code(cmd, exit_code, runner, project):
     assert exit_code == result.exit_code
 
 
+@pytest.mark.skip("renku show used in hook not implemented with new database.")
 def test_git_pre_commit_hook(runner, project, capsys):
     """Test detection of output edits."""
     result = runner.invoke(cli, ["githooks", "install"])
@@ -124,6 +125,7 @@ def test_git_pre_commit_hook(runner, project, capsys):
     repo.index.commit("hello")
 
 
+@pytest.mark.skip("renku show used in hook not implemented with new database.")
 def test_git_pre_commit_hook_in_old_project(isolated_runner, old_dataset_project):
     """Test proper messaging in git hooks when project requires migration."""
     assert 0 == isolated_runner.invoke(cli, ["githooks", "install"]).exit_code
@@ -141,6 +143,7 @@ def test_git_pre_commit_hook_in_old_project(isolated_runner, old_dataset_project
     assert "You are trying to update generated files" not in str(e.value.stdout)
 
 
+@pytest.mark.skip("renku show used in hook not implemented with new database.")
 def test_git_pre_commit_hook_in_unsupported_project(unsupported_project):
     """Test proper messaging in git hooks when project version is not supported."""
     with unsupported_project.with_metadata() as project:
@@ -158,6 +161,7 @@ def test_git_pre_commit_hook_in_unsupported_project(unsupported_project):
     assert "You are trying to update generated files" not in str(e.value.stdout)
 
 
+@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 def test_workflow(runner, project):
     """Test workflow command."""
     result = runner.invoke(cli, ["run", "touch", "data.csv"])
@@ -184,6 +188,7 @@ def test_workflow(runner, project):
     assert result_default.output == result_arg.output
 
 
+@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_streams(runner, project, capsys, no_lfs_warning):
     """Test redirection of std streams."""
     repo = git.Repo(".")
@@ -294,6 +299,7 @@ def test_streams_and_args_names(runner, project, capsys, no_lfs_warning):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_show_inputs(tmpdir_factory, project, runner, run, template):
     """Test show inputs with submodules."""
     second_project = Path(str(tmpdir_factory.mktemp("second_project")))
@@ -426,6 +432,7 @@ def test_file_tracking(isolated_runner, project_init):
     assert "untracked" not in Path(".gitattributes").read_text()
 
 
+@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.xfail
 def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     """Test status calculation with submodules."""
@@ -522,7 +529,10 @@ def test_status_consistency(client, project):
     base_result = runner.invoke(cli, ["status"])
     os.chdir("somedirectory")
     comp_result = runner.invoke(cli, ["status"])
-    assert base_result.stdout.replace("somedirectory/", "") == comp_result.output
+
+    base_result_stdout = "\n".join(base_result.stdout.split("\n")[4:])
+    comp_result_stdout = "\n".join(comp_result.output.split("\n")[4:])
+    assert base_result_stdout.replace("somedirectory/", "") == comp_result_stdout
 
 
 def test_unchanged_output(runner, project):
@@ -564,6 +574,7 @@ def test_unchanged_stdout(runner, project, capsys, no_lfs_warning):
                 sys.stdout = old_stdout
 
 
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_modified_output(runner, project, run):
     """Test detection of changed file as output."""
     cwd = Path(project)
@@ -614,6 +625,7 @@ def test_modified_output(runner, project, run):
         assert f.read().strip() == "3"
 
 
+@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_siblings(runner, project):
     """Test detection of siblings."""
     siblings = {"brother", "sister"}
@@ -631,6 +643,7 @@ def test_siblings(runner, project):
         assert output == siblings, "Checked {0}".format(sibling)
 
 
+@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_orphan(runner, project):
     """Test detection of an orphan."""
     cwd = Path(project)
@@ -646,6 +659,7 @@ def test_orphan(runner, project):
     assert "orphan.txt\n" == result.output
 
 
+@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_only_child(runner, project):
     """Test detection of an only child."""
     cmd = ["run", "touch", "only_child"]
@@ -658,6 +672,7 @@ def test_only_child(runner, project):
     assert "only_child\n" == result.output
 
 
+@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_outputs(runner, project):
     """Test detection of outputs."""
     siblings = {"brother", "sister"}
@@ -671,6 +686,7 @@ def test_outputs(runner, project):
     assert siblings == set(result.output.strip().split("\n"))
 
 
+@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 def test_moved_file(runner, project):
     """Test that moved files are displayed correctly."""
     repo = git.Repo(project)
@@ -713,6 +729,7 @@ def test_deleted_input(runner, project, capsys):
     assert Path("input.mv").exists()
 
 
+@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_input_directory(runner, project, run, no_lfs_warning):
     """Test detection of input directory."""
     repo = git.Repo(project)

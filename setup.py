@@ -195,6 +195,7 @@ install_requires = [
     "werkzeug>=0.15.5,<2.0.2",
     "yagup>=0.1.1",
     "ZODB==5.6.0",
+    "zc.relation>=1.1,<1.2",
 ]
 
 

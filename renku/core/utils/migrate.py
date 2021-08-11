@@ -17,11 +17,14 @@
 # limitations under the License.
 """Helper utils for migrations."""
 
+import os
 from enum import IntFlag
 
 import pyld
 
 from renku.core.models.jsonld import read_yaml
+
+OLD_METADATA_PATH = "metadata.yml"
 
 
 class MigrationType(IntFlag):
@@ -81,14 +84,31 @@ def get_pre_0_3_4_datasets_metadata(client):
 
     project_is_pre_0_3 = int(read_project_version(client)) < 2
     if project_is_pre_0_3:
-        return (client.path / DATA_DIR).glob(f"*/{client.METADATA}")
+        return (client.path / DATA_DIR).glob(f"*/{OLD_METADATA_PATH}")
     return []
 
 
 def read_project_version(client):
     """Read project version from metadata file."""
-    yaml_data = read_yaml(client.renku_metadata_path)
-    return read_project_version_from_yaml(yaml_data)
+    try:
+        return client.project.version
+    except (NotImplementedError, ValueError):
+        yaml_data = read_yaml(client.renku_path.joinpath(OLD_METADATA_PATH))
+        return read_project_version_from_yaml(yaml_data)
+
+
+def read_latest_agent(client):
+    """Read project version from metadata file."""
+    try:
+        return client.latest_agent
+    except (NotImplementedError, ValueError):
+        if not os.path.exists(client.renku_path.joinpath(OLD_METADATA_PATH)):
+            raise
+
+        yaml_data = read_yaml(client.renku_path.joinpath(OLD_METADATA_PATH))
+        jsonld = pyld.jsonld.expand(yaml_data)[0]
+        jsonld = normalize(jsonld)
+        return _get_jsonld_property(jsonld, "http://schema.org/agent", "pre-0.11.0")
 
 
 def read_project_version_from_yaml(yaml_data):

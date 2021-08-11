@@ -46,13 +46,14 @@ from yagup import GitURL
 
 from renku.core import errors
 from renku.core.management.clone import clone
-from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import inject, update_injected_client
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.metadata.database import Database
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models import dataset as new_datasets
-from renku.core.models.dataset import DatasetsProvenance, get_dataset_data_dir, is_dataset_name_valid
+from renku.core.models.dataset import get_dataset_data_dir, is_dataset_name_valid
 from renku.core.models.provenance.agent import Person
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
@@ -136,8 +137,7 @@ class DatasetsApiMixin(object):
     @property
     def datasets(self) -> Dict[str, new_datasets.Dataset]:
         """A map from datasets name to datasets."""
-        database = Database.from_path(self.database_path)
-        datasets_provenance = DatasetsProvenance(database)
+        datasets_provenance = DatasetsProvenance()
         return {d.name: d for d in datasets_provenance.datasets}
 
     # FIXME: Remove this method and use proper injection
@@ -159,16 +159,8 @@ class DatasetsApiMixin(object):
     def get_datasets_provenance(self) -> DatasetsProvenance:
         """Return a DatasetsProvenance instance."""
 
-        @inject.autoparams()
-        def get_injected_datasets_provenance(datasets_provenance: DatasetsProvenance):
-            return datasets_provenance
-
         if not self._datasets_provenance:
-            try:
-                self._datasets_provenance = get_injected_datasets_provenance()
-            except InjectorException:
-                database = self.get_database()
-                self._datasets_provenance = DatasetsProvenance(database)
+            self._datasets_provenance = DatasetsProvenance()
 
         return self._datasets_provenance
 
@@ -393,7 +385,6 @@ class DatasetsApiMixin(object):
         else:
             for url in urls:
                 is_remote, is_git, url = _check_url(url)
-
                 if is_git and is_remote:  # Remote git repo
                     sources = sources or ()
                     new_files = self._add_from_git(
@@ -521,7 +512,6 @@ class DatasetsApiMixin(object):
         if clear_files_before:
             dataset.clear_files()
         dataset.add_or_update_files(dataset_files)
-
         datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
 
     def is_protected_path(self, path):
@@ -1267,6 +1257,9 @@ class DatasetsApiMixin(object):
                 raise errors.InvalidFileOperation(f"Cannot delete files in {repo_path}: Permission denied")
 
         repo, _ = clone(git_url, path=str(repo_path), install_githooks=False, depth=depth)
+
+        # NOTE: clone updates injected client, undo that until we have a better solution
+        update_injected_client(self)
 
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It

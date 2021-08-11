@@ -23,6 +23,7 @@ import pytest
 from renku.service.jobs.graph import graph_build_job
 
 
+@pytest.mark.skip("reenable once we have renku log with new database")
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
@@ -42,6 +43,7 @@ def test_graph_build_job(it_remote_repo_url, it_git_access_token):
     assert json_ld
 
 
+@pytest.mark.skip("reenable once we have renku log with new database")
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
@@ -53,6 +55,7 @@ def test_graph_build_job_no_callback(it_remote_repo_url, it_git_access_token):
         graph_build_job(**payload)
 
 
+@pytest.mark.skip("reenable once we have renku log with new database")
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
@@ -72,6 +75,7 @@ def test_graph_build_job_no_revision(it_remote_repo_url, it_git_access_token):
     assert json_ld
 
 
+@pytest.mark.skip("reenable once we have renku log with new database")
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
@@ -83,6 +87,7 @@ def test_graph_build_job_git_url(it_git_access_token):
         graph_build_job(**payload)
 
 
+@pytest.mark.skip("reenable once we have renku log with new database")
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
@@ -94,6 +99,7 @@ def test_graph_build_job_missing_token(it_remote_repo_url):
         graph_build_job(**payload)
 
 
+@pytest.mark.skip("reenable once we have renku log with new database")
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration

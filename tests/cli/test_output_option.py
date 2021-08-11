@@ -21,18 +21,17 @@ import os
 from pathlib import Path
 
 from renku.cli import cli
-from renku.core.models.entities import Collection
 
 
 def test_run_succeeds_normally(renku_cli, client, subdirectory):
     """Test when an output is detected"""
     foo = os.path.relpath(client.path / "foo", os.getcwd())
-    exit_code, cwl = renku_cli("run", "touch", foo)
+    exit_code, plan = renku_cli("run", "touch", foo)
 
     assert 0 == exit_code
-    assert 0 == len(cwl.inputs)
-    assert 1 == len(cwl.outputs)
-    assert "foo" == cwl.outputs[0].produces.path
+    assert 0 == len(plan.inputs)
+    assert 1 == len(plan.outputs)
+    assert "foo" == plan.outputs[0].default_value
 
 
 def test_when_no_change_in_outputs_is_detected(renku_cli, subdirectory):
@@ -47,12 +46,12 @@ def test_with_no_output_option(renku_cli, client, subdirectory):
     """Test --no-output option with no output detection"""
     foo = os.path.relpath(client.path / "foo", os.getcwd())
     renku_cli("run", "touch", foo)
-    exit_code, cwl = renku_cli("run", "--no-output", "touch", foo)
+    exit_code, plan = renku_cli("run", "--no-output", "touch", foo)
 
     assert 0 == exit_code
-    assert 1 == len(cwl.inputs)
-    assert "foo" == str(cwl.inputs[0].consumes.path)
-    assert 0 == len(cwl.outputs)
+    assert 1 == len(plan.inputs)
+    assert "foo" == str(plan.inputs[0].default_value)
+    assert 0 == len(plan.outputs)
 
 
 def test_explicit_outputs_and_normal_outputs(renku_cli, client, subdirectory):
@@ -64,12 +63,12 @@ def test_explicit_outputs_and_normal_outputs(renku_cli, client, subdirectory):
     baz = os.path.relpath(client.path / "baz", os.getcwd())
     qux = os.path.join(foo, "qux")
 
-    exit_code, cwl = renku_cli("run", "--output", foo, "--output", bar, "touch", baz, qux)
+    exit_code, plan = renku_cli("run", "--output", foo, "--output", bar, "touch", baz, qux)
 
     assert 0 == exit_code
-    cwl.inputs.sort(key=lambda e: e.position)
-    assert 4 == len(cwl.outputs)
-    assert {"foo", "bar", "baz", "foo/qux"} == {str(o.produces.path) for o in cwl.outputs}
+    plan.inputs.sort(key=lambda e: e.position)
+    assert 4 == len(plan.outputs)
+    assert {"foo", "bar", "baz", "foo/qux"} == {str(o.default_value) for o in plan.outputs}
 
 
 def test_explicit_outputs_and_std_output_streams(renku_cli, client, subdirectory):
@@ -103,11 +102,10 @@ def test_output_directory_without_separate_outputs(renku_cli, client):
     See https://github.com/SwissDataScienceCenter/renku-python/issues/387
     """
     a_script = ("sh", "-c", 'mkdir -p "$0"; touch "$0/$1"')
-    exit_code, cwl = renku_cli("run", *a_script, "outdir", "foo")
+    exit_code, plan = renku_cli("run", *a_script, "outdir", "foo")
 
     assert 0 == exit_code
-    assert 1 == len(cwl.outputs)
-    assert isinstance(cwl.outputs[0].produces, Collection)
+    assert 1 == len(plan.outputs)
 
 
 def test_explicit_inputs_must_exist(renku_cli):
@@ -138,22 +136,20 @@ def test_explicit_inputs_and_outputs_are_listed(renku_cli, client):
     renku_cli("run", "touch", "foo/file")
     renku_cli("run", "touch", "bar", "baz")
 
-    exit_code, cwl = renku_cli("run", "--input", "foo", "--input", "bar", "--output", "baz", "echo")
+    exit_code, plan = renku_cli("run", "--input", "foo", "--input", "bar", "--output", "baz", "echo")
     assert 0 == exit_code
 
-    assert 2 == len(cwl.inputs)
-    cwl.inputs.sort(key=lambda e: e.consumes.path)
+    assert 2 == len(plan.inputs)
+    plan.inputs.sort(key=lambda e: e.default_value)
 
-    assert cwl.inputs[0].position is None
-    assert "bar" == str(cwl.inputs[0].consumes.path)
+    assert plan.inputs[0].position is None
+    assert "bar" == str(plan.inputs[0].default_value)
 
-    assert cwl.inputs[1].position is None
-    assert "foo" == str(cwl.inputs[1].consumes.path)
-    assert isinstance(cwl.inputs[1].consumes, Collection)
+    assert plan.inputs[1].position is None
+    assert "foo" == str(plan.inputs[1].default_value)
 
-    assert cwl.outputs[0].position is None
-    assert not isinstance(cwl.outputs[0].produces, Collection)
-    assert "baz" == cwl.outputs[0].produces.path
+    assert plan.outputs[0].position is None
+    assert "baz" == plan.outputs[0].default_value
 
 
 def test_explicit_inputs_can_be_in_inputs(renku_cli, client, subdirectory):
@@ -161,15 +157,14 @@ def test_explicit_inputs_can_be_in_inputs(renku_cli, client, subdirectory):
     foo = os.path.relpath(client.path / "foo", os.getcwd())
     renku_cli("run", "touch", foo)
 
-    exit_code, cwl = renku_cli("run", "--input", foo, "--no-output", "ls", foo)
+    exit_code, plan = renku_cli("run", "--input", foo, "--no-output", "ls", foo)
 
     assert 0 == exit_code
-    assert 1 == len(cwl.inputs)
+    assert 1 == len(plan.inputs)
 
-    assert "foo" == str(cwl.inputs[0].consumes.path)
-    assert not isinstance(cwl.inputs[0].consumes, Collection)
+    assert "foo" == str(plan.inputs[0].default_value)
 
-    assert cwl.inputs[0].position is not None
+    assert plan.inputs[0].position is not None
 
 
 def test_explicit_inputs_in_subdirectories(renku_cli, client):
@@ -204,36 +199,35 @@ def test_no_explicit_or_detected_output(renku_cli):
 
 def test_no_output_and_disabled_detection(renku_cli):
     """Test --no-output works with no output detection."""
-    exit_code, cwl = renku_cli("run", "--no-output-detection", "--no-output", "echo")
+    exit_code, plan = renku_cli("run", "--no-output-detection", "--no-output", "echo")
 
     assert 0 == exit_code
-    assert 0 == len(cwl.inputs)
-    assert 0 == len(cwl.outputs)
+    assert 0 == len(plan.inputs)
+    assert 0 == len(plan.outputs)
 
 
 def test_disabled_detection(renku_cli):
     """Test disabled auto-detection of inputs and outputs."""
-    exit_code, cwl = renku_cli(
+    exit_code, plan = renku_cli(
         "run", "--no-input-detection", "--no-output-detection", "--output", "README.md", "touch", "some-files"
     )
 
     assert 0 == exit_code
-    assert 0 == len(cwl.inputs)
-    assert 1 == len(cwl.outputs)
-    assert "README.md" == str(cwl.outputs[0].produces.path)
+    assert 0 == len(plan.inputs)
+    assert 1 == len(plan.outputs)
+    assert "README.md" == str(plan.outputs[0].default_value)
 
 
 def test_inputs_must_be_passed_with_no_detection(renku_cli, client):
     """Test when detection is disabled, inputs must be explicitly passed."""
-    exit_code, cwl = renku_cli(
+    exit_code, plan = renku_cli(
         "run", "--no-input-detection", "--input", "Dockerfile", "--no-output", "ls", "-l", "README.md", "Dockerfile"
     )
 
     assert 0 == exit_code
-
-    assert 1 == len(cwl.inputs)
-    assert cwl.inputs[0].position is not None
-    assert "Dockerfile" == str(cwl.inputs[0].consumes.path)
+    assert 1 == len(plan.inputs)
+    assert plan.inputs[0].position is not None
+    assert "Dockerfile" == str(plan.inputs[0].default_value)
 
 
 def test_overlapping_explicit_outputs(renku_cli, client):
@@ -242,30 +236,30 @@ def test_overlapping_explicit_outputs(renku_cli, client):
     foo.mkdir()
     renku_cli("run", "touch", "foo/bar")
 
-    exit_code, cwl = renku_cli(
+    exit_code, plan = renku_cli(
         "run", "--no-input-detection", "--no-output-detection", "--output", "foo", "--output", "foo/bar", "echo"
     )
 
     assert 0 == exit_code
-    assert 0 == len(cwl.inputs)
-    assert 2 == len(cwl.outputs)
-    assert {"foo", "foo/bar"} == {str(o.produces.path) for o in cwl.outputs}
+    assert 0 == len(plan.inputs)
+    assert 2 == len(plan.outputs)
+    assert {"foo", "foo/bar"} == {str(o.default_value) for o in plan.outputs}
 
 
 def test_std_streams_must_be_in_explicits(renku_cli):
     """Test when auto-detection is disabled, std streams must be passed
     explicitly."""
-    exit_code, cwl = renku_cli(
+    exit_code, plan = renku_cli(
         "run", "--no-output-detection", "--output", "Dockerfile", "ls", stdin="README.md", stdout="out", stderr="err"
     )
 
     assert 0 == exit_code
-    assert 1 == len(cwl.inputs)
-    assert "README.md" == str(cwl.inputs[0].consumes.path)
-    assert 1 == len(cwl.outputs)
-    assert "Dockerfile" == str(cwl.outputs[0].produces.path)
+    assert 1 == len(plan.inputs)
+    assert "README.md" == str(plan.inputs[0].default_value)
+    assert 1 == len(plan.outputs)
+    assert "Dockerfile" == str(plan.outputs[0].default_value)
 
-    exit_code, cwl = renku_cli(
+    exit_code, plan = renku_cli(
         "run",
         "--no-input-detection",
         "--no-output-detection",
@@ -282,16 +276,16 @@ def test_std_streams_must_be_in_explicits(renku_cli):
     )
 
     assert 0 == exit_code
-    assert 1 == len(cwl.inputs)
-    assert "README.md" == str(cwl.inputs[0].consumes.path)
-    assert 2 == len(cwl.outputs)
-    assert {"out", "err"} == {str(o.produces.path) for o in cwl.outputs}
+    assert 1 == len(plan.inputs)
+    assert "README.md" == str(plan.inputs[0].default_value)
+    assert 2 == len(plan.outputs)
+    assert {"out", "err"} == {str(o.default_value) for o in plan.outputs}
 
 
 def test_explicit_input_as_out_streams(renku_cli):
     """Test cannot use explicit inputs as stdout/stderr when auto-detection is
     disabled."""
-    exit_code, cwl = renku_cli(
+    exit_code, plan = renku_cli(
         "run",
         "--no-input-detection",
         "--no-output-detection",
@@ -308,7 +302,7 @@ def test_explicit_input_as_out_streams(renku_cli):
 def test_explicit_output_as_stdin(renku_cli):
     """Test cannot use explicit outputs as stdin when auto-detection is
     disabled."""
-    exit_code, cwl = renku_cli(
+    exit_code, plan = renku_cli(
         "run", "--no-input-detection", "--no-output-detection", "--output", "README.md", "ls", stdin="README.md"
     )
 

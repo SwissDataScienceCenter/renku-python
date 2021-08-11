@@ -73,3 +73,115 @@ def database() -> Tuple[Database, DummyStorage]:
     database.add_index(name="plans-by-name", object_type=AbstractPlan, attribute="name")
 
     yield database, storage
+
+
+@pytest.fixture
+def database_injection_bindings():
+    """Create injection bindings for a database."""
+
+    def _add_database_injection_bindings(bindings):
+        from renku.core.management.interface.activity_gateway import IActivityGateway
+        from renku.core.management.interface.database_gateway import IDatabaseGateway
+        from renku.core.management.interface.dataset_gateway import IDatasetGateway
+        from renku.core.management.interface.plan_gateway import IPlanGateway
+        from renku.core.management.interface.project_gateway import IProjectGateway
+        from renku.core.metadata.database import Database
+        from renku.core.metadata.gateway.activity_gateway import ActivityGateway
+        from renku.core.metadata.gateway.database_gateway import DatabaseGateway
+        from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
+        from renku.core.metadata.gateway.plan_gateway import PlanGateway
+        from renku.core.metadata.gateway.project_gateway import ProjectGateway
+
+        database = Database.from_path(bindings["bindings"]["LocalClient"].database_path)
+
+        bindings["bindings"][Database] = database
+
+        bindings["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
+        bindings["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
+        bindings["constructor_bindings"][IDatabaseGateway] = lambda: DatabaseGateway()
+        bindings["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
+        bindings["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
+
+        return bindings
+
+    return _add_database_injection_bindings
+
+
+@pytest.fixture
+def dummy_database_injection_bindings():
+    """Create injection bindings for a database."""
+
+    def _add_database_injection_bindings(bindings):
+        from renku.core.management.interface.activity_gateway import IActivityGateway
+        from renku.core.management.interface.database_gateway import IDatabaseGateway
+        from renku.core.management.interface.dataset_gateway import IDatasetGateway
+        from renku.core.management.interface.plan_gateway import IPlanGateway
+        from renku.core.management.interface.project_gateway import IProjectGateway
+        from renku.core.metadata.database import Database
+        from renku.core.metadata.gateway.activity_gateway import ActivityGateway
+        from renku.core.metadata.gateway.database_gateway import DatabaseGateway
+        from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
+        from renku.core.metadata.gateway.plan_gateway import PlanGateway
+        from renku.core.metadata.gateway.project_gateway import ProjectGateway
+
+        storage = DummyStorage()
+        database = Database(storage=storage)
+
+        bindings["bindings"][Database] = database
+
+        bindings["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
+        bindings["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
+        bindings["constructor_bindings"][IDatabaseGateway] = lambda: DatabaseGateway()
+        bindings["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
+        bindings["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
+
+        return bindings
+
+    return _add_database_injection_bindings
+
+
+@pytest.fixture
+def injected_client_with_database(client, client_injection_bindings, database_injection_bindings, injection_binder):
+    """Inject a client."""
+    bindings = database_injection_bindings(client_injection_bindings(client))
+    injection_binder(bindings)
+
+
+@pytest.fixture
+def injected_local_client_with_database(
+    local_client, client_injection_bindings, database_injection_bindings, injection_binder
+):
+    """Inject a client."""
+    bindings = database_injection_bindings(client_injection_bindings(local_client))
+    injection_binder(bindings)
+
+
+@pytest.fixture
+def injection_manager():
+    """Factory fixture for injection manager."""
+
+    def _injection_manager(bindings):
+        from tests.utils import injection_manager
+
+        return injection_manager(bindings)
+
+    return _injection_manager
+
+
+@pytest.fixture
+def client_database_injection_manager(client_injection_bindings, database_injection_bindings, injection_manager):
+    """Fixture for context manager with client and db injection."""
+
+    def _inner(client):
+        return injection_manager(database_injection_bindings(client_injection_bindings(client)))
+
+    return _inner
+
+
+@pytest.fixture
+def injected_client_with_dummy_database(
+    client, client_injection_bindings, dummy_database_injection_bindings, injection_binder
+):
+    """Inject a client."""
+    bindings = dummy_database_injection_bindings(client_injection_bindings(client))
+    injection_binder(bindings)

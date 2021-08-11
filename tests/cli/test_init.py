@@ -19,6 +19,7 @@
 import os
 import shutil
 from pathlib import Path
+from urllib.parse import urlparse
 
 import git
 import pytest
@@ -109,7 +110,7 @@ def test_init(isolated_runner, project_init):
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
     # try to re-create in the same folder
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
@@ -123,7 +124,7 @@ def test_init(isolated_runner, project_init):
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
     # init using index instead of id
     new_project_2 = Path(data["test_project_alt"])
@@ -132,10 +133,10 @@ def test_init(isolated_runner, project_init):
     assert new_project_2.exists()
     assert (new_project_2 / ".renku").exists()
     assert (new_project_2 / ".renku" / "renku.ini").exists()
-    assert (new_project_2 / ".renku" / "metadata.yml").exists()
+    assert (new_project_2 / ".renku" / "metadata").exists()
 
     # verify both init lead to the same result
-    template_files = [f for f in new_project.glob("**/*") if ".git" not in str(f)]
+    template_files = [f for f in new_project.glob("**/*") if ".git" not in str(f) and ".renku/metadata/" not in str(f)]
     for template_file in template_files:
         expected_file = new_project_2 / template_file.relative_to(new_project)
         assert expected_file.exists()
@@ -162,7 +163,7 @@ def test_init_initial_branch(isolated_runner, project_init):
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
     assert git.Repo(str(new_project)).active_branch.name == data["main_branch"]
 
 
@@ -201,8 +202,10 @@ def test_init_with_git_remote(isolated_runner, project_init, remote):
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
-    assert remote[1] in (new_project / ".renku" / "metadata.yml").read_text()
+    assert (new_project / ".renku" / "metadata").exists()
+
+    url = urlparse(remote[1])
+    assert url.path in (new_project / ".renku" / "metadata" / "project").read_text()
 
 
 def test_init_force_in_empty_dir(isolated_runner, project_init):
@@ -296,7 +299,7 @@ def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
 
 @pytest.mark.integration
@@ -314,7 +317,7 @@ def test_init_remote(isolated_runner, project_init):
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
 
 def test_init_with_parameters(isolated_runner, project_init, template):

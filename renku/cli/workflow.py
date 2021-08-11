@@ -375,17 +375,17 @@ def show(name_or_id):
 
 def validate_path(ctx, param, value):
     """Detect a workflow path if it is not passed."""
-    client = ctx.obj
+    # client = ctx.obj
 
-    if value is None:
-        from renku.core.models.provenance.activities import ProcessRun
+    # if value is None:
+    #     from renku.core.models.provenance.activity import ProcessRun
 
-        activity = client.process_commit()
+    #     activity = client.process_commit()
 
-        if not isinstance(activity, ProcessRun):
-            raise click.BadParameter("No tool was found.")
+    #     if not isinstance(activity, ProcessRun):
+    #         raise click.BadParameter("No tool was found.")
 
-        return activity.path
+    #     return activity.path
 
     return value
 

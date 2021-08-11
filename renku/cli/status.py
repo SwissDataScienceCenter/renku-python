@@ -37,87 +37,52 @@ filename before ``@``.
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.ascii import _format_sha1
 from renku.core.commands.status import get_status
 
 
 @click.command()
-@click.option("--revision", default="HEAD", help="Display status as it was in the given revision")
-@click.option("--no-output", is_flag=True, default=False, help="Display commands without output files.")
-@click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @click.pass_context
-def status(ctx, revision, no_output, paths):
+def status(ctx):
     """Show a status of the repository."""
     communicator = ClickCallback()
+    result = get_status().with_communicator(communicator).build().execute()
 
-    result = (
-        get_status()
-        .with_communicator(communicator)
-        .build()
-        .execute(revision=revision, no_output=no_output, paths=paths)
-    )
+    stales, modified, deleted = result.output
 
-    graph, status = result.output
+    if not modified and not deleted:
+        click.secho("Everything is up-to-date.", fg="green")
+        return
 
-    if status["outdated"]:
+    if stales:
         click.echo(
-            "Outdated outputs:\n"
-            '  (use "renku log [<file>...]" to see the full lineage)\n'
-            '  (use "renku update [<file>...]" to '
-            "generate the file from its latest inputs)\n"
+            f"Outdated outputs({len(stales)}):\n"
+            "  (use `renku log [<file>...]` to see the full lineage)\n"
+            "  (use `renku update [<file>...]` to generate the file from its latest inputs)\n"
         )
-
-        for filepath, stts in sorted(status["outdated"].items()):
-            outdated = ", ".join(
-                "{0}#{1}".format(click.style(graph._format_path(n.path), fg="blue", bold=True), _format_sha1(graph, n))
-                for n in stts
-                if n.path and n.path not in status["outdated"]
-            )
-
-            click.echo("\t{0}: {1}".format(click.style(graph._format_path(filepath), fg="red", bold=True), outdated))
-
+        for k, v in stales.items():
+            paths = click.style(", ".join(sorted(v)), fg="red", bold=True)
+            click.echo(f"\t{k}:{paths}")
         click.echo()
-
     else:
         click.secho("All files were generated from the latest inputs.", fg="green")
 
-    if status["multiple-versions"]:
+    if modified:
         click.echo(
-            "Modified inputs:\n"
-            '  (use "renku log --revision <sha1> <file>" to see a lineage '
-            "for the given revision)\n"
+            f"Modified inputs({len(modified)}):\n"
+            "  (use `renku log --revision <sha1> <file>` to see a lineage for the given revision)\n"
         )
-
-        for filepath, files in sorted(status["multiple-versions"].items()):
-            # Do not show duplicated commits!  (see #387)
-            commits = {_format_sha1(graph, key) for key in files}
-            click.echo(
-                "\t{0}: {1}".format(
-                    click.style(graph._format_path(filepath), fg="blue", bold=True),
-                    ", ".join(
-                        # Sort the commit hashes alphanumerically to have a
-                        # predictable output.
-                        sorted(commits)
-                    ),
-                )
-            )
-
+        for v in modified:
+            click.echo(click.style(f"\t{v}", fg="blue", bold=True))
         click.echo()
 
-    if status["deleted"]:
+    if deleted:
         click.echo(
             "Deleted files used to generate outputs:\n"
-            '  (use "git show <sha1>:<file>" to see the file content '
-            "for the given revision)\n"
+            "  (use `git show <sha1>:<file>` to see the file content for the given revision)\n"
         )
-
-        for filepath, node in status["deleted"].items():
-            click.echo(
-                "\t{0}: {1}".format(
-                    click.style(graph._format_path(filepath), fg="blue", bold=True), _format_sha1(graph, node)
-                )
-            )
+        for v in deleted:
+            click.echo(click.style(f"\t{v}", fg="blue", bold=True))
 
         click.echo()
 
-    ctx.exit(1 if status["outdated"] else 0)
+    ctx.exit(1 if stales else 0)

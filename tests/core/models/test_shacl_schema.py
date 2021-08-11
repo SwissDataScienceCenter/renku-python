@@ -65,16 +65,20 @@ def test_dataset_shacl(tmpdir, runner, project, client):
     assert r is True, t
 
 
-def test_project_shacl(project, client):
+def test_project_shacl(project, client, client_database_injection_manager):
     """Test project metadata structure."""
-    from renku.core.models.provenance.agents import Person
+    from renku.core.models.project import ProjectSchema
+    from renku.core.models.provenance.agent import Person
 
     path = Path(__file__).parent.parent.parent / "data" / "force_project_shacl.json"
 
-    project = client.project
-    project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
+    with client_database_injection_manager(client):
+        project = client.project
+        project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
 
-    g = project.as_jsonld()
+        g = ProjectSchema().dump(project)
+
+    g["@id"] = "https://localhost/" + g["@id"]
     rdf = pyld.jsonld.to_rdf(g, options={"format": "application/n-quads", "produceGeneralizedRdf": False})
     r, _, t = validate_graph(rdf, shacl_path=str(path))
     assert r is True, t

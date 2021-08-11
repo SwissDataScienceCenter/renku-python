@@ -22,6 +22,8 @@ import pathlib
 import uuid
 from urllib.parse import ParseResult, quote, urljoin, urlparse
 
+from renku.core.utils.migrate import OLD_METADATA_PATH
+
 
 def generate_url_id(client, url_str, url_id):
     """Generate @id field for Url."""
@@ -68,10 +70,23 @@ def generate_dataset_id(client, identifier):
 
 def generate_dataset_file_url(client, filepath):
     """Generate url for DatasetFile."""
-    if not client or not client.project:
+    if not client:
         return
 
-    project_id = urlparse(client.project._id)
+    try:
+        if not client.project:
+            return
+        project = client.project
+    except ValueError:
+        from renku.core.management.migrations.models.v9 import Project
+
+        metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
+        project = Project.from_yaml(metadata_path)
+
+        project_id = urlparse(project._id)
+    else:
+        project_id = urlparse(project.id)
+
     filepath = quote(filepath, safe="/")
     path = pathlib.posixpath.join(project_id.path, "files", "blob", filepath)
     project_id = project_id._replace(path=path)

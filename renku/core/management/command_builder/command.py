@@ -135,12 +135,13 @@ def replace_injection(bindings, constructor_bindings=None):
             _LOCAL.injector = old_injector
 
 
-def update_injected_client(new_client):
+def update_injected_client(new_client, update_database: bool = True):
     """Update the injected client instance.
 
     Necessary because we sometimes use attr.evolve to modify a client and this doesn't affect the injected instance.
     """
     from renku.core.management import LocalClient
+    from renku.core.metadata.database import Database
 
     injector = getattr(_LOCAL, "injector", None)
 
@@ -150,6 +151,10 @@ def update_injected_client(new_client):
     injector._bindings[LocalClient] = lambda: new_client
     injector._bindings["LocalClient"] = lambda: new_client
 
+    if update_database and Database in injector._bindings:
+        database = Database.from_path(path=new_client.database_path)
+        injector._bindings[Database] = lambda: database
+
 
 class Command:
     """Base renku command builder."""
@@ -158,6 +163,7 @@ class Command:
 
     def __init__(self) -> None:
         """__init__ of Command."""
+        self.injection_pre_hooks = defaultdict(list)
         self.pre_hooks = defaultdict(list)
         self.post_hooks = defaultdict(list)
         self._operation = None
@@ -179,8 +185,8 @@ class Command:
 
         object.__setattr__(self, name, value)
 
-    def _pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
-        """Setup local client."""
+    def _injection_pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
+        """Setup dependency injections."""
         from renku.core.management import LocalClient
         from renku.core.management.repository import default_path
 
@@ -195,13 +201,16 @@ class Command:
         else:
             client = ctx.ensure_object(LocalClient)
 
-        stack = contextlib.ExitStack()
-
         context["bindings"] = {LocalClient: client, "LocalClient": client}
         context["constructor_bindings"] = {}
         context["client"] = client
-        context["stack"] = stack
         context["click_context"] = ctx
+
+    def _pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
+        """Setup local client."""
+
+        stack = contextlib.ExitStack()
+        context["stack"] = stack
 
     def _post_hook(self, builder: "Command", context: dict, result: "CommandResult", *args, **kwargs) -> None:
         """Post-hook method."""
@@ -221,15 +230,12 @@ class Command:
             raise errors.CommandNotFinalizedError("Call `build()` before executing a command")
 
         context = {}
-        if any(self.pre_hooks):
-            order = sorted(self.pre_hooks.keys())
+        if any(self.injection_pre_hooks):
+            order = sorted(self.injection_pre_hooks.keys())
 
             for o in order:
-                for hook in self.pre_hooks[o]:
+                for hook in self.injection_pre_hooks[o]:
                     hook(self, context, *args, **kwargs)
-
-        output = None
-        error = None
 
         def _bind(binder):
             for key, value in context["bindings"].items():
@@ -240,6 +246,21 @@ class Command:
             return binder
 
         inject.configure(_bind)
+
+        if any(self.pre_hooks):
+            order = sorted(self.pre_hooks.keys())
+
+            for o in order:
+                for hook in self.pre_hooks[o]:
+                    try:
+                        hook(self, context, *args, **kwargs)
+                    except (Exception, BaseException):
+                        # don't leak injections from failed hook
+                        remove_injector()
+                        raise
+
+        output = None
+        error = None
 
         try:
             with context["stack"]:
@@ -267,6 +288,18 @@ class Command:
         if hasattr(self, "_builder"):
             return self._builder.finalized
         return self._finalized
+
+    @check_finalized
+    def add_injection_pre_hook(self, order: int, hook: typing.Callable):
+        """Add a pre-execution hook for dependency injection.
+
+        :param order: Determines the order of executed hooks, lower numbers get executed first.
+        :param hook: The hook to add
+        """
+        if hasattr(self, "_builder"):
+            self._builder.add_injection_pre_hook(order, hook)
+        else:
+            self.injection_pre_hooks[order].append(hook)
 
     @check_finalized
     def add_pre_hook(self, order: int, hook: typing.Callable):
@@ -297,6 +330,7 @@ class Command:
         """Build (finalize) the command."""
         if not self._operation:
             raise errors.ConfigurationError("`Command` needs to have a wrapped `command` set")
+        self.add_injection_pre_hook(self.CLIENT_HOOK_ORDER, self._injection_pre_hook)
         self.add_pre_hook(self.CLIENT_HOOK_ORDER, self._pre_hook)
         self.add_post_hook(self.CLIENT_HOOK_ORDER, self._post_hook)
 

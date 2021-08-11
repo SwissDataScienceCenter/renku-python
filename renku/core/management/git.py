@@ -67,14 +67,11 @@ def prepare_commit(
             client.ensure_untracked(str(path_))
             client.ensure_unstaged(str(path_))
 
-    project_metadata_path = str(client.renku_metadata_path)
-
-    return project_metadata_path, diff_before
+    return diff_before
 
 
 def finalize_commit(
     client,
-    project_metadata_path,
     diff_before,
     commit_only=None,
     commit_empty=True,
@@ -120,8 +117,6 @@ def finalize_commit(
     diffs = []
     try:
         diffs = [git_unicode_unescape(d.a_path) for d in client.repo.index.diff("HEAD")]
-        if project_metadata_path in diffs:
-            diffs.remove(project_metadata_path)
     except git.exc.BadName:
         pass
 
@@ -140,14 +135,6 @@ def finalize_commit(
 
     if abbreviate_message:
         commit_message = shorten_message(commit_message)
-
-    try:
-        project = client.project
-        if project:
-            project.to_yaml()
-            client.repo.index.add(project_metadata_path)
-    except ValueError:
-        pass
 
     # Ignore pre-commit hooks since we have already done everything.
     client.repo.index.commit(commit_message, committer=committer, skip_hooks=True)
@@ -451,15 +438,12 @@ class GitCore:
     ):
         """Automatic commit."""
 
-        project_metadata_path, diff_before = prepare_commit(
-            self, commit_only=commit_only, skip_dirty_checks=skip_dirty_checks
-        )
+        diff_before = prepare_commit(self, commit_only=commit_only, skip_dirty_checks=skip_dirty_checks)
 
         yield
 
         finalize_commit(
             self,
-            project_metadata_path,
             diff_before,
             commit_only=commit_only,
             commit_empty=commit_empty,

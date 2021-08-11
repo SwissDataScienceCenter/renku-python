@@ -17,8 +17,6 @@
 # limitations under the License.
 """Renku rerun command."""
 
-from renku.core.commands.graph import Graph
-from renku.core.commands.update import execute_workflow
 from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import Command, inject
 
@@ -38,20 +36,22 @@ def rerun_workflows():
 
 @inject.autoparams()
 def _rerun_workflows(revision, roots, siblings, inputs, paths, client: LocalClient):
-    graph = Graph(client)
-    outputs = graph.build(paths=paths, revision=revision)
+    pass
+    # TODO: implement with new database
+    # graph = Graph(client)
+    # outputs = graph.build(paths=paths, revision=revision)
 
-    # Check or extend siblings of outputs.
-    outputs = siblings(graph, outputs)
-    output_paths = {node.path for node in outputs}
+    # # Check or extend siblings of outputs.
+    # outputs = siblings(graph, outputs)
+    # output_paths = {node.path for node in outputs}
 
-    # Normalize and check all starting paths.
-    roots = {graph.normalize_path(root) for root in roots}
-    output_paths -= roots
-    outputs = [o for o in outputs if o.path not in roots]
+    # # Normalize and check all starting paths.
+    # roots = {graph.normalize_path(root) for root in roots}
+    # output_paths -= roots
+    # outputs = [o for o in outputs if o.path not in roots]
 
-    # Generate workflow and check inputs.
-    # NOTE The workflow creation is done before opening a new file.
-    workflow = inputs(graph.as_workflow(input_paths=roots, output_paths=output_paths, outputs=outputs))
+    # # Generate workflow and check inputs.
+    # # NOTE The workflow creation is done before opening a new file.
+    # workflow = inputs(graph.as_workflow(input_paths=roots, output_paths=output_paths, outputs=outputs))
 
-    execute_workflow(workflow=workflow, output_paths=output_paths, command_name="rerun", update_commits=False)
+    # execute_workflow(workflow=workflow, output_paths=output_paths, command_name="rerun", update_commits=False)
