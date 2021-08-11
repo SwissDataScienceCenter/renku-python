@@ -36,16 +36,16 @@ from renku.core.models.dataset import Dataset
 from renku.core.models.refs import LinkReference
 from renku.core.utils.git import get_object_hash
 from renku.core.utils.urls import get_slug
-from tests.utils import assert_dataset_is_mutated, format_result_exception, get_datasets_provenance, load_dataset
+from tests.utils import assert_dataset_is_mutated, format_result_exception
 
 
-def test_datasets_create_clean(runner, project, client):
+def test_datasets_create_clean(runner, project, client, load_dataset_with_injection):
     """Test creating a dataset in clean repository."""
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset_with_injection("dataset", client)
     assert isinstance(dataset, Dataset)
 
     staged = client.repo.index.diff("HEAD")
@@ -137,7 +137,7 @@ def test_datasets_invalid_name(runner, client, name):
     assert f'Hint: "{get_slug(name)}" is valid' in result.output
 
 
-def test_datasets_create_dirty(runner, project, client):
+def test_datasets_create_dirty(runner, project, client, load_dataset_with_injection):
     """Test creating a dataset in dirty repository."""
     # Create a file in root of the repository.
     with (client.path / "a").open("w") as fp:
@@ -147,7 +147,7 @@ def test_datasets_create_dirty(runner, project, client):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset_with_injection("dataset", client)
     assert dataset
 
     staged = client.repo.index.diff("HEAD")
@@ -357,7 +357,7 @@ def test_datasets_list_description(runner, project):
     assert description[: len(short_description) + 1] not in line
 
 
-def test_add_and_create_dataset(directory_tree, runner, project, client, subdirectory):
+def test_add_and_create_dataset(directory_tree, runner, project, client, subdirectory, load_dataset_with_injection):
     """Test add data to a non-existing dataset."""
     result = runner.invoke(cli, ["dataset", "add", "new-dataset", str(directory_tree)], catch_exceptions=False)
     assert 1 == result.exit_code
@@ -376,7 +376,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client, subdire
     assert os.stat(path1)
     assert os.stat(path2)
     assert os.stat(path3)
-    dataset = load_dataset(client, "new-dataset")
+    dataset = load_dataset_with_injection("new-dataset", client)
     assert {os.path.relpath(p, client.path) for p in [path1, path2, path3]} == {f.entity.path for f in dataset.files}
 
     # Further, add with --create fails
@@ -425,6 +425,7 @@ def test_add_to_dirty_repo(directory_tree, runner, project, client):
     assert ["untracked"] == client.repo.untracked_files
 
 
+@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 def test_add_unicode_file(tmpdir, runner, project, client):
     """Test adding files with unicode special characters in their names."""
     # create a dataset
@@ -445,14 +446,14 @@ def test_add_unicode_file(tmpdir, runner, project, client):
     assert filename in result.output.encode("latin1").decode("unicode-escape")
 
 
-def test_multiple_file_to_dataset(tmpdir, runner, project, client):
+def test_multiple_file_to_dataset(tmpdir, runner, project, client, load_dataset_with_injection):
     """Test importing multiple data into a dataset at once."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset_with_injection("dataset", client)
     assert dataset.title == "dataset"
 
     paths = []
@@ -466,7 +467,7 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_repository_file_to_dataset(runner, client, subdirectory):
+def test_repository_file_to_dataset(runner, client, subdirectory, load_dataset_with_injection):
     """Test adding a file from the repository into a dataset."""
     # create a dataset
     assert 0 == runner.invoke(cli, ["dataset", "create", "dataset"]).exit_code
@@ -480,19 +481,19 @@ def test_repository_file_to_dataset(runner, client, subdirectory):
     result = runner.invoke(cli, ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset_with_injection("dataset", client)
     assert dataset.title == "dataset"
     assert dataset.find_file("a") is not None
 
 
-def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory):
+def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory, load_dataset_with_injection):
     """Test importing data from a directory structure."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset_with_injection("dataset", client)
     assert dataset.title == "dataset"
 
     zero_data = tmpdir.join("zero.txt")
@@ -548,7 +549,7 @@ def test_add_data_directory(runner, client, directory_tree):
     assert "Cannot add dataset's data directory recursively" in result.output
 
 
-def test_dataset_add_with_copy(tmpdir, runner, project, client):
+def test_dataset_add_with_copy(tmpdir, runner, project, client, load_dataset_with_injection):
     """Test adding data to dataset with copy."""
     import os
     import stat
@@ -571,7 +572,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
     assert 0 == result.exit_code, format_result_exception(result)
 
     received_inodes = []
-    dataset = load_dataset(client, "my-dataset")
+    dataset = load_dataset_with_injection("my-dataset", client)
     assert dataset.title == "my-dataset"
 
     for file in dataset.files:
@@ -605,7 +606,7 @@ def test_dataset_add_many(tmpdir, runner, project, client):
     assert len(client.repo.head.commit.message) <= 100
 
 
-def test_dataset_file_path_from_subdirectory(runner, client, subdirectory):
+def test_dataset_file_path_from_subdirectory(runner, client, subdirectory, load_dataset_with_injection):
     """Test adding a file into a dataset and check path independent
     of the CWD"""
     # create a dataset
@@ -623,7 +624,7 @@ def test_dataset_file_path_from_subdirectory(runner, client, subdirectory):
     result = runner.invoke(cli, ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset_with_injection("dataset", client)
     file = dataset.find_file("a")
     assert file is not None
     assert "a" == file.entity.path
@@ -803,11 +804,11 @@ def test_datasets_ls_files_tabular_patterns(runner, project, directory_tree):
     assert "file3" in result.output
 
 
-def test_datasets_ls_files_tabular_creators(runner, client, directory_tree):
+def test_datasets_ls_files_tabular_creators(runner, client, directory_tree, load_dataset_with_injection):
     """Test listing of data within dataset with creators filters."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "-c", str(directory_tree)]).exit_code
 
-    creator = load_dataset(client, "my-dataset").creators[0].name
+    creator = load_dataset_with_injection("my-dataset", client).creators[0].name
 
     assert creator is not None
 
@@ -922,7 +923,7 @@ def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):
     assert "Aborted!" in result.output
 
 
-def test_dataset_unlink_file(tmpdir, runner, client, subdirectory):
+def test_dataset_unlink_file(tmpdir, runner, client, subdirectory, load_dataset_with_injection):
     """Test unlinking of file and check removal from dataset"""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -938,7 +939,7 @@ def test_dataset_unlink_file(tmpdir, runner, client, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
     assert not client.repo.is_dirty()
 
-    dataset = load_dataset(client, "my-dataset")
+    dataset = load_dataset_with_injection("my-dataset", client)
     assert new_file.basename in {Path(f.entity.path).name for f in dataset.files}
 
     commit_sha_before = client.repo.head.object.hexsha
@@ -950,22 +951,22 @@ def test_dataset_unlink_file(tmpdir, runner, client, subdirectory):
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_before != commit_sha_after
 
-    dataset = load_dataset(client, "my-dataset")
+    dataset = load_dataset_with_injection("my-dataset", client)
 
     assert new_file.basename not in [Path(f.entity.path).name for f in dataset.files if not f.is_removed()]
 
 
-def test_dataset_rm(runner, client, directory_tree, subdirectory):
+def test_dataset_rm(runner, client, directory_tree, subdirectory, load_dataset_with_injection):
     """Test removal of a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "--create", "my-dataset", str(directory_tree)]).exit_code
 
-    assert load_dataset(client, "my-dataset")
+    assert load_dataset_with_injection("my-dataset", client)
 
     result = runner.invoke(cli, ["dataset", "rm", "my-dataset"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
-    assert not load_dataset(client, "my-dataset")
+    assert not load_dataset_with_injection("my-dataset", client)
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
@@ -989,7 +990,7 @@ def test_dataset_overwrite_no_confirm(runner, project):
 
 
 @pytest.mark.parametrize("dirty", [False, True])
-def test_dataset_edit(runner, client, project, dirty, subdirectory):
+def test_dataset_edit(runner, client, project, dirty, subdirectory, load_dataset_with_injection):
     """Check dataset metadata editing."""
     if dirty:
         with (client.path / "dirty_file").open("w") as fp:
@@ -1011,7 +1012,7 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
     warning_msg = "Warning: No email or wrong format for: Forename2 Surname2"
     assert warning_msg in result.output
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset_with_injection("dataset", client)
     assert " new description " == dataset.description
     assert "original title" == dataset.title
     assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
@@ -1026,7 +1027,7 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully updated: keywords." in result.output
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset_with_injection("dataset", client)
     assert " new description " == dataset.description
     assert "new title" == dataset.title
     assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
@@ -1040,8 +1041,8 @@ def test_dataset_edit_no_change(runner, client, project, dirty):
     assert 0 == result.exit_code, format_result_exception(result)
 
     if dirty:
-        with client.with_metadata() as project:
-            project.name = "new-name"
+        with (client.path / "README.md").open("w") as fp:
+            fp.write("a")
 
     commit_sha_before = client.repo.head.object.hexsha
 
@@ -1292,12 +1293,12 @@ def test_add_nonprotected_file(runner, client, tmpdir, filename, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_add_removes_local_path_information(runner, client, directory_tree):
+def test_add_removes_local_path_information(runner, client, directory_tree, load_dataset_with_injection):
     """Test added local paths are stored as relative path."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset(client, "my-dataset")
+    dataset = load_dataset_with_injection("my-dataset", client)
     relative_path = os.path.relpath(directory_tree, client.path)
     for file in dataset.files:
         assert file.source.startswith(relative_path)
@@ -1390,7 +1391,7 @@ def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
 
 
 @pytest.mark.parametrize("external", [False, True])
-def test_add_existing_files(runner, client, directory_tree, external, no_lfs_size_limit):
+def test_add_existing_files(runner, client, directory_tree, external, no_lfs_size_limit, load_dataset_with_injection):
     """Check adding/overwriting existing files."""
     param = ["-e"] if external else []
 
@@ -1400,7 +1401,7 @@ def test_add_existing_files(runner, client, directory_tree, external, no_lfs_siz
 
     path = Path(DATA_DIR) / "my-dataset" / directory_tree.name / "file1"
 
-    dataset = load_dataset(client, "my-dataset")
+    dataset = load_dataset_with_injection("my-dataset", client)
     assert dataset.find_file(path) is not None
 
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(directory_tree)] + param)
@@ -1443,7 +1444,7 @@ def test_add_existing_and_new_files(runner, client, directory_tree, external):
     assert "OK" in result.output
 
 
-def test_add_existing_files_updates_metadata(runner, client, large_file):
+def test_add_existing_files_updates_metadata(runner, client, large_file, load_dataset_with_injection):
     """Check overwriting existing files updates their metadata."""
     # assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "--create", large_file]).exit_code
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", "--create", str(large_file)])
@@ -1451,13 +1452,13 @@ def test_add_existing_files_updates_metadata(runner, client, large_file):
 
     path = Path(DATA_DIR) / "my-dataset" / large_file.name
 
-    before = load_dataset(client, "my-dataset").find_file(path)
+    before = load_dataset_with_injection("my-dataset", client).find_file(path)
 
     large_file.write_text("New modified content.")
 
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "--overwrite", str(large_file)]).exit_code
 
-    after = load_dataset(client, "my-dataset").find_file(path)
+    after = load_dataset_with_injection("my-dataset", client).find_file(path)
     assert before.id != after.id
     assert before.date_added != after.date_added
     assert before.entity.checksum != after.entity.checksum
@@ -1465,7 +1466,7 @@ def test_add_existing_files_updates_metadata(runner, client, large_file):
     assert before.source == after.source
 
 
-def test_add_ignored_files(runner, client, directory_tree):
+def test_add_ignored_files(runner, client, directory_tree, load_dataset_with_injection):
     """Check adding/force-adding ignored files."""
     source_path = directory_tree / ".DS_Store"
     source_path.write_text("ignored-file")
@@ -1478,7 +1479,7 @@ def test_add_ignored_files(runner, client, directory_tree):
     assert str(source_path) in result.output
     assert "OK" in result.output
 
-    dataset = load_dataset(client, "my-dataset")
+    dataset = load_dataset_with_injection("my-dataset", client)
 
     assert dataset.find_file(relative_path) is None
 
@@ -1489,12 +1490,12 @@ def test_add_ignored_files(runner, client, directory_tree):
     assert str(source_path) not in result.output
     assert "OK" in result.output
 
-    dataset = load_dataset(client, "my-dataset")
+    dataset = load_dataset_with_injection("my-dataset", client)
 
     assert dataset.find_file(relative_path) is not None
 
 
-def test_add_external_files(runner, client, directory_tree, no_lfs_size_limit):
+def test_add_external_files(runner, client, directory_tree, no_lfs_size_limit, load_dataset_with_injection):
     """Check adding external files."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1505,7 +1506,7 @@ def test_add_external_files(runner, client, directory_tree, no_lfs_size_limit):
     external_path = directory_tree / "file1"
     assert path.resolve() == external_path
 
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
     assert dataset.find_file(path.relative_to(client.path)) is not None
 
     # Symbolic links should not be tracked
@@ -1597,6 +1598,7 @@ def test_external_file_update(runner, client, directory_tree, subdirectory):
     assert current_commit != previous_commit
 
 
+@pytest.mark.skip("renku update doesn't support new database, reenable once it does")
 @pytest.mark.serial
 def test_workflow_with_external_file(runner, client, directory_tree, run, subdirectory, no_lfs_size_limit):
     """Check using external files in workflows."""
@@ -1621,7 +1623,7 @@ def test_workflow_with_external_file(runner, client, directory_tree, run, subdir
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["status"])
-    assert 1 == result.exit_code
+    assert 1 == result.exit_code, format_result_exception(result)
 
     assert 0 == run(args=("update", "--all"))
     result = runner.invoke(cli, ["status"])
@@ -1634,88 +1636,88 @@ def test_workflow_with_external_file(runner, client, directory_tree, run, subdir
     assert "data/output.txt" in attributes
 
 
-def test_immutability_for_files(directory_tree, runner, client):
+def test_immutability_for_files(directory_tree, runner, client, load_dataset_with_injection):
     """Test dataset's ID changes after a change to dataset files."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
 
-    old_dataset = load_dataset(client, "my-data")
+    old_dataset = load_dataset_with_injection("my-data", client)
 
     # Add some files
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree)]).exit_code
 
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
     old_dataset = dataset
 
     # Add the same files again; it should mutate because files addition dates change
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)]).exit_code
 
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
     old_dataset = dataset
 
     # Remove some files
     assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "-I", "file1", "--yes"]).exit_code
 
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
 
 
-def test_immutability_for_adding_files_twice(directory_tree, runner, client):
+def test_immutability_for_adding_files_twice(directory_tree, runner, client, load_dataset_with_injection):
     """Test dataset's ID does not change changes if the same files are added again."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--create", str(directory_tree)]).exit_code
-    old_dataset = load_dataset(client, "my-data")
+    old_dataset = load_dataset_with_injection("my-data", client)
 
     assert 1 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree)]).exit_code
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
 
     assert old_dataset.id == dataset.id
 
 
-def test_immutability_after_external_update(runner, client, directory_tree):
+def test_immutability_after_external_update(runner, client, directory_tree, load_dataset_with_injection):
     """Test dataset's ID changes after updating external files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)]).exit_code
-    old_dataset = load_dataset(client, "my-data")
+    old_dataset = load_dataset_with_injection("my-data", client)
 
     directory_tree.joinpath("file1").write_text("some updates")
     assert 0 == runner.invoke(cli, ["dataset", "update", "--external"]).exit_code
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
 
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
 
 
-def test_immutability_after_no_update(runner, client, directory_tree):
+def test_immutability_after_no_update(runner, client, directory_tree, load_dataset_with_injection):
     """Test dataset's ID does not changes if no external file is updated."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)]).exit_code
-    old_dataset = load_dataset(client, "my-data")
+    old_dataset = load_dataset_with_injection("my-data", client)
 
     assert 0 == runner.invoke(cli, ["dataset", "update", "--external"]).exit_code
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
 
     assert dataset.id == old_dataset.id
 
 
-def test_immutability_for_tags(runner, client):
+def test_immutability_for_tags(runner, client, load_dataset_with_injection):
     """Test dataset is mutated after a change to dataset tags."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
 
-    old_dataset = load_dataset(client, "my-data")
+    old_dataset = load_dataset_with_injection("my-data", client)
 
     # Add a tag
     assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "new-tag"]).exit_code
 
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
     assert old_dataset.id != dataset.id
     old_dataset = dataset
 
     # Remove a tag
     assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "my-data", "new-tag"]).exit_code
 
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
     assert old_dataset.id != dataset.id
 
 
-def test_datasets_provenance_after_create(runner, client):
+def test_datasets_provenance_after_create(runner, client, get_datasets_provenance_with_injection):
     """Test datasets provenance is updated after creating a dataset."""
     args = [
         "dataset",
@@ -1736,7 +1738,8 @@ def test_datasets_provenance_after_create(runner, client):
     ]
     assert 0 == runner.invoke(cli, args, catch_exceptions=False).exit_code
 
-    dataset = get_datasets_provenance(client).get_by_name("my-data")
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("my-data")
 
     assert "Long Title" == dataset.title
     assert "my-data" == dataset.name
@@ -1754,11 +1757,12 @@ def test_datasets_provenance_after_create(runner, client):
     assert not client.repo.is_dirty()
 
 
-def test_datasets_provenance_after_create_when_adding(runner, client):
+def test_datasets_provenance_after_create_when_adding(runner, client, get_datasets_provenance_with_injection):
     """Test datasets provenance is updated after creating a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "--create", "my-data", "README.md"]).exit_code
 
-    dataset = get_datasets_provenance(client).get_by_name("my-data")
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("my-data")
 
     assert dataset.initial_identifier == dataset.identifier
     assert dataset.derived_from is None
@@ -1768,16 +1772,18 @@ def test_datasets_provenance_after_create_when_adding(runner, client):
     assert not client.repo.is_dirty()
 
 
-def test_datasets_provenance_after_edit(runner, client):
+def test_datasets_provenance_after_edit(
+    runner, client, load_dataset_with_injection, get_datasets_provenance_with_injection
+):
     """Test datasets provenance is updated after editing a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
     assert 0 == runner.invoke(cli, ["dataset", "edit", "my-data", "-k", "new-data"], catch_exceptions=False).exit_code
 
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
 
-    datasets_provenance = get_datasets_provenance(client)
-    current_version = datasets_provenance.get_by_name("my-data")
-    old_version = datasets_provenance.get_previous_version(current_version)
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        current_version = datasets_provenance.get_by_name("my-data")
+        old_version = datasets_provenance.get_previous_version(current_version)
 
     assert_dataset_is_mutated(old=old_version, new=dataset)
     assert dataset.identifier == current_version.identifier
@@ -1786,11 +1792,13 @@ def test_datasets_provenance_after_edit(runner, client):
     assert {"new-data"} == set(current_version.keywords)
 
 
-def test_datasets_provenance_after_add(runner, client, directory_tree):
+def test_datasets_provenance_after_add(runner, client, directory_tree, get_datasets_provenance_with_injection):
     """Test datasets provenance is updated after adding data to a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--create", str(directory_tree / "file1")]).exit_code
 
-    dataset = get_datasets_provenance(client).get_by_name("my-data")
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("my-data")
+
     path = os.path.join(DATA_DIR, "my-data", "file1")
     file = dataset.find_file(path)
     object_hash = client.repo.git.rev_parse(f"HEAD:{path}")
@@ -1801,19 +1809,22 @@ def test_datasets_provenance_after_add(runner, client, directory_tree):
     assert path == file.entity.path
 
 
-def test_datasets_provenance_after_multiple_adds(runner, client, directory_tree):
+def test_datasets_provenance_after_multiple_adds(
+    runner, client, directory_tree, get_datasets_provenance_with_injection
+):
     """Test datasets provenance is re-using DatasetFile objects after multiple adds."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "-c", str(directory_tree / "dir1")]).exit_code
 
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree / "file1")]).exit_code
 
-    datasets_provenance = get_datasets_provenance(client)
-    provenance = datasets_provenance.get_provenance()
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        provenance = datasets_provenance.get_provenance()
 
-    assert 1 == len(provenance)
+        assert 1 == len(provenance)
 
-    current_version = datasets_provenance.get_by_name("my-data")
-    old_version = datasets_provenance.get_by_id(current_version.derived_from)
+        current_version = datasets_provenance.get_by_name("my-data")
+        old_version = datasets_provenance.get_by_id(current_version.derived_from)
+
     old_dataset_file_ids = {f.id for f in old_version.files}
 
     path = os.path.join(DATA_DIR, "my-data", "dir1", "file2")
@@ -1822,19 +1833,21 @@ def test_datasets_provenance_after_multiple_adds(runner, client, directory_tree)
     assert file2.id in old_dataset_file_ids
 
 
-def test_datasets_provenance_after_add_with_overwrite(runner, client, directory_tree):
+def test_datasets_provenance_after_add_with_overwrite(
+    runner, client, directory_tree, get_datasets_provenance_with_injection
+):
     """Test datasets provenance is updated if adding and overwriting same files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--create", str(directory_tree)]).exit_code
 
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)]).exit_code
 
-    datasets_provenance = get_datasets_provenance(client)
-    provenance = datasets_provenance.get_provenance()
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        provenance = datasets_provenance.get_provenance()
 
-    assert 1 == len(provenance)
+        assert 1 == len(provenance)
 
-    current_version = datasets_provenance.get_by_name("my-data")
-    old_version = datasets_provenance.get_by_id(current_version.derived_from)
+        current_version = datasets_provenance.get_by_name("my-data")
+        old_version = datasets_provenance.get_by_id(current_version.derived_from)
     old_dataset_file_ids = {f.id for f in old_version.files}
 
     for dataset_file in current_version.files:
@@ -1843,15 +1856,17 @@ def test_datasets_provenance_after_add_with_overwrite(runner, client, directory_
         assert dataset_file.id not in old_dataset_file_ids
 
 
-def test_datasets_provenance_after_file_unlink(runner, client, directory_tree):
+def test_datasets_provenance_after_file_unlink(
+    runner, client, directory_tree, load_dataset_with_injection, get_datasets_provenance_with_injection
+):
     """Test datasets provenance is updated after removing data."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "-c", str(directory_tree)]).exit_code
     assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "--include", "*/dir1/*"], input="y").exit_code
 
-    dataset = load_dataset(client, "my-data")
-    datasets_provenance = get_datasets_provenance(client)
-    current_version = datasets_provenance.get_by_name("my-data")
-    old_version = datasets_provenance.get_by_id(Dataset.generate_id(dataset.initial_identifier))
+    dataset = load_dataset_with_injection("my-data", client)
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        current_version = datasets_provenance.get_by_name("my-data")
+        old_version = datasets_provenance.get_by_id(Dataset.generate_id(dataset.initial_identifier))
     path = os.path.join(DATA_DIR, "my-data", directory_tree.name, "file1")
 
     assert 3 == len(old_version.dataset_files)
@@ -1863,17 +1878,19 @@ def test_datasets_provenance_after_file_unlink(runner, client, directory_tree):
     assert current_version.identifier != current_version.initial_identifier
 
 
-def test_datasets_provenance_after_remove(runner, client, directory_tree):
+def test_datasets_provenance_after_remove(
+    runner, client, directory_tree, load_dataset_with_injection, get_datasets_provenance_with_injection
+):
     """Test datasets provenance is updated after removing a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "-c", str(directory_tree)]).exit_code
 
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
 
     assert 0 == runner.invoke(cli, ["dataset", "rm", "my-data"]).exit_code
 
-    datasets_provenance = get_datasets_provenance(client)
-    current_version = datasets_provenance.get_by_name("my-data")
-    provenance = datasets_provenance.get_provenance()
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        current_version = datasets_provenance.get_by_name("my-data")
+        provenance = datasets_provenance.get_provenance()
 
     assert current_version is None
     # NOTE: We only keep the tail of provenance chain for each dataset in the provenance
@@ -1886,20 +1903,20 @@ def test_datasets_provenance_after_remove(runner, client, directory_tree):
 
 
 @pytest.mark.serial
-def test_datasets_provenance_after_update(runner, client, directory_tree):
+def test_datasets_provenance_after_update(runner, client, directory_tree, get_datasets_provenance_with_injection):
     """Test datasets provenance is updated after updating a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)]).exit_code
 
     directory_tree.joinpath("file1").write_text("some updates")
     assert 0 == runner.invoke(cli, ["dataset", "update", "--external"]).exit_code
 
-    datasets_provenance = get_datasets_provenance(client)
-    current_version = datasets_provenance.get_by_name("my-data")
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        current_version = datasets_provenance.get_by_name("my-data")
 
     assert current_version.identifier != current_version.initial_identifier
 
 
-def test_datasets_provenance_after_adding_tag(runner, client):
+def test_datasets_provenance_after_adding_tag(runner, client, get_datasets_provenance_with_injection):
     """Test datasets provenance is updated after tagging a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
 
@@ -1907,9 +1924,9 @@ def test_datasets_provenance_after_adding_tag(runner, client):
 
     assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "42.0"]).exit_code
 
-    datasets_provenance = get_datasets_provenance(client)
-    provenance = datasets_provenance.get_provenance()
-    current_version = datasets_provenance.get_by_name("my-data")
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        provenance = datasets_provenance.get_provenance()
+        current_version = datasets_provenance.get_by_name("my-data")
     commit_sha_after = client.repo.head.object.hexsha
 
     assert 1 == len(provenance)
@@ -1919,55 +1936,57 @@ def test_datasets_provenance_after_adding_tag(runner, client):
     assert not client.repo.is_dirty()
 
 
-def test_datasets_provenance_after_removing_tag(runner, client):
+def test_datasets_provenance_after_removing_tag(runner, client, get_datasets_provenance_with_injection):
     """Test datasets provenance is updated after removing a dataset's tag."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
     assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "42.0"]).exit_code
 
     assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "my-data", "42.0"]).exit_code
 
-    datasets_provenance = get_datasets_provenance(client)
-    provenance = datasets_provenance.get_provenance()
-    current_version = datasets_provenance.get_by_name("my-data")
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        provenance = datasets_provenance.get_provenance()
+        current_version = datasets_provenance.get_by_name("my-data")
 
     assert 1 == len(provenance)
     assert current_version.identifier != current_version.initial_identifier
     assert current_version.derived_from is not None
 
 
-def test_datasets_provenance_multiple(runner, client, directory_tree):
+def test_datasets_provenance_multiple(
+    runner, client, directory_tree, load_dataset_with_injection, get_datasets_provenance_with_injection
+):
     """Test datasets provenance is updated after multiple dataset operations."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
-    v1 = load_dataset(client, "my-data")
+    v1 = load_dataset_with_injection("my-data", client)
     assert 0 == runner.invoke(cli, ["dataset", "edit", "my-data", "-k", "new-data"]).exit_code
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree)]).exit_code
     assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "--include", "*/dir1/*"], input="y").exit_code
 
-    datasets_provenance = get_datasets_provenance(client)
-    tail_dataset = datasets_provenance.get_by_name("my-data", immutable=True)
-    provenance = datasets_provenance.get_provenance()
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        tail_dataset = datasets_provenance.get_by_name("my-data", immutable=True)
+        provenance = datasets_provenance.get_provenance()
 
-    # NOTE: We only keep the tail of provenance chain for each dataset in the provenance
-    assert 1 == len(provenance)
-    assert tail_dataset is provenance[0]
+        # NOTE: We only keep the tail of provenance chain for each dataset in the provenance
+        assert 1 == len(provenance)
+        assert tail_dataset is provenance[0]
 
-    assert v1.identifier == tail_dataset.initial_identifier
-    tail_dataset = datasets_provenance.get_previous_version(tail_dataset)
-    assert v1.identifier == tail_dataset.initial_identifier
-    tail_dataset = datasets_provenance.get_previous_version(tail_dataset)
-    assert v1.identifier == tail_dataset.initial_identifier
-    tail_dataset = datasets_provenance.get_previous_version(tail_dataset)
-    assert v1.identifier == tail_dataset.initial_identifier
+        assert v1.identifier == tail_dataset.initial_identifier
+        tail_dataset = datasets_provenance.get_previous_version(tail_dataset)
+        assert v1.identifier == tail_dataset.initial_identifier
+        tail_dataset = datasets_provenance.get_previous_version(tail_dataset)
+        assert v1.identifier == tail_dataset.initial_identifier
+        tail_dataset = datasets_provenance.get_previous_version(tail_dataset)
+        assert v1.identifier == tail_dataset.initial_identifier
 
 
-def test_datasets_provenance_add_file(runner, client, directory_tree):
+def test_datasets_provenance_add_file(runner, client, directory_tree, load_dataset_with_injection):
     """Test add to dataset using graph command."""
     file1 = str(directory_tree.joinpath("file1"))
     assert 0 == runner.invoke(cli, ["dataset", "add", "--create", "my-data", file1]).exit_code
     dir1 = str(directory_tree.joinpath("dir1"))
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", dir1]).exit_code
 
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
 
     assert {"file1", "file2", "file3"} == {Path(f.entity.path).name for f in dataset.files}
 
@@ -2002,7 +2021,7 @@ def test_authorized_import(mock_kg, client, runner):
     assert "Resource not found in knowledge graph" in result.output
 
 
-def test_update_local_file(runner, client, directory_tree):
+def test_update_local_file(runner, client, directory_tree, load_dataset_with_injection):
     """Check updating local files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
 
@@ -2018,7 +2037,7 @@ def test_update_local_file(runner, client, directory_tree):
     client.repo.index.commit("file2")
     new_checksum_file2 = get_object_hash(client.repo, file2)
 
-    old_dataset = load_dataset(client, "my-data")
+    old_dataset = load_dataset_with_injection("my-data", client)
 
     assert new_checksum_file1 != old_dataset.find_file(file1).entity.checksum
     assert new_checksum_file2 != old_dataset.find_file(file2).entity.checksum
@@ -2026,13 +2045,13 @@ def test_update_local_file(runner, client, directory_tree):
     result = runner.invoke(cli, ["dataset", "update", "my-data"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
     assert new_checksum_file1 == dataset.find_file(file1).entity.checksum
     assert new_checksum_file2 == dataset.find_file(file2).entity.checksum
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
 
 
-def test_update_local_deleted_file(runner, client, directory_tree):
+def test_update_local_deleted_file(runner, client, directory_tree, load_dataset_with_injection):
     """Check updating local deleted files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
 
@@ -2048,7 +2067,7 @@ def test_update_local_deleted_file(runner, client, directory_tree):
     assert "Some files are deleted." in result.output
     assert "Updated 0 files" in result.output
     assert commit_sha_after_file1_delete == client.repo.head.object.hexsha
-    old_dataset = load_dataset(client, "my-data")
+    old_dataset = load_dataset_with_injection("my-data", client)
     assert old_dataset.find_file(file1)
 
     # NOTE: Update with `--delete`
@@ -2057,7 +2076,7 @@ def test_update_local_deleted_file(runner, client, directory_tree):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Updated 0 files and deleted 1 files" in result.output
     assert commit_sha_after_file1_delete != client.repo.head.object.hexsha
-    dataset = load_dataset(client, "my-data")
+    dataset = load_dataset_with_injection("my-data", client)
     assert dataset.find_file(file1) is None
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
 

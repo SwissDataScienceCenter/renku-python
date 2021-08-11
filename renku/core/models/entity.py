@@ -23,7 +23,7 @@ from typing import List, Union
 from urllib.parse import quote
 
 from renku.core.metadata.immutable import Immutable
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, wfprov
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku
 from renku.core.utils.git import get_object_hash
 
 _entity_cache = {}
@@ -132,8 +132,7 @@ class EntitySchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        # NOTE: wfprov.Artifact is not removed for compatibility with older project
-        rdf_type = [prov.Entity, wfprov.Artifact]
+        rdf_type = [prov.Entity]
         model = Entity
 
     checksum = fields.String(renku.checksum, missing=None)

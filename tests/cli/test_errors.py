@@ -33,7 +33,8 @@ from tests.utils import format_result_exception
         ["dataset"],
         ["doctor"],
         ["githooks"],
-        ["log"],
+        # TODO: reenable once log (or workflow export) is implemented
+        # ["log"],
         ["migrate"],
         ["mv"],
         ["rerun"],
@@ -71,7 +72,7 @@ def test_cli_initialization_err(cmd, runner):
         ["dataset", "--help"],
         ["doctor", "--help"],
         ["githooks", "--help"],
-        ["log", "--help"],
+        # ["log", "--help"],
         ["migrate", "--help"],
         ["mv", "--help"],
         ["rerun", "--help"],

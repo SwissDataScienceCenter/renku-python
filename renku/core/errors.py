@@ -265,14 +265,14 @@ class OutputsNotFound(RenkuException):
 
     def __init__(self, repo, inputs):
         """Build a custom message."""
+        from pathlib import Path
+
         msg = "There are not any detected outputs in the repository."
 
-        from renku.core.models.cwl.types import File
-
         paths = [
-            os.path.relpath(str(input_.default.path))  # relative to cur path
-            for input_ in inputs  # only choose files
-            if isinstance(input_.default, File)
+            os.path.relpath(input_.default_value)  # relative to cur path
+            for input_ in inputs
+            if Path(input_.default_value).is_dir()
         ]
 
         if paths:

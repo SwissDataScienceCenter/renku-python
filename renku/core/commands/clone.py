@@ -57,4 +57,4 @@ def _project_clone(
 
 def project_clone_command():
     """Command to clone a renku project."""
-    return Command().command(_project_clone)
+    return Command().command(_project_clone).with_database()

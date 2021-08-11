@@ -46,6 +46,7 @@ def update_multiple_config():
     return (
         Command()
         .command(_update_multiple_config)
+        .with_database()
         .require_migration()
         .with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH)
     )
@@ -71,6 +72,7 @@ def update_config():
         .command(_update_config)
         .require_migration()
         .with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH)
+        .with_database()
     )
 
 

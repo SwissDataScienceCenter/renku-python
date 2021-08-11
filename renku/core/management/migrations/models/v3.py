@@ -21,23 +21,13 @@ import os
 
 from marshmallow import EXCLUDE, post_load, pre_load
 
+from renku.core.management.migrations.models.v9 import Person as OldPerson
+from renku.core.management.migrations.models.v9 import generate_project_id, wfprov
 from renku.core.management.migrations.utils import generate_dataset_tag_id, generate_url_id
 from renku.core.models import jsonld
-from renku.core.models.calamus import (
-    DateTimeList,
-    JsonLDSchema,
-    StringList,
-    Uri,
-    fields,
-    prov,
-    rdfs,
-    renku,
-    schema,
-    wfprov,
-)
+from renku.core.models.calamus import DateTimeList, JsonLDSchema, StringList, Uri, fields, prov, rdfs, renku, schema
 from renku.core.models.git import get_user_info
-from renku.core.models.projects import generate_project_id
-from renku.core.models.provenance import agents
+from renku.core.utils.migrate import OLD_METADATA_PATH
 from renku.core.utils.urls import get_host
 
 
@@ -87,7 +77,7 @@ class Person(Base):
             if not client and self.client:
                 client = self.client
             hostname = get_host(client)
-            self._id = agents.Person.generate_id(email=self.email, full_identity=self.full_identity, hostname=hostname)
+            self._id = OldPerson.generate_id(email=self.email, full_identity=self.full_identity, hostname=hostname)
 
 
 class Project(Base):
@@ -185,10 +175,8 @@ class Dataset(Base):
 
     def to_yaml(self, path=None):
         """Write content to a YAML file."""
-        from renku.core.management import LocalClient
-
         data = DatasetSchemaV3().dump(self)
-        path = path or self._metadata_path or os.path.join(self.path, LocalClient.METADATA)
+        path = path or self._metadata_path or os.path.join(self.path, OLD_METADATA_PATH)
         jsonld.write_yaml(path=path, data=data)
 
 
@@ -393,7 +381,7 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
 
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
-    paths = client.renku_datasets_path.rglob(client.METADATA)
+    paths = client.renku_datasets_path.rglob(OLD_METADATA_PATH)
     datasets = []
     for path in paths:
         dataset = Dataset.from_yaml(path=path, client=client)

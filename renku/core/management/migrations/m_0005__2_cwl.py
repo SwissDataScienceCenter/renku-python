@@ -31,11 +31,19 @@ from git import NULL_TREE, Actor
 from werkzeug.utils import secure_filename
 
 from renku.core.management.migrations.models.v3 import Dataset
-from renku.core.models.entities import Collection, Entity
-from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
-from renku.core.models.provenance.agents import Person, SoftwareAgent
-from renku.core.models.workflow.parameters import CommandArgument, CommandInput, CommandOutput, MappedIOStream
-from renku.core.models.workflow.run import Run
+from renku.core.management.migrations.models.v9 import (
+    Collection,
+    CommandArgument,
+    CommandInput,
+    CommandOutput,
+    Entity,
+    MappedIOStream,
+    Person,
+    ProcessRun,
+    Run,
+    SoftwareAgent,
+    WorkflowRun,
+)
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
 from renku.core.utils.migrate import MigrationType

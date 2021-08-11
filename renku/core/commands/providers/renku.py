@@ -33,10 +33,21 @@ from renku.core import errors
 from renku.core.commands.login import read_renku_token
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.management.command_builder.command import inject, replace_injection
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
+from renku.core.management.interface.plan_gateway import IPlanGateway
+from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.migrate import is_project_unsupported, migrate
 from renku.core.metadata.database import Database
+from renku.core.metadata.gateway.activity_gateway import ActivityGateway
+from renku.core.metadata.gateway.database_gateway import DatabaseGateway
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
+from renku.core.metadata.gateway.plan_gateway import PlanGateway
+from renku.core.metadata.gateway.project_gateway import ProjectGateway
 from renku.core.metadata.immutable import DynamicProxy
-from renku.core.models.dataset import DatasetsProvenance, get_dataset_data_dir
+from renku.core.models.dataset import get_dataset_data_dir
 from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 
@@ -377,7 +388,14 @@ class _RenkuRecordSerializer:
             LocalClient: self._remote_client,
             Database: database,
         }
-        constructor_bindings = {DatasetsProvenance: lambda: DatasetsProvenance(database)}
+        constructor_bindings = {
+            IDatasetGateway: lambda: DatasetGateway(),
+            DatasetsProvenance: lambda: DatasetsProvenance(),
+            IProjectGateway: lambda: ProjectGateway(),
+            IDatabaseGateway: lambda: DatabaseGateway(),
+            IActivityGateway: lambda: ActivityGateway(),
+            IPlanGateway: lambda: PlanGateway(),
+        }
 
         with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
             self._migrate_project()

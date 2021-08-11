@@ -30,7 +30,7 @@ def dummy_run_plugin_hook():
         @hookimpl
         def cmdline_tool_annotations(self, tool):
             """``cmdline_tool_annotations`` hook implementation."""
-            from renku.core.models.cwl.annotation import Annotation
+            from renku.core.models.provenance.annotation import Annotation
 
             return [Annotation(id="_:annotation", source="Dummy Cmdline Hook", body="dummy cmdline hook body")]
 
@@ -60,14 +60,14 @@ def dummy_processrun_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
     from renku.core.plugins import hookimpl
 
-    class _ProcessRunAnnotations(object):
+    class _ActivityAnnotations(object):
         """CmdlineTool Hook implementation namespace."""
 
         @hookimpl
         def process_run_annotations(self, run):
             """``process_run_annotations`` hook implementation."""
-            from renku.core.models.cwl.annotation import Annotation
+            from renku.core.models.provenance.annotation import Annotation
 
-            return [Annotation(id="_:annotation", source="Dummy ProcessRun Hook", body="dummy ProcessRun hook body")]
+            return [Annotation(id="_:annotation", source="Dummy Activity Hook", body="dummy Activity hook body")]
 
-    return _ProcessRunAnnotations()
+    return _ActivityAnnotations()

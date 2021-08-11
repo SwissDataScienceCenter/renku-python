@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test utility functions."""
+import contextlib
 import os
 import traceback
 import uuid
@@ -26,8 +27,8 @@ from typing import Optional
 import pytest
 from flaky import flaky
 
-from renku.core.metadata.database import Database
-from renku.core.models.dataset import Dataset, DatasetsProvenance
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.models.dataset import Dataset
 
 
 def raises(error):
@@ -117,8 +118,7 @@ def get_datasets_provenance(client) -> DatasetsProvenance:
     """Return DatasetsProvenance for a client."""
     assert client.has_graph_files()
 
-    database = Database.from_path(client.database_path)
-    return DatasetsProvenance(database)
+    return DatasetsProvenance()
 
 
 def format_result_exception(result):
@@ -132,10 +132,9 @@ def format_result_exception(result):
     return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output}"
 
 
-def load_dataset(client, name: str) -> Optional[Dataset]:
+def load_dataset(name: str) -> Optional[Dataset]:
     """Load dataset from disk."""
-    database = Database.from_path(client.database_path)
-    datasets_provenance = DatasetsProvenance(database)
+    datasets_provenance = DatasetsProvenance()
 
     return datasets_provenance.get_by_name(name)
 
@@ -173,3 +172,25 @@ def retry_failed(fn=None, extended: bool = False):
     if fn:
         return decorate(fn)
     return decorate
+
+
+@contextlib.contextmanager
+def injection_manager(bindings):
+    """Context manager to temporarly do injections."""
+    import inject
+
+    from renku.core.management.command_builder.command import remove_injector
+
+    def _bind(binder):
+        for key, value in bindings["bindings"].items():
+            binder.bind(key, value)
+        for key, value in bindings["constructor_bindings"].items():
+            binder.bind_to_constructor(key, value)
+
+        return binder
+
+    inject.configure(_bind)
+    try:
+        yield
+    finally:
+        remove_injector()

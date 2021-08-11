@@ -188,7 +188,7 @@ def repo_sync(repo, message=None, remote=None, paths=None):
                 # Reset cache
                 repo.git.checkout(old_active_branch)
                 ref = f"{origin}/{old_pushed_branch}"
-                repo.index.reset(commit=ref, head=True, working_tree=True)
+                repo.head.reset(commit=ref, index=True, working_tree=True)
 
         if result and failed_push:
             # NOTE: Couldn't push for some reason
