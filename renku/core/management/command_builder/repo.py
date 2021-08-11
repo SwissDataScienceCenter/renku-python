@@ -56,9 +56,7 @@ class Commit(Command):
 
         from renku.core.management.git import prepare_commit
 
-        self.project_metadata_path, self.diff_before = prepare_commit(
-            context["client"], commit_only=self._commit_filter_paths
-        )
+        self.diff_before = prepare_commit(context["client"], commit_only=self._commit_filter_paths)
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
         """Hook that commits changes."""
@@ -71,7 +69,6 @@ class Commit(Command):
         try:
             finalize_commit(
                 context["client"],
-                self.project_metadata_path,
                 self.diff_before,
                 commit_only=self._commit_filter_paths,
                 commit_empty=self._commit_if_empty,
@@ -132,8 +129,8 @@ class Isolation(Command):
         """__init__ of Commit."""
         self._builder = builder
 
-    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
-        """Hook to create a commit transaction."""
+    def _injection_pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
+        """Hook to setup dependency injection for commit transaction."""
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
         from renku.core.management import LocalClient
@@ -170,7 +167,7 @@ class Isolation(Command):
     @check_finalized
     def build(self) -> Command:
         """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+        self._builder.add_injection_pre_hook(self.DEFAULT_ORDER, self._injection_pre_hook)
         self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
 
         return self._builder.build()

@@ -23,6 +23,7 @@ from rdflib.term import BNode
 
 from renku.core.commands.echo import WARNING
 from renku.core.models.jsonld import NoDatesSafeLoader
+from renku.core.models.project import ProjectSchema
 from renku.core.utils.shacl import validate_graph
 
 
@@ -54,9 +55,9 @@ def _shacl_graph_to_string(graph):
 
 def check_project_structure(client):
     """Validate project metadata against SHACL."""
-    project_path = client.renku_metadata_path
+    data = ProjectSchema().dump(client.project)
 
-    conform, graph, t = _check_shacl_structure_for_path(project_path)
+    conform, graph, t = _check_shacl_structure(data)
 
     if conform:
         return True, None

@@ -36,8 +36,7 @@ from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.metadata.database import Database
 from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Collection, Generation, Usage
-from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+from renku.core.models.provenance.activity import Collection
 from renku.core.utils import communication
 from renku.core.utils.file_size import parse_file_size
 from renku.core.utils.git import add_to_git, run_command
@@ -560,7 +559,7 @@ class StorageApiMixin(RepositoryApiMixin):
         def _map_checksum_old(entity, checksum_mapping):
             """Update the checksum and id of an entity based on a mapping."""
             # TODO: Remove this method once moved to Entity with 'id' field
-            from renku.core.models.provenance.activities import Collection
+            from renku.core.models.provenance.activity import Collection
 
             if entity.checksum not in checksum_mapping:
                 return
@@ -575,44 +574,45 @@ class StorageApiMixin(RepositoryApiMixin):
                     _map_checksum_old(member, checksum_mapping)
 
         # NOTE: Update workflow provenance
-        provenance_graph = ProvenanceGraph.from_database(database)
+        # provenance_graph = ProvenanceGraph.from_database(database)
 
-        for activity in provenance_graph.activities:
-            # NOTE: This is a valid use-case since history will be re-written
-            activity._v_immutable = False
-            if activity.generations:
-                generations = []
-                for generation in activity.generations:
-                    new_entity = _map_checksum(generation.entity, sha_mapping)
-                    if new_entity:
-                        new_generation = Generation(id=generation.id, entity=new_entity)
-                        generations.append(new_generation)
-                    else:
-                        generations.append(generation)
-                activity.generations = generations
+        # TODO: Update activities
+        # for activity in provenance_graph.activities:
+        #     # NOTE: This is a valid use-case since history will be re-written
+        #     activity._v_immutable = False
+        #     if activity.generations:
+        #         generations = []
+        #         for generation in activity.generations:
+        #             new_entity = _map_checksum(generation.entity, sha_mapping)
+        #             if new_entity:
+        #                 new_generation = Generation(id=generation.id, entity=new_entity)
+        #                 generations.append(new_generation)
+        #             else:
+        #                 generations.append(generation)
+        #         activity.generations = generations
 
-            if activity.usages:
-                usages = []
-                for usage in activity.usages:
-                    new_entity = _map_checksum(usage.entity, sha_mapping)
-                    if new_entity:
-                        new_usage = Usage(id=usage.id, entity=new_entity)
-                        usages.append(new_usage)
-                    else:
-                        usages.append(usage)
-                activity.usages = usages
+        #     if activity.usages:
+        #         usages = []
+        #         for usage in activity.usages:
+        #             new_entity = _map_checksum(usage.entity, sha_mapping)
+        #             if new_entity:
+        #                 new_usage = Usage(id=usage.id, entity=new_entity)
+        #                 usages.append(new_usage)
+        #             else:
+        #                 usages.append(usage)
+        #         activity.usages = usages
 
-            if activity.invalidations:
-                invalidations = []
-                for entity in activity.invalidations:
-                    new_entity = _map_checksum(entity, sha_mapping)
-                    if new_entity:
-                        invalidations.append(new_entity)
-                    else:
-                        invalidations.append(entity)
-                activity.invalidations = invalidations
+        #     if activity.invalidations:
+        #         invalidations = []
+        #         for entity in activity.invalidations:
+        #             new_entity = _map_checksum(entity, sha_mapping)
+        #             if new_entity:
+        #                 invalidations.append(new_entity)
+        #             else:
+        #                 invalidations.append(entity)
+        #         activity.invalidations = invalidations
 
-            activity._v_immutable = True
+        #     activity._v_immutable = True
 
         # NOTE: Update datasets provenance
         # TODO: Fix dataset provenance

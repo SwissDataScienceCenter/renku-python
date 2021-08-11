@@ -29,5 +29,4 @@ Models
    datasets
    provenance
    workflow
-   cwl
    refs

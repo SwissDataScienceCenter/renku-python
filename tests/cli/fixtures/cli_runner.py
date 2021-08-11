@@ -21,29 +21,34 @@ import pytest
 
 
 @pytest.fixture
-def renku_cli(client, run):
+def renku_cli(client, run, client_database_injection_manager):
     """Return a callable Renku CLI.
 
     It returns the exit code and content of the resulting CWL tool.
     """
-    import yaml
-
-    from renku.core.models.provenance.activities import Activity
+    from renku.core.management.command_builder.command import inject
+    from renku.core.management.interface.activity_gateway import IActivityGateway
 
     def renku_cli_(*args, **kwargs):
-        before_wf_files = set(client.workflow_path.glob("*.yaml"))
-        exit_code = run(args, **kwargs)
-        after_wf_files = set(client.workflow_path.glob("*.yaml"))
-        new_files = after_wf_files - before_wf_files
-        assert len(new_files) <= 1
-        if new_files:
-            wf_filepath = new_files.pop()
-            with wf_filepath.open("r") as f:
-                content = Activity.from_jsonld(yaml.safe_load(f), client=client, commit=client.repo.head.commit)
-            content = content.association.plan
-        else:
-            content = None
+        @inject.autoparams()
+        def _get_activities(activity_gateway: IActivityGateway):
+            return {a.id: a for a in activity_gateway.get_latest_activity_per_plan().values()}
 
-        return exit_code, content
+        with client_database_injection_manager(client):
+            activities_before = _get_activities()
+
+        exit_code = run(args, **kwargs)
+
+        with client_database_injection_manager(client):
+            activities_after = _get_activities()
+
+        new_activities = set(activities_after.keys()).difference(set(activities_before.keys()))
+
+        assert len(new_activities) <= 1
+
+        if new_activities:
+            return exit_code, activities_after[new_activities.pop()].association.plan
+
+        return exit_code, None
 
     return renku_cli_

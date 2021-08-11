@@ -22,19 +22,15 @@ import itertools
 import re
 from abc import ABC
 from datetime import datetime
-from pathlib import PurePosixPath
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 from uuid import uuid4
 
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
-from renku.core.management.command_builder.command import inject
 from renku.core.metadata.database import Persistent
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
-from renku.core.models.entities import Entity
-from renku.core.models.workflow import parameters as old_parameter
 from renku.core.models.workflow.parameter import (
     CommandInput,
     CommandInputSchema,
@@ -43,10 +39,7 @@ from renku.core.models.workflow.parameter import (
     CommandParameter,
     CommandParameterBase,
     CommandParameterSchema,
-    MappedIOStream,
 )
-from renku.core.models.workflow.run import Run
-from renku.core.utils.urls import get_host
 
 MAX_GENERATED_NAME_LENGTH = 25
 
@@ -154,80 +147,6 @@ class Plan(AbstractPlan):
         self.success_codes: List[int] = success_codes or []
         super().__init__(id=id, description=description, invalidated_at=invalidated_at, keywords=keywords, name=name)
 
-    @classmethod
-    def from_run(cls, run: Run):
-        """Create a Plan from a Run."""
-        assert not run.subprocesses, f"Cannot create a Plan from a Run with subprocesses: {run._id}"
-
-        def extract_run_uuid(run_id: str) -> str:
-            # https://localhost/runs/723fd784-9347-4081-84de-a6dbb067545b/
-            return run_id.rstrip("/").rsplit("/", maxsplit=1)[-1]
-
-        uuid = extract_run_uuid(run._id)
-        plan_id = cls.generate_id(uuid=uuid)
-
-        def convert_argument(argument: old_parameter.CommandArgument) -> CommandParameter:
-            """Convert an old CommandArgument to a new CommandParameter."""
-            assert isinstance(argument, old_parameter.CommandArgument)
-
-            return CommandParameter(
-                default_value=argument.value,
-                description=argument.description,
-                id=CommandParameter.generate_id(plan_id=plan_id, postfix=PurePosixPath(argument._id).name),
-                name=argument.name,
-                position=argument.position,
-                prefix=argument.prefix,
-            )
-
-        def convert_input(input: old_parameter.CommandInput) -> CommandInput:
-            """Convert an old CommandInput to a new CommandInput."""
-            assert isinstance(input, old_parameter.CommandInput)
-
-            mapped_to = input.mapped_to
-            if mapped_to:
-                mapped_to = MappedIOStream(stream_type=mapped_to.stream_type)
-
-            return CommandInput(
-                default_value=input.consumes.path,
-                description=input.description,
-                id=CommandInput.generate_id(plan_id=plan_id, postfix=PurePosixPath(input._id).name),
-                mapped_to=mapped_to,
-                name=input.name,
-                position=input.position,
-                prefix=input.prefix,
-            )
-
-        def convert_output(output: old_parameter.CommandOutput) -> CommandOutput:
-            """Convert an old CommandOutput to a new CommandOutput."""
-            assert isinstance(output, old_parameter.CommandOutput)
-
-            mapped_to = output.mapped_to
-            if mapped_to:
-                mapped_to = MappedIOStream(stream_type=mapped_to.stream_type)
-
-            return CommandOutput(
-                create_folder=output.create_folder,
-                default_value=output.produces.path,
-                description=output.description,
-                id=CommandOutput.generate_id(plan_id=plan_id, postfix=PurePosixPath(output._id).name),
-                mapped_to=mapped_to,
-                name=output.name,
-                position=output.position,
-                prefix=output.prefix,
-            )
-
-        return cls(
-            command=run.command,
-            description=run.description,
-            id=plan_id,
-            inputs=[convert_input(i) for i in run.inputs],
-            keywords=run.keywords,
-            name=run.name,
-            outputs=[convert_output(o) for o in run.outputs],
-            parameters=[convert_argument(a) for a in run.arguments],
-            success_codes=run.successcodes,
-        )
-
     def is_similar_to(self, other: "Plan") -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
 
@@ -296,71 +215,6 @@ class Plan(AbstractPlan):
         argv.extend(e for a in arguments for e in a.to_argv())
 
         return argv
-
-    @inject.params(client="LocalClient")
-    def to_run(self, client, entities_cache: Dict[str, Entity]) -> Run:
-        """Create a Run."""
-        uuid = self._extract_uuid()
-        host = get_host(client)
-        # TODO: This won't work if plan_id was randomly generated; for PoC it's OK.
-        run_id = f"https://{host}/runs/{uuid}"
-
-        def get_entity(path: str) -> Entity:
-            entity = entities_cache.get(path)
-            if not entity:
-                entity = Entity.from_revision(client=client, path=path, revision="HEAD")
-                entities_cache[path] = entity
-            return entity
-
-        def convert_parameter(argument: CommandParameter) -> old_parameter.CommandArgument:
-            return old_parameter.CommandArgument(
-                description=argument.description,
-                id=argument.id.replace(self.id, run_id),
-                name=argument.name,
-                position=argument.position,
-                prefix=argument.prefix,
-                value=argument.default_value,
-            )
-
-        def convert_input(input: CommandInput) -> old_parameter.CommandInput:
-            mapped_to = input.mapped_to
-            if mapped_to:
-                mapped_to = old_parameter.MappedIOStream(id=mapped_to.id, stream_type=mapped_to.stream_type)
-
-            return old_parameter.CommandInput(
-                consumes=get_entity(input.default_value),
-                description=input.description,
-                id=input.id.replace(self.id, run_id),
-                mapped_to=mapped_to,
-                name=input.name,
-                position=input.position,
-                prefix=input.prefix,
-            )
-
-        def convert_output(output: CommandOutput) -> old_parameter.CommandOutput:
-            mapped_to = output.mapped_to
-            if mapped_to:
-                mapped_to = old_parameter.MappedIOStream(id=mapped_to.id, stream_type=mapped_to.stream_type)
-
-            return old_parameter.CommandOutput(
-                create_folder=output.create_folder,
-                description=output.description,
-                id=output.id.replace(self.id, run_id),
-                mapped_to=mapped_to,
-                name=output.name,
-                position=output.position,
-                prefix=output.prefix,
-                produces=get_entity(output.default_value),
-            )
-
-        return Run(
-            arguments=[convert_parameter(p) for p in self.parameters],
-            command=self.command,
-            id=run_id,
-            inputs=[convert_input(i) for i in self.inputs],
-            outputs=[convert_output(o) for o in self.outputs],
-            successcodes=self.success_codes,
-        )
 
 
 class PlanSchema(JsonLDSchema):

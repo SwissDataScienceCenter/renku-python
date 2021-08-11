@@ -38,12 +38,13 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, OperationErro
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.datasets import DATASET_METADATA_PATHS
+from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import (
     Dataset,
     DatasetDetailsJson,
-    DatasetsProvenance,
     DatasetTag,
     Url,
     generate_default_name,
@@ -214,6 +215,7 @@ def _add_to_dataset(
     urls,
     name,
     client: LocalClient,
+    database_gateway: IDatabaseGateway,
     external=False,
     force=False,
     overwrite=False,
@@ -271,6 +273,11 @@ def _add_to_dataset(
             )
             if with_metadata:
                 dataset.update_metadata_from(with_metadata)
+
+        # TODO: Remove this once we have a proper database dispatcher for injection
+        # we need to commit because "project clone" changes injection, so tha database instance here
+        # is not the same as the one in CommandBuilder
+        database_gateway.commit()
 
         return dataset
     except DatasetNotFound:
@@ -466,7 +473,15 @@ def export_dataset():
 
 @inject.autoparams()
 def _import_dataset(
-    uri, client: LocalClient, name="", extract=False, yes=False, previous_dataset=None, delete=False, gitlab_token=None
+    uri,
+    client: LocalClient,
+    database_gateway: IDatabaseGateway,
+    name="",
+    extract=False,
+    yes=False,
+    previous_dataset=None,
+    delete=False,
+    gitlab_token=None,
 ):
     """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -524,7 +539,6 @@ def _import_dataset(
             dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", dataset.identifier))
 
         urls, names = zip(*[(f.source, f.filename) for f in files])
-
         dataset = _add_to_dataset(
             urls=urls,
             name=name,
@@ -585,6 +599,9 @@ def _import_dataset(
 
     if provider.supports_images:
         record.import_images(dataset)
+
+    # TODO: sometimes injections are updated and the CommandBuilder commits changes to the wrong Database instance
+    database_gateway.commit()
 
 
 def import_dataset():

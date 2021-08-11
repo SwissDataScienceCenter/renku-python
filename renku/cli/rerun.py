@@ -78,8 +78,8 @@ def edit_inputs(workflow, client: LocalClient):
         input_.consumes._label = input_.consumes.default_label()
 
     for step in workflow.subprocesses:
-        for argument in step.process.arguments:
-            argument.value = click.prompt("{0._id}".format(argument), default=argument.value)
+        for parameter in step.process.parameters:
+            parameter.default_value = click.prompt("{0._id}".format(parameter), default=parameter.default_value)
 
     return workflow
 

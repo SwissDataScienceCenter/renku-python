@@ -22,7 +22,7 @@ import re
 import attr
 import click
 
-from renku.core.models.workflow.run import Run
+from renku.core.models.workflow.plan import Plan
 
 try:
     from itertools import zip_longest
@@ -123,7 +123,7 @@ class DAG(object):
 
         # Handle subprocesses of a workflow.
         part_of = None
-        if isinstance(node, Run):
+        if isinstance(node, Plan):
             part_of = getattr(node.activity, "part_of", None)
 
         if part_of:

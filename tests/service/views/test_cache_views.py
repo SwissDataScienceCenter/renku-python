@@ -25,9 +25,6 @@ import jwt
 import pytest
 from git import Repo
 
-from renku.core.management.command_builder.command import replace_injection
-from renku.core.metadata.database import Database
-from renku.core.models.dataset import DatasetsProvenance
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
@@ -761,7 +758,9 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 @pytest.mark.integration
 @pytest.mark.serial
 @retry_failed
-def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_cache_synchronization):
+def test_cache_gets_synchronized(
+    local_remote_repository, directory_tree, quick_cache_synchronization, client_database_injection_manager
+):
     """Test that the cache stays synchronized with the remote repo."""
     from renku.core.management.client import LocalClient
     from renku.core.models.provenance.agent import Person
@@ -773,15 +772,7 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
 
     client = LocalClient(remote_repo_checkout.working_dir)
 
-    database = Database.from_path(client.database_path)
-    bindings = {
-        "LocalClient": client,
-        LocalClient: client,
-        Database: database,
-    }
-    constructor_bindings = {DatasetsProvenance: lambda: DatasetsProvenance(database)}
-
-    with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
+    with client_database_injection_manager(client):
         with client.commit(commit_message="Create dataset"):
             with client.with_dataset("my_dataset", create=True, commit_database=True) as dataset:
                 dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
@@ -811,8 +802,9 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
 
     remote.pull()
 
-    datasets = client.datasets.values()
-    assert 2 == len(datasets)
+    with client_database_injection_manager(client):
+        datasets = client.datasets.values()
+        assert 2 == len(datasets)
 
     assert any(d.name == "my_dataset" for d in datasets)
     assert any(d.name == payload["name"] for d in datasets)

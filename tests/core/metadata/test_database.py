@@ -262,7 +262,7 @@ def test_database_add_duplicate_index(database):
     with pytest.raises(AssertionError) as e:
         database.add_index(name=same_name, object_type=Plan, attribute="name")
 
-    assert "Index already exists: 'plans'" in str(e)
+    assert "Index or object already exists: 'plans'" in str(e)
 
 
 def test_database_index_different_key_type(database):

@@ -17,10 +17,13 @@
 # limitations under the License.
 """Test workflow commands."""
 
+import pytest
+
 from renku.cli import cli
 from tests.utils import format_result_exception
 
 
+@pytest.mark.skip(reason="renku workflow remove not implemented with new metadata yet, reenable later")
 def test_workflow_remove_command(runner, project):
     """test workflow remove with builder."""
     workflow_name = "test_workflow"

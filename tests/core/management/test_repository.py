@@ -24,17 +24,19 @@ from renku import LocalClient
 from renku.core.commands.dataset import create_dataset
 
 
-def test_latest_version(project):
+def test_latest_version(project, client_database_injection_manager):
     """Test returning the latest version of `SoftwareAgent`."""
     from renku import __version__
 
     create_dataset().build().execute("ds1", title="", description="", creators=[])
 
-    agent_version = LocalClient(project).latest_agent
+    client = LocalClient(project)
+    with client_database_injection_manager(client):
+        agent_version = client.latest_agent
     assert __version__ == agent_version
 
 
-def test_latest_version_user_commits(project):
+def test_latest_version_user_commits(project, client_database_injection_manager):
     """Test retrieval of `SoftwareAgent` with latest non-renku command."""
     from git import Repo
 
@@ -49,7 +51,9 @@ def test_latest_version_user_commits(project):
     repo.index.add([str(myfile)])
     repo.index.commit("added myfile")
 
-    agent_version = LocalClient(project).latest_agent
+    client = LocalClient(project)
+    with client_database_injection_manager(client):
+        agent_version = client.latest_agent
     assert __version__ == agent_version
 
 

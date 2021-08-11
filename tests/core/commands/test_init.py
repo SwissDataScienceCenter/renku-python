@@ -32,7 +32,6 @@ from renku.core.commands.init import (
     read_template_manifest,
     validate_template,
 )
-from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import migrate
 from tests.utils import raises
@@ -161,7 +160,7 @@ def test_validate_template():
             assert validate_template(template_folder) is True
 
 
-def test_create_from_template(local_client, template):
+def test_create_from_template(local_client, template, injected_local_client_with_database):
     """Test repository creation from a template.
 
     It creates a renku projects from one of the local templates and it verifies
@@ -181,7 +180,7 @@ def test_create_from_template(local_client, template):
             f
             for f in local_client.path.glob("**/*")
             if ".git" not in str(f)
-            and not str(f).endswith(".renku/metadata.yml")
+            and ".renku/metadata" not in str(f)
             and not str(f).endswith(".renku/template_checksums.json")
         ]
         for template_file in template_files:
@@ -189,7 +188,7 @@ def test_create_from_template(local_client, template):
             assert expected_file.exists()
 
 
-def test_template_filename(local_client, template):
+def test_template_filename(local_client, template, injected_local_client_with_database):
     """Test using a template with dynamic filenames."""
     local_client.init_repository()
 
@@ -208,7 +207,7 @@ def test_template_filename(local_client, template):
         assert (local_client.path / "test.r").exists()
 
 
-def test_update_from_template(local_client, template_update):
+def test_update_from_template(local_client, template_update, client_database_injection_manager):
     """Test repository update from a template."""
     local_client.init_repository()
 
@@ -223,7 +222,7 @@ def test_update_from_template(local_client, template_update):
             continue
         p.write_text(f"{p.read_text()}\nmodified")
 
-    with replace_injected_client(local_client):
+    with client_database_injection_manager(local_client):
         migrate(local_client, skip_docker_update=True)
 
     for p in project_files:
@@ -234,7 +233,7 @@ def test_update_from_template(local_client, template_update):
         assert content != new_content
 
 
-def test_update_from_template_with_modified_files(local_client, template_update):
+def test_update_from_template_with_modified_files(local_client, template_update, client_database_injection_manager):
     """Test repository update from a template with modified local files."""
     local_client.init_repository()
 
@@ -258,7 +257,7 @@ def test_update_from_template_with_modified_files(local_client, template_update)
     deleted_file = next(f for f in project_files if str(f).endswith("README.md"))
     deleted_file.unlink()
 
-    with replace_injected_client(local_client):
+    with client_database_injection_manager(local_client):
         migrate(local_client, skip_docker_update=True)
 
     for p in project_files:
@@ -277,7 +276,9 @@ def test_update_from_template_with_modified_files(local_client, template_update)
             assert content != new_content
 
 
-def test_update_from_template_with_immutable_modified_files(local_client, mocker, template_update):
+def test_update_from_template_with_immutable_modified_files(
+    local_client, mocker, template_update, client_database_injection_manager
+):
     """Test repository update from a template with modified local immutable files."""
     local_client.init_repository()
 
@@ -297,11 +298,13 @@ def test_update_from_template_with_immutable_modified_files(local_client, mocker
 
     with pytest.raises(
         errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
-    ), replace_injected_client(local_client):
+    ), client_database_injection_manager(local_client):
         migrate(local_client)
 
 
-def test_update_from_template_with_immutable_deleted_files(local_client, mocker, template_update):
+def test_update_from_template_with_immutable_deleted_files(
+    local_client, mocker, template_update, client_database_injection_manager
+):
     """Test repository update from a template with deleted local immutable files."""
     local_client.init_repository()
 
@@ -320,28 +323,28 @@ def test_update_from_template_with_immutable_deleted_files(local_client, mocker,
 
     with pytest.raises(
         errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
-    ), replace_injected_client(local_client):
+    ), client_database_injection_manager(local_client):
         migrate(local_client)
 
 
-def test_update_template_dockerfile(local_client, mocker, template_update):
+def test_update_template_dockerfile(local_client, monkeypatch, template_update, client_database_injection_manager):
     """Test repository Dockerfile update."""
     local_client.init_repository()
 
     template_update(docker=True, after_template_version="0.0.1")
 
-    import renku
+    monkeypatch.setattr("renku.__version__", "0.0.2")
 
-    mocker.patch.object(renku, "__version__", "0.0.2")
-
-    with replace_injected_client(local_client):
+    with client_database_injection_manager(local_client):
         migrate(local_client)
 
     dockerfile = (local_client.path / "Dockerfile").read_text()
     assert "0.0.2" in dockerfile
 
 
-def test_update_from_template_with_new_variable(local_client, mocker, template_update):
+def test_update_from_template_with_new_variable(
+    local_client, mocker, template_update, client_database_injection_manager
+):
     """Test repository update from a template with a new template variable required."""
     local_client.init_repository()
 
@@ -362,5 +365,5 @@ def test_update_from_template_with_new_variable(local_client, mocker, template_u
 
     with pytest.raises(
         errors.TemplateUpdateError, match=r".*Can't update template, it now requires variable.*"
-    ), replace_injected_client(local_client):
+    ), client_database_injection_manager(local_client):
         migrate(local_client)

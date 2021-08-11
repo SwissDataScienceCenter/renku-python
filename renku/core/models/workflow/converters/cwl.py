@@ -25,8 +25,8 @@ from uuid import uuid4
 
 import cwlgen
 
-from renku.core.models.entities import Collection
-from renku.core.models.workflow.parameters import CommandOutput
+from renku.core.models.entity import Collection
+from renku.core.models.workflow.parameter import CommandOutput
 
 
 class CommandLineTool(cwlgen.CommandLineTool):
@@ -281,8 +281,8 @@ class CWLConverter(object):
             if input_.mapped_to:
                 tool_object.stdin = "$(inputs.{}.path)".format(tool_input.id)
                 jsrequirement = True
-        for argument in step.arguments:
-            tool_object.inputs.append(CWLConverter._convert_argument(argument))
+        for parameter in step.parameters:
+            tool_object.inputs.append(CWLConverter._convert_parameter(parameter))
 
         workdir_req.listing.append(
             cwlgen.InitialWorkDirRequirement.Dirent(
@@ -405,14 +405,14 @@ class CWLConverter(object):
         )
 
     @staticmethod
-    def _convert_argument(argument):
+    def _convert_parameter(parameter):
         """Converts an argument to a CWL input."""
-        value, type_ = _get_argument_type(argument.value)
+        value, type_ = _get_argument_type(parameter.default_value)
 
         separate = None
         prefix = None
-        if argument.prefix:
-            prefix = argument.prefix
+        if parameter.prefix:
+            prefix = parameter.prefix
             separate = False
 
             if prefix.endswith(" "):
@@ -420,8 +420,8 @@ class CWLConverter(object):
                 separate = True
 
         return cwlgen.CommandInputParameter(
-            argument.sanitized_id.replace("/", "_"),
+            parameter.id,
             param_type=type_,
-            input_binding=cwlgen.CommandLineBinding(position=argument.position, prefix=prefix, separate=separate),
+            input_binding=cwlgen.CommandLineBinding(position=parameter.position, prefix=prefix, separate=separate),
             default=value,
         )
