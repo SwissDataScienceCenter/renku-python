@@ -19,8 +19,17 @@
 
 
 from renku.core.management.command_builder.command import Command, CommandResult, check_finalized
+from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
+from renku.core.management.interface.plan_gateway import IPlanGateway
+from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.metadata.database import Database
-from renku.core.models.dataset import DatasetsProvenance
+from renku.core.metadata.gateway.activity_gateway import ActivityGateway
+from renku.core.metadata.gateway.database_gateway import DatabaseGateway
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
+from renku.core.metadata.gateway.plan_gateway import PlanGateway
+from renku.core.metadata.gateway.project_gateway import ProjectGateway
 
 
 class DatabaseCommand(Command):
@@ -35,7 +44,7 @@ class DatabaseCommand(Command):
         self._path = path
         self._create = create
 
-    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
+    def _injection_pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Create a Database singleton."""
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
@@ -46,7 +55,11 @@ class DatabaseCommand(Command):
 
         context["bindings"][Database] = self.database
 
-        context["constructor_bindings"][DatasetsProvenance] = lambda: DatasetsProvenance(self.database)
+        context["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
+        context["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
+        context["constructor_bindings"][IDatabaseGateway] = lambda: DatabaseGateway()
+        context["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
+        context["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs) -> None:
         if self._write and not result.error:
@@ -55,7 +68,7 @@ class DatabaseCommand(Command):
     @check_finalized
     def build(self) -> Command:
         """Build the command."""
-        self._builder.add_pre_hook(self.PRE_ORDER, self._pre_hook)
+        self._builder.add_injection_pre_hook(self.PRE_ORDER, self._injection_pre_hook)
         self._builder.add_post_hook(self.POST_ORDER, self._post_hook)
 
         return self._builder.build()

@@ -27,7 +27,6 @@ from git import GitCommandError, Repo
 
 from renku.core.errors import RenkuException, UninitializedProject
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.repository import RepositoryApiMixin
 from renku.core.utils.contexts import click_context
 from renku.service.cache.models.job import Job
 from renku.service.cache.models.project import Project
@@ -319,7 +318,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         with project.remote() as path:
             self.project_path = Path(path)
 
-            if not (self.project_path / RENKU_HOME / RepositoryApiMixin.METADATA).exists():
+            if not (self.project_path / RENKU_HOME).exists():
                 raise UninitializedProject(self.project_path)
 
             return self.renku_op()

@@ -136,11 +136,12 @@ def old_repository_with_submodules(request, tmp_path):
 
 
 @pytest.fixture
-def unsupported_project(client):
+def unsupported_project(client, client_database_injection_manager):
     """A client with a newer project version."""
-    with client.with_metadata() as project:
-        impossible_newer_version = 42000
-        project.version = impossible_newer_version
+    with client_database_injection_manager(client):
+        with client.with_metadata() as project:
+            impossible_newer_version = 42000
+            project.version = impossible_newer_version
 
     client.repo.git.add(".renku")
     client.repo.index.commit("update renku.ini", skip_hooks=True)

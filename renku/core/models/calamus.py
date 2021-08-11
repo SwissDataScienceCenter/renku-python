@@ -32,7 +32,6 @@ prov = fields.Namespace("http://www.w3.org/ns/prov#")
 rdfs = fields.Namespace("http://www.w3.org/2000/01/rdf-schema#")
 renku = fields.Namespace("https://swissdatasciencecenter.github.io/renku-ontology#")
 schema = fields.Namespace("http://schema.org/")
-wfprov = fields.Namespace("http://purl.org/wf4ever/wfprov#")
 oa = fields.Namespace("http://www.w3.org/ns/oa#")
 dcterms = fields.Namespace("http://purl.org/dc/terms/")
 

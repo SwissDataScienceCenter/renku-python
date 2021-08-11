@@ -42,7 +42,7 @@ property:
 from operator import attrgetter
 
 from renku.api.models.project import ensure_project_context
-from renku.core.metadata.database import Database
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.models import dataset as core_dataset
 
 
@@ -85,8 +85,7 @@ class Dataset:
         client = project.client
         if not client or not client.has_graph_files():
             return []
-        database = Database.from_path(client.database_path)
-        datasets_provenance = core_dataset.DatasetsProvenance(database)
+        datasets_provenance = DatasetsProvenance()
         return [Dataset._from_dataset(d) for d in datasets_provenance.datasets]
 
     def __getattribute__(self, name):

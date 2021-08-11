@@ -20,8 +20,11 @@
 from pathlib import Path
 
 from renku.api import Input, Output, Parameter, Project
-from renku.core.models.cwl import command_line_tool
-from renku.core.models.cwl.command_line_tool import read_indirect_parameters
+from renku.core.management.workflow.plan_factory import (
+    get_indirect_inputs_path,
+    get_indirect_outputs_path,
+    read_indirect_parameters,
+)
 
 
 def test_indirect_inputs(client):
@@ -41,7 +44,7 @@ def test_indirect_inputs(client):
     assert Path(path_2) == input_2.path
     assert Path(path_3) == input_3.path
 
-    content = command_line_tool.get_indirect_inputs_path(project.path).read_text()
+    content = get_indirect_inputs_path(project.path).read_text()
 
     assert {path_1, path_2, path_3} == {line for line in content.split("\n") if line}
 
@@ -63,7 +66,7 @@ def test_indirect_outputs(client):
     assert Path(path_2) == input_2.path
     assert Path(path_3) == input_3.path
 
-    content = command_line_tool.get_indirect_outputs_path(project.path).read_text()
+    content = get_indirect_outputs_path(project.path).read_text()
 
     assert {path_1, path_2, path_3} == {line for line in content.split("\n") if line}
 
@@ -79,8 +82,8 @@ def test_indirect_inputs_outputs(client):
     assert Path(path_1) == input_1.path
     assert Path(path_2) == output_2.path
 
-    assert path_1 == command_line_tool.get_indirect_inputs_path(client.path).read_text().strip()
-    assert path_2 == command_line_tool.get_indirect_outputs_path(client.path).read_text().strip()
+    assert path_1 == get_indirect_inputs_path(client.path).read_text().strip()
+    assert path_2 == get_indirect_outputs_path(client.path).read_text().strip()
 
 
 def test_open_inputs(client):

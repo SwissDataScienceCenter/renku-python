@@ -26,9 +26,8 @@ from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE
 
 from renku.core.metadata.immutable import Slots
-from renku.core.models.calamus import StringList, fields, prov, schema, wfprov
+from renku.core.models.calamus import StringList, fields, prov, schema
 from renku.core.models.git import get_user_info
-from renku.core.models.provenance import agents as old_agents
 from renku.version import __version__, version_url
 
 
@@ -58,17 +57,6 @@ class Agent(Slots):
         """Create an instance from a Git commit."""
         return SoftwareAgent.from_commit(commit) if commit.author != commit.committer else Person.from_commit(commit)
 
-    @classmethod
-    def from_agent(
-        cls, agent: Optional[Union[old_agents.Person, old_agents.SoftwareAgent]]
-    ) -> Optional[Union["Person", "SoftwareAgent"]]:
-        """Create an instance from Person/SoftwareAgent."""
-        if isinstance(agent, old_agents.SoftwareAgent):
-            return SoftwareAgent.from_software_agent(agent)
-
-        assert not agent or isinstance(agent, old_agents.Person), f"Invalid type {type(agent)}"
-        return Person.from_person(agent)
-
 
 class SoftwareAgent(Agent):
     """Represent executed software."""
@@ -77,13 +65,6 @@ class SoftwareAgent(Agent):
     def from_commit(cls, commit):
         """Create an instance from a Git commit."""
         return cls(id=commit.committer.email, name=commit.committer.name)
-
-    @classmethod
-    def from_software_agent(cls, agent: Optional[old_agents.SoftwareAgent]) -> Optional["SoftwareAgent"]:
-        """Create an instance from Person/SoftwareAgent."""
-        if not agent:
-            return
-        return cls(id=agent.id, name=agent.label)
 
 
 # set up the default agent
@@ -128,20 +109,6 @@ class Person(Agent):
 
     def __hash__(self):
         return hash((self.id, self.full_identity))
-
-    @classmethod
-    def from_person(cls, person: Optional[old_agents.Person]) -> Optional["Person"]:
-        """Create an instance from Person."""
-        if not person:
-            return
-
-        return cls(
-            affiliation=person.affiliation,
-            alternate_name=person.alternate_name,
-            email=person.email,
-            id=None,
-            name=person.name,
-        )
 
     @classmethod
     def from_commit(cls, commit):
@@ -255,7 +222,7 @@ class SoftwareAgentSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.SoftwareAgent, wfprov.WorkflowEngine]
+        rdf_type = [prov.SoftwareAgent]
         model = SoftwareAgent
         unknown = EXCLUDE
 

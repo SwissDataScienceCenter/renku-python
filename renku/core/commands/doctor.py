@@ -54,4 +54,4 @@ def _doctor_check(client):
 
 def doctor_check_command():
     """Command to check your system and repository for potential problems."""
-    return Command().command(_doctor_check)
+    return Command().command(_doctor_check).with_database()

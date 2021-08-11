@@ -146,6 +146,7 @@ def svc_client_with_repo(svc_client_setup):
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
     )
+
     assert response.json["result"]
 
     with _mock_cache_sync(repo):

@@ -25,8 +25,8 @@ public "migrate" function that accepts a client as its argument.
 
 When executing a migration, the migration file is imported as a module and the
 "migrate" function is executed. Migration version is checked against the Renku
-project version (in .renku/metadata.yml) and any migration which has a higher
-version is applied to the project.
+project version and any migration which has a higher version is applied to the
+project.
 """
 import hashlib
 import importlib
@@ -47,8 +47,9 @@ from renku.core.errors import (
     TemplateUpdateError,
 )
 from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.utils import communication
-from renku.core.utils.migrate import read_project_version
+from renku.core.utils.migrate import OLD_METADATA_PATH, read_project_version
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -81,9 +82,10 @@ def is_docker_update_possible():
     return _update_dockerfile(check_only=True)
 
 
-@inject.params(client="LocalClient")
+@inject.params(client="LocalClient", project_gateway=IProjectGateway)
 def migrate(
     client,
+    project_gateway,
     force_template_update=False,
     skip_template_update=False,
     skip_docker_update=False,
@@ -96,10 +98,16 @@ def migrate(
     if not is_renku_project():
         return False, template_updated, docker_updated
 
+    try:
+        project = client.project
+    except ValueError:
+        project = None
+
     if (
         not skip_template_update
-        and client.project.template_source
-        and (force_template_update or client.project.automated_update)
+        and project
+        and project.template_source
+        and (force_template_update or project.automated_update)
     ):
         try:
             template_updated, _, _ = _update_template()
@@ -138,19 +146,23 @@ def migrate(
     if n_migrations_executed > 0 and not client.is_using_temporary_datasets_path():
         client._project = None  # NOTE: force reloading of project metadata
         client.project.version = str(version)
-        client.project.to_yaml()
+        project_gateway.update_project(client.project)
 
         communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
 
     return n_migrations_executed != 0, template_updated, docker_updated
 
 
-@inject.params(client="LocalClient")
-def _update_template(client, check_only=False):
+@inject.params(client="LocalClient", project_gateway=IProjectGateway)
+def _update_template(client, project_gateway, check_only=False):
     """Update local files from the remote template."""
     from renku.core.commands.init import fetch_template
 
-    project = client.project
+    try:
+        project = client.project
+    except ValueError:
+        # NOTE: Old project, we don't know the status until it is migrated
+        return False, None, None
 
     if not project.template_version:
         return False, None, None
@@ -256,7 +268,7 @@ def _update_template(client, check_only=False):
     communication.echo(f"Updated project from template, updated files:\n{updated}")
 
     project.template_version = template_version
-    project.to_yaml()
+    project_gateway.update_project(project)
 
     return True, project.template_version, template_version
 
@@ -316,8 +328,8 @@ def is_renku_project(client):
     """Check if repository is a renku project."""
     try:
         return client.project is not None
-    except ValueError:  # Error in loading due to an older schema
-        return client.renku_metadata_path.exists()
+    except (ValueError):  # Error in loading due to an older schema
+        return client.renku_path.joinpath(OLD_METADATA_PATH).exists()
 
 
 def get_migrations():
