@@ -19,9 +19,9 @@
 
 from collections import namedtuple
 
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 Result = namedtuple("Result", ["path", "commit", "time", "workflow"])
 
@@ -76,7 +76,7 @@ def get_inputs():
 
 
 @inject.autoparams()
-def _get_inputs(revision, paths, client: LocalClient):
+def _get_inputs(revision, paths, client_dispatcher: IClientDispatcher):
     pass
     # TODO: implement with new database
     # graph = Graph()

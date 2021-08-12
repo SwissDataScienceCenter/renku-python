@@ -35,6 +35,7 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.migrations.models import v9 as old_schema
@@ -126,7 +127,7 @@ def maybe_migrate_project_to_database(client, project_gateway: IProjectGateway):
 
 @inject.autoparams()
 def generate_new_metadata(
-    client: LocalClient,
+    client_dispatcher: IClientDispatcher,
     database_gateway: IDatabaseGateway,
     activity_gateway: IActivityGateway,
     force=True,
@@ -134,6 +135,8 @@ def generate_new_metadata(
     committed=False,
 ):
     """Generate graph and dataset provenance metadata."""
+    client = client_dispatcher.current_client
+
     if force:
         client.remove_graph_files()
     elif client.has_graph_files():
@@ -267,6 +270,7 @@ def _get_process_runs(workflow_run: old_schema.WorkflowRun) -> List[old_schema.P
 
 
 def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, commit: Commit, remove: bool):
+
     for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.yaml"):
         # Ignore deleted files (they appear as ADDED in this backwards diff)
         if file_.change_type == "A":
@@ -299,9 +303,11 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
                 pass
 
 
-def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: LocalClient) -> Activity:
+def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client_dispatcher: IClientDispatcher) -> Activity:
     """Convert a ProcessRun to a new Activity."""
     assert not isinstance(process_run, old_schema.WorkflowRun)
+
+    client = client_dispatcher.current_client
 
     activity_id = Activity.generate_id()
 
@@ -655,6 +661,7 @@ class _DatasetMigrationContext:
 
 def _remove_dataset_metadata_files(client: LocalClient):
     """Remove old dataset metadata."""
+
     try:
         shutil.rmtree(os.path.join(client.renku_path, client.DATASETS))
     except FileNotFoundError:

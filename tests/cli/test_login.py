@@ -22,13 +22,12 @@ import pytest
 
 from renku.cli import cli
 from renku.core.commands.login import read_renku_token
-from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.utils.contexts import chdir
 from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT, USER_CODE
 from tests.utils import format_result_exception
 
 
-def test_login(runner, client_with_remote, mock_login):
+def test_login(runner, client_with_remote, mock_login, client_database_injection_manager):
     """Test login command."""
     remote_url = client_with_remote.repo.remotes[0].url
 
@@ -36,7 +35,7 @@ def test_login(runner, client_with_remote, mock_login):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with replace_injected_client(client_with_remote):
+    with client_database_injection_manager(client_with_remote):
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
         credential = client_with_remote.repo.config_reader().get_value("credential", "helper")
         assert f"!renku token --hostname {ENDPOINT}" == credential
@@ -91,7 +90,7 @@ def test_login_with_config_endpoint(runner, client, mock_login):
     assert "Successfully logged in." in result.output
 
 
-def test_logout(runner, client, mock_login):
+def test_logout(runner, client, mock_login, client_database_injection_manager):
     """Test logout removes all credentials."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
@@ -99,22 +98,22 @@ def test_logout(runner, client, mock_login):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         assert read_renku_token(ENDPOINT) is None
     assert "Successfully logged out." in result.output
 
 
-def test_repeated_login(runner, client, mock_login):
+def test_repeated_login(runner, client, mock_login, client_database_injection_manager):
     """Test multiple logins."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
 
 
-def test_repeated_logout(runner, client, mock_login):
+def test_repeated_logout(runner, client, mock_login, client_database_injection_manager):
     """Test multiple logouts."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
@@ -122,11 +121,11 @@ def test_repeated_logout(runner, client, mock_login):
 
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         assert read_renku_token(ENDPOINT) is None
 
 
-def test_login_to_multiple_endpoints(runner, client, mock_login):
+def test_login_to_multiple_endpoints(runner, client, mock_login, client_database_injection_manager):
     """Test login to multiple endpoints."""
     second_endpoint, second_token = "second.endpoint", "second-token"
     mock_login.add_endpoint_token(second_endpoint, second_token)
@@ -134,12 +133,12 @@ def test_login_to_multiple_endpoints(runner, client, mock_login):
 
     assert 0 == runner.invoke(cli, ["login", second_endpoint], input=USER_CODE).exit_code
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
         assert second_token == read_renku_token(second_endpoint)
 
 
-def test_logout_all(runner, client, mock_login):
+def test_logout_all(runner, client, mock_login, client_database_injection_manager):
     """Test logout with no endpoint removes multiple credentials."""
     second_endpoint, second_token = "second.endpoint", "second-token"
     mock_login.add_endpoint_token(second_endpoint, second_token)
@@ -148,12 +147,12 @@ def test_logout_all(runner, client, mock_login):
 
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         assert read_renku_token(ENDPOINT) is None
         assert read_renku_token(second_endpoint) is None
 
 
-def test_logout_one_endpoint(runner, client, mock_login):
+def test_logout_one_endpoint(runner, client, mock_login, client_database_injection_manager):
     """Test logout from an endpoint removes credentials for that endpoint only."""
     second_endpoint, second_token = "second.endpoint", "second-token"
     mock_login.add_endpoint_token(second_endpoint, second_token)
@@ -162,18 +161,18 @@ def test_logout_one_endpoint(runner, client, mock_login):
 
     assert 0 == runner.invoke(cli, ["logout", ENDPOINT]).exit_code
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         assert read_renku_token(ENDPOINT) is None
         assert second_token == read_renku_token(second_endpoint)
 
 
-def test_logout_non_existing_endpoint(runner, client, mock_login):
+def test_logout_non_existing_endpoint(runner, client, mock_login, client_database_injection_manager):
     """Test logout from a non-existing endpoint does nothing."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
     assert 0 == runner.invoke(cli, ["logout", "non.existing"]).exit_code
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         assert read_renku_token(ENDPOINT) is not None
 
 
@@ -275,7 +274,7 @@ def test_token_no_credential(runner, client_with_remote, mock_login):
     assert "password=\n" in result.output
 
 
-def test_token_invalid_command(runner, client_with_remote, mock_login):
+def test_token_invalid_command(runner, client_with_remote, mock_login, client_database_injection_manager):
     """Test call credential helper with a command other than 'get'."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
@@ -284,5 +283,5 @@ def test_token_invalid_command(runner, client_with_remote, mock_login):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "" == result.output
 
-    with replace_injected_client(client_with_remote):
+    with client_database_injection_manager(client_with_remote):
         assert read_renku_token(ENDPOINT) is not None

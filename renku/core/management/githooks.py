@@ -23,15 +23,17 @@ from pathlib import Path
 import pkg_resources
 from git.index.fun import hook_path as get_hook_path
 
-from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 HOOKS = ("pre-commit",)
 
 
 @inject.autoparams()
-def install(force, client: LocalClient):
+def install(force, client_dispatcher: IClientDispatcher):
     """Install Git hooks."""
+    client = client_dispatcher.current_client
+
     warning_messages = []
     for hook in HOOKS:
         hook_path = Path(get_hook_path(hook, client.repo.git_dir))
@@ -52,8 +54,10 @@ def install(force, client: LocalClient):
 
 
 @inject.autoparams()
-def uninstall(client: LocalClient):
+def uninstall(client_dispatcher: IClientDispatcher):
     """Uninstall Git hooks."""
+    client = client_dispatcher.current_client
+
     for hook in HOOKS:
         hook_path = Path(get_hook_path(hook, client.repo.git_dir))
         if hook_path.exists():

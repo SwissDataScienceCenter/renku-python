@@ -17,9 +17,9 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.migrate import (
     is_docker_update_possible,
     is_migration_required,
@@ -44,7 +44,9 @@ def migrations_check():
 
 
 @inject.autoparams()
-def _migrations_check(client: LocalClient):
+def _migrations_check(client_dispatcher: IClientDispatcher):
+    client = client_dispatcher.current_client
+
     template_update_possible, current_version, new_version = is_template_update_possible()
 
     try:
@@ -78,9 +80,11 @@ def migrations_versions():
 
 
 @inject.autoparams()
-def _migrations_versions(client: LocalClient):
+def _migrations_versions(client_dispatcher: IClientDispatcher):
     """Return source and destination migration versions."""
     from renku import __version__
+
+    client = client_dispatcher.current_client
 
     try:
         latest_agent = client.latest_agent
@@ -116,7 +120,9 @@ def check_project():
 
 
 @inject.autoparams()
-def _check_project(client: LocalClient):
+def _check_project(client_dispatcher: IClientDispatcher):
+    client = client_dispatcher.current_client
+
     if not is_renku_project():
         return NON_RENKU_REPOSITORY
     elif is_project_unsupported():
@@ -143,8 +149,10 @@ def _check_project(client: LocalClient):
 
 
 @inject.autoparams()
-def _check_immutable_template_files(paths, client: LocalClient):
+def _check_immutable_template_files(paths, client_dispatcher: IClientDispatcher):
     """Check paths and return a list of those that are marked immutable in the project template."""
+    client = client_dispatcher.current_client
+
     if not client.project.immutable_template_files:
         return []
 

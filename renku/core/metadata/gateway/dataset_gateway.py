@@ -22,42 +22,42 @@ from typing import List, Optional
 from persistent.list import PersistentList
 
 from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.metadata.database import Database
 from renku.core.models.dataset import Dataset, DatasetTag
 
 
 class DatasetGateway(IDatasetGateway):
     """Gateway for dataset database operations."""
 
-    database = inject.attr(Database)
+    database_dispatcher = inject.attr(IDatabaseDispatcher)
 
     def get_by_id(self, id: str) -> Optional[Dataset]:
         """Get a dataset by id."""
-        return self.database.get_by_id(id)
+        return self.database_dispatcher.current_database.get_by_id(id)
 
     def get_by_name(self, name: str) -> Optional[Dataset]:
         """Get a dataset by id."""
-        return self.database["datasets"].get(name)
+        return self.database_dispatcher.current_database["datasets"].get(name)
 
     def get_all_datasets(self) -> List[Dataset]:
         """Return all datasets."""
-        return list(self.database["datasets"].values())
+        return list(self.database_dispatcher.current_database["datasets"].values())
 
     def get_provenance(self) -> List[Dataset]:
         """Return the provenance for all datasets."""
-        return list(self.database["datasets-provenance-tails"].values())
+        return list(self.database_dispatcher.current_database["datasets-provenance-tails"].values())
 
     def get_all_tags(self, dataset: Dataset) -> List[DatasetTag]:
         """Return the list of all tags for a dataset."""
-        return list(self.database["datasets-tags"].get(dataset.name, []))
+        return list(self.database_dispatcher.current_database["datasets-tags"].get(dataset.name, []))
 
     def add_tag(self, dataset: Dataset, tag: DatasetTag):
         """Add a tag from a dataset."""
-        tags: PersistentList = self.database["datasets-tags"].get(dataset.name)
+        tags: PersistentList = self.database_dispatcher.current_database["datasets-tags"].get(dataset.name)
         if not tags:
             tags = PersistentList()
-            self.database["datasets-tags"].add(tags, key=dataset.name)
+            self.database_dispatcher.current_database["datasets-tags"].add(tags, key=dataset.name)
 
         assert tag.dataset_id == dataset.id, f"Tag has wrong dataset id: {tag.dataset_id} != {dataset.id}"
 
@@ -65,7 +65,7 @@ class DatasetGateway(IDatasetGateway):
 
     def remove_tag(self, dataset: Dataset, tag: DatasetTag):
         """Remove a tag from a dataset."""
-        tags: PersistentList = self.database["datasets-tags"].get(dataset.name)
+        tags: PersistentList = self.database_dispatcher.current_database["datasets-tags"].get(dataset.name)
         for t in tags:
             if t.name == tag.name:
                 tags.remove(t)
@@ -73,12 +73,13 @@ class DatasetGateway(IDatasetGateway):
 
     def add_or_remove(self, dataset: Dataset) -> None:
         """Add or remove a dataset."""
+        database = self.database_dispatcher.current_database
 
         if dataset.date_removed:
-            self.database["datasets"].pop(dataset.name, None)
-            self.database["datasets-tags"].pop(dataset.name, None)
+            database["datasets"].pop(dataset.name, None)
+            database["datasets-tags"].pop(dataset.name, None)
         else:
-            self.database["datasets"].add(dataset)
+            database["datasets"].add(dataset)
 
-        self.database["datasets-provenance-tails"].pop(dataset.derived_from, None)
-        self.database["datasets-provenance-tails"].add(dataset)
+        database["datasets-provenance-tails"].pop(dataset.derived_from, None)
+        database["datasets-provenance-tails"].add(dataset)

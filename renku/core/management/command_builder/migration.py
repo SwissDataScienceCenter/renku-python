@@ -32,9 +32,6 @@ class RequireMigration(Command):
 
     def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Check if migration is necessary."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
-
         check_for_migration()
 
     @check_finalized

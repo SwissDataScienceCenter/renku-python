@@ -23,9 +23,9 @@ from pathlib import Path
 import git
 
 from renku.core import errors
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
 
@@ -36,8 +36,10 @@ def move_command():
 
 
 @inject.autoparams()
-def _move(sources, destination, force, verbose, to_dataset, client: LocalClient):
+def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: IClientDispatcher):
     """Move files and check repository for potential problems."""
+    client = client_dispatcher.current_client
+
     if to_dataset:
         client.get_dataset(to_dataset, strict=True)
 
@@ -115,8 +117,10 @@ def _get_dst(path, src_root, dst_root, is_rename):
 
 
 @inject.autoparams()
-def _get_absolute_path(path, client: LocalClient):
+def _get_absolute_path(path, client_dispatcher: IClientDispatcher):
     """Resolve path and raise if path is outside the repo or is protected."""
+    client = client_dispatcher.current_client
+
     abs_path = Path(os.path.abspath(path))
 
     if client.is_protected_path(abs_path):
@@ -144,7 +148,9 @@ def _check_existing_destinations(destinations):
 
 
 @inject.autoparams()
-def _warn_about_ignored_destinations(destinations, client: LocalClient):
+def _warn_about_ignored_destinations(destinations, client_dispatcher: IClientDispatcher):
+    client = client_dispatcher.current_client
+
     ignored = client.find_ignored_paths(*destinations)
     if ignored:
         ignored = "\n\t".join((str(Path(p).relative_to(client.path)) for p in ignored))
@@ -152,8 +158,10 @@ def _warn_about_ignored_destinations(destinations, client: LocalClient):
 
 
 @inject.autoparams()
-def _warn_about_git_filters(files, client: LocalClient):
+def _warn_about_git_filters(files, client_dispatcher: IClientDispatcher):
     """Check if there are any git attributes for files including LFS."""
+    client = client_dispatcher.current_client
+
     src_attrs = []
     dst_attrs = []
 

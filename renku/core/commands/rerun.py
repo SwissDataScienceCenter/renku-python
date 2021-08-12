@@ -17,8 +17,8 @@
 # limitations under the License.
 """Renku rerun command."""
 
-from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import Command, inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 
 def rerun_workflows():
@@ -35,7 +35,7 @@ def rerun_workflows():
 
 
 @inject.autoparams()
-def _rerun_workflows(revision, roots, siblings, inputs, paths, client: LocalClient):
+def _rerun_workflows(revision, roots, siblings, inputs, paths, client_dispatcher: IClientDispatcher):
     pass
     # TODO: implement with new database
     # graph = Graph(client)

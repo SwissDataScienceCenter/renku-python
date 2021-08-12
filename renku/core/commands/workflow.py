@@ -26,9 +26,9 @@ from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
 from renku.core.commands.view_model import plan_view
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.value_resolution import apply_run_values
@@ -257,8 +257,11 @@ def edit_workflow_command():
 
 
 @inject.autoparams()
-def _export_workflow(name_or_id, client: LocalClient, format: str, output: Optional[str], values: Optional[str]):
+def _export_workflow(
+    name_or_id, client_dispatcher: IClientDispatcher, format: str, output: Optional[str], values: Optional[str]
+):
     """Export a workflow to a given format."""
+    client = client_dispatcher.current_client
 
     workflow = _find_workflow(name_or_id)
     if output:

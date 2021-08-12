@@ -20,6 +20,7 @@ import traceback
 
 from renku.core.commands.echo import ERROR
 from renku.core.management.command_builder.command import Command, inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 DOCTOR_INFO = """\
 Please note that the diagnosis report is used to help Renku maintainers with
@@ -28,10 +29,12 @@ and if in doubt ask an expert around or file an issue. Thanks!
 """
 
 
-@inject.params(client="LocalClient")
-def _doctor_check(client):
+@inject.autoparams()
+def _doctor_check(client_dispatcher: IClientDispatcher):
     """Check your system and repository for potential problems."""
     from . import checks
+
+    client = client_dispatcher.current_client
 
     is_ok = True
     problems = []

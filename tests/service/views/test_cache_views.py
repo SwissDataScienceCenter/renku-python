@@ -774,7 +774,7 @@ def test_cache_gets_synchronized(
 
     with client_database_injection_manager(client):
         with client.commit(commit_message="Create dataset"):
-            with client.with_dataset("my_dataset", create=True, commit_database=True) as dataset:
+            with client.with_dataset(name="my_dataset", create=True, commit_database=True) as dataset:
                 dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote.push()

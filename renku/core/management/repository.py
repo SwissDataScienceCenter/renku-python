@@ -35,6 +35,7 @@ from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.command_builder import inject
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.models.enums import ConfigFilter
@@ -363,7 +364,7 @@ class RepositoryApiMixin(GitCore):
     def workflow_names(self):
         """Return index of workflow names."""
         names = defaultdict(list)
-        for ref in LinkReference.iter_items(self, common_path="workflows"):
+        for ref in LinkReference.iter_items(common_path="workflows"):
             names[str(ref.reference.relative_to(self.path))].append(ref.name)
         return names
 

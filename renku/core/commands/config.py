@@ -17,10 +17,10 @@
 # limitations under the License.
 """Get and set Renku repository or global options."""
 from renku.core import errors
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.config import CONFIG_LOCAL_PATH
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.models.enums import ConfigFilter
 
 
@@ -53,8 +53,11 @@ def update_multiple_config():
 
 
 @inject.autoparams()
-def _update_config(key, client: LocalClient, *, value=None, remove=False, global_only=False, commit_message=None):
+def _update_config(
+    key, client_dispatcher: IClientDispatcher, *, value=None, remove=False, global_only=False, commit_message=None
+):
     """Add, update, or remove configuration values."""
+    client = client_dispatcher.current_client
     section, section_key = _split_section_and_key(key)
     if remove:
         value = client.remove_value(section, section_key, global_only=global_only)
@@ -77,8 +80,9 @@ def update_config():
 
 
 @inject.autoparams()
-def _read_config(key, client: LocalClient, config_filter=ConfigFilter.ALL, as_string=True):
+def _read_config(key, client_dispatcher: IClientDispatcher, config_filter=ConfigFilter.ALL, as_string=True):
     """Read configuration."""
+    client = client_dispatcher.current_client
     if key:
         section, section_key = _split_section_and_key(key)
         value = client.get_value(section, section_key, config_filter=config_filter)

@@ -21,8 +21,8 @@ from subprocess import PIPE, SubprocessError, run
 
 from humanize import naturalsize
 
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.models.dataset import DatasetFileDetailsJson
 
 from .tabulate import tabulate
@@ -55,8 +55,10 @@ def tabular(records, *, columns=None):
 
 
 @inject.autoparams()
-def _get_lfs_tracking(records, client: LocalClient):
+def _get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
     """Check if files are tracked in git lfs."""
+    client = client_dispatcher.current_client
+
     paths = [r.path for r in records]
     attrs = client.find_attr(*paths)
 
@@ -68,8 +70,10 @@ def _get_lfs_tracking(records, client: LocalClient):
 
 
 @inject.autoparams()
-def _get_lfs_file_sizes(records, client: LocalClient):
+def _get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
     """Try to get file size from Git LFS."""
+    client = client_dispatcher.current_client
+
     lfs_files_sizes = {}
 
     try:

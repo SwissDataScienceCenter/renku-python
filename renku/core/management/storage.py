@@ -33,8 +33,6 @@ import pathspec
 from werkzeug.utils import cached_property
 
 from renku.core import errors
-from renku.core.management.command_builder.command import inject
-from renku.core.metadata.database import Database
 from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Collection
 from renku.core.utils import communication
@@ -472,8 +470,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
         return groups
 
-    @inject.autoparams()
-    def migrate_files_to_lfs(self, paths, database: Database):
+    def migrate_files_to_lfs(self, paths):
         """Migrate files to Git LFS."""
         if not self.has_graph_files:
             raise errors.OperationError(

@@ -23,10 +23,10 @@ from git import Actor
 
 from renku.core.commands.cwl_runner import execute
 from renku.core.errors import ParameterError
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.workflow.converters.cwl import CWLConverter
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.utils.git import add_to_git
@@ -75,9 +75,16 @@ def _update_workflows(revision, no_output, update_all, siblings, paths):
 
 @inject.autoparams()
 def execute_workflow(
-    workflow, output_paths, command_name, update_commits, client: LocalClient, activity_gateway: IActivityGateway
+    workflow,
+    output_paths,
+    command_name,
+    update_commits,
+    client_dispatcher: IClientDispatcher,
+    activity_gateway: IActivityGateway,
 ):
     """Execute a Run with/without subprocesses."""
+    client = client_dispatcher.current_client
+
     wf, path = CWLConverter.convert(workflow, client.path)
     # Don't compute paths if storage is disabled.
     if client.check_external_storage():

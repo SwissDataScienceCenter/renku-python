@@ -223,7 +223,7 @@ def test_update_from_template(local_client, template_update, client_database_inj
         p.write_text(f"{p.read_text()}\nmodified")
 
     with client_database_injection_manager(local_client):
-        migrate(local_client, skip_docker_update=True)
+        migrate(skip_docker_update=True)
 
     for p in project_files:
         if p.is_dir():
@@ -258,7 +258,7 @@ def test_update_from_template_with_modified_files(local_client, template_update,
     deleted_file.unlink()
 
     with client_database_injection_manager(local_client):
-        migrate(local_client, skip_docker_update=True)
+        migrate(skip_docker_update=True)
 
     for p in project_files:
         if p.is_dir():
@@ -299,7 +299,7 @@ def test_update_from_template_with_immutable_modified_files(
     with pytest.raises(
         errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
     ), client_database_injection_manager(local_client):
-        migrate(local_client)
+        migrate()
 
 
 def test_update_from_template_with_immutable_deleted_files(
@@ -324,7 +324,7 @@ def test_update_from_template_with_immutable_deleted_files(
     with pytest.raises(
         errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
     ), client_database_injection_manager(local_client):
-        migrate(local_client)
+        migrate()
 
 
 def test_update_template_dockerfile(local_client, monkeypatch, template_update, client_database_injection_manager):
@@ -336,7 +336,7 @@ def test_update_template_dockerfile(local_client, monkeypatch, template_update, 
     monkeypatch.setattr("renku.__version__", "0.0.2")
 
     with client_database_injection_manager(local_client):
-        migrate(local_client)
+        migrate()
 
     dockerfile = (local_client.path / "Dockerfile").read_text()
     assert "0.0.2" in dockerfile
@@ -366,4 +366,4 @@ def test_update_from_template_with_new_variable(
     with pytest.raises(
         errors.TemplateUpdateError, match=r".*Can't update template, it now requires variable.*"
     ), client_database_injection_manager(local_client):
-        migrate(local_client)
+        migrate()

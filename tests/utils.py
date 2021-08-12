@@ -114,13 +114,6 @@ def modified_environ(*remove, **update):
         [env.pop(k) for k in remove_after]
 
 
-def get_datasets_provenance(client) -> DatasetsProvenance:
-    """Return DatasetsProvenance for a client."""
-    assert client.has_graph_files()
-
-    return DatasetsProvenance()
-
-
 def format_result_exception(result):
     """Format a `runner.invoke` exception result into a nice string repesentation."""
 
@@ -177,9 +170,8 @@ def retry_failed(fn=None, extended: bool = False):
 @contextlib.contextmanager
 def injection_manager(bindings):
     """Context manager to temporarly do injections."""
-    import inject
-
-    from renku.core.management.command_builder.command import remove_injector
+    from renku.core.management.command_builder.command import inject, remove_injector
+    from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 
     def _bind(binder):
         for key, value in bindings["bindings"].items():
@@ -189,8 +181,10 @@ def injection_manager(bindings):
 
         return binder
 
-    inject.configure(_bind)
+    inject.configure(_bind, bind_in_runtime=False)
     try:
         yield
     finally:
+        if IDatabaseDispatcher in bindings["bindings"]:
+            bindings["bindings"][IDatabaseDispatcher].finalize_dispatcher()
         remove_injector()

@@ -24,6 +24,7 @@ from uuid import uuid4
 from marshmallow import EXCLUDE
 
 from renku.core.management.command_builder import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
@@ -124,11 +125,11 @@ class Activity(Persistent):
         # TODO: influenced = attr.ib(kw_only=True)
 
     @classmethod
-    @inject.params(client="LocalClient")
+    @inject.autoparams()
     def from_plan(
         cls,
         plan: Plan,
-        client,
+        client_dispatcher: IClientDispatcher,
         started_at_time: datetime,
         ended_at_time: datetime,
         annotations: List[Annotation],
@@ -137,6 +138,8 @@ class Activity(Persistent):
     ):
         """Convert a ``Plan`` to a ``Activity``."""
         from renku.core.models.provenance.agent import SoftwareAgent
+
+        client = client_dispatcher.current_client
 
         if not commit:
             commit = client.repo.head.commit

@@ -20,31 +20,33 @@
 from typing import Dict
 
 from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
-from renku.core.metadata.database import Database
 from renku.core.models.workflow.plan import AbstractPlan
 
 
 class PlanGateway(IPlanGateway):
     """Gateway for plan database operations."""
 
-    database = inject.attr(Database)
+    database_dispatcher = inject.attr(IDatabaseDispatcher)
 
     def get_by_id(self, id: str) -> AbstractPlan:
         """Get a plan by id."""
-        return self.database["plans"].get(id)
+        return self.database_dispatcher.current_database["plans"].get(id)
 
     def get_by_name(self, name: str) -> AbstractPlan:
         """Get a plan by name."""
-        return self.database["plans-by-name"].get(name)
+        return self.database_dispatcher.current_database["plans-by-name"].get(name)
 
     def get_newest_plans_by_names(self, with_invalidated: bool = False) -> Dict[str, AbstractPlan]:
         """Return a list of all newest plans with their names."""
+        database = self.database_dispatcher.current_database
         if with_invalidated:
-            return dict(self.database["plans-by-name"])
-        return {k: v for k, v in self.database["plans-by-name"].items() if v.invalidated_at is None}
+            return dict(database["plans-by-name"])
+        return {k: v for k, v in database["plans-by-name"].items() if v.invalidated_at is None}
 
     def add(self, plan: AbstractPlan) -> None:
         """Add a plan to the database."""
-        self.database["plans"].add(plan)
-        self.database["plans-by-name"].add(plan)
+        database = self.database_dispatcher.current_database
+        database["plans"].add(plan)
+        database["plans-by-name"].add(plan)

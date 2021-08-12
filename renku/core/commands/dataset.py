@@ -35,13 +35,13 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, OperationError, ParameterError, UsageError
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.dataset import get_dataset
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.dataset.tag import add_dataset_tag, remove_dataset_tags
 from renku.core.management.datasets import DATASET_METADATA_PATHS
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import (
@@ -59,9 +59,9 @@ from renku.core.utils.doi import is_doi
 from renku.core.utils.urls import remove_credentials
 
 
-@inject.autoparams()
-def _list_datasets(datasets_provenance: DatasetsProvenance, format=None, columns=None):
+def _list_datasets(format=None, columns=None):
     """List all datasets."""
+    datasets_provenance = DatasetsProvenance()
     datasets = [DynamicProxy(d) for d in datasets_provenance.datasets]
     for dataset in datasets:
         tags = datasets_provenance.get_all_tags(dataset)
@@ -85,7 +85,7 @@ def list_datasets():
 @inject.autoparams()
 def create_dataset_helper(
     name,
-    client: LocalClient,
+    client_dispatcher: IClientDispatcher,
     title=None,
     description="",
     creators=None,
@@ -94,6 +94,8 @@ def create_dataset_helper(
     safe_image_paths=None,
 ):
     """Create a dataset in the repository."""
+    client = client_dispatcher.current_client
+
     if not creators:
         creators = [Person.from_git(client.repo)]
     else:
@@ -124,14 +126,15 @@ def _edit_dataset(
     title,
     description,
     creators,
-    client: LocalClient,
-    datasets_provenance: DatasetsProvenance,
+    client_dispatcher: IClientDispatcher,
     keywords=None,
     images=None,
     skip_image_update=False,
     safe_image_paths=None,
 ):
     """Edit dataset metadata."""
+    client = client_dispatcher.current_client
+
     possible_updates = {
         "creators": creators,
         "description": description,
@@ -161,6 +164,7 @@ def _edit_dataset(
     if not updated:
         return [], no_email_warnings
 
+    datasets_provenance = DatasetsProvenance()
     datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
 
     return updated, no_email_warnings
@@ -173,9 +177,9 @@ def edit_dataset():
 
 
 @inject.autoparams()
-def _show_dataset(name, client: LocalClient):
+def _show_dataset(name, client_dispatcher: IClientDispatcher):
     """Show detailed dataset information."""
-    dataset = client.get_dataset(name)
+    dataset = client_dispatcher.current_client.get_dataset(name)
     return DatasetDetailsJson().dump(dataset)
 
 
@@ -222,7 +226,7 @@ def _construct_creators(creators, ignore_email=False):
 def _add_to_dataset(
     urls,
     name,
-    client: LocalClient,
+    client_dispatcher: IClientDispatcher,
     database_gateway: IDatabaseGateway,
     external=False,
     force=False,
@@ -240,6 +244,7 @@ def _add_to_dataset(
     clear_files_before=False,
 ):
     """Add data to a dataset."""
+    client = client_dispatcher.current_client
     if len(urls) == 0:
         raise UsageError("No URL is specified")
     if sources and len(urls) > 1:
@@ -307,9 +312,17 @@ def add_to_dataset():
 
 @inject.autoparams()
 def _list_files(
-    client: LocalClient, datasets=None, creators=None, include=None, exclude=None, format=None, columns=None
+    client_dispatcher: IClientDispatcher,
+    datasets=None,
+    creators=None,
+    include=None,
+    exclude=None,
+    format=None,
+    columns=None,
 ):
     """List dataset files."""
+    client = client_dispatcher.current_client
+
     records = _filter(names=datasets, creators=creators, include=include, exclude=exclude, immutable=True)
     for record in records:
         record.title = record.dataset.title
@@ -337,8 +350,10 @@ def list_files():
 
 
 @inject.autoparams()
-def _file_unlink(name, include, exclude, client: LocalClient, datasets_provenance: DatasetsProvenance, yes=False):
+def _file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, yes=False):
     """Remove matching files from a dataset."""
+    client = client_dispatcher.current_client
+
     if not include and not exclude:
         raise ParameterError(
             (
@@ -369,6 +384,7 @@ def _file_unlink(name, include, exclude, client: LocalClient, datasets_provenanc
     for file in records:
         dataset.unlink_file(file.entity.path)
 
+    datasets_provenance = DatasetsProvenance()
     datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
 
     return records
@@ -381,9 +397,10 @@ def file_unlink():
 
 
 @inject.autoparams()
-def _remove_dataset(name, client: LocalClient, datasets_provenance: DatasetsProvenance):
+def _remove_dataset(name, client_dispatcher: IClientDispatcher):
     """Delete a dataset."""
-    dataset = client.get_dataset(name=name, strict=True)
+    dataset = client_dispatcher.current_client.get_dataset(name=name, strict=True)
+    datasets_provenance = DatasetsProvenance()
     datasets_provenance.remove(dataset=dataset)
 
 
@@ -394,13 +411,14 @@ def remove_dataset():
 
 
 @inject.autoparams()
-def _export_dataset(
-    name, provider_name, publish, tag, client: LocalClient, datasets_provenance: DatasetsProvenance, **kwargs
-):
+def _export_dataset(name, provider_name, publish, tag, client_dispatcher: IClientDispatcher, **kwargs):
     """Export data to 3rd party provider.
 
     :raises: ``ParameterError``, ``HTTPError``, ``InvalidAccessToken``, ``DatasetNotFound``
     """
+    client = client_dispatcher.current_client
+    datasets_provenance = DatasetsProvenance()
+
     provider_name = provider_name.lower()
 
     # TODO: all these callbacks are ugly, improve in #737
@@ -466,7 +484,7 @@ def export_dataset():
 @inject.autoparams()
 def _import_dataset(
     uri,
-    client: LocalClient,
+    client_dispatcher: IClientDispatcher,
     database_gateway: IDatabaseGateway,
     name="",
     extract=False,
@@ -476,6 +494,8 @@ def _import_dataset(
     gitlab_token=None,
 ):
     """Import data from a 3rd party provider or another renku project."""
+    client = client_dispatcher.current_client
+
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
         raise ParameterError(f"Could not process '{uri}'.\n{err}")
@@ -587,7 +607,6 @@ def _import_dataset(
     if provider.supports_images:
         record.import_images(dataset)
 
-    # TODO: sometimes injections are updated and the CommandBuilder commits changes to the wrong Database instance
     database_gateway.commit()
 
 
@@ -598,8 +617,10 @@ def import_dataset():
 
 
 @inject.autoparams()
-def _update_metadata(new_dataset: Dataset, previous_dataset, delete, same_as, client: LocalClient):
+def _update_metadata(new_dataset: Dataset, previous_dataset, delete, same_as, client_dispatcher: IClientDispatcher):
     """Update metadata and remove files that exists in ``previous_dataset`` but not in ``new_dataset``."""
+    client = client_dispatcher.current_client
+
     current_paths = set(str(f.entity.path) for f in new_dataset.files)
 
     # NOTE: remove files not present in the dataset anymore
@@ -618,8 +639,12 @@ def _update_metadata(new_dataset: Dataset, previous_dataset, delete, same_as, cl
 
 
 @inject.autoparams()
-def _update_datasets(names, creators, include, exclude, ref, delete, client: LocalClient, external=False):
+def _update_datasets(
+    names, creators, include, exclude, ref, delete, client_dispatcher: IClientDispatcher, external=False
+):
     """Update dataset files."""
+    client = client_dispatcher.current_client
+
     ignored_datasets = []
 
     if (include or exclude) and names and any(d.same_as for d in client.datasets.values() if d.name in names):
@@ -756,7 +781,13 @@ def _include_exclude(file_path, include=None, exclude=None):
 
 @inject.autoparams()
 def _filter(
-    client: LocalClient, names=None, creators=None, include=None, exclude=None, ignore=None, immutable=False
+    client_dispatcher: IClientDispatcher,
+    names=None,
+    creators=None,
+    include=None,
+    exclude=None,
+    ignore=None,
+    immutable=False,
 ) -> List[DynamicProxy]:
     """Filter dataset files by specified filters.
 
@@ -767,6 +798,8 @@ def _filter(
     :param ignore: Ignored datasets.
     :param immutable: Return immutable copies of dataset objects.
     """
+    client = client_dispatcher.current_client
+
     if isinstance(creators, str):
         creators = set(creators.split(","))
 
@@ -827,10 +860,11 @@ def remove_dataset_tags_command():
 
 
 @inject.autoparams()
-def _list_dataset_tags(name, format, datasets_provenance: DatasetsProvenance):
+def _list_dataset_tags(name, format):
     """List all tags for a dataset."""
     dataset = get_dataset(name, strict=True)
 
+    datasets_provenance = DatasetsProvenance()
     tags = datasets_provenance.get_all_tags(dataset)
     tags = sorted(tags, key=lambda t: t.date_created)
     tags = [DynamicProxy(t) for t in tags]

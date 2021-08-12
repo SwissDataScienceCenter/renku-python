@@ -25,15 +25,17 @@ from urllib.parse import unquote
 import click
 
 from renku.core.errors import WorkflowRerunError
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 from .echo import progressbar
 
 
 @inject.autoparams()
-def execute(output_file, client: LocalClient, output_paths=None):
+def execute(output_file, client_dispatcher: IClientDispatcher, output_paths=None):
     """Run the generated workflow using cwltool library."""
+    client = client_dispatcher.current_client
+
     output_paths = output_paths or set()
 
     import cwltool.factory

@@ -473,18 +473,6 @@ class CWLExporter(IWorkflowConverter):
     def _sanitize_id(id):
         return re.sub(r"/|-", "_", id)
 
-    def _recurse_plans(workflow: Union[CompositePlan, Plan], index):
-        """Recursively get actual steps (not ``WorkflowRun``) for execution."""
-        if isinstance(workflow, Plan):
-            return [(index, workflow)], index + 1
-
-        workflows = []
-        for s in workflow.plans:
-            result, index = CWLExporter._recurse_plans(s, index)
-            workflows.extend(result)
-
-        return workflows, index
-
     @staticmethod
     def _convert_composite(
         workflow: CompositePlan, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
