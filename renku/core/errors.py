@@ -506,7 +506,7 @@ class MappingExistsError(RenkuException):
 
 
 class MappingNotFoundError(RenkuException):
-    """Raised when a parameter mapping exists already."""
+    """Raised when a parameter mapping does not exist."""
 
     def __init__(self, mapping: str, workflow: str):
         """Embed exception and build a custom message."""
