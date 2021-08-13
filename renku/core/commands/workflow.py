@@ -24,8 +24,8 @@ from typing import List, Optional, Union
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
+from renku.core.commands.view_model import plan_view
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
-from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
@@ -48,12 +48,6 @@ def _deref(ref):
     return ref[len("workflows/") :]
 
 
-def _to_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewModel]:
-    if isinstance(workflow, CompositePlan):
-        return CompositePlanViewModel.from_composite_plan(workflow)
-    return PlanViewModel.from_plan(workflow)
-
-
 @inject.autoparams()
 def _find_workflow(name_or_id: str, plan_gateway: IPlanGateway) -> AbstractPlan:
     workflow = plan_gateway.get_by_id(name_or_id)
@@ -74,7 +68,7 @@ def _list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str])
     if format not in WORKFLOW_FORMATS:
         raise errors.UsageError(f'Provided format "{format}" is not supported ({", ".join(WORKFLOW_FORMATS.keys())})"')
 
-    return WORKFLOW_FORMATS[format](list(map(lambda x: _to_view(x), workflows.values())), columns=columns)
+    return WORKFLOW_FORMATS[format](list(map(lambda x: plan_view(x), workflows.values())), columns=columns)
 
 
 def list_workflows_command():
@@ -110,7 +104,7 @@ def remove_workflow_command():
 def _show_workflow(name_or_id: str):
     """Show the details of a workflow."""
     workflow = _find_workflow(name_or_id)
-    return _to_view(workflow)
+    return plan_view(workflow)
 
 
 def show_workflow_command():
@@ -253,13 +247,11 @@ def _edit_workflow(
                     break
             else:
                 raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
-        view = PlanViewModel.from_plan(workflow)
     elif isinstance(workflow, CompositePlan) and len(map_params):
         workflow.set_mappings_from_strings(map_params)
-        view = CompositePlanViewModel.from_composite_plan(workflow)
 
     plan_gateway.add(workflow)
-    return view
+    return plan_view(workflow)
 
 
 def edit_workflow_command():
