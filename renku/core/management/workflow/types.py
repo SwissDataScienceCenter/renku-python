@@ -36,6 +36,7 @@ class File(_PathFormatterMixin):
     """Represent a file."""
 
     path = attr.ib(converter=Path)
+    mime_type = attr.ib(default=["application/octet-stream"])
 
 
 @attr.s

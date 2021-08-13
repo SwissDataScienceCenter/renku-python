@@ -32,7 +32,7 @@ from renku.core.management.workflow.concrete_execution_graph import ExecutionGra
 from renku.core.models.entity import Collection
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.converters import IWorkflowConverter
-from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter
+from renku.core.models.workflow.parameter import DIRECTORY_MIME_TYPE, CommandInput, CommandOutput, CommandParameter
 from renku.core.models.workflow.plan import Plan
 from renku.core.plugins import hookimpl
 
@@ -714,7 +714,7 @@ class CWLExporter(IWorkflowConverter):
     @staticmethod
     def _convert_input(input: CommandInput, basedir: Path):
         """Converts an input to a CWL input."""
-        type_ = "File"
+        type_ = "Directory" if DIRECTORY_MIME_TYPE in input.encoding_format else "File"
 
         sanitized_id = CWLExporter._sanitize_id(input.id)
         if input.mapped_to:
@@ -750,8 +750,7 @@ class CWLExporter(IWorkflowConverter):
                 None,
             )
 
-        # type_ = "Directory" if isinstance(entity, Collection) else "File"
-        type_ = "File"
+        type_ = "Directory" if DIRECTORY_MIME_TYPE in output.encoding_format else "File"
 
         sanitized_id = CWLExporter._sanitize_id(output.id)
 

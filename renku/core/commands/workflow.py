@@ -20,7 +20,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
