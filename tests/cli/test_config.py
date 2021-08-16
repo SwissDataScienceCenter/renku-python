@@ -18,6 +18,8 @@
 """Test ``config`` command."""
 import subprocess
 import sys
+from threading import Thread
+from time import sleep
 
 import pytest
 
@@ -200,36 +202,60 @@ def test_config_read_concurrency(runner, project, client, run):
     assert all(p.stdout.read().decode("utf8") == "value\n" for p in processes)
 
 
-@pytest.mark.skip(
-    "consistently fails at the moment, in github actions but runs locally. "
-    "reenable once we have a more robust implementation"
-)
-@retry_failed(extended=True)
-def test_config_write_concurrency(runner, project, client, run):
-    """Test config can be read concurrently."""
-    result = runner.invoke(cli, ["config", "set", "test", "value"])
-    assert 0 == result.exit_code, format_result_exception(result)
+@retry_failed
+def test_config_write_concurrency(monkeypatch, runner, project, client, run):
+    """Test config cannot be written concurrently. Only one execution succeedes in that case."""
+    from renku.core.management.config import ConfigManagerMixin
 
-    write_command = [
-        "nice",  # NOTE: Set low priority to increase chance of concurrency issues happening
-        "-n",
-        "19",
-        sys.executable,
-        "-m",
-        "renku.cli",
-        "config",
-        "set",
-        "--global",
-        "test2",
-        "other_value",
-    ]
+    REPETITIONS = 4
+    CONFIG_KEY = "write_key"
+    CONFIG_VALUE = "write_value"
 
-    processes = []
+    # NOTE: monkey patch the _write_config private method to introduce a slowdown when writing to the file
+    with monkeypatch.context() as mp:
 
-    for _ in range(30):
-        processes.append(subprocess.Popen(write_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.Popen(write_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        def _write_config(s, filepath, config):
+            with open(filepath, "w+") as file:
+                sleep(REPETITIONS + 1)
+                config.write(file)
 
-    assert all(p.wait() == 0 for p in processes)
-    outputs = [p.communicate() for p in processes]
-    assert any("Unable to acquire lock" in o[0].decode("utf8") for o in outputs)
+        mp.setattr(ConfigManagerMixin, "_write_config", _write_config)
+
+        def write_value(index):
+            result = runner.invoke(cli, ["config", "set", "--global", CONFIG_KEY, CONFIG_VALUE])
+            results[index] = result
+
+        def get_value():
+            result = runner.invoke(cli, ["config", "show", "--global", CONFIG_KEY])
+            return result.output if "not found" not in result.output else False
+
+        # NOTE: check the value was not previously set
+        assert not get_value()
+
+        threads = [None] * REPETITIONS
+        results = [None] * REPETITIONS
+        for i in range(REPETITIONS):
+            threads[i] = Thread(target=write_value, args=(i,))
+            threads[i].start()
+            sleep(1)
+
+        for i in range(REPETITIONS):
+            threads[i].join()
+
+        # NOTE: verify all executions finish, some succesfully and others not
+        KO = "Unable to acquire lock"
+        OK = "OK"
+        assert all(0 == r.exit_code for r in results)
+        assert any(KO in r.output for r in results)
+        assert any(OK in r.output for r in results)
+
+        # NOTE: assess only one execution succeeded and all the other failed
+        def single_true(iterable):
+            i = iter(iterable)
+            return any(i) and not any(i)
+
+        assert single_true(OK in r.output for r in results)
+        assert all(KO in r.output or OK in r.output for r in results)
+
+        # NOTE: assess the value was actually written
+        assert CONFIG_VALUE in get_value()
