@@ -120,11 +120,9 @@ class ConfigManagerMixin:
             with self.global_config_write_lock:
                 os.umask(0)
                 fd = os.open(filepath, os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600)
-                with open(fd, "w+") as file:
-                    config.write(file)
+                self._write_config(fd, config)
         else:
-            with open(filepath, "w+") as file:
-                config.write(file)
+            self._write_config(filepath, config)
 
     def get_config(self, config_filter=ConfigFilter.ALL, as_string=True):
         """Read all configurations."""
@@ -188,6 +186,10 @@ class ConfigManagerMixin:
         if value is not None:
             self.store_config(config, global_only=global_only)
         return value
+
+    def _write_config(self, filepath, config):
+        with open(filepath, "w+") as file:
+            config.write(file)
 
     def _check_config_is_not_readonly(self, section, key):
         from renku.core import errors
