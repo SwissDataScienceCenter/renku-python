@@ -94,7 +94,7 @@ class ActivityGateway(IActivityGateway):
             if isinstance(generation.entity, Collection):
                 # NOTE: Get dependants that are in a generated directory
                 for path, activities in by_generation.items():
-                    parent = Path(usage.entity.path).resolve()
+                    parent = Path(generation.entity.path).resolve()
                     child = Path(path).resolve()
                     if parent == child or parent in child.parents:
                         downstreams.extend(activities)

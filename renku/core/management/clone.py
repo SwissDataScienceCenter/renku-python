@@ -25,6 +25,7 @@ from git import GitCommandError, Repo
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.models.git import GitURL
 
 
@@ -43,6 +44,7 @@ def _handle_git_exception(e, raise_git_except, progress):
 def clone(
     url,
     client_dispatcher: IClientDispatcher,
+    database_dispatcher: IDatabaseDispatcher,
     path=None,
     install_githooks=True,
     install_lfs=True,
@@ -118,6 +120,7 @@ def clone(
         config_writer.release()
 
     client_dispatcher.push_client_to_stack(path=path)
+    database_dispatcher.push_database_to_stack(client_dispatcher.current_client.database_path)
 
     try:
         if install_githooks:
@@ -134,6 +137,7 @@ def clone(
 
         project_initialized = is_renku_project()
     finally:
+        database_dispatcher.pop_database()
         client_dispatcher.pop_client()
 
     return repo, project_initialized

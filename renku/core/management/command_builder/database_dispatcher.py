@@ -29,7 +29,8 @@ class DatabaseDispatcher(IDatabaseDispatcher):
     Handles getting current database (Database) and entering/exiting the stack for the database.
     """
 
-    database_stack = []
+    def __init__(self):
+        self.database_stack = []
 
     @property
     def current_database(self) -> Database:

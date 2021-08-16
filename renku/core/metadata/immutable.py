@@ -76,17 +76,16 @@ class Immutable(Slots):
     _local = threading.local()
 
     @classmethod
-    def make_instance(cls, **kwargs):
+    def make_instance(cls, instance):
         """Return a cached instance if available otherwise create an instance from the given parameters."""
         if getattr(cls._local, "cache", None) is None:
             cls._local.cache = weakref.WeakValueDictionary()
 
-        id = kwargs.get("id")
+        id = getattr(instance, "id", None)
         existing_instance = cls._local.cache.get(id)
         if existing_instance:
             return existing_instance
 
-        instance = cls(**kwargs)
         if id is not None:
             cls._local.cache[id] = instance
 

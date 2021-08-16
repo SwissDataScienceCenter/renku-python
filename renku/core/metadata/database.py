@@ -39,6 +39,7 @@ from renku.core.metadata.immutable import Immutable
 OID_TYPE = str
 TYPE_TYPE = "type"
 FUNCTION_TYPE = "function"
+REFERENCE_TYPE = "reference"
 MARKER = object()
 
 """NOTE: These are used as _p_serial to mark if an object was read from storage or is new"""
@@ -63,7 +64,7 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
     components = type_name.split(".")
     module_name = components[0]
 
-    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc"]:
+    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
         raise TypeError(f"Objects of type '{type_name}' are not allowed")
 
     module = __import__(module_name)
@@ -589,6 +590,7 @@ class ObjectWriter:
         assert object._p_oid, f"Object does not have an oid: '{object}'"
         assert object._p_jar is not None, f"Object is not associated with a Database: '{object}'"
 
+        self._serialization_cache = {}
         state = object.__getstate__()
         was_dict = isinstance(state, dict)
         data = self._serialize_helper(state)
@@ -612,7 +614,8 @@ class ObjectWriter:
             return [self._serialize_helper(value) for value in object]
         elif isinstance(object, dict):
             result = dict()
-            for key, value in object.items():
+            items = sorted(object.items(), key=lambda x: x[0])
+            for key, value in items:
                 result[key] = self._serialize_helper(value)
             return result
         elif isinstance(object, Index):
@@ -638,15 +641,30 @@ class ObjectWriter:
             module = getattr(object, "__module__", None)
             return {"@type": FUNCTION_TYPE, "@value": f"{module}.{name}"}
         elif hasattr(object, "__getstate__"):
+            if id(object) in self._serialization_cache:
+                # NOTE: We already serialized this -> circular/repeat reference.
+                return {"@type": REFERENCE_TYPE, "@value": self._serialization_cache[id(object)]}
+
+            # NOTE: The reference used for circular reference is just the position in the serialization cache,
+            # as the order is deterministic. So the order in which objects are encoutered is their id for referencing.
+            self._serialization_cache[id(object)] = len(self._serialization_cache)
+
             value = object.__getstate__().copy()
             value = {k: v for k, v in value.items() if not k.startswith("_v_")}
             value = self._serialize_helper(value)
             assert not isinstance(value, dict) or "id" in value, f"Invalid object state: {value} for {object}"
         else:
+            if id(object) in self._serialization_cache:
+                # NOTE: We already serialized this -> circular/repeat reference
+                return {"@type": REFERENCE_TYPE, "@value": self._serialization_cache[id(object)]}
+
+            # NOTE: The reference used for circular reference is just the position in the serialization cache,
+            # as the order is deterministic So the order in which objects are encoutered is their id for referencing.
+            self._serialization_cache[id(object)] = len(self._serialization_cache)
+
             value = object.__dict__.copy()
             value = {k: v for k, v in value.items() if not k.startswith("_v_")}
             value = self._serialize_helper(value)
-            assert "id" in value, f"Invalid object state: {value} for {object}"
 
         return {"@type": get_type_name(object), "@value": value}
 
@@ -670,12 +688,19 @@ class ObjectReader:
 
     def set_ghost_state(self, object: persistent.Persistent, data: Dict):
         """Set state of a Persistent ghost object."""
+        previous_cache = self._deserialization_cache
+        self._deserialization_cache = []
+
         state = self._deserialize_helper(data, create=False)
         object.__setstate__(state)
+
+        self._deserialization_cache = previous_cache
 
     def deserialize(self, data):
         """Convert JSON to Persistent object."""
         oid = data["@oid"]
+
+        self._deserialization_cache = []
 
         object = self._deserialize_helper(data)
 
@@ -696,7 +721,8 @@ class ObjectReader:
 
             if "@type" not in data:  # NOTE: A normal dict value
                 assert "@oid" not in data
-                for key, value in data.items():
+                items = sorted(data.items(), key=lambda x: x[0])
+                for key, value in items:
                     data[key] = self._deserialize_helper(value)
                 return data
 
@@ -704,6 +730,9 @@ class ObjectReader:
             if object_type in (TYPE_TYPE, FUNCTION_TYPE):
                 # NOTE: if we stored a type (not instance), return the type
                 return self._get_class(data["@value"])
+            elif object_type == REFERENCE_TYPE:
+                # NOTE: we had a circular reference, we return the (not yet finalized) class here
+                return self._deserialization_cache[data["@value"]]
 
             cls = self._get_class(object_type)
 
@@ -721,21 +750,21 @@ class ObjectReader:
 
                 if "@reference" in data and data["@reference"]:  # A reference
                     assert create, f"Cannot deserialize a reference without creating an instance {data}"
-                    object = self._database.get_cached(oid)
-                    if object:
-                        return object
+                    new_object = self._database.get_cached(oid)
+                    if new_object:
+                        return new_object
                     assert issubclass(cls, persistent.Persistent)
-                    object = cls.__new__(cls)
-                    self._database.new_ghost(oid, object)
-                    return object
+                    new_object = cls.__new__(cls)
+                    self._database.new_ghost(oid, new_object)
+                    return new_object
                 elif issubclass(cls, Index):
-                    object = self._database.get_cached(oid)
-                    if object:
-                        return object
-                    object = cls.__new__(cls)
-                    object._p_oid = oid
-                    self.set_ghost_state(object, data)
-                    return object
+                    new_object = self._database.get_cached(oid)
+                    if new_object:
+                        return new_object
+                    new_object = cls.__new__(cls)
+                    new_object._p_oid = oid
+                    self.set_ghost_state(new_object, data)
+                    return new_object
 
             if "@value" in data:
                 data = data["@value"]
@@ -745,16 +774,22 @@ class ObjectReader:
                 return data
 
             if issubclass(cls, persistent.Persistent):
-                object = cls.__new__(cls)
-                object._p_oid = oid
-                self.set_ghost_state(object, data)
+                new_object = cls.__new__(cls)
+                new_object._p_oid = oid
+                self.set_ghost_state(new_object, data)
             else:
+                new_object = cls.__new__(cls)
+
+                # NOTE: we deserialize in the same order as we serialized, so the two stacks here match
+                self._deserialization_cache.append(new_object)
+
                 data = self._deserialize_helper(data)
                 assert isinstance(data, dict)
 
-                if issubclass(cls, Immutable):
-                    object = cls.make_instance(**data)
-                else:
-                    object = cls(**data)
+                for name, value in data.items():
+                    object.__setattr__(new_object, name, value)
 
-            return object
+                if issubclass(cls, Immutable):
+                    new_object = cls.make_instance(new_object)
+
+            return new_object

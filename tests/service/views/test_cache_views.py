@@ -786,7 +786,7 @@ def test_cache_gets_synchronized(
     assert response
     assert 200 == response.status_code
 
-    assert {"datasets"} == set(response.json["result"].keys())
+    assert {"datasets"} == set(response.json["result"].keys()), response.json
     assert 1 == len(response.json["result"]["datasets"])
 
     payload = {

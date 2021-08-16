@@ -35,7 +35,6 @@ from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.command_builder import inject
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.models.enums import ConfigFilter

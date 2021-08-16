@@ -31,7 +31,8 @@ class ClientDispatcher(IClientDispatcher):
     Handles getting current client (LocalClient) and entering/exiting the stack for the client.
     """
 
-    client_stack = []
+    def __init__(self):
+        self.client_stack = []
 
     @property
     def current_client(self) -> Optional[LocalClient]:

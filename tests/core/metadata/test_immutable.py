@@ -95,8 +95,8 @@ def test_immutable_objects_cache():
     """Test Immutable objects are cached once created."""
     data = {"id": 42, "c_member": 43}
 
-    o1 = C.make_instance(**data)
-    o2 = C.make_instance(**data)
+    o1 = C.make_instance(C(**data))
+    o2 = C.make_instance(C(**data))
 
     assert o1 is o2
 
@@ -105,7 +105,7 @@ def test_immutable_objects_cache_without_id():
     """Test Immutable objects cannot be cached if id is not set."""
     data = {"c_member": 43}
 
-    o1 = C.make_instance(**data)
-    o2 = C.make_instance(**data)
+    o1 = C.make_instance(C(**data))
+    o2 = C.make_instance(C(**data))
 
     assert o1 is not o2

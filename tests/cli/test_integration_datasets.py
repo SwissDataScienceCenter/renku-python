@@ -784,7 +784,7 @@ def test_export_dataset_unauthorized(
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params)
 
     assert 1 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert "Access unauthorized - update access token." in result.output
+    assert "Access unauthorized - update access token." in result.output, format_result_exception(result)
 
     secret = client.get_value("zenodo", "secret")
     assert secret is None
