@@ -23,6 +23,7 @@ import shutil
 import textwrap
 from pathlib import Path
 
+import git
 import pytest
 
 from renku.cli import cli
@@ -1322,11 +1323,12 @@ def test_pull_data_from_lfs(runner, client, tmpdir, subdirectory, no_lfs_size_li
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_lfs_hook(runner, client, subdirectory, large_file):
+def test_lfs_hook(client, subdirectory, large_file):
     """Test committing large files to Git."""
-    import git
+    filenames = {"large-file", "large file with whitespace", "large*file?with wildcards"}
 
-    shutil.copy(large_file, client.path)
+    for filename in filenames:
+        shutil.copy(large_file, client.path / filename)
     client.repo.git.add("--all")
 
     # Commit fails when file is not tracked in LFS
@@ -1334,20 +1336,31 @@ def test_lfs_hook(runner, client, subdirectory, large_file):
         client.repo.index.commit("large files not in LFS")
 
     assert "You are trying to commit large files to Git" in e.value.stdout
-    assert large_file.name in e.value.stdout
+    for filename in filenames:
+        assert filename in e.value.stdout
 
     # Can be committed after being tracked in LFS
-    client.track_paths_in_storage(large_file.name)
+    client.track_paths_in_storage(*filenames)
+    client.repo.git.add("--all")
     commit = client.repo.index.commit("large files tracked")
     assert "large files tracked" == commit.message
 
+    tracked_lfs_files = set(client.repo.git.lfs("ls-files", "--name-only").split("\n"))
+    assert filenames == tracked_lfs_files
 
-def test_lfs_hook_autocommit(runner, client, subdirectory, large_file):
+
+@pytest.mark.parametrize("use_env_var", [False, True])
+def test_lfs_hook_autocommit(runner, client, subdirectory, large_file, use_env_var):
     """Test committing large files to Git gets automatically added to lfs."""
-    result = runner.invoke(cli, ["config", "set", "autocommit_lfs", "true"])
-    assert 0 == result.exit_code, format_result_exception(result)
+    if use_env_var:
+        os.environ["AUTOCOMMIT_LFS"] = "true"
+    else:
+        assert 0 == runner.invoke(cli, ["config", "set", "autocommit_lfs", "true"]).exit_code
 
-    shutil.copy(large_file, client.path)
+    filenames = {"large-file", "large file with whitespace", "large*file?with wildcards"}
+
+    for filename in filenames:
+        shutil.copy(large_file, client.path / filename)
     client.repo.git.add("--all")
 
     result = client.repo.git.commit(
@@ -1355,32 +1368,17 @@ def test_lfs_hook_autocommit(runner, client, subdirectory, large_file):
         with_extended_output=True,
         env={"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
     )
-    assert large_file.name in result[1]
+    for filename in filenames:
+        assert filename in result[1]
     assert ".gitattributes" in result[1]
     assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
     assert "Adding files to LFS" in result[2]
-    assert 'Tracking "large-file"' in result[2]
+    for filename in filenames:
+        assert f'Tracking "{filename}"' in result[2]
     assert len(client.dirty_paths) == 0  # NOTE: make sure repo is clean
 
-
-def test_lfs_hook_autocommit_env(runner, client, subdirectory, large_file):
-    """Test committing large files to Git gets automatically added to lfs."""
-    os.environ["AUTOCOMMIT_LFS"] = "true"
-
-    shutil.copy(large_file, client.path)
-    client.repo.git.add("--all")
-
-    result = client.repo.git.commit(
-        message="large files not in LFS",
-        with_extended_output=True,
-        env={"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-    )
-    assert large_file.name in result[1]
-    assert ".gitattributes" in result[1]
-    assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
-    assert "Adding files to LFS" in result[2]
-    assert 'Tracking "large-file"' in result[2]
-    assert len(client.dirty_paths) == 0  # NOTE: make sure repo is clean
+    tracked_lfs_files = set(client.repo.git.lfs("ls-files", "--name-only").split("\n"))
+    assert filenames == tracked_lfs_files
 
 
 def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
