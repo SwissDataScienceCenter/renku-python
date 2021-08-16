@@ -37,7 +37,7 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets import controller."""
         self.ctx = DatasetsImportCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.ctx["commit_message"] = "{0} dataset import of {1}".format(MESSAGE_PREFIX, self.ctx["dataset_uri"])
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset import of {self.ctx['dataset_uri']}"
 
         super(DatasetsImportCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 

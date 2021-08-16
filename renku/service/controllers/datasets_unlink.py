@@ -39,12 +39,12 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.exclude = self.ctx.get("exclude_filter")
 
         if self.include and self.exclude:
-            filters = "-I {0} -X {1}".format(self.include, self.exclude)
+            filters = f"-I {self.include} -X {self.exclude}"
         elif not self.include and self.exclude:
-            filters = "-X {0}".format(self.exclude)
+            filters = f"-X {self.exclude}"
         else:
-            filters = "-I {0}".format(self.include)
-        self.ctx["commit_message"] = "{0} unlink dataset {1} {2}".format(MESSAGE_PREFIX, self.ctx["name"], filters)
+            filters = f"-I {self.include}"
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} unlink dataset {self.ctx['name']} {filters}"
 
         super(DatasetsUnlinkCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 

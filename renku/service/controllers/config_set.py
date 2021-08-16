@@ -34,9 +34,8 @@ class SetConfigCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct controller."""
         self.ctx = SetConfigCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.ctx["commit_message"] = "{0} config set {1}".format(
-            MESSAGE_PREFIX, ", ".join(request_data["config"].keys())
-        )
+        config_keys = ", ".join(request_data["config"].keys())
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} config set {config_keys}"
 
         super(SetConfigCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 

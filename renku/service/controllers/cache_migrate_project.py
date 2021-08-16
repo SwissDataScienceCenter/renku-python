@@ -72,7 +72,7 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.skip_template_update = self.ctx.get("skip_template_update", False)
         self.skip_docker_update = self.ctx.get("skip_docker_update", False)
         self.skip_migrations = self.ctx.get("skip_migrations", False)
-        self.commit_message = "{0} migrate to latest version for renku {1}".format(MESSAGE_PREFIX, __version__)
+        self.commit_message = f"{MESSAGE_PREFIX} migrate to latest version for renku {__version__}"
 
         super(MigrateProjectCtrl, self).__init__(
             cache,

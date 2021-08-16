@@ -43,7 +43,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     def __init__(self, cache, user_data, request_data):
         """Construct a templates read manifest controller."""
         self.ctx = TemplatesCreateProjectCtrl.REQUEST_SERIALIZER.load({**user_data, **request_data}, unknown=EXCLUDE)
-        self.ctx["commit_message"] = "{0} init {1}".format(MESSAGE_PREFIX, self.ctx["project_name"])
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} init {self.ctx['project_name']}"
         super(TemplatesCreateProjectCtrl, self).__init__(cache, user_data, request_data)
 
         self.template = None

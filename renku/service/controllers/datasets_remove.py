@@ -34,7 +34,7 @@ class DatasetsRemoveCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets remove controller."""
         self.ctx = DatasetsRemoveCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.ctx["commit_message"] = "{0} dataset remove {1}".format(MESSAGE_PREFIX, self.ctx["name"])
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset remove {self.ctx['name']}"
 
         super(DatasetsRemoveCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 

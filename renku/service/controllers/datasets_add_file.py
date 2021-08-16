@@ -42,7 +42,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets add controller."""
         self.ctx = DatasetsAddFileCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.ctx["commit_message"] = "{0} dataset add {1}".format(MESSAGE_PREFIX, self.ctx["name"])
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset add {self.ctx['name']}"
 
         super(DatasetsAddFileCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
@@ -95,9 +95,9 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 local_path = self.project_path / Path(_file["file_path"])
 
             if not local_path or not local_path.exists():
-                raise RenkuException("invalid file reference: {0}".format(json.dumps(_file)))
+                raise RenkuException(f"invalid file reference: {json.dumps(_file)}")
 
-            self.ctx["commit_message"] += " {0}".format(local_path.name)
+            self.ctx["commit_message"] += f" {local_path.name}"
             local_paths.append(str(local_path))
 
         return local_paths, enqueued_paths
