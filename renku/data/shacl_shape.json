@@ -403,14 +403,6 @@
                "maxCount": 1
             },
             {
-               "path": "schema:isPartOf",
-               "sh:class": {
-                  "@id": "schema:Project"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
                "path": "schema:sameAs",
                "sh:class": {
                   "@id": "schema:URL"
@@ -620,15 +612,6 @@
                },
                "minCount": 1,
                "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:url",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 1,
-               "maxCount": 1
             }
          ]
       },
@@ -707,22 +690,6 @@
                "sh:class": {
                   "@id": "prov:Generation"
                }
-            },
-            {
-               "path": "renku:order",
-               "datatype": {
-                  "@id": "xsd:integer"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "path": "schema:isPartOf",
-               "sh:class": {
-                  "@id": "schema:Project"
-               },
-               "minCount": 0,
-               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -998,14 +965,6 @@
                ],
                "minCount": 0,
                "maxCount": 1
-            },
-            {
-               "path": "schema:valueReference",
-               "sh:class": {
-                  "@id": "renku:VariableParameterValue"
-               },
-               "minCount": 1,
-               "maxCount": 1
             }
          ]
       },
@@ -1120,14 +1079,6 @@
                   "@id": "xsd:string"
                },
                "maxCount": 1
-            },
-            {
-               "path": "schema:valueReference",
-               "sh:class": {
-                  "@id": "renku:PathParameterValue"
-               },
-               "minCount": 1,
-               "maxCount": 1
             }
          ]
       },
@@ -1204,14 +1155,6 @@
                   "@id": "xsd:string"
                },
                "maxCount": 1
-            },
-            {
-               "path": "schema:valueReference",
-               "sh:class": {
-                  "@id": "renku:PathParameterValue"
-               },
-               "minCount": 1,
-               "maxCount": 1
             }
          ]
       },
@@ -1259,6 +1202,22 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "path": "schema:valueReference",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandInput"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandOutput"
+                     }
+                  }
+               ],
+               "minCount": 1
             }
          ]
       },
@@ -1293,6 +1252,13 @@
                      }
                   }
                ]
+            },
+            {
+               "path": "schema:valueReference",
+               "sh:class": {
+                  "@id": "renku:CommandParameter"
+               },
+               "minCount": 1
             }
          ]
       },

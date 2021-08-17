@@ -15,40 +15,92 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""PoC command for testing the new graph design."""
+"""Renku CLI commands for handling of Knowledge Graph data.
+
+Exporting Knowledge Graph data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can export part or all of the Renku Knowledge Graph metadata for the
+current project using the ``renku graph export`` command.
+
+By default, this will export the metadata created in the last commit in the
+project.
+If that commit was not a ``renku`` command that creates metadata, it will
+produce no output.
+
+.. code-block:: console
+
+   $ renku dataset create my-dataset
+   OK
+   $ renku graph export
+    [
+        {
+            "@id": "https://localhost/datasets/850e74d6c0204e8c923457a1b9ce52d8",
+            "@type": [
+            "http://schema.org/Dataset",
+            "http://www.w3.org/ns/prov#Entity"
+            ],
+
+            [... many more lines ...]
+
+        }
+    ]
+
+Here we created a new dataset and then ``renku graph export`` exported the
+created metadata as JSON-LD, the default format.
+
+If you want the Knowledge Graph data for the whole project, you can use
+``renku graph export --full``. Alternatively, you can get data for a single
+commit by using ``renku graph export --revision <git commit sha>`` or by
+specifying a range of commits like ``renku graph export --revision sha1..sha2``.
+
+``renku graph export`` currently supports various formats for export, such as
+``json-ld``, ``rdf``, ``nt`` (for triples) and ``dot`` (for GraphViz graphs),
+which can be specified using the ``--format`` option. For instance,
+
+.. code-block:: console
+
+   $ renku graph export --full --format dot | dot -Tpng -o my_graph.png
+
+would produce a PNG image of the whole Knowledge Graph for the project.
+
+To run validation on the generated output, you can pass the ``--strict``
+option, which will check that all the nodes and properties in the graph are
+correct and that there isn't anything missing.
+
+"""
 
 import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
-from renku.core.incubation.graph import FORMATS, export_graph
+from renku.core.commands.format.graph import GRAPH_FORMATS
+from renku.core.commands.graph import export_graph
 
 
 @click.group(hidden=True)
 def graph():
-    """Proof-of-Concept command for testing the new graph design."""
-
-
-# @graph.command()
-# @click.argument("path", type=click.Path(exists=False, dir_okay=False))
-# def save(path):
-#     r"""Save dependency graph as PNG."""
-#     with measure("CREATE DEPENDENCY GRAPH"):
-
-#         @inject.autoparams()
-#         def _to_png(path, database: Database):
-#             DependencyGraph.from_database(database).to_png(path=path)
-
-#         Command().command(_to_png).build().execute(path=path)
+    """Graph commands."""
 
 
 @graph.command()
-@click.option("--format", type=CaseInsensitiveChoice(FORMATS), default="json-ld", help="Choose an output format.")
+@click.option("--format", type=CaseInsensitiveChoice(GRAPH_FORMATS), default="json-ld", help="Choose an output format.")
+@click.option(
+    "--revision",
+    type=str,
+    default="HEAD",
+    help="Limit graph to changes done in revision (or range of revisions like 'A..B').",
+)
+@click.option("--full", is_flag=True, help="Generate full graph for project. Overrides --revision.")
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
 @click.option("--workflows-only", is_flag=True, help="Exclude datasets metadata from export.")
-def export(format, strict, workflows_only):
-    r"""Equivalent of `renku log --format json-ld`."""
+def export(format, revision, full, strict, workflows_only):
+    r"""Export Renku graph metadata for project."""
+
+    if full:
+        revision = None
+
     communicator = ClickCallback()
     export_graph().with_communicator(communicator).build().execute(
-        format=format, workflows_only=workflows_only, strict=strict
+        format=format, workflows_only=workflows_only, strict=strict, revision_or_range=revision
     )

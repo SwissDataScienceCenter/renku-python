@@ -75,7 +75,7 @@ def assert_dataset_is_mutated(old: Dataset, new: Dataset, mutator=None):
     assert old.initial_identifier == new.initial_identifier
     assert old.id != new.id
     assert old.identifier != new.identifier
-    assert old.id == new.derived_from
+    assert old.id == new.derived_from.url_id
     assert old.date_created != new.date_created
     assert new.same_as is None
     assert new.date_published is None

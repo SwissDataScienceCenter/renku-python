@@ -751,7 +751,7 @@ class ObjectReader:
                 if "@reference" in data and data["@reference"]:  # A reference
                     assert create, f"Cannot deserialize a reference without creating an instance {data}"
                     new_object = self._database.get_cached(oid)
-                    if new_object:
+                    if new_object is not None:
                         return new_object
                     assert issubclass(cls, persistent.Persistent)
                     new_object = cls.__new__(cls)

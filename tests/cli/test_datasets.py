@@ -426,7 +426,6 @@ def test_add_to_dirty_repo(directory_tree, runner, project, client):
     assert ["untracked"] == client.repo.untracked_files
 
 
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 def test_add_unicode_file(tmpdir, runner, project, client):
     """Test adding files with unicode special characters in their names."""
     # create a dataset
@@ -442,7 +441,7 @@ def test_add_unicode_file(tmpdir, runner, project, client):
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["log", "--format", "json-ld", "--strict", f"data/my-dataset/{filename}"])
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert filename in result.output.encode("latin1").decode("unicode-escape")
 
@@ -1801,7 +1800,7 @@ def test_datasets_provenance_after_multiple_adds(
         assert 1 == len(provenance)
 
         current_version = datasets_provenance.get_by_name("my-data")
-        old_version = datasets_provenance.get_by_id(current_version.derived_from)
+        old_version = datasets_provenance.get_by_id(current_version.derived_from.url_id)
 
     old_dataset_file_ids = {f.id for f in old_version.files}
 
@@ -1825,7 +1824,7 @@ def test_datasets_provenance_after_add_with_overwrite(
         assert 1 == len(provenance)
 
         current_version = datasets_provenance.get_by_name("my-data")
-        old_version = datasets_provenance.get_by_id(current_version.derived_from)
+        old_version = datasets_provenance.get_by_id(current_version.derived_from.url_id)
     old_dataset_file_ids = {f.id for f in old_version.files}
 
     for dataset_file in current_version.files:

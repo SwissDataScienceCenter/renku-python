@@ -22,6 +22,7 @@ import functools
 import click
 
 from renku.core.errors import OperationError, SHACLValidationError
+from renku.core.models.provenance.activity import Activity
 from renku.core.utils.shacl import validate_graph
 
 
@@ -42,7 +43,7 @@ def _jsonld(graph, format, *args, **kwargs):
 
     import pyld
 
-    output = getattr(pyld.jsonld, format)([action.as_jsonld() for action in graph.activities.values()])
+    output = getattr(pyld.jsonld, format)(graph)
     return json.dumps(output, indent=2)
 
 
@@ -69,10 +70,8 @@ def dot(graph, simple=True, debug=False, landscape=False, strict=False):
 
     g.bind("prov", "http://www.w3.org/ns/prov#")
     g.bind("foaf", "http://xmlns.com/foaf/0.1/")
-    g.bind("wfdesc", "http://purl.org/wf4ever/wfdesc#")
-    g.bind("wf", "http://www.w3.org/2005/01/wf/flow#")
-    g.bind("wfprov", "http://purl.org/wf4ever/wfprov#")
     g.bind("schema", "http://schema.org/")
+    g.bind("renku", "https://swissdatasciencecenter.github.io/renku-ontology/")
 
     if debug:
         rdf2dot(g, sys.stdout)
@@ -105,38 +104,32 @@ def _rdf2dot_simple(g, stream, graph=None):
 
     inputs = g.query(
         """
-        SELECT ?input ?role ?activity ?comment
+        SELECT ?input ?activity
         WHERE {
             ?activity (prov:qualifiedUsage/prov:entity) ?input .
             ?activity prov:qualifiedUsage ?qual .
-            ?qual prov:hadRole ?role .
             ?qual prov:entity ?input .
             ?qual rdf:type ?type .
-            ?activity rdf:type wfprov:ProcessRun .
-            ?activity rdfs:comment ?comment .
-            FILTER NOT EXISTS {?activity rdf:type wfprov:WorkflowRun}
+            ?activity rdf:type prov:Activity .
         }
         """
     )
     outputs = g.query(
         """
-        SELECT ?activity ?role ?output ?comment
+        SELECT ?activity ?output
         WHERE {
             ?output (prov:qualifiedGeneration/prov:activity) ?activity .
             ?output prov:qualifiedGeneration ?qual .
-            ?qual prov:hadRole ?role .
             ?qual prov:activity ?activity .
             ?qual rdf:type ?type .
-            ?activity rdf:type wfprov:ProcessRun ;
-                      rdfs:comment ?comment .
-            FILTER NOT EXISTS {?activity rdf:type wfprov:WorkflowRun}
+            ?activity rdf:type prov:Activity ;
         }
         """
     )
 
     activity_nodes = {}
     artifact_nodes = {}
-    for source, role, target, comment in chain(inputs, outputs):
+    for source, target in chain(inputs, outputs):
         # extract the pieces of the process URI
         src_match = path_re.match(source)
         tgt_match = path_re.match(target)
@@ -153,20 +146,18 @@ def _rdf2dot_simple(g, stream, graph=None):
         # write the edge
         stream.write(
             '\t"{src_commit}:{src_path}" -> '
-            '"{tgt_commit}:{tgt_path}" '
-            '[label="{role}"] \n'.format(
+            '"{tgt_commit}:{tgt_path}" \n'.format(
                 src_commit=src_path["commit"][:5],
                 src_path=src_path.get("path") or "",
                 tgt_commit=tgt_path["commit"][:5],
                 tgt_path=tgt_path.get("path") or "",
-                role=role,
             )
         )
         if src_path.get("type") == "commit":
-            activity_nodes.setdefault(source, {"comment": comment})
+            activity_nodes.setdefault(source, {})
             artifact_nodes.setdefault(target, {})
         if tgt_path.get("type") == "commit":
-            activity_nodes.setdefault(target, {"comment": comment})
+            activity_nodes.setdefault(target, {})
             artifact_nodes.setdefault(source, {})
 
     # customize the nodes
@@ -325,7 +316,10 @@ def makefile(graph, strict=False):
     if strict:
         raise SHACLValidationError("--strict not supported for json-ld-graph")
 
-    for activity in graph.activities.values():
+    for activity in graph:
+        if not isinstance(activity, Activity):
+            continue
+
         plan = activity.association.plan
         inputs = [i.default_value for i in plan.inputs]
         outputs = [o.default_value for o in plan.outputs]
@@ -383,15 +377,19 @@ def rdf(graph, strict=False):
 
 FORMATS = {
     "ascii": ascii,
+    "makefile": makefile,
     "dot": dot,
-    "dot-full": dot_full,
     "dot-landscape": dot_landscape,
-    "dot-full-landscape": dot_full_landscape,
-    "dot-debug": dot_debug,
-    "json-ld": jsonld,
-    "json-ld-graph": jsonld_graph,
-    "Makefile": makefile,
-    "nt": nt,
-    "rdf": rdf,
 }
 """Valid formatting options."""
+
+GRAPH_FORMATS = {
+    "json-ld": jsonld,
+    "json-ld-graph": jsonld_graph,
+    "nt": nt,
+    "rdf": rdf,
+    "dot": dot_full,
+    "dot-landscape": dot_full_landscape,
+    "dot-debug": dot_debug,
+}
+"""Valid graph formatting options."""

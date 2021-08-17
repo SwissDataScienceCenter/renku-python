@@ -18,29 +18,27 @@
 """Test ``log`` command."""
 import os
 
-import git
 import pytest
 
 from renku.cli import cli
 from tests.utils import format_result_exception
 
 
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.serial
 @pytest.mark.shelled
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
 def test_run_log_strict(runner, project, run_shell, format):
     """Test log output of run command."""
     # Run a shell command with pipe.
-    result = run_shell('renku run echo "a" > output')
+    result = run_shell('renku run echo "my input string" > my_output_file')
 
     # Assert created output file.
-    result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format={}".format(format)])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert ".renku/workflow/" in result.output
+    assert "my_output_file" in result.output
+    assert "my input string" in result.output
 
 
-@pytest.mark.skip(reason="Fix this once renku log works for datasets")
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
 def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirectory):
     """Test output of log for dataset add."""
@@ -58,27 +56,6 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirector
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["log", "--strict", f"--format={format}"])
+    result = runner.invoke(cli, ["graph", "export", "--strict", f"--format={format}"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert all(p in result.output for p in test_paths), result.output
-
-
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
-@pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
-def test_dataset_log_invalidation_strict(tmpdir, runner, project, client, format, subdirectory):
-    """Test output of log for dataset add."""
-    repo = git.Repo(project)
-    input_ = client.path / "input.txt"
-    input_.write_text("first")
-
-    repo.git.add("--all")
-    repo.index.commit("Created input.txt")
-
-    os.remove(input_)
-    repo.git.add("--all")
-    repo.index.commit("Removed input.txt")
-
-    result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
-
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "wasInvalidatedBy" in result.output

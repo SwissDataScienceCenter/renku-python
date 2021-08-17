@@ -138,7 +138,7 @@ def test_dataset_serialization(client_with_datasets, load_dataset_with_injection
     assert dataset.identifier
     assert dataset.title
 
-    dataset_metadata = [m for m in flattened_metadata if "Dataset" in str(m["@type"])][0]
+    dataset_metadata = [m for m in flattened_metadata if "@type" in m and "Dataset" in str(m["@type"])][0]
 
     # check values
     assert str(dataset.date_created.isoformat()) == read_value("http://schema.org/dateCreated")

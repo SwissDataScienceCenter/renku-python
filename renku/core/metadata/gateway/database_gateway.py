@@ -17,20 +17,25 @@
 # limitations under the License.
 """Renku generic database gateway implementation."""
 
+from pathlib import Path
+from typing import Generator
 from uuid import uuid4
 
 import BTrees
+from persistent import Persistent
 from persistent.list import PersistentList
 from zc.relation.catalog import Catalog
 from zc.relation.queryfactory import TransposingTransitive
 from zope.interface import Attribute, Interface, implementer
 
 from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.activity import Activity
 from renku.core.models.workflow.plan import AbstractPlan
+from renku.core.utils.scm import git_unicode_unescape
 
 
 class IActivityDownstreamRelation(Interface):
@@ -137,3 +142,25 @@ class DatabaseGateway(IDatabaseGateway):
         database = self.database_dispatcher.current_database
 
         database.commit()
+
+    def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
+        """Get all database objects modified in a revision."""
+        # TODO: use gateway once #renku-python/issues/2253 is done
+        from git import NULL_TREE
+
+        client_dispatcher = inject.instance(IClientDispatcher)
+        client = client_dispatcher.current_client
+
+        if ".." in revision_or_range:
+            commits = client.repo.iter_commits(rev=revision_or_range)
+        else:
+            commits = [client.repo.commit(revision_or_range)]
+
+        for commit in commits:
+            for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.database_path}/**/*"):
+                if file_.change_type != "D":  # NOTE: Changes show up as deletions in this diff
+                    continue
+
+                oid = Path(git_unicode_unescape(file_.a_path)).name
+
+                yield self.database_dispatcher.current_database.get(oid)

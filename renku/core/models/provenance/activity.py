@@ -25,6 +25,7 @@ from marshmallow import EXCLUDE
 
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
@@ -91,7 +92,6 @@ class Generation(Immutable):
         return f"{activity_id}/generations/{uuid4().hex}"
 
 
-# @total_ordering
 class Activity(Persistent):
     """Represent an activity in the repository."""
 
@@ -106,6 +106,7 @@ class Activity(Persistent):
         id: str,
         invalidations: List[Entity] = None,
         parameters: List[Union[PathParameterValue, VariableParameterValue]] = None,
+        project_id: str = None,
         started_at_time: datetime = None,
         usages: List[Usage] = None,
     ):
@@ -117,7 +118,7 @@ class Activity(Persistent):
         self.id: str = id
         self.invalidations: List[Entity] = invalidations or []
         self.parameters: List[Union[PathParameterValue, VariableParameterValue]] = parameters or []
-        # self.project: Project = project
+        self.project_id: str = project_id
         self.started_at_time: datetime = started_at_time
         self.usages: List[Usage] = usages or []
 
@@ -130,6 +131,7 @@ class Activity(Persistent):
         cls,
         plan: Plan,
         client_dispatcher: IClientDispatcher,
+        project_gateway: IProjectGateway,
         started_at_time: datetime,
         ended_at_time: datetime,
         annotations: List[Annotation],
@@ -138,6 +140,7 @@ class Activity(Persistent):
     ):
         """Convert a ``Plan`` to a ``Activity``."""
         from renku.core.models.provenance.agent import SoftwareAgent
+        from renku.core.plugins.pluginmanager import get_plugin_manager
 
         client = client_dispatcher.current_client
 
@@ -167,38 +170,36 @@ class Activity(Persistent):
             generations.append(generation)
 
         agent = SoftwareAgent.from_commit(commit)
+        person = Person.from_client(client)
         association = Association(agent=agent, id=Association.generate_id(activity_id), plan=plan)
 
-        return cls(
+        activity = cls(
             id=activity_id,
             association=association,
-            agents=[agent],
+            agents=[agent, person],
             usages=usages,
             generations=generations,
             parameters=parameter_values,
+            project_id=project_gateway.get_project().id,
             started_at_time=started_at_time,
             ended_at_time=ended_at_time,
             annotations=annotations,
         )
+
+        pm = get_plugin_manager()
+
+        plugin_annotations = pm.hook.activity_annotations(activity=activity)
+
+        if plugin_annotations:
+            activity.annotations.extend(plugin_annotations)
+
+        return activity
 
     @staticmethod
     def generate_id() -> str:
         """Generate an identifier for an activity."""
         # TODO: make id generation idempotent
         return f"/activities/{uuid4().hex}"
-
-    # def __eq__(self, other):
-    #     """Implements total_ordering equality."""
-    #     if isinstance(other, str):
-    #         return self.id == other
-
-    #     assert isinstance(other, Activity), f"Not an activity: {type(other)}"
-    #     return self.id == other.id
-
-    # def __lt__(self, other):
-    #     """Implement total_ordering less than."""
-    #     assert isinstance(other, Activity), f"Not an activity: {type(other)}"
-    #     return ((self.ended_at_time, self.id) < (other.ended_at_time, other.id))
 
 
 class AssociationSchema(JsonLDSchema):
@@ -263,7 +264,6 @@ class ActivitySchema(JsonLDSchema):
     generations = Nested(prov.activity, GenerationSchema, reverse=True, many=True, missing=None)
     id = fields.Id()
     invalidations = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, missing=None)
-    order = fields.Integer(renku.order)
     parameters = Nested(
         renku.parameter,
         [ParameterValueSchema, PathParameterValueSchema, VariableParameterValueSchema],
@@ -271,5 +271,6 @@ class ActivitySchema(JsonLDSchema):
         missing=None,
     )
     path = fields.String(prov.atLocation)
+    project_id = fields.IRI(renku.hasActivity, reverse=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
     usages = Nested(prov.qualifiedUsage, UsageSchema, many=True)

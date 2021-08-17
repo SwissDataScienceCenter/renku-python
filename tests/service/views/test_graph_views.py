@@ -27,58 +27,47 @@ from tests.utils import retry_failed
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_graph_build_view(svc_client_cache, authentication_headers_raw, it_remote_repo_url):
-    """Create a new graph build job successfully."""
-    svc_client, _, cache = svc_client_cache
-
-    # Assure that no jobs are enqueued before invoking the endpoint.
-    cache_state = "".join([key.decode("utf-8") for key in cache.cache.keys()])
-    assert "rq:queue:graph.jobs" not in cache_state
-    assert "rq:job" not in cache_state
+def test_graph_export_view(svc_client_cache, it_remote_repo_url):
+    """Create a new graph export job successfully."""
+    svc_client, headers, _ = svc_client_cache
 
     payload = {
         "git_url": it_remote_repo_url,
         "revision": "HEAD",
         "callback_url": "https://webhook.site",
+        "migrate_project": True,
     }
 
-    response = svc_client.post("/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
+    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
-    assert {"result": {"status": "ok"}} == response.json
-
-    # Assure that jobs are enqueued after invoking the endpoint.
-    cache_state = "".join([key.decode("utf-8") for key in cache.cache.keys()])
-    assert "rq:queue:graph.jobs" in cache_state
-    assert "rq:job" in cache_state
+    assert {"result": {"graph": None}} == response.json
 
 
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_graph_build_no_callback(svc_client_cache, authentication_headers_raw, it_remote_repo_url):
-    """Try to create a new graph build job."""
-    svc_client, _, cache = svc_client_cache
-    payload = {"git_url": it_remote_repo_url, "revision": "HEAD"}
+def test_graph_export_no_callback(svc_client_cache, it_remote_repo_url):
+    """Try to create a new graph export job."""
+    svc_client, headers, _ = svc_client_cache
+    payload = {"git_url": it_remote_repo_url, "revision": "HEAD", "migrate_project": True}
 
-    response = svc_client.post("/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
+    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
 
     assert response
-    assert {
-        "error": {"code": -32602, "reason": "Validation error: `callback_url` - Missing data for required field."}
-    } == response.json
+    assert {"result": {"graph": None}} == response.json
 
 
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_graph_build_no_revision(svc_client_cache, authentication_headers_raw, it_remote_repo_url):
-    """Create a new graph build job successfully."""
-    svc_client, _, cache = svc_client_cache
+def test_graph_export_no_revision(svc_client_cache, it_remote_repo_url):
+    """Create a new graph export job successfully."""
+    svc_client, headers, _ = svc_client_cache
 
-    payload = {"git_url": it_remote_repo_url, "callback_url": "http://localhost:8080"}
+    payload = {"git_url": it_remote_repo_url, "callback_url": "https://webhook.site", "migrate_project": True}
 
-    response = svc_client.post("/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
+    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
     assert response
     assert_rpc_response(response)
