@@ -188,7 +188,13 @@ class DatasetImportResponseRPC(JsonRPCResponse):
 
 
 class DatasetEditRequest(
-    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
+    AsyncSchema,
+    DatasetDetailsRequest,
+    DatasetNameSchema,
+    DatasetRefSchema,
+    LocalRepositorySchema,
+    RemoteRepositorySchema,
+    MigrateSchema,
 ):
     """Dataset edit metadata request."""
 
@@ -196,7 +202,6 @@ class DatasetEditRequest(
     description = fields.String(default=None)
     creators = fields.List(fields.Nested(DatasetCreators))
     keywords = fields.List(fields.String())
-    images = fields.List(fields.Nested(ImageObjectRequest))
 
 
 class DatasetEditResponse(RenkuSyncSchema):
