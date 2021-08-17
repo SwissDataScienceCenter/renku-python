@@ -50,10 +50,7 @@ def _deref(ref):
 
 @inject.autoparams()
 def _find_workflow(name_or_id: str, plan_gateway: IPlanGateway) -> AbstractPlan:
-    workflow = plan_gateway.get_by_id(name_or_id)
-
-    if not workflow:
-        workflow = plan_gateway.get_by_name(name_or_id)
+    workflow = plan_gateway.get_by_id(name_or_id) or plan_gateway.get_by_name(name_or_id)
 
     if not workflow:
         raise errors.ParameterError(f'The specified workflow "{name_or_id}" cannot be found.')
