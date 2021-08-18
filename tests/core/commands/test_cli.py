@@ -504,8 +504,8 @@ def test_status_consistency(client, project):
     os.chdir("somedirectory")
     comp_result = runner.invoke(cli, ["status"])
 
-    base_result_stdout = "\n".join(base_result.stdout.split("\n")[4:])
-    comp_result_stdout = "\n".join(comp_result.output.split("\n")[4:])
+    base_result_stdout = "\n".join(base_result.stdout.split("\n"))
+    comp_result_stdout = "\n".join(comp_result.output.split("\n"))
     assert base_result_stdout.replace("somedirectory/", "") == comp_result_stdout
 
 
