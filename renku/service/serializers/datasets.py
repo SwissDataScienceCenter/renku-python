@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets serializers."""
-from marshmallow import Schema, ValidationError, fields, post_load, pre_load
+from marshmallow import Schema, ValidationError, fields, post_load
 
 from renku.core.models.dataset import DatasetCreatorsJson as DatasetCreators
 from renku.core.models.dataset import DatasetDetailsJson as DatasetDetails
@@ -24,7 +24,6 @@ from renku.core.models.dataset import ImageObjectJson as ImageObject
 from renku.core.models.dataset import ImageObjectRequestJson as ImageObjectRequest
 from renku.service.serializers.common import (
     AsyncSchema,
-    CommitSchema,
     JobDetailsResponse,
     LocalRepositorySchema,
     MigrateSchema,
@@ -53,23 +52,9 @@ class DatasetDetailsRequest(DatasetDetails):
 
 
 class DatasetCreateRequest(
-    AsyncSchema,
-    CommitSchema,
-    DatasetDetailsRequest,
-    DatasetRefSchema,
-    LocalRepositorySchema,
-    RemoteRepositorySchema,
-    MigrateSchema,
+    AsyncSchema, DatasetDetailsRequest, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
 ):
     """Request schema for a dataset create view."""
-
-    @pre_load()
-    def default_commit_message(self, data, **kwargs):
-        """Set default commit message."""
-        if not data.get("commit_message"):
-            data["commit_message"] = "service: dataset create {0}".format(data["name"])
-
-        return data
 
 
 class DatasetCreateResponse(DatasetNameSchema, RenkuSyncSchema):
@@ -83,23 +68,9 @@ class DatasetCreateResponseRPC(JsonRPCResponse):
 
 
 class DatasetRemoveRequest(
-    AsyncSchema,
-    CommitSchema,
-    DatasetNameSchema,
-    DatasetRefSchema,
-    LocalRepositorySchema,
-    RemoteRepositorySchema,
-    MigrateSchema,
+    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
 ):
     """Request schema for a dataset remove."""
-
-    @pre_load()
-    def default_commit_message(self, data, **kwargs):
-        """Set default commit message."""
-        if not data.get("commit_message"):
-            data["commit_message"] = "service: dataset remove {0}".format(data["name"])
-
-        return data
 
 
 class DatasetRemoveResponse(DatasetNameSchema, RenkuSyncSchema):
@@ -122,13 +93,7 @@ class DatasetAddFile(Schema):
 
 
 class DatasetAddRequest(
-    AsyncSchema,
-    CommitSchema,
-    DatasetNameSchema,
-    DatasetRefSchema,
-    LocalRepositorySchema,
-    RemoteRepositorySchema,
-    MigrateSchema,
+    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
 ):
     """Request schema for a dataset add file view."""
 
@@ -138,14 +103,6 @@ class DatasetAddRequest(
     force = fields.Boolean(missing=False)
 
     client_extras = fields.String()
-
-    @post_load()
-    def default_commit_message(self, data, **kwargs):
-        """Set default commit message."""
-        if not data.get("commit_message"):
-            data["commit_message"] = "service: dataset add {0}".format(data["name"])
-
-        return data
 
     @post_load()
     def check_files(self, data, **kwargs):
@@ -216,7 +173,7 @@ class DatasetFilesListResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetFilesListResponse)
 
 
-class DatasetImportRequest(AsyncSchema, CommitSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
+class DatasetImportRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
     """Dataset import request."""
 
     dataset_uri = fields.String(required=True)
@@ -232,7 +189,6 @@ class DatasetImportResponseRPC(JsonRPCResponse):
 
 class DatasetEditRequest(
     AsyncSchema,
-    CommitSchema,
     DatasetDetailsRequest,
     DatasetNameSchema,
     DatasetRefSchema,
@@ -262,13 +218,7 @@ class DatasetEditResponseRPC(JsonRPCResponse):
 
 
 class DatasetUnlinkRequest(
-    AsyncSchema,
-    CommitSchema,
-    DatasetNameSchema,
-    DatasetRefSchema,
-    LocalRepositorySchema,
-    RemoteRepositorySchema,
-    MigrateSchema,
+    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
 ):
     """Dataset unlink file request."""
 

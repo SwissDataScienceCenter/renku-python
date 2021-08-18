@@ -18,6 +18,7 @@
 """Renku service datasets unlink controller."""
 from renku.core.commands.dataset import file_unlink
 from renku.service.cache.models.job import Job
+from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetUnlinkRequest, DatasetUnlinkResponseRPC
@@ -37,15 +38,13 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.include = self.ctx.get("include_filter")
         self.exclude = self.ctx.get("exclude_filter")
 
-        if self.ctx.get("commit_message") is None:
-            if self.include and self.exclude:
-                filters = "-I {0} -X {1}".format(self.include, self.exclude)
-            elif not self.include and self.exclude:
-                filters = "-X {0}".format(self.exclude)
-            else:
-                filters = "-I {0}".format(self.include)
-
-            self.ctx["commit_message"] = "service: unlink dataset {0} {1}".format(self.ctx["name"], filters)
+        if self.include and self.exclude:
+            filters = f"-I {self.include} -X {self.exclude}"
+        elif not self.include and self.exclude:
+            filters = f"-X {self.exclude}"
+        else:
+            filters = f"-I {self.include}"
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} unlink dataset {self.ctx['name']} {filters}"
 
         super(DatasetsUnlinkCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 

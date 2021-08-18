@@ -24,6 +24,7 @@ from marshmallow import EXCLUDE
 from renku.core.commands.init import create_from_template_local_command, read_template_manifest
 from renku.core.errors import RenkuException
 from renku.core.utils.contexts import click_context
+from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
@@ -42,6 +43,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     def __init__(self, cache, user_data, request_data):
         """Construct a templates read manifest controller."""
         self.ctx = TemplatesCreateProjectCtrl.REQUEST_SERIALIZER.load({**user_data, **request_data}, unknown=EXCLUDE)
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} init {self.ctx['project_name']}"
         super(TemplatesCreateProjectCtrl, self).__init__(cache, user_data, request_data)
 
         self.template = None
@@ -150,6 +152,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 ref=self.ctx["ref"],
                 invoked_from="service",
                 initial_branch=self.ctx["initial_branch"],
+                commit_message=self.ctx["commit_message"],
             )
 
         self.new_project_push(new_project_path)

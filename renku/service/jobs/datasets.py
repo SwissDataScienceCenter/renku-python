@@ -32,7 +32,9 @@ from renku.service.views.decorators import requires_cache
 
 
 @requires_cache
-def dataset_import(cache, user, user_job_id, project_id, dataset_uri, name=None, extract=False, timeout=None):
+def dataset_import(
+    cache, user, user_job_id, project_id, dataset_uri, name=None, extract=False, timeout=None, commit_message=None
+):
     """Job for dataset import."""
     user = cache.ensure_user(user)
     worker_log.debug(f"executing dataset import job for {user.user_id}:{user.fullname}")
@@ -49,7 +51,7 @@ def dataset_import(cache, user, user_job_id, project_id, dataset_uri, name=None,
 
             gitlab_token = user.token if _is_safe_to_pass_gitlab_token(project.git_url, dataset_uri) else None
 
-            command = import_dataset().with_commit_message(f"service: dataset import {dataset_uri}")
+            command = import_dataset().with_commit_message(commit_message)
             command.with_communicator(communicator).build().execute(
                 uri=dataset_uri, name=name, extract=extract, yes=True, gitlab_token=gitlab_token
             )

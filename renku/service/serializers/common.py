@@ -50,12 +50,6 @@ class RemoteRepositorySchema(Schema):
         return value
 
 
-class CommitSchema(Schema):
-    """Schema for specifying a commit message."""
-
-    commit_message = fields.String(description="Commit message to use for the commit.")
-
-
 class AsyncSchema(Schema):
     """Schema for adding a commit at the end of the operation."""
 
