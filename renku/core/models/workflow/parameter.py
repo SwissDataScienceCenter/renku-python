@@ -24,10 +24,18 @@ from uuid import uuid4
 
 from marshmallow import EXCLUDE
 
+from renku.core.errors import ParameterError
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, renku, schema
 from renku.core.utils.urls import get_slug
 
 RANDOM_ID_LENGTH = 4
+DIRECTORY_MIME_TYPE = "inode/directory"
+
+
+def _validate_mime_type(encoding_format: List[str]):
+    """Validates MIME-types."""
+    if encoding_format and DIRECTORY_MIME_TYPE in encoding_format and len(encoding_format) > 1:
+        raise ParameterError(f"Directory MIME-type '{DIRECTORY_MIME_TYPE}'.")
 
 
 class MappedIOStream:
@@ -175,6 +183,7 @@ class CommandInput(CommandParameterBase):
         name: str = None,
         position: Optional[int] = None,
         prefix: str = None,
+        encoding_format: List[str] = None,
     ):
         super().__init__(
             default_value=default_value,
@@ -185,6 +194,8 @@ class CommandInput(CommandParameterBase):
             prefix=prefix,
         )
         self.mapped_to: MappedIOStream = mapped_to
+        _validate_mime_type(encoding_format)
+        self.encoding_format: List[str] = encoding_format
 
     @staticmethod
     def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
@@ -213,6 +224,7 @@ class CommandOutput(CommandParameterBase):
         name: str = None,
         position: Optional[int] = None,
         prefix: str = None,
+        encoding_format: List[str] = None,
     ):
         super().__init__(
             default_value=default_value,
@@ -224,6 +236,8 @@ class CommandOutput(CommandParameterBase):
         )
         self.create_folder: bool = create_folder
         self.mapped_to: MappedIOStream = mapped_to
+        _validate_mime_type(encoding_format)
+        self.encoding_format: List[str] = encoding_format
 
     @staticmethod
     def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
@@ -369,6 +383,7 @@ class CommandInputSchema(CommandParameterBaseSchema):
         unknown = EXCLUDE
 
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
+    encoding_format = fields.List(schema.encodingFormat, fields.String(), missing=None)
 
 
 class CommandOutputSchema(CommandParameterBaseSchema):
@@ -383,6 +398,7 @@ class CommandOutputSchema(CommandParameterBaseSchema):
 
     create_folder = fields.Boolean(renku.createFolder, missing=False)
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
+    encoding_format = fields.List(schema.encodingFormat, fields.String(), missing=None)
 
 
 class ParameterMappingSchema(CommandParameterBaseSchema):

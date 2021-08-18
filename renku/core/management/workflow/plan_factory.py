@@ -34,7 +34,13 @@ from renku.core.management.command_builder.command import inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.workflow.types import PATH_OBJECTS, Directory, File
 from renku.core.models.datastructures import DirectoryTree
-from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
+from renku.core.models.workflow.parameter import (
+    DIRECTORY_MIME_TYPE,
+    CommandInput,
+    CommandOutput,
+    CommandParameter,
+    MappedIOStream,
+)
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape, safe_path
@@ -165,7 +171,10 @@ class PlanFactory:
                     position += 1
                     if type in PATH_OBJECTS:
                         self.add_command_input(
-                            default_value=self._path_relative_to_root(default.path), prefix=prefix, position=position
+                            default_value=self._path_relative_to_root(default.path),
+                            prefix=prefix,
+                            position=position,
+                            encoding_format=[DIRECTORY_MIME_TYPE] if type == "Directory" else default.mime_type,
                         )
                     else:
                         self.add_command_parameter(default_value=default, prefix=prefix, position=position)
@@ -189,7 +198,10 @@ class PlanFactory:
 
                     if type in PATH_OBJECTS:
                         self.add_command_input(
-                            default_value=self._path_relative_to_root(default.path), prefix=prefix, position=position
+                            default_value=self._path_relative_to_root(default.path),
+                            prefix=prefix,
+                            position=position,
+                            encoding_format=[DIRECTORY_MIME_TYPE] if type == "Directory" else default.mime_type,
                         )
                     else:
                         self.add_command_parameter(default_value=default, prefix=prefix, position=position)
@@ -207,7 +219,10 @@ class PlanFactory:
 
                 if type in PATH_OBJECTS:
                     self.add_command_input(
-                        default_value=self._path_relative_to_root(default.path), prefix=prefix, position=position
+                        default_value=self._path_relative_to_root(default.path),
+                        prefix=prefix,
+                        position=position,
+                        encoding_format=[DIRECTORY_MIME_TYPE] if type == "Directory" else default.mime_type,
                     )
                 else:
                     self.add_command_parameter(default_value=default, prefix=prefix, position=position)
@@ -220,7 +235,7 @@ class PlanFactory:
         if self.stdin:
             default, type = self.guess_type(str(self.working_dir / self.stdin), ignore_filenames=output_streams)
             assert isinstance(default, File)
-            self.add_command_input(default_value=str(default))
+            self.add_command_input(default_value=str(default), encoding_format=default.mime_type)
 
     def add_outputs(self, candidates: Set[str]):
         """Yield detected output and changed command input parameter."""
@@ -305,6 +320,11 @@ class PlanFactory:
 
         return candidates
 
+    def _get_mimetype(self, file: Path) -> str:
+        """Return the MIME-TYPE of the given file."""
+        # TODO: specify the actual mime-type of the file
+        return ["application/octet-stream"]
+
     def guess_type(self, value: str, ignore_filenames: Set[str] = None) -> Tuple[Any, str]:
         """Return new value and CWL parameter type."""
         candidate = self.is_existing_path(value, ignore=ignore_filenames)
@@ -312,7 +332,7 @@ class PlanFactory:
             try:
                 if candidate.is_dir():
                     return Directory(path=candidate), "Directory"
-                return File(path=candidate), "File"
+                return File(path=candidate, mime_type=self._get_mimetype(candidate)), "File"
             except ValueError:
                 # The candidate points to a file outside the working
                 # directory
@@ -336,6 +356,7 @@ class PlanFactory:
         prefix: Optional[str] = None,
         position: Optional[int] = None,
         postfix: Optional[str] = None,
+        encoding_format: List[str] = None,
     ):
         """Create a CommandInput."""
         if self.no_input_detection and Path(default_value).resolve() not in self.explicit_inputs:
@@ -354,6 +375,7 @@ class PlanFactory:
                 prefix=prefix,
                 position=position,
                 mapped_to=mapped_stream,
+                encoding_format=encoding_format,
             )
         )
 
@@ -363,6 +385,7 @@ class PlanFactory:
         prefix: Optional[str] = None,
         position: Optional[int] = None,
         postfix: Optional[str] = None,
+        encoding_format: List[str] = None,
     ):
         """Create a CommandOutput."""
         if self.no_output_detection and Path(default_value).resolve() not in self.explicit_outputs:
@@ -381,6 +404,7 @@ class PlanFactory:
                 prefix=prefix,
                 position=position,
                 mapped_to=mapped_stream,
+                encoding_format=encoding_format,
             )
         )
 
@@ -394,16 +418,20 @@ class PlanFactory:
                 prefix=input.prefix,
                 position=input.position,
                 mapped_to=input.mapped_to,
+                encoding_format=input.encoding_format,
             )
         )
 
     def add_command_output_from_parameter(self, parameter: CommandParameter):
         """Create a CommandOutput from a parameter."""
         self.parameters.remove(parameter)
+        value = Path(self._path_relative_to_root(parameter.default_value))
+        encoding_format = [DIRECTORY_MIME_TYPE] if value.resolve().is_dir() else self._get_mimetype(value)
         self.add_command_output(
-            default_value=self._path_relative_to_root(parameter.default_value),
+            default_value=str(value),
             prefix=parameter.prefix,
             position=parameter.position,
+            encoding_format=encoding_format,
         )
 
     def add_command_parameter(
@@ -452,7 +480,11 @@ class PlanFactory:
             default, type = self.guess_type(explicit_input)
             # Explicit inputs are either File or Directory
             assert type in PATH_OBJECTS
-            self.add_command_input(default_value=str(default), postfix=str(input_id))
+            self.add_command_input(
+                default_value=str(default),
+                postfix=str(input_id),
+                encoding_format=[DIRECTORY_MIME_TYPE] if type == "Directory" else default.mime_type,
+            )
 
     @contextmanager
     @inject.params(client="LocalClient")

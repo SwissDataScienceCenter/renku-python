@@ -205,24 +205,23 @@ order of precedence (lower precedence first):
 
 """
 
-
 import click
 from rich.console import Console
 from rich.markdown import Markdown
 
-from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import ERROR
+from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
 from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.commands.workflow import (
     compose_workflow_command,
-    create_workflow_command,
+    edit_workflow_command,
+    export_workflow_command,
     list_workflows_command,
     remove_workflow_command,
-    rename_workflow_command,
-    set_workflow_name_command,
     show_workflow_command,
 )
+from renku.core.plugins.workflow import supported_formats
 
 
 def _print_plan(plan: PlanViewModel):
@@ -352,10 +351,20 @@ def workflow():
 
 
 @workflow.command("ls")
-def list_workflows():
+@click.option("--format", type=click.Choice(WORKFLOW_FORMATS), default="tabular", help="Choose an output format.")
+@click.option(
+    "-c",
+    "--columns",
+    type=click.STRING,
+    default="id,name",
+    metavar="<columns>",
+    help="Comma-separated list of column to display: {}.".format(", ".join(WORKFLOW_COLUMNS.keys())),
+    show_default=True,
+)
+def list_workflows(format, columns):
     """List or manage workflows with subcommands."""
-    communicator = ClickCallback()
-    list_workflows_command().with_communicator(communicator).build().execute()
+    result = list_workflows_command().build().execute(format=format, columns=columns)
+    click.echo(result.output)
 
 
 @workflow.command()
@@ -373,72 +382,12 @@ def show(name_or_id):
         click.secho(ERROR + f"Workflow '{name_or_id}' not found.")
 
 
-def validate_path(ctx, param, value):
-    """Detect a workflow path if it is not passed."""
-    # client = ctx.obj
-
-    # if value is None:
-    #     from renku.core.models.provenance.activity import ProcessRun
-
-    #     activity = client.process_commit()
-
-    #     if not isinstance(activity, ProcessRun):
-    #         raise click.BadParameter("No tool was found.")
-
-    #     return activity.path
-
-    return value
-
-
-@workflow.command("set-name")
-@click.argument("name", metavar="<name>")
-@click.argument(
-    "path",
-    metavar="<path>",
-    type=click.Path(exists=True, dir_okay=False),
-    callback=validate_path,
-    default=None,
-    required=False,
-)
-@click.option("--force", is_flag=True, help="Override the existence check.")
-def set_name(name, path, force):
-    """Sets the <name> for remote <path>."""
-    set_workflow_name_command().build().execute(name=name, path=path, force=force)
-
-
-@workflow.command()
-@click.argument("old", metavar="<old>")
-@click.argument("new", metavar="<new>")
-@click.option("--force", is_flag=True, help="Override the existence check.")
-def rename(old, new, force):
-    """Rename the workflow named <old> to <new>."""
-    rename_workflow_command().build().execute(old=old, new=new, force=force)
-
-
 @workflow.command()
 @click.argument("name", metavar="<name>")
-def remove(name):
-    """Remove the remote named <name>."""
-    remove_workflow_command().build().execute(name=name)
-
-
-@workflow.command()
-@click.option("--revision", default="HEAD")
-@click.option(
-    "-o",
-    "--output-file",
-    metavar="FILE",
-    type=click.Path(exists=False),
-    default=None,
-    help="Write workflow to the FILE.",
-)
-@click.argument("paths", type=click.Path(dir_okay=True), nargs=-1)
-def create(output_file, revision, paths):
-    """Create a workflow description for a file."""
-    result = create_workflow_command().build().execute(output_file=output_file, revision=revision, paths=paths)
-
-    if not output_file:
-        click.echo(result.output)
+@click.option("--force", is_flag=True, help="Override the existence check.")
+def remove(name, force):
+    """Remove a workflow named <name>."""
+    remove_workflow_command().build().execute(name=name, force=force)
 
 
 @workflow.command()
@@ -496,3 +445,92 @@ def compose(
 
     if not result.error:
         _print_composite_plan(result.output)
+
+
+@workflow.command()
+@click.argument("workflow_name", metavar="<name or uuid>")
+@click.option("--name", metavar="<new name>", help="New name of the workflow")
+@click.option("--description", metavar="<new desc>", help="New description of the workflow")
+@click.option(
+    "--set",
+    "set_params",
+    multiple=True,
+    metavar="<parameter>=<value>",
+    help="Set default <value> for a <parameter>/add new parameter",
+)
+@click.option(
+    "--map",
+    "map_params",
+    multiple=True,
+    metavar="<parameter>=<parameter or expression>",
+    help="New mapping on the workflow",
+)
+@click.option(
+    "--rename-param",
+    "rename_params",
+    multiple=True,
+    metavar='<parameter>="name"',
+    help="New name for parameter",
+)
+@click.option(
+    "--describe-param",
+    "describe_params",
+    multiple=True,
+    metavar='<parameter>="description"',
+    help="New description of the workflow",
+)
+def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params):
+    """Edit workflow details."""
+    result = (
+        edit_workflow_command()
+        .build()
+        .execute(
+            name=workflow_name,
+            new_name=name,
+            description=description,
+            set_params=set_params,
+            map_params=map_params,
+            rename_params=rename_params,
+            describe_params=describe_params,
+        )
+    )
+    if not result.error:
+        plan = result.output
+        if isinstance(plan, PlanViewModel):
+            _print_plan(plan)
+        else:
+            _print_composite_plan(plan)
+
+
+@workflow.command()
+@click.argument("workflow_name", metavar="<name or uuid>")
+@click.option(
+    "--format",
+    default="cwl",
+    type=click.Choice(supported_formats(), case_sensitive=False),
+    show_default=True,
+    help="Workflow language format.",
+)
+@click.option(
+    "-o",
+    "--output",
+    metavar="<path>",
+    type=click.Path(exists=False),
+    default=None,
+    help="Save to <path> instead of printing to terminal",
+)
+@click.option(
+    "--values",
+    metavar="<file>",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    help="YAML file containing parameter mappings to be used.",
+)
+def export(workflow_name, format, output, values):
+    """Export workflow."""
+    result = (
+        export_workflow_command().build().execute(name_or_id=workflow_name, format=format, output=output, values=values)
+    )
+
+    if not output:
+        click.echo(result.output)

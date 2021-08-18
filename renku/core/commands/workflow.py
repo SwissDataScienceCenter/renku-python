@@ -18,12 +18,14 @@
 """Renku workflow commands."""
 
 
-from collections import defaultdict
-from typing import List
+from datetime import datetime
+from pathlib import Path
+from typing import List, Optional
 
 from renku.core import errors
+from renku.core.commands.format.workflow import WORKFLOW_FORMATS
+from renku.core.commands.view_model import plan_view
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
-from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
@@ -31,6 +33,7 @@ from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.value_resolution import apply_run_values
 from renku.core.models.workflow.composite_plan import CompositePlan
+from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.utils import communication
 
 
@@ -46,99 +49,59 @@ def _deref(ref):
 
 
 @inject.autoparams()
-def _list_workflows(client: LocalClient):
+def _find_workflow(name_or_id: str, plan_gateway: IPlanGateway) -> AbstractPlan:
+    workflow = plan_gateway.get_by_id(name_or_id) or plan_gateway.get_by_name(name_or_id)
+
+    if not workflow:
+        raise errors.ParameterError(f'The specified workflow "{name_or_id}" cannot be found.')
+    return workflow
+
+
+@inject.autoparams()
+def _list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str]):
     """List or manage workflows with subcommands."""
-    from renku.core.models.refs import LinkReference
+    workflows = plan_gateway.get_newest_plans_by_names()
 
-    names = defaultdict(list)
-    for ref in LinkReference.iter_items(common_path="workflows"):
-        names[ref.reference.name].append(ref.name)
+    if format not in WORKFLOW_FORMATS:
+        raise errors.UsageError(f'Provided format "{format}" is not supported ({", ".join(WORKFLOW_FORMATS.keys())})"')
 
-    for path in client.workflow_path.glob("*.yaml"):
-        communication.echo(
-            "{path}: {names}".format(path=path.name, names=", ".join(_deref(name) for name in names[path.name]))
-        )
+    return WORKFLOW_FORMATS[format](list(map(lambda x: plan_view(x), workflows.values())), columns=columns)
 
 
 def list_workflows_command():
     """Command to list or manage workflows with subcommands."""
-    return Command().command(_list_workflows).require_migration().with_database()
+    return Command().command(_list_workflows).require_migration().with_database(write=False)
 
 
 @inject.autoparams()
-def _set_workflow_name(name, path, force, client: LocalClient):
-    """Sets the <name> for remote <path>."""
-    from renku.core.models.refs import LinkReference
-
-    LinkReference.create(client=client, name=_ref(name), force=force).set_reference(path)
-
-
-def set_workflow_name_command():
-    """Command that sets the <name> for remote <path>."""
-    return Command().command(_set_workflow_name).require_clean().with_commit()
-
-
-@inject.autoparams()
-def _rename_workflow(old, new, force, client: LocalClient):
-    """Rename the workflow named <old> to <new>."""
-    from renku.core.models.refs import LinkReference
-
-    LinkReference(client=client, name=_ref(old)).rename(_ref(new), force=force)
-
-
-def rename_workflow_command():
-    """Command that renames the workflow named <old> to <new>."""
-    return Command().command(_rename_workflow).require_clean().with_commit()
-
-
-@inject.autoparams()
-def _remove_workflow(name, client: LocalClient):
+def _remove_workflow(name, force, plan_gateway: IPlanGateway):
     """Remove the remote named <name>."""
-    from renku.core.models.refs import LinkReference
+    workflows = plan_gateway.get_newest_plans_by_names()
+    plan = None
+    if name.startswith("/plans/"):
+        plan = next(filter(lambda x: x.id == name, workflows.values()), None)
+    if not plan and name not in workflows:
+        raise errors.ParameterError(f'The specified workflow is "{name}" is not an active workflow.')
 
-    LinkReference(client=client, name=_ref(name)).delete()
+    if not force:
+        prompt_text = f'You are about to remove the following workflow "{name}".' + "\n" + "\nDo you wish to continue?"
+        communication.confirm(prompt_text, abort=True, warning=True)
+
+    plan = plan or workflows[name]
+    plan._v_immutable = False
+    plan.invalidated_at = datetime.utcnow()
+    plan.freeze()
 
 
 def remove_workflow_command():
-    """Command that removes the remote named <name>."""
-    return Command().command(_remove_workflow).require_clean().with_commit()
+    """Command that removes the workflow named <name>."""
+    return Command().command(_remove_workflow).require_clean().with_database(write=True).with_commit()
 
 
-@inject.autoparams()
-def _create_workflow(output_file, revision, paths, client: LocalClient):
-    """Create a workflow description for a file."""
-    pass
-    # TODO: implement with new database
-    # graph = Graph()
-    # outputs = graph.build(paths=paths, revision=revision)
-
-    # workflow = graph.as_workflow(outputs=outputs)
-
-    # if output_file:
-    #     output_file = Path(output_file)
-
-    # wf, path = CWLConverter.convert(workflow, client.path, path=output_file)
-
-    # return wf.export_string()
-
-
-def create_workflow_command():
-    """Command that create a workflow description for a file."""
-    return Command().command(_create_workflow)
-
-
-@inject.autoparams()
-def _show_workflow(name_or_id: str, plan_gateway: IPlanGateway):
+def _show_workflow(name_or_id: str):
     """Show the details of a workflow."""
-    workflow = plan_gateway.get_by_id(name_or_id)
-
-    if not workflow:
-        workflow = plan_gateway.get_by_name(name_or_id)
-
-    if isinstance(workflow, CompositePlan):
-        return CompositePlanViewModel.from_composite_plan(workflow)
-
-    return PlanViewModel.from_plan(workflow)
+    workflow = _find_workflow(name_or_id)
+    return plan_view(workflow)
 
 
 def show_workflow_command():
@@ -234,3 +197,97 @@ def compose_workflow_command():
     return (
         Command().command(_group_workflow).require_migration().require_clean().with_database(write=True).with_commit()
     )
+
+
+@inject.autoparams()
+def _edit_workflow(
+    name,
+    new_name: Optional[str],
+    description: Optional[str],
+    set_params: List[str],
+    map_params: List[str],
+    rename_params: List[str],
+    describe_params: List[str],
+    plan_gateway: IPlanGateway,
+):
+    """Edits a workflow details."""
+    derived_from = _find_workflow(name)
+    workflow = derived_from.derive()
+    if new_name:
+        workflow.name = new_name
+
+    if description:
+        workflow.description = description
+
+    if isinstance(workflow, Plan):
+        workflow.set_parameters_from_strings(set_params)
+
+        def _kv_extract(kv_string):
+            k, v = kv_string.split("=", maxsplit=1)
+            v = v.strip(' "')
+            return k, v
+
+        for param_string in rename_params:
+            name, new_name = _kv_extract(param_string)
+            for param in workflow.inputs + workflow.outputs + workflow.parameters:
+                if param.name == name:
+                    param.name = new_name
+                    break
+            else:
+                raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
+
+        for description_string in describe_params:
+            name, description = _kv_extract(description_string)
+            for param in workflow.inputs + workflow.outputs + workflow.parameters:
+                if param.name == name:
+                    param.description = description
+                    break
+            else:
+                raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
+    elif isinstance(workflow, CompositePlan) and len(map_params):
+        workflow.set_mappings_from_strings(map_params)
+
+    plan_gateway.add(workflow)
+    return plan_view(workflow)
+
+
+def edit_workflow_command():
+    """Command that edits the properties of a given workflow."""
+    return Command().command(_edit_workflow).require_clean().with_database(write=True).with_commit()
+
+
+@inject.autoparams()
+def _export_workflow(name_or_id, client: LocalClient, format: str, output: Optional[str], values: Optional[str]):
+    """Export a workflow to a given format."""
+
+    workflow = _find_workflow(name_or_id)
+    if output:
+        output = Path(output)
+
+    from renku.core.plugins.pluginmanager import get_plugin_manager
+
+    pm = get_plugin_manager()
+    supported_formats = pm.hook.workflow_format()
+    export_plugins = list(map(lambda x: x[0], supported_formats))
+    converter = list(map(lambda x: x[0], filter(lambda x: format in x[1], supported_formats)))
+    if not any(converter):
+        raise errors.ParameterError(f"The specified workflow exporter format '{format}' is not available.")
+    elif len(converter) > 1:
+        raise errors.ConfigurationError(
+            f"The specified format '{format}' is supported by more than one export plugins!"
+        )
+
+    if values:
+        from renku.core.models import jsonld as jsonld
+
+        values = jsonld.read_yaml(values)
+        workflow = apply_run_values(workflow, values)
+
+    export_plugins.remove(converter[0])
+    converter = pm.subset_hook_caller("workflow_convert", export_plugins)
+    return converter(workflow=workflow, basedir=client.path, output=output, output_format=format)
+
+
+def export_workflow_command():
+    """Command that exports a workflow into a given format."""
+    return Command().command(_export_workflow).require_clean().with_database(write=False)
