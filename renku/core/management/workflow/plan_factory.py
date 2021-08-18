@@ -289,7 +289,10 @@ class PlanFactory:
 
                 self.add_command_output_from_parameter(param)
             else:
-                self.add_command_output(default_value=glob)
+                self.add_command_output(
+                    default_value=glob,
+                    encoding_format=[DIRECTORY_MIME_TYPE] if os.path.isdir(path) else self._get_mimetype(Path(path)),
+                )
 
     def _check_potential_output_directory(
         self, input_path: Path, candidates: Set[str], tree: DirectoryTree
@@ -322,7 +325,7 @@ class PlanFactory:
 
         return candidates
 
-    def _get_mimetype(self, file: Path) -> str:
+    def _get_mimetype(self, file: Path) -> List[str]:
         """Return the MIME-TYPE of the given file."""
         # TODO: specify the actual mime-type of the file
         return ["application/octet-stream"]

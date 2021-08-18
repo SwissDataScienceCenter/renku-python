@@ -321,3 +321,23 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
     result = runner.invoke(cli, cmd + ["output/foo", "output/bar"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert {"output"} == set(result.output.strip().split("\n"))
+
+
+def test_workflow_execute_command(runner, run_shell, project, capsys):
+    """test workflow execute."""
+    workflow_name = "run1"
+
+    output = run_shell(f'renku run --name {workflow_name} -- echo "a" > output1')
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    with capsys.disabled():
+        try:
+            cli.main(
+                args=("workflow", "execute", workflow_name),
+                prog_name=runner.get_default_prog_name(cli),
+            )
+        except SystemExit as e:
+            assert e.code in {None, 0}

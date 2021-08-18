@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,28 +15,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Define classes for converting workflows to workflow languages."""
+"""Workflow executor provider."""
 
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 from renku.core.models.workflow.plan import AbstractPlan
 
 
-class IWorkflowConverter(metaclass=ABCMeta):
-    """Abstract class for converting ``Plan`` to a workflow format."""
+class IWorkflowProvider(metaclass=ABCMeta):
+    """Abstract class for executing ``Plan``."""
 
     @abstractmethod
-    def workflow_format(self) -> Tuple[IWorkflowConverter, List[str]]:
+    def workflow_provider(self) -> Tuple[IWorkflowProvider, str]:
         """Supported workflow description formats."""
         pass
 
     @abstractmethod
-    def workflow_convert(
-        self, workflow: AbstractPlan, basedir: Path, output: Optional[Path], output_format: Optional[str]
-    ) -> str:
-        """Converts a single workflow step to a desired workflow format."""
+    def workflow_execute(self, workflow: AbstractPlan, basedir: Path, config_file: Optional[str]):
+        """Executes a given ``Plan`` using the provider."""
         pass
