@@ -216,11 +216,13 @@ from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.commands.workflow import (
     compose_workflow_command,
     edit_workflow_command,
+    execute_workflow_command,
     export_workflow_command,
     list_workflows_command,
     remove_workflow_command,
     show_workflow_command,
 )
+from renku.core.plugins.provider import available_workflow_providers
 from renku.core.plugins.workflow import supported_formats
 
 
@@ -534,3 +536,55 @@ def export(workflow_name, format, output, values):
 
     if not output:
         click.echo(result.output)
+
+
+@workflow.command()
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    default="cwltool",
+    show_default=True,
+    type=click.Choice(available_workflow_providers(), case_sensitive=False),
+    help="The workflow engine to use.",
+)
+@click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
+@click.option(
+    "set_params",
+    "-s",
+    "--set",
+    multiple=True,
+    metavar="<parameter>=<value>",
+    help="Set <value> for a <parameter> to be used in execution.",
+)
+@click.option(
+    "--values",
+    metavar="<file>",
+    type=click.Path(exists=True, dir_okay=False),
+    help="YAML file containing parameter mappings to be used.",
+)
+@click.argument("name_or_id", required=True)
+def execute(
+    provider,
+    config,
+    set_params,
+    values,
+    name_or_id,
+):
+    """Execute a given workflow."""
+    result = (
+        execute_workflow_command()
+        .build()
+        .execute(
+            name_or_id=name_or_id,
+            provider=provider,
+            config=config,
+            values=values,
+            set_params=set_params,
+        )
+    )
+
+    if result.output:
+        click.echo(
+            "Unchanged files:\n\n\t{0}".format("\n\t".join(click.style(path, fg="yellow") for path in result.output))
+        )

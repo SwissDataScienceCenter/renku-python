@@ -267,30 +267,70 @@ def _export_workflow(
     if output:
         output = Path(output)
 
-    from renku.core.plugins.pluginmanager import get_plugin_manager
-
-    pm = get_plugin_manager()
-    supported_formats = pm.hook.workflow_format()
-    export_plugins = list(map(lambda x: x[0], supported_formats))
-    converter = list(map(lambda x: x[0], filter(lambda x: format in x[1], supported_formats)))
-    if not any(converter):
-        raise errors.ParameterError(f"The specified workflow exporter format '{format}' is not available.")
-    elif len(converter) > 1:
-        raise errors.ConfigurationError(
-            f"The specified format '{format}' is supported by more than one export plugins!"
-        )
-
     if values:
         from renku.core.models import jsonld as jsonld
 
         values = jsonld.read_yaml(values)
         workflow = apply_run_values(workflow, values)
 
-    export_plugins.remove(converter[0])
-    converter = pm.subset_hook_caller("workflow_convert", export_plugins)
+    from renku.core.plugins.workflow import workflow_converter
+
+    converter = workflow_converter(format)
     return converter(workflow=workflow, basedir=client.path, output=output, output_format=format)
 
 
 def export_workflow_command():
     """Command that exports a workflow into a given format."""
     return Command().command(_export_workflow).require_clean().with_database(write=False)
+
+
+@inject.autoparams()
+def _execute_workflow(
+    name_or_id: str,
+    set_params: List[str],
+    provider: str,
+    config: Optional[str],
+    values: Optional[str],
+    client_dispatcher: IClientDispatcher,
+):
+    workflow = _find_workflow(name_or_id)
+
+    from renku.core.plugins.pluginmanager import get_plugin_manager
+
+    pm = get_plugin_manager()
+    providers = pm.hook.workflow_provider()
+    provider = next(filter(lambda x: provider == x[1], providers), None)
+    if not provider:
+        raise errors.ParameterError(f"The specified workflow executor '{provider}' is not available.")
+
+    providers.remove(provider)
+    executor = pm.subset_hook_caller("workflow_execute", list(map(lambda x: x[0], providers)))
+
+    # apply the provided parameter settings provided by user
+    override_params = dict()
+    if values:
+        from renku.core.models import jsonld as jsonld
+
+        values = jsonld.read_yaml(values)
+
+    if set_params:
+        if isinstance(workflow, Plan):
+            for param in set_params:
+                name, value = param.split("=", maxsplit=1)
+                override_params[name] = value
+        else:
+            raise errors.UsageError(f"Cannot set parameters '{name_or_id}' workflow as it is CompositePlan.")
+
+    if override_params:
+        workflow = apply_run_values(workflow, values)
+
+    client = client_dispatcher.current_client
+    output_paths = executor(workflow=workflow, basedir=client.path, config_file=config)
+    return client.remove_unmodified(output_paths)
+
+
+def execute_workflow_command():
+    """Command that executes a workflow."""
+    return (
+        Command().command(_execute_workflow).require_migration().require_clean().with_database(write=True).with_commit()
+    )

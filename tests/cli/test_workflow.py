@@ -295,3 +295,23 @@ def test_workflow_edit(runner, client, run_shell):
     edited_composite_plan = database["plans"][_get_plan_id(result.output)]
     assert len(edited_composite_plan.mappings) == 1
     assert edited_composite_plan.mappings[0].mapped_parameters[0].name == "param1"
+
+
+def test_workflow_execute_command(runner, run_shell, project, capsys):
+    """test workflow execute."""
+    workflow_name = "run1"
+
+    output = run_shell(f'renku run --name {workflow_name} -- echo "a" > output1')
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    with capsys.disabled():
+        try:
+            cli.main(
+                args=("workflow", "execute", workflow_name),
+                prog_name=runner.get_default_prog_name(cli),
+            )
+        except SystemExit as e:
+            assert e.code in {None, 0}
