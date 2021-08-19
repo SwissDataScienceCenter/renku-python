@@ -18,7 +18,7 @@
 """Helpers functions for metadata conversion."""
 
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 from renku.core.management.migrations.models import v9 as old_datasets
@@ -38,9 +38,7 @@ def convert_dataset_tag(tag: Optional[old_datasets.DatasetTag]) -> Optional[Data
     """Convert old DatasetTag to new DatasetTag."""
     if not tag:
         return
-    return DatasetTag(
-        commit=tag.commit, dataset=tag.dataset, date_created=tag.created, description=tag.description, name=tag.name
-    )
+    return DatasetTag(dataset_id="dummy-id", date_created=tag.created, description=tag.description, name=tag.name)
 
 
 def convert_language(language: Optional[old_datasets.Language]) -> Optional[Language]:
@@ -99,13 +97,13 @@ def convert_agent(
 ) -> Optional[Union[new_agents.Person, new_agents.SoftwareAgent]]:
     """Create an instance from Person/SoftwareAgent."""
     if isinstance(agent, old_datasets.SoftwareAgent):
-        return new_agents.SoftwareAgent.from_software_agent(agent)
+        return new_agents.SoftwareAgent(id=agent.id, name=agent.label)
 
     assert not agent or isinstance(agent, old_datasets.Person), f"Invalid type {type(agent)}"
     return convert_person(agent)
 
 
-def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Dataset:
+def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tuple[Dataset, List[DatasetTag]]:
     """Convert old Dataset to new Dataset."""
 
     def convert_dataset_files(files: List[old_datasets.DatasetFile]) -> List[DatasetFile]:
@@ -132,24 +130,28 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Dat
 
         return Dataset.generate_id(identifier=Path(path).name)
 
-    return Dataset(
-        creators=[convert_agent(creator) for creator in dataset.creators],
-        dataset_files=convert_dataset_files(dataset.files),
-        date_created=dataset.date_created,
-        date_published=dataset.date_published,
-        date_removed=None,
-        derived_from=convert_derived_from(dataset.derived_from),
-        description=dataset.description,
-        id=None,
-        identifier=dataset.identifier.replace("-", ""),
-        images=[convert_image_object(image) for image in (dataset.images or [])],
-        in_language=convert_language(dataset.in_language),
-        keywords=dataset.keywords,
-        license=dataset.license,
-        name=dataset.name,
-        initial_identifier=dataset.initial_identifier.replace("-", ""),
-        same_as=convert_url(dataset.same_as),
-        tags=[convert_dataset_tag(tag) for tag in (dataset.tags or [])],
-        title=dataset.title,
-        version=dataset.version,
+    tags = [convert_dataset_tag(tag) for tag in (dataset.tags or [])]
+
+    return (
+        Dataset(
+            creators=[convert_agent(creator) for creator in dataset.creators],
+            dataset_files=convert_dataset_files(dataset.files),
+            date_created=dataset.date_created,
+            date_published=dataset.date_published,
+            date_removed=None,
+            derived_from=convert_derived_from(dataset.derived_from),
+            description=dataset.description,
+            id=None,
+            identifier=dataset.identifier.replace("-", ""),
+            images=[convert_image_object(image) for image in (dataset.images or [])],
+            in_language=convert_language(dataset.in_language),
+            keywords=dataset.keywords,
+            license=dataset.license,
+            name=dataset.name,
+            initial_identifier=dataset.initial_identifier.replace("-", ""),
+            same_as=convert_url(dataset.same_as),
+            title=dataset.title,
+            version=dataset.version,
+        ),
+        tags,
     )

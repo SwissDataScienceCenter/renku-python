@@ -37,6 +37,7 @@ from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import DatasetFile
 from renku.core.models.provenance.agent import PersonSchema
 from renku.core.utils.file_size import bytes_to_unit
+from renku.core.utils.git import get_content
 from renku.core.utils.requests import retry
 
 ZENODO_BASE_URL = "https://zenodo.org"
@@ -376,11 +377,10 @@ class ZenodoDeposition:
 
         return response
 
-    def upload_file(self, filepath):
+    def upload_file(self, filepath, path_in_repo):
         """Upload and attach a file to existing deposition on Zenodo."""
-        request_payload = {"filename": Path(filepath).name}
-        file = {"file": open(str(filepath), "rb")}
-
+        request_payload = {"filename": Path(path_in_repo).name}
+        file = {"file": (Path(path_in_repo).name, open(str(filepath), "rb"))}
         response = requests.post(
             url=self.upload_file_url, params=self.exporter.default_params, data=request_payload, files=file
         )
@@ -477,7 +477,8 @@ class ZenodoExporter(ExporterApi):
         # Step 3. Upload all files to created deposition
         with tqdm(total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                deposition.upload_file(client.path / file.entity.path)
+                filepath = get_content(repo=client.repo, path=file.entity.path, checksum=file.entity.checksum)
+                deposition.upload_file(filepath, path_in_repo=file.entity.path)
                 progressbar.update(1)
 
         # Step 4. Publish newly created deposition

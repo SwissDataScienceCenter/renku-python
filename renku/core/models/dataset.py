@@ -26,7 +26,7 @@ from urllib.parse import quote, urlparse
 from uuid import uuid4
 
 import marshmallow
-from marshmallow import EXCLUDE, pre_dump
+from marshmallow import EXCLUDE
 
 from renku.core import errors
 from renku.core.metadata.database import Persistent
@@ -35,6 +35,7 @@ from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, f
 from renku.core.models.entity import Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
+from renku.core.utils.git import get_path
 from renku.core.utils.urls import get_slug
 
 
@@ -101,37 +102,32 @@ class Url:
             raise NotImplementedError("Either url_id or url_str has to be set")
 
 
-class DatasetTag(Slots):
+class DatasetTag(Persistent):
     """Represents a Tag of an instance of a dataset."""
-
-    __slots__ = ("commit", "dataset", "date_created", "description", "id", "name")
 
     def __init__(
         self,
         *,
-        commit: str,
-        dataset=None,
+        dataset_id: str,
         date_created: datetime = None,
         description: str = None,
         id: str = None,
         name: str,
     ):
-        if not id or id.startswith("_:"):
-            id = DatasetTag.generate_id(commit=commit, name=name)
+        if not id:
+            id = DatasetTag.generate_id(dataset_id=dataset_id, name=name)
 
-        super().__init__(
-            commit=commit,
-            dataset=dataset,
-            date_created=parse_date(date_created) or local_now(),
-            description=description,
-            id=id,
-            name=name,
-        )
+        self.dataset_id: str = dataset_id
+        self.date_created: datetime = parse_date(date_created) or local_now()
+        self.description: str = description
+        self.id: str = id
+        self.name: str = name
 
     @staticmethod
-    def generate_id(commit: str, name: str) -> str:
+    def generate_id(dataset_id: str, name: str) -> str:
         """Define default value for id field."""
-        name = quote(f"{name}@{commit}", safe="")
+        identifier = Path(dataset_id).name
+        name = quote(f"{name}@{identifier}", safe="")
         return f"/dataset-tags/{name}"
 
     def to_jsonld(self):
@@ -161,7 +157,7 @@ class ImageObject(Slots):
     __slots__ = ("content_url", "id", "position")
 
     def __init__(self, *, content_url: str, id: str, position: int):
-        # TODO: Remove scheme://hostname from id
+        id = get_path(id)
         super().__init__(content_url=content_url, position=position, id=id)
 
     @staticmethod
@@ -314,7 +310,6 @@ class Dataset(Persistent):
         license: str = None,
         name: str = None,
         same_as: Url = None,
-        tags: List[DatasetTag] = None,
         title: str = None,
         version: str = None,
     ):
@@ -350,7 +345,6 @@ class Dataset(Persistent):
         self.keywords: List[str] = keywords or []
         self.license: str = license
         self.same_as: Url = same_as
-        self.tags: List[DatasetTag] = tags or []
         self.title: str = title
         self.version: str = version
 
@@ -400,11 +394,6 @@ class Dataset(Persistent):
         """Comma-separated list of keywords associated with dataset."""
         return ", ".join(self.keywords)
 
-    @property
-    def tags_csv(self):
-        """Comma-separated list of tags associated with dataset."""
-        return ",".join(tag.name for tag in self.tags)
-
     def copy(self) -> "Dataset":
         """Return a clone of this dataset."""
         return Dataset(
@@ -424,12 +413,11 @@ class Dataset(Persistent):
             license=self.license,
             name=self.name,
             same_as=self.same_as,
-            tags=list(self.tags or []),
             title=self.title,
             version=self.version,
         )
 
-    def replace_identifier(self):
+    def replace_identifier(self, identifier: str = None):
         """Replace dataset's identifier and update relevant fields.
 
         NOTE: Call this only for newly-created/-imported datasets that don't have a mutability chain because it sets
@@ -439,14 +427,14 @@ class Dataset(Persistent):
             self.derived_from is None
         ), f"Replacing identifier of dataset '{self.name}:{self.identifier}' that is derived from {self.derived_from}"
 
-        self._assign_new_identifier()
+        self._assign_new_identifier(identifier)
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
 
-    def derive_from(self, dataset: "Dataset", creator: Person):
+    def derive_from(self, dataset: "Dataset", creator: Optional[Person], identifier: str = None):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"
 
-        self._assign_new_identifier()
+        self._assign_new_identifier(identifier)
         # NOTE: Setting `initial_identifier` is required for migration of broken projects
         self.initial_identifier = dataset.initial_identifier
         self.derived_from = dataset.id
@@ -457,8 +445,8 @@ class Dataset(Persistent):
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
             self.creators.append(creator)
 
-    def _assign_new_identifier(self):
-        identifier = uuid4().hex
+    def _assign_new_identifier(self, identifier: str):
+        identifier = identifier or uuid4().hex
         self.initial_identifier = identifier
         self.identifier = identifier
         self.id = Dataset.generate_id(identifier)
@@ -602,20 +590,11 @@ class DatasetTagSchema(JsonLDSchema):
         model = DatasetTag
         unknown = EXCLUDE
 
-    commit = fields.String(schema.location)
-    dataset = fields.String(schema.about)
+    dataset_id = fields.String(schema.location)
     date_created = fields.DateTime(schema.startDate, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     description = fields.String(schema.description, missing=None)
     id = fields.Id()
     name = fields.String(schema.name)
-
-    @pre_dump
-    def fix_timezone(self, obj, many=False, **kwargs):
-        """Pre dump hook."""
-        if many:
-            return [self.fix_timezone(o, many=False, **kwargs) for o in obj]
-        object.__setattr__(obj, "date_created", self._fix_timezone(obj.date_created))
-        return obj
 
 
 class LanguageSchema(JsonLDSchema):
@@ -712,7 +691,6 @@ class DatasetSchema(JsonLDSchema):
     name = fields.String(renku.slug)
     initial_identifier = fields.String(renku.originalIdentifier)
     same_as = Nested(schema.sameAs, UrlSchema, missing=None)
-    tags = Nested(schema.subjectOf, DatasetTagSchema, many=True)
     title = fields.String(schema.name)
     version = fields.String(schema.version, missing=None)
 

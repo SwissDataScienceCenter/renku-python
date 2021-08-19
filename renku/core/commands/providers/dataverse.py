@@ -46,6 +46,7 @@ from renku.core.models.dataset import DatasetFile
 from renku.core.models.provenance.agent import PersonSchema
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.file_size import bytes_to_unit
+from renku.core.utils.git import get_content
 from renku.core.utils.requests import retry
 
 DATAVERSE_API_PATH = "api/v1"
@@ -424,7 +425,8 @@ class DataverseExporter(ExporterApi):
                     path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
                 except ValueError:
                     path = Path(file.entity.path)
-                deposition.upload_file(full_path=client.path / file.entity.path, path_in_dataset=path)
+                filepath = get_content(repo=client.repo, path=file.entity.path, checksum=file.entity.checksum)
+                deposition.upload_file(full_path=filepath, path_in_dataset=path)
                 progressbar.update(1)
 
         if publish:

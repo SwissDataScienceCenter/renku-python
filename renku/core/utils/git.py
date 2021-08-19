@@ -19,6 +19,8 @@
 
 import math
 import pathlib
+import subprocess
+import tempfile
 import urllib
 from pathlib import Path
 from subprocess import SubprocessError, run
@@ -136,6 +138,43 @@ def get_object_hash(repo: Repo, path: Union[Path, str], revision: str = None) ->
         return get_object_hash_from_submodules()
 
 
+def get_content(repo: Repo, path: Union[Path, str], checksum: str) -> str:
+    """Get content of an object from git using its checksum and return a path with that content."""
+
+    def get_content_from_submodules(file):
+        for submodule in repo.submodules:
+            try:
+                path_in_submodule = Path(path).relative_to(submodule.path)
+            except ValueError:
+                continue
+            else:
+                try:
+                    subprocess.run(
+                        ["git", "cat-file", "--filters", "--path", str(path_in_submodule), checksum],
+                        check=True,
+                        stdout=file,
+                        cwd=repo.working_dir,
+                    )
+                except subprocess.CalledProcessError:
+                    pass
+                else:
+                    return True
+
+    with tempfile.NamedTemporaryFile(mode="w+b", delete=False) as temp_file:
+        try:
+            subprocess.run(
+                ["git", "cat-file", "--filters", "--path", str(path), checksum],
+                check=True,
+                stdout=temp_file,
+                cwd=repo.working_dir,
+            )
+        except subprocess.CalledProcessError:
+            if not get_content_from_submodules(temp_file):
+                raise errors.ExportError(f"File not found in repo: {checksum}:{path}")
+
+    return temp_file.name
+
+
 def find_previous_commit(
     repo: Repo, path: Union[Path, str], revision: str = None, return_first=False, full_history=False
 ) -> Optional[Commit]:
@@ -181,3 +220,8 @@ def find_previous_commit(
         return commit
 
     return commits[-1 if return_first else 0]
+
+
+def get_path(url: str):
+    """Return path part of a url."""
+    return urllib.parse.urlparse(url).path
