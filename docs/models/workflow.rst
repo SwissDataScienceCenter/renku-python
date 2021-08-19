@@ -70,7 +70,7 @@ Used to create ``Plan`` objects based on command line arguments
 Renku Workflow Conversion
 =========================
 
-.. py:module:: renku.core.models.workflow.converters
+.. py:module:: renku.core.management.workflow.converters
 
 Renku allows conversion of tracked workflows to runnable workflows in
 supported tools (Currently CWL)
@@ -78,7 +78,7 @@ supported tools (Currently CWL)
 CWL
 ---
 
-.. automodule:: renku.core.models.workflow.converters.cwl
+.. automodule:: renku.core.management.workflow.converters.cwl
    :no-members:
 
 .. autoclass:: CWLConverter

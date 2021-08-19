@@ -29,7 +29,6 @@ from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.models.provenance.activity import Activity, Usage
 from renku.core.utils import communication
-from renku.core.utils.contexts import measure
 
 
 def _get_relative_path(client, path):
@@ -44,8 +43,7 @@ def get_status():
 
 @inject.autoparams()
 def _get_status(client: LocalClient, activity_gateway: IActivityGateway):
-    with measure("BUILD AND QUERY GRAPH"):
-        latest_activities = activity_gateway.get_latest_activity_per_plan().values()
+    latest_activities = activity_gateway.get_latest_activity_per_plan().values()
 
     if client.has_external_files():
         communication.warn(
@@ -58,24 +56,22 @@ def _get_status(client: LocalClient, activity_gateway: IActivityGateway):
     except TypeError:
         communication.warn("Git HEAD is detached!\n Please move back to your working branch to use renku\n")
 
-    with measure("CALCULATE MODIFIED"):
-        modified, deleted = _get_modified_paths(activities=latest_activities)
+    modified, deleted = _get_modified_paths(activities=latest_activities)
 
     if not modified and not deleted:
         return None, None, None
 
     stales = defaultdict(set)
 
-    with measure("CALCULATE UPDATES"):
-        for activity, usage in modified:
-            usage_path = _get_relative_path(client, usage.entity.path)
-            for generation in activity.generations:
-                generation_path = _get_relative_path(client, generation.entity.path)
-                stales[generation_path].add(usage_path)
-            downstream_activities = activity_gateway.get_downstream_activities(activity)
-            paths = [_get_relative_path(client, g.entity.path) for a in downstream_activities for g in a.generations]
-            for p in paths:
-                stales[p].add(usage_path)
+    for activity, usage in modified:
+        usage_path = _get_relative_path(client, usage.entity.path)
+        for generation in activity.generations:
+            generation_path = _get_relative_path(client, generation.entity.path)
+            stales[generation_path].add(usage_path)
+        downstream_activities = activity_gateway.get_downstream_activities(activity)
+        paths = [_get_relative_path(client, g.entity.path) for a in downstream_activities for g in a.generations]
+        for p in paths:
+            stales[p].add(usage_path)
 
     modified = {_get_relative_path(client, v[1].entity.path) for v in modified}
 

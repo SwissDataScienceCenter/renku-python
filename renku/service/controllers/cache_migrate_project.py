@@ -18,13 +18,14 @@
 """Renku service migrate project controller."""
 from renku.core.utils.contexts import click_context
 from renku.service.cache.models.job import Job
-from renku.service.config import PROJECT_CLONE_NO_DEPTH
+from renku.service.config import MESSAGE_PREFIX, PROJECT_CLONE_NO_DEPTH
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.logger import worker_log
 from renku.service.serializers.cache import ProjectMigrateRequest, ProjectMigrateResponseRPC
 from renku.service.utils.callback import ServiceCallback
 from renku.service.views import result_response
+from renku.version import __version__
 
 
 def execute_migration(
@@ -71,7 +72,7 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.skip_template_update = self.ctx.get("skip_template_update", False)
         self.skip_docker_update = self.ctx.get("skip_docker_update", False)
         self.skip_migrations = self.ctx.get("skip_migrations", False)
-        self.commit_message = self.ctx.get("commit_message", None)
+        self.commit_message = f"{MESSAGE_PREFIX} migrate to latest version for renku {__version__}"
 
         super(MigrateProjectCtrl, self).__init__(
             cache,

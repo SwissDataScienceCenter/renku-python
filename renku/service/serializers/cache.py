@@ -29,7 +29,6 @@ from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.common import (
     ArchiveSchema,
     AsyncSchema,
-    CommitSchema,
     FileDetailsSchema,
     LocalRepositorySchema,
     RemoteRepositorySchema,
@@ -192,7 +191,7 @@ class ProjectListResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectListResponse)
 
 
-class ProjectMigrateRequest(AsyncSchema, CommitSchema, LocalRepositorySchema, RemoteRepositorySchema):
+class ProjectMigrateRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema):
     """Request schema for project migrate."""
 
     force_template_update = fields.Boolean(default=False)
@@ -201,10 +200,8 @@ class ProjectMigrateRequest(AsyncSchema, CommitSchema, LocalRepositorySchema, Re
     skip_migrations = fields.Boolean(default=False)
 
     @pre_load()
-    def default_commit_message(self, data, **kwargs):
-        """Set default commit message."""
-        if not data.get("commit_message"):
-            data["commit_message"] = "service: renku migrate"
+    def handle_ref(self, data, **kwargs):
+        """Handle ref and branch."""
 
         # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field
         # even if interally it gets converted to "ref" later.

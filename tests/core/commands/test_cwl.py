@@ -292,7 +292,7 @@ def test_input_directory(client):
 @pytest.mark.skip("CWLConverter doesn't yet support new metadata, renable once it does")
 def test_existing_output_directory(client, runner, project):
     """Test creation of InitialWorkDirRequirement for output."""
-    from renku.core.models.workflow.converters.cwl import CWLConverter
+    from renku.core.management.workflow.converters.cwl import CWLConverter
 
     client.path = client.path
     output = client.path / "output"

@@ -17,6 +17,10 @@
 # limitations under the License.
 """Test ``workflow`` commands."""
 
+from pathlib import Path
+
+from cwl_utils import parser_v1_2 as cwlgen
+
 from renku.cli import cli
 from renku.core.metadata.database import Database
 from tests.utils import format_result_exception
@@ -147,3 +151,147 @@ def test_workflow_show(runner, project, run_shell, client):
     assert "Links:" in result.output
     assert "Mappings:" in result.output
     assert "My composite workflow" in result.output
+
+
+def test_workflow_remove_command(runner, project):
+    """test workflow remove with builder."""
+    workflow_name = "test_workflow"
+
+    result = runner.invoke(cli, ["workflow", "remove", workflow_name])
+    assert 2 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", workflow_name, "echo", "foo"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["workflow", "remove", "--force", workflow_name])
+    assert 0 == result.exit_code
+
+
+def test_workflow_export_command(runner, project):
+    """test workflow export with builder."""
+    result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", "run1", "touch", "data.csv"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["workflow", "export", "run1", "-o", "run1.cwl"])
+    assert 0 == result.exit_code
+    assert Path("run1.cwl").exists()
+
+    workflow = cwlgen.load_document("run1.cwl")
+    assert workflow.baseCommand[0] == "touch"
+    assert len(workflow.inputs) == 3
+    assert len(workflow.outputs) == 1
+
+
+def test_workflow_edit(runner, client, run_shell):
+    """Test naming of CWL tools and workflows."""
+
+    def _get_plan_id(output):
+        return output.split("\n")[0].split(":")[1].strip()
+
+    workflow_name = "run1"
+    result = runner.invoke(cli, ["run", "--name", workflow_name, "touch", "data.txt"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    cmd = ["workflow", "edit", workflow_name, "--name", "first"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+
+    test_plan = database["plans-by-name"][workflow_name]
+    first_plan = database["plans-by-name"]["first"]
+
+    assert first_plan
+    assert first_plan.name == "first"
+    assert first_plan.derived_from == test_plan.id
+
+    cmd = ["workflow", "edit", workflow_name, "--description", "Test workflow"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+    first_plan = database["plans"][_get_plan_id(result.stdout)]
+    assert first_plan.description == "Test workflow"
+
+    # edit parameter
+    cmd = ["workflow", "edit", workflow_name, "--rename-param", "param1=param2"]
+    result = runner.invoke(cli, cmd)
+    assert 0 != result.exit_code, format_result_exception(result)
+
+    cmd = ["workflow", "edit", workflow_name, "--set", "param1=0"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+    edited_plan_id = _get_plan_id(result.output)
+
+    database = Database.from_path(client.database_path)
+    renamed_param_plan = database["plans"][_get_plan_id(result.output)]
+    assert len(renamed_param_plan.parameters) > 0
+
+    cmd = ["workflow", "edit", workflow_name, "--rename-param", "param1=param2"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+    renamed_param_plan = database["plans"][_get_plan_id(result.output)]
+    parameter_names = list(map(lambda x: x.name, renamed_param_plan.parameters))
+    assert len(parameter_names) > 0
+    assert "param1" not in parameter_names
+    assert "param2" in parameter_names
+    param2_plan_id = _get_plan_id(result.stdout)
+
+    # edit parameter description
+    cmd = ["workflow", "edit", param2_plan_id, "--describe-param", "param1=Test"]
+    result = runner.invoke(cli, cmd)
+    assert 0 != result.exit_code, format_result_exception(result)
+
+    cmd = ["workflow", "edit", param2_plan_id, "--describe-param", 'param2="Test parameter"']
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+    renamed_param_plan = database["plans"][_get_plan_id(result.output)]
+    assert "Test parameter" == renamed_param_plan.parameters[0].description
+
+    # edit parameter mapping
+    cmd = ["run", "--name", "run2", "cp", "data.txt", "data2.txt"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(
+        cli,
+        [
+            "workflow",
+            "compose",
+            "--description",
+            "My composite workflow",
+            "--map",
+            "input_str=@step1.@param1",
+            "--map",
+            "output_file=run2.@output1",
+            "--link",
+            "@step1.@output1=@step2.@input1",
+            "--set",
+            "input_str=b",
+            "--set",
+            "output_file=other_output.csv",
+            "-p",
+            "input_str=the input string for the workflow",
+            "-p",
+            "output_file=the final output file produced",
+            "composite_workflow",
+            edited_plan_id,
+            "run2",
+        ],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    # remove mapping
+    cmd = ["workflow", "edit", "composite_workflow", "--map", "output_file="]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+    edited_composite_plan = database["plans"][_get_plan_id(result.output)]
+    assert len(edited_composite_plan.mappings) == 1
+    assert edited_composite_plan.mappings[0].mapped_parameters[0].name == "param1"

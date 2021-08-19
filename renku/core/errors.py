@@ -505,6 +505,14 @@ class MappingExistsError(RenkuException):
         )
 
 
+class MappingNotFoundError(RenkuException):
+    """Raised when a parameter mapping does not exist."""
+
+    def __init__(self, mapping: str, workflow: str):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Cannot find mapping '{mapping}' on workflow {workflow}")
+
+
 class ChildWorkflowNotFoundError(RenkuException):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 

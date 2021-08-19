@@ -73,11 +73,12 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
-    dataset_import(user_data, job_id, project_id, url)
+    commit_message = "service: import remote dataset"
+    dataset_import(user_data, job_id, project_id, url, commit_message=commit_message)
 
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
-    assert f"service: dataset import {url}" == new_commit.message
+    assert commit_message == new_commit.message
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
 
@@ -114,11 +115,12 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
-    dataset_import(user, job_id, project_id, doi)
+    commit_message = "service: import remote dataset"
+    dataset_import(user, job_id, project_id, doi, commit_message=commit_message)
 
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
-    assert f"service: dataset import {doi}" == new_commit.message
+    assert commit_message == new_commit.message
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
     assert response

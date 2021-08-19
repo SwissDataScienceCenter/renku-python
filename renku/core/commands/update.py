@@ -27,8 +27,8 @@ from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.workflow.converters.cwl import CWLConverter
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
-from renku.core.models.workflow.converters.cwl import CWLConverter
 from renku.core.utils.git import add_to_git
 from renku.version import __version__, version_url
 

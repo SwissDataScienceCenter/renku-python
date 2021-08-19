@@ -23,6 +23,7 @@ from pathlib import Path
 from renku.core.commands.dataset import add_to_dataset
 from renku.core.errors import RenkuException
 from renku.service.cache.models.job import Job
+from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.jobs.contexts import enqueue_retry
@@ -41,9 +42,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets add controller."""
         self.ctx = DatasetsAddFileCtrl.REQUEST_SERIALIZER.load(request_data)
-
-        if not self.ctx["commit_message"]:
-            self.ctx["commit_message"] = "service: dataset add {0}".format(self.ctx["name"])
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset add {self.ctx['name']}"
 
         super(DatasetsAddFileCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
@@ -60,7 +59,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
             local_path = None
 
             if "file_url" in _file:
-                commit_message = "{0}{1}".format(self.ctx["commit_message"], _file["file_url"])
+                commit_message = self.ctx["commit_message"]
 
                 job = self.cache.make_job(
                     self.user,
@@ -96,9 +95,9 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 local_path = self.project_path / Path(_file["file_path"])
 
             if not local_path or not local_path.exists():
-                raise RenkuException("invalid file reference: {0}".format(json.dumps(_file)))
+                raise RenkuException(f"invalid file reference: {json.dumps(_file)}")
 
-            self.ctx["commit_message"] += " {0}".format(local_path.name)
+            self.ctx["commit_message"] += f" {local_path.name}"
             local_paths.append(str(local_path))
 
         return local_paths, enqueued_paths
