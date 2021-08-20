@@ -107,7 +107,7 @@ tests_require = [
     "pytest-timeout==1.4.2",
     "pytest-xdist>=1.34.0,<2.4.0",
     "pytest>=4.0.0,<6.2.5",
-    "responses>=0.7.0,<0.13.4",
+    "responses>=0.7.0,<0.13.5",
 ]
 
 
@@ -123,7 +123,7 @@ service_requires = [
     "python-dotenv==0.18.0",
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
-    "rq==1.8.1",
+    "rq==1.9.0",
     "sentry-sdk[flask]>=0.7.4,<1.3.2",
     "walrus==0.8.2",
 ]
@@ -185,7 +185,7 @@ install_requires = [
     "rdflib-jsonld>=0.5.0,<0.6.0",
     "rdflib>=5.0.0,<5.1",
     "requests>=2.23.0,<2.26.0",
-    "rich>=9.3.0,<10.7.0",
+    "rich>=9.3.0,<10.8.0",
     "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.62.1",
