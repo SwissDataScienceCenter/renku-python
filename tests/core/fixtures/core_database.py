@@ -24,6 +24,7 @@ from typing import Tuple
 import pytest
 
 from renku.core import errors
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.metadata.database import Database
 
 
@@ -59,9 +60,48 @@ class DummyStorage:
         return filename in self._files
 
 
+class DummyDatabaseDispatcher:
+    """DatabaseDispatcher with DummyStorage.
+
+    Handles getting current database (Database) and entering/exiting the stack for the database.
+    """
+
+    def __init__(self, database: Database):
+        self.database = database
+
+    @property
+    def current_database(self) -> Database:
+        """Get the currently active database."""
+        return self.database
+
+    def push_database_to_stack(self, path: str, commit: bool = False) -> None:
+        """Create and push a new database to the stack."""
+        pass
+
+    def pop_database(self) -> None:
+        """Remove the current database from the stack."""
+        pass
+
+    def finalize_dispatcher(self) -> None:
+        """Close all database contexts."""
+        pass
+
+
 @pytest.fixture
 def database() -> Tuple[Database, DummyStorage]:
     """A Database with in-memory storage."""
+    import BTrees
+    from zc.relation.catalog import Catalog
+
+    from renku.core.metadata.gateway.database_gateway import (
+        IActivityDownstreamRelation,
+        downstream_transitive_factory,
+        dump_activity,
+        dump_downstream_relations,
+        load_activity,
+        load_downstream_relations,
+    )
+    from renku.core.models.dataset import Dataset
     from renku.core.models.provenance.activity import Activity
     from renku.core.models.workflow.plan import AbstractPlan
 
@@ -69,8 +109,27 @@ def database() -> Tuple[Database, DummyStorage]:
     database = Database(storage=storage)
 
     database.add_index(name="activities", object_type=Activity, attribute="id")
+    database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
+    database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
+    database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
+
+    database.add_root_object(name="_downstream_relations", obj=BTrees.OOBTree.OOBTree())
+
+    activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
+    activity_catalog.addValueIndex(
+        IActivityDownstreamRelation["downstream"], dump_activity, load_activity, btree=BTrees.family32.OO, multiple=True
+    )
+    activity_catalog.addValueIndex(
+        IActivityDownstreamRelation["upstream"], dump_activity, load_activity, btree=BTrees.family32.OO, multiple=True
+    )
+    activity_catalog.addDefaultQueryFactory(downstream_transitive_factory)
+    database.add_root_object(name="activity-catalog", obj=activity_catalog)
+
     database.add_index(name="plans", object_type=AbstractPlan, attribute="id")
     database.add_index(name="plans-by-name", object_type=AbstractPlan, attribute="name")
+
+    database.add_index(name="datasets", object_type=Dataset, attribute="name")
+    database.add_index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
 
     yield database, storage
 
@@ -80,21 +139,26 @@ def database_injection_bindings():
     """Create injection bindings for a database."""
 
     def _add_database_injection_bindings(bindings):
+        from renku.core.management.command_builder.database_dispatcher import DatabaseDispatcher
         from renku.core.management.interface.activity_gateway import IActivityGateway
+        from renku.core.management.interface.client_dispatcher import IClientDispatcher
+        from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
         from renku.core.management.interface.database_gateway import IDatabaseGateway
         from renku.core.management.interface.dataset_gateway import IDatasetGateway
         from renku.core.management.interface.plan_gateway import IPlanGateway
         from renku.core.management.interface.project_gateway import IProjectGateway
-        from renku.core.metadata.database import Database
         from renku.core.metadata.gateway.activity_gateway import ActivityGateway
         from renku.core.metadata.gateway.database_gateway import DatabaseGateway
         from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
         from renku.core.metadata.gateway.plan_gateway import PlanGateway
         from renku.core.metadata.gateway.project_gateway import ProjectGateway
 
-        database = Database.from_path(bindings["bindings"]["LocalClient"].database_path)
+        dispatcher = DatabaseDispatcher()
+        dispatcher.push_database_to_stack(
+            bindings["bindings"][IClientDispatcher].current_client.database_path, commit=True
+        )
 
-        bindings["bindings"][Database] = database
+        bindings["bindings"][IDatabaseDispatcher] = dispatcher
 
         bindings["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
         bindings["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
@@ -108,7 +172,7 @@ def database_injection_bindings():
 
 
 @pytest.fixture
-def dummy_database_injection_bindings():
+def dummy_database_injection_bindings(database):
     """Create injection bindings for a database."""
 
     def _add_database_injection_bindings(bindings):
@@ -117,17 +181,13 @@ def dummy_database_injection_bindings():
         from renku.core.management.interface.dataset_gateway import IDatasetGateway
         from renku.core.management.interface.plan_gateway import IPlanGateway
         from renku.core.management.interface.project_gateway import IProjectGateway
-        from renku.core.metadata.database import Database
         from renku.core.metadata.gateway.activity_gateway import ActivityGateway
         from renku.core.metadata.gateway.database_gateway import DatabaseGateway
         from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
         from renku.core.metadata.gateway.plan_gateway import PlanGateway
         from renku.core.metadata.gateway.project_gateway import ProjectGateway
 
-        storage = DummyStorage()
-        database = Database(storage=storage)
-
-        bindings["bindings"][Database] = database
+        bindings["bindings"][IDatabaseDispatcher] = DummyDatabaseDispatcher(database[0])
 
         bindings["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
         bindings["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
@@ -174,6 +234,16 @@ def client_database_injection_manager(client_injection_bindings, database_inject
 
     def _inner(client):
         return injection_manager(database_injection_bindings(client_injection_bindings(client)))
+
+    return _inner
+
+
+@pytest.fixture
+def dummy_database_injection_manager(dummy_database_injection_bindings, injection_manager):
+    """Fixture for context manager with client and db injection."""
+
+    def _inner(client):
+        return injection_manager(dummy_database_injection_bindings({"bindings": {}, "constructor_bindings": {}}))
 
     return _inner
 

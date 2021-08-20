@@ -39,18 +39,17 @@ import attr
 import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
-from inject import InjectorException
 from wcmatch import glob
 from yagup import GitURL
 
 from renku.core import errors
 from renku.core.management.clone import clone
-from renku.core.management.command_builder.command import inject, update_injected_client
+from renku.core.management.command_builder.command import inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.dataset import get_dataset
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.repository import RepositoryApiMixin
-from renku.core.metadata.database import Database
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models import dataset as new_datasets
 from renku.core.models.dataset import get_dataset_data_dir, is_dataset_name_valid
@@ -140,37 +139,21 @@ class DatasetsApiMixin(object):
         datasets_provenance = DatasetsProvenance()
         return {d.name: d for d in datasets_provenance.datasets}
 
-    # FIXME: Remove this method and use proper injection
-    def get_database(self) -> Database:
-        """Return a Database instance."""
-
-        @inject.autoparams()
-        def get_injected_database(database: Database):
-            return database
-
-        if not self._database:
-            try:
-                self._database = get_injected_database()
-            except InjectorException:
-                self._database = Database.from_path(self.database_path)
-
-        return self._database
-
-    def get_datasets_provenance(self) -> DatasetsProvenance:
-        """Return a DatasetsProvenance instance."""
-
-        if not self._datasets_provenance:
-            self._datasets_provenance = DatasetsProvenance()
-
-        return self._datasets_provenance
-
     @staticmethod
     def get_dataset(name, strict=False, immutable=False) -> Optional[new_datasets.Dataset]:
         """Load dataset reference file."""
         return get_dataset(name=name, strict=strict, immutable=immutable)
 
     @contextmanager
-    def with_dataset(self, name=None, create=False, commit_database=False, creator: Person = None):
+    @inject.autoparams("database_dispatcher")
+    def with_dataset(
+        self,
+        database_dispatcher: IDatabaseDispatcher,
+        name: str = None,
+        create: bool = False,
+        commit_database: bool = False,
+        creator: Person = None,
+    ):
         """Yield an editable metadata object for a dataset."""
         dataset = self.get_dataset(name=name)
 
@@ -190,13 +173,12 @@ class DatasetsApiMixin(object):
             raise
 
         if commit_database:
-            self.get_datasets_provenance().add_or_update(dataset, creator=creator)
-            self.get_database().commit()
+            datasets_provenance = DatasetsProvenance()
+            datasets_provenance.add_or_update(dataset, creator=creator)
+            database_dispatcher.current_database.commit()
 
-    @inject.autoparams()
     def create_dataset(
         self,
-        datasets_provenance: DatasetsProvenance,
         name=None,
         title=None,
         description=None,
@@ -235,6 +217,7 @@ class DatasetsApiMixin(object):
             self.set_dataset_images(dataset, images, safe_image_paths)
 
         if update_provenance:
+            datasets_provenance = DatasetsProvenance()
             datasets_provenance.add_or_update(dataset)
 
         return dataset
@@ -346,7 +329,6 @@ class DatasetsApiMixin(object):
         self,
         dataset,
         urls,
-        datasets_provenance: DatasetsProvenance,
         force=False,
         overwrite=False,
         sources=(),
@@ -506,6 +488,7 @@ class DatasetsApiMixin(object):
         if clear_files_before:
             dataset.clear_files()
         dataset.add_or_update_files(dataset_files)
+        datasets_provenance = DatasetsProvenance()
         datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
 
     def is_protected_path(self, path):
@@ -819,8 +802,7 @@ class DatasetsApiMixin(object):
         except SubprocessError as e:
             raise errors.GitError(f"Cannot pull LFS objects from server: {e}")
 
-    @inject.autoparams()
-    def move_files(self, files, to_dataset, datasets_provenance: DatasetsProvenance):
+    def move_files(self, files, to_dataset):
         """Move files and their metadata from one or more datasets to a target dataset."""
         datasets = [d.copy() for d in self.datasets.values()]
         if to_dataset:
@@ -858,6 +840,7 @@ class DatasetsApiMixin(object):
         finally:
             communication.finalize_progress(progress_name)
 
+        datasets_provenance = DatasetsProvenance()
         for dataset in modified_datasets.values():
             datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
         if to_dataset:
@@ -894,13 +877,11 @@ class DatasetsApiMixin(object):
 
         return updated_files, deleted_files
 
-    @inject.autoparams()
     def _update_datasets_metadata(
         self,
         updated_files: List[DynamicProxy],
         deleted_files: List[DynamicProxy],
         delete,
-        datasets_provenance: DatasetsProvenance,
     ):
         modified_datasets = {}
 
@@ -916,6 +897,7 @@ class DatasetsApiMixin(object):
                 modified_datasets[file.dataset.name] = file.dataset
                 file.dataset.unlink_file(file.entity.path)
 
+        datasets_provenance = DatasetsProvenance()
         for dataset in modified_datasets.values():
             datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
 
@@ -1043,8 +1025,7 @@ class DatasetsApiMixin(object):
         except GitCommandError:
             return None
 
-    @inject.autoparams()
-    def update_external_files(self, records: List[DynamicProxy], datasets_provenance: DatasetsProvenance):
+    def update_external_files(self, records: List[DynamicProxy]):
         """Update files linked to external storage."""
         updated_files_paths = []
         updated_datasets = {}
@@ -1068,6 +1049,8 @@ class DatasetsApiMixin(object):
         add_to_git(self.repo.git, *updated_files_paths, force=True)
         self.repo.git.add(self.renku_pointers_path, force=True)
         self.repo.index.commit("renku dataset: updated {} external files".format(len(updated_files_paths)))
+
+        datasets_provenance = DatasetsProvenance()
 
         for dataset in updated_datasets.values():
             for file in dataset.files:
@@ -1190,9 +1173,6 @@ class DatasetsApiMixin(object):
                 raise errors.InvalidFileOperation(f"Cannot delete files in {repo_path}: Permission denied")
 
         repo, _ = clone(git_url, path=str(repo_path), install_githooks=False, depth=depth)
-
-        # NOTE: clone updates injected client, undo that until we have a better solution
-        update_injected_client(self)
 
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It

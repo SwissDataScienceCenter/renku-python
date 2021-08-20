@@ -25,6 +25,7 @@ import attr
 
 from renku.core import errors
 from renku.core.management.command_builder import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 
 @attr.s(slots=True)
@@ -83,9 +84,11 @@ class LinkReference:
         os.symlink(os.path.relpath(str(reference_path), start=str(self.path.parent)), str(self.path))
 
     @classmethod
-    @inject.params(client="LocalClient")
-    def iter_items(cls, client, common_path=None):
+    @inject.autoparams()
+    def iter_items(cls, client_dispatcher: IClientDispatcher, common_path=None):
         """Find all references in the repository."""
+        client = client_dispatcher.current_client
+
         refs_path = path = client.renku_path / cls.REFS
         if common_path:
             path = path / common_path
@@ -96,9 +99,11 @@ class LinkReference:
             yield cls(client=client, name=str(name.relative_to(refs_path)))
 
     @classmethod
-    @inject.params(client="LocalClient")
-    def create(cls, client, name, force=False):
+    @inject.autoparams()
+    def create(cls, client_dispatcher: IClientDispatcher, name, force=False):
         """Create symlink to object in reference path."""
+        client = client_dispatcher.current_client
+
         ref = cls(client=client, name=name)
         path = ref.path
         if os.path.lexists(path):

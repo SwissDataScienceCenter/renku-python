@@ -39,8 +39,8 @@ from renku.core.commands.providers.dataverse_metadata_templates import (
 )
 from renku.core.commands.providers.doi import DOIProvider
 from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import DatasetFile
 from renku.core.models.provenance.agent import PersonSchema
@@ -236,9 +236,11 @@ class DataverseProvider(ProviderApi):
         )
 
     @inject.autoparams()
-    def set_parameters(self, client: LocalClient, *, dataverse_server, dataverse_name, **kwargs):
+    def set_parameters(self, client_dispatcher: IClientDispatcher, *, dataverse_server, dataverse_name, **kwargs):
         """Set and validate required parameters for a provider."""
         CONFIG_BASE_URL = "server_url"
+
+        client = client_dispatcher.current_client
 
         if not dataverse_server:
             dataverse_server = client.get_value("dataverse", CONFIG_BASE_URL)

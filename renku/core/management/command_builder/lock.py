@@ -31,12 +31,12 @@ class ProjectLock(Command):
 
     def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Lock the project."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
+        if "client_dispatcher" not in context:
+            raise ValueError("Project lock builder needs a IClientDispatcher to be set.")
         if "stack" not in context:
-            raise ValueError("Commit builder needs a stack to be set.")
+            raise ValueError("Project lock builder needs a stack to be set.")
 
-        context["stack"].enter_context(context["client"].lock)
+        context["stack"].enter_context(context["client_dispatcher"].current_client.lock)
 
     @check_finalized
     def build(self) -> Command:
@@ -56,12 +56,12 @@ class DatasetLock(Command):
         self._builder = builder
 
     def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
+        if "client_dispatcher" not in context:
+            raise ValueError("Dataset lock builder needs a IClientDispatcher to be set.")
         if "stack" not in context:
-            raise ValueError("Commit builder needs a stack to be set.")
+            raise ValueError("Dataset lock builder needs a stack to be set.")
 
-        context["stack"].enter_context(context["client"].lock)
+        context["stack"].enter_context(context["client_dispatcher"].current_client.lock)
 
     @check_finalized
     def build(self) -> Command:

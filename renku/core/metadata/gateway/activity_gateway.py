@@ -17,16 +17,17 @@
 # limitations under the License.
 """Renku activity database gateway implementation."""
 
+from pathlib import Path
 from typing import Dict, List, Set
 
 from persistent.list import PersistentList
-from zc.relation import RELATION
 
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
-from renku.core.metadata.database import Database
-from renku.core.metadata.gateway.database_gateway import downstream_transitive_factory, upstream_transitive_factory
+from renku.core.metadata.gateway.database_gateway import ActivityDownstreamRelation
+from renku.core.models.entity import Collection
 from renku.core.models.provenance.activity import Activity, Usage
 from renku.core.models.workflow.plan import AbstractPlan
 
@@ -34,61 +35,83 @@ from renku.core.models.workflow.plan import AbstractPlan
 class ActivityGateway(IActivityGateway):
     """Gateway for activity database operations."""
 
-    database = inject.attr(Database)
+    database_dispatcher = inject.attr(IDatabaseDispatcher)
 
     def get_latest_activity_per_plan(self) -> Dict[AbstractPlan, Activity]:
         """Get latest activity for each plan."""
-        plan_activities = self.database["latest-activity-by-plan"].values()
+        plan_activities = self.database_dispatcher.current_database["latest-activity-by-plan"].values()
 
         return {a.association.plan: a for a in plan_activities}
 
     def get_plans_and_usages_for_latest_activities(self) -> Dict[AbstractPlan, List[Usage]]:
         """Get all usages associated with a plan by its latest activity."""
-        plan_activities = self.database["latest-activity-by-plan"].values()
+        plan_activities = self.database_dispatcher.current_database["latest-activity-by-plan"].values()
 
         return {a.association.plan: a.usages for a in plan_activities}
 
     def get_downstream_activities(self, activity: Activity) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
         # NOTE: since indices are populated one way when adding an activity, we need to query two indices
-        tok = self.database["activity-catalog"].tokenizeQuery
-        downstream = set(
-            self.database["activity-catalog"].findValues(
-                "downstream_activity", tok({RELATION: activity}), queryFactory=downstream_transitive_factory
-            )
-        )
+        database = self.database_dispatcher.current_database
 
-        downstream |= set(
-            self.database["activity-catalog"].findRelations(
-                tok({"upstream_activity": activity}), queryFactory=upstream_transitive_factory
-            )
-        )
+        tok = database["activity-catalog"].tokenizeQuery
+        downstream = set(database["activity-catalog"].findValues("downstream", tok(upstream=activity)))
 
         return downstream
 
     def add(self, activity: Activity):
         """Add an ``Activity`` to storage."""
-        self.database["activities"].add(activity)
+        database = self.database_dispatcher.current_database
 
-        by_usage = self.database["activities-by-usage"]
+        database["activities"].add(activity)
+
+        upstreams = []
+        downstreams = []
+
+        by_usage = database["activities-by-usage"]
+        by_generation = database["activities-by-generation"]
+
         for usage in activity.usages:
             if usage.entity.path not in by_usage:
                 by_usage[usage.entity.path] = PersistentList()
             by_usage[usage.entity.path].append(activity)
 
-        by_generation = self.database["activities-by-generation"]
+            if isinstance(usage.entity, Collection):
+                # NOTE: Get dependants that are in a generated directory
+                for path, activities in database["activities-by-generation"].items():
+                    parent = Path(usage.entity.path).resolve()
+                    child = Path(path).resolve()
+                    if parent == child or parent in child.parents:
+                        upstreams.extend(activities)
+            elif usage.entity.path in by_generation:
+                upstreams.extend(by_generation[usage.entity.path])
+
         for generation in activity.generations:
             if generation.entity.path not in by_generation:
                 by_generation[generation.entity.path] = PersistentList()
             by_generation[generation.entity.path].append(activity)
 
-        self.database["activity-catalog"].index(activity)
+            if isinstance(generation.entity, Collection):
+                # NOTE: Get dependants that are in a generated directory
+                for path, activities in by_generation.items():
+                    parent = Path(generation.entity.path).resolve()
+                    child = Path(path).resolve()
+                    if parent == child or parent in child.parents:
+                        downstreams.extend(activities)
+            elif generation.entity.path in by_usage:
+                downstreams.extend(by_usage[generation.entity.path])
+
+        if upstreams:
+            database["activity-catalog"].index(ActivityDownstreamRelation(downstream=[activity], upstream=upstreams))
+
+        if downstreams:
+            database["activity-catalog"].index(ActivityDownstreamRelation(downstream=downstreams, upstream=[activity]))
 
         plan_gateway = inject.instance(IPlanGateway)
 
         plan_gateway.add(activity.association.plan)
 
-        existing_activity = self.database["latest-activity-by-plan"].get(activity.association.plan.id)
+        existing_activity = database["latest-activity-by-plan"].get(activity.association.plan.id)
 
         if not existing_activity or existing_activity.ended_at_time < activity.ended_at_time:
-            self.database["latest-activity-by-plan"].add(activity)
+            database["latest-activity-by-plan"].add(activity)

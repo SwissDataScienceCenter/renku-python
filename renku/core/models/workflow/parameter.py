@@ -112,7 +112,7 @@ class CommandParameterBase:
     @property
     def actual_value(self):
         """Get the actual value to be used for execution."""
-        if self._v_actual_value_set:
+        if getattr(self, "_v_actual_value_set", False):
             return self._v_actual_value
 
         return self.default_value

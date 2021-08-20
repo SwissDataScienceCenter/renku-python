@@ -33,9 +33,10 @@ import yaml
 
 from renku.core import errors
 from renku.core.commands.git import set_git_home
-from renku.core.management import LocalClient
-from renku.core.management.command_builder.command import Command, inject, update_injected_client
+from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.models.tabulate import tabulate
@@ -176,9 +177,11 @@ def verify_template_variables(template_data, metadata):
     return metadata
 
 
-@inject.autoparams("client")
-def get_existing_template_files(template_path, metadata, client: LocalClient, force=False):
+@inject.autoparams()
+def get_existing_template_files(template_path, metadata, client_dispatcher: IClientDispatcher, force=False):
     """Gets files in the template that already exists in the repo."""
+    client = client_dispatcher.current_client
+
     template_files = list(client.get_template_files(template_path, metadata))
 
     existing = []
@@ -193,8 +196,10 @@ def get_existing_template_files(template_path, metadata, client: LocalClient, fo
 
 
 @inject.autoparams()
-def create_backup_branch(path, client: LocalClient):
+def create_backup_branch(path, client_dispatcher: IClientDispatcher):
     """Creates a backup branch of the repo."""
+    client = client_dispatcher.current_client
+
     branch_name = None
     if not is_path_empty(path):
 
@@ -240,9 +245,12 @@ def _init(
     describe,
     data_dir,
     initial_branch,
-    client: LocalClient,
+    client_dispatcher: IClientDispatcher,
+    database_dispatcher: IDatabaseDispatcher,
 ):
     """Initialize a renku project."""
+    client = client_dispatcher.current_client
+
     template_manifest, template_folder, template_source, template_version = fetch_template(
         template_source, template_ref
     )
@@ -269,7 +277,8 @@ def _init(
     ctx.obj = client = attr.evolve(
         client, path=path, data_dir=data_dir, external_storage_requested=external_storage_requested
     )
-    update_injected_client(client)
+    client_dispatcher.push_created_client_to_stack(client)
+    database_dispatcher.push_database_to_stack(client.database_path, commit=True)
 
     communication.echo("Initializing Git repository...")
     client.init_repository(force, None, initial_branch=initial_branch)
@@ -411,7 +420,7 @@ def fetch_template(template_source, template_ref):
         template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
         template_manifest = read_template_manifest(template_folder)
         template_source = "renku"
-        template_version = __version__
+        template_version = str(__version__)
 
     return template_manifest, template_folder, template_source, template_version
 
@@ -527,7 +536,7 @@ def create_from_template(
 def _create_from_template_local(
     template_path,
     name,
-    client: LocalClient,
+    client_dispatcher: IClientDispatcher,
     metadata={},
     default_metadata={},
     template_version=None,
@@ -541,6 +550,8 @@ def _create_from_template_local(
     commit_message=None,
 ):
     """Initialize a new project from a template."""
+
+    client = client_dispatcher.current_client
 
     metadata = {**default_metadata, **metadata}
 

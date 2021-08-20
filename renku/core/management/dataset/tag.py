@@ -21,13 +21,11 @@ import re
 from typing import List
 
 from renku.core import errors
-from renku.core.management.command_builder import inject
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.models.dataset import Dataset, DatasetTag
 
 
-@inject.autoparams()
-def add_dataset_tag(dataset: Dataset, tag: str, datasets_provenance: DatasetsProvenance, description="", force=False):
+def add_dataset_tag(dataset: Dataset, tag: str, description="", force=False):
     """Adds a new tag to a dataset.
 
     Validates if the tag already exists and that the tag follows the same rules as docker tags.
@@ -43,7 +41,7 @@ def add_dataset_tag(dataset: Dataset, tag: str, datasets_provenance: DatasetsPro
             f"Tag '{tag}' is invalid.\n"
             "Only characters a-z, A-Z, 0-9, ., - and _ are allowed.\nTag can't start with a . or -"
         )
-
+    datasets_provenance = DatasetsProvenance()
     tags = datasets_provenance.get_all_tags(dataset)
     existing_tag = next((t for t in tags if t.name == tag), None)
     if existing_tag:
@@ -56,9 +54,10 @@ def add_dataset_tag(dataset: Dataset, tag: str, datasets_provenance: DatasetsPro
     datasets_provenance.add_tag(dataset, new_tag)
 
 
-@inject.autoparams()
-def remove_dataset_tags(dataset: Dataset, tags: List[str], datasets_provenance: DatasetsProvenance):
+def remove_dataset_tags(dataset: Dataset, tags: List[str]):
     """Removes tags from a dataset."""
+    datasets_provenance = DatasetsProvenance()
+
     dataset_tags = datasets_provenance.get_all_tags(dataset)
     tag_names = {t.name for t in dataset_tags}
     not_found = set(tags).difference(tag_names)

@@ -24,11 +24,11 @@ from subprocess import call
 import click
 
 from renku.core import errors
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.git import get_mapped_std_streams
 from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.plan_factory import PlanFactory
 from renku.core.models.provenance.activity import Activity
@@ -53,11 +53,13 @@ def _run_command(
     no_output_detection,
     success_codes,
     command_line,
-    client: LocalClient,
+    client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
 ):
     # NOTE: validate name as early as possible
+    client = client_dispatcher.current_client
+
     if name:
         valid_name = get_slug(name)
         if name != valid_name:

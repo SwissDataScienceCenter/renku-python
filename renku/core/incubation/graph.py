@@ -24,10 +24,10 @@ from pathlib import Path
 from pkg_resources import resource_filename
 
 from renku.core import errors
-from renku.core.management import LocalClient
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.utils.shacl import validate_graph
 
@@ -88,8 +88,10 @@ def export_graph():
 
 
 @inject.autoparams()
-def _export_graph(format, workflows_only, strict, client: LocalClient):
+def _export_graph(format, workflows_only, strict, client_dispatcher: IClientDispatcher):
     """Output graph in specific format."""
+    client = client_dispatcher.current_client
+
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
 

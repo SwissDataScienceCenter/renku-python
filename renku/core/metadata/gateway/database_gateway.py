@@ -17,22 +17,38 @@
 # limitations under the License.
 """Renku generic database gateway implementation."""
 
-from pathlib import Path
-from typing import Iterator
+from uuid import uuid4
 
 import BTrees
 from persistent.list import PersistentList
-from zc.relation import RELATION
 from zc.relation.catalog import Catalog
 from zc.relation.queryfactory import TransposingTransitive
+from zope.interface import Attribute, Interface, implementer
 
 from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
-from renku.core.metadata.database import Database
 from renku.core.models.dataset import Dataset
-from renku.core.models.entity import Collection
 from renku.core.models.provenance.activity import Activity
 from renku.core.models.workflow.plan import AbstractPlan
+
+
+class IActivityDownstreamRelation(Interface):
+    """Interface for activity downstream relation."""
+
+    downstream = Attribute("the downstream activities")
+    upstream = Attribute("the upstream activities")
+
+
+@implementer(IActivityDownstreamRelation)
+class ActivityDownstreamRelation:
+    """Implementation of Downstream interface."""
+
+    def __init__(self, downstream, upstream):
+        self.downstream = downstream
+        self.upstream = upstream
+
+        self.id = uuid4().hex
 
 
 def dump_activity(activity: Activity, catalog, cache) -> str:
@@ -41,86 +57,83 @@ def dump_activity(activity: Activity, catalog, cache) -> str:
 
 
 @inject.autoparams()
-def load_activity(token: str, catalog, cache, database: Database) -> Activity:
+def load_activity(token: str, catalog, cache, database_dispatcher: IDatabaseDispatcher) -> Activity:
     """Load activity from storage token."""
+    database = database_dispatcher.current_database
     return database["activities"].get(token)
 
 
 @inject.autoparams()
-def downstream_activity(activity: Activity, catalog, database: Database) -> Iterator[Activity]:
-    """Map an activity to its downstream dependants."""
-    result = []
-    for generation in activity.generations:
-        if not isinstance(generation.entity, Collection):
-            # NOTE: Get direct dependants
-            result.extend(database["activities-by-usage"].get(generation.entity.path, []))
-        else:
-            # NOTE: Get dependants that are in a generated directory
-            for path, activities in database["activities-by-usage"].items():
-                parent = Path(generation.entity.path).resolve()
-                child = Path(path).resolve()
-                if parent == child or parent in child.parents:
-                    result.extend(activities)
+def dump_downstream_relations(
+    relation: ActivityDownstreamRelation, catalog, cache, database_dispatcher: IDatabaseDispatcher
+):
+    """Dump relation entry to database."""
+    btree = database_dispatcher.current_database["_downstream_relations"]
 
-    return result
+    btree[relation.id] = relation
+
+    return relation.id
 
 
-@inject.autoparams()
-def upstream_activity(activity: Activity, catalog, database: Database) -> Iterator[Activity]:
-    """Map an activity to its upstream predecessors."""
-    result = []
-    for usage in activity.usages:
-        if not isinstance(usage.entity, Collection):
-            # NOTE: Get direct dependants
-            result.extend(database["activities-by-generation"].get(usage.entity.path, []))
-        else:
-            # NOTE: Get dependants that are in a generated directory
-            for path, activities in database["activities-by-generation"].items():
-                parent = Path(usage.entity.path).resolve()
-                child = Path(path).resolve()
-                if parent == child or parent in child.parents:
-                    result.extend(activities)
+def load_downstream_relations(token, catalog, cache, database_dispatcher: IDatabaseDispatcher):
+    """Load relation entry from database."""
+    btree = database_dispatcher.current_database["_downstream_relations"]
 
-    return result
+    return btree[token]
 
 
 # NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
-downstream_transitive_factory = TransposingTransitive(RELATION, "downstream_activity")
-upstream_transitive_factory = TransposingTransitive(RELATION, "upstream_activity")
+downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
 
 
 class DatabaseGateway(IDatabaseGateway):
     """Gateway for base database operations."""
 
-    database = inject.attr(Database)
+    database_dispatcher = inject.attr(IDatabaseDispatcher)
 
     def initialize(self) -> None:
         """Initialize the database."""
-        self.database.clear()
+        database = self.database_dispatcher.current_database
 
-        self.database.add_index(name="activities", object_type=Activity, attribute="id")
-        self.database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
-        self.database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
-        self.database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
+        database.clear()
 
-        activity_catalog = Catalog(dump_activity, load_activity, btree=BTrees.family32.OO)
+        database.add_index(name="activities", object_type=Activity, attribute="id")
+        database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
+        database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
+        database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
+
+        database.add_root_object(name="_downstream_relations", obj=BTrees.OOBTree.OOBTree())
+
+        activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
         activity_catalog.addValueIndex(
-            downstream_activity, dump_activity, load_activity, btree=BTrees.family32.OO, multiple=True
+            IActivityDownstreamRelation["downstream"],
+            dump_activity,
+            load_activity,
+            btree=BTrees.family32.OO,
+            multiple=True,
         )
         activity_catalog.addValueIndex(
-            upstream_activity, dump_activity, load_activity, btree=BTrees.family32.OO, multiple=True
+            IActivityDownstreamRelation["upstream"],
+            dump_activity,
+            load_activity,
+            btree=BTrees.family32.OO,
+            multiple=True,
         )
-        self.database.add_root_object(name="activity-catalog", obj=activity_catalog)
+        activity_catalog.addDefaultQueryFactory(downstream_transitive_factory)
 
-        self.database.add_index(name="plans", object_type=AbstractPlan, attribute="id")
-        self.database.add_index(name="plans-by-name", object_type=AbstractPlan, attribute="name")
+        database.add_root_object(name="activity-catalog", obj=activity_catalog)
 
-        self.database.add_index(name="datasets", object_type=Dataset, attribute="name")
-        self.database.add_index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
-        self.database.add_index(name="datasets-tags", object_type=PersistentList)
+        database.add_index(name="plans", object_type=AbstractPlan, attribute="id")
+        database.add_index(name="plans-by-name", object_type=AbstractPlan, attribute="name")
 
-        self.database.commit()
+        database.add_index(name="datasets", object_type=Dataset, attribute="name")
+        database.add_index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
+        database.add_index(name="datasets-tags", object_type=PersistentList)
+
+        database.commit()
 
     def commit(self) -> None:
         """Commit changes to database."""
-        self.database.commit()
+        database = self.database_dispatcher.current_database
+
+        database.commit()

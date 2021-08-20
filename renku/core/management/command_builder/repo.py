@@ -49,14 +49,16 @@ class Commit(Command):
 
     def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Hook to create a commit transaction."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
+        if "client_dispatcher" not in context:
+            raise ValueError("Commit builder needs a IClientDispatcher to be set.")
         if "stack" not in context:
             raise ValueError("Commit builder needs a stack to be set.")
 
         from renku.core.management.git import prepare_commit
 
-        self.diff_before = prepare_commit(context["client"], commit_only=self._commit_filter_paths)
+        self.diff_before = prepare_commit(
+            context["client_dispatcher"].current_client, commit_only=self._commit_filter_paths
+        )
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
         """Hook that commits changes."""
@@ -68,7 +70,7 @@ class Commit(Command):
 
         try:
             finalize_commit(
-                context["client"],
+                context["client_dispatcher"].current_client,
                 self.diff_before,
                 commit_only=self._commit_filter_paths,
                 commit_empty=self._commit_if_empty,
@@ -105,9 +107,9 @@ class RequireClean(Command):
 
     def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Check if repo is clean."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
-        context["client"].ensure_clean(ignore_std_streams=not builder._track_std_streams)
+        if "client_dispatcher" not in context:
+            raise ValueError("Commit builder needs a IClientDispatcher to be set.")
+        context["client_dispatcher"].current_client.ensure_clean(ignore_std_streams=not builder._track_std_streams)
 
     @check_finalized
     def build(self) -> Command:
@@ -131,24 +133,23 @@ class Isolation(Command):
 
     def _injection_pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Hook to setup dependency injection for commit transaction."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
-        from renku.core.management import LocalClient
+        if "client_dispatcher" not in context:
+            raise ValueError("Commit builder needs a IClientDispatcher to be set.")
         from renku.core.management.git import prepare_worktree
 
-        self.original_client = context["client"]
+        self.original_client = context["client_dispatcher"].current_client
 
         self.new_client, self.isolation, self.path, self.branch_name = prepare_worktree(
-            context["client"], path=None, branch_name=None, commit=None
+            context["client_dispatcher"].current_client, path=None, branch_name=None, commit=None
         )
 
-        context["client"] = self.new_client
-        context["bindings"][LocalClient] = self.new_client
-        context["bindings"]["LocalClient"] = self.new_client
+        context["client_dispatcher"].push_created_client_to_stack(self.new_client)
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
         """Hook that commits changes."""
         from renku.core.management.git import finalize_worktree
+
+        context["client_dispatcher"].pop_client()
 
         try:
             finalize_worktree(

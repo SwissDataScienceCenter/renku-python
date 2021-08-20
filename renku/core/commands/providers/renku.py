@@ -32,20 +32,10 @@ from renku import LocalClient
 from renku.core import errors
 from renku.core.commands.login import read_renku_token
 from renku.core.commands.providers.api import ProviderApi
-from renku.core.management.command_builder.command import inject, replace_injection
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.interface.activity_gateway import IActivityGateway
-from renku.core.management.interface.database_gateway import IDatabaseGateway
-from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.management.interface.plan_gateway import IPlanGateway
-from renku.core.management.interface.project_gateway import IProjectGateway
+from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.migrate import is_project_unsupported, migrate
-from renku.core.metadata.database import Database
-from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-from renku.core.metadata.gateway.database_gateway import DatabaseGateway
-from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-from renku.core.metadata.gateway.plan_gateway import PlanGateway
-from renku.core.metadata.gateway.project_gateway import ProjectGateway
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import get_dataset_data_dir
 from renku.core.utils import communication
@@ -213,8 +203,7 @@ class RenkuProvider(ProviderApi):
 
         return urls.get("ssh"), urls.get("http")
 
-    @inject.autoparams()
-    def _prepare_auth(self, uri, client: LocalClient):
+    def _prepare_auth(self, uri):
         if self._gitlab_token:
             token = self._gitlab_token
         else:
@@ -300,8 +289,10 @@ class _RenkuRecordSerializer:
         return self._dataset
 
     @inject.autoparams()
-    def import_images(self, dataset, client: LocalClient):
+    def import_images(self, dataset, client_dispatcher: IClientDispatcher):
         """Add images from remote dataset."""
+        client = client_dispatcher.current_client
+
         if not self._dataset.images:
             return
 
@@ -353,9 +344,10 @@ class _RenkuRecordSerializer:
         return (self._remote_client.path / self._dataset.data_dir).exists()
 
     @inject.autoparams()
-    def _fetch_dataset(self, client: LocalClient):
+    def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
         repo_path = None
         repo = None
+        client = client_dispatcher.current_client
 
         parsed_uri = urllib.parse.urlparse(self._uri)
 
@@ -380,28 +372,18 @@ class _RenkuRecordSerializer:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
 
         self._remote_client = LocalClient(repo_path)
+        client_dispatcher.push_created_client_to_stack(self._remote_client)
+        database_dispatcher.push_database_to_stack(self._remote_client.database_path)
 
-        database = Database.from_path(self._remote_client.database_path)
+        try:
 
-        bindings = {
-            "LocalClient": self._remote_client,
-            LocalClient: self._remote_client,
-            Database: database,
-        }
-        constructor_bindings = {
-            IDatasetGateway: lambda: DatasetGateway(),
-            DatasetsProvenance: lambda: DatasetsProvenance(),
-            IProjectGateway: lambda: ProjectGateway(),
-            IDatabaseGateway: lambda: DatabaseGateway(),
-            IActivityGateway: lambda: ActivityGateway(),
-            IPlanGateway: lambda: PlanGateway(),
-        }
-
-        with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
             self._migrate_project()
             self._project_repo = repo
 
             self._dataset = self._remote_client.get_dataset(self._name)
+        finally:
+            database_dispatcher.pop_database()
+            client_dispatcher.pop_client()
 
         if not self._dataset:
             raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
@@ -421,13 +403,19 @@ class _RenkuRecordSerializer:
 
     @staticmethod
     @inject.autoparams()
-    def _migrate_project(client: LocalClient):
+    def _migrate_project(client_dispatcher: IClientDispatcher):
         if is_project_unsupported():
             return
+
+        client = client_dispatcher.current_client
+
         # NOTE: We are not interested in migrating workflows when importing datasets
+        previous_migration_type = client.migration_type
         client.migration_type = ~MigrationType.WORKFLOWS
         try:
             communication.disable()
             migrate(skip_template_update=True, skip_docker_update=True)
         finally:
+            client.migration_type = previous_migration_type
+
             communication.enable()

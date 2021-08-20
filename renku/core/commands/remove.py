@@ -22,18 +22,20 @@ from pathlib import Path
 from subprocess import run
 
 from renku.core import errors
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.models.provenance.agent import Person
 from renku.core.utils import communication
 
 
 @inject.autoparams()
-def _remove(sources, edit_command, client: LocalClient, datasets_provenance: DatasetsProvenance):
+def _remove(sources, edit_command, client_dispatcher: IClientDispatcher):
     """Remove files and check repository for potential problems."""
     from renku.core.management.git import _expand_directories
+
+    client = client_dispatcher.current_client
 
     def get_relative_path(path):
         """Format path as relative to the client path."""
@@ -67,6 +69,7 @@ def _remove(sources, edit_command, client: LocalClient, datasets_provenance: Dat
                     dataset.unlink_file(key)
                     client.remove_file(client.path / key)
 
+                datasets_provenance = DatasetsProvenance()
                 datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
             communication.update_progress(progress_text, amount=1)
     finally:

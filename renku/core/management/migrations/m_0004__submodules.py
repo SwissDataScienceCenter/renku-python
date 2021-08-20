@@ -25,13 +25,9 @@ from git import GitError, Repo
 
 from renku.core import errors
 from renku.core.management import LocalClient
-from renku.core.management.command_builder.command import replace_injection
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.interface.activity_gateway import IActivityGateway
-from renku.core.management.interface.database_gateway import IDatabaseGateway
-from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.management.interface.plan_gateway import IPlanGateway
-from renku.core.management.interface.project_gateway import IProjectGateway
+from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.migrations.m_0009__new_metadata_storage import _fetch_datasets
 from renku.core.management.migrations.models.v3 import DatasetFileSchemaV3, get_client_datasets
 from renku.core.management.migrations.models.v9 import (
@@ -40,12 +36,6 @@ from renku.core.management.migrations.models.v9 import (
     generate_file_id,
     generate_label,
 )
-from renku.core.metadata.database import Database
-from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-from renku.core.metadata.gateway.database_gateway import DatabaseGateway
-from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-from renku.core.metadata.gateway.plan_gateway import PlanGateway
-from renku.core.metadata.gateway.project_gateway import ProjectGateway
 from renku.core.utils.urls import remove_credentials
 
 
@@ -54,7 +44,10 @@ def migrate(client):
     _migrate_submodule_based_datasets(client)
 
 
-def _migrate_submodule_based_datasets(client):
+@inject.autoparams()
+def _migrate_submodule_based_datasets(
+    client, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher
+):
     from renku.core.management.migrate import is_project_unsupported, migrate
 
     submodules = client.repo.submodules
@@ -96,24 +89,15 @@ def _migrate_submodule_based_datasets(client):
     remote_clients = {p: LocalClient(p) for p in repo_paths}
 
     for remote_client in remote_clients.values():
-        database = Database.from_path(remote_client.database_path)
-        bindings = {
-            "LocalClient": remote_client,
-            LocalClient: remote_client,
-            Database: database,
-        }
-        constructor_bindings = {
-            IDatasetGateway: lambda: DatasetGateway(),
-            DatasetsProvenance: lambda: DatasetsProvenance(),
-            IProjectGateway: lambda: ProjectGateway(),
-            IDatabaseGateway: lambda: DatabaseGateway(),
-            IActivityGateway: lambda: ActivityGateway(),
-            IPlanGateway: lambda: PlanGateway(),
-        }
+        client_dispatcher.push_created_client_to_stack(remote_client)
+        database_dispatcher.push_database_to_stack(remote_client.database_path, commit=True)
 
-        with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
+        try:
             if not is_project_unsupported():
                 migrate(skip_template_update=True, skip_docker_update=True)
+        finally:
+            database_dispatcher.pop_database()
+            client_dispatcher.pop_client()
 
     metadata = {}
 

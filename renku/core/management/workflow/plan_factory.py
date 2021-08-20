@@ -32,6 +32,7 @@ from git import Actor
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.workflow.types import PATH_OBJECTS, Directory, File
 from renku.core.models.datastructures import DirectoryTree
 from renku.core.models.workflow.parameter import (
@@ -487,9 +488,10 @@ class PlanFactory:
             )
 
     @contextmanager
-    @inject.params(client="LocalClient")
-    def watch(self, client, no_output=False):
+    @inject.autoparams()
+    def watch(self, client_dispatcher: IClientDispatcher, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
+        client = client_dispatcher.current_client
         client.check_external_storage()
 
         repo = client.repo

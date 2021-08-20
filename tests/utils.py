@@ -27,7 +27,10 @@ from typing import Optional
 import pytest
 from flaky import flaky
 
+from renku.core.management.command_builder.command import inject, remove_injector
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.models.dataset import Dataset
 
 
@@ -114,13 +117,6 @@ def modified_environ(*remove, **update):
         [env.pop(k) for k in remove_after]
 
 
-def get_datasets_provenance(client) -> DatasetsProvenance:
-    """Return DatasetsProvenance for a client."""
-    assert client.has_graph_files()
-
-    return DatasetsProvenance()
-
-
 def format_result_exception(result):
     """Format a `runner.invoke` exception result into a nice string repesentation."""
 
@@ -140,7 +136,14 @@ def load_dataset(name: str) -> Optional[Dataset]:
 
 
 @contextmanager
-def with_dataset(client, name=None, commit_database=False):
+@inject.autoparams("dataset_gateway", "database_dispatcher")
+def with_dataset(
+    client,
+    name: str = None,
+    dataset_gateway: IDatasetGateway = None,
+    database_dispatcher: IDatabaseDispatcher = None,
+    commit_database: bool = False,
+):
     """Yield an editable metadata object for a dataset."""
     dataset = client.get_dataset(name=name, strict=True, immutable=True)
     dataset._v_immutable = False
@@ -148,8 +151,8 @@ def with_dataset(client, name=None, commit_database=False):
     yield dataset
 
     if commit_database:
-        client.get_database().register(dataset)
-        client.get_database().commit()
+        dataset_gateway.add_or_remove(dataset)
+        database_dispatcher.current_database.commit()
 
 
 def retry_failed(fn=None, extended: bool = False):
@@ -177,9 +180,6 @@ def retry_failed(fn=None, extended: bool = False):
 @contextlib.contextmanager
 def injection_manager(bindings):
     """Context manager to temporarly do injections."""
-    import inject
-
-    from renku.core.management.command_builder.command import remove_injector
 
     def _bind(binder):
         for key, value in bindings["bindings"].items():
@@ -189,8 +189,12 @@ def injection_manager(bindings):
 
         return binder
 
-    inject.configure(_bind)
+    inject.configure(_bind, bind_in_runtime=False)
     try:
         yield
     finally:
-        remove_injector()
+        try:
+            if IDatabaseDispatcher in bindings["bindings"]:
+                bindings["bindings"][IDatabaseDispatcher].finalize_dispatcher()
+        finally:
+            remove_injector()

@@ -20,19 +20,18 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.management.command_builder.command import replace_injected_client
 from renku.core.management.workflow.plan_factory import PlanFactory
 
 
-def test_1st_tool(client):
+def test_1st_tool(client, client_database_injection_manager):
     """Check creation of 1st tool example from args."""
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = PlanFactory(("echo", "Hello world!")).to_plan()
 
     assert "Hello world!" == plan.parameters[0].default_value
 
 
-def test_03_input(client):
+def test_03_input(client, client_database_injection_manager):
     """Check the essential input parameters."""
     whale = Path(client.path) / "whale.txt"
     whale.touch()
@@ -48,7 +47,7 @@ def test_03_input(client):
         "hello",
         "--file=whale.txt",
     ]
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = PlanFactory(argv, directory=client.path, working_dir=client.path).to_plan()
 
     assert ["-f"] == plan.parameters[0].to_argv()
@@ -65,7 +64,7 @@ def test_03_input(client):
     assert argv == plan.to_argv()
 
 
-def test_base_command_detection(client):
+def test_base_command_detection(client, client_database_injection_manager):
     """Test base command detection."""
     hello = Path(client.path) / "hello.tar"
     hello.touch()
@@ -74,7 +73,7 @@ def test_base_command_detection(client):
     client.repo.index.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = PlanFactory(argv, directory=client.path, working_dir=client.path).to_plan()
 
     assert "tar xf" == plan.command
@@ -84,7 +83,7 @@ def test_base_command_detection(client):
     assert argv == plan.to_argv()
 
 
-def test_base_command_as_file_input(client):
+def test_base_command_as_file_input(client, client_database_injection_manager):
     """Test base command detection when it is a script file."""
     cwd = Path(client.path)
     script = cwd / "script.py"
@@ -97,23 +96,23 @@ def test_base_command_as_file_input(client):
     client.repo.index.commit("add file")
 
     argv = ["script.py", "input.csv"]
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = PlanFactory(argv, directory=client.path, working_dir=client.path).to_plan()
 
     assert not plan.command
     assert 2 == len(plan.inputs)
 
 
-def test_short_base_command_detection(client):
+def test_short_base_command_detection(client, client_database_injection_manager):
     """Test base command detection without parameters."""
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = PlanFactory(("echo", "A")).to_plan()
 
     assert "A" == plan.parameters[0].default_value
     assert ["echo", "A"] == plan.to_argv()
 
 
-def test_04_output(client):
+def test_04_output(client, client_database_injection_manager):
     """Test describtion of outputs from a command."""
     hello = Path(client.path) / "hello.tar"
     hello.touch()
@@ -134,13 +133,13 @@ def test_04_output(client):
 
     assert "hello.txt" == parameters[0].default_value
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = factory.to_plan()
 
     assert argv == plan.to_argv()
 
 
-def test_05_stdout(client):
+def test_05_stdout(client, client_database_injection_manager):
     """Test stdout mapping."""
     output = Path(client.path) / "output.txt"
     output.touch()
@@ -155,13 +154,13 @@ def test_05_stdout(client):
     factory.add_outputs(["output.txt"])
     assert "stdout" == factory.outputs[0].mapped_to.stream_type
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = factory.to_plan()
 
     assert ["echo", '"Hello world!"'] == plan.to_argv()
 
 
-def test_stdout_with_conflicting_arg(client):
+def test_stdout_with_conflicting_arg(client, client_database_injection_manager):
     """Test stdout with conflicting argument value."""
     output = Path(client.path) / "lalala"
     output.touch()
@@ -175,13 +174,13 @@ def test_stdout_with_conflicting_arg(client):
     assert "lalala" == factory.parameters[0].default_value
     assert "lalala" == factory.stdout
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = factory.to_plan()
 
     assert argv == plan.to_argv()
 
 
-def test_06_params(client):
+def test_06_params(client, client_database_injection_manager):
     """Test referencing input parameters in other fields."""
     hello = Path(client.path) / "hello.tar"
     hello.touch()
@@ -193,13 +192,13 @@ def test_06_params(client):
 
     assert "goodbye.txt" == factory.parameters[0].default_value
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = factory.to_plan()
 
     assert argv == plan.to_argv()
 
 
-def test_09_array_inputs(client):
+def test_09_array_inputs(client, client_database_injection_manager):
     """Test specification of input parameters in arrays."""
     argv = [
         "echo",
@@ -212,7 +211,7 @@ def test_09_array_inputs(client):
         "-B=six",
         "-C=seven,eight,nine",
     ]
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = PlanFactory(argv, directory=client.path, working_dir=client.path).to_plan()
 
     assert "seven,eight,nine" == plan.parameters[-1].default_value
@@ -222,7 +221,7 @@ def test_09_array_inputs(client):
 
 
 @pytest.mark.parametrize("argv", [["wc"], ["wc", "-l"]])
-def test_stdin_and_stdout(argv, client):
+def test_stdin_and_stdout(argv, client, client_database_injection_manager):
     """Test stdout mapping."""
     input_ = Path(client.path) / "input.txt"
     input_.touch()
@@ -251,7 +250,7 @@ def test_stdin_and_stdout(argv, client):
     factory.add_outputs(["output.txt", "error.log"])
     assert "stdout" == factory.outputs[0].mapped_to.stream_type
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = factory.to_plan()
 
     assert argv == plan.to_argv()
@@ -260,7 +259,7 @@ def test_stdin_and_stdout(argv, client):
     assert any(o.mapped_to and o.mapped_to.stream_type == "stderr" for o in plan.outputs)
 
 
-def test_input_directory(client):
+def test_input_directory(client, client_database_injection_manager):
     """Test input directory."""
     cwd = Path(client.path)
     src = cwd / "src"
@@ -278,7 +277,7 @@ def test_input_directory(client):
     argv = ["tar", "czvf", "src.tar", "src"]
     factory = PlanFactory(argv, directory=client.path, working_dir=client.path)
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = factory.to_plan()
 
     assert argv == plan.to_argv()
@@ -290,7 +289,7 @@ def test_input_directory(client):
 
 
 @pytest.mark.skip("CWLConverter doesn't yet support new metadata, renable once it does")
-def test_existing_output_directory(client, runner, project):
+def test_existing_output_directory(client, runner, project, client_database_injection_manager):
     """Test creation of InitialWorkDirRequirement for output."""
     from renku.core.management.workflow.converters.cwl import CWLConverter
 
@@ -304,7 +303,7 @@ def test_existing_output_directory(client, runner, project):
         # Script creates the directory.
         output.mkdir(parents=True)
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = factory.to_plan()
 
     cwl, _ = CWLConverter.convert(plan, client.path)
@@ -318,7 +317,7 @@ def test_existing_output_directory(client, runner, project):
 
     assert 1 == len(tool.outputs)
 
-    with replace_injected_client(client):
+    with client_database_injection_manager(client):
         plan = tool.to_plan()
     cwl, _ = CWLConverter.convert(plan, client.path)
 

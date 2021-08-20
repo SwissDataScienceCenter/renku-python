@@ -51,8 +51,8 @@ from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
 from renku.core.commands.options import option_siblings
 from renku.core.commands.rerun import rerun_workflows
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 
 def show_inputs(workflow):
@@ -63,8 +63,9 @@ def show_inputs(workflow):
 
 
 @inject.autoparams()
-def edit_inputs(workflow, client: LocalClient):
+def edit_inputs(workflow, client_dispatcher: IClientDispatcher):
     """Edit workflow inputs."""
+    client = client_dispatcher.current_client
     for input_ in workflow.inputs:
         new_path = click.prompt("{0._id}".format(input_), default=input_.consumes.path)
         input_.consumes.path = str(Path(os.path.abspath(new_path)).relative_to(client.path))

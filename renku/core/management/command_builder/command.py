@@ -27,7 +27,6 @@ import click
 import inject
 
 from renku.core import errors
-from renku.core.management.config import RENKU_HOME
 from renku.core.utils.communication import CommunicationCallback
 
 _LOCAL = threading.local()
@@ -79,35 +78,10 @@ inject.configure = _patched_configure
 inject.get_injector_or_die = _patched_get_injector_or_die
 
 
-def _bind_local_client(binder: inject.Binder, client):
-    """Bind a LocalClient to an Injector."""
-    from renku.core.management import LocalClient
-
-    binder.bind(LocalClient, client)
-    binder.bind("LocalClient", client)
-
-
 def remove_injector():
     """Remove a thread-local injector."""
     if getattr(_LOCAL, "injector", None):
         del _LOCAL.injector
-
-
-@contextlib.contextmanager
-def replace_injected_client(new_client):
-    """Temporarily inject a different client into dependency injection."""
-    old_injector = getattr(_LOCAL, "injector", None)
-    try:
-        if old_injector:
-            remove_injector()
-        inject.configure(lambda binder: _bind_local_client(binder, new_client))
-
-        yield
-    finally:
-        remove_injector()
-
-        if old_injector:
-            _LOCAL.injector = old_injector
 
 
 @contextlib.contextmanager
@@ -125,7 +99,7 @@ def replace_injection(bindings, constructor_bindings=None):
     try:
         if old_injector:
             remove_injector()
-        inject.configure(bind)
+        inject.configure(bind, bind_in_runtime=False)
 
         yield
     finally:
@@ -188,22 +162,23 @@ class Command:
     def _injection_pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
         """Setup dependency injections."""
         from renku.core.management import LocalClient
+        from renku.core.management.command_builder.client_dispatcher import ClientDispatcher
+        from renku.core.management.interface.client_dispatcher import IClientDispatcher
         from renku.core.management.repository import default_path
+
+        dispatcher = ClientDispatcher()
 
         ctx = click.get_current_context(silent=True)
         if ctx is None:
-            client = LocalClient(
-                path=default_path(self._working_directory or "."),
-                renku_home=RENKU_HOME,
-                external_storage_requested=True,
-            )
+            dispatcher.push_client_to_stack(path=default_path(self._working_directory or "."))
             ctx = click.Context(click.Command(builder._operation))
         else:
             client = ctx.ensure_object(LocalClient)
+            dispatcher.push_created_client_to_stack(client)
 
-        context["bindings"] = {LocalClient: client, "LocalClient": client}
+        context["bindings"] = {IClientDispatcher: dispatcher, "IClientDispatcher": dispatcher}
         context["constructor_bindings"] = {}
-        context["client"] = client
+        context["client_dispatcher"] = dispatcher
         context["click_context"] = ctx
 
     def _pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
@@ -245,7 +220,7 @@ class Command:
 
             return binder
 
-        inject.configure(_bind)
+        inject.configure(_bind, bind_in_runtime=False)
 
         if any(self.pre_hooks):
             order = sorted(self.pre_hooks.keys())

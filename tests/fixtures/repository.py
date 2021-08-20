@@ -128,9 +128,12 @@ def client_injection_bindings():
     """Return bindings needed for client dependency injection."""
 
     def _create_client_bindings(client):
-        from renku.core.management import LocalClient
+        from renku.core.management.command_builder.client_dispatcher import ClientDispatcher
+        from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
-        return {"bindings": {LocalClient: client, "LocalClient": client}, "constructor_bindings": {}}
+        client_dispatcher = ClientDispatcher()
+        client_dispatcher.push_created_client_to_stack(client)
+        return {"bindings": {"LocalClient": client, IClientDispatcher: client_dispatcher}, "constructor_bindings": {}}
 
     return _create_client_bindings
 
@@ -150,7 +153,7 @@ def injection_binder(request):
 
             return binder
 
-        inject.configure(_bind)
+        inject.configure(_bind, bind_in_runtime=False)
         request.addfinalizer(lambda: remove_injector())
         return
 

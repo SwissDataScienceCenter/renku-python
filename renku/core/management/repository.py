@@ -363,7 +363,7 @@ class RepositoryApiMixin(GitCore):
     def workflow_names(self):
         """Return index of workflow names."""
         names = defaultdict(list)
-        for ref in LinkReference.iter_items(self, common_path="workflows"):
+        for ref in LinkReference.iter_items(common_path="workflows"):
             names[str(ref.reference.relative_to(self.path))].append(ref.name)
         return names
 

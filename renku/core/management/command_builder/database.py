@@ -19,12 +19,13 @@
 
 
 from renku.core.management.command_builder.command import Command, CommandResult, check_finalized
+from renku.core.management.command_builder.database_dispatcher import DatabaseDispatcher
 from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.metadata.database import Database
 from renku.core.metadata.gateway.activity_gateway import ActivityGateway
 from renku.core.metadata.gateway.database_gateway import DatabaseGateway
 from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
@@ -46,14 +47,15 @@ class DatabaseCommand(Command):
 
     def _injection_pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Create a Database singleton."""
-        if "client" not in context:
-            raise ValueError("Commit builder needs a LocalClient to be set.")
+        if "client_dispatcher" not in context:
+            raise ValueError("Database builder needs a IClientDispatcher to be set.")
 
-        client = context["client"]
+        client = context["client_dispatcher"].current_client
 
-        self.database = Database.from_path(path=self._path or client.database_path)
+        self.dispatcher = DatabaseDispatcher()
+        self.dispatcher.push_database_to_stack(path=self._path or client.database_path, commit=self._write)
 
-        context["bindings"][Database] = self.database
+        context["bindings"][IDatabaseDispatcher] = self.dispatcher
 
         context["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
         context["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
@@ -62,8 +64,7 @@ class DatabaseCommand(Command):
         context["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs) -> None:
-        if self._write and not result.error:
-            self.database.commit()
+        self.dispatcher.finalize_dispatcher()
 
     @check_finalized
     def build(self) -> Command:

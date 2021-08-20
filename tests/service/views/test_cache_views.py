@@ -774,7 +774,7 @@ def test_cache_gets_synchronized(
 
     with client_database_injection_manager(client):
         with client.commit(commit_message="Create dataset"):
-            with client.with_dataset("my_dataset", create=True, commit_database=True) as dataset:
+            with client.with_dataset(name="my_dataset", create=True, commit_database=True) as dataset:
                 dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote.push()
@@ -786,7 +786,7 @@ def test_cache_gets_synchronized(
     assert response
     assert 200 == response.status_code
 
-    assert {"datasets"} == set(response.json["result"].keys())
+    assert {"datasets"} == set(response.json["result"].keys()), response.json
     assert 1 == len(response.json["result"]["datasets"])
 
     payload = {

@@ -47,6 +47,7 @@ from renku.core.errors import (
     TemplateUpdateError,
 )
 from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.utils import communication
 from renku.core.utils.migrate import OLD_METADATA_PATH, read_project_version
@@ -82,10 +83,10 @@ def is_docker_update_possible():
     return _update_dockerfile(check_only=True)
 
 
-@inject.params(client="LocalClient", project_gateway=IProjectGateway)
+@inject.autoparams()
 def migrate(
-    client,
-    project_gateway,
+    client_dispatcher: IClientDispatcher,
+    project_gateway: IProjectGateway,
     force_template_update=False,
     skip_template_update=False,
     skip_docker_update=False,
@@ -94,6 +95,7 @@ def migrate(
     max_version=None,
 ):
     """Apply all migration files to the project."""
+    client = client_dispatcher.current_client
     template_updated = docker_updated = False
     if not is_renku_project():
         return False, template_updated, docker_updated
@@ -153,10 +155,12 @@ def migrate(
     return n_migrations_executed != 0, template_updated, docker_updated
 
 
-@inject.params(client="LocalClient", project_gateway=IProjectGateway)
-def _update_template(client, project_gateway, check_only=False):
+@inject.autoparams()
+def _update_template(client_dispatcher: IClientDispatcher, project_gateway: IProjectGateway, check_only=False):
     """Update local files from the remote template."""
     from renku.core.commands.init import fetch_template
+
+    client = client_dispatcher.current_client
 
     try:
         project = client.project
@@ -267,16 +271,18 @@ def _update_template(client, project_gateway, check_only=False):
     updated = "\n".join(updated_files)
     communication.echo(f"Updated project from template, updated files:\n{updated}")
 
-    project.template_version = template_version
+    project.template_version = str(template_version)
     project_gateway.update_project(project)
 
     return True, project.template_version, template_version
 
 
-@inject.params(client="LocalClient")
-def _update_dockerfile(client, check_only=False):
+@inject.autoparams()
+def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
     """Update the dockerfile to the newest version of renku."""
     from renku import __version__
+
+    client = client_dispatcher.current_client
 
     if not client.docker_path.exists():
         return False
@@ -315,17 +321,19 @@ def _update_dockerfile(client, check_only=False):
     return True
 
 
-@inject.params(client="LocalClient")
-def _get_project_version(client):
+@inject.autoparams()
+def _get_project_version(client_dispatcher: IClientDispatcher):
     try:
-        return int(read_project_version(client))
+        return int(read_project_version(client_dispatcher.current_client))
     except ValueError:
         return 1
 
 
-@inject.params(client="LocalClient")
-def is_renku_project(client):
+@inject.autoparams()
+def is_renku_project(client_dispatcher: IClientDispatcher):
     """Check if repository is a renku project."""
+    client = client_dispatcher.current_client
+
     try:
         return client.project is not None
     except (ValueError):  # Error in loading due to an older schema

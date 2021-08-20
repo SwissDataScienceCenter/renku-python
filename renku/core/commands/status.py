@@ -23,10 +23,10 @@ from typing import List, Tuple
 
 from git import GitCommandError
 
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.models.provenance.activity import Activity, Usage
 from renku.core.utils import communication
 
@@ -42,7 +42,9 @@ def get_status():
 
 
 @inject.autoparams()
-def _get_status(client: LocalClient, activity_gateway: IActivityGateway):
+def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivityGateway):
+    client = client_dispatcher.current_client
+
     latest_activities = activity_gateway.get_latest_activity_per_plan().values()
 
     if client.has_external_files():
@@ -82,9 +84,11 @@ def _get_status(client: LocalClient, activity_gateway: IActivityGateway):
 
 @inject.autoparams()
 def _get_modified_paths(
-    activities: List[Activity], client: LocalClient
+    activities: List[Activity], client_dispatcher: IClientDispatcher
 ) -> Tuple[List[Tuple[Activity, Usage]], List[Tuple[Activity, Usage]]]:
     """Get modified and deleted usages/inputs of a list of activities."""
+    client = client_dispatcher.current_client
+
     modified = set()
     deleted = set()
     for activity in activities:

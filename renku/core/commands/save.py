@@ -23,17 +23,19 @@ from uuid import uuid4
 import git
 
 from renku.core import errors
-from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
 
 
 @inject.autoparams()
-def _save_and_push(client: LocalClient, message=None, remote=None, paths=None):
+def _save_and_push(client_dispatcher: IClientDispatcher, message=None, remote=None, paths=None):
     """Save and push local changes."""
+    client = client_dispatcher.current_client
+
     client.setup_credential_helper()
     if not paths:
         paths = client.dirty_paths

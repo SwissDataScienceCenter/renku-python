@@ -18,20 +18,20 @@
 """Renku project gateway interface."""
 
 from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.metadata.database import Database
 from renku.core.models.project import Project
 
 
 class ProjectGateway(IProjectGateway):
     """Gateway for project database operations."""
 
-    database = inject.attr(Database)
+    database_dispatcher = inject.attr(IDatabaseDispatcher)
 
     def get_project(self) -> Project:
         """Get project metadata."""
         try:
-            return self.database["project"]
+            return self.database_dispatcher.current_database["project"]
         except KeyError as e:
             raise ValueError() from e
 
@@ -39,12 +39,14 @@ class ProjectGateway(IProjectGateway):
         """Update project metadata."""
         from renku import __version__
 
+        database = self.database_dispatcher.current_database
+
         try:
-            if self.database["project"]:
-                self.database.remove_root_object("project")
+            if database["project"]:
+                database.remove_root_object("project")
         except KeyError:
             pass
 
         project.agent_version = __version__
 
-        self.database.add_root_object("project", project)
+        database.add_root_object("project", project)

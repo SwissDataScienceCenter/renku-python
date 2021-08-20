@@ -29,6 +29,7 @@ from git import Repo
 from renku.core import errors
 from renku.core.commands.dataset import add_to_dataset, create_dataset, file_unlink, list_datasets, list_files
 from renku.core.errors import ParameterError
+from renku.core.management.datasets import DatasetsProvenance
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.agent import Person
@@ -55,7 +56,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         if path == "temp":
             path = str(directory_tree / "file1")
 
-        with client_with_injection.with_dataset("dataset", create=True, commit_database=True) as d:
+        with client_with_injection.with_dataset(name="dataset", create=True, commit_database=True) as d:
             d.creators = [Person(name="me", email="me@example.com", id="me_id")]
             client_with_injection.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=overwrite)
 
@@ -72,7 +73,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         # check the linking
         if scheme in ("", "file://"):
             shutil.rmtree("./data/dataset")
-            with client_with_injection.with_dataset("dataset") as d:
+            with client_with_injection.with_dataset(name="dataset") as d:
                 d.creators = [Person(name="me", email="me@example.com", id="me_id")]
                 client_with_injection.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=True)
             assert os.path.exists(target_path)
@@ -80,7 +81,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
 
 def test_data_add_recursive(directory_tree, client_with_injection):
     """Test recursive data imports."""
-    with client_with_injection.with_dataset("dataset", create=True) as dataset:
+    with client_with_injection.with_dataset(name="dataset", create=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
         client_with_injection.add_data_to_dataset(dataset, [str(directory_tree / "dir1")])
 
@@ -111,9 +112,9 @@ def test_creator_parse(creators):
 
 def test_creators_with_same_email(client_with_injection, load_dataset_with_injection):
     """Test creators with different names and same email address."""
-    with client_with_injection.with_dataset("dataset", create=True, commit_database=True) as dataset:
+    with client_with_injection.with_dataset(name="dataset", create=True, commit_database=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
-        client_with_injection.get_datasets_provenance().add_or_update(dataset)
+        DatasetsProvenance().add_or_update(dataset)
 
     dataset = load_dataset("dataset")
 
@@ -258,24 +259,3 @@ def test_mutate_is_done_once():
 def test_dataset_name_slug(name, slug):
     """Test slug generation from name."""
     assert slug == get_slug(name)
-
-
-@pytest.mark.skip("FIXME: Not really sure if this is still needed and how to handle this")
-def test_datasets_provenance_for_old_projects(old_client_before_database):
-    """Test accessing DatasetsProvenance in an un-migrated project."""
-    datasets_provenance = old_client_before_database.get_datasets_provenance()
-
-    assert datasets_provenance.get_by_name("local") is None
-    assert [] == datasets_provenance.datasets
-    assert [] == datasets_provenance.get_provenance()
-
-    dataset = Dataset(name="my-data")
-    datasets_provenance.add_or_update(dataset)
-
-    assert datasets_provenance.get_by_name("my-data") is None
-    assert [] == datasets_provenance.datasets
-    assert [] == datasets_provenance.get_provenance()
-
-    datasets_provenance.remove(dataset)
-
-    assert [] == datasets_provenance.get_provenance()
