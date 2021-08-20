@@ -107,7 +107,7 @@ tests_require = [
     "pytest-timeout==1.4.2",
     "pytest-xdist>=1.34.0,<2.4.0",
     "pytest>=4.0.0,<6.2.5",
-    "responses>=0.7.0,<0.13.4",
+    "responses>=0.7.0,<0.13.5",
 ]
 
 
@@ -123,7 +123,7 @@ service_requires = [
     "python-dotenv==0.18.0",
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
-    "rq==1.8.1",
+    "rq==1.9.0",
     "sentry-sdk[flask]>=0.7.4,<1.3.2",
     "walrus==0.8.2",
 ]
@@ -178,7 +178,7 @@ install_requires = [
     "pyjwt==2.1.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
-    "pyshacl==0.14.4",
+    "pyshacl==0.16.1",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
     "PyYAML>=5.4,<=5.4.1",
