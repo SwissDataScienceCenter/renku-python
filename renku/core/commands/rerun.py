@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku ``rerun`` command."""
 
-from typing import List
+from typing import List, Optional
 
 from renku.core import errors
 from renku.core.commands.workflow import execute_workflow
@@ -25,6 +25,7 @@ from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.workflow.activity import get_activities_until_paths, sort_activities
+from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.utils.os import get_relative_paths
 
 
@@ -46,6 +47,8 @@ def _rerun(
     dry_run: bool,
     sources: List[str],
     paths: List[str],
+    provider: str,
+    config: Optional[str],
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
 ):
@@ -69,6 +72,7 @@ def _rerun(
     if dry_run:
         return activities, set(sources)
 
-    plans = [a.plan_with_values for a in activities]
-
-    execute_workflow(plans=plans, command_name="rerun")
+    graph = ExecutionGraph([a.plan_with_values for a in activities], virtual_links=True)
+    # FIXME: drop
+    provider = "toil"
+    execute_workflow(dag=graph.workflow_graph, command_name="rerun", provider=provider, config=config)

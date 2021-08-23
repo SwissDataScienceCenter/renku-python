@@ -47,11 +47,11 @@ from typing import Any, Dict
 from urllib.parse import unquote
 
 import cwltool.factory
+import networkx as nx
 from cwltool.context import LoadingContext, RuntimeContext
 
 from renku.core.commands.echo import progressbar
 from renku.core.errors import WorkflowExecuteError
-from renku.core.models.workflow.plan import AbstractPlan
 from renku.core.models.workflow.provider import IWorkflowProvider
 from renku.core.plugins import hookimpl
 from renku.core.plugins.workflow import workflow_converter
@@ -66,12 +66,13 @@ class CWLToolProvider(IWorkflowProvider):
         return (self, "cwltool")
 
     @hookimpl
-    def workflow_execute(self, workflow: AbstractPlan, basedir: Path, config: Dict[str, Any]):
+    def workflow_execute(self, dag: nx.DiGraph, basedir: Path, config: Dict[str, Any]):
         """Executes a given workflow using cwltool."""
         with tempfile.NamedTemporaryFile() as f:
             # export Plan to cwl
             converter = workflow_converter("cwl")
-            converter(workflow=workflow, basedir=basedir, output=Path(f.name), output_format=None)
+            return []
+            # converter(workflow=workflow, basedir=basedir, output=Path(f.name), output_format=None)
 
             # run cwl with cwltool
             argv = sys.argv
