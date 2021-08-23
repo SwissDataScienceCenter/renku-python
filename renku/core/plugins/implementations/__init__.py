@@ -24,3 +24,10 @@ __all__ = []
 
 workflow_exporters = [CWLExporter]
 workflow_providers = [CWLToolProvider]
+
+try:
+    from renku.core.management.workflow.providers.toil import ToilProvider
+
+    workflow_providers.append(ToilProvider)
+except ImportError:
+    pass
