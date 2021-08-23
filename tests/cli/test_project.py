@@ -18,11 +18,12 @@
 """Test ``project`` command."""
 
 from renku.cli import cli
+from renku.core.metadata.gateway.project_gateway import ProjectGateway
 from renku.core.models.provenance.agent import Person
 from tests.utils import format_result_exception
 
 
-def test_project_edit(runner, client, subdirectory):
+def test_project_edit(runner, client, subdirectory, client_database_injection_manager):
     """Check project metadata editing."""
     (client.path / "README.md").write_text("Make repo dirty.")
 
@@ -36,8 +37,10 @@ def test_project_edit(runner, client, subdirectory):
     assert "Successfully updated: creator, description." in result.output
     assert "Warning: No email or wrong format for: Forename Surname" in result.output
 
-    database = client.get_database()
-    project = database.get("project")
+    with client_database_injection_manager(client):
+        project_gateway = ProjectGateway()
+        project = project_gateway.get_project()
+
     assert " new description " == project.description
     assert isinstance(project.creator, Person)
     assert "Forename Surname" == project.creator.name

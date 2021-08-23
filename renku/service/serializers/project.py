@@ -21,7 +21,6 @@ from marshmallow import fields
 from renku.core.models.dataset import DatasetCreatorsJson as DatasetCreators
 from renku.service.serializers.common import (
     AsyncSchema,
-    CommitSchema,
     LocalRepositorySchema,
     MigrateSchema,
     RemoteRepositorySchema,
@@ -30,7 +29,7 @@ from renku.service.serializers.common import (
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class ProjectEditRequest(AsyncSchema, CommitSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
+class ProjectEditRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
     """Project edit metadata request."""
 
     description = fields.String(default=None)

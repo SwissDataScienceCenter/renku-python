@@ -425,22 +425,17 @@ def test_default_init_parameters(isolated_runner, mocker, project_init, template
     assert metadata["__sanitized_project_name__"] == ""
 
 
-@pytest.mark.parametrize(
-    "params, description",
-    [([], "project description"), (["-p", "description='template description'"], "template description")],
-)
-def test_init_with_description(isolated_runner, template, params, description):
+def test_init_with_description(isolated_runner, template):
     """Test project initialization with description."""
     result = isolated_runner.invoke(
-        cli, ["init", "--description", "project description", "new-project", "--template-id", template["id"]] + params
+        cli, ["init", "--description", "project description", "new-project", "--template-id", template["id"]]
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "The template requires a value for" not in result.output
-    assert "These parameters are not used by the template and were ignored:" not in result.output
+    assert "The template requires a value for" in result.output
 
     database = Database.from_path(Path("new-project") / ".renku" / "metadata")
     project = database.get("project")
 
-    assert description in project.template_metadata
+    assert "project description" in project.template_metadata
     assert "project description" == project.description

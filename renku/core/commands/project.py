@@ -19,13 +19,13 @@
 
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.repository import DATABASE_METADATA_PATH
-from renku.core.metadata.database import Database
 from renku.core.utils.metadata import construct_creator
 
 
 @inject.autoparams()
-def _edit_project(description, creator, database: Database):
+def _edit_project(description, creator, project_gateway: IProjectGateway):
     """Edit dataset metadata."""
     possible_updates = {"creator": creator, "description": description}
 
@@ -34,8 +34,9 @@ def _edit_project(description, creator, database: Database):
     updated = {k: v for k, v in possible_updates.items() if v}
 
     if updated:
-        project = database.get("project")
+        project = project_gateway.get_project()
         project.update_metadata(creator=creator, description=description)
+        project_gateway.update_project(project)
 
     return updated, no_email_warnings
 

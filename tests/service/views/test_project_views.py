@@ -20,7 +20,8 @@ import json
 import re
 
 import pytest
-from flaky import flaky
+
+from tests.utils import retry_failed
 
 
 def assert_rpc_response(response, with_key="result"):
@@ -33,7 +34,7 @@ def assert_rpc_response(response, with_key="result"):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_edit_project_view(svc_client_with_repo):
     """Test editing project metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -57,7 +58,7 @@ def test_edit_project_view(svc_client_with_repo):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed edit."""
     response = svc_client.post(

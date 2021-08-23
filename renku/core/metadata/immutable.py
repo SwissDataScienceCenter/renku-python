@@ -42,6 +42,8 @@ class Slots:
         return cls(**kwargs)
 
     def __getstate__(self):
+        if not self.__class__.__all_slots__:
+            self.__class__.__all_slots__ = self._get_all_slots()
         return {name: getattr(self, name, None) for name in self.__class__.__all_slots__ if name != "__weakref__"}
 
     def __setstate__(self, state):

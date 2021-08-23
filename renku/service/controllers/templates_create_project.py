@@ -69,6 +69,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "__repository__": self.ctx["project_repository"],
             "__sanitized_project_name__": self.ctx["project_name_stripped"],
             "__project_slug__": self.ctx["project_slug"],
+            "__project_description__": self.ctx["project_description"],
         }
         if is_release():
             metadata["__renku_version__"] = __version__

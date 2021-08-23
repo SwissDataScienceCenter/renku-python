@@ -79,6 +79,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "__repository__",
         "__sanitized_project_name__",
         "__project_slug__",
+        "__project_description__",
     }
     if is_release():
         expected_metadata.add("__renku_version__")

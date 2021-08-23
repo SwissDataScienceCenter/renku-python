@@ -113,12 +113,6 @@ and passed to the template initialization function.
     automatically added to the list of parameters forwarded to the ``init``
     command.
 
-.. note::
-
-    If a template has a ``description`` parameter then its default value will
-    be set to be the project's description. You can override this default by
-    passing a template parameter.
-
 Update an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

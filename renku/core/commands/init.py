@@ -151,14 +151,10 @@ def select_template_from_manifest(
     return template_data, template_id
 
 
-def verify_template_variables(template_data, metadata, project_metadata):
+def verify_template_variables(template_data, metadata):
     """Verifies that template variables are correctly set."""
     template_variables = template_data.get("variables", {})
     template_variables_keys = set(template_variables.keys())
-    # NOTE: Set project metadata as template values if there is an exact parameter which has no value
-    for key, value in project_metadata.items():
-        if key in template_variables_keys and key not in metadata:
-            metadata[key] = value
     input_parameters_keys = set(metadata.keys())
     for key in template_variables_keys - input_parameters_keys:
         value = communication.prompt(
@@ -271,8 +267,7 @@ def _init(
             communication.echo(create_template_sentence(template_manifest, describe=describe))
         return
 
-    project_metadata = {"description": description} if description else {}
-    metadata = verify_template_variables(template_data, metadata, project_metadata)
+    metadata = verify_template_variables(template_data, metadata)
 
     # NOTE: set local path and storage
     store_directory(path)
@@ -297,6 +292,7 @@ def _init(
     metadata["__sanitized_project_name__"] = ""
     metadata["__repository__"] = ""
     metadata["__project_slug__"] = ""
+    metadata["__project_description__"] = description
     if is_release() and "__renku_version__" not in metadata:
         metadata["__renku_version__"] = __version__
     metadata["name"] = name
