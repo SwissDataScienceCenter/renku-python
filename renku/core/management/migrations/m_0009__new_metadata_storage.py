@@ -304,7 +304,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
                 pass
 
 
-@inject.autoparams()
+@inject.autoparams("client_dispatcher")
 def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client_dispatcher: IClientDispatcher) -> Activity:
     """Convert a ProcessRun to a new Activity."""
     assert not isinstance(process_run, old_schema.WorkflowRun)

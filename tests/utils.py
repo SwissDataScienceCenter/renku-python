@@ -22,10 +22,12 @@ import traceback
 import uuid
 from contextlib import contextmanager
 from functools import wraps
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 import pytest
 from flaky import flaky
+from git import Repo
 
 from renku.core.management.command_builder.command import inject, remove_injector
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
@@ -198,3 +200,15 @@ def injection_manager(bindings):
                 bindings["bindings"][IDatabaseDispatcher].finalize_dispatcher()
         finally:
             remove_injector()
+
+
+def write_and_commit_file(repo: Repo, path: Union[Path, str], content: str):
+    """Write content to a given file and make a commit."""
+    filepath = Path(path)
+    path = str(path)
+
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    filepath.write_text(content)
+
+    repo.git.add(path)
+    repo.index.commit(f"Updated '{path}'")
