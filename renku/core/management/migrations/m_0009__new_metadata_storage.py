@@ -293,7 +293,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
             activities = _get_process_runs(workflow)
 
         for old_activity in activities:
-            new_activity = _process_run_to_new_activity(old_activity, client=client)
+            new_activity = _process_run_to_new_activity(old_activity)
             activity_gateway.add(new_activity)
 
         if remove:
@@ -303,6 +303,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
                 pass
 
 
+@inject.autoparams("client_dispatcher")
 def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client_dispatcher: IClientDispatcher) -> Activity:
     """Convert a ProcessRun to a new Activity."""
     assert not isinstance(process_run, old_schema.WorkflowRun)
