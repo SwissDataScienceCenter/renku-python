@@ -89,7 +89,7 @@ readme = open("README.rst").read()
 history = open("CHANGES.rst").read()
 
 tests_require = [
-    "black==21.6b0",
+    "black==21.7b0",
     "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.5.3",
@@ -118,7 +118,7 @@ service_requires = [
     "docker-compose==1.29.2",
     "flask==2.0.1",
     "gunicorn",
-    "marshmallow==3.12.1",
+    "marshmallow==3.13.0",
     "ptvsd>=4.3.0,<4.4.0",
     "python-dotenv==0.18.0",
     "redis==3.5.3",
@@ -155,7 +155,7 @@ for name, reqs in extras_require.items():
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<21.3.0",
-    "calamus>=0.3.8,<0.3.9",
+    "calamus>=0.3.8,<0.3.10",
     "click-completion>=0.5.0,<=0.5.3",
     "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",
@@ -184,7 +184,7 @@ install_requires = [
     "PyYAML>=5.4,<=5.4.1",
     "rdflib-jsonld>=0.5.0,<0.6.0",
     "rdflib>=5.0.0,<5.1",
-    "requests>=2.23.0,<2.26.0",
+    "requests>=2.23.0,<2.27.0",
     "rich>=9.3.0,<10.8.0",
     "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
