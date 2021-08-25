@@ -80,6 +80,7 @@ def dump_downstream_relations(
     return relation.id
 
 
+@inject.autoparams()
 def load_downstream_relations(token, catalog, cache, database_dispatcher: IDatabaseDispatcher):
     """Load relation entry from database."""
     btree = database_dispatcher.current_database["_downstream_relations"]
@@ -157,8 +158,15 @@ class DatabaseGateway(IDatabaseGateway):
             commits = [client.repo.commit(revision_or_range)]
 
         for commit in commits:
-            for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.database_path}/**/*"):
-                if file_.change_type != "D":  # NOTE: Changes show up as deletions in this diff
+            if commit.parents:
+                parent = commit.parents[0]
+                child = commit
+            else:
+                # NOTE: For some reason diffs are the other way around when diffing NULL_TREE
+                parent = commit
+                child = NULL_TREE
+            for file_ in parent.diff(child, paths=f"{client.database_path}/**"):
+                if file_.change_type == "D":
                     continue
 
                 oid = Path(git_unicode_unescape(file_.a_path)).name
