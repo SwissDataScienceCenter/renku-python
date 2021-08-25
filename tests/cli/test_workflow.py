@@ -323,7 +323,7 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
     assert {"output"} == set(result.output.strip().split("\n"))
 
 
-def test_workflow_execute_command(runner, run_shell, project, capsys):
+def test_workflow_execute_command(runner, run_shell, project, capsys, client):
     """test workflow execute."""
     workflow_name = "run1"
 
@@ -333,11 +333,22 @@ def test_workflow_execute_command(runner, run_shell, project, capsys):
     # Assert not allocated stderr.
     assert output[1] is None
 
-    with capsys.disabled():
-        try:
-            cli.main(
-                args=("workflow", "execute", workflow_name),
-                prog_name=runner.get_default_prog_name(cli),
-            )
-        except SystemExit as e:
-            assert e.code in {None, 0}
+    def _execute(args):
+        with capsys.disabled():
+            try:
+                cli.main(
+                    args=args,
+                    prog_name=runner.get_default_prog_name(cli),
+                )
+            except SystemExit as e:
+                assert e.code in {None, 0}
+
+    _execute(("workflow", "execute", workflow_name))
+
+    # test setting parameter
+    database = Database.from_path(client.database_path)
+    plan = database["plans-by-name"][workflow_name]
+
+    _execute(("workflow", "execute", "--set", f"{plan.outputs[0].name}=replaced", workflow_name))
+
+    assert Path("replaced").resolve().exists()

@@ -404,7 +404,7 @@ def _execute_workflow(
             raise errors.UsageError(f"Cannot set parameters '{name_or_id}' workflow as it is CompositePlan.")
 
     if override_params:
-        workflow = apply_run_values(workflow, values)
+        workflow = apply_run_values(workflow, override_params)
 
     client = client_dispatcher.current_client
     output_paths = executor(workflow=workflow, basedir=client.path, config_file=config)
