@@ -32,6 +32,7 @@ from persistent import GHOST, UPTODATE
 from persistent.interfaces import IPickleCache
 from ZODB.utils import z64
 from zope.interface import implementer
+from zope.interface.interface import InterfaceClass
 
 from renku.core import errors
 from renku.core.metadata.immutable import Immutable
@@ -633,6 +634,10 @@ class ObjectWriter:
             value = object.isoformat()
         elif isinstance(object, tuple):
             value = tuple(self._serialize_helper(value) for value in object)
+        elif isinstance(object, (InterfaceClass)):
+            # NOTE: Zope interfaces are weird, they're a class with type InterfaceClass, but need to be deserialized
+            # as the class (without instantiation)
+            return {"@type": TYPE_TYPE, "@value": f"{object.__module__}.{object.__name__}"}
         elif isinstance(object, type):
             # NOTE: We're storing a type, not an instance
             return {"@type": TYPE_TYPE, "@value": get_type_name(object)}
