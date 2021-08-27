@@ -81,5 +81,6 @@ class DatasetGateway(IDatasetGateway):
         else:
             database["datasets"].add(dataset)
 
-        database["datasets-provenance-tails"].pop(dataset.derived_from, None)
+        if dataset.derived_from:
+            database["datasets-provenance-tails"].pop(dataset.derived_from.url_id, None)
         database["datasets-provenance-tails"].add(dataset)

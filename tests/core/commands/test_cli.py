@@ -406,7 +406,6 @@ def test_file_tracking(isolated_runner, project_init):
     assert "untracked" not in Path(".gitattributes").read_text()
 
 
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.xfail
 def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     """Test status calculation with submodules."""
@@ -472,8 +471,8 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     result = runner.invoke(cli, ["status"], catch_exceptions=False)
     assert 0 != result.exit_code
 
-    # Test relative log output
-    cmd = ["--path", "../foo", "log"]
+    # Test relative graph export output
+    cmd = ["--path", "../foo", "graph", "export"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
     assert "../foo/data/f/woop" in result.output
     assert 0 == result.exit_code, format_result_exception(result)
@@ -661,31 +660,6 @@ def test_outputs(runner, project):
     result = runner.invoke(cli, ["show", "outputs"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert siblings == set(result.output.strip().split("\n"))
-
-
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
-def test_moved_file(runner, project):
-    """Test that moved files are displayed correctly."""
-    repo = git.Repo(project)
-    cwd = Path(project)
-    input_ = cwd / "input.txt"
-    with input_.open("w") as f:
-        f.write("first")
-
-    repo.git.add("--all")
-    repo.index.commit("Created input.txt")
-
-    result = runner.invoke(cli, ["log"])
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert input_.name in result.output
-
-    repo.git.mv(input_.name, "renamed.txt")
-    repo.index.commit("Renamed input")
-
-    result = runner.invoke(cli, ["log"])
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert input_.name not in result.output
-    assert "renamed.txt" in result.output
 
 
 def test_deleted_input(runner, project, capsys):

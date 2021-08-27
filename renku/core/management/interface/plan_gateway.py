@@ -18,7 +18,7 @@
 """Renku plan gateway interface."""
 
 from abc import ABC
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from renku.core.models.workflow.plan import AbstractPlan
 
@@ -36,6 +36,10 @@ class IPlanGateway(ABC):
 
     def get_newest_plans_by_names(self, with_invalidated: bool = False) -> Dict[str, AbstractPlan]:
         """Return a list of all newest plans with their names."""
+        raise NotImplementedError
+
+    def get_all_plans(self) -> List[AbstractPlan]:
+        """Get all plans in project."""
         raise NotImplementedError
 
     def add(self, plan: AbstractPlan):

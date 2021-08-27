@@ -56,7 +56,8 @@ def status(ctx):
     if stales:
         click.echo(
             f"Outdated outputs({len(stales)}):\n"
-            "  (use `renku log [<file>...]` to see the full lineage)\n"
+            # TODO: Enable once renku workflow visualize is implemented
+            # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
             "  (use `renku update [<file>...]` to generate the file from its latest inputs)\n"
         )
         for k, v in stales.items():
@@ -69,7 +70,8 @@ def status(ctx):
     if modified:
         click.echo(
             f"Modified inputs({len(modified)}):\n"
-            "  (use `renku log --revision <sha1> <file>` to see a lineage for the given revision)\n"
+            # TODO: Enable once renku workflow visualize is implemented
+            # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
         )
         for v in modified:
             click.echo(click.style(f"\t{v}", fg="blue", bold=True))

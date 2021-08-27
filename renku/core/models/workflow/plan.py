@@ -142,6 +142,7 @@ class Plan(AbstractPlan):
         keywords: List[str] = None,
         name: str = None,
         derived_from: str = None,
+        project_id: str = None,
         outputs: List[CommandOutput] = None,
         success_codes: List[int] = None,
     ):
@@ -149,6 +150,7 @@ class Plan(AbstractPlan):
         self.inputs: List[CommandInput] = inputs or []
         self.outputs: List[CommandOutput] = outputs or []
         self.parameters: List[CommandParameter] = parameters or []
+        self.project_id: str = project_id
         self.success_codes: List[int] = success_codes or []
         super().__init__(
             id=id,
@@ -283,6 +285,7 @@ class PlanSchema(JsonLDSchema):
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
     derived_from = fields.String(prov.wasDerivedFrom, missing=None)
+    project_id = fields.IRI(renku.hasPlan, reverse=True)
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
     parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])

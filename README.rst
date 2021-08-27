@@ -237,7 +237,7 @@ Trace the data provenance:
 
 ::
 
-    $ renku log wc_readme
+    $ renku workflow visualize wc_readme
 
 These are the basics, but there is much more that Renku allows you to do with
 your data analysis workflows. The full documentation will soon be available
@@ -344,7 +344,7 @@ You can use our `run-tests.sh` script for running specific set of tests.
     $ ./run-tests.sh -h
 
 We lint the files using `black <https://github.com/psf/black>`__ and
-`isort <https://github.com/PyCQA/isort>`__. 
+`isort <https://github.com/PyCQA/isort>`__.
 
 
 Using External Debuggers

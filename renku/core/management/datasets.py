@@ -208,7 +208,13 @@ class DatasetsApiMixin(object):
         keywords = keywords or ()
 
         dataset = new_datasets.Dataset(
-            identifier=None, name=name, title=title, description=description, creators=creators, keywords=keywords
+            identifier=None,
+            name=name,
+            title=title,
+            description=description,
+            creators=creators,
+            keywords=keywords,
+            project_id=self.project.id,
         )
 
         if images:

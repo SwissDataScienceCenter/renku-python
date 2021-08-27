@@ -33,6 +33,7 @@ from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.types import PATH_OBJECTS, Directory, File
 from renku.core.models.datastructures import DirectoryTree
 from renku.core.models.workflow.parameter import (
@@ -625,8 +626,13 @@ class PlanFactory:
         except FileNotFoundError:
             return
 
+    @inject.autoparams("project_gateway")
     def to_plan(
-        self, name: Optional[str] = None, description: str = Optional[None], keywords: Optional[List[str]] = None
+        self,
+        project_gateway: IProjectGateway,
+        name: Optional[str] = None,
+        description: str = Optional[None],
+        keywords: Optional[List[str]] = None,
     ) -> Plan:
         """Return an instance of ``Plan`` based on this factory."""
         return Plan(
@@ -638,6 +644,7 @@ class PlanFactory:
             inputs=self.inputs,
             outputs=self.outputs,
             parameters=self.parameters,
+            project_id=project_gateway.get_project().id,
             success_codes=self.success_codes,
         )
 

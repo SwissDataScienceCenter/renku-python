@@ -63,10 +63,8 @@ def old_project(request, tmp_path):
             "log_path": "catoutput.txt",
             "expected_strings": [
                 "catoutput.txt",
-                "_cat.yaml",
-                "_echo.yaml",
-                "9ecc28b2 stdin.txt",
-                "bdc801c6 stdout.txt",
+                "stdin.txt",
+                "stdout.txt",
             ],
         },
         {
@@ -74,10 +72,8 @@ def old_project(request, tmp_path):
             "log_path": "concat2.txt",
             "expected_strings": [
                 "concat2.txt",
-                "5828275ae5344eba8bad475e7d3cf2d5.cwl",
-                "_migrated.yaml",
-                "88add2ea output_rand",
-                "e6fa6bf3 input2.txt",
+                "output_rand",
+                "input2.txt",
             ],
         },
     ],

@@ -57,10 +57,10 @@ Renku Command Line
 
 .. _cli-log:
 
-``renku log``
--------------
+``renku graph``
+---------------
 
-.. automodule:: renku.cli.log
+.. automodule:: renku.cli.graph
 
 .. _cli-login:
 

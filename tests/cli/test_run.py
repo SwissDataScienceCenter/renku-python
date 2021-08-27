@@ -25,7 +25,6 @@ from renku.cli import cli
 from tests.utils import format_result_exception
 
 
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 def test_run_simple(runner, project):
     """Test tracking of run command."""
     cmd = ["echo", "test"]
@@ -33,15 +32,10 @@ def test_run_simple(runner, project):
     result = runner.invoke(cli, ["run", "--no-output"] + cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    # There are no output files.
-    result = runner.invoke(cli, ["log"])
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert 1 == len(result.output.strip().split("\n"))
-
     # Display tools with no outputs.
-    result = runner.invoke(cli, ["log", "--no-output"])
+    result = runner.invoke(cli, ["graph", "export"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert ".renku/workflow/" in result.output
+    assert "test" in result.output
 
 
 def test_run_many_args(client, run):
@@ -57,13 +51,12 @@ def test_run_many_args(client, run):
     assert 0 == exit_code
 
 
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.serial
 @pytest.mark.shelled
 def test_run_clean(runner, project, run_shell):
     """Test tracking of run command in clean repo."""
     # Run a shell command with pipe.
-    output = run_shell('renku run echo "a" > output')
+    output = run_shell('renku run echo "a unique string" > my_output_file')
 
     # Assert expected empty stdout.
     assert b"" == output[0]
@@ -71,10 +64,9 @@ def test_run_clean(runner, project, run_shell):
     assert output[1] is None
 
     # Assert created output file.
-    result = runner.invoke(cli, ["log"])
-    assert "output" in result.output
-    assert ".yaml" in result.output
-    assert ".renku/workflow/" in result.output
+    result = runner.invoke(cli, ["graph", "export"])
+    assert "my_output_file" in result.output
+    assert "a unique string" in result.output
 
 
 def test_run_metadata(renku_cli, client):

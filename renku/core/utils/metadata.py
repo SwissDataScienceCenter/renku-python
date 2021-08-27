@@ -128,7 +128,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
         url = derived_from.url.get("@id")
         path = urlparse(url).path
 
-        return Dataset.generate_id(identifier=Path(path).name)
+        return Url(url_id=Dataset.generate_id(identifier=Path(path).name))
 
     tags = [convert_dataset_tag(tag) for tag in (dataset.tags or [])]
 
@@ -148,6 +148,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             keywords=dataset.keywords,
             license=dataset.license,
             name=dataset.name,
+            project_id=client.project.id,
             initial_identifier=dataset.initial_identifier.replace("-", ""),
             same_as=convert_url(dataset.same_as),
             title=dataset.title,

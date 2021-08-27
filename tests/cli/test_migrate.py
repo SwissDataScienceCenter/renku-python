@@ -127,14 +127,13 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
     assert ".renku.lock" in ignored
 
 
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.migration
 def test_graph_building_after_migration(isolated_runner, old_project):
     """Check that structural migration did not break graph building."""
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = isolated_runner.invoke(cli, ["log"])
+    result = isolated_runner.invoke(cli, ["graph", "export", "--full"])
     assert 0 == result.exit_code, format_result_exception(result)
 
 
@@ -160,7 +159,6 @@ def test_migration_version():
     assert max_migration_version == SUPPORTED_PROJECT_VERSION
 
 
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
 @pytest.mark.migration
 def test_workflow_migration(isolated_runner, old_workflow_project):
     """Check that *.cwl workflows can be migrated."""
@@ -169,7 +167,7 @@ def test_workflow_migration(isolated_runner, old_workflow_project):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
-    result = isolated_runner.invoke(cli, ["log", old_workflow_project["log_path"]])
+    result = isolated_runner.invoke(cli, ["graph", "export", "--full"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     for expected in old_workflow_project["expected_strings"]:
@@ -309,8 +307,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
         ["dataset", "show", "new"],
         ["dataset", "unlink", "new"],
         ["dataset", "update"],
-        # TODO: reenable once log (or workflow export) is implemented
-        # ["log"]
+        ["graph", "export"],
         ["mv", "news"],
         ["rerun", "data"],
         ["run", "echo"],
@@ -325,7 +322,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
 def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):
     """Test commands that fail on projects created by old version of renku."""
     result = isolated_runner.invoke(cli, command)
-    assert 3 == result.exit_code, result.output
+    assert 3 == result.exit_code, format_result_exception(result)
     assert "Project version is outdated and a migration is required" in result.output
 
 

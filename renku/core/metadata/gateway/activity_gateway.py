@@ -59,6 +59,10 @@ class ActivityGateway(IActivityGateway):
 
         return downstream
 
+    def get_all_activities(self) -> List[Activity]:
+        """Get all activities in the project."""
+        return list(self.database_dispatcher.current_database["activities"].values())
+
     def add(self, activity: Activity):
         """Add an ``Activity`` to storage."""
         database = self.database_dispatcher.current_database
