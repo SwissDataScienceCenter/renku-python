@@ -18,7 +18,6 @@
 """Knowledge graph building."""
 
 import json
-import os
 from typing import Dict, List, Set, Union
 
 from pkg_resources import resource_filename
@@ -38,11 +37,12 @@ from renku.core.models.provenance.activity import Activity, ActivitySchema
 from renku.core.models.workflow.composite_plan import CompositePlan, CompositePlanSchema
 from renku.core.models.workflow.plan import Plan, PlanSchema
 from renku.core.utils.shacl import validate_graph
+from renku.core.utils.urls import get_host
 
 
-def export_graph():
+def export_graph_command():
     """Return a command for exporting graph data."""
-    return Command().command(_export_graph).with_database(write=False)
+    return Command().command(_export_graph).with_database(write=False).require_migration()
 
 
 @inject.autoparams("client_dispatcher")
@@ -50,7 +50,6 @@ def _export_graph(
     client_dispatcher: IClientDispatcher,
     format: str = "json-ld",
     revision_or_range: str = None,
-    workflows_only: bool = False,
     strict: bool = False,
 ):
     """Output graph in specific format."""
@@ -58,14 +57,12 @@ def _export_graph(
     format = format.lower()
 
     if revision_or_range:
-        graph = _get_graph_for_revision(revision_or_range=revision_or_range, workflows_only=workflows_only)
+        graph = _get_graph_for_revision(revision_or_range=revision_or_range)
     else:
-        graph = _get_graph_for_all_objects(workflows_only=workflows_only)
+        graph = _get_graph_for_all_objects()
 
     # NOTE: rewrite ids for current environment
-    host = "localhost"
-    host = client_dispatcher.current_client.remote.get("host") or host
-    host = os.environ.get("RENKU_DOMAIN") or host
+    host = get_host(client_dispatcher.current_client)
 
     for node in graph:
         update_nested_node_host(node, host)
@@ -95,15 +92,11 @@ def _get_graph_for_revision(
     revision_or_range: str,
     database_gateway: IDatabaseGateway,
     project_gateway: IProjectGateway,
-    workflows_only: bool = False,
 ) -> Dict:
     """Get the graph for changes made in a specific revision."""
     all_objects = database_gateway.get_modified_objects_from_revision(revision_or_range=revision_or_range)
 
     change_types = (Project, Dataset, DatasetTag, Activity, Plan, CompositePlan)
-
-    if workflows_only:
-        change_types = (Activity, Plan, CompositePlan)
 
     changed_objects = []
 
@@ -122,7 +115,6 @@ def _get_graph_for_all_objects(
     dataset_gateway: IDatasetGateway,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
-    workflows_only: bool = False,
 ) -> Dict:
     """Get JSON-LD graph for all entities."""
     project = project_gateway.get_project()
@@ -136,9 +128,6 @@ def _get_graph_for_all_objects(
     plans = [p for p in plan_gateway.get_all_plans() if p.id not in processed_plans]
 
     objects.extend(plans)
-
-    if workflows_only:
-        return convert_entities_to_graph(objects, project)
 
     objects.append(project)
 

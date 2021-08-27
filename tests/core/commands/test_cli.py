@@ -471,7 +471,7 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     result = runner.invoke(cli, ["status"], catch_exceptions=False)
     assert 0 != result.exit_code
 
-    # Test relative log output
+    # Test relative graph export output
     cmd = ["--path", "../foo", "graph", "export"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
     assert "../foo/data/f/woop" in result.output

@@ -46,7 +46,7 @@ Trace the data provenance:
 
 .. code-block:: console
 
-    $ renku log wc_readme
+    $ renku workflow visualize wc_readme
 
 These are the basics, but there is much more that Renku allows you to do with
 your data analysis workflows.

@@ -20,7 +20,7 @@
 from requests import RequestException
 from sentry_sdk import capture_exception
 
-from renku.core.commands.graph import export_graph
+from renku.core.commands.graph import export_graph_command
 from renku.core.commands.migrate import migrations_check
 from renku.core.errors import RenkuException
 from renku.core.utils.requests import retry
@@ -66,7 +66,7 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
 
         try:
             result = (
-                export_graph()
+                export_graph_command()
                 .build()
                 .execute(revision_or_range=self.context["revision"], format=self.context["format"])
             )

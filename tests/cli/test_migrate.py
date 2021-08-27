@@ -307,8 +307,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
         ["dataset", "show", "new"],
         ["dataset", "unlink", "new"],
         ["dataset", "update"],
-        # TODO: reenable once log (or workflow export) is implemented
-        # ["log"]
+        ["graph", "export"],
         ["mv", "news"],
         ["rerun", "data"],
         ["run", "echo"],
@@ -323,7 +322,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
 def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):
     """Test commands that fail on projects created by old version of renku."""
     result = isolated_runner.invoke(cli, command)
-    assert 3 == result.exit_code, result.output
+    assert 3 == result.exit_code, format_result_exception(result)
     assert "Project version is outdated and a migration is required" in result.output
 
 

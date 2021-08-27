@@ -75,7 +75,7 @@ import click
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
 from renku.core.commands.format.graph import GRAPH_FORMATS
-from renku.core.commands.graph import export_graph
+from renku.core.commands.graph import export_graph_command
 
 
 @click.group(hidden=True)
@@ -93,14 +93,13 @@ def graph():
 )
 @click.option("--full", is_flag=True, help="Generate full graph for project. Overrides --revision.")
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
-@click.option("--workflows-only", is_flag=True, help="Exclude datasets metadata from export.")
-def export(format, revision, full, strict, workflows_only):
+def export(format, revision, full, strict):
     r"""Export Renku graph metadata for project."""
 
     if full:
         revision = None
 
     communicator = ClickCallback()
-    export_graph().with_communicator(communicator).build().execute(
-        format=format, workflows_only=workflows_only, strict=strict, revision_or_range=revision
+    export_graph_command().with_communicator(communicator).build().execute(
+        format=format, strict=strict, revision_or_range=revision
     )

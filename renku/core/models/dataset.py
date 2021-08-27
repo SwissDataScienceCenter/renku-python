@@ -32,7 +32,7 @@ from renku.core import errors
 from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable, Slots
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema
-from renku.core.models.entity import Entity, EntitySchema
+from renku.core.models.entity import CollectionSchema, Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
 from renku.core.utils.git import get_path
@@ -659,7 +659,7 @@ class DatasetFileSchema(JsonLDSchema):
     based_on = Nested(schema.isBasedOn, RemoteEntitySchema, missing=None)
     date_added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
-    entity = Nested(prov.entity, EntitySchema)
+    entity = Nested(prov.entity, [EntitySchema, CollectionSchema])
     id = fields.Id()
     is_external = fields.Boolean(renku.external, missing=False)
     source = fields.String(renku.source, missing=None)
