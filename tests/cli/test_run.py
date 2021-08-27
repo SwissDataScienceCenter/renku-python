@@ -75,10 +75,11 @@ def test_run_metadata(renku_cli, client):
         "run", "--name", "run-1", "--description", "first run", "--keyword", "key1", "--keyword", "key2", "touch", "foo"
     )
 
+    plan = activity.association.plan
     assert 0 == exit_code
-    assert "run-1" == activity.name
-    assert "first run" == activity.description
-    assert {"key1", "key2"} == set(activity.keywords)
+    assert "run-1" == plan.name
+    assert "first run" == plan.description
+    assert {"key1", "key2"} == set(plan.keywords)
 
     # TODO: implement with new database
     # database = Database.from_path(client.database_path)

@@ -114,7 +114,10 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
 
 
 def get_object_hash(repo: Repo, path: Union[Path, str], revision: str = None) -> Optional[str]:
-    """Return git hash of an object in a Repo or its submodule."""
+    """Return git hash of an object in a Repo or its submodule.
+
+    NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
+    """
 
     def get_object_hash_from_submodules() -> Optional[str]:
         for submodule in repo.submodules:
@@ -225,3 +228,18 @@ def find_previous_commit(
 def get_path(url: str):
     """Return path part of a url."""
     return urllib.parse.urlparse(url).path
+
+
+def get_modified_entities(entities, repo: Repo):
+    """Get modified and deleted entities."""
+    modified = set()
+    deleted = set()
+
+    for entity in entities:
+        current_checksum = get_object_hash(repo=repo, path=entity.path)
+        if not current_checksum:
+            deleted.add(entity)
+        elif current_checksum != entity.checksum:
+            modified.add(entity)
+
+    return modified, deleted

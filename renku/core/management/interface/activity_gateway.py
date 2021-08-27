@@ -43,7 +43,7 @@ class IActivityGateway(ABC):
         """Return all generation paths."""
         raise NotImplementedError
 
-    def get_downstream_activities(self, activity: Activity) -> Set[Activity]:
+    def get_downstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
         raise NotImplementedError
 

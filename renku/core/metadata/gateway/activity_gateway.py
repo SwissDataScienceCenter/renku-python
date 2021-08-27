@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku activity database gateway implementation."""
 
+import os
 from pathlib import Path
 from typing import Dict, List, Set
 
@@ -29,7 +30,8 @@ from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.metadata.gateway.database_gateway import ActivityDownstreamRelation
 from renku.core.models.entity import Collection
 from renku.core.models.provenance.activity import Activity, Usage
-from renku.core.models.workflow.plan import AbstractPlan
+from renku.core.models.workflow.composite_plan import CompositePlan
+from renku.core.models.workflow.plan import AbstractPlan, Plan
 
 
 class ActivityGateway(IActivityGateway):
@@ -61,13 +63,14 @@ class ActivityGateway(IActivityGateway):
 
         return list(database["activities-by-generation"].keys())
 
-    def get_downstream_activities(self, activity: Activity) -> Set[Activity]:
+    def get_downstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
         # NOTE: since indices are populated one way when adding an activity, we need to query two indices
         database = self.database_dispatcher.current_database
 
-        tok = database["activity-catalog"].tokenizeQuery
-        downstream = set(database["activity-catalog"].findValues("downstream", tok(upstream=activity)))
+        activity_catalog = database["activity-catalog"]
+        tok = activity_catalog.tokenizeQuery
+        downstream = set(activity_catalog.findValues("downstream", tok(upstream=activity), maxDepth=max_depth))
 
         return downstream
 
@@ -77,6 +80,13 @@ class ActivityGateway(IActivityGateway):
 
     def add(self, activity: Activity):
         """Add an ``Activity`` to storage."""
+
+        def update_latest_activity_by_plan(plan):
+            existing_activity = database["latest-activity-by-plan"].get(plan.id)
+
+            if not existing_activity or existing_activity.ended_at_time < activity.ended_at_time:
+                database["latest-activity-by-plan"].add(activity, key=plan.id, verify=False)
+
         database = self.database_dispatcher.current_database
 
         database["activities"].add(activity)
@@ -94,9 +104,9 @@ class ActivityGateway(IActivityGateway):
 
             if isinstance(usage.entity, Collection):
                 # NOTE: Get dependants that are in a generated directory
-                for path, activities in database["activities-by-generation"].items():
+                for path, activities in by_generation.items():
                     parent = Path(usage.entity.path).resolve()
-                    child = Path(path).resolve()
+                    child = Path(os.path.abspath(path))
                     if parent == child or parent in child.parents:
                         upstreams.extend(activities)
             elif usage.entity.path in by_generation:
@@ -109,9 +119,9 @@ class ActivityGateway(IActivityGateway):
 
             if isinstance(generation.entity, Collection):
                 # NOTE: Get dependants that are in a generated directory
-                for path, activities in by_generation.items():
+                for path, activities in by_usage.items():
                     parent = Path(generation.entity.path).resolve()
-                    child = Path(path).resolve()
+                    child = Path(os.path.abspath(path))
                     if parent == child or parent in child.parents:
                         downstreams.extend(activities)
             elif generation.entity.path in by_usage:
@@ -123,11 +133,12 @@ class ActivityGateway(IActivityGateway):
         if downstreams:
             database["activity-catalog"].index(ActivityDownstreamRelation(downstream=downstreams, upstream=[activity]))
 
-        plan_gateway = inject.instance(IPlanGateway)
+        if isinstance(activity.association.plan, (CompositePlan, Plan)):
+            plan_gateway = inject.instance(IPlanGateway)
 
-        plan_gateway.add(activity.association.plan)
+            plan_gateway.add(activity.association.plan)
 
-        existing_activity = database["latest-activity-by-plan"].get(activity.association.plan.id)
-
-        if not existing_activity or existing_activity.ended_at_time < activity.ended_at_time:
-            database["latest-activity-by-plan"].add(activity)
+            update_latest_activity_by_plan(activity.association.plan)
+        else:  # A PlanCollection
+            for p in activity.association.plan.plans:
+                update_latest_activity_by_plan(p)

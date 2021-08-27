@@ -494,15 +494,16 @@ class Index(persistent.Persistent):
         """Return an iterator of keys and values."""
         return self._entries.items()
 
-    def add(self, object: persistent.Persistent, *, key: Optional[str] = None, key_object=None):
+    def add(self, object: persistent.Persistent, *, key: Optional[str] = None, key_object=None, verify=True):
         """Update index with object.
 
         If `Index._attribute` is not None then key is automatically generated.
         Key is extracted from `key_object` if it is not None; otherwise, it's extracted from `object`.
         """
         assert isinstance(object, self._object_type), f"Cannot add objects of type '{type(object)}'"
-
-        key = self._verify_and_get_key(object=object, key_object=key_object, key=key, missing_key_object_ok=False)
+        key = self._verify_and_get_key(
+            object=object, key_object=key_object, key=key, missing_key_object_ok=False, verify=verify
+        )
         self._entries[key] = object
 
     def generate_key(self, object: persistent.Persistent, *, key_object=None):
@@ -512,7 +513,9 @@ class Index(persistent.Persistent):
         """
         return self._verify_and_get_key(object=object, key_object=key_object, key=None, missing_key_object_ok=False)
 
-    def _verify_and_get_key(self, *, object: persistent.Persistent, key_object, key, missing_key_object_ok):
+    def _verify_and_get_key(
+        self, *, object: persistent.Persistent, key_object, key, missing_key_object_ok, verify=True
+    ):
         if self._key_type:
             if not missing_key_object_ok:
                 assert isinstance(key_object, self._key_type), f"Invalid key type: {type(key_object)} for '{self.name}'"
@@ -523,7 +526,10 @@ class Index(persistent.Persistent):
             key_object = key_object or object
             correct_key = get_attribute(key_object, self._attribute)
             if key is not None:
-                assert key == correct_key, f"Incorrect key for index '{self.name}': '{key}' != '{correct_key}'"
+                if verify:
+                    assert key == correct_key, f"Incorrect key for index '{self.name}': '{key}' != '{correct_key}'"
+                else:
+                    correct_key = key
         else:
             assert key is not None, "No key is provided"
             correct_key = key

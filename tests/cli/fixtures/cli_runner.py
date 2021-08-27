@@ -47,7 +47,7 @@ def renku_cli(client, run, client_database_injection_manager):
         assert len(new_activities) <= 1
 
         if new_activities:
-            return exit_code, activities_after[new_activities.pop()].association.plan
+            return exit_code, activities_after[new_activities.pop()]
 
         return exit_code, None
 
