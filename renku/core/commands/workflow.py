@@ -20,7 +20,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
@@ -49,6 +49,15 @@ def _deref(ref):
     """Remove workflows prefix."""
     assert ref.startswith("workflows/")
     return ref[len("workflows/") :]
+
+
+def _safe_read_yaml(file: str) -> Dict[str, Any]:
+    try:
+        from renku.core.models import jsonld as jsonld
+
+        return jsonld.read_yaml(file)
+    except Exception as e:
+        raise errors.ParameterError(e)
 
 
 @inject.autoparams()
@@ -280,9 +289,7 @@ def _export_workflow(
         output = Path(output)
 
     if values:
-        from renku.core.models import jsonld as jsonld
-
-        values = jsonld.read_yaml(values)
+        values = _safe_read_yaml(values)
         workflow = apply_run_values(workflow, values)
 
     from renku.core.plugins.workflow import workflow_converter
@@ -391,9 +398,7 @@ def _execute_workflow(
     # apply the provided parameter settings provided by user
     override_params = dict()
     if values:
-        from renku.core.models import jsonld as jsonld
-
-        values = jsonld.read_yaml(values)
+        override_params.update(_safe_read_yaml(values))
 
     if set_params:
         if isinstance(workflow, Plan):
@@ -407,9 +412,7 @@ def _execute_workflow(
         workflow = apply_run_values(workflow, override_params)
 
     if config:
-        from renku.core.models import jsonld as jsonld
-
-        config = jsonld.read_yaml(config)
+        config = _safe_read_yaml(config)
 
     client = client_dispatcher.current_client
     output_paths = executor(workflow=workflow, basedir=client.path, config=config)
