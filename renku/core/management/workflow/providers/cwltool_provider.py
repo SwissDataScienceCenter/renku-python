@@ -22,7 +22,7 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict
 from urllib.parse import unquote
 
 import cwltool.factory
@@ -45,27 +45,28 @@ class CWLToolProvider(IWorkflowProvider):
         return (self, "cwltool")
 
     @hookimpl
-    def workflow_execute(self, workflow: AbstractPlan, basedir: Path, config_file: Optional[str]):
+    def workflow_execute(self, workflow: AbstractPlan, basedir: Path, config: Dict[str, Any]):
         """Executes a given workflow using cwltool."""
         with tempfile.NamedTemporaryFile() as f:
             # export Plan to cwl
             converter = workflow_converter("cwl")
             converter(workflow=workflow, basedir=basedir, output=Path(f.name), output_format=None)
 
-            # TODO: pass parameters to cwltool
-            if config_file:
-                raise Exception("needs implementation")
-
             # run cwl with cwltool
             argv = sys.argv
             sys.argv = ["cwltool"]
 
-            # Keep all environment variables.
-            runtime_context = RuntimeContext(
-                kwargs={"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True}
-            )
+            runtime_args = {"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True}
+            loading_args = {"relax_path_checks": True}
+            if config:
+                # update both RuntimeContext and LoadingContext parameters with user supplied values
+                # context.ContextBase takes care that only available parameters are set in a given class
+                runtime_args.update(config)
+                loading_args.update(config)
 
-            loading_context = LoadingContext(kwargs={"relax_path_checks": True})
+            # Keep all environment variables.
+            runtime_context = RuntimeContext(kwargs=runtime_args)
+            loading_context = LoadingContext(kwargs=loading_args)
 
             factory = cwltool.factory.Factory(loading_context=loading_context, runtime_context=runtime_context)
             process = factory.make(os.path.relpath(str(f.name)))

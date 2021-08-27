@@ -406,8 +406,13 @@ def _execute_workflow(
     if override_params:
         workflow = apply_run_values(workflow, override_params)
 
+    if config:
+        from renku.core.models import jsonld as jsonld
+
+        config = jsonld.read_yaml(config)
+
     client = client_dispatcher.current_client
-    output_paths = executor(workflow=workflow, basedir=client.path, config_file=config)
+    output_paths = executor(workflow=workflow, basedir=client.path, config=config)
     return client.remove_unmodified(output_paths)
 
 

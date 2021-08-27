@@ -17,7 +17,7 @@
 # limitations under the License.
 """Plugin hooks for renku run customization."""
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pluggy
 
@@ -37,13 +37,13 @@ def workflow_provider() -> Tuple[IWorkflowProvider, str]:
 
 
 @hookspec(firstresult=True)
-def workflow_execute(workflow: AbstractPlan, basedir: Path, config_file: Optional[str]):
+def workflow_execute(workflow: AbstractPlan, basedir: Path, config: Dict[str, Any]):
     """Plugin Hook for ``workflow execute`` call.
 
     Can be used to execute renku workflows with different workflow executors.
 
-    :param workflow: a ``plan`` object that describes the given workflow.
-    :param config_file: a YAML configuration file for the provider.
+    :param workflow: a ``AbstractPlan`` object that describes the given workflow.
+    :param config: a configuration for the provider.
     """
     pass
 

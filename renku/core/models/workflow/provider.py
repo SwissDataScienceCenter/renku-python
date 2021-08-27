@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Dict, Tuple
 
 from renku.core.models.workflow.plan import AbstractPlan
 
@@ -35,6 +35,6 @@ class IWorkflowProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def workflow_execute(self, workflow: AbstractPlan, basedir: Path, config_file: Optional[str]):
+    def workflow_execute(self, workflow: AbstractPlan, basedir: Path, config: Dict[str, Any]):
         """Executes a given ``Plan`` using the provider."""
         pass
