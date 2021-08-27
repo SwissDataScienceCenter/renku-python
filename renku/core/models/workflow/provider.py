@@ -36,5 +36,5 @@ class IWorkflowProvider(metaclass=ABCMeta):
 
     @abstractmethod
     def workflow_execute(self, workflow: AbstractPlan, basedir: Path, config: Dict[str, Any]):
-        """Executes a given ``Plan`` using the provider."""
+        """Executes a given ``AbstractPlan`` using the provider."""
         pass

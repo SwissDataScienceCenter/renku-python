@@ -29,9 +29,9 @@ hookspec = pluggy.HookspecMarker("renku")
 
 @hookspec
 def workflow_provider() -> Tuple[IWorkflowProvider, str]:
-    """Plugin Hook for ``workflow execute`` call.
+    """Plugin Hook to get providers for ``workflow execute`` call.
 
-    :returns: The workflow executor backend's name.
+    :returns: A tuple of the provider itself and the workflow executor backends name.
     """
     pass
 
