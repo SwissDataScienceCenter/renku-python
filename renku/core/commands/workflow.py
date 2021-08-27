@@ -401,12 +401,9 @@ def _execute_workflow(
         override_params.update(_safe_read_yaml(values))
 
     if set_params:
-        if isinstance(workflow, Plan):
-            for param in set_params:
-                name, value = param.split("=", maxsplit=1)
-                override_params[name] = value
-        else:
-            raise errors.UsageError(f"Cannot set parameters '{name_or_id}' workflow as it is CompositePlan.")
+        for param in set_params:
+            name, value = param.split("=", maxsplit=1)
+            override_params[name] = value
 
     if override_params:
         workflow = apply_run_values(workflow, override_params)

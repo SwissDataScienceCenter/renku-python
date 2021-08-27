@@ -17,12 +17,17 @@
 # limitations under the License.
 """Test ``workflow`` commands."""
 
+import os
+import tempfile
 from pathlib import Path
 
+import pytest
 from cwl_utils import parser_v1_2 as cwlgen
 
 from renku.cli import cli
 from renku.core.metadata.database import Database
+from renku.core.models.jsonld import write_yaml
+from renku.core.plugins.provider import available_workflow_providers
 from tests.utils import format_result_exception
 
 
@@ -323,15 +328,32 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
     assert {"output"} == set(result.output.strip().split("\n"))
 
 
-def test_workflow_execute_command(runner, run_shell, project, capsys, client):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+@pytest.mark.parametrize("yaml", [False, True])
+@pytest.mark.parametrize(
+    "workflows, parameters, expected",
+    [
+        ([("run", 'echo "a" > output1')], {}, []),
+        ([("run", 'echo "a" > output1')], {"run": {"outputs": ["replaced"]}}, []),
+        ([("run", 'echo "a" > output1')], {"run": {"parameters": ["foo"], "outputs": ["bar"]}}, []),
+        (
+            [("run1", "touch data.csv"), ("run2", "wc data.csv > output")],
+            {"run1": {"outputs": ["foo"]}, "run2": {"inputs": ["foo"], "outputs": ["bar"]}},
+            [],
+        ),
+    ],
+)
+def test_workflow_execute_command(
+    runner, run_shell, project, capsys, client, provider, yaml, workflows, parameters, expected
+):
     """test workflow execute."""
-    workflow_name = "run1"
 
-    output = run_shell(f'renku run --name {workflow_name} -- echo "a" > output1')
-    # Assert expected empty stdout.
-    assert b"" == output[0]
-    # Assert not allocated stderr.
-    assert output[1] is None
+    for wf in workflows:
+        output = run_shell(f"renku run --name {wf[0]} -- {wf[1]}")
+        # Assert expected empty stdout.
+        assert b"" == output[0]
+        # Assert not allocated stderr.
+        assert output[1] is None
 
     def _execute(args):
         with capsys.disabled():
@@ -343,12 +365,35 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client):
             except SystemExit as e:
                 assert e.code in {None, 0}
 
-    _execute(("workflow", "execute", workflow_name))
+    if not parameters:
+        for wf in workflows:
+            execute_cmd = ["workflow", "execute", "-p", provider, wf[0]]
+            _execute(execute_cmd)
+    else:
+        database = Database.from_path(client.database_path)
+        for wf in workflows:
+            if wf[0] in parameters:
+                plan = database["plans-by-name"][wf[0]]
+                execute_cmd = ["workflow", "execute", "-p", provider]
 
-    # test setting parameter
-    database = Database.from_path(client.database_path)
-    plan = database["plans-by-name"][workflow_name]
+                overrides = dict()
+                for k, values in parameters[wf[0]].items():
+                    for i, v in enumerate(values):
+                        overrides[getattr(plan, k)[i].name] = v
 
-    _execute(("workflow", "execute", "--set", f"{plan.outputs[0].name}=replaced", workflow_name))
+                if yaml:
+                    fd, values_path = tempfile.mkstemp()
+                    os.close(fd)
+                    write_yaml(values_path, overrides)
+                    execute_cmd += ["--values", values_path]
+                else:
+                    [execute_cmd.extend(["--set", f"{k}={v}"]) for k, v in overrides.items()]
 
-    assert Path("replaced").resolve().exists()
+                execute_cmd.append(wf[0])
+
+                _execute(execute_cmd)
+
+                # check whether parameters setting was effective
+                if "outputs" in parameters[wf[0]]:
+                    for o in parameters[wf[0]]["outputs"]:
+                        assert Path(o).resolve().exists()
