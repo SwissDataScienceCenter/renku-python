@@ -19,7 +19,6 @@
 
 import os
 
-import pytest
 from git import Repo
 
 from renku.cli import cli
@@ -50,7 +49,6 @@ def test_status(runner, project, subdirectory):
     assert "Outdated activities that have no outputs" not in result.output
 
 
-@pytest.mark.xfail(reason="Fails because of a bug in Catalog de/serialization")
 def test_status_multiple_steps(runner, project):
     """Test status check with multiple steps."""
     source = os.path.join(os.getcwd(), "source.txt")
@@ -69,6 +67,7 @@ def test_status_multiple_steps(runner, project):
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
     assert "data/output.txt: source.txt" in result.output
+    assert "intermediate.txt: source.txt" in result.output
 
 
 def test_workflow_without_outputs(runner, project):
@@ -139,3 +138,23 @@ def test_status_with_paths(runner, project):
     assert "data/output1.txt: source1.txt" in result.output
     assert "data/output2.txt: source2.txt" in result.output
     assert "Modified inputs(2):" in result.output
+
+
+def test_status_with_path_all_generation(runner, project):
+    """Test that all generations are reported if only one of them is specified."""
+    source = os.path.join(project, "source.txt")
+    output1 = os.path.join(project, "data", "output1.txt")
+    output2 = os.path.join(project, "data", "output2.txt")
+
+    repo = Repo(project)
+
+    write_and_commit_file(repo, source, "content")
+
+    assert 0 == runner.invoke(cli, ["run", "--input", source, "touch", output1, output2]).exit_code
+
+    write_and_commit_file(repo, source, "new content")
+
+    result = runner.invoke(cli, ["status", output1])
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "data/output1.txt: source.txt" in result.output
+    assert "data/output2.txt: source.txt" in result.output

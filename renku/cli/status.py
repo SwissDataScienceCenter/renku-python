@@ -67,7 +67,7 @@ def status(ctx, paths):
             f"Outdated outputs({len(stales)}):\n"
             # TODO: Enable once renku workflow visualize is implemented
             # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
-            "  (use `renku update [<file>...]` to generate the file from its latest inputs)\n"
+            "  (use `renku update --all` to generate the file from its latest inputs)\n"
         )
         for k, v in stales.items():
             paths = click.style(", ".join(sorted(v)), fg="blue", bold=True)

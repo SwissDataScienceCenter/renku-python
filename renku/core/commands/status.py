@@ -38,6 +38,17 @@ def get_status_command():
 
 @inject.autoparams()
 def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivityGateway, paths=None):
+    def get_dependant_activities_from(start_activity):
+        """Return a set of activity and all its downstream activities."""
+        all_activities = activity_gateway.get_downstream_activities(start_activity)
+        all_activities.add(start_activity)
+        return all_activities
+
+    def mark_generations_as_stale(activity):
+        for generation in activity.generations:
+            generation_path = get_relative_path_to_cwd(client.path / generation.entity.path)
+            stale_outputs[generation_path].add(usage_path)
+
     client = client_dispatcher.current_client
 
     paths = paths or []
@@ -51,30 +62,30 @@ def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivit
         return None, None, None, None
 
     modified_inputs = set()
-    stales = defaultdict(set)
+    stale_outputs = defaultdict(set)
     stale_activities = defaultdict(set)
 
-    for activity, usage in modified:
-        activities = activity_gateway.get_downstream_activities(activity)
-        activities.add(activity)
-
+    for start_activity, usage in modified:
         usage_path = get_relative_path_to_cwd(client.path / usage.entity.path)
 
-        for activity in activities:
-            if len(activity.generations) == 0 and not paths:
-                stale_activities[activity.id].add(usage_path)
-                modified_inputs.add(usage_path)
-                continue
+        activities = get_dependant_activities_from(start_activity)
 
-            for generation in activity.generations:
-                if not paths or generation.entity.path in paths or usage.entity.path in paths:
+        if not paths or usage.entity.path in paths:  # add all downstream activities
+            modified_inputs.add(usage_path)
+            for activity in activities:
+                if len(activity.generations) == 0:
+                    stale_activities[activity.id].add(usage_path)
+                else:
+                    mark_generations_as_stale(activity)
+        else:
+            for activity in activities:
+                if any(g.entity.path in paths for g in activity.generations):
                     modified_inputs.add(usage_path)
-                    generation_path = get_relative_path_to_cwd(client.path / generation.entity.path)
-                    stales[generation_path].add(usage_path)
+                    mark_generations_as_stale(activity)
 
     deleted = {get_relative_path_to_cwd(client.path / d) for d in deleted if not paths or d in paths}
 
-    return stales, stale_activities, modified_inputs, deleted
+    return stale_outputs, stale_activities, modified_inputs, deleted
 
 
 def _get_modified_paths(activities: List[Activity], repo: Repo) -> Tuple[Set[Tuple[Activity, Usage]], Set[str]]:
