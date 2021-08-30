@@ -88,10 +88,6 @@ def load_downstream_relations(token, catalog, cache, database_dispatcher: IDatab
     return btree[token]
 
 
-# NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
-downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
-
-
 class DatabaseGateway(IDatabaseGateway):
     """Gateway for base database operations."""
 
@@ -100,6 +96,9 @@ class DatabaseGateway(IDatabaseGateway):
     def initialize(self) -> None:
         """Initialize the database."""
         database = self.database_dispatcher.current_database
+
+        # NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
+        downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
 
         database.clear()
 
