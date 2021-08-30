@@ -17,16 +17,18 @@
 # limitations under the License.
 """Resolution of Worklow execution values precedence."""
 
-from typing import Any, Dict, Union
+from itertools import chain
+from typing import Any, Dict, Set
 
-from renku.core import errors
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.parameter import ParameterMapping
-from renku.core.models.workflow.plan import Plan
+from renku.core.models.workflow.plan import AbstractPlan, Plan
 
 
-def apply_run_values(workflow: Union[CompositePlan, Plan], values: Dict[str, Any] = None) -> None:
-    """Applies values and default_values to a potentially nested workflow.
+class RunValues:
+    """Value resolution class for ``AbstractPlan``.
+
+    Applies values and default_values to a potentially nested workflow.
 
     Order of precedence is as follows (from lowest to highest):
     - Default value on a parameter
@@ -36,70 +38,80 @@ def apply_run_values(workflow: Union[CompositePlan, Plan], values: Dict[str, Any
     - Value propagated to a parameter from the source of a ParameterLink
     """
 
-    if isinstance(workflow, Plan):
-        return apply_single_run_values(workflow, values)
+    def __init__(self, plan: AbstractPlan, values: Dict[str, Any]):
+        self._values = values
+        self.missing_parameters: Set[str] = {}
+        self._plan = plan
 
-    return apply_composite_run_values(workflow, values)
+    def apply(self) -> AbstractPlan:
+        """Applies values and default_values to a potentially nested workflow.
 
+        :returns: The ``AbstractPlan`` with the user provided values set.
+        """
+        self._apply_single_run_values() if isinstance(self._plan, Plan) else self._apply_composite_run_values()
+        return self._plan
 
-def apply_single_run_values(workflow: Plan, values: Dict[str, Any] = None) -> None:
-    """Applies values and default_values to a workflow."""
-    if not values:
-        return workflow
+    def _apply_single_run_values(self) -> None:
+        """Applies values and default_values to a workflow."""
+        if not self._values:
+            return
 
-    for param in workflow.inputs + workflow.outputs + workflow.parameters:
-        if param.name in values:
-            param.actual_value = values[param.name]
+        values_keys = set(self._values.keys())
+        for param in chain(self._plan.inputs, self._plan.outputs, self._plan.parameters):
+            if param.name in self._values:
+                param.actual_value = self._values[param.name]
+                values_keys.discard(param.name)
 
-    return workflow
+        self.missing_parameters = values_keys
 
+    def _apply_composite_run_values(self) -> None:
+        """Applies values and default_values to a nested workflow."""
 
-def apply_composite_run_values(workflow: CompositePlan, values: Dict[str, Any] = None) -> None:
-    """Applies values and default_values to a nested workflow."""
+        if self._values:
+            if "parameters" in self._values:
+                # NOTE: Set mapping parameter values
+                self._apply_parameters_values()
 
-    if values:
-        if "parameters" in values:
-            # NOTE: Set mapping parameter values
-            apply_parameters_values(workflow, values["parameters"])
+            if "steps" in self._values:
+                for name, step in self._values["steps"].items():
+                    child_workflow = next((w for w in self._plan.plans if w.name == name), None)
+                    if not child_workflow:
+                        self.missing_parameters.add(f"steps.{name}")
 
-        if "steps" in values:
-            for name, step in values["steps"].items():
-                child_workflow = next((w for w in workflow.plans if w.name == name), None)
-                if not child_workflow:
-                    raise errors.ChildWorkflowNotFound(name, workflow.name)
+                    rv = RunValues(child_workflow, step)
+                    _ = rv.apply()
+                    self.missing_parameters.update(rv.missing_parameters)
 
-                apply_run_values(child_workflow, step)
+            self.missing_parameters.update(set(self._values.keys()) - set(["parameters", "steps"]))
 
-    # apply defaults
-    for mapping in workflow.mappings:
-        apply_parameter_defaults(mapping)
+        # apply defaults
+        for mapping in self._plan.mappings:
+            self._apply_parameter_defaults(mapping)
 
-    apply_parameter_links(workflow)
+        apply_parameter_links(self._plan)
 
+    def _apply_parameter_defaults(self, mapping: ParameterMapping) -> None:
+        """Apply default values to a mapping and contained params if they're not set already."""
 
-def apply_parameter_defaults(mapping: ParameterMapping) -> None:
-    """Apply default values to a mapping and contained params if they're not set already."""
+        if not mapping.actual_value_set and mapping.default_value:
+            mapping.actual_value = mapping.default_value
 
-    if not mapping.actual_value_set and mapping.default_value:
-        mapping.actual_value = mapping.default_value
+            for mapped_to in mapping.mapped_parameters:
+                if isinstance(mapped_to, ParameterMapping):
+                    self._apply_parameter_defaults(mapped_to)
+                else:
+                    if not mapped_to.actual_value_set:
+                        mapped_to.actual_value = mapping.default_value
 
-        for mapped_to in mapping.mapped_parameters:
-            if isinstance(mapped_to, ParameterMapping):
-                apply_parameter_defaults(mapped_to)
-            else:
-                if not mapped_to.actual_value_set:
-                    mapped_to.actual_value = mapping.default_value
+    def _apply_parameters_values(self) -> None:
+        """Apply values to mappings of a CompositePlan."""
+        for k, v in self._values["parameters"].items():
+            mapping = next((m for m in self._plan.mappings if m.name == k), None)
 
+            if not mapping:
+                self.missing_parameters.add(k)
 
-def apply_parameters_values(workflow: CompositePlan, values: Dict[str, str]) -> None:
-    """Apply values to mappings of a CompositePlan."""
-    for k, v in values.items():
-        mapping = next((m for m in workflow.mappings if m.name == k), None)
-
-        if not mapping:
-            raise errors.ParameterNotFoundError(k, workflow.name)
-
-        mapping.actual_value = v
+            mapping.actual_value = v
 
 
 def apply_parameter_links(workflow: CompositePlan) -> None:

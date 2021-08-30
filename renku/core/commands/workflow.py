@@ -33,7 +33,7 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
-from renku.core.management.workflow.value_resolution import apply_run_values
+from renku.core.management.workflow.value_resolution import RunValues
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.utils import communication
@@ -196,7 +196,8 @@ def _group_workflow(
 
     if link_all:
         # NOTE: propagate values to for linking to use
-        apply_run_values(plan)
+        rv = RunValues(plan, None)
+        plan = rv.apply()
 
         graph = ExecutionGraph(plan, virtual_links=True)
 
@@ -290,7 +291,13 @@ def _export_workflow(
 
     if values:
         values = _safe_read_yaml(values)
-        workflow = apply_run_values(workflow, values)
+        rv = RunValues(workflow, values)
+        workflow = rv.apply()
+        if rv.missing_parameters:
+            communication.warn(
+                f'Could not resolve the following parameters in "{workflow.name}" workflow: '
+                f'{",".join(rv.missing_parameters)}'
+            )
 
     from renku.core.plugins.workflow import workflow_converter
 
@@ -406,7 +413,14 @@ def _execute_workflow(
             override_params[name] = value
 
     if override_params:
-        workflow = apply_run_values(workflow, override_params)
+        rv = RunValues(workflow, override_params)
+        workflow = rv.apply()
+
+        if rv.missing_parameters:
+            communication.warn(
+                f'Could not resolve the following parameters in "{workflow.name}" workflow: '
+                f'{",".join(rv.missing_parameters)}'
+            )
 
     if config:
         config = _safe_read_yaml(config)
