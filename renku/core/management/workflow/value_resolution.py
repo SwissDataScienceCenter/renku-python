@@ -77,6 +77,7 @@ class RunValues:
                     child_workflow = next((w for w in self._plan.plans if w.name == name), None)
                     if not child_workflow:
                         self.missing_parameters.add(f"steps.{name}")
+                        continue
 
                     rv = RunValues(child_workflow, step)
                     _ = rv.apply()
@@ -110,6 +111,7 @@ class RunValues:
 
             if not mapping:
                 self.missing_parameters.add(k)
+                continue
 
             mapping.actual_value = v
 
