@@ -230,6 +230,7 @@ import click
 from rich.console import Console
 from rich.markdown import Markdown
 
+from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import ERROR
 from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
@@ -553,8 +554,13 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 )
 def export(workflow_name, format, output, values):
     """Export workflow."""
+    communicator = ClickCallback()
+
     result = (
-        export_workflow_command().build().execute(name_or_id=workflow_name, format=format, output=output, values=values)
+        export_workflow_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(name_or_id=workflow_name, format=format, output=output, values=values)
     )
 
     if not output:
@@ -637,8 +643,11 @@ def execute(
     name_or_id,
 ):
     """Execute a given workflow."""
+    communicator = ClickCallback()
+
     result = (
         execute_workflow_command()
+        .with_communicator(communicator)
         .build()
         .execute(
             name_or_id=name_or_id,
