@@ -36,10 +36,10 @@ from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.migrate import is_project_unsupported, migrate
+from renku.core.management.migrations.utils import MigrationType
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.dataset import get_dataset_data_dir
 from renku.core.utils import communication
-from renku.core.utils.migrate import MigrationType
 
 
 @attr.s

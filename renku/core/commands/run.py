@@ -134,7 +134,7 @@ def _run_command(
             # Don't compute paths if storage is disabled.
             if client.check_external_storage():
                 # Make sure all inputs are pulled from a storage.
-                paths_ = (path for _, path in tool.iter_input_files(client.workflow_path))
+                paths_ = (path for _, path in tool.iter_input_files(client.path))
                 client.pull_paths_from_storage(*paths_)
 
             if tty_exists:

@@ -19,7 +19,7 @@
 
 import re
 
-from renku.core.utils.migrate import OLD_METADATA_PATH
+from renku.core.management.migrations.utils import OLD_METADATA_PATH, get_datasets_path
 
 
 def migrate(client):
@@ -29,7 +29,7 @@ def migrate(client):
 
 def migrate_datasets_for_pyld2(client):
     """Migrate type scoped contexts of datasets."""
-    paths = (client.path / client.renku_datasets_path).rglob(OLD_METADATA_PATH)
+    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
 
     for path in paths:
         with path.open("r") as dataset:

@@ -49,8 +49,12 @@ from renku.core.errors import (
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
+from renku.core.management.migrations.utils import (
+    OLD_METADATA_PATH,
+    is_using_temporary_datasets_path,
+    read_project_version,
+)
 from renku.core.utils import communication
-from renku.core.utils.migrate import OLD_METADATA_PATH, read_project_version
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -145,7 +149,7 @@ def migrate(
             except (Exception, BaseException) as e:
                 raise MigrationError("Couldn't execute migration") from e
             n_migrations_executed += 1
-    if n_migrations_executed > 0 and not client.is_using_temporary_datasets_path():
+    if n_migrations_executed > 0 and not is_using_temporary_datasets_path():
         client._project = None  # NOTE: force reloading of project metadata
         client.project.version = str(version)
         project_gateway.update_project(client.project)

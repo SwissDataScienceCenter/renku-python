@@ -31,7 +31,6 @@ from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATA
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core.commands.providers import DataverseProvider, ProviderFactory, ZenodoProvider
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.dataset import Dataset
 from renku.core.models.refs import LinkReference
@@ -163,7 +162,7 @@ def test_datasets_create_dirty(runner, project, client, load_dataset_with_inject
 def test_datasets_create_dirty_exception_untracked(runner, project, client):
     """Test exception raise for untracked file in renku directory."""
     # 1. Create a problem.
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -179,7 +178,7 @@ def test_datasets_create_dirty_exception_untracked(runner, project, client):
 def test_datasets_create_dirty_exception_staged(runner, project, client):
     """Test exception raise for staged file in renku directory."""
     # 1. Create a problem within .renku directory
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -202,7 +201,7 @@ def test_dataset_create_dirty_exception_all_untracked(runner, project, client):
         fp.write("a")
 
     # 2. Create a problem.
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -224,7 +223,7 @@ def test_datasets_create_dirty_exception_all_staged(runner, project, client):
     client.repo.git.add("a")
 
     # 2. Create a problem.
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -244,7 +243,7 @@ def test_dataset_create_exception_refs(runner, project, client):
     with (client.path / "a").open("w") as fp:
         fp.write("a")
 
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 

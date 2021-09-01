@@ -37,10 +37,12 @@ from marshmallow import EXCLUDE, pre_dump
 from renku.core import errors
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.management.migrations.utils import (
+    OLD_METADATA_PATH,
     generate_dataset_file_url,
     generate_dataset_id,
     generate_dataset_tag_id,
     generate_url_id,
+    get_datasets_path,
 )
 from renku.core.models import jsonld as jsonld
 from renku.core.models import project as new_project
@@ -63,7 +65,6 @@ from renku.core.models.provenance.annotation import AnnotationSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
-from renku.core.utils.migrate import OLD_METADATA_PATH
 from renku.core.utils.urls import get_host, get_slug
 from renku.version import __version__, version_url
 
@@ -2085,7 +2086,7 @@ class OldDatasetSchema(OldEntitySchema, OldCreatorMixinSchema):
 
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
-    paths = client.renku_datasets_path.rglob(OLD_METADATA_PATH)
+    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
     return [Dataset.from_yaml(path=path, client=client) for path in paths]
 
 
