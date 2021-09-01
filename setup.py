@@ -179,7 +179,7 @@ install_requires = [
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
     "pyshacl==0.16.1",
-    "python-dateutil>=2.6.1,<=2.8.1",
+    "python-dateutil>=2.6.1,<2.8.3",
     "python-editor==1.0.4",
     "PyYAML>=5.4,<=5.4.1",
     "rdflib-jsonld>=0.5.0,<0.6.0",
