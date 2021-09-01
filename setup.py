@@ -89,7 +89,7 @@ readme = open("README.rst").read()
 history = open("CHANGES.rst").read()
 
 tests_require = [
-    "black==21.7b0",
+    "black==21.8b0",
     "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.5.3",
@@ -185,7 +185,7 @@ install_requires = [
     "rdflib-jsonld>=0.5.0,<0.6.0",
     "rdflib>=5.0.0,<6.1",
     "requests>=2.23.0,<2.27.0",
-    "rich>=9.3.0,<10.8.0",
+    "rich>=9.3.0,<10.10.0",
     "setuptools_scm>=3.1.0,<6.0.2",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.62.1",
