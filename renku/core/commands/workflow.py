@@ -30,6 +30,7 @@ from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
+from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.value_resolution import apply_run_values
 from renku.core.models.workflow.composite_plan import CompositePlan
@@ -124,6 +125,7 @@ def _group_workflow(
     keywords: List[str],
     steps: List[str],
     plan_gateway: IPlanGateway,
+    project_gateway: IProjectGateway,
 ) -> CompositePlan:
     """Group workflows into a CompositePlan."""
 
@@ -144,7 +146,12 @@ def _group_workflow(
         child_workflows.append(child_workflow)
 
     plan = CompositePlan(
-        description=description, id=CompositePlan.generate_id(), keywords=keywords, name=name, plans=child_workflows
+        description=description,
+        id=CompositePlan.generate_id(),
+        keywords=keywords,
+        name=name,
+        plans=child_workflows,
+        project_id=project_gateway.get_project().id,
     )
 
     if mappings:

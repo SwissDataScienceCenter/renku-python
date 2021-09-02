@@ -17,20 +17,25 @@
 # limitations under the License.
 """Renku generic database gateway implementation."""
 
+from pathlib import Path
+from typing import Generator
 from uuid import uuid4
 
 import BTrees
+from persistent import Persistent
 from persistent.list import PersistentList
 from zc.relation.catalog import Catalog
 from zc.relation.queryfactory import TransposingTransitive
 from zope.interface import Attribute, Interface, implementer
 
 from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.activity import Activity
 from renku.core.models.workflow.plan import AbstractPlan
+from renku.core.utils.scm import git_unicode_unescape
 
 
 class IActivityDownstreamRelation(Interface):
@@ -75,15 +80,12 @@ def dump_downstream_relations(
     return relation.id
 
 
+@inject.autoparams()
 def load_downstream_relations(token, catalog, cache, database_dispatcher: IDatabaseDispatcher):
     """Load relation entry from database."""
     btree = database_dispatcher.current_database["_downstream_relations"]
 
     return btree[token]
-
-
-# NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
-downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
 
 
 class DatabaseGateway(IDatabaseGateway):
@@ -94,6 +96,9 @@ class DatabaseGateway(IDatabaseGateway):
     def initialize(self) -> None:
         """Initialize the database."""
         database = self.database_dispatcher.current_database
+
+        # NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
+        downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
 
         database.clear()
 
@@ -137,3 +142,32 @@ class DatabaseGateway(IDatabaseGateway):
         database = self.database_dispatcher.current_database
 
         database.commit()
+
+    def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
+        """Get all database objects modified in a revision."""
+        # TODO: use gateway once #renku-python/issues/2253 is done
+        from git import NULL_TREE
+
+        client_dispatcher = inject.instance(IClientDispatcher)
+        client = client_dispatcher.current_client
+
+        if ".." in revision_or_range:
+            commits = client.repo.iter_commits(rev=revision_or_range)
+        else:
+            commits = [client.repo.commit(revision_or_range)]
+
+        for commit in commits:
+            if commit.parents:
+                parent = commit.parents[0]
+                child = commit
+            else:
+                # NOTE: For some reason diffs are the other way around when diffing NULL_TREE
+                parent = commit
+                child = NULL_TREE
+            for file_ in parent.diff(child, paths=f"{client.database_path}/**"):
+                if file_.change_type == "D":
+                    continue
+
+                oid = Path(git_unicode_unescape(file_.a_path)).name
+
+                yield self.database_dispatcher.current_database.get(oid)

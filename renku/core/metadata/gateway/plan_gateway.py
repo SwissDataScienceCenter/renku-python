@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku plan database gateway implementation."""
 
-from typing import Dict
+from typing import Dict, List, Optional
 
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
@@ -30,11 +30,11 @@ class PlanGateway(IPlanGateway):
 
     database_dispatcher = inject.attr(IDatabaseDispatcher)
 
-    def get_by_id(self, id: str) -> AbstractPlan:
+    def get_by_id(self, id: str) -> Optional[AbstractPlan]:
         """Get a plan by id."""
         return self.database_dispatcher.current_database["plans"].get(id)
 
-    def get_by_name(self, name: str) -> AbstractPlan:
+    def get_by_name(self, name: str) -> Optional[AbstractPlan]:
         """Get a plan by name."""
         return self.database_dispatcher.current_database["plans-by-name"].get(name)
 
@@ -44,6 +44,10 @@ class PlanGateway(IPlanGateway):
         if with_invalidated:
             return dict(database["plans-by-name"])
         return {k: v for k, v in database["plans-by-name"].items() if v.invalidated_at is None}
+
+    def get_all_plans(self) -> List[AbstractPlan]:
+        """Get all plans in project."""
+        return list(self.database_dispatcher.current_database["plans"].values())
 
     def add(self, plan: AbstractPlan) -> None:
         """Add a plan to the database."""

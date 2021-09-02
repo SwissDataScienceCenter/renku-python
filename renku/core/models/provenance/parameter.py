@@ -87,7 +87,7 @@ class PathParameterValueSchema(ParameterValueSchema):
         model = PathParameterValue
         unknown = EXCLUDE
 
-    parameter = Nested(schema.valueReference, [CommandInputSchema, CommandOutputSchema], reverse=True)
+    parameter = Nested(schema.valueReference, [CommandInputSchema, CommandOutputSchema])
     path = fields.String(prov.atLocation)
 
 
@@ -101,5 +101,5 @@ class VariableParameterValueSchema(ParameterValueSchema):
         model = VariableParameterValue
         unknown = EXCLUDE
 
-    parameter = Nested(schema.valueReference, CommandParameterSchema, reverse=True)
+    parameter = Nested(schema.valueReference, CommandParameterSchema)
     value = fields.Raw(schema.value)

@@ -179,7 +179,7 @@ def generate_new_metadata(
     database_gateway.commit()
 
 
-def _convert_run_to_plan(run: old_schema.Run) -> Plan:
+def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
     """Create a Plan from a Run."""
     assert not run.subprocesses, f"Cannot create a Plan from a Run with subprocesses: {run._id}"
 
@@ -249,6 +249,7 @@ def _convert_run_to_plan(run: old_schema.Run) -> Plan:
         name=run.name,
         outputs=[convert_output(o) for o in run.outputs],
         parameters=[convert_argument(a) for a in run.arguments],
+        project_id=client.project.id,
         success_codes=run.successcodes,
     )
 
@@ -293,7 +294,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
             activities = _get_process_runs(workflow)
 
         for old_activity in activities:
-            new_activity = _process_run_to_new_activity(old_activity, client=client)
+            new_activity = _process_run_to_new_activity(process_run=old_activity)
             activity_gateway.add(new_activity)
 
         if remove:
@@ -303,6 +304,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
                 pass
 
 
+@inject.autoparams("client_dispatcher")
 def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client_dispatcher: IClientDispatcher) -> Activity:
     """Convert a ProcessRun to a new Activity."""
     assert not isinstance(process_run, old_schema.WorkflowRun)
@@ -317,7 +319,7 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client_disp
         assert len(run.subprocesses) == 1, f"Run in ProcessRun has multiple steps: {run._id}"
         run = run.subprocesses[0].process
 
-    plan = _convert_run_to_plan(run)
+    plan = _convert_run_to_plan(run, client)
 
     agents = [_old_agent_to_new_agent(a) for a in process_run.agents or []]
     association_agent = _old_agent_to_new_agent(process_run.association.agent)

@@ -70,7 +70,7 @@ class DatasetsProvenance:
         """Return the previous version of a dataset if any."""
         if not dataset.derived_from:
             return
-        return self.get_by_id(dataset.derived_from)
+        return self.get_by_id(dataset.derived_from.url_id)
 
     def add_or_update(self, dataset: Dataset, date: datetime = None, creator: Person = None):
         """Add/update a dataset according to its new content.

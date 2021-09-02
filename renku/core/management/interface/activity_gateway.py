@@ -39,6 +39,10 @@ class IActivityGateway(ABC):
         """Get downstream activities that depend on this activity."""
         raise NotImplementedError
 
+    def get_all_activities(self) -> List[Activity]:
+        """Get all activities in the project."""
+        raise NotImplementedError
+
     def add(self, activity: Activity) -> None:
         """Add an ``Activity`` to storage."""
         raise NotImplementedError

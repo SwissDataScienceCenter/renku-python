@@ -70,7 +70,7 @@ def dummy_processrun_plugin_hook():
         """CmdlineTool Hook implementation namespace."""
 
         @hookimpl
-        def process_run_annotations(self, run):
+        def process_run_annotations(self, plan):
             """``process_run_annotations`` hook implementation."""
             from renku.core.models.provenance.annotation import Annotation
 

@@ -32,7 +32,7 @@ from renku.core import errors
 from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable, Slots
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema
-from renku.core.models.entity import Entity, EntitySchema
+from renku.core.models.entity import CollectionSchema, Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
 from renku.core.utils.git import get_path
@@ -299,7 +299,7 @@ class Dataset(Persistent):
         date_created: datetime = None,
         date_published: datetime = None,
         date_removed: datetime = None,
-        derived_from: str = None,
+        derived_from: Url = None,
         description: str = None,
         id: str = None,
         identifier: str = None,
@@ -309,6 +309,7 @@ class Dataset(Persistent):
         keywords: List[str] = None,
         license: str = None,
         name: str = None,
+        project_id: str = None,
         same_as: Url = None,
         title: str = None,
         version: str = None,
@@ -337,13 +338,14 @@ class Dataset(Persistent):
         self.date_created: datetime = fix_timezone(date_created) or local_now()
         self.date_published: datetime = fix_timezone(date_published)
         self.date_removed: datetime = fix_timezone(date_removed)
-        self.derived_from: str = derived_from
+        self.derived_from: Url = derived_from
         self.description: str = description
         self.images: List[ImageObject] = images or []
         self.in_language: Language = in_language
         self.initial_identifier: str = initial_identifier
         self.keywords: List[str] = keywords or []
         self.license: str = license
+        self.project_id: str = project_id
         self.same_as: Url = same_as
         self.title: str = title
         self.version: str = version
@@ -412,6 +414,7 @@ class Dataset(Persistent):
             keywords=list(self.keywords or []),
             license=self.license,
             name=self.name,
+            project_id=self.project_id,
             same_as=self.same_as,
             title=self.title,
             version=self.version,
@@ -423,9 +426,10 @@ class Dataset(Persistent):
         NOTE: Call this only for newly-created/-imported datasets that don't have a mutability chain because it sets
         `initial_identifier`.
         """
-        assert (
-            self.derived_from is None
-        ), f"Replacing identifier of dataset '{self.name}:{self.identifier}' that is derived from {self.derived_from}"
+        assert self.derived_from is None, (
+            f"Replacing identifier of dataset '{self.name}:{self.identifier}' "
+            f"that is derived from {self.derived_from.url_id}"
+        )
 
         self._assign_new_identifier(identifier)
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
@@ -437,7 +441,7 @@ class Dataset(Persistent):
         self._assign_new_identifier(identifier)
         # NOTE: Setting `initial_identifier` is required for migration of broken projects
         self.initial_identifier = dataset.initial_identifier
-        self.derived_from = dataset.id
+        self.derived_from = Url(url_id=dataset.id)
         self.same_as = None
         self.date_created = local_now()
         self.date_published = None
@@ -655,7 +659,7 @@ class DatasetFileSchema(JsonLDSchema):
     based_on = Nested(schema.isBasedOn, RemoteEntitySchema, missing=None)
     date_added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
-    entity = Nested(prov.entity, EntitySchema)
+    entity = Nested(prov.entity, [EntitySchema, CollectionSchema])
     id = fields.Id()
     is_external = fields.Boolean(renku.external, missing=False)
     source = fields.String(renku.source, missing=None)
@@ -677,9 +681,7 @@ class DatasetSchema(JsonLDSchema):
     date_published = fields.DateTime(
         schema.datePublished, missing=None, format="%Y-%m-%d", extra_formats=("iso", "%Y-%m-%dT%H:%M:%S")
     )
-    # FIXME: Implement proper export
-    # derived_from = Nested(prov.wasDerivedFrom, UrlSchema, missing=None)
-    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
+    derived_from = Nested(prov.wasDerivedFrom, UrlSchema, missing=None)
     description = fields.String(schema.description, missing=None)
     dataset_files = Nested(schema.hasPart, DatasetFileSchema, many=True)
     id = fields.Id(missing=None)
@@ -690,6 +692,7 @@ class DatasetSchema(JsonLDSchema):
     license = Uri(schema.license, missing=None)
     name = fields.String(renku.slug)
     initial_identifier = fields.String(renku.originalIdentifier)
+    project_id = fields.IRI(renku.hasDataset, reverse=True)
     same_as = Nested(schema.sameAs, UrlSchema, missing=None)
     title = fields.String(schema.name)
     version = fields.String(schema.version, missing=None)

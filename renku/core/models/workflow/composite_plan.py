@@ -52,6 +52,7 @@ class CompositePlan(AbstractPlan):
         name: str,
         derived_from: str = None,
         plans: List[Union["CompositePlan", Plan]] = None,
+        project_id: str = None,
         mappings: List[ParameterMapping] = None,
         links: List[ParameterLink] = None,
     ):
@@ -59,6 +60,8 @@ class CompositePlan(AbstractPlan):
         self.id: str = id
         self.invalidated_at: datetime = invalidated_at
         self.keywords: List[str] = keywords or []
+        self.project_id: str = project_id
+
         self.name: str = name
         self.derived_from: str = derived_from
 
@@ -370,5 +373,6 @@ class CompositePlanSchema(JsonLDSchema):
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
     derived_from = fields.String(prov.wasDerivedFrom, missing=None)
+    project_id = fields.IRI(renku.hasPlan, reverse=True)
     plans = Nested(renku.hasSubprocess, [PlanSchema, "CompositePlanSchema"], many=True)
     links = Nested(renku.workflowLinks, [ParameterLinkSchema], many=True, missing=None)

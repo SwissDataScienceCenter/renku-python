@@ -77,6 +77,7 @@ from renku.cli.dataset import dataset
 from renku.cli.doctor import doctor
 from renku.cli.exception_handler import IssueFromTraceback
 from renku.cli.githooks import githooks as githooks_command
+from renku.cli.graph import graph
 from renku.cli.init import init as init_command
 from renku.cli.login import login, logout, token
 from renku.cli.migrate import check_immutable_template_files, migrate, migrationscheck
@@ -195,9 +196,8 @@ cli.add_command(config)
 cli.add_command(dataset)
 cli.add_command(doctor)
 cli.add_command(githooks_command)
+cli.add_command(graph)
 cli.add_command(init_command)
-# TODO: reenable once log (or workflow export) is implemented
-# cli.add_command(log)
 cli.add_command(login)
 cli.add_command(logout)
 cli.add_command(migrate)

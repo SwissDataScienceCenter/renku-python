@@ -238,7 +238,7 @@ def test_input_update_and_rerun(cmd, exit_code, runner, project, run):
     assert exit_code == run(args=(cmd, input_.name))
 
 
-@pytest.mark.skip(reason="renku log not implemented with new metadata yet, reenable later")
+@pytest.mark.skip(reason="renku rerun not implemented with new metadata yet, reenable later")
 def test_output_directory(runner, project, run, no_lfs_size_limit):
     """Test detection of output directory."""
     cwd = Path(project)
@@ -279,7 +279,7 @@ def test_output_directory(runner, project, run, no_lfs_size_limit):
     assert 0 == run(args=("rerun", str(source_wc)))
     assert {data.name} == {path.name for path in destination.iterdir()}
 
-    cmd = ["log", str(source_wc)]
+    cmd = ["export", "graph"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
     destination_data = str(Path("destination") / "data.txt")
     assert destination_data in result.output, cmd

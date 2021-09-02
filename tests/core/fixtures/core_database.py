@@ -22,6 +22,7 @@ import datetime
 from typing import Tuple
 
 import pytest
+from zc.relation.queryfactory import TransposingTransitive
 
 from renku.core import errors
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
@@ -95,7 +96,6 @@ def database() -> Tuple[Database, DummyStorage]:
 
     from renku.core.metadata.gateway.database_gateway import (
         IActivityDownstreamRelation,
-        downstream_transitive_factory,
         dump_activity,
         dump_downstream_relations,
         load_activity,
@@ -122,6 +122,7 @@ def database() -> Tuple[Database, DummyStorage]:
     activity_catalog.addValueIndex(
         IActivityDownstreamRelation["upstream"], dump_activity, load_activity, btree=BTrees.family32.OO, multiple=True
     )
+    downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
     activity_catalog.addDefaultQueryFactory(downstream_transitive_factory)
     database.add_root_object(name="activity-catalog", obj=activity_catalog)
 

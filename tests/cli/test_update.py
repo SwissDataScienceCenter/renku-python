@@ -36,7 +36,7 @@ def update_and_commit(data, file_, repo):
     repo.index.commit("Updated source.txt")
 
 
-@pytest.mark.skip(reason="renku log and update not implemented with new metadata yet, reenable later")
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_update(runner, project, renku_cli, no_lfs_warning):
     """Test automatic file update."""
     from renku.core.utils.shacl import validate_graph
@@ -96,11 +96,11 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
     with output.open("r") as f:
         assert f.read().strip() == "2"
 
-    from renku.cli.log import FORMATS
+    from renku.cli.graph import GRAPH_FORMATS
 
-    for output_format in FORMATS:
-        # Make sure the log contains the original parent.
-        result = runner.invoke(cli, ["log", "--format", output_format], catch_exceptions=False)
+    for output_format in GRAPH_FORMATS:
+        # Make sure the graph contains the original parent.
+        result = runner.invoke(cli, ["graph", "export", "--format", output_format], catch_exceptions=False)
         assert 0 == result.exit_code, format_result_exception(result)
         assert source.name in result.output, output_format
 
@@ -109,7 +109,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
             assert r is True, t
 
 
-@pytest.mark.skip(reason="renku log and update not implemented with new metadata yet, reenable later")
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
     """Test automatic file update."""
     cwd = Path(project)
@@ -152,7 +152,7 @@ def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
     assert 0 == exit_code
     assert 2 == len(run.subprocesses)
 
-    result = runner.invoke(cli, ["log"], catch_exceptions=False)
+    result = runner.invoke(cli, ["graph", "export"], catch_exceptions=False)
     assert "(part of" in result.output, result.output
 
     result = runner.invoke(cli, ["status"])
