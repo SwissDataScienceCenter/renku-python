@@ -42,7 +42,8 @@ property:
 from operator import attrgetter
 
 from renku.api.models.project import ensure_project_context
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.command_builder.database_dispatcher import DatabaseDispatcher
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.models import dataset as core_dataset
 
 
@@ -85,8 +86,12 @@ class Dataset:
         client = project.client
         if not client or not client.has_graph_files():
             return []
-        datasets_provenance = DatasetsProvenance()
-        return [Dataset._from_dataset(d) for d in datasets_provenance.datasets]
+        database_dispatcher = DatabaseDispatcher()
+        database_dispatcher.push_database_to_stack(client.database_path)
+        dataset_gateway = DatasetGateway()
+        dataset_gateway.database_dispatcher = database_dispatcher
+
+        return [Dataset._from_dataset(d) for d in dataset_gateway.get_all_datasets()]
 
     def __getattribute__(self, name):
         dataset = object.__getattribute__(self, "_dataset")
