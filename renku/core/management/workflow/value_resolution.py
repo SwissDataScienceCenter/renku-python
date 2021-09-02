@@ -17,42 +17,54 @@
 # limitations under the License.
 """Resolution of Worklow execution values precedence."""
 
+from abc import ABC, abstractmethod
 from itertools import chain
 from typing import Any, Dict, Set
 
+from renku.core import errors
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.parameter import ParameterMapping
 from renku.core.models.workflow.plan import AbstractPlan, Plan
 
 
-class RunValues:
-    """Value resolution class for ``AbstractPlan``.
-
-    Applies values and default_values to a potentially nested workflow.
-
-    Order of precedence is as follows (from lowest to highest):
-    - Default value on a parameter
-    - Default value on a mapping to the parameter
-    - Value passed to a mapping to the parameter
-    - Value passed to the parameter
-    - Value propagated to a parameter from the source of a ParameterLink
-    """
+class ValueResolver(ABC):
+    """Value resolution class for an ``AbstractPlan``."""
 
     def __init__(self, plan: AbstractPlan, values: Dict[str, Any]):
         self._values = values
         self.missing_parameters: Set[str] = {}
         self._plan = plan
 
+    @abstractmethod
     def apply(self) -> AbstractPlan:
         """Applies values and default_values to a potentially nested workflow.
 
         :returns: The ``AbstractPlan`` with the user provided values set.
         """
-        self._apply_single_run_values() if isinstance(self._plan, Plan) else self._apply_composite_run_values()
-        return self._plan
+        pass
 
-    def _apply_single_run_values(self) -> None:
-        """Applies values and default_values to a workflow."""
+    @staticmethod
+    def get(plan: AbstractPlan, values: Dict[str, Any]) -> "ValueResolver":
+        """Factory method to obtain the specific ValueResolver for a workflow.
+
+        :param plan: a workflow.
+        :param values: user defined dictionary of runtime values for the provided workflow.
+        :returns: A ValueResolver object
+        """
+        return PlanValueResolver(plan, values) if isinstance(plan, Plan) else CompositePlanValueResolver(plan, values)
+
+
+class PlanValueResolver(ValueResolver):
+    """Value resolution class for a ``Plan``.
+
+    Applies values and default_values to a workflow.
+    """
+
+    def __init__(self, plan: Plan, values: Dict[str, Any]):
+        super(PlanValueResolver, self).__init__(plan, values)
+
+    def apply(self) -> AbstractPlan:
+        """Applies values and default_values to a ``Plan``."""
         if not self._values:
             return
 
@@ -64,8 +76,27 @@ class RunValues:
 
         self.missing_parameters = values_keys
 
-    def _apply_composite_run_values(self) -> None:
-        """Applies values and default_values to a nested workflow."""
+        return self._plan
+
+
+class CompositePlanValueResolver(ValueResolver):
+    """Value resolution class for a ``CompositePlan``.
+
+    Applies values and default_values to a nested workflow.
+
+    Order of precedence is as follows (from lowest to highest):
+    - Default value on a parameter
+    - Default value on a mapping to the parameter
+    - Value passed to a mapping to the parameter
+    - Value passed to the parameter
+    - Value propagated to a parameter from the source of a ParameterLink
+    """
+
+    def __init__(self, plan: CompositePlan, values: Dict[str, Any]):
+        super(CompositePlanValueResolver, self).__init__(plan, values)
+
+    def apply(self) -> AbstractPlan:
+        """Applies values and default_values to a ``CompositePlan``."""
 
         if self._values:
             if "parameters" in self._values:
@@ -76,12 +107,11 @@ class RunValues:
                 for name, step in self._values["steps"].items():
                     child_workflow = next((w for w in self._plan.plans if w.name == name), None)
                     if not child_workflow:
-                        self.missing_parameters.add(f"steps.{name}")
-                        continue
+                        raise errors.ChildWorkflowNotFound(name, self._plan.name)
 
-                    rv = RunValues(child_workflow, step)
+                    rv = ValueResolver.get(child_workflow, step)
                     _ = rv.apply()
-                    self.missing_parameters.update(rv.missing_parameters)
+                    self.missing_parameters.update({f"steps.name.{mp}" for mp in rv.missing_parameters})
 
             self.missing_parameters.update(set(self._values.keys()) - set(["parameters", "steps"]))
 
@@ -90,6 +120,8 @@ class RunValues:
             self._apply_parameter_defaults(mapping)
 
         apply_parameter_links(self._plan)
+
+        return self._plan
 
     def _apply_parameter_defaults(self, mapping: ParameterMapping) -> None:
         """Apply default values to a mapping and contained params if they're not set already."""

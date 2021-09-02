@@ -24,7 +24,7 @@ import pytest
 
 from renku.core import errors
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
-from renku.core.management.workflow.value_resolution import RunValues
+from renku.core.management.workflow.value_resolution import ValueResolver
 from renku.core.models.workflow.composite_plan import CompositePlan
 
 
@@ -409,7 +409,7 @@ def test_composite_plan_actual_values(composite_plan, mappings, defaults, values
 
     grouped.set_mappings_from_strings(mappings)
     grouped.set_mapping_defaults(defaults)
-    rv = RunValues(grouped, values)
+    rv = ValueResolver.get(grouped, values)
     assert len(rv.missing_parameters) == 0
 
     actual = _get_nested_actual_values(rv.apply())
@@ -497,7 +497,7 @@ def test_composite_plan_auto_links(composite_plan, mappings, defaults, links, ra
     grouped.set_mappings_from_strings(mappings)
     grouped.set_mapping_defaults(defaults)
 
-    rv = RunValues(grouped, None)
+    rv = ValueResolver.get(grouped, None)
     grouped = rv.apply()
     assert len(rv.missing_parameters) == 0
 

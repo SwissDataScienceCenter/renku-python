@@ -33,7 +33,7 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
-from renku.core.management.workflow.value_resolution import RunValues
+from renku.core.management.workflow.value_resolution import ValueResolver
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.utils import communication
@@ -196,7 +196,7 @@ def _group_workflow(
 
     if link_all:
         # NOTE: propagate values to for linking to use
-        rv = RunValues(plan, None)
+        rv = ValueResolver.get(plan, None)
         plan = rv.apply()
 
         graph = ExecutionGraph(plan, virtual_links=True)
@@ -291,7 +291,7 @@ def _export_workflow(
 
     if values:
         values = _safe_read_yaml(values)
-        rv = RunValues(workflow, values)
+        rv = ValueResolver.get(workflow, values)
         workflow = rv.apply()
         if rv.missing_parameters:
             communication.warn(
@@ -413,7 +413,7 @@ def _execute_workflow(
             override_params[name] = value
 
     if override_params:
-        rv = RunValues(workflow, override_params)
+        rv = ValueResolver.get(workflow, override_params)
         workflow = rv.apply()
 
         if rv.missing_parameters:
