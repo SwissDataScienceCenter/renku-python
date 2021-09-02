@@ -89,7 +89,7 @@ readme = open("README.rst").read()
 history = open("CHANGES.rst").read()
 
 tests_require = [
-    "black==21.7b0",
+    "black==21.8b0",
     "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.5.3",
@@ -171,14 +171,14 @@ install_requires = [
     "ndg-httpsclient==0.5.1",
     "pathspec>=0.8.0,<1.0.0",
     "patool==1.12",
-    "pluggy==0.13.1",
+    "pluggy==1.0.0",
     "portalocker>=2.2.1,<2.4",
     "psutil>=5.4.7,<5.8.1",
     "pyasn1>=0.4.5,<=0.4.8",
     "pyjwt==2.1.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
-    "pyshacl==0.16.1",
+    "pyshacl==0.16.1.post1",
     "python-dateutil>=2.6.1,<2.8.3",
     "python-editor==1.0.4",
     "PyYAML>=5.4,<=5.4.1",
