@@ -24,7 +24,6 @@ import pytest
 from renku.api import Dataset, Project
 
 
-@pytest.mark.skip(reason="not implemented with new metadata yet, reenable later")
 def test_list_datasets(client_with_datasets):
     """Test listing datasets within a project context."""
     with Project():
@@ -33,7 +32,6 @@ def test_list_datasets(client_with_datasets):
         assert {"dataset-1", "dataset-2"} == {d.name for d in datasets}
 
 
-@pytest.mark.skip(reason="not implemented with new metadata yet, reenable later")
 def test_list_datasets_outside_a_context(client_with_datasets):
     """Test listing datasets outside a project context."""
     datasets = Dataset.list()
@@ -48,7 +46,6 @@ def test_list_datasets_outside_a_renku_project(directory_tree):
     assert [] == Dataset.list()
 
 
-@pytest.mark.skip(reason="not implemented with new metadata yet, reenable later")
 @pytest.mark.parametrize(
     "dataset, files_paths",
     [
