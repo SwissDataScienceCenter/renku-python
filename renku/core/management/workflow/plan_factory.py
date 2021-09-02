@@ -289,10 +289,7 @@ class PlanFactory:
 
                 self.add_command_output_from_parameter(param)
             else:
-                self.add_command_output(
-                    default_value=glob,
-                    encoding_format=[DIRECTORY_MIME_TYPE] if os.path.isdir(path) else self._get_mimetype(Path(path)),
-                )
+                self.add_command_output(default_value=glob)
 
     def _check_potential_output_directory(
         self, input_path: Path, candidates: Set[str], tree: DirectoryTree
