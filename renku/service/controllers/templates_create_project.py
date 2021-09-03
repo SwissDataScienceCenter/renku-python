@@ -69,6 +69,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "__repository__": self.ctx["project_repository"],
             "__sanitized_project_name__": self.ctx["project_name_stripped"],
             "__project_slug__": self.ctx["project_slug"],
+            "__project_description__": self.ctx["project_description"],
         }
         if is_release():
             metadata["__renku_version__"] = __version__
@@ -90,6 +91,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "clone_depth": self.ctx["depth"],
             "git_url": self.ctx["new_project_url"],
             "name": self.ctx["project_name_stripped"],
+            "description": self.ctx["project_description"],
             "fullname": self.ctx["fullname"],
             "email": self.ctx["email"],
             "owner": self.ctx["project_namespace"],
@@ -153,6 +155,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 invoked_from="service",
                 initial_branch=self.ctx["initial_branch"],
                 commit_message=self.ctx["commit_message"],
+                description=self.ctx["project_description"],
             )
 
         self.new_project_push(new_project_path)

@@ -37,6 +37,11 @@ or:
 This creates a new subdirectory named ``.renku`` that contains all the
 necessary files for managing the project configuration.
 
+Every project requires a ``name`` that can either be provided using
+``--name`` or automatically taken from the target folder.
+
+You can also provide a description for a project using ``--description``.
+
 If provided directory does not exist, it will be created.
 
 Use a different template
@@ -102,10 +107,11 @@ If you don't provide the required parameters through the option
 ``-parameter``, you will be asked to provide them. Empty values are allowed
 and passed to the template initialization function.
 
-.. note:: Every project requires a ``name`` that can either be provided using
-   ``--name`` or automatically taken from the target folder. This is
-   also considered as a special parameter, therefore it's automatically added
-   to the list of parameters forwarded to the ``init`` command.
+.. note::
+
+    Project's ``name`` is considered as a special parameter and it's
+    automatically added to the list of parameters forwarded to the ``init``
+    command.
 
 Update an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -240,6 +246,7 @@ def check_git_user_config():
 @click.command()
 @click.argument("path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True))
 @click.option("-n", "--name", callback=validate_name, help="Provide a custom project name.")
+@click.option("--description", help="Provide a description for the project.")
 @click.option(
     "--data-dir",
     default=None,
@@ -275,6 +282,7 @@ def init(
     external_storage_requested,
     path,
     name,
+    description,
     template_id,
     template_index,
     template_source,
@@ -307,6 +315,7 @@ def init(
         external_storage_requested=external_storage_requested,
         path=path,
         name=name,
+        description=description,
         template_id=template_id,
         template_index=template_index,
         template_source=template_source,

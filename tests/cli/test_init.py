@@ -28,6 +28,7 @@ from renku.cli import cli
 from renku.cli.init import parse_parameters
 from renku.core import errors
 from renku.core.commands.init import create_template_sentence
+from renku.core.metadata.database import Database
 from tests.utils import format_result_exception, raises
 
 
@@ -422,3 +423,19 @@ def test_default_init_parameters(isolated_runner, mocker, project_init, template
     assert metadata["__repository__"] == ""
     assert metadata["__project_slug__"] == ""
     assert metadata["__sanitized_project_name__"] == ""
+
+
+def test_init_with_description(isolated_runner, template):
+    """Test project initialization with description."""
+    result = isolated_runner.invoke(
+        cli, ["init", "--description", "project description", "new-project", "--template-id", template["id"]]
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The template requires a value for" in result.output
+
+    database = Database.from_path(Path("new-project") / ".renku" / "metadata")
+    project = database.get("project")
+
+    assert "project description" in project.template_metadata
+    assert "project description" == project.description

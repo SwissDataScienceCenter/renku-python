@@ -60,6 +60,7 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     project_namespace = fields.String(required=True)
     project_repository = fields.String(required=True)
     project_slug = fields.String(required=True)
+    project_description = fields.String(missing=None)
 
     new_project_url = fields.String(required=True)
     project_name_stripped = fields.String(required=True)

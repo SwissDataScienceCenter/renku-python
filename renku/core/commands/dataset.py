@@ -56,6 +56,7 @@ from renku.core.models.provenance.agent import Person
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
 from renku.core.utils.doi import is_doi
+from renku.core.utils.metadata import construct_creators
 from renku.core.utils.urls import remove_credentials
 
 
@@ -99,7 +100,7 @@ def create_dataset_helper(
     if not creators:
         creators = [Person.from_git(client.repo)]
     else:
-        creators, _ = _construct_creators(creators)
+        creators, _ = construct_creators(creators)
 
     dataset = client.create_dataset(
         name=name,
@@ -142,7 +143,7 @@ def _edit_dataset(
         "title": title,
     }
 
-    creators, no_email_warnings = _construct_creators(creators, ignore_email=True)
+    creators, no_email_warnings = construct_creators(creators, ignore_email=True)
     title = title.strip() if isinstance(title, str) else ""
 
     dataset = client.get_dataset(name=name)
@@ -186,40 +187,6 @@ def _show_dataset(name, client_dispatcher: IClientDispatcher):
 def show_dataset():
     """Command for showing detailed dataset information."""
     return Command().command(_show_dataset).with_database().require_migration()
-
-
-def _construct_creators(creators, ignore_email=False):
-    from collections.abc import Iterable
-
-    creators = creators or ()
-
-    if not isinstance(creators, Iterable) or isinstance(creators, str):
-        raise errors.ParameterError("Invalid type")
-
-    people = []
-    no_email_warnings = []
-    for creator in creators:
-        if isinstance(creator, str):
-            person = Person.from_string(creator)
-        elif isinstance(creator, dict):
-            person = Person.from_dict(creator)
-        else:
-            raise errors.ParameterError("Invalid type")
-
-        message = 'A valid format is "Name <email> [affiliation]"'
-
-        if not person.name:  # pragma: no cover
-            raise errors.ParameterError(f'Name is invalid: "{creator}".\n{message}')
-
-        if not person.email:
-            if not ignore_email:  # pragma: no cover
-                raise errors.ParameterError(f'Email is invalid: "{creator}".\n{message}')
-            else:
-                no_email_warnings.append(creator)
-
-        people.append(person)
-
-    return people, no_email_warnings
 
 
 @inject.autoparams()

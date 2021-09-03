@@ -429,13 +429,14 @@ class RepositoryApiMixin(GitCore):
         database_gateway: IDatabaseGateway,
         read_only=False,
         name=None,
+        description=None,
     ):
         """Yield an editable metadata object."""
 
         try:
             project = project_gateway.get_project()
         except ValueError:
-            project = Project.from_client(name=name, client=self)
+            project = Project.from_client(name=name, description=description, client=self)
 
         yield project
 
@@ -633,3 +634,8 @@ class RepositoryApiMixin(GitCore):
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
+
+
+DATABASE_METADATA_PATH = [
+    Path(RENKU_HOME) / RepositoryApiMixin.DATABASE_PATH,
+]
