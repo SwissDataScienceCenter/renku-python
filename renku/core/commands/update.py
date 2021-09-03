@@ -18,9 +18,9 @@
 """Renku ``update`` command."""
 
 import uuid
-from typing import Generator, List, Union
+from collections import defaultdict
+from typing import Generator, List, Set
 
-import networkx
 from git import Actor
 
 from renku.core.errors import ParameterError
@@ -28,9 +28,10 @@ from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.models.provenance.activity import Activity
-from renku.core.models.workflow.composite_plan import CompositePlan, PlanCollection
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils.datetime8601 import local_now
 from renku.core.utils.git import add_to_git, get_modified_entities
@@ -64,11 +65,11 @@ def _update(update_all, client_dispatcher: IClientDispatcher, activity_gateway: 
     paths = get_relative_paths(base=client.path, paths=paths)
 
     modified_activities = _get_modified_activities(client, activity_gateway)
-    ordered_activities = _get_ordered_downstream_activities(modified_activities, activity_gateway, paths)
+    activities = _get_downstream_activities(modified_activities, activity_gateway, paths)
 
-    update_plan = _create_plan_from_activity_list(ordered_activities)
+    plans = [a.plan_with_values for a in activities]
 
-    execute_workflow(workflow=update_plan, command_name="update")
+    execute_workflow(plans=plans, command_name="update")
 
 
 def _get_modified_activities(client, activity_gateway) -> Generator[Activity, None, None]:
@@ -80,72 +81,77 @@ def _get_modified_activities(client, activity_gateway) -> Generator[Activity, No
     return (a for a in latest_activities if any(u.entity in modified for u in a.usages))
 
 
-def _get_ordered_downstream_activities(
+def _get_downstream_activities(
     starting_activities: Generator[Activity, None, None], activity_gateway: IActivityGateway, paths: List[str]
-):
+) -> Set[Activity]:
     """Return an ordered list of activities so that an activities comes before all its downstream activities."""
-    graph = networkx.DiGraph()
+    all_activities = defaultdict(set)
 
-    activities = set(starting_activities)
-    while activities:
-        activity = activities.pop()
-        child_activities = activity_gateway.get_downstream_activities(activity, max_depth=1)
+    def have_identical_inputs_and_outputs(activity1, activity2):
+        return sorted(u.entity.path for u in activity1.usages) == sorted(
+            u.entity.path for u in activity2.usages
+        ) and sorted(g.entity.path for g in activity1.generations) == sorted(
+            g.entity.path for g in activity2.generations
+        )
 
-        if len(child_activities) > 0:
-            activities |= child_activities
-            for child in child_activities:
-                graph.add_edge(activity, child)
-        elif activity not in graph:
-            graph.add_node(activity)
+    def include_newest_activity(activity):
+        existing_activities = all_activities[activity.association.plan.id]
 
-    if paths:
-        tail_activities = {activity for activity in graph if any(g.entity.path in paths for g in activity.generations)}
+        if activity in existing_activities:
+            return
 
-        # NOTE: Add tail nodes and their ancestors are required for an update
-        required_activities = tail_activities.copy()
-        for activity in tail_activities:
-            parents = networkx.ancestors(graph, activity)
-            required_activities.update(parents)
+        for existing_activity in existing_activities:
+            if have_identical_inputs_and_outputs(activity, existing_activity):
+                if activity.ended_at_time > existing_activity.ended_at_time:  # activity is newer
+                    existing_activities.remove(existing_activity)
+                    existing_activities.add(activity)
+                return
 
-        original_graph = graph.copy()
-        # Exclude non-required activities
-        for activity in original_graph:
-            if activity not in required_activities:
-                graph.remove_node(activity)
+        # No similar activity was found
+        existing_activities.add(activity)
 
-    return list(networkx.algorithms.dag.topological_sort(graph))
+    for activity in starting_activities:
+        downstream_chains = activity_gateway.get_downstream_activity_chains(activity)
 
+        if paths:
+            # NOTE: Add the activity to check if it also matches the condition
+            downstream_chains.append((activity,))
+            downstream_chains = [c for c in downstream_chains if any(g.entity.path in paths for g in c[-1].generations)]
 
-def _create_plan_from_activity_list(activities: List[Activity]) -> Union[Plan, PlanCollection]:
-    """Create a CompositePlan by using Plans from an activity list."""
-    plans = [a.to_plan() for a in activities]
+            # NOTE: Include activity only if any of its downstream match the condition
+            if downstream_chains:
+                include_newest_activity(activity)
+        else:
+            include_newest_activity(activity)
 
-    if len(plans) == 1:
-        return plans[0]
+        for chain in downstream_chains:
+            for activity in chain:
+                include_newest_activity(activity)
 
-    return PlanCollection(id=PlanCollection.generate_id(), plans=plans, name=f"plan-collection-{uuid.uuid4().hex}")
+    return {a for activities in all_activities.values() for a in activities}
 
 
 @inject.autoparams()
 def execute_workflow(
-    workflow: Union[CompositePlan, Plan, PlanCollection],
+    plans: List[Plan],
     command_name,
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
+    database_dispatcher: IDatabaseDispatcher,
 ):
     """Execute a Run with/without subprocesses."""
     client = client_dispatcher.current_client
 
     # NOTE: Pull inputs from Git LFS or other storage backends
     if client.check_external_storage():
-        inputs = [i.actual_value for i in workflow.inputs]
+        inputs = [i.actual_value for p in plans for i in p.inputs]
         client.pull_paths_from_storage(*inputs)
 
     delete_indirect_files_list(client.path)
 
     started_at_time = local_now()
 
-    modified_outputs = _execute_workflow_helper(workflow=workflow, client=client)
+    modified_outputs = _execute_workflow_helper(plans=plans, client=client)
 
     ended_at_time = local_now()
 
@@ -157,16 +163,20 @@ def execute_workflow(
         committer = Actor(f"renku {__version__}", version_url)
         client.repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
 
-    activity = Activity.from_plan(plan=workflow, started_at_time=started_at_time, ended_at_time=ended_at_time)
+    database = database_dispatcher.current_database
 
-    activity_gateway.add(activity)
+    for plan in plans:
+        # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
+        original_plan = database["plans"].get(plan.id)
+        activity = Activity.from_plan(plan=original_plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
+        activity_gateway.add(activity)
 
 
 # TODO: This function is created as a patch from renku/core/commands/workflow.py::_execute_workflow and
 # renku/core/management/workflow/providers/cwltool_provider.py::CWLToolProvider::workflow_execute in the ``workflow
 # execute`` PR (renku-python/pull/2273). Once the PR is merged remove this function and refactor
 # renku/core/commands/workflow.py::_execute_workflow to accept a Plan and use it here.
-def _execute_workflow_helper(workflow: Union[Plan, PlanCollection], client):
+def _execute_workflow_helper(plans: List[Plan], client):
     """Executes a given workflow using cwltool."""
     import os
     import shutil
@@ -182,6 +192,9 @@ def _execute_workflow_helper(workflow: Union[Plan, PlanCollection], client):
     from renku.core.commands.echo import progressbar
 
     basedir = client.path
+
+    # NOTE: Create a ``CompositePlan`` because ``workflow_covert`` expects it
+    workflow = CompositePlan(id=CompositePlan.generate_id(), plans=plans, name=f"plan-collection-{uuid.uuid4().hex}")
 
     with tempfile.NamedTemporaryFile() as f:
         # export Plan to cwl

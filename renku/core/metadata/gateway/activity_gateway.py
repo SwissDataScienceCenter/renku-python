@@ -19,7 +19,7 @@
 
 import os
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 
 from persistent.list import PersistentList
 
@@ -30,7 +30,6 @@ from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.metadata.gateway.database_gateway import ActivityDownstreamRelation
 from renku.core.models.entity import Collection
 from renku.core.models.provenance.activity import Activity, Usage
-from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
 
 
@@ -73,6 +72,17 @@ class ActivityGateway(IActivityGateway):
         downstream = set(activity_catalog.findValues("downstream", tok(upstream=activity), maxDepth=max_depth))
 
         return downstream
+
+    def get_downstream_activity_chains(self, activity: Activity) -> List[Tuple[Activity, ...]]:
+        """Get a list of tuples of all downstream paths of this activity."""
+        database = self.database_dispatcher.current_database
+
+        activity_catalog = database["activity-catalog"]
+        tok = activity_catalog.tokenizeQuery
+        downstream_chains = activity_catalog.findRelationChains(tok(upstream=activity))
+        downstream_chains = [tuple(adr.downstream[0] for adr in d) for d in downstream_chains]
+
+        return downstream_chains
 
     def get_all_activities(self) -> List[Activity]:
         """Get all activities in the project."""
@@ -133,12 +143,9 @@ class ActivityGateway(IActivityGateway):
         if downstreams:
             database["activity-catalog"].index(ActivityDownstreamRelation(downstream=downstreams, upstream=[activity]))
 
-        if isinstance(activity.association.plan, (CompositePlan, Plan)):
-            plan_gateway = inject.instance(IPlanGateway)
+        assert isinstance(activity.association.plan, Plan)
 
-            plan_gateway.add(activity.association.plan)
+        plan_gateway = inject.instance(IPlanGateway)
+        plan_gateway.add(activity.association.plan)
 
-            update_latest_activity_by_plan(activity.association.plan)
-        else:  # A PlanCollection
-            for p in activity.association.plan.plans:
-                update_latest_activity_by_plan(p)
+        update_latest_activity_by_plan(activity.association.plan)

@@ -30,7 +30,7 @@ import cwlgen
 from renku.core import errors
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.models.entity import Collection
-from renku.core.models.workflow.composite_plan import PlanCollection
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.converters import IWorkflowConverter
 from renku.core.models.workflow.parameter import DIRECTORY_MIME_TYPE, CommandInput, CommandOutput, CommandParameter
 from renku.core.models.workflow.plan import Plan
@@ -436,7 +436,7 @@ class CWLConverter(object):
 
 
 class CWLExporter(IWorkflowConverter):
-    """Converts a ``Plan`` or a ``PlanCollection`` to cwl format."""
+    """Converts a ``CompositePlan`` or a ``Plan`` to cwl format."""
 
     @hookimpl
     def workflow_format(self):
@@ -445,7 +445,7 @@ class CWLExporter(IWorkflowConverter):
 
     @hookimpl
     def workflow_convert(
-        self, workflow: Union[Plan, PlanCollection], basedir: Path, output: Optional[Path], output_format: Optional[str]
+        self, workflow: Union[CompositePlan, Plan], basedir: Path, output: Optional[Path], output_format: Optional[str]
     ):
         """Converts the specified workflow to cwl format."""
         filename = None
@@ -458,7 +458,7 @@ class CWLExporter(IWorkflowConverter):
         else:
             tmpdir = Path(tempfile.mkdtemp())
 
-        if isinstance(workflow, PlanCollection):
+        if isinstance(workflow, CompositePlan):
             tool_object, path = CWLExporter._convert_composite(
                 workflow, tmpdir, basedir, filename=filename, output_format=output_format
             )
@@ -475,7 +475,7 @@ class CWLExporter(IWorkflowConverter):
 
     @staticmethod
     def _convert_composite(
-        workflow: PlanCollection, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
+        workflow: CompositePlan, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
     ):
         """Converts a composite plan to a cwl file."""
         inputs = {}

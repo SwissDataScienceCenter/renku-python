@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent an execution of a Plan."""
-
 from datetime import datetime
 from typing import List, Union
 from uuid import uuid4
@@ -121,7 +120,7 @@ class Activity(Persistent):
         # TODO: influenced = attr.ib(kw_only=True)
 
     @classmethod
-    @inject.autoparams()
+    @inject.autoparams("client_dispatcher", "project_gateway")
     def from_plan(
         cls,
         plan: Plan,
@@ -129,7 +128,7 @@ class Activity(Persistent):
         project_gateway: IProjectGateway,
         started_at_time: datetime,
         ended_at_time: datetime,
-        annotations: List[Annotation],
+        annotations: List[Annotation] = None,
         commit=None,
         update_commits=False,
     ):
@@ -214,7 +213,7 @@ class Activity(Persistent):
         return activity
 
     @cached_property
-    def plan_with_values(self):
+    def plan_with_values(self) -> Plan:
         """Get a copy of the associated plan with values from ParameterValues applied."""
         plan = self.association.plan.copy()
 

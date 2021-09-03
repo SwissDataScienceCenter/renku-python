@@ -30,8 +30,8 @@ from renku.core.models.workflow import composite_plan, parameter, plan
 class ExecutionGraph:
     """Represents an execution graph for one or more workflow steps."""
 
-    def __init__(self, workflow: Union["plan.Plan", "composite_plan.PlanCollection"], virtual_links: bool = False):
-        self.workflow: Union["plan.Plan", "composite_plan.PlanCollection"] = workflow
+    def __init__(self, workflow: Union["plan.Plan", "composite_plan.CompositePlan"], virtual_links: bool = False):
+        self.workflow: Union["plan.Plan", "composite_plan.CompositePlan"] = workflow
         self.virtual_links = []
 
         self.calculate_concrete_execution_graph(virtual_links=virtual_links)
@@ -54,7 +54,7 @@ class ExecutionGraph:
         while workflow_stack:
             workflow = workflow_stack.pop()
 
-            if isinstance(workflow, composite_plan.PlanCollection):
+            if isinstance(workflow, composite_plan.CompositePlan):
                 workflow_stack.extend(workflow.plans)
 
                 self._add_composite_plan_links_to_graph(workflow)
@@ -89,7 +89,7 @@ class ExecutionGraph:
                     self._add_leaf_parameter_link(*edge)
                     self.virtual_links.append(edge)
 
-    def _add_composite_plan_links_to_graph(self, workflow: "composite_plan.PlanCollection") -> None:
+    def _add_composite_plan_links_to_graph(self, workflow: "composite_plan.CompositePlan") -> None:
         """Adds links for a grouped run to the graph."""
         if not workflow.links:
             return
@@ -137,7 +137,7 @@ class ExecutionGraph:
 
         for node in self.graph.nodes:
             if not isinstance(node, parameter.CommandInput):
-                if isinstance(node, (composite_plan.PlanCollection, plan.Plan)):
+                if isinstance(node, (composite_plan.CompositePlan, plan.Plan)):
                     workflow_graph.add_node(node)
                 continue
 

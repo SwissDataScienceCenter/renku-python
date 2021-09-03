@@ -49,19 +49,25 @@ The first example shows situation when ``D`` is modified and files ``E`` and
     ** - modified
     () - needs update
 
-In this situation, you can do effectively two things:
+In this situation, you can do effectively three things:
 
-* Recreate a single file by running
-
-  .. code-block:: console
-
-     $ renku update E H
-
-* Update all files by simply running
+* Update all files
 
   .. code-block:: console
 
      $ renku update --all
+
+* Update only ``H``
+
+  .. code-block:: console
+
+     $ renku update H
+
+* Update ``E`` and ``H``
+
+  .. code-block:: console
+
+     $ renku update H
 
 .. note:: If there were uncommitted changes then the command fails.
    Check :program:`git status` to see details.
@@ -87,7 +93,7 @@ file (e.g. ``renku update G``). See also :ref:`cli-status`.
 Update siblings
 ~~~~~~~~~~~~~~~
 
-If a tool produces multiple output files, these outputs need to be always
+If a workflow step produces multiple output files, these outputs will be always
 updated together.
 
 .. code-block:: text
@@ -98,7 +104,7 @@ updated together.
                   \
                    (D)
 
-An attempt to update a single file would updates its siblings as well.
+An attempt to update a single file would update its siblings as well.
 
 The following commands will produce the same result.
 

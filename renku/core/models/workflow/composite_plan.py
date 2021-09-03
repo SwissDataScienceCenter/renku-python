@@ -19,7 +19,7 @@
 
 from collections import defaultdict
 from datetime import datetime
-from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from marshmallow import EXCLUDE
@@ -39,74 +39,22 @@ from renku.core.models.workflow.parameter import (
 from renku.core.models.workflow.plan import MAX_GENERATED_NAME_LENGTH, AbstractPlan, Plan, PlanSchema
 
 
-class PlanCollection(AbstractPlan):
-    """A collection that contains a sorted list of other plans."""
-
-    def __init__(
-        self,
-        *,
-        derived_from: str = None,
-        description: str = None,
-        id: str,
-        invalidated_at: datetime = None,
-        keywords: List[str] = None,
-        name: str,
-        plans: List[Union["CompositePlan", Plan, "PlanCollection"]] = None,
-        project_id: str = None,
-    ):
-        super().__init__(
-            derived_from=derived_from,
-            description=description,
-            id=id,
-            invalidated_at=invalidated_at,
-            keywords=keywords,
-            name=name,
-            project_id=project_id,
-        )
-        self.plans: List[Union["CompositePlan", Plan, "PlanCollection"]] = plans
-        self.links: List[ParameterLink] = []
-
-    @property
-    def inputs(self) -> Generator[CommandInput, None, None]:
-        """Return a generator of all plans' inputs."""
-        return (i for p in self.plans for i in p.inputs)
-
-    @property
-    def outputs(self) -> Generator[CommandOutput, None, None]:
-        """Return a generator of all plans' outputs."""
-        return (o for p in self.plans for o in p.outputs)
-
-    @property
-    def parameters(self) -> Generator[CommandParameter, None, None]:
-        """Return a generator of all plans' inputs."""
-        return (e for p in self.plans for e in p.parameters)
-
-    def find_parameter_workflow(self, parameter: CommandParameterBase) -> Optional[Union["CompositePlan", Plan]]:
-        """Return the workflow a parameter belongs to."""
-        for plan in self.plans:
-            found = plan.find_parameter_workflow(parameter)
-            if found:
-                return found
-
-        return None
-
-
-class CompositePlan(PlanCollection):
+class CompositePlan(AbstractPlan):
     """A plan containing child plans."""
 
     def __init__(
         self,
         *,
+        derived_from: str = None,
         description: str = None,
         id: str,
         invalidated_at: datetime = None,
         keywords: List[str] = None,
-        name: str,
-        derived_from: str = None,
-        plans: List[Union["CompositePlan", Plan]] = None,
-        project_id: str = None,
-        mappings: List[ParameterMapping] = None,
         links: List[ParameterLink] = None,
+        mappings: List[ParameterMapping] = None,
+        name: str,
+        plans: List[Plan] = None,
+        project_id: str = None,
     ):
         super().__init__(
             derived_from=derived_from,
@@ -115,10 +63,10 @@ class CompositePlan(PlanCollection):
             invalidated_at=invalidated_at,
             keywords=keywords,
             name=name,
-            plans=plans,
             project_id=project_id,
         )
 
+        self.plans: List[Plan] = plans
         self.mappings: List[ParameterMapping] = mappings or []
         self.links: List[ParameterLink] = links or []
 
@@ -268,7 +216,12 @@ class CompositePlan(PlanCollection):
         if parameter in self.mappings:
             return self
 
-        return super().find_parameter_workflow(parameter)
+        for plan in self.plans:
+            found = plan.find_parameter_workflow(parameter)
+            if found:
+                return found
+
+        return None
 
     def find_link_by_target(self, target: CommandInput):
         """Find a link on this or a child workflow that has target as a sink."""

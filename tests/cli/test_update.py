@@ -24,7 +24,6 @@ import git
 
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.models.workflow.composite_plan import PlanCollection
 from renku.core.models.workflow.plan import Plan
 from tests.utils import format_result_exception, write_and_commit_file
 
@@ -48,7 +47,6 @@ def test_update(runner, project, renku_cli):
     plan = activity.association.plan
     assert previous_activity.association.plan.id == plan.id
     assert isinstance(plan, Plan)
-    assert not isinstance(plan, PlanCollection)
 
     assert "changed content" == Path(output).read_text()
 
@@ -72,14 +70,14 @@ def test_update_multiple_steps(runner, project, renku_cli):
 
     write_and_commit_file(repo, source, "changed content")
 
-    exit_code, activity = renku_cli("update", "--all")
+    exit_code, activities = renku_cli("update", "--all")
 
     assert 0 == exit_code
-    plan = activity.association.plan
-    # assert previous_activity.association.plan.id == plan.id
-    assert not isinstance(plan, Plan)
-    assert isinstance(plan, PlanCollection)
-    assert {p.id for p in plan.plans} == {activity1.association.plan.id, activity2.association.plan.id}
+    plans = [a.association.plan for a in activities]
+    assert 2 == len(plans)
+    assert isinstance(plans[0], Plan)
+    assert isinstance(plans[1], Plan)
+    assert {p.id for p in plans} == {activity1.association.plan.id, activity2.association.plan.id}
 
     assert "changed content" == Path(intermediate).read_text()
     assert "changed content" == Path(output).read_text()
@@ -99,7 +97,7 @@ def test_update_multiple_steps_with_path(runner, project, renku_cli):
 
     exit_code, activity1 = renku_cli("run", "cp", source, intermediate)
     assert 0 == exit_code
-    exit_code, activity2 = renku_cli("run", "cp", intermediate, output)
+    exit_code, _ = renku_cli("run", "cp", intermediate, output)
     assert 0 == exit_code
 
     write_and_commit_file(repo, source, "changed content")
@@ -108,9 +106,7 @@ def test_update_multiple_steps_with_path(runner, project, renku_cli):
 
     assert 0 == exit_code
     plan = activity.association.plan
-    # assert previous_activity.association.plan.id == plan.id
     assert isinstance(plan, Plan)
-    assert not isinstance(plan, PlanCollection)
     assert plan.id == activity1.association.plan.id
 
     assert "changed content" == Path(intermediate).read_text()
@@ -120,6 +116,44 @@ def test_update_multiple_steps_with_path(runner, project, renku_cli):
     assert 1 == result.exit_code, format_result_exception(result)
     assert "output.txt: intermediate.txt" in result.output
     assert "source.txt" not in result.output
+
+
+def test_multiple_updates(runner, project, renku_cli):
+    """Test multiple updates of the same source."""
+    repo = git.Repo(project)
+    source = os.path.join(project, "source.txt")
+    intermediate = os.path.join(project, "intermediate.txt")
+    output = os.path.join(project, "output.txt")
+
+    write_and_commit_file(repo, source, "content")
+
+    exit_code, activity1 = renku_cli("run", "cp", source, intermediate)
+    assert 0 == exit_code
+    exit_code, activity2 = renku_cli("run", "cp", intermediate, output)
+    assert 0 == exit_code
+
+    write_and_commit_file(repo, source, "changed content")
+
+    exit_code, _ = renku_cli("update", "--all")
+    assert 0 == exit_code
+    assert "changed content" == Path(intermediate).read_text()
+
+    write_and_commit_file(repo, source, "more changed content")
+
+    exit_code, activities = renku_cli("update", "--all")
+
+    assert 0 == exit_code
+    plans = [a.association.plan for a in activities]
+    assert 2 == len(plans)
+    assert isinstance(plans[0], Plan)
+    assert isinstance(plans[1], Plan)
+    assert {p.id for p in plans} == {activity1.association.plan.id, activity2.association.plan.id}
+
+    assert "more changed content" == Path(intermediate).read_text()
+    assert "more changed content" == Path(output).read_text()
+
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_update_workflow_without_outputs(runner, project, run):
