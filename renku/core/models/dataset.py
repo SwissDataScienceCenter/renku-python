@@ -31,9 +31,10 @@ from marshmallow import EXCLUDE
 from renku.core import errors
 from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable, Slots
-from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, renku, schema
+from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, oa, prov, renku, schema
 from renku.core.models.entity import CollectionSchema, Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent
+from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
 from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
 from renku.core.utils.git import get_path
 from renku.core.utils.urls import get_slug
@@ -294,6 +295,7 @@ class Dataset(Persistent):
     def __init__(
         self,
         *,
+        annotations: List[Annotation] = None,
         creators: List[Person] = None,
         dataset_files: List[DatasetFile] = None,
         date_created: datetime = None,
@@ -349,6 +351,7 @@ class Dataset(Persistent):
         self.same_as: Url = same_as
         self.title: str = title
         self.version: str = version
+        self.annotations: List[Annotation] = annotations or []
 
     @classmethod
     def from_jsonld(cls, data, schema_class=None):
@@ -399,6 +402,7 @@ class Dataset(Persistent):
     def copy(self) -> "Dataset":
         """Return a clone of this dataset."""
         return Dataset(
+            annotations=[a.copy() for a in self.annotations],
             creators=self.creators.copy(),
             dataset_files=[f.copy() for f in self.dataset_files],
             date_created=self.date_created,
@@ -675,6 +679,7 @@ class DatasetSchema(JsonLDSchema):
         model = Dataset
         unknown = EXCLUDE
 
+    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     creators = Nested(schema.creator, PersonSchema, many=True)
     date_created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
@@ -706,6 +711,13 @@ class DatasetCreatorsJson(marshmallow.Schema):
     affiliation = marshmallow.fields.String()
 
 
+class AnnotationJson(marshmallow.Schema):
+    """Schema for Annotations."""
+
+    source = marshmallow.fields.String()
+    body = marshmallow.fields.Dict()
+
+
 class DatasetDetailsJson(marshmallow.Schema):
     """Serialize a dataset to a response object."""
 
@@ -718,6 +730,8 @@ class DatasetDetailsJson(marshmallow.Schema):
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     identifier = marshmallow.fields.String()
+
+    annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
 
 
 class DatasetFileDetailsJson(marshmallow.Schema):

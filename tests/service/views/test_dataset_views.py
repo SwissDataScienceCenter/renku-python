@@ -298,6 +298,52 @@ def test_create_dataset_with_images(svc_client_with_repo):
     assert img2["content_url"].endswith("/2.png")
 
 
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_create_dataset_with_custom_metadata(svc_client_with_repo):
+    """Create a new dataset with metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = {
+        "project_id": project_id,
+        "name": uuid.uuid4().hex,
+        "title": "my little dataset",
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "description": "my little description",
+        "custom_metadata": {
+            "@id": "http://example.com/metadata12",
+            "@type": "https://schema.org/myType",
+            "https://schema.org/property1": 1,
+            "https://schema.org/property2": "test",
+        },
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params = {
+        "project_id": project_id,
+    }
+    response = svc_client.get("/datasets.list", query_string=params, headers=headers)
+
+    assert response
+    assert_rpc_response(response)
+
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+
+    assert payload["title"] == ds["title"]
+    assert payload["name"] == ds["name"]
+    assert payload["description"] == ds["description"]
+    assert payload["creators"] == ds["creators"]
+    assert payload["custom_metadata"] == ds["annotations"][0]["body"]
+
+
 @pytest.mark.parametrize(
     "img_url",
     ["https://raw.githubusercontent.com/SwissDataScienceCenter/calamus/master/docs/reed.png", "https://bit.ly/2ZoutNn"],
@@ -628,6 +674,7 @@ def test_list_datasets_view(svc_client_with_repo):
         "title",
         "creators",
         "keywords",
+        "annotations",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -700,6 +747,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
         "title",
         "creators",
         "keywords",
+        "annotations",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -830,6 +878,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "description",
         "created_at",
         "keywords",
+        "annotations",
     } == set(response.json["result"]["datasets"][0].keys())
 
     assert payload["name"] in [ds["name"] for ds in response.json["result"]["datasets"]]
@@ -1264,6 +1313,12 @@ def test_edit_datasets_view(svc_client_with_repo):
         "title": "my new title",
         "keywords": ["keyword1"],
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "custom_metadata": {
+            "@id": "http://example.com/metadata12",
+            "@type": "https://schema.org/myType",
+            "https://schema.org/property1": 1,
+            "https://schema.org/property2": "test",
+        },
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
@@ -1275,6 +1330,12 @@ def test_edit_datasets_view(svc_client_with_repo):
         "title": "my new title",
         "keywords": ["keyword1"],
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "custom_metadata": {
+            "@id": "http://example.com/metadata12",
+            "@type": "https://schema.org/myType",
+            "https://schema.org/property1": 1,
+            "https://schema.org/property2": "test",
+        },
     } == response.json["result"]["edited"]
 
 
