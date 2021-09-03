@@ -46,6 +46,7 @@ class Project(Model):
 
     name = TextField()
     fullname = TextField()
+    description = TextField()
     email = TextField()
     owner = TextField()
     token = TextField()

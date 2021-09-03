@@ -23,6 +23,7 @@ from urllib.parse import quote
 
 from marshmallow import EXCLUDE
 
+from renku.core import errors
 from renku.core.metadata.database import persistent
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, prov, renku, schema
 from renku.core.models.provenance.agent import Person, PersonSchema
@@ -39,6 +40,7 @@ class Project(persistent.Persistent):
         automated_update: bool = False,
         creator: Person,
         date_created: datetime = None,
+        description: str = None,
         id: str = None,
         immutable_template_files: List[str] = None,
         name: str,
@@ -62,6 +64,7 @@ class Project(persistent.Persistent):
         self.automated_update: bool = automated_update
         self.creator: Person = creator
         self.date_created: datetime = fix_timezone(date_created) or local_now()
+        self.description: str = description
         self.id: str = id
         self.immutable_template_files: List[str] = immutable_template_files
         self.name: str = name
@@ -73,7 +76,7 @@ class Project(persistent.Persistent):
         self.version: str = version
 
     @classmethod
-    def from_client(cls, client, name: str = None, creator: Person = None) -> "Project":
+    def from_client(cls, client, name: str = None, description: str = None, creator: Person = None) -> "Project":
         """Create an instance from a LocalClient."""
         namespace, name = cls.get_namespace_and_name(client=client, name=name, creator=creator)
         creator = creator or Person.from_git(client.repo)
@@ -82,7 +85,7 @@ class Project(persistent.Persistent):
             raise ValueError("Project Creator not set")
 
         id = cls.generate_id(namespace=namespace, name=name)
-        return cls(creator=creator, id=id, name=name)
+        return cls(creator=creator, id=id, name=name, description=description)
 
     @staticmethod
     def get_namespace_and_name(*, client=None, name: str = None, creator: Person = None):
@@ -113,6 +116,15 @@ class Project(persistent.Persistent):
 
         return f"/projects/{namespace}/{name}"
 
+    def update_metadata(self, **kwargs):
+        """Updates metadata."""
+        editable_attributes = ["creator", "description"]
+        for name, value in kwargs.items():
+            if name not in editable_attributes:
+                raise errors.ParameterError(f"Cannot edit field: '{name}'")
+            if value and value != getattr(self, name):
+                setattr(self, name, value)
+
 
 class ProjectSchema(JsonLDSchema):
     """Project Schema."""
@@ -128,6 +140,7 @@ class ProjectSchema(JsonLDSchema):
     automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=False)
     creator = Nested(schema.creator, PersonSchema, missing=None)
     date_created = DateTimeList(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
+    description = fields.String(schema.description, missing=None)
     id = fields.Id(missing=None)
     immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
     name = fields.String(schema.name, missing=None)
