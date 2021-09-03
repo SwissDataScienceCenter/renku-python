@@ -32,13 +32,15 @@ def template():
         "id": "python-minimal",
         "index": 1,
         "ref": "master",
-        "metadata": {"description": "nodesc"},
+        # TODO: Add template parameters here once parameters are added to the template.
+        "metadata": {},
         "default_metadata": {
             "__template_source__": "renku",
             "__template_ref__": "master",
             "__template_id__": "python-minimal",
             "__namespace__": "",
             "__repository__": "",
+            "__project_description__": "nodesc",
             "__project_slug__": "",
             "__renku_version__": renku_version,
         },
