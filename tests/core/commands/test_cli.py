@@ -145,8 +145,7 @@ def test_git_pre_commit_hook_in_old_project(isolated_runner, old_dataset_project
 @pytest.mark.skip("renku show used in hook not implemented with new database.")
 def test_git_pre_commit_hook_in_unsupported_project(unsupported_project):
     """Test proper messaging in git hooks when project version is not supported."""
-    with unsupported_project.with_metadata() as project:
-        project.created = datetime.datetime.now(datetime.timezone.utc)
+    (unsupported_project.path / "README.md").write_text("changes")
 
     unsupported_project.repo.git.add("--all")
 

@@ -36,6 +36,7 @@ class ProjectSchema(CreationSchema, MandatoryUserSchema):
     git_url = fields.String()
 
     name = fields.String(required=True)
+    description = fields.String(missing=None)
     fullname = fields.String(required=True)
     email = fields.String(required=True)
     owner = fields.String(required=True)

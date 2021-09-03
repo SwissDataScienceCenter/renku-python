@@ -41,6 +41,7 @@ from renku.service.views.config import config_blueprint
 from renku.service.views.datasets import dataset_blueprint
 from renku.service.views.graph import graph_blueprint
 from renku.service.views.jobs import jobs_blueprint
+from renku.service.views.project import project_blueprint
 from renku.service.views.templates import templates_blueprint
 from renku.service.views.version import version_blueprint
 
@@ -93,6 +94,7 @@ def build_routes(app):
     app.register_blueprint(dataset_blueprint)
     app.register_blueprint(graph_blueprint)
     app.register_blueprint(jobs_blueprint)
+    app.register_blueprint(project_blueprint)
     app.register_blueprint(templates_blueprint)
     app.register_blueprint(version_blueprint)
     app.register_blueprint(apispec_blueprint)

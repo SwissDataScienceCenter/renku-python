@@ -126,7 +126,7 @@ def select_template_from_manifest(
             repeat = True
 
     if template_index is not None:
-        if template_index > 0 and template_index <= len(template_manifest):
+        if 0 < template_index <= len(template_manifest):
             template_data = template_manifest[template_index - 1]
         else:
             communication.echo(f"The template at index {template_index} is not available.")
@@ -152,13 +152,13 @@ def select_template_from_manifest(
 
 
 def verify_template_variables(template_data, metadata):
-    """Verifies that template variables are correcly set."""
+    """Verifies that template variables are correctly set."""
     template_variables = template_data.get("variables", {})
     template_variables_keys = set(template_variables.keys())
     input_parameters_keys = set(metadata.keys())
     for key in template_variables_keys - input_parameters_keys:
         value = communication.prompt(
-            msg=(f'The template requires a value for "{key}" ' f"({template_variables[key]})"),
+            msg=f'The template requires a value for "{key}" ({template_variables[key]})',
             default="",
             show_default=False,
         )
@@ -235,6 +235,7 @@ def _init(
     external_storage_requested,
     path,
     name,
+    description,
     template_id,
     template_index,
     template_source,
@@ -291,6 +292,7 @@ def _init(
     metadata["__sanitized_project_name__"] = ""
     metadata["__repository__"] = ""
     metadata["__project_slug__"] = ""
+    metadata["__project_description__"] = description
     if is_release() and "__renku_version__" not in metadata:
         metadata["__renku_version__"] = __version__
     metadata["name"] = name
@@ -337,6 +339,7 @@ def _init(
                 automated_update=template_data.get("allow_template_update", False),
                 force=force,
                 data_dir=data_dir,
+                description=description,
             )
         except FileExistsError as e:
             raise errors.InvalidFileOperation(e)
@@ -503,6 +506,7 @@ def create_from_template(
     data_dir=None,
     user=None,
     commit_message=None,
+    description=None,
 ):
     """Initialize a new project from a template."""
 
@@ -514,7 +518,7 @@ def create_from_template(
         metadata["name"] = name
 
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
-        with client.with_metadata(name=name) as project:
+        with client.with_metadata(name=name, description=description) as project:
             project.template_source = metadata["__template_source__"]
             project.template_ref = metadata["__template_ref__"]
             project.template_id = metadata["__template_id__"]
@@ -548,6 +552,7 @@ def _create_from_template_local(
     invoked_from=None,
     initial_branch=None,
     commit_message=None,
+    description=None,
 ):
     """Initialize a new project from a template."""
 
@@ -572,6 +577,7 @@ def _create_from_template_local(
         force=False,
         user=user,
         commit_message=commit_message,
+        description=description,
     )
 
 
