@@ -15,7 +15,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""cwltool based provider."""
+"""cwltool based provider.
+
+This implementation provides a plugin for executing workflows using ``cwltool``,
+by simply exporting the workflow into a CWL format and then using ``cwltool``
+to run the exported CWL file.
+
+.. code-block:: console
+
+   $ renku workflow execute --provider cwltool example_workflow
+
+
+.. topic:: Specifying custom parameters for cwltool (``--config``)
+
+   You can specify custom configuration parameters for ``cwltool`` executer
+   by providing a YAML file for the ``--config`` option. The YAML file
+   should contain both the ``LoadingContext`` and ``RuntimeContext`` key-value
+   pairs.
+
+.. code-block:: console
+
+   $ renku workflow execute --config config.yaml --provider cwltool example_workflow
+"""
 
 import os
 import shutil

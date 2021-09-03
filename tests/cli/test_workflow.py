@@ -331,21 +331,18 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize("yaml", [False, True])
 @pytest.mark.parametrize(
-    "workflows, parameters, expected",
+    "workflows, parameters",
     [
-        ([("run", 'echo "a" > output1')], {}, []),
-        ([("run", 'echo "a" > output1')], {"run": {"outputs": ["replaced"]}}, []),
-        ([("run", 'echo "a" > output1')], {"run": {"parameters": ["foo"], "outputs": ["bar"]}}, []),
+        ([("run", 'echo "a" > output1')], {}),
+        ([("run", 'echo "a" > output1')], {"run": {"outputs": ["replaced"]}}),
+        ([("run", 'echo "a" > output1')], {"run": {"parameters": ["foo"], "outputs": ["bar"]}}),
         (
             [("run1", "touch data.csv"), ("run2", "wc data.csv > output")],
             {"run1": {"outputs": ["foo"]}, "run2": {"inputs": ["foo"], "outputs": ["bar"]}},
-            [],
         ),
     ],
 )
-def test_workflow_execute_command(
-    runner, run_shell, project, capsys, client, provider, yaml, workflows, parameters, expected
-):
+def test_workflow_execute_command(runner, run_shell, project, capsys, client, provider, yaml, workflows, parameters):
     """test workflow execute."""
 
     for wf in workflows:

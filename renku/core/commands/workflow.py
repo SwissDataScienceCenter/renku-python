@@ -33,7 +33,7 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
-from renku.core.management.workflow.value_resolution import ValueResolver
+from renku.core.management.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.utils import communication
@@ -196,7 +196,7 @@ def _group_workflow(
 
     if link_all:
         # NOTE: propagate values to for linking to use
-        rv = ValueResolver.get(plan, None)
+        rv = CompositePlanValueResolver(plan, None)
         plan = rv.apply()
 
         graph = ExecutionGraph(plan, virtual_links=True)
