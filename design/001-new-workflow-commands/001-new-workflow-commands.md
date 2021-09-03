@@ -388,7 +388,7 @@ The green parts of the following graphs show additions to the metadata
 
 ![run metadata](run-metadata.svg)
 
-On the provenance side, we add `renku:ParameterValue` with two child types `PathParameterValue` and `renku:VariableParameterValue` for files/directories and simple values, respectively. `renku:ParameterValue`s are duplicated for each execution.
+On the provenance side, we add `renku:ParameterValue` for paths and simple values, respectively. `renku:ParameterValue`s are duplicated for each execution.
 
 On the dependency graph side, we rename `renku:CommandParameter` to `renku:CommandParameterBase` and `renku:CommandArgument` to `renku:CommandParameter`. We also remove the use of `prov:Entity` and instead add `schema:defaultValue` to `renku:CommandParameterBase`, which will be set to the values used on first execution. The `renku:ParameterValue` entries mentioned above map to the `renku:CommandParameterBase` classes as a way to show which value of an execution maps to which value of the template. In addition, `renku:Run` and the `renku:CommandParameterBase` types get `schema:name` and `schema:description` fields to allow annotating them with meaningful information.
 

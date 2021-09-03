@@ -266,6 +266,13 @@ class Plan(AbstractPlan):
                     CommandParameter(default_value=value, id=CommandParameter.generate_id(plan_id=self.id), name=name)
                 )
 
+    def copy(self):
+        """Create a copy of this plan.
+
+        Required where a plan is used several times in a workflow but we need to set different values on them.
+        """
+        return copy.deepcopy(self)
+
 
 class PlanSchema(JsonLDSchema):
     """Plan schema."""
