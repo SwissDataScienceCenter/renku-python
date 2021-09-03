@@ -22,6 +22,7 @@ from typing import List, Union
 from uuid import uuid4
 
 from marshmallow import EXCLUDE
+from werkzeug.utils import cached_property
 
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
@@ -32,13 +33,7 @@ from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, re
 from renku.core.models.entity import Collection, CollectionSchema, Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent, SoftwareAgentSchema
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
-from renku.core.models.provenance.parameter import (
-    ParameterValueSchema,
-    PathParameterValue,
-    PathParameterValueSchema,
-    VariableParameterValue,
-    VariableParameterValueSchema,
-)
+from renku.core.models.provenance.parameter import ParameterValue, ParameterValueSchema
 from renku.core.models.workflow.plan import Plan, PlanSchema
 
 NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
@@ -105,7 +100,7 @@ class Activity(Persistent):
         generations: List[Generation] = None,
         id: str,
         invalidations: List[Entity] = None,
-        parameters: List[Union[PathParameterValue, VariableParameterValue]] = None,
+        parameters: List[ParameterValue] = None,
         project_id: str = None,
         started_at_time: datetime = None,
         usages: List[Usage] = None,
@@ -117,7 +112,7 @@ class Activity(Persistent):
         self.generations: List[Generation] = generations or []
         self.id: str = id
         self.invalidations: List[Entity] = invalidations or []
-        self.parameters: List[Union[PathParameterValue, VariableParameterValue]] = parameters or []
+        self.parameters: List[ParameterValue] = parameters or []
         self.project_id: str = project_id
         self.started_at_time: datetime = started_at_time
         self.usages: List[Usage] = usages or []
@@ -147,27 +142,50 @@ class Activity(Persistent):
         if not commit:
             commit = client.repo.head.commit
 
-        usages = []
-        generations = []
+        usages = {}
+        generations = {}
         parameter_values = []
 
         activity_id = cls.generate_id()
 
-        for input_ in plan.inputs:
-            input_path = input_.default_value
+        for input in plan.inputs:
+            input_path = input.actual_value
+
+            parameter_values.append(
+                ParameterValue(id=ParameterValue.generate_id(activity_id), parameter_id=input.id, value=input_path)
+            )
+
+            if input_path in usages:
+                continue
+
             entity = Entity.from_revision(client, path=input_path, revision=commit.hexsha)
 
             dependency = Usage(entity=entity, id=Usage.generate_id(activity_id))
 
-            usages.append(dependency)
+            usages[input_path] = dependency
 
         for output in plan.outputs:
-            output_path = output.default_value
+            output_path = output.actual_value
+
+            parameter_values.append(
+                ParameterValue(id=ParameterValue.generate_id(activity_id), parameter_id=output.id, value=output_path)
+            )
+
+            if output_path in generations:
+                continue
+
             entity = Entity.from_revision(client, path=output_path, revision=commit.hexsha)
 
             generation = Generation(entity=entity, id=Usage.generate_id(activity_id))
 
-            generations.append(generation)
+            generations[output_path] = generation
+
+        for parameter in plan.parameters:
+            value = parameter.actual_value
+
+            parameter_values.append(
+                ParameterValue(id=ParameterValue.generate_id(activity_id), parameter_id=parameter.id, value=value)
+            )
 
         agent = SoftwareAgent.from_commit(commit)
         person = Person.from_client(client)
@@ -177,8 +195,8 @@ class Activity(Persistent):
             id=activity_id,
             association=association,
             agents=[agent, person],
-            usages=usages,
-            generations=generations,
+            usages=list(usages.values()),
+            generations=list(generations.values()),
             parameters=parameter_values,
             project_id=project_gateway.get_project().id,
             started_at_time=started_at_time,
@@ -194,6 +212,16 @@ class Activity(Persistent):
             activity.annotations.extend(plugin_annotations)
 
         return activity
+
+    @cached_property
+    def plan_with_values(self):
+        """Get a copy of the associated plan with values from ParameterValues applied."""
+        plan = self.association.plan.copy()
+
+        for parameter in self.parameters:
+            parameter.apply_value_to_parameter(plan)
+
+        return plan
 
     @staticmethod
     def generate_id() -> str:
@@ -266,7 +294,7 @@ class ActivitySchema(JsonLDSchema):
     invalidations = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, missing=None)
     parameters = Nested(
         renku.parameter,
-        [ParameterValueSchema, PathParameterValueSchema, VariableParameterValueSchema],
+        ParameterValueSchema,
         many=True,
         missing=None,
     )
