@@ -715,18 +715,9 @@
             },
             {
                "path": "renku:parameter",
-               "or": [
-                  {
-                     "sh:class": {
-                        "@id": "renku:PathParameterValue"
-                     }
-                  },
-                  {
-                     "sh:class": {
-                        "@id": "renku:VariableParameterValue"
-                     }
-                  }
-               ]
+               "sh:class": {
+                  "@id": "renku:ParameterValue"
+               }
             }
          ]
       },
@@ -1193,7 +1184,7 @@
          ]
       },
       {
-         "@id": "_:renkuPathParameterValueShape",
+         "@id": "_:renkuParameterValueShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
             {
@@ -1201,43 +1192,7 @@
             }
          ],
          "closed": true,
-         "targetClass": "renku:PathParameterValue",
-         "property": [
-            {
-               "nodeKind": "sh:Literal",
-               "path": "prov:atLocation",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            },
-            {
-               "path": "schema:valueReference",
-               "or": [
-                  {
-                     "sh:class": {
-                        "@id": "renku:CommandInput"
-                     }
-                  },
-                  {
-                     "sh:class": {
-                        "@id": "renku:CommandOutput"
-                     }
-                  }
-               ],
-               "minCount": 1
-            }
-         ]
-      },
-      {
-         "@id": "_:renkuVariableParameterValueShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "renku:VariableParameterValue",
+         "targetClass": "renku:ParameterValue",
          "property": [
             {
                "nodeKind": "sh:Literal",
@@ -1262,10 +1217,25 @@
             },
             {
                "path": "schema:valueReference",
-               "sh:class": {
-                  "@id": "renku:CommandParameter"
-               },
-               "minCount": 1
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandParameter"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandInput"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandOutput"
+                     }
+                  }
+               ],
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },

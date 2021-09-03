@@ -50,7 +50,7 @@ from renku.core.models.jsonld import load_yaml
 from renku.core.models.project import Project
 from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
 from renku.core.models.provenance.agent import Person, SoftwareAgent
-from renku.core.models.provenance.parameter import PathParameterValue, VariableParameterValue
+from renku.core.models.provenance.parameter import ParameterValue
 from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils import communication
@@ -492,26 +492,28 @@ def _create_parameters(activity_id, plan: Plan, usages: List[Usage], generations
     parameters = []
 
     inputs = {i.default_value: i for i in plan.inputs}
+
     for usage in usages:
         input = inputs.pop(usage.entity.path, None)
         assert input is not None, f"Cannot find usage path '{usage.entity.path}' in plan {plan.id}"
-        id = PathParameterValue.generate_id(activity_id)
-        parameters.append(PathParameterValue(id=id, parameter=input, path=usage.entity.path))
+        id = ParameterValue.generate_id(activity_id)
+        parameters.append(ParameterValue(id=id, parameter_id=input.id, value=usage.entity.path))
 
     assert not inputs, f"Not all inputs are converted: {inputs}"
 
     outputs = {o.default_value: o for o in plan.outputs}
+
     for generation in generations:
         output = outputs.pop(generation.entity.path, None)
         assert output is not None, f"Cannot find generation path '{generation.entity.path}' in plan {plan.id}"
-        id = PathParameterValue.generate_id(activity_id)
-        parameters.append(PathParameterValue(id=id, parameter=output, path=generation.entity.path))
+        id = ParameterValue.generate_id(activity_id)
+        parameters.append(ParameterValue(id=id, parameter_id=output.id, value=generation.entity.path))
 
     assert not outputs, f"Not all outputs are converted: {outputs}"
 
     for parameter in plan.parameters:
-        id = VariableParameterValue.generate_id(activity_id)
-        parameters.append(VariableParameterValue(id=id, parameter=parameter, value=parameter.default_value))
+        id = ParameterValue.generate_id(activity_id)
+        parameters.append(ParameterValue(id=id, parameter_id=parameter.id, value=parameter.default_value))
 
     return parameters
 
