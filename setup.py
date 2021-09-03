@@ -130,7 +130,7 @@ service_requires = [
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<3.0.2", "Sphinx>=1.6.3,<4.1.3", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<3.0.2", "renku-sphinx-theme>=0.2.0", "sphinx-rtd-theme>=0.5.0,<0.6"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
@@ -155,7 +155,7 @@ for name, reqs in extras_require.items():
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<21.3.0",
-    "calamus>=0.3.8,<0.3.11",
+    "calamus>=0.3.10,<0.3.11",
     "click-completion>=0.5.0,<=0.5.3",
     "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",
@@ -163,12 +163,15 @@ install_requires = [
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool>=3.0.20210319143721,<3.2",
+    "cwl-utils>=0.10",
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.18",
     "humanize>=2.5.0,<3.12.0",
+    "inject>=4.3.0,<4.4.0",
     "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
+    "networkx>=2.6.0,<2.7",
     "pathspec>=0.8.0,<1.0.0",
     "patool==1.12",
     "pluggy==1.0.0",
@@ -192,6 +195,8 @@ install_requires = [
     "wcmatch>=6.0.0,<8.3",
     "werkzeug>=0.15.5,<2.0.2",
     "yagup>=0.1.1",
+    "ZODB==5.6.0",
+    "zc.relation>=1.1,<1.2",
 ]
 
 
@@ -206,7 +211,7 @@ def renku_scheme(version):
     if version.exact or version.node is None:
         return version.format_choice("", "+dirty")
     else:
-        return version.format_choice("+{node}", "+{node}+dirty")
+        return version.format_choice("+{node}", "+{node}.dirty")
 
 
 setup(
@@ -255,9 +260,9 @@ setup(
         "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Development Status :: 4 - Beta",
     ],
 )

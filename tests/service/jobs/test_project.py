@@ -17,21 +17,21 @@
 # limitations under the License.
 """Renku service project related job tests."""
 import pytest
-from flaky import flaky
+
+from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+from renku.service.serializers.cache import ProjectMigrateRequest
+from tests.utils import retry_failed
 
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_migration_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
-    """Unlink a file from a dataset failure."""
-    from renku.service.serializers.cache import ProjectMigrateRequest
+    """Verify delayed project migration."""
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
-    context = ProjectMigrateRequest().load(
-        {"git_url": it_remote_repo_url, "migrate_project": True, "ref": branch, "skip_docker_update": True}
-    )
+    context = ProjectMigrateRequest().load({"git_url": it_remote_repo_url, "ref": branch, "skip_docker_update": True})
 
     _, _, cache = svc_client_cache
     renku_module = "renku.service.controllers.cache_migrate_project"
@@ -42,10 +42,9 @@ def test_delay_migration_job(svc_client_cache, it_remote_repo_url_temp_branch, v
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
-
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
     assert updated_job
-    assert {"docker_migrated", "was_migrated", "template_migrated", "messages"} == updated_job.ctrl_result[
-        "result"
-    ].keys()
+    assert {"docker_migrated", "was_migrated", "template_migrated", "messages"}.issubset(
+        updated_job.ctrl_result["result"].keys()
+    )
+    assert updated_job.ctrl_result["result"]["was_migrated"]

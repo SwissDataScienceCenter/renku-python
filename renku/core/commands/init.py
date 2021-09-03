@@ -33,8 +33,11 @@ import yaml
 
 from renku.core import errors
 from renku.core.commands.git import set_git_home
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
@@ -174,8 +177,11 @@ def verify_template_variables(template_data, metadata):
     return metadata
 
 
-def get_existing_template_files(client, template_path, metadata, force=False):
+@inject.autoparams()
+def get_existing_template_files(template_path, metadata, client_dispatcher: IClientDispatcher, force=False):
     """Gets files in the template that already exists in the repo."""
+    client = client_dispatcher.current_client
+
     template_files = list(client.get_template_files(template_path, metadata))
 
     existing = []
@@ -189,8 +195,11 @@ def get_existing_template_files(client, template_path, metadata, force=False):
     return existing
 
 
-def create_backup_branch(client, path):
+@inject.autoparams()
+def create_backup_branch(path, client_dispatcher: IClientDispatcher):
     """Creates a backup branch of the repo."""
+    client = client_dispatcher.current_client
+
     branch_name = None
     if not is_path_empty(path):
 
@@ -203,7 +212,7 @@ def create_backup_branch(client, path):
 
                 for ref in client.repo.references:
                     if branch_name == ref.name:
-                        branch_name = f"pre_renku_init_{hexsha}_{uuid4().hexsha}"
+                        branch_name = f"pre_renku_init_{hexsha}_{uuid4().hex}"
                         break
 
                 with client.worktree(
@@ -220,8 +229,8 @@ def create_backup_branch(client, path):
     return branch_name
 
 
+@inject.autoparams()
 def _init(
-    client,
     ctx,
     external_storage_requested,
     path,
@@ -236,8 +245,12 @@ def _init(
     describe,
     data_dir,
     initial_branch,
+    client_dispatcher: IClientDispatcher,
+    database_dispatcher: IDatabaseDispatcher,
 ):
     """Initialize a renku project."""
+    client = client_dispatcher.current_client
+
     template_manifest, template_folder, template_source, template_version = fetch_template(
         template_source, template_ref
     )
@@ -255,18 +268,22 @@ def _init(
 
     metadata = verify_template_variables(template_data, metadata)
 
-    # set local path and storage
+    # NOTE: set local path and storage
     store_directory(path)
     if not client.external_storage_requested:
         external_storage_requested = False
+
+    # NOTE: create new copy of LocalClient with modified values
     ctx.obj = client = attr.evolve(
         client, path=path, data_dir=data_dir, external_storage_requested=external_storage_requested
     )
+    client_dispatcher.push_created_client_to_stack(client)
+    database_dispatcher.push_database_to_stack(client.database_path, commit=True)
 
     communication.echo("Initializing Git repository...")
     client.init_repository(force, None, initial_branch=initial_branch)
 
-    # supply additional metadata
+    # NOTE: supply additional metadata
     metadata["__template_source__"] = template_source
     metadata["__template_ref__"] = template_ref
     metadata["__template_id__"] = template_id
@@ -280,7 +297,7 @@ def _init(
 
     template_path = template_folder / template_data["folder"]
 
-    existing = get_existing_template_files(client, template_path, metadata, force)
+    existing = get_existing_template_files(template_path=template_path, metadata=metadata, force=force)
 
     append = list(filter(lambda x: x.lower() in INIT_APPEND_FILES, existing))
     existing = list(filter(lambda x: x.lower() not in INIT_APPEND_FILES + INIT_KEEP_FILES, existing))
@@ -300,9 +317,13 @@ def _init(
 
         communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 
-    branch_name = create_backup_branch(client, path)
+    branch_name = create_backup_branch(path=path)
 
-    # clone the repo
+    # Initialize an empty database
+    database_gateway = inject.instance(IDatabaseGateway)
+    database_gateway.initialize()
+
+    # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")
     with client.lock:
         try:
@@ -331,7 +352,7 @@ def _init(
 
 def init_command():
     """Init command builder."""
-    return Command().command(_init)
+    return Command().command(_init).with_database()
 
 
 def fetch_template_from_git(source, ref=None, tempdir=None):
@@ -393,13 +414,13 @@ def fetch_template(template_source, template_ref):
     else:
         from renku import __version__
 
-        if template_ref:
+        if template_ref and template_ref != "master":
             raise errors.ParameterError("Templates included in renku don't support specifying a template_ref")
 
         template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
         template_manifest = read_template_manifest(template_folder)
         template_source = "renku"
-        template_version = __version__
+        template_version = str(__version__)
 
     return template_manifest, template_folder, template_source, template_version
 
@@ -511,10 +532,11 @@ def create_from_template(
             (data_path / ".gitkeep").touch(exist_ok=True)
 
 
+@inject.autoparams()
 def _create_from_template_local(
-    client,
     template_path,
     name,
+    client_dispatcher: IClientDispatcher,
     metadata={},
     default_metadata={},
     template_version=None,
@@ -525,19 +547,19 @@ def _create_from_template_local(
     ref=None,
     invoked_from=None,
     initial_branch=None,
+    commit_message=None,
 ):
-    """Initialize a new project from a template.
+    """Initialize a new project from a template."""
 
-    It creates a custom commit message and accepts custom user data.
-    """
-    command = "renku init" f' -n "{name}"' f' -s "{source}"' f' -r "{ref}"' f' -t "{template_path.name}"'
-    parameters = "".join([f' -p "{key}"="{value}"' for key, value in metadata.items()])
-    prefix = f"{invoked_from}: " if invoked_from else ""
-    commit_message = f"{prefix}{command}{parameters}"
+    client = client_dispatcher.current_client
 
     metadata = {**default_metadata, **metadata}
 
     client.init_repository(False, user, initial_branch=initial_branch)
+
+    # Initialize an empty database
+    database_gateway = inject.instance(IDatabaseGateway)
+    database_gateway.initialize()
 
     create_from_template(
         template_path=template_path,
@@ -555,4 +577,4 @@ def _create_from_template_local(
 
 def create_from_template_local_command():
     """Command to initialize a new project from a template."""
-    return Command().command(_create_from_template_local)
+    return Command().command(_create_from_template_local).with_database()

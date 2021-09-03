@@ -18,6 +18,7 @@
 """Tabular format helper functions."""
 
 from collections import OrderedDict
+from operator import attrgetter
 
 from renku.core import errors
 from renku.core.models.tabulate import tabulate as tabulate_
@@ -35,7 +36,8 @@ def tabulate(collection, columns, columns_mapping, columns_alignments=None):
     # Sort based on the first requested field
     attr = list(headers.keys())[0]
     try:
-        collection = sorted(collection, key=lambda d: getattr(d, attr))
+        getter = attrgetter(attr)
+        collection = sorted(collection, key=lambda d: getter(d))
     except TypeError:
         pass
 

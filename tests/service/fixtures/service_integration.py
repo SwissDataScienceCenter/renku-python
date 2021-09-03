@@ -25,7 +25,7 @@ from copy import deepcopy
 import pytest
 from git import GitCommandError, Repo
 
-from tests.utils import modified_environ
+from tests.utils import format_result_exception, modified_environ
 
 
 @contextlib.contextmanager
@@ -146,6 +146,7 @@ def svc_client_with_repo(svc_client_setup):
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
     )
+
     assert response.json["result"]
 
     with _mock_cache_sync(repo):
@@ -249,7 +250,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
                 result = runner.invoke(
                     cli, ["init", ".", "--template-id", "python-minimal", "--force"], "\n", catch_exceptions=False
                 )
-                assert 0 == result.exit_code
+                assert 0 == result.exit_code, format_result_exception(result)
 
                 remote_name = remote_repo_checkout.active_branch.tracking_branch().remote_name
                 remote = remote_repo_checkout.remotes[remote_name]

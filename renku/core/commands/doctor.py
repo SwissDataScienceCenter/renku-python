@@ -19,7 +19,8 @@
 import traceback
 
 from renku.core.commands.echo import ERROR
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command, inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 DOCTOR_INFO = """\
 Please note that the diagnosis report is used to help Renku maintainers with
@@ -28,9 +29,12 @@ and if in doubt ask an expert around or file an issue. Thanks!
 """
 
 
-def _doctor_check(client):
+@inject.autoparams()
+def _doctor_check(client_dispatcher: IClientDispatcher):
     """Check your system and repository for potential problems."""
     from . import checks
+
+    client = client_dispatcher.current_client
 
     is_ok = True
     problems = []
@@ -53,4 +57,4 @@ def _doctor_check(client):
 
 def doctor_check_command():
     """Command to check your system and repository for potential problems."""
-    return Command().command(_doctor_check)
+    return Command().command(_doctor_check).with_database()

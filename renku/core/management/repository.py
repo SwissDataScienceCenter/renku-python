@@ -21,28 +21,25 @@ import json
 import os
 import shutil
 import subprocess
-import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 from subprocess import check_output
-from typing import Union
 
 import attr
 import filelock
 import yaml
 from jinja2 import Template
-from werkzeug.utils import cached_property, secure_filename
+from werkzeug.utils import cached_property
 
 from renku.core import errors
 from renku.core.compat import Path
+from renku.core.management.command_builder import inject
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.models.enums import ConfigFilter
-from renku.core.models.projects import Project
-from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
-from renku.core.models.provenance.activity import ActivityCollection
-from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+from renku.core.models.project import Project
 from renku.core.models.refs import LinkReference
-from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.utils import communication
 from renku.core.utils.migrate import MigrationType
 from renku.core.utils.scm import git_unicode_unescape
@@ -103,9 +100,6 @@ class RepositoryApiMixin(GitCore):
     )
     """Define a name of the folder for storing datasets."""
 
-    METADATA = "metadata.yml"
-    """Default name of Renku config file."""
-
     LOCK_SUFFIX = ".lock"
     """Default suffix for Renku lock file."""
 
@@ -117,6 +111,9 @@ class RepositoryApiMixin(GitCore):
 
     PROVENANCE_GRAPH = "provenance.json"
     """File for storing ProvenanceGraph."""
+
+    DATABASE_PATH: str = "metadata"
+    """Directory for metadata storage."""
 
     ACTIVITY_INDEX = "activity_index.yaml"
     """Caches activities that generated a path."""
@@ -146,8 +143,6 @@ class RepositoryApiMixin(GitCore):
     _activity_index = attr.ib(default=None)
 
     _remote_cache = attr.ib(factory=dict)
-
-    _dependency_graph = None
 
     _migration_type = attr.ib(default=MigrationType.ALL)
 
@@ -205,11 +200,6 @@ class RepositoryApiMixin(GitCore):
         self._migration_type = value
 
     @property
-    def renku_metadata_path(self):
-        """Return a ``Path`` instance of Renku metadata file."""
-        return self.renku_path.joinpath(self.METADATA)
-
-    @property
     def workflow_path(self):
         """Return a ``Path`` instance of the workflow folder."""
         return self.renku_path / self.WORKFLOW
@@ -230,7 +220,7 @@ class RepositoryApiMixin(GitCore):
         return self.renku_path / self.TEMPLATE_CHECKSUMS
 
     @property
-    def provenance_graph_path(self) -> str:
+    def provenance_graph_path(self) -> Path:
         """Path to store activity files."""
         return self.renku_path / self.PROVENANCE_GRAPH
 
@@ -239,6 +229,11 @@ class RepositoryApiMixin(GitCore):
         """Path to the dependency graph file."""
         return self.renku_path / self.DEPENDENCY_GRAPH
 
+    @property
+    def database_path(self) -> Path:
+        """Path to the metadata storage directory."""
+        return self.renku_path / self.DATABASE_PATH
+
     @cached_property
     def cwl_prefix(self):
         """Return a CWL prefix."""
@@ -246,20 +241,11 @@ class RepositoryApiMixin(GitCore):
         return str(self.workflow_path.resolve().relative_to(self.path))
 
     @property
-    def dependency_graph(self):
-        """Return dependency graph if available."""
-        if not self.has_graph_files():
-            return
-        if not self._dependency_graph:
-            self._dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
-
-        return self._dependency_graph
-
-    @property
-    def project(self):
+    @inject.autoparams()
+    def project(self, project_gateway: IProjectGateway):
         """Return the Project instance."""
-        if self.renku_metadata_path.exists() and self._project is None:
-            self._project = Project.from_yaml(self.renku_metadata_path, client=self)
+        if self._project is None:
+            self._project = project_gateway.get_project()
 
         return self._project
 
@@ -307,12 +293,12 @@ class RepositoryApiMixin(GitCore):
         return self._project is not None
 
     def process_commit(self, commit=None, path=None):
-        """Build an :class:`~renku.core.models.provenance.activities.Activity`.
+        """Build an :class:`~renku.core.models.provenance.activity.Activity`.
 
         :param commit: Commit to process. (default: ``HEAD``)
         :param path: Process a specific CWL file.
         """
-        from renku.core.models.provenance.activities import Activity
+        from renku.core.models.provenance.activity import Activity
 
         commit = commit or self.repo.head.commit
         if len(commit.parents) > 1:
@@ -377,7 +363,7 @@ class RepositoryApiMixin(GitCore):
     def workflow_names(self):
         """Return index of workflow names."""
         names = defaultdict(list)
-        for ref in LinkReference.iter_items(self, common_path="workflows"):
+        for ref in LinkReference.iter_items(common_path="workflows"):
             names[str(ref.reference.relative_to(self.path))].append(ref.name)
         return names
 
@@ -436,87 +422,36 @@ class RepositoryApiMixin(GitCore):
         return self, commit, path
 
     @contextmanager
-    def with_commit(self, commit):
-        """Yield the state of the repo at a specific commit."""
-        current_branch = None
-        current_commit = None
-
-        try:
-            current_branch = self.repo.active_branch
-        except TypeError as e:
-            # not on a branch, detached head
-            if "HEAD is a detached" in str(e):
-                current_commit = self.repo.head.commit
-            else:
-                raise ValueError("Couldn't get active branch or commit", e)
-
-        self.repo.git.checkout(commit)
-
-        try:
-            yield
-        finally:
-            if current_branch:
-                self.repo.git.checkout(current_branch)
-            elif current_commit:
-                self.repo.git.checkout(current_commit)
-
-    @contextmanager
-    def with_metadata(self, read_only=False, name=None):
+    @inject.autoparams()
+    def with_metadata(
+        self,
+        project_gateway: IProjectGateway,
+        database_gateway: IDatabaseGateway,
+        read_only=False,
+        name=None,
+    ):
         """Yield an editable metadata object."""
-        metadata_path = self.renku_metadata_path
 
-        if metadata_path.exists():
-            metadata = Project.from_yaml(metadata_path, client=self)
-        else:
-            metadata = Project(name=name, client=self)
+        try:
+            project = project_gateway.get_project()
+        except ValueError:
+            project = Project.from_client(name=name, client=self)
 
-        yield metadata
+        yield project
 
         if not read_only:
-            metadata.to_yaml(path=metadata_path)
-
-    def process_and_store_run(self, command_line_tool, name, description, keywords):
-        """Create Plan and Activity from CommandLineTool and store them."""
-        filename = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(command_line_tool.baseCommand)))
-
-        # Store Run and ProcessRun as before
-        self.workflow_path.mkdir(exist_ok=True)
-        path = self.workflow_path / filename
-
-        process_run = command_line_tool.generate_process_run(
-            client=self, commit=self.repo.head.commit, path=path, name=name, description=description, keywords=keywords
-        )
-        process_run.to_yaml(path=path)
-        self.add_to_activity_index(process_run)
-
-        self.update_graphs(process_run)
-
-    def update_graphs(self, activity: Union[ProcessRun, WorkflowRun]):
-        """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
-        if not self.has_graph_files():
-            return
-
-        dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
-        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
-
-        activity_collection = ActivityCollection.from_activity(activity, dependency_graph, self)
-
-        provenance_graph.add(activity_collection)
-
-        dependency_graph.to_json()
-        provenance_graph.to_json()
+            project_gateway.update_project(project)
+            database_gateway.commit()
 
     def has_graph_files(self):
-        """Return true if dependency or provenance graph exists."""
-        return self.dependency_graph_path.exists() or self.provenance_graph_path.exists()
-
-    def initialize_graph(self):
-        """Create empty graph files."""
-        self.dependency_graph_path.write_text("[]")
-        self.provenance_graph_path.write_text("[]")
+        """Return true if database exists."""
+        return self.database_path.exists() and any(
+            f for f in self.database_path.iterdir() if f != self.database_path / "root"
+        )
 
     def remove_graph_files(self):
         """Remove all graph files."""
+        # NOTE: These are required for projects that have new graph files
         try:
             self.dependency_graph_path.unlink()
         except FileNotFoundError:
@@ -525,12 +460,20 @@ class RepositoryApiMixin(GitCore):
             self.provenance_graph_path.unlink()
         except FileNotFoundError:
             pass
+        try:
+            shutil.rmtree(self.database_path)
+        except FileNotFoundError:
+            pass
+        try:
+            self.datasets_provenance_path.unlink()
+        except FileNotFoundError:
+            pass
 
     def init_repository(self, force=False, user=None, initial_branch=None):
         """Initialize an empty Renku repository."""
         from git import Repo
 
-        from renku.core.models.provenance.agents import Person
+        from renku.core.models.provenance.agent import Person
 
         # initialize repo and set user data
         kwargs = {}
@@ -588,7 +531,7 @@ class RepositoryApiMixin(GitCore):
 
     def activities_for_paths(self, paths, file_commit=None, revision="HEAD"):
         """Get all activities involving a path."""
-        from renku.core.models.provenance.activities import Activity
+        from renku.core.models.provenance.activity import Activity
 
         result = set()
 

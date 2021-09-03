@@ -16,39 +16,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets serializers."""
-import marshmallow
-from marshmallow import Schema, fields, post_load, pre_load
+from marshmallow import Schema, ValidationError, fields, post_load
 
-from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
-from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
-from renku.core.models.datasets import ImageObjectJson as ImageObject
-from renku.core.models.datasets import ImageObjectRequestJson as ImageObjectRequest
-from renku.service.serializers.common import JobDetailsResponse, RenkuSyncSchema, RepositoryContext
+from renku.core.models.dataset import DatasetCreatorsJson as DatasetCreators
+from renku.core.models.dataset import DatasetDetailsJson as DatasetDetails
+from renku.core.models.dataset import ImageObjectJson as ImageObject
+from renku.core.models.dataset import ImageObjectRequestJson as ImageObjectRequest
+from renku.service.serializers.common import (
+    AsyncSchema,
+    JobDetailsResponse,
+    LocalRepositorySchema,
+    MigrateSchema,
+    RemoteRepositorySchema,
+    RenkuSyncSchema,
+)
 from renku.service.serializers.rpc import JsonRPCResponse
+
+
+class DatasetRefSchema(Schema):
+    """Schema for specifying a reference."""
+
+    ref = fields.String(description="Target reference.")
+
+
+class DatasetNameSchema(Schema):
+    """Schema for dataset name."""
+
+    name = fields.String(description="Mandatory dataset name.", required=True)
 
 
 class DatasetDetailsRequest(DatasetDetails):
     """Request schema with dataset image information."""
 
-    images = marshmallow.fields.List(marshmallow.fields.Nested(ImageObjectRequest))
+    images = fields.List(fields.Nested(ImageObjectRequest))
 
 
-class DatasetCreateRequest(RepositoryContext, DatasetDetailsRequest):
+class DatasetCreateRequest(
+    AsyncSchema, DatasetDetailsRequest, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
+):
     """Request schema for a dataset create view."""
 
-    @pre_load()
-    def default_commit_message(self, data, **kwargs):
-        """Set default commit message."""
-        if not data.get("commit_message"):
-            data["commit_message"] = "service: dataset create {0}".format(data["name"])
 
-        return data
-
-
-class DatasetCreateResponse(RenkuSyncSchema):
+class DatasetCreateResponse(DatasetNameSchema, RenkuSyncSchema):
     """Response schema for a dataset create view."""
-
-    name = fields.String(required=True)
 
 
 class DatasetCreateResponseRPC(JsonRPCResponse):
@@ -57,24 +67,14 @@ class DatasetCreateResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetCreateResponse)
 
 
-class DatasetRemoveRequest(RepositoryContext):
+class DatasetRemoveRequest(
+    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
+):
     """Request schema for a dataset remove."""
 
-    name = fields.String(required=True)
 
-    @pre_load()
-    def default_commit_message(self, data, **kwargs):
-        """Set default commit message."""
-        if not data.get("commit_message"):
-            data["commit_message"] = "service: dataset remove {0}".format(data["name"])
-
-        return data
-
-
-class DatasetRemoveResponse(RenkuSyncSchema):
+class DatasetRemoveResponse(DatasetNameSchema, RenkuSyncSchema):
     """Response schema for a dataset create view."""
-
-    name = fields.String(required=True)
 
 
 class DatasetRemoveResponseRPC(JsonRPCResponse):
@@ -92,10 +92,11 @@ class DatasetAddFile(Schema):
     job_id = fields.String()
 
 
-class DatasetAddRequest(RepositoryContext):
+class DatasetAddRequest(
+    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
+):
     """Request schema for a dataset add file view."""
 
-    name = fields.String(required=True)
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
 
     create_dataset = fields.Boolean(missing=False)
@@ -104,29 +105,19 @@ class DatasetAddRequest(RepositoryContext):
     client_extras = fields.String()
 
     @post_load()
-    def default_commit_message(self, data, **kwargs):
-        """Set default commit message."""
-        if not data.get("commit_message"):
-            data["commit_message"] = "service: dataset add {0}".format(data["name"])
-
-        return data
-
-    @post_load()
     def check_files(self, data, **kwargs):
         """Check serialized file list."""
         for _file in data["files"]:
             if "file_id" in _file and "file_path" in _file:
-                raise marshmallow.ValidationError(("invalid reference found:" "use either `file_id` or `file_path`"))
+                raise ValidationError(("invalid reference found:" "use either `file_id` or `file_path`"))
 
         return data
 
 
-class DatasetAddResponse(RenkuSyncSchema):
+class DatasetAddResponse(DatasetNameSchema, RenkuSyncSchema):
     """Response schema for a dataset add file view."""
 
     project_id = fields.String(required=True)
-    name = fields.String(required=True)
-
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
 
 
@@ -136,19 +127,14 @@ class DatasetAddResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetAddResponse)
 
 
-class DatasetListRequest(Schema):
+class DatasetListRequest(LocalRepositorySchema, RemoteRepositorySchema):
     """Request schema for dataset list view."""
-
-    project_id = fields.String()
-
-    git_url = fields.String()
-    branch = fields.String()
 
 
 class DatasetDetailsResponse(DatasetDetails):
     """Request schema with dataset image information."""
 
-    images = marshmallow.fields.List(marshmallow.fields.Nested(ImageObject))
+    images = fields.List(fields.Nested(ImageObject))
 
 
 class DatasetListResponse(Schema):
@@ -163,30 +149,21 @@ class DatasetListResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetListResponse)
 
 
-class DatasetFilesListRequest(Schema):
+class DatasetFilesListRequest(DatasetNameSchema, LocalRepositorySchema, RemoteRepositorySchema):
     """Request schema for dataset files list view."""
 
-    name = fields.String(required=True)
 
-    project_id = fields.String()
-
-    git_url = fields.String()
-    branch = fields.String()
-
-
-class DatasetFileDetails(Schema):
+class DatasetFileDetails(DatasetNameSchema):
     """Serialize dataset files to a response object."""
 
-    name = fields.String(required=True)
     path = fields.String()
     created = fields.DateTime()
     added = fields.DateTime()
 
 
-class DatasetFilesListResponse(Schema):
+class DatasetFilesListResponse(DatasetNameSchema):
     """Response schema for dataset files list view."""
 
-    name = fields.String(required=True)
     files = fields.List(fields.Nested(DatasetFileDetails), required=True)
 
 
@@ -196,11 +173,11 @@ class DatasetFilesListResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetFilesListResponse)
 
 
-class DatasetImportRequest(RepositoryContext):
+class DatasetImportRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
     """Dataset import request."""
 
     dataset_uri = fields.String(required=True)
-    name = fields.String()
+    name = fields.String(description="Optional dataset name.")
     extract = fields.Boolean()
 
 
@@ -210,15 +187,21 @@ class DatasetImportResponseRPC(JsonRPCResponse):
     result = fields.Nested(JobDetailsResponse)
 
 
-class DatasetEditRequest(RepositoryContext):
+class DatasetEditRequest(
+    AsyncSchema,
+    DatasetDetailsRequest,
+    DatasetNameSchema,
+    DatasetRefSchema,
+    LocalRepositorySchema,
+    RemoteRepositorySchema,
+    MigrateSchema,
+):
     """Dataset edit metadata request."""
 
-    name = fields.String(required=True)
     title = fields.String(default=None)
     description = fields.String(default=None)
     creators = fields.List(fields.Nested(DatasetCreators))
     keywords = fields.List(fields.String())
-    images = fields.List(fields.Nested(ImageObjectRequest))
 
 
 class DatasetEditResponse(RenkuSyncSchema):
@@ -234,10 +217,11 @@ class DatasetEditResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetEditResponse)
 
 
-class DatasetUnlinkRequest(RepositoryContext):
+class DatasetUnlinkRequest(
+    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
+):
     """Dataset unlink file request."""
 
-    name = fields.String(required=True)
     include_filters = fields.List(fields.String())
     exclude_filters = fields.List(fields.String())
 
@@ -248,7 +232,7 @@ class DatasetUnlinkRequest(RepositoryContext):
         exclude_filter = data.get("exclude_filters")
 
         if not include_filter and not exclude_filter:
-            raise marshmallow.ValidationError("one of the filters must be specified")
+            raise ValidationError("one of the filters must be specified")
 
         return data
 

@@ -23,22 +23,54 @@ Renku Workflow
 Renku uses PROV-O and its own Renku ontology to represent workflows.
 
 
-Run
----
+Plans
+-----
 
-.. automodule:: renku.core.models.workflow.run
+.. automodule:: renku.core.models.workflow.plan
+   :members:
+
+
+.. automodule:: renku.core.models.workflow.composite_plan
    :members:
 
 Parameters
 ----------
 
-.. automodule:: renku.core.models.workflow.parameters
+.. automodule:: renku.core.models.workflow.parameter
    :members:
+
+
+Renku Workflow Logic
+====================
+
+.. py:module:: renku.core.management.workflow
+
+Execution Graph
+---------------
+
+.. automodule:: renku.core.management.workflow.concrete_execution_graph
+   :members:
+
+Value Resolution
+----------------
+
+.. automodule:: renku.core.management.workflow.value_resolution
+   :members:
+
+Plan Factory
+------------
+
+Used to create ``Plan`` objects based on command line arguments
+
+.. automodule:: renku.core.management.workflow.plan_factory
+   :members:
+
+
 
 Renku Workflow Conversion
 =========================
 
-.. py:module:: renku.core.models.workflow.converters
+.. py:module:: renku.core.management.workflow.converters
 
 Renku allows conversion of tracked workflows to runnable workflows in
 supported tools (Currently CWL)
@@ -46,7 +78,7 @@ supported tools (Currently CWL)
 CWL
 ---
 
-.. automodule:: renku.core.models.workflow.converters.cwl
+.. automodule:: renku.core.management.workflow.converters.cwl
    :no-members:
 
 .. autoclass:: CWLConverter

@@ -17,13 +17,14 @@
 # limitations under the License.
 """Test compliance with ``.gitignore`` file."""
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 def test_dataset_add(tmpdir, runner, client, subdirectory):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "testing"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     # Using an extension from gitignore.default defined as *.spec
@@ -39,4 +40,4 @@ def test_dataset_add(tmpdir, runner, client, subdirectory):
 
     # Use the --force ;)
     result = runner.invoke(cli, ["dataset", "add", "testing", "--force", ignored_file.strpath])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)

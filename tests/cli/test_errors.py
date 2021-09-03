@@ -23,6 +23,7 @@ import pytest
 from filelock import FileLock
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 @pytest.mark.parametrize(
@@ -32,7 +33,7 @@ from renku.cli import cli
         ["dataset"],
         ["doctor"],
         ["githooks"],
-        ["log"],
+        ["graph", "export"],
         ["migrate"],
         ["mv"],
         ["rerun"],
@@ -70,7 +71,7 @@ def test_cli_initialization_err(cmd, runner):
         ["dataset", "--help"],
         ["doctor", "--help"],
         ["githooks", "--help"],
-        ["log", "--help"],
+        # ["log", "--help"],
         ["migrate", "--help"],
         ["mv", "--help"],
         ["rerun", "--help"],
@@ -94,7 +95,7 @@ def test_cli_initialization_no_err_help(cmd, runner):
     with tempfile.TemporaryDirectory() as tmpdir:
         with chdir(tmpdir):
             result = runner.invoke(cli, cmd)
-            assert 0 == result.exit_code
+            assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_file_lock_timeout_error(project, runner):

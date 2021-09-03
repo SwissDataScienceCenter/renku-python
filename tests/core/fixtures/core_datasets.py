@@ -16,6 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku core fixtures for datasets testing."""
+
+from contextlib import contextmanager
+
 import pytest
 
 
@@ -40,22 +43,58 @@ def dataset_responses():
 
 
 @pytest.fixture
-def client_with_datasets(client, directory_tree):
+def client_with_injection(client, client_database_injection_manager):
+    """Return a Renku repository with injected dependencies."""
+
+    with client_database_injection_manager(client):
+        yield client
+
+
+@pytest.fixture
+def client_with_datasets(client, directory_tree, client_database_injection_manager):
     """A client with datasets."""
-    from renku.core.models.provenance.agents import Person
+    from renku.core.models.provenance.agent import Person
 
     person_1 = Person.from_string("P1 <p1@example.com> [IANA]")
     person_2 = Person.from_string("P2 <p2@example.com>")
 
-    client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+    with client_database_injection_manager(client):
+        client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
 
-    with client.with_dataset("dataset-2", create=True) as dataset:
-        dataset.keywords = ["dataset", "2"]
-        dataset.creators = [person_1, person_2]
+        with client.with_dataset(name="dataset-2", create=True, commit_database=True) as dataset:
+            dataset.keywords = ["dataset", "2"]
+            dataset.creators = [person_1, person_2]
 
-        client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
+            client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
 
     client.repo.git.add("--all")
     client.repo.index.commit("add files to datasets")
 
     yield client
+
+
+@pytest.fixture
+def load_dataset_with_injection(client_database_injection_manager):
+    """Load dataset method with injection setup."""
+
+    def _inner(name, client):
+        from tests.utils import load_dataset
+
+        with client_database_injection_manager(client):
+            return load_dataset(name)
+
+    return _inner
+
+
+@pytest.fixture
+def get_datasets_provenance_with_injection(client_database_injection_manager):
+    """Get dataset provenance method with injection setup."""
+
+    @contextmanager
+    def _inner(client):
+        from renku.core.management.datasets import DatasetsProvenance
+
+        with client_database_injection_manager(client):
+            yield DatasetsProvenance()
+
+    return _inner

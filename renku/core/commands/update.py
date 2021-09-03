@@ -17,58 +17,75 @@
 # limitations under the License.
 """Renku update command."""
 
-import sys
 import uuid
 
 from git import Actor
 
 from renku.core.commands.cwl_runner import execute
-from renku.core.commands.graph import Graph, _safe_path
 from renku.core.errors import ParameterError
-from renku.core.incubation.command import Command
-from renku.core.models.cwl.command_line_tool import delete_indirect_files_list, read_indirect_parameters
-from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
-from renku.core.models.workflow.converters.cwl import CWLConverter
-from renku.core.models.workflow.parameters import RunParameter
-from renku.core.utils import communication
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.workflow.converters.cwl import CWLConverter
+from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.utils.git import add_to_git
 from renku.version import __version__, version_url
 
 
 def update_workflows():
     """Update existing files by rerunning their outdated workflow."""
-    return Command().command(_update_workflows).require_migration().require_clean().with_commit().require_nodejs()
+    return (
+        Command()
+        .command(_update_workflows)
+        .require_migration()
+        .require_clean()
+        .require_nodejs()
+        .with_database(write=True)
+        .with_commit()
+    )
 
 
-def _update_workflows(client, revision, no_output, update_all, siblings, paths):
+def _update_workflows(revision, no_output, update_all, siblings, paths):
     if not paths and not update_all:
         raise ParameterError("Either PATHS or --all/-a should be specified.")
     if paths and update_all:
         raise ParameterError("Cannot use PATHS and --all/-a at the same time.")
 
-    graph = Graph(client)
-    outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
-    outputs = {node for node in outputs if graph.need_update(node)}
-    if not outputs:
-        communication.echo("All files were generated from the latest inputs.")
-        sys.exit(0)
+    # TODO: Implement this properly with new database
+    # graph = Graph()
+    # outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
+    # outputs = {node for node in outputs if graph.need_update(node)}
+    # if not outputs:
+    #     communication.echo("All files were generated from the latest inputs.")
+    #     sys.exit(0)
 
-    # Check or extend siblings of outputs.
-    outputs = siblings(graph, outputs)
-    output_paths = {node.path for node in outputs if _safe_path(node.path)}
+    # # Check or extend siblings of outputs.
+    # outputs = siblings(graph, outputs)
+    # output_paths = {node.path for node in outputs if _safe_path(node.path)}
 
-    # Get all clean nodes.
-    input_paths = {node.path for node in graph.nodes} - output_paths
+    # # Get all clean nodes.
+    # input_paths = {node.path for node in graph.nodes} - output_paths
 
-    # Store the generated workflow used for updating paths.
-    workflow = graph.as_workflow(input_paths=input_paths, output_paths=output_paths, outputs=outputs)
+    # # Store the generated workflow used for updating paths.
+    # workflow = graph.as_workflow(input_paths=input_paths, output_paths=output_paths, outputs=outputs)
 
-    execute_workflow(client, workflow, output_paths, command_name="update", update_commits=True)
+    # execute_workflow(workflow, output_paths, command_name="update", update_commits=True)
 
 
-def execute_workflow(client, workflow, output_paths, command_name, update_commits):
+@inject.autoparams()
+def execute_workflow(
+    workflow,
+    output_paths,
+    command_name,
+    update_commits,
+    client_dispatcher: IClientDispatcher,
+    activity_gateway: IActivityGateway,
+):
     """Execute a Run with/without subprocesses."""
-    wf, path = CWLConverter.convert(workflow, client)
+    client = client_dispatcher.current_client
+
+    wf, path = CWLConverter.convert(workflow, client.path)
     # Don't compute paths if storage is disabled.
     if client.check_external_storage():
         # Make sure all inputs are pulled from a storage.
@@ -80,7 +97,7 @@ def execute_workflow(client, workflow, output_paths, command_name, update_commit
     # Execute the workflow and relocate all output files.
     # FIXME get new output paths for edited tools
     # output_paths = {path for _, path in workflow.iter_output_files()}
-    execute(client, path, output_paths=output_paths)
+    execute(path, output_paths=output_paths)
 
     paths = [o.produces.path for o in workflow.outputs]
 
@@ -99,25 +116,26 @@ def execute_workflow(client, workflow, output_paths, command_name, update_commit
 
     workflow.update_id_and_label_from_commit_path(client, client.repo.head.commit, path)
 
-    if not workflow.subprocesses:  # Update parameters if there is only one step
-        _update_run_parameters(run=workflow, working_dir=client.path)
+    # TODO: implement properly with new database
+    # if not workflow.subprocesses:  # Update parameters if there is only one step
+    #     _update_run_parameters(run=workflow, working_dir=client.path)
 
-    cls = WorkflowRun if workflow.subprocesses else ProcessRun
-    activity = cls.from_run(run=workflow, client=client, path=path, update_commits=update_commits)
-    activity.to_yaml(path=path)
-    client.add_to_activity_index(activity)
+    # cls = WorkflowRun if workflow.subprocesses else ProcessRun
+    # activity = cls.from_run(run=workflow, path=path, update_commits=update_commits)
+    # activity.to_yaml(path=path)
+    # client.add_to_activity_index(activity)
 
-    client.update_graphs(activity)
+    # activity_gateway.add(activity)
 
 
-def _update_run_parameters(run, working_dir):
+# def _update_run_parameters(run, working_dir):
 
-    default_parameters = {p.name: p for p in run.run_parameters}
+#     default_parameters = {p.name: p for p in run.run_parameters}
 
-    indirect_parameters = read_indirect_parameters(working_dir)
-    for name, value in indirect_parameters.items():
-        id_ = RunParameter.generate_id(run_id=run._id, name=name)
-        parameter = RunParameter(id=id_, name=name, value=value)
-        default_parameters[name] = parameter
+#     indirect_parameters = read_indirect_parameters(working_dir)
+# for name, value in indirect_parameters.items():
+#     id_ = RunParameter.generate_id(run_id=run._id, name=name)
+#     parameter = RunParameter(id=id_, name=name, value=value)
+#     default_parameters[name] = parameter
 
-    run.run_parameters = list(default_parameters.values())
+# run.run_parameters = list(default_parameters.values())

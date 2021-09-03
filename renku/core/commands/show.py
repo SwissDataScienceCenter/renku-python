@@ -19,108 +19,113 @@
 
 from collections import namedtuple
 
-from renku.core import errors
-from renku.core.commands.graph import Graph
-from renku.core.incubation.command import Command
-from renku.core.models.entities import Entity
-from renku.core.models.provenance.activities import ProcessRun
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 Result = namedtuple("Result", ["path", "commit", "time", "workflow"])
 
 
 def get_siblings():
     """Return siblings for given paths."""
-    return Command().command(_get_siblings).require_migration()
+    return Command().command(_get_siblings).require_migration().with_database()
 
 
-def _get_siblings(client, revision, verbose, paths):
-    def get_sibling_name(graph, node):
-        """Return the display name of a sibling."""
-        name = graph._format_path(node.path)
-        return "{} @ {}".format(name, node.commit) if verbose else name
+def _get_siblings(revision, verbose, paths):
+    pass
+    # TODO: implement with new database
+    # def get_sibling_name(graph, node):
+    #     """Return the display name of a sibling."""
+    #     name = graph._format_path(node.path)
+    #     return "{} @ {}".format(name, node.commit) if verbose else name
 
-    graph = Graph(client)
-    nodes = graph.build(paths=paths, revision=revision)
-    nodes = [n for n in nodes if not isinstance(n, Entity) or n.parent]
+    # graph = Graph()
+    # nodes = graph.build(paths=paths, revision=revision)
+    # nodes = [n for n in nodes if not isinstance(n, Entity) or n.parent]
 
-    sibling_sets = {frozenset([n]) for n in set(nodes)}
-    for node in nodes:
-        try:
-            sibling_sets.add(frozenset(graph.siblings(node)))
-        except errors.InvalidOutputPath:
-            # ignore nodes that aren't outputs if no path was supplied
-            if paths:
-                raise
-            else:
-                sibling_sets.discard({node})
+    # sibling_sets = {frozenset([n]) for n in set(nodes)}
+    # for node in nodes:
+    #     try:
+    #         sibling_sets.add(frozenset(graph.siblings(node)))
+    #     except errors.InvalidOutputPath:
+    #         # ignore nodes that aren't outputs if no path was supplied
+    #         if paths:
+    #             raise
+    #         else:
+    #             sibling_sets.discard({node})
 
-    result_sets = []
-    for candidate in sibling_sets:
-        new_result = []
+    # result_sets = []
+    # for candidate in sibling_sets:
+    #     new_result = []
 
-        for result in result_sets:
-            if candidate & result:
-                candidate |= result
-            else:
-                new_result.append(result)
+    #     for result in result_sets:
+    #         if candidate & result:
+    #             candidate |= result
+    #         else:
+    #             new_result.append(result)
 
-        result_sets = new_result
-        result_sets.append(candidate)
+    #     result_sets = new_result
+    #     result_sets.append(candidate)
 
-    return [[get_sibling_name(graph, node) for node in r] for r in result_sets]
+    # return [[get_sibling_name(graph, node) for node in r] for r in result_sets]
 
 
 def get_inputs():
     """Return inputs files in the repository."""
-    return Command().command(_get_inputs).require_migration()
+    return Command().command(_get_inputs).require_migration().with_database()
 
 
-def _get_inputs(client, revision, paths):
-    graph = Graph(client)
-    paths = set(paths)
-    nodes = graph.build(revision=revision)
-    commits = {node.activity.commit if hasattr(node, "activity") else node.commit for node in nodes}
-    commits |= {node.activity.commit for node in nodes if hasattr(node, "activity")}
-    candidates = {(node.commit, node.path) for node in nodes if not paths or node.path in paths}
+@inject.autoparams()
+def _get_inputs(revision, paths, client_dispatcher: IClientDispatcher):
+    pass
+    # TODO: implement with new database
+    # graph = Graph()
+    # paths = set(paths)
+    # nodes = graph.build(revision=revision)
+    # commits = {node.activity.commit if hasattr(node, "activity") else node.commit for node in nodes}
+    # commits |= {node.activity.commit for node in nodes if hasattr(node, "activity")}
+    # candidates = {(node.commit, node.path) for node in nodes if not paths or node.path in paths}
 
-    input_paths = {}
+    # input_paths = {}
 
-    for commit in commits:
-        activity = graph.activities.get(commit)
-        if not activity:
-            continue
+    # for commit in commits:
+    #     activity = graph.activities.get(commit)
+    #     if not activity:
+    #         continue
 
-        if isinstance(activity, ProcessRun):
-            for usage in activity.qualified_usage:
-                for entity in usage.entity.entities:
-                    path = str((usage.client.path / entity.path).relative_to(client.path))
-                    usage_key = (entity.commit, entity.path)
+    #     if isinstance(activity, ProcessRun):
+    #         for usage in activity.qualified_usage:
+    #             for entity in usage.entity.entities:
+    #                 path = str((usage.client.path / entity.path).relative_to(client.path))
+    #                 usage_key = (entity.commit, entity.path)
 
-                    if path not in input_paths and usage_key in candidates:
-                        input_paths[path] = Result(
-                            path=path, commit=entity.commit, time=activity.started_at_time, workflow=activity.path
-                        )
+    #                 if path not in input_paths and usage_key in candidates:
+    #                     input_paths[path] = Result(
+    #                         path=path, commit=entity.commit, time=activity.started_at_time, workflow=activity.path
+    #                     )
 
-    return {graph._format_path(k): v for k, v in input_paths.items()}
+    # return {graph._format_path(k): v for k, v in input_paths.items()}
 
 
 def get_outputs():
     """Return output files in the repository."""
-    return Command().command(_get_outputs).require_migration()
+    return Command().command(_get_outputs).require_migration().with_database()
 
 
-def _get_outputs(client, revision, paths):
-    graph = Graph(client)
-    filter_ = graph.build(paths=paths, revision=revision)
-    output_paths = {}
+def _get_outputs(revision, paths):
+    pass
+    # TODO: implement with new database
+    # graph = Graph()
+    # filter_ = graph.build(paths=paths, revision=revision)
+    # output_paths = {}
 
-    for activity in graph.activities.values():
-        if isinstance(activity, ProcessRun):
-            for entity in activity.generated:
-                if entity.path not in graph.output_paths:
-                    continue
-                output_paths[entity.path] = Result(
-                    path=entity.path, commit=entity.commit, time=activity.ended_at_time, workflow=activity.path
-                )
+    # for activity in graph.activities.values():
+    #     if isinstance(activity, ProcessRun):
+    #         for entity in activity.generated:
+    #             if entity.path not in graph.output_paths:
+    #                 continue
+    #             output_paths[entity.path] = Result(
+    #                 path=entity.path, commit=entity.commit, time=activity.ended_at_time, workflow=activity.path
+    #             )
 
-    return filter_, {graph._format_path(k): v for k, v in output_paths.items()}
+    # return filter_, {graph._format_path(k): v for k, v in output_paths.items()}

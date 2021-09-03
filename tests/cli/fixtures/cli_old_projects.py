@@ -63,10 +63,8 @@ def old_project(request, tmp_path):
             "log_path": "catoutput.txt",
             "expected_strings": [
                 "catoutput.txt",
-                "_cat.yaml",
-                "_echo.yaml",
-                "9ecc28b2 stdin.txt",
-                "bdc801c6 stdout.txt",
+                "stdin.txt",
+                "stdout.txt",
             ],
         },
         {
@@ -74,10 +72,8 @@ def old_project(request, tmp_path):
             "log_path": "concat2.txt",
             "expected_strings": [
                 "concat2.txt",
-                "5828275ae5344eba8bad475e7d3cf2d5.cwl",
-                "_migrated.yaml",
-                "88add2ea output_rand",
-                "e6fa6bf3 input2.txt",
+                "output_rand",
+                "input2.txt",
             ],
         },
     ],
@@ -136,13 +132,28 @@ def old_repository_with_submodules(request, tmp_path):
 
 
 @pytest.fixture
-def unsupported_project(client):
+def unsupported_project(client, client_database_injection_manager):
     """A client with a newer project version."""
-    with client.with_metadata() as project:
-        impossible_newer_version = 42000
-        project.version = impossible_newer_version
+    with client_database_injection_manager(client):
+        with client.with_metadata() as project:
+            impossible_newer_version = 42000
+            project.version = impossible_newer_version
 
     client.repo.git.add(".renku")
     client.repo.index.commit("update renku.ini", skip_hooks=True)
 
     yield client
+
+
+@pytest.fixture
+def old_client_before_database(tmp_path):
+    """A renku project from last version without Database."""
+    from renku import LocalClient
+    from renku.core.utils.contexts import chdir
+
+    name = "old-datasets-v0.16.0.git"
+    base_path = tmp_path / name
+    repository = clone_compressed_repository(base_path=base_path, name=name)
+
+    with chdir(repository.working_dir):
+        yield LocalClient(path=repository.working_dir)

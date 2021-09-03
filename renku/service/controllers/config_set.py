@@ -18,6 +18,7 @@
 """Renku service cache list cached projects controller."""
 from renku.core.commands.config import update_multiple_config
 from renku.service.cache.models.job import Job
+from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.config import ConfigSetRequest, ConfigSetResponseRPC
@@ -33,6 +34,9 @@ class SetConfigCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct controller."""
         self.ctx = SetConfigCtrl.REQUEST_SERIALIZER.load(request_data)
+        config_keys = ", ".join(request_data["config"].keys())
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} config set {config_keys}"
+
         super(SetConfigCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
@@ -42,7 +46,7 @@ class SetConfigCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        update_config_command = update_multiple_config().build()
+        update_config_command = update_multiple_config().with_commit_message(self.ctx["commit_message"]).build()
         update_config_command.execute(self.ctx["config"])
 
         return self.context

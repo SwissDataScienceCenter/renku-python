@@ -44,7 +44,7 @@ Test new repository
   `renku run`.
 - [ ] Change the input file from the previous step and rerun the workflow
   to check the new results.
-- [ ] Check that renku log looks sensible.
+- [ ] Check that renku graph export looks sensible.
 - [ ] Check that git log looks sensible.
 
 Test existing repository
@@ -53,5 +53,5 @@ Test existing repository
 - [ ] Run ``renku migrate`` commands.
 - [ ] List datasets and dataset files.
 - [ ] Rerun an existing workflow.
-- [ ] Check that renku log looks sensible.
+- [ ] Check that renku graph export looks sensible.
 - [ ] Check that git log looks sensible.

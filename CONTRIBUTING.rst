@@ -211,6 +211,6 @@ Before you submit a pull request, check that it meets these guidelines:
 * Make sure you agree with the license and follow the legal_ matter.
 * The pull request should include tests and must not decrease test coverage.
 * If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring.
-* The pull request should work for Python 3.6, 3.7 and 3.8. Check GitHub action builds and make sure that the tests pass for all supported Python versions.
+* The pull request should work for Python 3.7, 3.8 and 3.9. Check GitHub action builds and make sure that the tests pass for all supported Python versions.
 
 .. _legal: (https://github.com/SwissDataScienceCenter/documentation/wiki/Legal-matter)

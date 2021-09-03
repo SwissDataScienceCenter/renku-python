@@ -22,6 +22,7 @@ import os
 from git import Repo
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 def test_save_without_remote(runner, project, client, tmpdir_factory):
@@ -38,7 +39,7 @@ def test_save_without_remote(runner, project, client, tmpdir_factory):
 
     result = runner.invoke(cli, ["save", "-d", path, "tracked"], catch_exceptions=False)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "tracked" in result.output
     assert "Saved changes to: tracked" in client.repo.head.commit.message
 
@@ -52,7 +53,7 @@ def test_save_with_remote(runner, project, client_with_remote, tmpdir_factory):
 
     result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], catch_exceptions=False)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "tracked" in result.output
     assert "save changes" in client_with_remote.repo.head.commit.message
 
@@ -65,7 +66,7 @@ def test_save_with_merge_conflict(runner, project, client_with_remote, tmpdir_fa
 
     result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], catch_exceptions=False)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "tracked" in result.output
     assert "save changes" in client.repo.head.commit.message
 
@@ -79,7 +80,7 @@ def test_save_with_merge_conflict(runner, project, client_with_remote, tmpdir_fa
 
     result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], input="n", catch_exceptions=False)
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "There were conflicts when updating the local data" in result.output
     assert "Successfully saved to remote branch" in result.output
     assert "save changes" in client.repo.head.commit.message
@@ -117,5 +118,5 @@ def test_save_with_staged(runner, project, client_with_remote, tmpdir_factory):
         cli, ["save", "-m", "save changes", "tracked", "modified", "deleted"], catch_exceptions=False
     )
 
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert {"tracked", "modified", "deleted"} == {f.a_path for f in client.repo.head.commit.diff("HEAD~1")}

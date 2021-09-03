@@ -22,9 +22,9 @@ from renku.core.management.migrate import is_migration_required, is_project_unsu
 
 def check_migration(client):
     """Check for project version."""
-    if is_migration_required(client):
+    if is_migration_required():
         problems = WARNING + "Project requires migration.\n" + '  (use "renku migrate" to fix this issue)\n'
-    elif is_project_unsupported(client):
+    elif is_project_unsupported():
         problems = (
             ERROR + "Project version is not supported by your version of Renku.\n" + "  (upgrade your Renku version)\n"
         )

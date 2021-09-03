@@ -22,7 +22,6 @@ import uuid
 
 import jwt
 import pytest
-from flaky import flaky
 from git import Repo
 from werkzeug.utils import secure_filename
 
@@ -32,6 +31,7 @@ from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 from renku.service.utils import make_project_path
 from tests.service.views.test_dataset_views import assert_rpc_response
+from tests.utils import retry_failed
 
 
 @pytest.mark.parametrize(
@@ -42,7 +42,7 @@ from tests.service.views.test_dataset_views import assert_rpc_response
     ],
 )
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_dataset_url_import_job(url, svc_client_with_repo):
     """Test dataset import via url."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -73,11 +73,12 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
-    dataset_import(user_data, job_id, project_id, url)
+    commit_message = "service: import remote dataset"
+    dataset_import(user_data, job_id, project_id, url, commit_message=commit_message)
 
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
-    assert f"service: dataset import {url}" == new_commit.message
+    assert commit_message == new_commit.message
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
 
@@ -89,7 +90,7 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
 @pytest.mark.parametrize("doi", ["10.5281/zenodo.3239980", "10.5281/zenodo.3188334", "10.7910/DVN/TJCLKP"])
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_dataset_import_job(doi, svc_client_with_repo):
     """Test dataset import via doi."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -114,11 +115,12 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
-    dataset_import(user, job_id, project_id, doi)
+    commit_message = "service: import remote dataset"
+    dataset_import(user, job_id, project_id, doi, commit_message=commit_message)
 
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
-    assert f"service: dataset import {doi}" == new_commit.message
+    assert commit_message == new_commit.message
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
     assert response
@@ -137,7 +139,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
 )
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -180,7 +182,7 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
 @pytest.mark.parametrize("doi", ["10.5281/zenodo.3634052"])
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_dataset_import_twice_job(doi, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -230,7 +232,7 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
 )
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_dataset_add_remote_file(url, svc_client_with_repo):
     """Test dataset add a remote file."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -262,7 +264,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Add a file to a new dataset on a remote repository."""
     from renku.service.serializers.datasets import DatasetAddRequest
@@ -301,7 +303,7 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, vi
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Add a file to a new dataset on a remote repository."""
     from renku.service.serializers.datasets import DatasetAddRequest
@@ -375,7 +377,7 @@ def test_dataset_project_lock(doi, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a new dataset successfully."""
     from renku.service.serializers.datasets import DatasetCreateRequest
@@ -412,7 +414,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a new dataset successfully."""
     from renku.service.serializers.datasets import DatasetCreateRequest
@@ -447,7 +449,7 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a dataset was removed successfully."""
     from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
@@ -480,7 +482,7 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a dataset was removed successfully."""
     from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
@@ -511,7 +513,7 @@ def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Edit a dataset successfully."""
     from renku.service.serializers.datasets import DatasetEditRequest
@@ -550,7 +552,7 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Edit a dataset with a failure."""
     from renku.service.serializers.datasets import DatasetEditRequest
@@ -584,7 +586,7 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset successfully."""
     from renku.service.serializers.datasets import DatasetUnlinkRequest
@@ -623,7 +625,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset failure."""
     from renku.service.serializers.datasets import DatasetUnlinkRequest
@@ -651,7 +653,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset successfully."""
     from renku.service.serializers.datasets import DatasetUnlinkRequest

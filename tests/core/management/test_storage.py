@@ -28,7 +28,8 @@ def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path,
 
     file1 = client_with_datasets.path / "file1"
     file1.write_text("123")
-    path_in_renku_metadata_directory = client_with_datasets.renku_metadata_path.parent / path
+    path_in_renku_metadata_directory = client_with_datasets.database_path.parent / path
+    path_in_renku_metadata_directory.mkdir(parents=True, exist_ok=True)
     file2 = path_in_renku_metadata_directory / "file2"
     file2.write_text("123")
 

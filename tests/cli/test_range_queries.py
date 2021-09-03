@@ -17,10 +17,10 @@
 # limitations under the License.
 """Test Git ranges used by various commands."""
 
-import os
 from pathlib import Path
 
 from renku.cli import cli
+from tests.utils import format_result_exception
 
 
 def test_limit_log(runner, project, run, subdirectory):
@@ -29,21 +29,20 @@ def test_limit_log(runner, project, run, subdirectory):
     data = cwd / "data.txt"
     output = cwd / "output.txt"
 
-    assert 0 == run(args=("run", "echo", "hello"), stdout=data)
+    assert 0 == run(args=("run", "echo", "unique input string"), stdout=data)
     assert data.exists()
 
     assert 0 == run(args=("run", "wc", "-c"), stdin=data, stdout=output)
     assert output.exists()
 
-    relative_path = os.path.relpath(output, os.getcwd())
-    cmd = ["log", "--revision", "HEAD^^..", relative_path]
+    cmd = ["graph", "export", "--revision", "HEAD^^.."]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
-    assert data.name not in result.output
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "unique input string" not in result.output
     assert output.name in result.output
 
-    cmd = ["log", "--revision", "HEAD^^^"]
+    cmd = ["graph", "export", "--revision", "HEAD^^"]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
-    assert data.name in result.output
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "unique input string" in result.output
     assert output.name not in result.output

@@ -18,6 +18,7 @@
 """Renku exceptions."""
 
 import os
+from typing import List
 
 import click
 import requests
@@ -264,14 +265,14 @@ class OutputsNotFound(RenkuException):
 
     def __init__(self, repo, inputs):
         """Build a custom message."""
+        from pathlib import Path
+
         msg = "There are not any detected outputs in the repository."
 
-        from renku.core.models.cwl.types import File
-
         paths = [
-            os.path.relpath(str(input_.default.path))  # relative to cur path
-            for input_ in inputs  # only choose files
-            if isinstance(input_.default, File)
+            os.path.relpath(input_.default_value)  # relative to cur path
+            for input_ in inputs
+            if Path(input_.default_value).is_dir()
         ]
 
         if paths:
@@ -474,3 +475,64 @@ class NodeNotFoundError(RenkuException):
             "Please install it, for details see https://nodejs.org/en/download/package-manager/"
         )
         super(NodeNotFoundError, self).__init__(msg)
+
+
+class ObjectNotFoundError(RenkuException):
+    """Raised when an object is not found in the storage."""
+
+    def __init__(self, filename):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Cannot find object: '{filename}'")
+
+
+class ParameterNotFoundError(RenkuException):
+    """Raised when a parameter reference cannot be resolved to a parameter."""
+
+    def __init__(self, parameter: str, workflow: str):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Cannot find parameter '{parameter}' on workflow {workflow}")
+
+
+class MappingExistsError(RenkuException):
+    """Raised when a parameter mapping exists already."""
+
+    def __init__(self, existing_mappings: List[str]):
+        """Embed exception and build a custom message."""
+        existing = "\n\t".join(existing_mappings)
+        super().__init__(
+            "Duplicate mapping detected. The following mapping targets "
+            f"already exist on these mappings: \n\t{existing}"
+        )
+
+
+class MappingNotFoundError(RenkuException):
+    """Raised when a parameter mapping does not exist."""
+
+    def __init__(self, mapping: str, workflow: str):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Cannot find mapping '{mapping}' on workflow {workflow}")
+
+
+class ChildWorkflowNotFoundError(RenkuException):
+    """Raised when a parameter reference cannot be resolved to a parameter."""
+
+    def __init__(self, child: str, workflow: str):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Cannot find child step '{child}' on workflow {workflow}")
+
+
+class ParameterLinkError(RenkuException):
+    """Raised when a parameter link cannot be created."""
+
+    def __init__(self, reason: str):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Can't create parameter link, reason: {reason}")
+
+
+class GraphCycleError(RenkuException):
+    """Raised when a parameter reference cannot be resolved to a parameter."""
+
+    def __init__(self, cycles: List[List[str]]):
+        """Embed exception and build a custom message."""
+        cycles = "), (".join(", ".join(cycle) for cycle in cycles)
+        super().__init__(f"Cycles detected in execution graph: ({cycles})")

@@ -20,10 +20,11 @@
 from pathlib import Path
 
 import git
+import pytest
 
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.models.entities import Collection
+from tests.utils import format_result_exception
 
 
 def update_and_commit(data, file_, repo):
@@ -35,6 +36,7 @@ def update_and_commit(data, file_, repo):
     repo.index.commit("Updated source.txt")
 
 
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_update(runner, project, renku_cli, no_lfs_warning):
     """Test automatic file update."""
     from renku.core.utils.shacl import validate_graph
@@ -58,7 +60,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
         assert f.read().strip() == "1"
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     update_and_commit("12", source, repo)
 
@@ -72,7 +74,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
     previous_run_id = run._id
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with output.open("r") as f:
         assert f.read().strip() == "2"
@@ -89,17 +91,17 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
     assert previous_run_id == run._id
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with output.open("r") as f:
         assert f.read().strip() == "2"
 
-    from renku.cli.log import FORMATS
+    from renku.cli.graph import GRAPH_FORMATS
 
-    for output_format in FORMATS:
-        # Make sure the log contains the original parent.
-        result = runner.invoke(cli, ["log", "--format", output_format], catch_exceptions=False)
-        assert 0 == result.exit_code, result.output
+    for output_format in GRAPH_FORMATS:
+        # Make sure the graph contains the original parent.
+        result = runner.invoke(cli, ["graph", "export", "--format", output_format], catch_exceptions=False)
+        assert 0 == result.exit_code, format_result_exception(result)
         assert source.name in result.output, output_format
 
         if output_format == "nt":
@@ -107,6 +109,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
             assert r is True, t
 
 
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
     """Test automatic file update."""
     cwd = Path(project)
@@ -128,7 +131,7 @@ def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
         assert f.read().strip() == "1"
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     exit_code, run = renku_cli("run", "cp", str(intermediate), str(output))
     assert 0 == exit_code
@@ -138,7 +141,7 @@ def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
         assert f.read().strip() == "1"
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     update_and_commit("2", source, repo)
 
@@ -149,16 +152,17 @@ def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
     assert 0 == exit_code
     assert 2 == len(run.subprocesses)
 
-    result = runner.invoke(cli, ["log"], catch_exceptions=False)
+    result = runner.invoke(cli, ["graph", "export"], catch_exceptions=False)
     assert "(part of" in result.output, result.output
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with output.open("r") as f:
         assert f.read().strip() == "2"
 
 
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_workflow_without_outputs(runner, project, run):
     """Test workflow without outputs."""
     repo = git.Repo(project)
@@ -172,11 +176,11 @@ def test_workflow_without_outputs(runner, project, run):
 
     cmd = ["run", "cat", "--no-output", input_.name]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     cmd = ["status", "--no-output"]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with input_.open("w") as f:
         f.write("second")
@@ -191,9 +195,10 @@ def test_workflow_without_outputs(runner, project, run):
 
     cmd = ["status", "--no-output"]
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_siblings_update(runner, project, run, no_lfs_warning):
     """Test detection of siblings during update."""
     cwd = Path(project)
@@ -255,6 +260,7 @@ def test_siblings_update(runner, project, run, no_lfs_warning):
             assert f.read().strip() == "3", sibling
 
 
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_siblings_in_output_directory(runner, project, run):
     """Files in output directory are linked or removed after update."""
     repo = git.Repo(project)
@@ -304,6 +310,7 @@ def test_siblings_in_output_directory(runner, project, run):
     check_files()
 
 
+@pytest.mark.skip("renku update not implemented with new database, reenable once that is done")
 def test_relative_path_for_directory_input(client, run, renku_cli):
     """Test having a directory input generates relative path in CWL."""
     (client.path / DATA_DIR / "file1").write_text("file1")
@@ -316,11 +323,10 @@ def test_relative_path_for_directory_input(client, run, renku_cli):
     client.repo.git.add("--all")
     client.repo.index.commit("Add one more file")
 
-    exit_code, cwl = renku_cli("update", "--all")
+    exit_code, plan = renku_cli("update", "--all")
     assert 0 == exit_code
-    assert 1 == len(cwl.inputs)
-    assert isinstance(cwl.inputs[0].consumes, Collection)
-    assert "data" == cwl.inputs[0].consumes.path
+    assert 1 == len(plan.inputs)
+    assert "data" == plan.inputs[0].default_value
 
 
 def test_update_no_args(runner, project, renku_cli, no_lfs_warning):
@@ -339,7 +345,7 @@ def test_update_no_args(runner, project, renku_cli, no_lfs_warning):
     assert 0 == exit_code
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     update_and_commit("12", source, repo)
 

@@ -26,6 +26,8 @@ from urllib.parse import ParseResult
 from yagup import GitURL
 
 from renku.core import errors
+from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 
 def url_to_string(url):
@@ -63,12 +65,14 @@ def get_host(client):
     return os.environ.get("RENKU_DOMAIN") or host
 
 
-def parse_authentication_endpoint(client, endpoint, use_remote=False):
+@inject.autoparams()
+def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher, use_remote=False):
     """Return a parsed url.
 
     If an endpoint is provided then use it, otherwise, look for a configured endpoint. If no configured endpoint exists
     then try to use project's remote url.
     """
+    client = client_dispatcher.current_client
     if not endpoint:
         endpoint = client.get_value(section="renku", key="endpoint")
         if not endpoint:

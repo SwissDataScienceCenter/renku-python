@@ -18,7 +18,7 @@
 """DatasetFile source and url migrations."""
 
 from renku.core.management.migrations.models.v7 import get_client_datasets
-from renku.core.models.datasets import generate_dataset_file_url
+from renku.core.management.migrations.utils import generate_dataset_file_url
 
 
 def migrate(client):
@@ -30,7 +30,7 @@ def _fix_dataset_file_source_and_url(client):
     for dataset in get_client_datasets(client):
         for file_ in dataset.files:
             file_.source = file_.url
-            file_.url = generate_dataset_file_url(client=client, filepath=file_.path)
+            file_.url = generate_dataset_file_url(client, filepath=file_.path)
 
             if file_.source:
                 file_.source = file_.source.replace("file://", "")
