@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``init`` command."""
+import json
 import os
 import shutil
 from pathlib import Path
@@ -351,6 +352,30 @@ def test_init_with_parameters(isolated_runner, project_init, template):
     for param in set(template["metadata"].keys()):
         assert param in result.output
     assert "These parameters are not used by the template and were ignored:" in result.output
+
+
+def test_init_with_custom_metadata(isolated_runner, project_init, template):
+    """Test project initialization using custom metadata."""
+    data, commands = project_init
+
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = Path("metadata.json")
+    metadata_path.write_text(json.dumps(metadata))
+
+    # create the project
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--metadata", str(metadata_path)])
+    assert 0 == result.exit_code
+
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    assert metadata == project.annotations[0].body
 
 
 @pytest.mark.parametrize("data_dir", ["dir", "nested/dir/s"])

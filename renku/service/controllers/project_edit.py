@@ -50,7 +50,11 @@ class ProjectEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
             edit_project_command()
             .with_commit_message(self.ctx["commit_message"])
             .build()
-            .execute(description=self.ctx.get("description"), creator=self.ctx.get("creator"))
+            .execute(
+                description=self.ctx.get("description"),
+                creator=self.ctx.get("creator"),
+                custom_metadata=self.ctx.get("custom_metadata"),
+            )
         )
 
         edited, warning = result.output

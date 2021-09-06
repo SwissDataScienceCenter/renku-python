@@ -25,9 +25,9 @@ from renku.core.utils.metadata import construct_creator
 
 
 @inject.autoparams()
-def _edit_project(description, creator, project_gateway: IProjectGateway):
+def _edit_project(description, creator, custom_metadata, project_gateway: IProjectGateway):
     """Edit dataset metadata."""
-    possible_updates = {"creator": creator, "description": description}
+    possible_updates = {"creator": creator, "description": description, "custom_metadata": custom_metadata}
 
     creator, no_email_warnings = construct_creator(creator, ignore_email=True)
 
@@ -35,7 +35,7 @@ def _edit_project(description, creator, project_gateway: IProjectGateway):
 
     if updated:
         project = project_gateway.get_project()
-        project.update_metadata(creator=creator, description=description)
+        project.update_metadata(creator=creator, description=description, custom_metadata=custom_metadata)
         project_gateway.update_project(project)
 
     return updated, no_email_warnings
