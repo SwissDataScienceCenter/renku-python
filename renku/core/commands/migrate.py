@@ -90,7 +90,7 @@ def _migrations_versions(client_dispatcher: IClientDispatcher):
         latest_agent = client.latest_agent
     except ValueError:
         # NOTE: maybe old project
-        from renku.core.utils.migrate import read_latest_agent
+        from renku.core.management.migrations.utils import read_latest_agent
 
         latest_agent = read_latest_agent(client)
 

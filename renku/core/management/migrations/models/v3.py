@@ -23,11 +23,15 @@ from marshmallow import EXCLUDE, post_load, pre_load
 
 from renku.core.management.migrations.models.v9 import Person as OldPerson
 from renku.core.management.migrations.models.v9 import generate_project_id, wfprov
-from renku.core.management.migrations.utils import generate_dataset_tag_id, generate_url_id
+from renku.core.management.migrations.utils import (
+    OLD_METADATA_PATH,
+    generate_dataset_tag_id,
+    generate_url_id,
+    get_datasets_path,
+)
 from renku.core.models import jsonld
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, StringList, Uri, fields, prov, rdfs, renku, schema
 from renku.core.models.git import get_user_info
-from renku.core.utils.migrate import OLD_METADATA_PATH
 from renku.core.utils.urls import get_host
 
 
@@ -352,7 +356,7 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
     @pre_load
     def fix_files_context(self, data, **kwargs):
         """Fix DatasetFile context for _label and external fields."""
-        from renku.core.utils.migrate import migrate_types
+        from renku.core.management.migrations.utils import migrate_types
 
         data = migrate_types(data)
 
@@ -381,7 +385,7 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
 
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
-    paths = client.renku_datasets_path.rglob(OLD_METADATA_PATH)
+    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
     datasets = []
     for path in paths:
         dataset = Dataset.from_yaml(path=path, client=client)

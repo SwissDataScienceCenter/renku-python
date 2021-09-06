@@ -24,11 +24,16 @@ from pathlib import Path
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrations.models.v3 import Collection, Dataset, Project, get_client_datasets
 from renku.core.management.migrations.models.v9 import generate_file_id, generate_label
-from renku.core.management.migrations.utils import generate_dataset_id
+from renku.core.management.migrations.utils import (
+    OLD_METADATA_PATH,
+    generate_dataset_id,
+    get_datasets_path,
+    get_pre_0_3_4_datasets_metadata,
+    is_using_temporary_datasets_path,
+)
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.dataset import generate_default_name
 from renku.core.models.refs import LinkReference
-from renku.core.utils.migrate import OLD_METADATA_PATH, get_pre_0_3_4_datasets_metadata
 from renku.core.utils.urls import url_to_string
 
 
@@ -45,7 +50,7 @@ def migrate(client):
 
 def _ensure_clean_lock(client):
     """Make sure Renku lock file is not part of repository."""
-    if client.is_using_temporary_datasets_path():
+    if is_using_temporary_datasets_path():
         return
 
     lock_file = client.path / ".renku.lock"
@@ -58,7 +63,7 @@ def _ensure_clean_lock(client):
 def _do_not_track_lock_file(client):
     """Add lock file to .gitingore if not already exists."""
     # Add lock file to .gitignore.
-    if client.is_using_temporary_datasets_path():
+    if is_using_temporary_datasets_path():
         return
 
     lock_file = ".renku.lock"
@@ -69,7 +74,7 @@ def _do_not_track_lock_file(client):
 
 def _migrate_datasets_pre_v0_3(client):
     """Migrate datasets from Renku 0.3.x."""
-    if client.is_using_temporary_datasets_path():
+    if is_using_temporary_datasets_path():
         return
 
     changed = False
@@ -81,7 +86,7 @@ def _migrate_datasets_pre_v0_3(client):
         dataset = Dataset.from_yaml(old_path, client)
         dataset.title = name
         dataset.name = generate_default_name(name)
-        new_path = client.renku_datasets_path / dataset.identifier / OLD_METADATA_PATH
+        new_path = get_datasets_path(client) / dataset.identifier / OLD_METADATA_PATH
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
         with client.with_metadata(read_only=True) as meta:
@@ -119,16 +124,16 @@ def _migrate_broken_dataset_paths(client):
         else:
             dataset.name = generate_default_name(dataset.name)
 
-        expected_path = client.renku_datasets_path / dataset.identifier
+        expected_path = get_datasets_path(client) / dataset.identifier
 
         # migrate the refs
-        if not client.is_using_temporary_datasets_path():
+        if not is_using_temporary_datasets_path():
             ref = LinkReference.create(name="datasets/{0}".format(dataset.name), force=True)
             ref.set_reference(expected_path / OLD_METADATA_PATH)
 
         if not expected_path.exists():
             old_dataset_path = dataset.path
-            if not client.is_using_temporary_datasets_path():
+            if not is_using_temporary_datasets_path():
                 expected_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(old_dataset_path, expected_path)
             else:
@@ -137,7 +142,7 @@ def _migrate_broken_dataset_paths(client):
 
         dataset.path = os.path.relpath(expected_path, client.path)
 
-        if not client.is_using_temporary_datasets_path():
+        if not is_using_temporary_datasets_path():
             base_path = client.path
         else:
             base_path = client.path / RENKU_HOME
@@ -160,7 +165,7 @@ def _migrate_broken_dataset_paths(client):
                 continue
             if file_.path.startswith(".."):
                 file_.path = Path(
-                    os.path.abspath(client.renku_datasets_path / dataset.identifier / file_.path)
+                    os.path.abspath(get_datasets_path(client) / dataset.identifier / file_.path)
                 ).relative_to(base_path)
             elif not _exists(client=client, path=file_.path):
                 file_.path = (client.path / DATA_DIR / file_.path).relative_to(client.path)
@@ -207,7 +212,7 @@ def _migrate_dataset_and_files_project(client):
     """Ensure dataset files have correct project."""
     project_path = client.renku_path.joinpath(OLD_METADATA_PATH)
     project = Project.from_yaml(project_path, client)
-    if not client.is_using_temporary_datasets_path():
+    if not is_using_temporary_datasets_path():
         project.to_yaml(project_path)
 
     for dataset in get_client_datasets(client):

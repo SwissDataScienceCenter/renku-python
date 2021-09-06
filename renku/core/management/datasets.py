@@ -72,9 +72,6 @@ from renku.core.utils.urls import get_slug, remove_credentials
 class DatasetsApiMixin(object):
     """Client for handling datasets."""
 
-    DATASETS = "datasets"
-    """Directory for storing dataset metadata in Renku."""
-
     POINTERS = "pointers"
     """Directory for storing external pointer files."""
 
@@ -84,47 +81,14 @@ class DatasetsApiMixin(object):
     DATASET_IMAGES = "dataset_images"
     """Directory for dataset images."""
 
-    DATASETS_PROVENANCE = "dataset.json"
-    """File for storing datasets' provenance."""
-
     SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
 
-    _temporary_datasets_path = None
-    _datasets_provenance = None
     _database = None
-
-    @property
-    def renku_datasets_path(self):
-        """Return a ``Path`` instance of Renku dataset metadata folder."""
-        if self._temporary_datasets_path:
-            return self._temporary_datasets_path
-
-        return self.path / self.renku_home / self.DATASETS
 
     @property
     def renku_dataset_images_path(self):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
-        if self._temporary_datasets_path:
-            return self._temporary_datasets_path
-
         return self.path / self.renku_home / self.DATASET_IMAGES
-
-    @property
-    def datasets_provenance_path(self):
-        """Path to store activity files."""
-        return self.renku_path / self.DATASETS_PROVENANCE
-
-    def set_temporary_datasets_path(self, path):
-        """Set path to Renku dataset metadata directory."""
-        self._temporary_datasets_path = path
-
-    def clear_temporary_datasets_path(self):
-        """Clear path to Renku dataset metadata directory."""
-        self._temporary_datasets_path = None
-
-    def is_using_temporary_datasets_path(self):
-        """Return true if temporary datasets path is set."""
-        return bool(self._temporary_datasets_path)
 
     @property
     def renku_pointers_path(self):
@@ -1297,10 +1261,8 @@ def _check_url(url):
 
 DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / RepositoryApiMixin.DATABASE_PATH,
-    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS,
     Path(RENKU_HOME) / DatasetsApiMixin.DATASET_IMAGES,
     Path(RENKU_HOME) / DatasetsApiMixin.POINTERS,
     Path(RENKU_HOME) / LinkReference.REFS,
-    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,
     ".gitattributes",
 ]

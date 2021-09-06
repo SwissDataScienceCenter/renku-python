@@ -31,15 +31,20 @@ import renku.core.management.migrate
 from renku.core import errors
 from renku.core.management import LocalClient
 from renku.core.management.command_builder import inject
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.migrations.models import v9 as old_schema
-from renku.core.management.repository import RepositoryApiMixin
+from renku.core.management.migrations.utils import (
+    OLD_DATASETS_PATH,
+    OLD_METADATA_PATH,
+    MigrationType,
+    read_project_version_from_yaml,
+    set_temporary_datasets_path,
+    unset_temporary_datasets_path,
+)
 from renku.core.models.entity import Collection, Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.project import Project
@@ -51,15 +56,7 @@ from renku.core.models.workflow.plan import Plan
 from renku.core.utils import communication
 from renku.core.utils.git import get_object_hash
 from renku.core.utils.metadata import convert_dataset
-from renku.core.utils.migrate import OLD_METADATA_PATH, MigrationType, read_project_version_from_yaml
 from renku.core.utils.scm import git_unicode_unescape
-
-GRAPH_METADATA_PATHS = [
-    Path(RENKU_HOME) / RepositoryApiMixin.DATABASE_PATH,
-    Path(RENKU_HOME) / RepositoryApiMixin.DEPENDENCY_GRAPH,
-    Path(RENKU_HOME) / RepositoryApiMixin.PROVENANCE_GRAPH,
-    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,
-]
 
 NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 
@@ -125,6 +122,27 @@ def maybe_migrate_project_to_database(client, project_gateway: IProjectGateway):
         project_gateway.update_project(new_project)
 
 
+def remove_graph_files(client):
+    """Remove all graph files."""
+    # NOTE: These are required for projects that have new graph files
+    try:
+        (client.path / "provenance.json").unlink()
+    except FileNotFoundError:
+        pass
+    try:
+        (client.path / "dependency.json").unlink()
+    except FileNotFoundError:
+        pass
+    try:
+        shutil.rmtree(client.database_path)
+    except FileNotFoundError:
+        pass
+    try:
+        (client.path / "dataset.json").unlink()
+    except FileNotFoundError:
+        pass
+
+
 @inject.autoparams()
 def generate_new_metadata(
     client_dispatcher: IClientDispatcher,
@@ -138,7 +156,7 @@ def generate_new_metadata(
     client = client_dispatcher.current_client
 
     if force:
-        client.remove_graph_files()
+        remove_graph_files(client)
     elif client.has_graph_files():
         raise errors.OperationError("Graph metadata exists.")
 
@@ -149,7 +167,9 @@ def generate_new_metadata(
     datasets_provenance = DatasetsProvenance()
 
     commits = list(
-        client.repo.iter_commits(paths=[f"{client.workflow_path}/*.yaml", ".renku/datasets/*/*.yml"], reverse=True)
+        client.repo.iter_commits(
+            paths=[f"{client.renku_path}/workflow/*.yaml", ".renku/datasets/*/*.yml"], reverse=True
+        )
     )
     n_commits = len(commits)
 
@@ -272,7 +292,7 @@ def _get_process_runs(workflow_run: old_schema.WorkflowRun) -> List[old_schema.P
 
 def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, commit: Commit, remove: bool):
 
-    for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.yaml"):
+    for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.renku_path}/workflow/*.yaml"):
         # Ignore deleted files (they appear as ADDED in this backwards diff)
         if file_.change_type == "A":
             continue
@@ -544,7 +564,7 @@ def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: 
 def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):
     from renku.core.management.migrations.models.v9 import Dataset
 
-    datasets_path = client.path / ".renku" / "tmp" / "datasets"
+    datasets_path = client.path / ".renku" / "tmp" / OLD_DATASETS_PATH
     shutil.rmtree(datasets_path, ignore_errors=True)
     datasets_path.mkdir(parents=True, exist_ok=True)
 
@@ -600,7 +620,7 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
 
         try:
             project_version = read_project_version()
-            client.set_temporary_datasets_path(datasets_path)
+            set_temporary_datasets_path(datasets_path)
             communication.disable()
             previous_migration_type = client.migration_type
             client.migration_type = MigrationType.DATASETS
@@ -613,7 +633,7 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
             client.migration_type = previous_migration_type
         finally:
             communication.enable()
-            client.clear_temporary_datasets_path()
+            unset_temporary_datasets_path()
 
         return existing, deleted
 
@@ -667,10 +687,10 @@ def _remove_dataset_metadata_files(client: LocalClient):
     """Remove old dataset metadata."""
 
     try:
-        shutil.rmtree(os.path.join(client.renku_path, client.DATASETS))
+        shutil.rmtree(os.path.join(client.renku_path, OLD_DATASETS_PATH))
     except FileNotFoundError:
         pass
     try:
-        shutil.rmtree(os.path.join(client.renku_path, "refs", client.DATASETS))
+        shutil.rmtree(os.path.join(client.renku_path, "refs", OLD_DATASETS_PATH))
     except FileNotFoundError:
         pass
