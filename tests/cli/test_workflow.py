@@ -295,3 +295,29 @@ def test_workflow_edit(runner, client, run_shell):
     edited_composite_plan = database["plans"][_get_plan_id(result.output)]
     assert len(edited_composite_plan.mappings) == 1
     assert edited_composite_plan.mappings[0].mapped_parameters[0].name == "param1"
+
+
+def test_workflow_show_outputs_with_directory(runner, client, run):
+    """Output files in directory are not shown as separate outputs."""
+    base_sh = ["bash", "-c", 'DIR="$0"; mkdir -p "$DIR"; ' 'for x in "$@"; do touch "$DIR/$x"; done']
+
+    assert 0 == run(args=["run"] + base_sh + ["output", "foo", "bar"])
+    assert (client.path / "output" / "foo").exists()
+    assert (client.path / "output" / "bar").exists()
+
+    cmd = ["workflow", "outputs"]
+    # result = runner.invoke(cli, cmd)
+    # assert 0 == result.exit_code, format_result_exception(result)
+    # assert {"output"} == set(result.output.strip().split("\n"))
+
+    # result = runner.invoke(cli, cmd + ["output"])
+    # assert 0 == result.exit_code, format_result_exception(result)
+    # assert {"output"} == set(result.output.strip().split("\n"))
+
+    # result = runner.invoke(cli, cmd + ["output/foo"])
+    # assert 0 == result.exit_code, format_result_exception(result)
+    # assert {"output"} == set(result.output.strip().split("\n"))
+
+    result = runner.invoke(cli, cmd + ["output/foo", "output/bar"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert {"output"} == set(result.output.strip().split("\n"))

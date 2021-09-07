@@ -49,6 +49,18 @@ class ActivityGateway(IActivityGateway):
 
         return {a.association.plan: a.usages for a in plan_activities}
 
+    def get_all_usage_paths(self) -> List[str]:
+        """Return all usage paths."""
+        database = self.database_dispatcher.current_database
+
+        return list(database["activities-by-usage"].keys())
+
+    def get_all_generation_paths(self) -> List[str]:
+        """Return all generation paths."""
+        database = self.database_dispatcher.current_database
+
+        return list(database["activities-by-generation"].keys())
+
     def get_downstream_activities(self, activity: Activity) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
         # NOTE: since indices are populated one way when adding an activity, we need to query two indices

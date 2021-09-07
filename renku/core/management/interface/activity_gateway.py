@@ -35,6 +35,14 @@ class IActivityGateway(ABC):
         """Get all usages associated with a plan by its latest activity."""
         raise NotImplementedError
 
+    def get_all_usage_paths(self) -> List[str]:
+        """Return all usage paths."""
+        raise NotImplementedError
+
+    def get_all_generation_paths(self) -> List[str]:
+        """Return all generation paths."""
+        raise NotImplementedError
+
     def get_downstream_activities(self, activity: Activity) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
         raise NotImplementedError

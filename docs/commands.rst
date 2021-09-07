@@ -118,13 +118,6 @@ Renku Command Line
 
 .. automodule:: renku.cli.save
 
-.. _cli-show:
-
-``renku show``
---------------
-
-.. automodule:: renku.cli.show
-
 .. _cli-storage:
 
 ``renku storage``
