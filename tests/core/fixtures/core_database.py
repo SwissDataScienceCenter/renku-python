@@ -27,6 +27,7 @@ from zc.relation.queryfactory import TransposingTransitive
 from renku.core import errors
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.metadata.database import Database
+from renku.core.models.provenance.activity import ActivityCollection
 
 
 class DummyStorage:
@@ -112,6 +113,8 @@ def database() -> Tuple[Database, DummyStorage]:
     database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
     database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
     database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
+
+    database.add_index(name="activity-collections", object_type=ActivityCollection, attribute="id")
 
     database.add_root_object(name="_downstream_relations", obj=BTrees.OOBTree.OOBTree())
 

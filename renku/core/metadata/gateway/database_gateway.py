@@ -33,7 +33,7 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.models.dataset import Dataset
-from renku.core.models.provenance.activity import Activity
+from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.plan import AbstractPlan
 from renku.core.utils.scm import git_unicode_unescape
 
@@ -106,6 +106,8 @@ class DatabaseGateway(IDatabaseGateway):
         database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
         database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
         database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
+
+        database.add_index(name="activity-collections", object_type=ActivityCollection, attribute="id")
 
         database.add_root_object(name="_downstream_relations", obj=BTrees.OOBTree.OOBTree())
 

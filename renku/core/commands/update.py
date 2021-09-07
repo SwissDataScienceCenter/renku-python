@@ -30,7 +30,7 @@ from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
-from renku.core.models.provenance.activity import Activity
+from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils.datetime8601 import local_now
@@ -165,11 +165,18 @@ def execute_workflow(
 
     database = database_dispatcher.current_database
 
+    activities = []
+
     for plan in plans:
         # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
         original_plan = database["plans"].get(plan.id)
         activity = Activity.from_plan(plan=original_plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
         activity_gateway.add(activity)
+        activities.append(activity)
+
+    if len(activities) > 1:
+        activity_collection = ActivityCollection(activities=activities)
+        activity_gateway.add_activity_collection(activity_collection)
 
 
 # TODO: This function is created as a patch from renku/core/commands/workflow.py::_execute_workflow and

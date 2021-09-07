@@ -29,7 +29,7 @@ from renku.core.management.interface.database_dispatcher import IDatabaseDispatc
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.metadata.gateway.database_gateway import ActivityDownstreamRelation
 from renku.core.models.entity import Collection
-from renku.core.models.provenance.activity import Activity, Usage
+from renku.core.models.provenance.activity import Activity, ActivityCollection, Usage
 from renku.core.models.workflow.plan import AbstractPlan, Plan
 
 
@@ -149,3 +149,13 @@ class ActivityGateway(IActivityGateway):
         plan_gateway.add(activity.association.plan)
 
         update_latest_activity_by_plan(activity.association.plan)
+
+    def add_activity_collection(self, activity_collection: ActivityCollection):
+        """Add an ``ActivityCollection`` to storage."""
+        database = self.database_dispatcher.current_database
+
+        database["activity-collections"].add(activity_collection)
+
+    def get_all_activity_collections(self) -> List[ActivityCollection]:
+        """Get all activity collections in the project."""
+        return list(self.database_dispatcher.current_database["activity-collections"].values())

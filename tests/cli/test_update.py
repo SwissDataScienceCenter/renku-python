@@ -24,15 +24,16 @@ import git
 
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.metadata.gateway.activity_gateway import ActivityGateway
 from renku.core.models.workflow.plan import Plan
 from tests.utils import format_result_exception, write_and_commit_file
 
 
-def test_update(runner, project, renku_cli):
+def test_update(runner, client, renku_cli, client_database_injection_manager):
     """Test output is updated when source changes."""
-    repo = git.Repo(project)
-    source = os.path.join(project, "source.txt")
-    output = os.path.join(project, "output.txt")
+    repo = client.repo
+    source = os.path.join(client.path, "source.txt")
+    output = os.path.join(client.path, "output.txt")
 
     write_and_commit_file(repo, source, "content")
 
@@ -53,13 +54,20 @@ def test_update(runner, project, renku_cli):
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code, format_result_exception(result)
 
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activity_collections = activity_gateway.get_all_activity_collections()
 
-def test_update_multiple_steps(runner, project, renku_cli):
+        # NOTE: No ActivityCollection is created if update include only one activity
+        assert [] == activity_collections
+
+
+def test_update_multiple_steps(runner, client, renku_cli, client_database_injection_manager):
     """Test update in a multi-step workflow."""
-    repo = git.Repo(project)
-    source = os.path.join(project, "source.txt")
-    intermediate = os.path.join(project, "intermediate.txt")
-    output = os.path.join(project, "output.txt")
+    repo = client.repo
+    source = os.path.join(client.path, "source.txt")
+    intermediate = os.path.join(client.path, "intermediate.txt")
+    output = os.path.join(client.path, "output.txt")
 
     write_and_commit_file(repo, source, "content")
 
@@ -84,6 +92,13 @@ def test_update_multiple_steps(runner, project, renku_cli):
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activity_collections = activity_gateway.get_all_activity_collections()
+
+        assert 1 == len(activity_collections)
+        assert {a.id for a in activities} == {a.id for a in activity_collections[0].activities}
 
 
 def test_update_multiple_steps_with_path(runner, project, renku_cli):

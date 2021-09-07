@@ -229,6 +229,19 @@ class Activity(Persistent):
         return f"/activities/{uuid4().hex}"
 
 
+class ActivityCollection(Persistent):
+    """Represent a list of activities."""
+
+    def __init__(self, *, activities: List[Activity], id: str = None):
+        self.activities: List[Activity] = activities or []
+        self.id: str = id or ActivityCollection.generate_id()
+
+    @staticmethod
+    def generate_id() -> str:
+        """Generate an identifier for an activity."""
+        return f"/activity-collection/{uuid4().hex}"
+
+
 class AssociationSchema(JsonLDSchema):
     """Association schema."""
 
