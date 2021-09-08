@@ -17,6 +17,9 @@
 # limitations under the License.
 """Represent an annotation for a workflow."""
 
+import copy
+from uuid import uuid4
+
 from marshmallow import EXCLUDE
 
 from renku.core.models.calamus import JsonLDSchema, dcterms, fields, oa
@@ -29,6 +32,15 @@ class Annotation:
         self.id = id
         self.body = body
         self.source = source
+
+    def copy(self):
+        """Return a copy of this annotation."""
+        return copy.copy(self)
+
+    @staticmethod
+    def generate_id():
+        """Generate an id for an annotation."""
+        return f"/annotations/{uuid4().hex}"
 
 
 class AnnotationSchema(JsonLDSchema):

@@ -598,10 +598,10 @@ class ObjectWriter:
         is_dict = isinstance(data, dict)
 
         if not is_dict or (is_dict and not was_dict):
-            data = {"@value": data}
+            data = {"@renku_data_value": data}
 
-        data["@type"] = get_type_name(object)
-        data["@oid"] = object._p_oid
+        data["@renku_data_type"] = get_type_name(object)
+        data["@renku_oid"] = object._p_oid
 
         return data
 
@@ -623,13 +623,13 @@ class ObjectWriter:
             # NOTE: Index objects are not stored as references and are included in their parent object (i.e. root)
             state = object.__getstate__()
             state = self._serialize_helper(state)
-            return {"@type": get_type_name(object), "@oid": object._p_oid, **state}
+            return {"@renku_data_type": get_type_name(object), "@renku_oid": object._p_oid, **state}
         elif isinstance(object, persistent.Persistent):
             if not object._p_oid:
                 object._p_oid = Database.generate_oid(object)
             if object._p_state not in [GHOST, UPTODATE] or (object._p_state == UPTODATE and object._p_serial == NEW):
                 self._database.register(object)
-            return {"@type": get_type_name(object), "@oid": object._p_oid, "@reference": True}
+            return {"@renku_data_type": get_type_name(object), "@renku_oid": object._p_oid, "@renku_reference": True}
         elif isinstance(object, datetime.datetime):
             value = object.isoformat()
         elif isinstance(object, tuple):
@@ -637,18 +637,18 @@ class ObjectWriter:
         elif isinstance(object, (InterfaceClass)):
             # NOTE: Zope interfaces are weird, they're a class with type InterfaceClass, but need to be deserialized
             # as the class (without instantiation)
-            return {"@type": TYPE_TYPE, "@value": f"{object.__module__}.{object.__name__}"}
+            return {"@renku_data_type": TYPE_TYPE, "@renku_data_value": f"{object.__module__}.{object.__name__}"}
         elif isinstance(object, type):
             # NOTE: We're storing a type, not an instance
-            return {"@type": TYPE_TYPE, "@value": get_type_name(object)}
+            return {"@renku_data_type": TYPE_TYPE, "@renku_data_value": get_type_name(object)}
         elif isinstance(object, (FunctionType, BuiltinFunctionType)):
             name = object.__name__
             module = getattr(object, "__module__", None)
-            return {"@type": FUNCTION_TYPE, "@value": f"{module}.{name}"}
+            return {"@renku_data_type": FUNCTION_TYPE, "@renku_data_value": f"{module}.{name}"}
         elif hasattr(object, "__getstate__"):
             if id(object) in self._serialization_cache:
                 # NOTE: We already serialized this -> circular/repeat reference.
-                return {"@type": REFERENCE_TYPE, "@value": self._serialization_cache[id(object)]}
+                return {"@renku_data_type": REFERENCE_TYPE, "@renku_data_value": self._serialization_cache[id(object)]}
 
             # NOTE: The reference used for circular reference is just the position in the serialization cache,
             # as the order is deterministic. So the order in which objects are encoutered is their id for referencing.
@@ -661,7 +661,7 @@ class ObjectWriter:
         else:
             if id(object) in self._serialization_cache:
                 # NOTE: We already serialized this -> circular/repeat reference
-                return {"@type": REFERENCE_TYPE, "@value": self._serialization_cache[id(object)]}
+                return {"@renku_data_type": REFERENCE_TYPE, "@renku_data_value": self._serialization_cache[id(object)]}
 
             # NOTE: The reference used for circular reference is just the position in the serialization cache,
             # as the order is deterministic So the order in which objects are encoutered is their id for referencing.
@@ -671,7 +671,7 @@ class ObjectWriter:
             value = {k: v for k, v in value.items() if not k.startswith("_v_")}
             value = self._serialize_helper(value)
 
-        return {"@type": get_type_name(object), "@value": value}
+        return {"@renku_data_type": get_type_name(object), "@renku_data_value": value}
 
 
 class ObjectReader:
@@ -703,7 +703,7 @@ class ObjectReader:
 
     def deserialize(self, data):
         """Convert JSON to Persistent object."""
-        oid = data["@oid"]
+        oid = data["@renku_oid"]
 
         self._deserialization_cache = []
 
@@ -724,36 +724,36 @@ class ObjectReader:
         else:
             assert isinstance(data, dict), f"Data must be a dict: '{type(data)}'"
 
-            if "@type" not in data:  # NOTE: A normal dict value
-                assert "@oid" not in data
+            if "@renku_data_type" not in data:  # NOTE: A normal dict value
+                assert "@renku_oid" not in data
                 items = sorted(data.items(), key=lambda x: x[0])
                 for key, value in items:
                     data[key] = self._deserialize_helper(value)
                 return data
 
-            object_type = data.pop("@type")
+            object_type = data.pop("@renku_data_type")
             if object_type in (TYPE_TYPE, FUNCTION_TYPE):
                 # NOTE: if we stored a type (not instance), return the type
-                return self._get_class(data["@value"])
+                return self._get_class(data["@renku_data_value"])
             elif object_type == REFERENCE_TYPE:
                 # NOTE: we had a circular reference, we return the (not yet finalized) class here
-                return self._deserialization_cache[data["@value"]]
+                return self._deserialization_cache[data["@renku_data_value"]]
 
             cls = self._get_class(object_type)
 
             if issubclass(cls, datetime.datetime):
                 assert create
-                data = data["@value"]
+                data = data["@renku_data_value"]
                 return datetime.datetime.fromisoformat(data)
             elif issubclass(cls, tuple):
-                data = data["@value"]
+                data = data["@renku_data_value"]
                 return tuple(self._deserialize_helper(value) for value in data)
 
-            oid: str = data.pop("@oid", None)
+            oid: str = data.pop("@renku_oid", None)
             if oid:
                 assert isinstance(oid, str)
 
-                if "@reference" in data and data["@reference"]:  # A reference
+                if "@renku_reference" in data and data["@renku_reference"]:  # A reference
                     assert create, f"Cannot deserialize a reference without creating an instance {data}"
                     new_object = self._database.get_cached(oid)
                     if new_object is not None:
@@ -771,8 +771,8 @@ class ObjectReader:
                     self.set_ghost_state(new_object, data)
                     return new_object
 
-            if "@value" in data:
-                data = data["@value"]
+            if "@renku_data_value" in data:
+                data = data["@renku_data_value"]
 
             if not create:
                 data = self._deserialize_helper(data)

@@ -62,6 +62,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 self.ctx.get("creators"),
                 keywords=self.ctx.get("keywords"),
                 images=self.ctx.get("images"),
+                custom_metadata=self.ctx.get("custom_metadata"),
                 safe_image_paths=[user_cache_dir],
             )
         )
