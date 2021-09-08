@@ -146,6 +146,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 self.ctx["project_name"],
                 metadata=provided_parameters,
                 default_metadata=self.default_metadata,
+                custom_metadata=self.ctx["project_custom_metadata"],
                 template_version=self.template_version,
                 immutable_template_files=self.template.get("immutable_template_files", []),
                 automated_template_update=self.template.get("allow_template_update", False),

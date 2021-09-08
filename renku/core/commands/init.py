@@ -241,6 +241,7 @@ def _init(
     template_source,
     template_ref,
     metadata,
+    custom_metadata,
     list_templates,
     force,
     describe,
@@ -334,6 +335,7 @@ def _init(
                 client=client,
                 name=name,
                 metadata=metadata,
+                custom_metadata=custom_metadata,
                 template_version=template_version,
                 immutable_template_files=template_data.get("immutable_template_files", []),
                 automated_update=template_data.get("allow_template_update", False),
@@ -499,6 +501,7 @@ def create_from_template(
     client,
     name=None,
     metadata={},
+    custom_metadata=None,
     template_version=None,
     immutable_template_files=[],
     automated_update=False,
@@ -518,7 +521,7 @@ def create_from_template(
         metadata["name"] = name
 
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
-        with client.with_metadata(name=name, description=description) as project:
+        with client.with_metadata(name=name, description=description, custom_metadata=custom_metadata) as project:
             project.template_source = metadata["__template_source__"]
             project.template_ref = metadata["__template_ref__"]
             project.template_id = metadata["__template_id__"]
@@ -542,6 +545,7 @@ def _create_from_template_local(
     name,
     client_dispatcher: IClientDispatcher,
     metadata={},
+    custom_metadata=None,
     default_metadata={},
     template_version=None,
     immutable_template_files=[],
@@ -571,6 +575,7 @@ def _create_from_template_local(
         client=client,
         name=name,
         metadata=metadata,
+        custom_metadata=custom_metadata,
         template_version=template_version,
         immutable_template_files=immutable_template_files,
         automated_update=automated_template_update,

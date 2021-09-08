@@ -43,6 +43,12 @@ def test_edit_project_view(svc_client_with_repo):
         "project_id": project_id,
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
+        "custom_metadata": {
+            "@id": "http://example.com/metadata12",
+            "@type": "https://schema.org/myType",
+            "https://schema.org/property1": 1,
+            "https://schema.org/property2": "test",
+        },
     }
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
@@ -53,6 +59,12 @@ def test_edit_project_view(svc_client_with_repo):
     assert {
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
+        "custom_metadata": {
+            "@id": "http://example.com/metadata12",
+            "@type": "https://schema.org/myType",
+            "https://schema.org/property1": 1,
+            "https://schema.org/property2": "test",
+        },
     } == response.json["result"]["edited"]
 
 

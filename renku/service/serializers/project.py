@@ -34,6 +34,7 @@ class ProjectEditRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySch
 
     description = fields.String(default=None)
     creator = fields.Nested(DatasetCreators)
+    custom_metadata = fields.Dict(default=None)
 
 
 class ProjectEditResponse(RenkuSyncSchema):
