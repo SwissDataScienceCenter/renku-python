@@ -92,13 +92,6 @@ def _get_downstream_activities(
     """Return an ordered list of activities so that an activities comes before all its downstream activities."""
     all_activities = defaultdict(set)
 
-    def have_identical_inputs_and_outputs(activity1, activity2):
-        return sorted(u.entity.path for u in activity1.usages) == sorted(
-            u.entity.path for u in activity2.usages
-        ) and sorted(g.entity.path for g in activity1.generations) == sorted(
-            g.entity.path for g in activity2.generations
-        )
-
     def include_newest_activity(activity):
         existing_activities = all_activities[activity.association.plan.id]
 
@@ -106,7 +99,7 @@ def _get_downstream_activities(
             return
 
         for existing_activity in existing_activities:
-            if have_identical_inputs_and_outputs(activity, existing_activity):
+            if activity.has_identical_inputs_and_outputs_as(existing_activity):
                 if activity.ended_at_time > existing_activity.ended_at_time:  # activity is newer
                     existing_activities.remove(existing_activity)
                     existing_activities.add(activity)
