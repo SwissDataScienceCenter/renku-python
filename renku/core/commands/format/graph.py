@@ -50,9 +50,6 @@ def _jsonld(graph, format, *args, **kwargs):
 def _conjunctive_graph(graph):
     """Convert a renku ``Graph`` to an rdflib ``ConjunctiveGraph``."""
     from rdflib import ConjunctiveGraph
-    from rdflib.plugin import Parser, register
-
-    register("json-ld", Parser, "rdflib_jsonld.parser", "JsonLDParser")
 
     return ConjunctiveGraph().parse(data=_jsonld(graph, "expand"), format="json-ld")
 
