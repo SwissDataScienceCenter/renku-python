@@ -166,7 +166,7 @@ install_requires = [
     "cwl-utils>=0.10",
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
-    "gitpython==3.1.18",
+    "gitpython==3.1.23",
     "humanize>=2.5.0,<3.12.0",
     "inject>=4.3.0,<4.4.0",
     "jinja2>=2.10.3,<3.0.2",
