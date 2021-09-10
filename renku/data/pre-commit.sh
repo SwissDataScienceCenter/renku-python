@@ -39,34 +39,6 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
 fi
 
 if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
-  MODIFIED_OUTPUTS=$(renku show outputs "${MODIFIED_FILES[@]}")
-  EXIT_CODE=$?
-  IFS=$'\n' read -r -d '' -a MODIFIED_OUTPUTS <<< "$(printf '%s\n' "${MODIFIED_OUTPUTS[@]}")"
-  if [ $EXIT_CODE -eq 3 ]; then
-    echo "Cannot verify validity of the commit: Project metadata is outdated."
-    echo "Run 'renku migrate' command to fix the issue."
-    echo
-    echo 'To commit anyway, use "git commit --no-verify".'
-    exit 1
-  fi
-  if [ $EXIT_CODE -eq 4 ]; then
-    echo "Cannot verify validity of the commit: Project was created with a newer version of Renku."
-    echo "Upgrade Renku to the latest version."
-    echo
-    echo 'To commit anyway, use "git commit --no-verify".'
-    exit 1
-  fi
-  if [ ${#MODIFIED_OUTPUTS[@]} -ne 0 ]; then
-    echo 'You are trying to update generated files.'
-    echo
-    echo 'Modified files:'
-    for file in "${MODIFIED_OUTPUTS[@]}"; do
-      echo "$file"
-    done
-    echo
-    echo 'To commit anyway, use "git commit --no-verify".'
-    exit 1
-  fi
   IFS=$'\n' read -r -d '' -a IMMUTABLE_TEMPLATE_FILES \
     <<< "$(renku check-immutable-template-files "${MODIFIED_FILES[@]}")"
   if [ ${#IMMUTABLE_TEMPLATE_FILES[@]} -ne 0 ]; then
