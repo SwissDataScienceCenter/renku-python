@@ -306,17 +306,17 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
     assert (client.path / "output" / "bar").exists()
 
     cmd = ["workflow", "outputs"]
-    # result = runner.invoke(cli, cmd)
-    # assert 0 == result.exit_code, format_result_exception(result)
-    # assert {"output"} == set(result.output.strip().split("\n"))
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert {"output"} == set(result.output.strip().split("\n"))
 
-    # result = runner.invoke(cli, cmd + ["output"])
-    # assert 0 == result.exit_code, format_result_exception(result)
-    # assert {"output"} == set(result.output.strip().split("\n"))
+    result = runner.invoke(cli, cmd + ["output"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert {"output"} == set(result.output.strip().split("\n"))
 
-    # result = runner.invoke(cli, cmd + ["output/foo"])
-    # assert 0 == result.exit_code, format_result_exception(result)
-    # assert {"output"} == set(result.output.strip().split("\n"))
+    result = runner.invoke(cli, cmd + ["output/foo"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert {"output"} == set(result.output.strip().split("\n"))
 
     result = runner.invoke(cli, cmd + ["output/foo", "output/bar"])
     assert 0 == result.exit_code, format_result_exception(result)

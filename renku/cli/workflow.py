@@ -224,6 +224,8 @@ respectively.
 
 """
 
+from pathlib import Path
+
 import click
 from rich.console import Console
 from rich.markdown import Markdown
@@ -571,7 +573,11 @@ def inputs(ctx, paths):
 
     click.echo("\n".join(input_paths))
 
-    ctx.exit(0 if not paths or len(input_paths) == len(paths) else 1)
+    if paths:
+        if not input_paths or any(
+            p not in input_paths and all(Path(o) not in Path(p).parents for o in input_paths) for p in paths
+        ):
+            ctx.exit(1)
 
 
 @workflow.command()
@@ -590,6 +596,6 @@ def outputs(ctx, paths):
 
     if paths:
         if not output_paths or any(
-            p not in output_paths and all(not p.startswith(o) for o in output_paths) for p in paths
+            p not in output_paths and all(Path(o) not in Path(p).parents for o in output_paths) for p in paths
         ):
             ctx.exit(1)

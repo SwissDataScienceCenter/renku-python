@@ -37,6 +37,7 @@ from renku.core.management.workflow.value_resolution import apply_run_values
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.utils import communication
+from renku.core.utils.os import get_relative_paths
 
 
 def _ref(name):
@@ -313,9 +314,9 @@ def _lookup_paths_in_paths(client_dispatcher: IClientDispatcher, lookup_paths: L
     files = set()
 
     for p in lookup_paths:
-        path = Path(p).resolve().relative_to(client.path)
+        path = Path(get_relative_paths(client.path, [p])[0])
         if path.is_dir():
-            dirs.append(str(path))
+            dirs.append(path)
         else:
             files.add(path)
 
@@ -323,21 +324,21 @@ def _lookup_paths_in_paths(client_dispatcher: IClientDispatcher, lookup_paths: L
     target_files = set()
 
     for p in target_paths:
-        path = Path(p).resolve().relative_to(client.path)
+        path = Path(p)
         if path.is_dir():
-            target_dirs.append(str(path))
+            target_dirs.append(path)
         else:
             target_files.add(path)
 
     result = set()
 
     for target_file in target_files:
-        if target_file in files or any(str(target_file).startswith(d) for d in dirs):
+        if target_file in files or any(d in target_file.parents for d in dirs):
             result.add(str(target_file))
 
     for target_dir in target_dirs:
-        if target_dir in dirs or any((str(f).startswith(target_dir) for f in files)):
-            result.add(target_dir)
+        if target_dir in dirs or any(target_dir in f.parents for f in files):
+            result.add(str(target_dir))
 
     return result
 
