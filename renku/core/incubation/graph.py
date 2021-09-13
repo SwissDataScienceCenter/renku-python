@@ -369,7 +369,7 @@ _dot_debug = functools.partial(_dot, debug=True)
 
 def _json_ld(rdf_graph):
     """Format graph as JSON-LD."""
-    data = rdf_graph.serialize(format="json-ld").decode("utf-8")
+    data = rdf_graph.serialize(format="json-ld")
     print(data)
 
 

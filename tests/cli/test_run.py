@@ -56,6 +56,7 @@ def test_run_many_args(client, run):
     assert 0 == exit_code
 
 
+@pytest.mark.skip("needs a fix for https://github.com/RDFLib/OWL-RL/issues/44")
 @pytest.mark.serial
 @pytest.mark.shelled
 def test_run_clean(runner, project, run_shell):

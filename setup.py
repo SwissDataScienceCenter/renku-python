@@ -155,14 +155,14 @@ for name, reqs in extras_require.items():
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<21.3.0",
-    "calamus>=0.3.8,<0.3.9",
+    "calamus>=0.3.12,<0.4",
     "click-completion>=0.5.0,<=0.5.3",
     "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",
     "click>=7.0,<8.0.2",
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
-    "cwltool>=3.0.20210319143721,<3.2",
+    "cwltool>=3.1.20210816212154,<3.2",
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.14",
@@ -178,12 +178,11 @@ install_requires = [
     "pyjwt==2.1.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
-    "pyshacl==0.14.4",
+    "pyshacl==0.17",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
     "PyYAML>=5.4,<=5.4.1",
-    "rdflib-jsonld>=0.5.0,<0.6.0",
-    "rdflib>=5.0.0,<5.1",
+    "rdflib>=6.0.0,<7.0",
     "requests>=2.23.0,<=2.24.0",
     "rich>=9.3.0,<10.4.0",
     "setuptools_scm>=3.1.0,<6.0.2",
@@ -206,7 +205,7 @@ def renku_scheme(version):
     if version.exact or version.node is None:
         return version.format_choice("", "+dirty")
     else:
-        return version.format_choice("+{node}", "+{node}+dirty")
+        return version.format_choice("+{node}", "+{node}.dirty")
 
 
 setup(
@@ -255,9 +254,9 @@ setup(
         "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Development Status :: 4 - Beta",
     ],
 )
