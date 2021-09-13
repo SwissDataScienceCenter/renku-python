@@ -16,14 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku ``rerun`` command."""
-from collections import defaultdict
-from typing import List
 
+from collections import defaultdict
+from typing import List, Set
+
+from renku.core import errors
 from renku.core.commands.update import execute_workflow
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.models.provenance.activity import Activity
 from renku.core.utils import communication
+from renku.core.utils.metadata import add_activity_if_recent
 from renku.core.utils.os import get_relative_paths
 
 
@@ -53,32 +57,20 @@ def _rerun(
 
     activities = _get_activities(paths, sources, activity_gateway)
 
-    if not activities:
-        exit(1)
+    if len(activities) == 0:
+        raise errors.NothingToExecuteError()
 
     plans = [a.plan_with_values for a in activities]
 
     execute_workflow(plans=plans, command_name="rerun")
 
 
-def _get_activities(paths: List[str], sources: List[str], activity_gateway: IActivityGateway):
+def _get_activities(paths: List[str], sources: List[str], activity_gateway: IActivityGateway) -> Set[Activity]:
     all_activities = defaultdict(set)
 
     def include_newest_activity(activity):
         existing_activities = all_activities[activity.association.plan.id]
-
-        if activity in existing_activities:
-            return
-
-        for existing_activity in existing_activities:
-            if activity.has_identical_inputs_and_outputs_as(existing_activity):
-                if activity.ended_at_time > existing_activity.ended_at_time:  # activity is newer
-                    existing_activities.remove(existing_activity)
-                    existing_activities.add(activity)
-                return
-
-        # No similar activity was found
-        existing_activities.add(activity)
+        add_activity_if_recent(activity=activity, activities=existing_activities)
 
     for path in paths:
         activities = activity_gateway.get_activities_by_generation(path)

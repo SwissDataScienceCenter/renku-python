@@ -37,7 +37,7 @@ from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils.datetime8601 import local_now
 from renku.core.utils.git import add_to_git
-from renku.core.utils.metadata import get_modified_activities
+from renku.core.utils.metadata import add_activity_if_recent, get_modified_activities
 from renku.core.utils.os import get_relative_paths
 from renku.version import __version__, version_url
 
@@ -94,19 +94,7 @@ def _get_downstream_activities(
 
     def include_newest_activity(activity):
         existing_activities = all_activities[activity.association.plan.id]
-
-        if activity in existing_activities:
-            return
-
-        for existing_activity in existing_activities:
-            if activity.has_identical_inputs_and_outputs_as(existing_activity):
-                if activity.ended_at_time > existing_activity.ended_at_time:  # activity is newer
-                    existing_activities.remove(existing_activity)
-                    existing_activities.add(activity)
-                return
-
-        # No similar activity was found
-        existing_activities.add(activity)
+        add_activity_if_recent(activity=activity, activities=existing_activities)
 
     def does_activity_generate_any_paths(activity):
         is_same = any(g.entity.path in paths for g in activity.generations)

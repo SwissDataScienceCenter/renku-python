@@ -171,7 +171,7 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
 
 
 def test_rerun_with_no_execution(project, runner):
-    """Test update and rerun of an input."""
+    """Test rerun when no workflow is executed."""
     repo = git.Repo(project)
     input = os.path.join(project, "data", "input.txt")
     write_and_commit_file(repo, input, "content")
