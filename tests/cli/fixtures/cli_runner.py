@@ -32,7 +32,7 @@ def renku_cli(client, run, client_database_injection_manager):
     from renku.core.management.interface.activity_gateway import IActivityGateway
     from renku.core.models.provenance.activity import Activity
 
-    def renku_cli_(*args, **kwargs) -> Tuple[int, Union[Activity, List[Activity]]]:
+    def renku_cli_(*args, **kwargs) -> Tuple[int, Union[None, Activity, List[Activity]]]:
         @inject.autoparams()
         def _get_activities(activity_gateway: IActivityGateway):
             return {a.id: a for a in activity_gateway.get_latest_activity_per_plan().values()}
@@ -47,7 +47,9 @@ def renku_cli(client, run, client_database_injection_manager):
 
         new_activities = [a for id, a in activities_after.items() if id not in activities_before]
 
-        if len(new_activities) == 1:
+        if len(new_activities) == 0:
+            new_activities = None
+        elif len(new_activities) == 1:
             new_activities = new_activities[0]
 
         return exit_code, new_activities

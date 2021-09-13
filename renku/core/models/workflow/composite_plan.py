@@ -53,7 +53,7 @@ class CompositePlan(AbstractPlan):
         links: List[ParameterLink] = None,
         mappings: List[ParameterMapping] = None,
         name: str,
-        plans: List[Plan] = None,
+        plans: List[Union["CompositePlan", Plan]] = None,
         project_id: str = None,
     ):
         super().__init__(
@@ -66,7 +66,7 @@ class CompositePlan(AbstractPlan):
             project_id=project_id,
         )
 
-        self.plans: List[Plan] = plans
+        self.plans: List[Union["CompositePlan", Plan]] = plans
         self.mappings: List[ParameterMapping] = mappings or []
         self.links: List[ParameterLink] = links or []
 

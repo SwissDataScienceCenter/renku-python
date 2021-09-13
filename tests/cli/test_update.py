@@ -133,6 +133,29 @@ def test_update_multiple_steps_with_path(runner, project, renku_cli):
     assert "source.txt" not in result.output
 
 
+def test_update_with_directory_paths(project, renku_cli):
+    """Test update when a directory path is specified."""
+    repo = git.Repo(project)
+    data = os.path.join(project, "data", "dataset", "my-data")
+    Path(data).mkdir(parents=True, exist_ok=True)
+    source = os.path.join(project, "source.txt")
+    output = os.path.join(data, "output.txt")
+
+    write_and_commit_file(repo, source, "content")
+
+    exit_code, previous_activity = renku_cli("run", "head", "-1", source, stdout=output)
+    assert 0 == exit_code
+
+    write_and_commit_file(repo, source, "changed content")
+
+    exit_code, activity = renku_cli("update", data)
+
+    assert 0 == exit_code
+    assert "changed content" == Path(output).read_text()
+    plan = activity.association.plan
+    assert previous_activity.association.plan.id == plan.id
+
+
 def test_multiple_updates(runner, project, renku_cli):
     """Test multiple updates of the same source."""
     repo = git.Repo(project)
@@ -302,3 +325,14 @@ def test_update_no_args(runner, project, no_lfs_warning):
     assert "Either PATHS or --all/-a should be specified" in result.output
 
     assert before_commit == repo.head.commit
+
+
+def test_update_with_no_execution(project, runner):
+    """Test update when no workflow is executed."""
+    repo = git.Repo(project)
+    input = os.path.join(project, "data", "input.txt")
+    write_and_commit_file(repo, input, "content")
+
+    result = runner.invoke(cli, ["update", input], catch_exceptions=False)
+
+    assert 1 == result.exit_code

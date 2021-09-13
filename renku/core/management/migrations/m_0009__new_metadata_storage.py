@@ -45,6 +45,7 @@ from renku.core.management.migrations.utils import (
     set_temporary_datasets_path,
     unset_temporary_datasets_path,
 )
+from renku.core.management.migrations.utils.conversion import convert_dataset
 from renku.core.models.entity import Collection, Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.project import Project
@@ -55,7 +56,6 @@ from renku.core.models.workflow.parameter import CommandInput, CommandOutput, Co
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils import communication
 from renku.core.utils.git import get_object_hash
-from renku.core.utils.metadata import convert_dataset
 from renku.core.utils.scm import git_unicode_unescape
 
 NON_EXISTING_ENTITY_CHECKSUM = "0" * 40

@@ -67,7 +67,7 @@ In this situation, you can do effectively three things:
 
   .. code-block:: console
 
-     $ renku update H
+     $ renku update E H
 
 .. note:: If there were uncommitted changes then the command fails.
    Check :program:`git status` to see details.
@@ -118,6 +118,7 @@ The following commands will produce the same result.
 import click
 
 from renku.cli.utils.callback import ClickCallback
+from renku.core import errors
 from renku.core.commands.update import update_command
 
 
@@ -127,4 +128,8 @@ from renku.core.commands.update import update_command
 def update(update_all, paths):
     """Update existing files by rerunning their outdated workflow."""
     communicator = ClickCallback()
-    update_command().with_communicator(communicator).build().execute(update_all=update_all, paths=paths)
+
+    try:
+        update_command().with_communicator(communicator).build().execute(update_all=update_all, paths=paths)
+    except errors.NothingToExecuteError:
+        exit(1)

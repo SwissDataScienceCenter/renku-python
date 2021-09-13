@@ -19,22 +19,25 @@
 
 import uuid
 from collections import defaultdict
-from typing import Generator, List, Set
+from pathlib import Path
+from typing import List, Set
 
 from git import Actor
 
+from renku.core import errors
 from renku.core.errors import ParameterError
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils.datetime8601 import local_now
-from renku.core.utils.git import add_to_git, get_modified_entities
+from renku.core.utils.git import add_to_git
+from renku.core.utils.metadata import get_modified_activities
 from renku.core.utils.os import get_relative_paths
 from renku.version import __version__, version_url
 
@@ -64,25 +67,27 @@ def _update(update_all, client_dispatcher: IClientDispatcher, activity_gateway: 
     paths = paths or []
     paths = get_relative_paths(base=client.path, paths=paths)
 
-    modified_activities = _get_modified_activities(client, activity_gateway)
+    modified_activities = _get_modified_activities(client.repo, activity_gateway)
     activities = _get_downstream_activities(modified_activities, activity_gateway, paths)
+
+    if len(activities) == 0:
+        raise errors.NothingToExecuteError()
 
     plans = [a.plan_with_values for a in activities]
 
     execute_workflow(plans=plans, command_name="update")
 
 
-def _get_modified_activities(client, activity_gateway) -> Generator[Activity, None, None]:
+def _get_modified_activities(repo, activity_gateway) -> Set[Activity]:
     """Return latest activities that one of their inputs is modified."""
     latest_activities = activity_gateway.get_latest_activity_per_plan().values()
+    modified, _ = get_modified_activities(activities=latest_activities, repo=repo)
 
-    used_entities = (u.entity for a in latest_activities for u in a.usages)
-    modified, _ = get_modified_entities(entities=used_entities, repo=client.repo)
-    return (a for a in latest_activities if any(u.entity in modified for u in a.usages))
+    return {a for a, _ in modified}
 
 
 def _get_downstream_activities(
-    starting_activities: Generator[Activity, None, None], activity_gateway: IActivityGateway, paths: List[str]
+    starting_activities: Set[Activity], activity_gateway: IActivityGateway, paths: List[str]
 ) -> Set[Activity]:
     """Return an ordered list of activities so that an activities comes before all its downstream activities."""
     all_activities = defaultdict(set)
@@ -110,13 +115,19 @@ def _get_downstream_activities(
         # No similar activity was found
         existing_activities.add(activity)
 
+    def does_activity_generate_any_paths(activity):
+        is_same = any(g.entity.path in paths for g in activity.generations)
+        is_parent = any(Path(p) in Path(g.entity.path).parents for p in paths for g in activity.generations)
+
+        return is_same or is_parent
+
     for activity in starting_activities:
         downstream_chains = activity_gateway.get_downstream_activity_chains(activity)
 
         if paths:
             # NOTE: Add the activity to check if it also matches the condition
             downstream_chains.append((activity,))
-            downstream_chains = [c for c in downstream_chains if any(g.entity.path in paths for g in c[-1].generations)]
+            downstream_chains = [c for c in downstream_chains if does_activity_generate_any_paths(c[-1])]
 
             # NOTE: Include activity only if any of its downstream match the condition
             if downstream_chains:
@@ -137,7 +148,7 @@ def execute_workflow(
     command_name,
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
-    database_dispatcher: IDatabaseDispatcher,
+    plan_gateway: IPlanGateway,
 ):
     """Execute a Run with/without subprocesses."""
     client = client_dispatcher.current_client
@@ -163,13 +174,11 @@ def execute_workflow(
         committer = Actor(f"renku {__version__}", version_url)
         client.repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
 
-    database = database_dispatcher.current_database
-
     activities = []
 
     for plan in plans:
         # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
-        original_plan = database["plans"].get(plan.id)
+        original_plan = plan_gateway.get_by_id(plan.id)
         activity = Activity.from_plan(plan=original_plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
         activity_gateway.add(activity)
         activities.append(activity)

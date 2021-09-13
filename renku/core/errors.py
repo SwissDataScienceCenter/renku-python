@@ -536,3 +536,7 @@ class GraphCycleError(RenkuException):
         """Embed exception and build a custom message."""
         cycles = "), (".join(", ".join(cycle) for cycle in cycles)
         super().__init__(f"Cycles detected in execution graph: ({cycles})")
+
+
+class NothingToExecuteError(RenkuException):
+    """Raised when a rerun/update command does not execute any workflows."""
