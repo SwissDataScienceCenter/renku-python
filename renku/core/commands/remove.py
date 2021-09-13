@@ -82,7 +82,7 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher):
         existing = client.find_attr(*tracked)
         if existing:
             communication.warn("There are custom .gitattributes.\n")
-            if communication.confirm('Do you want to edit ".gitattributes" now?', default=False):
+            if communication.confirm('Do you want to edit ".gitattributes" now?'):
                 edit_command(filename=str(client.path / ".gitattributes"))
 
     # Finally remove the files.
