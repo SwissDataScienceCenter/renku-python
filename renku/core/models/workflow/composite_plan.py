@@ -45,37 +45,30 @@ class CompositePlan(AbstractPlan):
     def __init__(
         self,
         *,
+        derived_from: str = None,
         description: str = None,
         id: str,
         invalidated_at: datetime = None,
         keywords: List[str] = None,
+        links: List[ParameterLink] = None,
+        mappings: List[ParameterMapping] = None,
         name: str,
-        derived_from: str = None,
         plans: List[Union["CompositePlan", Plan]] = None,
         project_id: str = None,
-        mappings: List[ParameterMapping] = None,
-        links: List[ParameterLink] = None,
     ):
-        self.description: str = description
-        self.id: str = id
-        self.invalidated_at: datetime = invalidated_at
-        self.keywords: List[str] = keywords or []
-        self.project_id: str = project_id
-
-        self.name: str = name
-        self.derived_from: str = derived_from
-
-        AbstractPlan.validate_name(name)
+        super().__init__(
+            derived_from=derived_from,
+            description=description,
+            id=id,
+            invalidated_at=invalidated_at,
+            keywords=keywords,
+            name=name,
+            project_id=project_id,
+        )
 
         self.plans: List[Union["CompositePlan", Plan]] = plans
         self.mappings: List[ParameterMapping] = mappings or []
         self.links: List[ParameterLink] = links or []
-
-    @staticmethod
-    def generate_id(uuid: str = None) -> str:
-        """Generate an identifier for Plan."""
-        uuid = uuid or uuid4().hex
-        return f"/plans/{uuid}"
 
     def _find_existing_mapping(
         self, targets: List[CommandParameterBase]

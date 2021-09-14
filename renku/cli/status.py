@@ -69,7 +69,8 @@ def status(ctx, paths):
             # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
             "  (use `renku update --all` to generate the file from its latest inputs)\n"
         )
-        for k, v in stales.items():
+        for k in sorted(stales.keys()):
+            v = stales[k]
             paths = click.style(", ".join(sorted(v)), fg="blue", bold=True)
             output = click.style(k, fg="red", bold=True)
             click.echo(f"\t{output}: {paths}")
@@ -84,19 +85,20 @@ def status(ctx, paths):
             # TODO: Enable once renku workflow visualize is implemented
             # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
         )
-        for v in modified:
+        for v in sorted(modified):
             click.echo(click.style(f"\t{v}", fg="blue", bold=True))
         click.echo()
 
     if deleted:
         click.echo("Deleted files used to generate outputs:\n")
-        for v in deleted:
+        for v in sorted(deleted):
             click.echo(click.style(f"\t{v}", fg="blue", bold=True))
         click.echo()
 
     if stale_activities:
         click.echo(f"Outdated activities that have no outputs({len(stale_activities)}):\n")
-        for k, v in stale_activities.items():
+        for k in sorted(stale_activities.keys()):
+            v = stale_activities[k]
             paths = click.style(", ".join(sorted(v)), fg="blue", bold=True)
             activity = click.style(k, fg="red", bold=True)
             click.echo(f"\t{activity}: {paths}")

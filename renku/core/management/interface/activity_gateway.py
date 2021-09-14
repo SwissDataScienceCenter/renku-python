@@ -18,9 +18,9 @@
 """Renku activity gateway interface."""
 
 from abc import ABC
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 
-from renku.core.models.provenance.activity import Activity, Usage
+from renku.core.models.provenance.activity import Activity, ActivityCollection, Usage
 from renku.core.models.workflow.plan import AbstractPlan
 
 
@@ -43,9 +43,12 @@ class IActivityGateway(ABC):
         """Return all generation paths."""
         raise NotImplementedError
 
-    def get_downstream_activities(self, activity: Activity) -> Set[Activity]:
+    def get_downstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
         raise NotImplementedError
+
+    def get_downstream_activity_chains(self, activity: Activity) -> List[Tuple[Activity, ...]]:
+        """Get a list of tuples of all downstream paths of this activity."""
 
     def get_all_activities(self) -> List[Activity]:
         """Get all activities in the project."""
@@ -53,4 +56,12 @@ class IActivityGateway(ABC):
 
     def add(self, activity: Activity) -> None:
         """Add an ``Activity`` to storage."""
+        raise NotImplementedError
+
+    def add_activity_collection(self, activity_collection: ActivityCollection):
+        """Add an ``ActivityCollection`` to storage."""
+        raise NotImplementedError
+
+    def get_all_activity_collections(self) -> List[ActivityCollection]:
+        """Get all activity collections in the project."""
         raise NotImplementedError

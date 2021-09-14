@@ -17,6 +17,8 @@
 # limitations under the License.
 """Renku CLI fixtures for execution management."""
 
+from typing import List, Tuple, Union
+
 import pytest
 
 
@@ -24,12 +26,13 @@ import pytest
 def renku_cli(client, run, client_database_injection_manager):
     """Return a callable Renku CLI.
 
-    It returns the exit code and content of the resulting CWL tool.
+    It returns the exit code and the resulting activity or list of activities.
     """
     from renku.core.management.command_builder.command import inject
     from renku.core.management.interface.activity_gateway import IActivityGateway
+    from renku.core.models.provenance.activity import Activity
 
-    def renku_cli_(*args, **kwargs):
+    def renku_cli_(*args, **kwargs) -> Tuple[int, Union[None, Activity, List[Activity]]]:
         @inject.autoparams()
         def _get_activities(activity_gateway: IActivityGateway):
             return {a.id: a for a in activity_gateway.get_latest_activity_per_plan().values()}
@@ -42,13 +45,13 @@ def renku_cli(client, run, client_database_injection_manager):
         with client_database_injection_manager(client):
             activities_after = _get_activities()
 
-        new_activities = set(activities_after.keys()).difference(set(activities_before.keys()))
+        new_activities = [a for id, a in activities_after.items() if id not in activities_before]
 
-        assert len(new_activities) <= 1
+        if len(new_activities) == 0:
+            new_activities = None
+        elif len(new_activities) == 1:
+            new_activities = new_activities[0]
 
-        if new_activities:
-            return exit_code, activities_after[new_activities.pop()].association.plan
-
-        return exit_code, None
+        return exit_code, new_activities
 
     return renku_cli_

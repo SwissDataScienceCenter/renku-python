@@ -114,7 +114,10 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
 
 
 def get_object_hash(repo: Repo, path: Union[Path, str], revision: str = None) -> Optional[str]:
-    """Return git hash of an object in a Repo or its submodule."""
+    """Return git hash of an object in a Repo or its submodule.
+
+    NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
+    """
 
     def get_object_hash_from_submodules() -> Optional[str]:
         for submodule in repo.submodules:

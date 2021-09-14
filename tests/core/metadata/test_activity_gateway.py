@@ -136,8 +136,8 @@ def test_activity_gateway_get_latest_plan_usages(dummy_database_injection_manage
         assert latest_usages[plan2] == activity3.usages
 
 
-def test_activity_gateway_downstream_activities(dummy_database_injection_manager):
-    """test getting downstream activities works."""
+def test_activity_gateway_downstream_activities_and_chains(dummy_database_injection_manager):
+    """test getting downstream activities and activity chains work."""
 
     plan = Plan(id=Plan.generate_id(), name="plan")
 
@@ -234,3 +234,15 @@ def test_activity_gateway_downstream_activities(dummy_database_injection_manager
 
         downstream = activity_gateway.get_downstream_activities(previous)
         assert {following_id, intermediate_id} == {a.id for a in downstream}
+
+        downstream_chains = activity_gateway.get_downstream_activity_chains(following)
+
+        assert not downstream_chains
+
+        downstream_chains = activity_gateway.get_downstream_activity_chains(intermediate)
+        assert [{following_id}] == [{a.id for a in chain} for chain in downstream_chains]
+
+        downstream_chains = activity_gateway.get_downstream_activity_chains(previous)
+        assert [{intermediate_id}, {following_id, intermediate_id}] == [
+            {a.id for a in chain} for chain in downstream_chains
+        ]

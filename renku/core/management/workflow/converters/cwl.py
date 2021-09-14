@@ -493,14 +493,16 @@ class CWLExporter(IWorkflowConverter):
             cycles = [map(lambda x: x.name, cycle) for cycle in cycles]
             raise errors.GraphCycleError(cycles)
 
-        for i, wf in enumerate(graph.workflow_graph.nodes):
+        import networkx as nx
+
+        for i, wf in enumerate(nx.topological_sort(graph.workflow_graph)):
             _, path = CWLExporter._convert_step(
                 workflow=wf, tmpdir=tmpdir, basedir=basedir, filename=None, output_format=output_format
             )
             step = WorkflowStep("step_{}".format(i), str(path.resolve()))
 
             for input in wf.inputs:
-                input_path = input.default_value
+                input_path = input.actual_value
 
                 sanitized_id = CWLExporter._sanitize_id(input.id)
                 if input_path in inputs:
@@ -522,7 +524,7 @@ class CWLExporter(IWorkflowConverter):
 
             for parameter in wf.parameters:
                 argument_id = "argument_{}".format(argument_index)
-                arguments[argument_id] = parameter.default_value
+                arguments[argument_id] = parameter.actual_value
                 step.inputs.append(cwlgen.WorkflowStepInput(CWLExporter._sanitize_id(parameter.id), source=argument_id))
                 argument_index += 1
 
@@ -531,7 +533,7 @@ class CWLExporter(IWorkflowConverter):
 
                 if output.mapped_to:
                     sanitized_id = "output_{}".format(output.mapped_to.stream_type)
-                outputs[output.default_value] = (sanitized_id, step.id)
+                outputs[output.actual_value] = (sanitized_id, step.id)
                 step.out.append(cwlgen.WorkflowStepOutput(sanitized_id))
 
             steps.append(step)
@@ -547,7 +549,7 @@ class CWLExporter(IWorkflowConverter):
                 cwlgen.InputParameter(
                     id_,
                     param_type=type_,
-                    default={"location": path.resolve().as_uri(), "class": type_},
+                    default={"location": Path(path).resolve().as_uri(), "class": type_},
                 )
             )
 
@@ -572,7 +574,7 @@ class CWLExporter(IWorkflowConverter):
 
     @staticmethod
     def _convert_step(
-        workflow: CompositePlan, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
+        workflow: Plan, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
     ):
         """Converts a single workflow step to a cwl file."""
         stdin, stdout, stderr = None, None, None
@@ -583,9 +585,9 @@ class CWLExporter(IWorkflowConverter):
             if not output_.mapped_to:
                 continue
             if output_.mapped_to.stream_type == "stderr":
-                stderr = output_.default_value
+                stderr = output_.actual_value
             if output_.mapped_to.stream_type == "stdout":
-                stdout = output_.default_value
+                stdout = output_.actual_value
 
         tool_object = CommandLineTool(
             tool_id=str(uuid4()),
@@ -602,7 +604,7 @@ class CWLExporter(IWorkflowConverter):
         dirents = []
 
         for output_ in workflow.outputs:
-            path = output_.default_value
+            path = output_.actual_value
             if not os.path.isdir(path):
                 path = str(Path(path).parent)
             if path != "." and path not in dirents and output_.create_folder:
@@ -625,7 +627,7 @@ class CWLExporter(IWorkflowConverter):
 
             workdir_req.listing.append(
                 cwlgen.InitialWorkDirRequirement.Dirent(
-                    entry="$(inputs.{})".format(tool_input.id), entryname=input_.default_value, writable=False
+                    entry="$(inputs.{})".format(tool_input.id), entryname=input_.actual_value, writable=False
                 )
             )
 
@@ -680,7 +682,7 @@ class CWLExporter(IWorkflowConverter):
     @staticmethod
     def _convert_parameter(parameter: CommandParameter):
         """Converts an parameter to a CWL input."""
-        value, type_ = _get_argument_type(parameter.default_value)
+        value, type_ = _get_argument_type(parameter.actual_value)
 
         separate = None
         prefix = None
@@ -722,7 +724,7 @@ class CWLExporter(IWorkflowConverter):
             sanitized_id,
             param_type=type_,
             input_binding=cwlgen.CommandLineBinding(position=input.position, prefix=prefix, separate=separate),
-            default={"location": (basedir / input.default_value).resolve().as_uri(), "class": type_},
+            default={"location": (basedir / input.actual_value).resolve().as_uri(), "class": type_},
         )
 
     @staticmethod
@@ -758,7 +760,7 @@ class CWLExporter(IWorkflowConverter):
                 "{}_arg".format(sanitized_id),
                 param_type="string",
                 input_binding=cwlgen.CommandLineBinding(position=output.position, prefix=prefix, separate=separate),
-                default=output.default_value,
+                default=output.actual_value,
             )
             outp = cwlgen.CommandOutputParameter(
                 sanitized_id,
@@ -769,7 +771,7 @@ class CWLExporter(IWorkflowConverter):
 
         return (
             cwlgen.CommandOutputParameter(
-                sanitized_id, param_type=type_, output_binding=cwlgen.CommandOutputBinding(glob=output.default_value)
+                sanitized_id, param_type=type_, output_binding=cwlgen.CommandOutputBinding(glob=output.actual_value)
             ),
             None,
         )

@@ -15,150 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helpers functions for metadata conversion/parsing."""
+"""Helpers functions for metadata management/parsing."""
 
 from collections.abc import Iterable
-from pathlib import Path
-from typing import List, Optional, Tuple, Union
-from urllib.parse import urlparse
+from typing import List, Set, Tuple, Union
+
+from git import Repo
 
 from renku.core import errors
-from renku.core.management.migrations.models import v9 as old_datasets
-from renku.core.models.dataset import Dataset, DatasetFile, DatasetTag, ImageObject, Language, RemoteEntity, Url
 from renku.core.models.entity import Entity
-from renku.core.models.provenance import agent as new_agents
+from renku.core.models.provenance.activity import Activity
 from renku.core.models.provenance.agent import Person
-
-
-def convert_url(url: Optional[old_datasets.Url]) -> Optional[Url]:
-    """Convert old Url to new Url."""
-    if not url:
-        return
-    return Url(url=url.url, url_id=url.url_id, url_str=url.url_str)
-
-
-def convert_dataset_tag(tag: Optional[old_datasets.DatasetTag]) -> Optional[DatasetTag]:
-    """Convert old DatasetTag to new DatasetTag."""
-    if not tag:
-        return
-    return DatasetTag(dataset_id="dummy-id", date_created=tag.created, description=tag.description, name=tag.name)
-
-
-def convert_language(language: Optional[old_datasets.Language]) -> Optional[Language]:
-    """Convert old Language to new Language."""
-    if not language:
-        return
-    return Language(alternate_name=language.alternate_name, name=language.name)
-
-
-def convert_image_object(image_object: Optional[old_datasets.ImageObject]) -> Optional[ImageObject]:
-    """Create from old ImageObject instance."""
-    if not image_object:
-        return
-    return ImageObject(content_url=image_object.content_url, position=image_object.position, id=image_object.id)
-
-
-def create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> Optional[RemoteEntity]:
-    """Create RemoteEntity from old DatasetFile."""
-    if not dataset_file:
-        return
-    commit_sha = dataset_file._label.rsplit("@", maxsplit=1)[-1]
-    return RemoteEntity(commit_sha=commit_sha, path=dataset_file.path, url=dataset_file.url)
-
-
-def convert_dataset_file(dataset_file: old_datasets.DatasetFile, client, revision: str) -> Optional[DatasetFile]:
-    """Convert old DatasetFile to new DatasetFile if available at revision."""
-    entity = Entity.from_revision(client=client, path=dataset_file.path, revision=revision)
-    if not entity:
-        return
-
-    return DatasetFile(
-        based_on=create_remote_entity(dataset_file.based_on),
-        date_added=dataset_file.added,
-        entity=entity,
-        is_external=dataset_file.external,
-        source=dataset_file.source,
-    )
-
-
-def convert_person(person: Optional[old_datasets.Person]) -> Optional[new_agents.Person]:
-    """Create a Person from and old Person."""
-    if not person:
-        return
-
-    return new_agents.Person(
-        affiliation=person.affiliation,
-        alternate_name=person.alternate_name,
-        email=person.email,
-        id=None,
-        name=person.name,
-    )
-
-
-def convert_agent(
-    agent: Optional[Union[old_datasets.Person, old_datasets.SoftwareAgent]]
-) -> Optional[Union[new_agents.Person, new_agents.SoftwareAgent]]:
-    """Create an instance from Person/SoftwareAgent."""
-    if isinstance(agent, old_datasets.SoftwareAgent):
-        return new_agents.SoftwareAgent(id=agent.id, name=agent.label)
-
-    assert not agent or isinstance(agent, old_datasets.Person), f"Invalid type {type(agent)}"
-    return convert_person(agent)
-
-
-def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tuple[Dataset, List[DatasetTag]]:
-    """Convert old Dataset to new Dataset."""
-
-    def convert_dataset_files(files: List[old_datasets.DatasetFile]) -> List[DatasetFile]:
-        """Create instances from old DatasetFile."""
-        dataset_files = []
-        files = {f.path: f for f in files}  # NOTE: To make sure there are no duplicate paths
-
-        for file in files.values():
-            new_file = convert_dataset_file(dataset_file=file, client=client, revision=revision)
-            if not new_file:
-                continue
-
-            dataset_files.append(new_file)
-
-        return dataset_files
-
-    def convert_derived_from(derived_from: Optional[old_datasets.Url]) -> Optional[str]:
-        """Return Dataset.id from `derived_from` url."""
-        if not derived_from:
-            return
-
-        url = derived_from.url.get("@id")
-        path = urlparse(url).path
-
-        return Url(url_id=Dataset.generate_id(identifier=Path(path).name))
-
-    tags = [convert_dataset_tag(tag) for tag in (dataset.tags or [])]
-
-    return (
-        Dataset(
-            creators=[convert_agent(creator) for creator in dataset.creators],
-            dataset_files=convert_dataset_files(dataset.files),
-            date_created=dataset.date_created,
-            date_published=dataset.date_published,
-            date_removed=None,
-            derived_from=convert_derived_from(dataset.derived_from),
-            description=dataset.description,
-            id=None,
-            identifier=dataset.identifier.replace("-", ""),
-            images=[convert_image_object(image) for image in (dataset.images or [])],
-            in_language=convert_language(dataset.in_language),
-            keywords=dataset.keywords,
-            license=dataset.license,
-            name=dataset.name,
-            project_id=client.project.id,
-            initial_identifier=dataset.initial_identifier.replace("-", ""),
-            same_as=convert_url(dataset.same_as),
-            title=dataset.title,
-            version=dataset.version,
-        ),
-        tags,
-    )
+from renku.core.utils.git import get_object_hash
 
 
 def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
@@ -207,3 +75,22 @@ def construct_creator(creator: Union[dict, str], ignore_email):
         no_email_warning = None
 
     return person, no_email_warning
+
+
+def get_modified_activities(
+    activities: List[Activity], repo: Repo
+) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    """Get lists of activities that have modified/deleted usage entities."""
+    modified = set()
+    deleted = set()
+
+    for activity in activities:
+        for usage in activity.usages:
+            entity = usage.entity
+            current_checksum = get_object_hash(repo=repo, path=entity.path)
+            if current_checksum is None:
+                deleted.add((activity, entity))
+            elif current_checksum != entity.checksum:
+                modified.add((activity, entity))
+
+    return modified, deleted
