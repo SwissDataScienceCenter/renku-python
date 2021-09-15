@@ -25,7 +25,7 @@ let
     };
 
 in with pkgs;
-    mach-nix.buildPythonPackage {
+    mach-nix.buildPythonApplication {
     pname = "renku";
     version = "0.16.0";
 
