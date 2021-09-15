@@ -94,3 +94,19 @@ def get_modified_activities(
                 modified.add((activity, entity))
 
     return modified, deleted
+
+
+def add_activity_if_recent(activity: Activity, activities: Set[Activity]):
+    """Add ``activity`` to ``activities`` if it's not in the set or is the latest executed instance."""
+    if activity in activities:
+        return
+
+    for existing_activity in activities:
+        if activity.has_identical_inputs_and_outputs_as(existing_activity):
+            if activity.ended_at_time > existing_activity.ended_at_time:  # activity is newer
+                activities.remove(existing_activity)
+                activities.add(activity)
+            return
+
+    # NOTE: No similar activity was found
+    activities.add(activity)

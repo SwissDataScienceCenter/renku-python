@@ -228,6 +228,12 @@ class Activity(Persistent):
         # TODO: make id generation idempotent
         return f"/activities/{uuid4().hex}"
 
+    def has_identical_inputs_and_outputs_as(self, other: "Activity"):
+        """Return true if all input and outputs paths are identical regardless of the order."""
+        return sorted(u.entity.path for u in self.usages) == sorted(u.entity.path for u in other.usages) and sorted(
+            g.entity.path for g in self.generations
+        ) == sorted(g.entity.path for g in other.generations)
+
 
 class ActivityCollection(Persistent):
     """Represent a list of activities."""
