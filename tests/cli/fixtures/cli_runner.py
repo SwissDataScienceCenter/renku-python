@@ -17,9 +17,12 @@
 # limitations under the License.
 """Renku CLI fixtures for execution management."""
 
+from collections import namedtuple
 from typing import List, Tuple, Union
 
 import pytest
+
+Result = namedtuple("Result", "exit_code, activities")
 
 
 @pytest.fixture
@@ -40,6 +43,8 @@ def renku_cli(client, run, client_database_injection_manager):
         with client_database_injection_manager(client):
             activities_before = _get_activities()
 
+        args = [str(a) for a in args]
+
         exit_code = run(args, **kwargs)
 
         with client_database_injection_manager(client):
@@ -52,6 +57,6 @@ def renku_cli(client, run, client_database_injection_manager):
         elif len(new_activities) == 1:
             new_activities = new_activities[0]
 
-        return exit_code, new_activities
+        return Result(exit_code, new_activities)
 
     return renku_cli_

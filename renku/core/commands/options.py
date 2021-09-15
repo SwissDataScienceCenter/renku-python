@@ -19,8 +19,6 @@
 
 import click
 
-from renku.core.errors import RenkuException
-
 from .git import set_git_isolation
 
 
@@ -43,56 +41,6 @@ option_isolation = click.option(
     callback=lambda ctx, param, value: set_git_isolation(value),
     help="Set up the isolation for invoking of the given command.",
 )
-
-
-def check_siblings(graph, outputs):
-    """Check that all outputs have their siblings listed."""
-    siblings = set()
-    for node in outputs:
-        siblings |= graph.siblings(node)
-
-    siblings = {node.path for node in siblings}
-    missing = siblings - {node.path for node in outputs}
-    missing = {m for m in missing if all(not m.startswith(node.path) for node in outputs)}
-
-    if missing:
-        msg = "Include the files above in the command " "or use the --with-siblings option."
-        raise RenkuException(
-            "There are missing output siblings:\n\n"
-            "\t{0}\n\n{1}".format("\n\t".join(click.style(path, fg="red") for path in missing), msg)
-        )
-    return outputs
-
-
-def with_siblings(graph, outputs):
-    """Include all missing siblings."""
-    siblings = set()
-    for node in outputs:
-        siblings |= graph.siblings(node)
-    return siblings
-
-
-option_check_siblings = click.option(
-    "--check-siblings",
-    "siblings",
-    flag_value=check_siblings,
-    default=True,
-    help=check_siblings.__doc__,
-    type=click.types.UnprocessedParamType(),
-)
-option_with_siblings = click.option(
-    "--with-siblings",
-    "siblings",
-    flag_value=with_siblings,
-    default=True,
-    help=with_siblings.__doc__,
-    type=click.types.UnprocessedParamType(),
-)
-
-
-def option_siblings(func):
-    """Combine siblings options."""
-    return option_check_siblings(option_with_siblings(func))
 
 
 option_external_storage_requested = click.option(

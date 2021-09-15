@@ -19,7 +19,7 @@
 
 import os
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Union
 
 from persistent.list import PersistentList
 
@@ -62,6 +62,12 @@ class ActivityGateway(IActivityGateway):
 
         return list(database["activities-by-generation"].keys())
 
+    def get_activities_by_generation(self, path: Union[Path, str]) -> List[Activity]:
+        """Return the list of all activities that generate a path."""
+        by_generation = self.database_dispatcher.current_database["activities-by-generation"]
+
+        return by_generation.get(str(path), [])
+
     def get_downstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
         # NOTE: since indices are populated one way when adding an activity, we need to query two indices
@@ -80,9 +86,20 @@ class ActivityGateway(IActivityGateway):
         activity_catalog = database["activity-catalog"]
         tok = activity_catalog.tokenizeQuery
         downstream_chains = activity_catalog.findRelationChains(tok(upstream=activity))
-        downstream_chains = [tuple(adr.downstream[0] for adr in d) for d in downstream_chains]
+        downstream_chains = [tuple(r.downstream for r in c) for c in downstream_chains]
 
         return downstream_chains
+
+    def get_upstream_activity_chains(self, activity: Activity) -> List[Tuple[Activity, ...]]:
+        """Get a list of tuples of all upstream paths of this activity."""
+        database = self.database_dispatcher.current_database
+
+        activity_catalog = database["activity-catalog"]
+        tok = activity_catalog.tokenizeQuery
+        upstream_chains = activity_catalog.findRelationChains(tok(downstream=activity))
+        upstream_chains = [tuple(r.upstream for r in c) for c in upstream_chains]
+
+        return upstream_chains
 
     def get_all_activities(self) -> List[Activity]:
         """Get all activities in the project."""
@@ -138,10 +155,12 @@ class ActivityGateway(IActivityGateway):
                 downstreams.extend(by_usage[generation.entity.path])
 
         if upstreams:
-            database["activity-catalog"].index(ActivityDownstreamRelation(downstream=[activity], upstream=upstreams))
+            for s in upstreams:
+                database["activity-catalog"].index(ActivityDownstreamRelation(downstream=activity, upstream=s))
 
         if downstreams:
-            database["activity-catalog"].index(ActivityDownstreamRelation(downstream=downstreams, upstream=[activity]))
+            for s in downstreams:
+                database["activity-catalog"].index(ActivityDownstreamRelation(downstream=s, upstream=activity))
 
         assert isinstance(activity.association.plan, Plan)
 

@@ -88,6 +88,38 @@ def load_downstream_relations(token, catalog, cache, database_dispatcher: IDatab
     return btree[token]
 
 
+def initialize_database(database):
+    """Initialize an empty database with all required metadata."""
+    database.add_index(name="activities", object_type=Activity, attribute="id")
+    database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
+    database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
+    database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
+
+    database.add_index(name="activity-collections", object_type=ActivityCollection, attribute="id")
+
+    database.add_root_object(name="_downstream_relations", obj=BTrees.OOBTree.OOBTree())
+
+    activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
+    activity_catalog.addValueIndex(
+        IActivityDownstreamRelation["downstream"], dump_activity, load_activity, btree=BTrees.family32.OO
+    )
+    activity_catalog.addValueIndex(
+        IActivityDownstreamRelation["upstream"], dump_activity, load_activity, btree=BTrees.family32.OO
+    )
+    # NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
+    downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
+    activity_catalog.addDefaultQueryFactory(downstream_transitive_factory)
+
+    database.add_root_object(name="activity-catalog", obj=activity_catalog)
+
+    database.add_index(name="plans", object_type=AbstractPlan, attribute="id")
+    database.add_index(name="plans-by-name", object_type=AbstractPlan, attribute="name")
+
+    database.add_index(name="datasets", object_type=Dataset, attribute="name")
+    database.add_index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
+    database.add_index(name="datasets-tags", object_type=PersistentList)
+
+
 class DatabaseGateway(IDatabaseGateway):
     """Gateway for base database operations."""
 
@@ -97,46 +129,8 @@ class DatabaseGateway(IDatabaseGateway):
         """Initialize the database."""
         database = self.database_dispatcher.current_database
 
-        # NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
-        downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
-
         database.clear()
-
-        database.add_index(name="activities", object_type=Activity, attribute="id")
-        database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
-        database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
-        database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
-
-        database.add_index(name="activity-collections", object_type=ActivityCollection, attribute="id")
-
-        database.add_root_object(name="_downstream_relations", obj=BTrees.OOBTree.OOBTree())
-
-        activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
-        activity_catalog.addValueIndex(
-            IActivityDownstreamRelation["downstream"],
-            dump_activity,
-            load_activity,
-            btree=BTrees.family32.OO,
-            multiple=True,
-        )
-        activity_catalog.addValueIndex(
-            IActivityDownstreamRelation["upstream"],
-            dump_activity,
-            load_activity,
-            btree=BTrees.family32.OO,
-            multiple=True,
-        )
-        activity_catalog.addDefaultQueryFactory(downstream_transitive_factory)
-
-        database.add_root_object(name="activity-catalog", obj=activity_catalog)
-
-        database.add_index(name="plans", object_type=AbstractPlan, attribute="id")
-        database.add_index(name="plans-by-name", object_type=AbstractPlan, attribute="name")
-
-        database.add_index(name="datasets", object_type=Dataset, attribute="name")
-        database.add_index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
-        database.add_index(name="datasets-tags", object_type=PersistentList)
-
+        initialize_database(database)
         database.commit()
 
     def commit(self) -> None:
