@@ -94,3 +94,6 @@ helm-chart/renku-core/charts
 renku/templates/
 temp/
 tmp/
+
+# nix result
+result
