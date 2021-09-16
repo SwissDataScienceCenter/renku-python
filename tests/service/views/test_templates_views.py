@@ -74,6 +74,12 @@ def test_compare_manifests(svc_client_with_templates):
         templates_service = response.json["result"]["templates"]
         templates_local = manifest
         default_index = template_params["index"] - 1
+
+        if "icon" in templates_service:
+            del templates_service["icon"]
+        if "icon" in templates_local:
+            del templates_local["icon"]
+
         assert templates_service[default_index] == templates_local[default_index]
 
 

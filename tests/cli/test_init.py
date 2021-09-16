@@ -24,7 +24,6 @@ from urllib.parse import urlparse
 
 import git
 import pytest
-import yaml
 
 from renku.cli import cli
 from renku.cli.init import parse_parameters
