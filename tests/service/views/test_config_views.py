@@ -20,12 +20,13 @@
 import json
 
 import pytest
-from flaky import flaky
+
+from tests.utils import retry_failed
 
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_config_view_show(svc_client_with_repo):
     """Check config show view."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -34,7 +35,7 @@ def test_config_view_show(svc_client_with_repo):
         "project_id": project_id,
     }
 
-    response = svc_client.get("/config.show", query_string=params, headers=headers,)
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
 
     assert {"result"} == set(response.json.keys())
     keys = {"interactive.default_url", "renku.autocommit_lfs", "renku.lfs_threshold"}
@@ -45,14 +46,14 @@ def test_config_view_show(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_config_view_show_remote(svc_client_with_repo, it_remote_repo_url):
     """Check config show view."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     params = dict(git_url=it_remote_repo_url)
 
-    response = svc_client.get("/config.show", query_string=params, headers=headers,)
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
 
     assert {"result"} == set(response.json.keys())
     keys = {"interactive.default_url", "renku.autocommit_lfs", "renku.lfs_threshold"}
@@ -63,7 +64,7 @@ def test_config_view_show_remote(svc_client_with_repo, it_remote_repo_url):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_config_view_set(svc_client_with_repo):
     """Check config set view."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -78,7 +79,7 @@ def test_config_view_set(svc_client_with_repo):
         },
     }
 
-    response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
     assert 200 == response.status_code
     assert {"error"} != set(response.json.keys())
 
@@ -86,7 +87,7 @@ def test_config_view_set(svc_client_with_repo):
         "project_id": project_id,
     }
 
-    response = svc_client.get("/config.show", query_string=params, headers=headers,)
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
 
     assert {"result"} == set(response.json.keys())
     assert "1b" == response.json["result"]["config"]["renku.lfs_threshold"]
@@ -100,11 +101,11 @@ def test_config_view_set(svc_client_with_repo):
         "config": {"lfs_threshold": None, "interactive.default_url": "/still_not_lab", "interactive.dummy": None},
     }
 
-    response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
     assert 200 == response.status_code
     assert {"error"} != set(response.json.keys())
 
-    response = svc_client.get("/config.show", query_string=params, headers=headers,)
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
 
     assert {"result"} == set(response.json.keys())
     assert "100kb" == response.json["result"]["config"]["renku.lfs_threshold"]
@@ -115,7 +116,7 @@ def test_config_view_set(svc_client_with_repo):
 
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_remote_config_set_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed config set."""
     config = {

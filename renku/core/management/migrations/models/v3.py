@@ -21,23 +21,18 @@ import os
 
 from marshmallow import EXCLUDE, post_load, pre_load
 
-from renku.core.models import jsonld
-from renku.core.models.calamus import (
-    DateTimeList,
-    JsonLDSchema,
-    StringList,
-    Uri,
-    fields,
-    prov,
-    rdfs,
-    renku,
-    schema,
-    wfprov,
+from renku.core.management.migrations.models.v9 import Person as OldPerson
+from renku.core.management.migrations.models.v9 import generate_project_id, wfprov
+from renku.core.management.migrations.utils import (
+    OLD_METADATA_PATH,
+    generate_dataset_tag_id,
+    generate_url_id,
+    get_datasets_path,
 )
-from renku.core.models.datasets import generate_dataset_tag_id, generate_url_id
+from renku.core.models import jsonld
+from renku.core.models.calamus import DateTimeList, JsonLDSchema, StringList, Uri, fields, prov, rdfs, renku, schema
 from renku.core.models.git import get_user_info
-from renku.core.models.projects import generate_project_id
-from renku.core.models.provenance.agents import generate_person_id
+from renku.core.utils.urls import get_host
 
 
 class Base:
@@ -60,24 +55,12 @@ class Person(Base):
     email = None
     name = None
 
-    @staticmethod
-    def _fix_person_id(person, client=None):
-        """Fixes the id of a Person if it is not set."""
-        if not person._id or "mailto:None" in person._id or person._id.startswith("_:"):
-            if not client and person.client:
-                client = person.client
-            person._id = generate_person_id(client=client, email=person.email, full_identity=person.full_identity)
-
-        return person
-
     @classmethod
     def from_git(cls, git, client=None):
         """Create an instance from a Git repo."""
         name, email = get_user_info(git)
         instance = cls(name=name, email=email)
-
-        instance = Person._fix_person_id(instance, client)
-
+        instance.fix_id(client)
         return instance
 
     def __init__(self, **kwargs):
@@ -91,6 +74,14 @@ class Person(Base):
         email = f" <{self.email}>" if self.email else ""
         affiliation = f" [{self.affiliation}]" if self.affiliation else ""
         return f"{self.name}{email}{affiliation}"
+
+    def fix_id(self, client=None):
+        """Fixes the id of a Person if it is not set."""
+        if not self._id or "mailto:None" in self._id or self._id.startswith("_:"):
+            if not client and self.client:
+                client = self.client
+            hostname = get_host(client)
+            self._id = OldPerson.generate_id(email=self.email, full_identity=self.full_identity, hostname=hostname)
 
 
 class Project(Base):
@@ -123,6 +114,14 @@ class Project(Base):
 
         data = ProjectSchemaV3().dump(self)
         jsonld.write_yaml(path=path, data=data)
+
+
+class Collection(Base):
+    """Collection migration model."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("members", [])
+        super().__init__(**kwargs)
 
 
 class DatasetFile(Base):
@@ -180,10 +179,8 @@ class Dataset(Base):
 
     def to_yaml(self, path=None):
         """Write content to a YAML file."""
-        from renku.core.management import LocalClient
-
         data = DatasetSchemaV3().dump(self)
-        path = path or self._metadata_path or os.path.join(self.path, LocalClient.METADATA)
+        path = path or self._metadata_path or os.path.join(self.path, OLD_METADATA_PATH)
         jsonld.write_yaml(path=path, data=data)
 
 
@@ -208,8 +205,7 @@ class PersonSchemaV3(JsonLDSchema):
     def make_instance(self, data, **kwargs):
         """Transform loaded dict into corresponding object."""
         instance = JsonLDSchema.make_instance(self, data, **kwargs)
-
-        instance = Person._fix_person_id(instance)
+        instance.fix_id(client=None)
         return instance
 
 
@@ -253,6 +249,19 @@ class EntitySchemaV3(CommitMixinSchemaV3):
         """Meta class."""
 
         rdf_type = [prov.Entity, wfprov.Artifact]
+
+
+class CollectionSchemaV3(EntitySchemaV3):
+    """Collection Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.Collection]
+        model = Collection
+        unknown = EXCLUDE
+
+    members = fields.Nested(prov.hadMember, ["DatasetFileSchemaV3", "CollectionSchemaV3"], many=True)
 
 
 class DatasetFileSchemaV3(EntitySchemaV3):
@@ -332,7 +341,7 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
     date_created = fields.DateTime(schema.dateCreated, missing=None)
     date_published = fields.DateTime(schema.datePublished, missing=None)
     description = fields.String(schema.description, missing=None)
-    files = fields.Nested(schema.hasPart, DatasetFileSchemaV3, many=True)
+    files = fields.Nested(schema.hasPart, [DatasetFileSchemaV3, CollectionSchemaV3], many=True)
     identifier = fields.String(schema.identifier)
     in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
@@ -347,7 +356,7 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
     @pre_load
     def fix_files_context(self, data, **kwargs):
         """Fix DatasetFile context for _label and external fields."""
-        from renku.core.utils.migrate import migrate_types
+        from renku.core.management.migrations.utils import migrate_types
 
         data = migrate_types(data)
 
@@ -376,7 +385,7 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
 
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
-    paths = client.renku_datasets_path.rglob(client.METADATA)
+    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
     datasets = []
     for path in paths:
         dataset = Dataset.from_yaml(path=path, client=client)

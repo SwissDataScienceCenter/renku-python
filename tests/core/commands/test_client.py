@@ -56,23 +56,20 @@ def test_safe_class_attributes(tmpdir):
 
     # NOTE: attributes that are allowed on LocalClient
     safe_attributes = [
-        "ACTIVITY_INDEX",
         "CACHE",
         "CONFIG_NAME",
-        "DATASETS",
+        "DATABASE_PATH",
         "DATASET_IMAGES",
-        "DATASETS_PROVENANCE",
         "DATA_DIR_CONFIG_KEY",
         "DEPENDENCY_GRAPH",
         "DOCKERFILE",
         "LOCK_SUFFIX",
         "METADATA",
         "POINTERS",
-        "PROVENANCE_GRAPH",
         "RENKU_LFS_IGNORE_PATH",
         "RENKU_PROTECTED_PATHS",
+        "SUPPORTED_SCHEMES",
         "TEMPLATE_CHECKSUMS",
-        "WORKFLOW",
         "_CMD_STORAGE_CHECKOUT",
         "_CMD_STORAGE_CLEAN",
         "_CMD_STORAGE_INSTALL",
@@ -84,10 +81,8 @@ def test_safe_class_attributes(tmpdir):
         "_CMD_STORAGE_TRACK",
         "_CMD_STORAGE_UNTRACK",
         "_LFS_HEADER",
-        "_datasets_provenance",
-        "_dependency_graph",
+        "_database",
         "_global_config_dir",
-        "_temporary_datasets_path",
     ]
 
     client1 = LocalClient(str(tmpdir.mkdir("project1")))

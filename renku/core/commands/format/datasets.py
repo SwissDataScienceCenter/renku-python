@@ -18,17 +18,18 @@
 """Serializers for datasets."""
 import textwrap
 
-from renku.core.models.datasets import DatasetDetailsJson
+from renku.core.commands.format.tabulate import tabulate
+from renku.core.metadata.immutable import DynamicProxy
+from renku.core.models.dataset import DatasetDetailsJson
 from renku.core.models.json import dumps
 
-from .tabulate import tabulate
 
-
-def tabular(client, datasets, *, columns=None):
+def tabular(datasets, *, columns=None):
     """Format datasets with a tabular output."""
     if not columns:
         columns = "id,date_created,name,creators,tags,version"
 
+    datasets = [DynamicProxy(d) for d in datasets]
     _create_dataset_short_description(datasets)
 
     return tabulate(collection=datasets, columns=columns, columns_mapping=DATASETS_COLUMNS)
@@ -40,13 +41,13 @@ def _create_dataset_short_description(datasets):
         dataset.short_description = "\n".join(lines)
 
 
-def jsonld(client, datasets, **kwargs):
+def jsonld(datasets, **kwargs):
     """Format datasets as JSON-LD."""
-    data = [dataset.as_jsonld() for dataset in datasets]
+    data = [dataset.to_jsonld() for dataset in datasets]
     return dumps(data, indent=2)
 
 
-def json(client, datasets, **kwargs):
+def json(datasets, **kwargs):
     """Format datasets as JSON."""
     data = [DatasetDetailsJson().dump(dataset) for dataset in datasets]
     return dumps(data, indent=2)

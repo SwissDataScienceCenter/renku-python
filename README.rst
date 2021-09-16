@@ -237,7 +237,7 @@ Trace the data provenance:
 
 ::
 
-    $ renku log wc_readme
+    $ renku workflow visualize wc_readme
 
 These are the basics, but there is much more that Renku allows you to do with
 your data analysis workflows. The full documentation will soon be available
@@ -283,15 +283,11 @@ logging in to a renku instance with ``renku login`` and retrieving it from your 
 renku configuration.
 
 In a live deployment, the swagger documentation is available under ``https://<renku-endpoint>/swagger``.
-You can authorize the API by clicking ``Authorize`` and authenticating with Keycloak.
-Note that this requires you to know the Keycloak ``renku`` client secret, which
-can be fetched with ``kubectl``:
-
-::
-
-    $ kubectl -n <namespace> get secret <namespace>-renku-gateway -ojson | jq -r .data.oidcClientSecret
-
-Make sure to base64 decode it before copy/pasting into the swagger UI dialog.
+You can authorize the API by first logging into renku normally, then going to the
+swagger page, clicking ``Authorize`` and picking the ``oidc (OAuth2, authorization_code)``
+option. Leave the ``client_id`` as ``swagger`` and the ``client_secret`` empty, select
+all scopes and click ``Authorize``. You should now be logged in and you can send
+requests using the ``Try it out`` buttons on individual requests.
 
 
 Developing Renku
@@ -309,6 +305,17 @@ in editable mode using ``pipx``. Clone the repository and then do:
 
 This will install all the extras for testing and debugging.
 
+If you already use `pyenv <https://github.com/pyenv/pyenv>`__ to manage different python versions,
+you may be interested in installing `pyenv-virtualenv <https://github.com/pyenv/pyenv-virtualenv>`__ to
+create an ad-hoc virtual environment for developing renku.
+
+Once you have created and activated a virtual environment for renku-python, you can use the usual
+`pip` commands to install the required dependencies.
+
+::
+
+    $ pip install -e .[all]  # use `.[all]` for zsh
+
 
 Service
 -------
@@ -319,28 +326,25 @@ variable ``DEBUG_MODE=true`` either in your shell or in the ``.env`` file. Note 
 this case the local directory is mounted in the docker container and renku is re-installed
 so it may take a few minutes before the container is ready.
 
+If you have a full RenkuLab deployment at your disposal, you can
+use `telepresence <https://www.telepresence.io/>`__ v1 to develop and debug locally.
+Just run the `start-telepresence.sh` script and follow the instructions. You can also
+attach a remote debugger using the "remote attach" method described later.
+Mind that the script doesn't work with telepresence v2.
+
 
 Running tests
 -------------
 
-To run tests locally with specific version of Python:
+We use `pytest <https://docs.pytest.org>`__ for running tests.
+You can use our `run-tests.sh` script for running specific set of tests.
 
 ::
 
-    $ pyenv install 3.7.5rc1
-    $ pipenv --python ~/.pyenv/versions/3.7.5rc1/bin/python install
-    $ pipenv run tests
+    $ ./run-tests.sh -h
 
-
-To recreate environment with different version of Python, it's easy to do so with the following commands:
-
-::
-
-    $ pipenv --rm
-    $ pyenv install 3.6.9
-    $ pipenv --python ~/.pyenv/versions/3.6.9/bin/python install
-    $ pipenv run tests
-
+We lint the files using `black <https://github.com/psf/black>`__ and
+`isort <https://github.com/PyCQA/isort>`__.
 
 
 Using External Debuggers
@@ -372,18 +376,18 @@ If using Visual Studio Code, you may also want to set the ``Remote Attach`` conf
 ::
 
     {
-            "name": "Python: Remote Attach",
-            "type": "python",
-            "request": "attach",
-            "port": 5678,
-            "host": "localhost",
-            "pathMappings": [
-                {
-                    "localRoot": "<path-to-renku-python-source-code>",
-                    "remoteRoot": "<path-to-renku-python-source-code>"
-                }
-            ]
-        },
+        "name": "Python: Remote Attach",
+        "type": "python",
+        "request": "attach",
+        "port": 5678,
+        "host": "localhost",
+        "pathMappings": [
+            {
+                "localRoot": "<path-to-renku-python-source-code>",
+                "remoteRoot": "<path-to-renku-python-source-code>"
+            }
+        ]
+    }
 
 
 Kubernetes
@@ -395,6 +399,10 @@ To debug a running renku-core service in a Kubernetes cluster, the service has t
 
     core:
       debug: true
+
+Also, if you want to be able to modify the files remotely, you need to change
+the `security context` on the `deployment.yaml` file for the renku-core component
+from `runAsUser: 1000` to `runAsGroup: 2000`.
 
 Then install the `Kubernetes extension <https://github.com/Azure/vscode-kubernetes-tools>`_
 and configure your local kubectl with the credentials needed for your cluster.

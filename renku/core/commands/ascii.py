@@ -22,7 +22,7 @@ import re
 import attr
 import click
 
-from renku.core.models.workflow.run import Run
+from renku.core.models.workflow.plan import Plan
 
 try:
     from itertools import zip_longest
@@ -123,21 +123,21 @@ class DAG(object):
 
         # Handle subprocesses of a workflow.
         part_of = None
-        if isinstance(node, Run):
+        if isinstance(node, Plan):
             part_of = getattr(node.activity, "part_of", None)
 
         if part_of:
             step_id = node.activity._id.split("/")[-1]
             workflow_path = click.style(
                 "{workflow_path}#steps/{step_id}".format(
-                    workflow_path=self.graph._format_path(part_of.path), step_id=step_id,
+                    workflow_path=self.graph._format_path(part_of.path), step_id=step_id
                 ),
                 fg="blue",
             )
 
             result.append(
                 "{indentation} (part of {hexsha} {workflow_path})".format(
-                    indentation=indentation, hexsha=_format_sha1(self.graph, part_of), workflow_path=workflow_path,
+                    indentation=indentation, hexsha=_format_sha1(self.graph, part_of), workflow_path=workflow_path
                 )
             )
 
@@ -145,7 +145,7 @@ class DAG(object):
         if parent and hasattr(parent, "members"):
             result.append(
                 "{indentation} (part of {parent_path} directory)".format(
-                    indentation=indentation, parent_path=click.style(parent.path, fg="blue",),
+                    indentation=indentation, parent_path=click.style(parent.path, fg="blue")
                 )
             )
 
@@ -254,7 +254,7 @@ class DAG(object):
         current_line.extend([node_symbol, " "])
         # Append fixed rest of the line from edge characters.
         current_line.extend(
-            self._line_tail(edge_characters, column_index, number_of_columns, columns_size_diff, fix_tail_slope,)
+            self._line_tail(edge_characters, column_index, number_of_columns, columns_size_diff, fix_tail_slope)
         )
 
         # shift_line is the line containing the non-vertical

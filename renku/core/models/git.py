@@ -44,11 +44,11 @@ _RE_HOSTNAME = (
 
 _RE_PORT = r":(?P<port>\d+)"
 
-_RE_PATHNAME = r"(?P<pathname>(([\w\-\~\.]+)/)*?(((?P<owner>([\w\-\.]+/?)+)/)?(?P<name>[\w\-\.]+)(\.git)?)?)"
+_RE_PATHNAME = r"(?P<pathname>(([\w\-\~\.]+)/)*?(((?P<owner>([\w\-\.]+/?)+)/)?(?P<name>[\w\-\.]+)(\.git)?)?)/*"
 
 _RE_PATHNAME_WITH_GITLAB = (
     r"(?P<pathname>((((gitlab/){0,1}|([\w\-\~\.]+/)*?)(?P<owner>([\w\-\.]+/)*[\w\-\.]+)/)?"
-    r"(?P<name>[\w\-\.]+)(\.git)?)?)"
+    r"(?P<name>[\w\-\.]+)(\.git)?)?)/*"
 )
 
 _RE_UNIXPATH = r"(file\://)?(?P<pathname>\/$|((?=\/)|\.|\.\.)(\/(?=[^/\0])[^/\0]+)*\/?)"
@@ -165,7 +165,7 @@ class Range:
         elif not stop:
             stop = "HEAD"
 
-        return cls(start=git.rev_parse(start) if start else None, stop=git.rev_parse(stop),)
+        return cls(start=git.rev_parse(start) if start else None, stop=git.rev_parse(stop))
 
     def __str__(self):
         """Format range."""

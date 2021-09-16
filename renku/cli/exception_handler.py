@@ -64,7 +64,7 @@ import portalocker
 from renku.core.commands.echo import ERROR
 from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
 
-_BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=True,)
+_BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=True)
 
 HAS_SENTRY = None
 SENTRY_DSN = os.getenv("SENTRY_DSN")
@@ -126,7 +126,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         except (filelock.Timeout, portalocker.LockException, portalocker.AlreadyLocked):
             click.echo(
                 (
-                    click.style("Unable to acquire lock.\n", fg="red",) + "Hint: Please wait for another renku "
+                    click.style("Unable to acquire lock.\n", fg="red") + "Hint: Please wait for another renku "
                     "process to finish and then try again."
                 )
             )
@@ -150,7 +150,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 from git import Repo
 
                 from renku.core.commands.git import get_git_home
-                from renku.core.models.provenance.agents import Person
+                from renku.core.models.provenance.agent import Person
 
                 repo = Repo(get_git_home())
                 user = Person.from_git(repo)
@@ -158,27 +158,25 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 scope.user = {"name": user.name, "email": user.email}
 
             event_id = capture_exception()
-            click.echo(
-                _BUG + "Recorded in Sentry with ID: {0}\n".format(event_id), err=True,
-            )
+            click.echo(_BUG + "Recorded in Sentry with ID: {0}\n".format(event_id), err=True)
             raise
 
     def _handle_github(self):
         """Handle exception and submit it as GitHub issue."""
         value = click.prompt(
             _BUG
-            + click.style('1. Open an issue by typing "open";\n', fg="green",)
-            + click.style("2. Print human-readable information by typing " '"print";\n', fg="yellow",)
-            + click.style("3. See the full traceback without submitting details " '(default: "ignore").\n\n', fg="red",)
+            + click.style('1. Open an issue by typing "open";\n', fg="green")
+            + click.style("2. Print human-readable information by typing " '"print";\n', fg="yellow")
+            + click.style("3. See the full traceback without submitting details " '(default: "ignore").\n\n', fg="red")
             + "Please select an action by typing its name",
-            type=click.Choice(["open", "print", "ignore",],),
+            type=click.Choice(["open", "print", "ignore"]),
             default="ignore",
         )
         getattr(self, "_process_" + value)()
 
     def _format_issue_title(self):
         """Return formatted title."""
-        return textwrap.shorten("cli: renku " + " ".join(sys.argv[1:]), width=50,)
+        return textwrap.shorten("cli: renku " + " ".join(sys.argv[1:]), width=50)
 
     def _format_issue_body(self, limit=-5):
         """Return formatted body."""
@@ -200,7 +198,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
     def _format_issue_url(self):
         """Format full issue URL."""
-        query = urlencode({"title": self._format_issue_title(), "body": self._format_issue_body(),})
+        query = urlencode({"title": self._format_issue_title(), "body": self._format_issue_body()})
         return self.REPO_URL + self.ISSUE_SUFFIX + "?" + query
 
     def _process_open(self):

@@ -17,8 +17,6 @@
 # limitations under the License.
 """Test ``rerun`` command."""
 
-from __future__ import absolute_import, print_function
-
 import os
 import subprocess
 from pathlib import Path
@@ -28,13 +26,36 @@ import pytest
 from click.testing import CliRunner
 
 from renku.cli import cli
+from tests.utils import format_result_exception, write_and_commit_file
+
+
+def test_rerun(project, renku_cli):
+    """Test rerun."""
+    output = Path(project) / "output.txt"
+
+    cmd = ["run", "python", "-S", "-c", "import random; print(random.random())"]
+
+    assert 0 == renku_cli(*cmd, stdout=output).exit_code
+
+    content = output.read_text().strip()
+
+    def rerun():
+        assert 0 == renku_cli("rerun", output).exit_code
+        return output.read_text().strip()
+
+    for _ in range(10):
+        new_content = rerun()
+        if content != new_content:
+            break
+
+    assert content != new_content, "Something is not random"
 
 
 @pytest.mark.parametrize(
-    "source,selected",
+    "source, output",
     [
-        ("coffee-orders-☕-by-locationtest.csv", "😍works.txt"),
-        ("source.txt", "selected.txt"),
+        ("input with space.txt", "output .txt"),
+        ("coffee-orders-☕-by-location.csv", "😍works.txt"),
         ("test-愛", "成功"),
         ("그래프", "성공"),
         ("يحاول", "نجاح.txt"),
@@ -42,107 +63,63 @@ from renku.cli import cli
         ("𒁃.c", "𒁏.txt"),
     ],
 )
-def test_simple_rerun(runner, project, run, no_lfs_warning, source, selected):
-    """Test simple file recreation."""
-    greetings = {"hello", "hola", "ahoj"}
-
+def test_rerun_with_special_paths(project, renku_cli, source, output):
+    """Test rerun with unicode/whitespace filenames."""
     cwd = Path(project)
     source = cwd / source
-    selected = cwd / selected
+    output = cwd / output
 
+    assert 0 == renku_cli("run", "python", "-S", "-c", "import random; print(random.random())", stdout=source).exit_code
+    assert 0 == renku_cli("run", "cat", source, stdout=output).exit_code
+
+    content = output.read_text().strip()
+
+    def rerun():
+        assert 0 == renku_cli("rerun", output).exit_code
+        return output.read_text().strip()
+
+    for _ in range(10):
+        new_content = rerun()
+        if content != new_content:
+            break
+
+    assert content != output.read_text().strip(), "The output should have changed."
+
+
+@pytest.mark.parametrize("source, content", [("input1", "input1 new-input2 old"), ("input2", "input1 old-input2 new")])
+def test_rerun_with_from(project, renku_cli, source, content):
+    """Test file recreation with specified inputs."""
     repo = git.Repo(project)
-
-    with source.open("w") as f:
-        f.write("\n".join(greetings))
-
-    repo.git.add("--all")
-    repo.index.commit("Created greetings")
-
-    cmd = ["run", "python", "-S", "-c", "import sys, random; print(random.choice(sys.stdin.readlines()))"]
-
-    assert 0 == run(cmd, stdin=source, stdout=selected)
-
-    with selected.open("r") as f:
-        greeting = f.read().strip()
-        assert greeting in greetings
-
-    def _rerun():
-        """Return greeting after reruning."""
-        result = run(args=("rerun", str(selected)))
-        assert 0 == result
-        with selected.open("r") as fp:
-            greeting = fp.read().strip()
-            assert greeting in greetings
-            return greeting
-
-    for _ in range(100):
-        new_greeting = _rerun()
-        if greeting != new_greeting:
-            break
-
-    assert greeting != new_greeting, "Something is not random"
-
-    for _ in range(100):
-        new_greeting = _rerun()
-        if greeting == new_greeting:
-            break
-
-    assert greeting == new_greeting, "Something is not random"
-
-
-def test_rerun_with_inputs(runner, project, run):
-    """Test file recreation with specified inputs."""
     cwd = Path(project)
-    first = cwd / "first.txt"
-    second = cwd / "second.txt"
-    inputs = (first, second)
+    input1 = cwd / "input1"
+    input2 = cwd / "input2"
+    intermediate1 = cwd / "intermediate1"
+    intermediate2 = cwd / "intermediate2"
+    output = cwd / "output"
 
-    output = cwd / "output.txt"
+    write_and_commit_file(repo, input1, "input1 old-")
+    write_and_commit_file(repo, input2, "input2 old")
 
-    cmd = ["run", "python", "-S", "-c", "import random; print(random.random())"]
+    assert 0 == renku_cli("run", "cp", input1, intermediate1).exit_code
+    assert 0 == renku_cli("run", "cp", input2, intermediate2).exit_code
 
-    for file_ in inputs:
-        assert 0 == run(args=cmd, stdout=file_), "Random number generation."
+    assert 0 == renku_cli("run", "cat", intermediate1, intermediate2, stdout=output).exit_code
 
-    cmd = ["run", "cat"] + [str(path) for path in inputs]
-    assert 0 == run(args=cmd, stdout=output)
+    # Update both inputs
+    write_and_commit_file(repo, input1, "input1 new-")
+    write_and_commit_file(repo, input2, "input2 new")
 
-    with output.open("r") as f:
-        initial_data = f.read()
+    commit_sha_before = repo.head.object.hexsha
 
-    assert 0 == run(args=("rerun", str(output)))
+    assert 0 == renku_cli("rerun", "--from", source, output).exit_code
 
-    with output.open("r") as f:
-        assert f.read() != initial_data, "The output should have changed."
+    assert content == output.read_text()
 
-
-def test_rerun_with_inputs_with_from(runner, project, run):
-    """Test file recreation with specified inputs."""
-    cwd = Path(project)
-    first = cwd / "first.txt"
-    second = cwd / "second.txt"
-    inputs = (first, second)
-
-    output = cwd / "output.txt"
-
-    cmd = ["run", "python", "-S", "-c", "import random; print(random.random())"]
-
-    for file_ in inputs:
-        assert 0 == run(args=cmd, stdout=file_), "Random number generation."
-
-    cmd = ["run", "cat"] + [str(path) for path in inputs]
-    assert 0 == run(args=cmd, stdout=output)
-
-    # Keep the first file unchanged.
-    with first.open("r") as f:
-        first_data = f.read()
-
-    assert 0 == run(args=("rerun", "--from", str(first), str(output)))
-
-    with output.open("r") as f:
-        assert f.read().startswith(first_data)
+    commit_sha_after = repo.head.object.hexsha
+    assert commit_sha_before != commit_sha_after
 
 
+@pytest.mark.skip(reason="renku rerun not implemented with --edit-inputs yet, reenable later")
 def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
     """Test input modification."""
     runner = CliRunner(mix_stderr=False)
@@ -181,7 +158,7 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
         result = runner.invoke(
             cli, ["rerun", "--show-inputs", "--from", str(first), str(second)], catch_exceptions=False
         )
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
         assert result.output.startswith("https://")
         assert result.output[:-1].endswith(first.name)
         assert 0 == run(args=("rerun", "--edit-inputs", "--from", str(first), str(second)), stdin=stdin)
@@ -193,19 +170,16 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
             assert third_fp.read() == second_fp.read()
 
 
-@pytest.mark.parametrize("cmd, exit_code", (("update", 0), ("rerun", 1)))
-def test_input_update_and_rerun(cmd, exit_code, runner, project, run):
-    """Test update and rerun of an input."""
+def test_rerun_with_no_execution(project, runner):
+    """Test rerun when no workflow is executed."""
     repo = git.Repo(project)
-    cwd = Path(project)
-    input_ = cwd / "input.txt"
-    with input_.open("w") as f:
-        f.write("first")
+    input = os.path.join(project, "data", "input.txt")
+    write_and_commit_file(repo, input, "content")
 
-    repo.git.add("--all")
-    repo.index.commit("Created input.txt")
+    result = runner.invoke(cli, ["rerun", input], catch_exceptions=False)
 
-    assert exit_code == run(args=(cmd, input_.name))
+    assert 1 == result.exit_code
+    assert "Path 'data/input.txt' is not generated by any workflows." in result.output
 
 
 def test_output_directory(runner, project, run, no_lfs_size_limit):
@@ -230,7 +204,7 @@ def test_output_directory(runner, project, run, no_lfs_size_limit):
 
     cmd = ["run", "cp", "-LRf", str(source), str(destination)]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     destination_source = destination / data.name
     assert destination_source.exists()
@@ -248,11 +222,10 @@ def test_output_directory(runner, project, run, no_lfs_size_limit):
     assert 0 == run(args=("rerun", str(source_wc)))
     assert {data.name} == {path.name for path in destination.iterdir()}
 
-    cmd = ["log", str(source_wc)]
+    cmd = ["graph", "export"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
     destination_data = str(Path("destination") / "data.txt")
     assert destination_data in result.output, cmd
-    assert " directory)" in result.output
 
     cmd = ["run", "cp", "-r", str(source), str(invalid_destination)]
     result = runner.invoke(cli, cmd, catch_exceptions=False)

@@ -30,7 +30,8 @@ from renku.cli import cli
 from renku.cli.init import parse_parameters
 from renku.core import errors
 from renku.core.commands.init import create_template_sentence
-from tests.utils import raises
+from renku.core.metadata.database import Database
+from tests.utils import format_result_exception, raises
 
 
 def test_parse_parameters(project_init):
@@ -95,7 +96,7 @@ def test_list_templates(isolated_runner, project_init, template):
     new_project = Path(data["test_project"])
     assert not new_project.exists()
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["list"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not new_project.exists()
     assert template["id"] in result.output
 
@@ -108,11 +109,11 @@ def test_init(isolated_runner, project_init):
     new_project = Path(data["test_project"])
     assert not new_project.exists()
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
     # try to re-create in the same folder
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
@@ -122,23 +123,23 @@ def test_init(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
     # init using index instead of id
     new_project_2 = Path(data["test_project_alt"])
     result = isolated_runner.invoke(cli, commands["init_alt"] + commands["index"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project_2.exists()
     assert (new_project_2 / ".renku").exists()
     assert (new_project_2 / ".renku" / "renku.ini").exists()
-    assert (new_project_2 / ".renku" / "metadata.yml").exists()
+    assert (new_project_2 / ".renku" / "metadata").exists()
 
     # verify both init lead to the same result
-    template_files = [f for f in new_project.glob("**/*") if ".git" not in str(f)]
+    template_files = [f for f in new_project.glob("**/*") if ".git" not in str(f) and ".renku/metadata/" not in str(f)]
     for template_file in template_files:
         expected_file = new_project_2 / template_file.relative_to(new_project)
         assert expected_file.exists()
@@ -161,11 +162,11 @@ def test_init_initial_branch(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["initial_branch_main"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
     assert git.Repo(str(new_project)).active_branch.name == data["main_branch"]
 
 
@@ -200,12 +201,14 @@ def test_init_with_git_remote(isolated_runner, project_init, remote):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
-    assert remote[1] in (new_project / ".renku" / "metadata.yml").read_text()
+    assert (new_project / ".renku" / "metadata").exists()
+
+    url = urlparse(remote[1])
+    assert url.path in (new_project / ".renku" / "metadata" / "project").read_text()
 
 
 def test_init_force_in_empty_dir(isolated_runner, project_init):
@@ -217,7 +220,7 @@ def test_init_force_in_empty_dir(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_init_force_in_dirty_dir(isolated_runner, project_init):
@@ -234,7 +237,7 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     assert random_file.exists()
 
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Project initialized" in result.output
 
     shutil.rmtree(new_project)
@@ -262,6 +265,7 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     assert gitignore.exists()
 
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
+
     assert 1 == result.exit_code
     assert "The following files exist in the directory and will be overwritten" in result.output
     assert "The following files exist in the directory and will be appended to" in result.output
@@ -271,7 +275,7 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert random_file.exists()
     assert dockerfile.exists()
@@ -294,11 +298,11 @@ def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
 
     # try to create in a dirty folder
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
 
 @pytest.mark.integration
@@ -312,11 +316,11 @@ def test_init_remote(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
 
 @pytest.mark.integration
@@ -337,19 +341,20 @@ def test_init_new_metadata(isolated_runner, project_init):
     new_project = Path(data["test_project"])
     assert not new_project.exists()
     result = isolated_runner.invoke(
-        cli, commands["init_custom"] + template_source + description + number_val, commands["confirm"],
+        cli,
+        commands["init_custom"] + template_source + description + number_val,
+        commands["confirm"],
     )
     assert 0 == result.exit_code, result.output
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
-    metadata = json.loads(
-        yaml.load((new_project / ".renku" / "metadata.yml").read_text())[
-            "https://swissdatasciencecenter.github.io/renku-ontology#templateMetadata"
-        ]
-    )
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    metadata = json.loads(project.template_metadata)
     assert metadata["bool_var"]
     assert metadata["enum_var"] == "ask again"
     assert metadata["description"] == "some description"
@@ -372,13 +377,12 @@ def test_init_new_metadata(isolated_runner, project_init):
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
-    metadata = json.loads(
-        yaml.load((new_project / ".renku" / "metadata.yml").read_text())[
-            "https://swissdatasciencecenter.github.io/renku-ontology#templateMetadata"
-        ]
-    )
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    metadata = json.loads(project.template_metadata)
     assert metadata["bool_var"]
     assert metadata["enum_var"] == "yes"
     assert metadata["description"] == "lalala"
@@ -401,13 +405,12 @@ def test_init_new_metadata(isolated_runner, project_init):
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
-    metadata = json.loads(
-        yaml.load((new_project / ".renku" / "metadata.yml").read_text())[
-            "https://swissdatasciencecenter.github.io/renku-ontology#templateMetadata"
-        ]
-    )
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    metadata = json.loads(project.template_metadata)
     assert not metadata["bool_var"]
     assert metadata["enum_var"] == "yes"
     assert metadata["description"] == "lalala"
@@ -430,13 +433,12 @@ def test_init_new_metadata(isolated_runner, project_init):
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
-    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert (new_project / ".renku" / "metadata").exists()
 
-    metadata = json.loads(
-        yaml.load((new_project / ".renku" / "metadata.yml").read_text())[
-            "https://swissdatasciencecenter.github.io/renku-ontology#templateMetadata"
-        ]
-    )
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    metadata = json.loads(project.template_metadata)
     assert metadata["bool_var"]
     assert metadata["enum_var"] == "ask again"
     assert metadata["description"] == "lalala"
@@ -467,11 +469,36 @@ def test_init_with_parameters(isolated_runner, project_init, template):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["parameters"], commands["confirm"]
     )
-    assert 0 == result.exit_code
-    assert "The template requires a value for" in result.output
+    assert 0 == result.exit_code, format_result_exception(result)
+    # TODO: Re-enable this check once parameters are added to the template.
+    # assert "The template requires a value for" in result.output
     for param in set(template["metadata"].keys()):
         assert param in result.output
     assert "These parameters are not used by the template and were ignored:" in result.output
+
+
+def test_init_with_custom_metadata(isolated_runner, project_init, template):
+    """Test project initialization using custom metadata."""
+    data, commands = project_init
+
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = Path("metadata.json")
+    metadata_path.write_text(json.dumps(metadata))
+
+    # create the project
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--metadata", str(metadata_path)])
+    assert 0 == result.exit_code
+
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    assert metadata == project.annotations[0].body
 
 
 @pytest.mark.parametrize("data_dir", ["dir", "nested/dir/s"])
@@ -483,7 +510,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 
     new_project = Path(data["test_project"])
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert (new_project / data_dir).exists()
     assert (new_project / data_dir / ".gitkeep").exists()
@@ -491,7 +518,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 
     os.chdir(new_project.resolve())
     result = isolated_runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
     assert (Path(data_dir) / "my-data" / directory_tree.name / "file1").exists()
 
 
@@ -526,7 +553,7 @@ def test_default_init_parameters(isolated_runner, mocker, project_init, template
     new_project = Path(data["test_project"])
     assert not new_project.exists()
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     create_from_template.assert_called_once()
     metadata = create_from_template.call_args[1]["metadata"]
     assert {
@@ -539,9 +566,27 @@ def test_default_init_parameters(isolated_runner, mocker, project_init, template
         "__sanitized_project_name__",
     } <= set(metadata.keys())
     assert metadata["__template_source__"] == "renku"
-    assert metadata["__template_ref__"] == "master"
+    assert metadata["__template_ref__"] is None
     assert metadata["__template_id__"] == template["id"]
     assert metadata["__namespace__"] == ""
     assert metadata["__repository__"] == ""
     assert metadata["__project_slug__"] == ""
     assert metadata["__sanitized_project_name__"] == ""
+
+
+def test_init_with_description(isolated_runner, template):
+    """Test project initialization with description."""
+    result = isolated_runner.invoke(
+        cli, ["init", "--description", "my project description", "new-project", "--template-id", template["id"]]
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(Path("new-project") / ".renku" / "metadata")
+    project = database.get("project")
+
+    assert "my project description" in project.template_metadata
+    assert "my project description" == project.description
+
+    readme_content = (Path("new-project") / "README.md").read_text()
+    assert "my project description" in readme_content

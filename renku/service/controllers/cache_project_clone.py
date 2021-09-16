@@ -21,14 +21,14 @@ from marshmallow import EXCLUDE
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
-from renku.service.serializers.cache import ProjectCloneContext, ProjectCloneRequest, ProjectCloneResponseRPC
+from renku.service.serializers.cache import ProjectCloneContext, ProjectCloneResponseRPC, RepositoryCloneRequest
 from renku.service.views import result_response
 
 
 class ProjectCloneCtrl(ServiceCtrl, RenkuOperationMixin):
     """Controller for cloning a project endpoint."""
 
-    REQUEST_SERIALIZER = ProjectCloneRequest()
+    REQUEST_SERIALIZER = RepositoryCloneRequest()
     RESPONSE_SERIALIZER = ProjectCloneResponseRPC()
 
     def __init__(self, cache, user_data, request_data):

@@ -41,6 +41,17 @@ the command-line or set it once in project's configuration:
     rights of this file to be readable only by you. This token exists only on
     your system and won't be pushed to a remote server.
 
+This command also allows you to log into gitlab server for private repositories.
+You can use this method instead of creating an SSH key. Passing ``--git`` will
+change the repository's remote URL to an endpoint in the deployment that adds
+authentication to gitlab requests.
+
+.. note::
+
+    Project's remote URL will be changed when using ``--git`` option. Changes
+    are undone when logging out from renku in the CLI. Original remote URL will
+    be stored in a remote with name ``renku-backup-<remote-name>``.
+
 Logging out from Renku removes the secure token from your system:
 
 .. code-block:: console
@@ -54,15 +65,17 @@ endpoints are removed.
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.login import login_command, logout_command
+from renku.core.commands.login import login_command, logout_command, token_command
 
 
 @click.command()
 @click.argument("endpoint", required=False, default=None)
-def login(endpoint):
+@click.option("--git", is_flag=True, default=False, help="Log in to gitlab too.")
+@click.option("--yes", is_flag=True, default=False, hidden=True, help="Do not ask for user confirmation.")  # For tests
+def login(endpoint, git, yes):
     """Log in to the platform."""
     communicator = ClickCallback()
-    login_command().with_communicator(communicator).build().execute(endpoint=endpoint)
+    login_command().with_communicator(communicator).build().execute(endpoint=endpoint, git_login=git, yes=yes)
     click.secho("Successfully logged in.", fg="green")
 
 
@@ -73,3 +86,12 @@ def logout(endpoint):
     communicator = ClickCallback()
     logout_command().with_communicator(communicator).build().execute(endpoint=endpoint)
     click.secho("Successfully logged out.", fg="green")
+
+
+@click.command(hidden=True)
+@click.option("--hostname", default=None, hidden=True, help="Remote hostname.")
+@click.argument("command")
+def token(command, hostname):
+    """A git credential helper for returning renku token."""
+    communicator = ClickCallback()
+    token_command().with_communicator(communicator).build().execute(command=command, hostname=hostname)

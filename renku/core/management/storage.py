@@ -26,15 +26,15 @@ from collections import defaultdict
 from pathlib import Path
 from shutil import move, which
 from subprocess import PIPE, STDOUT, check_output, run
+from typing import Optional
 
 import attr
 import pathspec
 from werkzeug.utils import cached_property
 
 from renku.core import errors
-from renku.core.models.provenance.activities import Collection
-from renku.core.models.provenance.datasets import DatasetProvenance
-from renku.core.models.provenance.provenance_graph import ProvenanceGraph
+from renku.core.models.entity import Entity
+from renku.core.models.provenance.activity import Collection
 from renku.core.utils import communication
 from renku.core.utils.file_size import parse_file_size
 from renku.core.utils.git import add_to_git, run_command
@@ -230,7 +230,7 @@ class StorageApiMixin(RepositoryApiMixin):
         """Untrack paths from the external storage."""
         try:
             result = run_command(
-                self._CMD_STORAGE_UNTRACK, *paths, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True,
+                self._CMD_STORAGE_UNTRACK, *paths, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True
             )
 
             if result.returncode != 0:
@@ -381,7 +381,7 @@ class StorageApiMixin(RepositoryApiMixin):
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
         result = run_command(
-            self._CMD_STORAGE_CHECKOUT, *paths, cwd=self.path, stdout=PIPE, stderr=STDOUT, universal_newlines=True,
+            self._CMD_STORAGE_CHECKOUT, *paths, cwd=self.path, stdout=PIPE, stderr=STDOUT, universal_newlines=True
         )
 
         if result.returncode != 0:
@@ -532,8 +532,32 @@ class StorageApiMixin(RepositoryApiMixin):
                     processed.add(path_obj)
                     path_obj = path_obj.parent
 
-        def _map_checksum(entity, checksum_mapping):
+        def _map_checksum(entity, checksum_mapping) -> Optional[Entity]:
             """Update the checksum and id of an entity based on a mapping."""
+            if entity.checksum not in checksum_mapping:
+                return
+
+            new_checksum = checksum_mapping[entity.checksum]
+
+            if isinstance(entity, Collection) and entity.members:
+                members = []
+                for member in entity.members:
+                    new_member = _map_checksum(member, checksum_mapping)
+                    if new_member:
+                        member.append(new_member)
+                    else:
+                        members.append(member)
+                new_entity = Collection(checksum=new_checksum, path=entity.path, members=members)
+            else:
+                new_entity = Entity(checksum=new_checksum, path=entity.path)
+
+            return new_entity
+
+        def _map_checksum_old(entity, checksum_mapping):
+            """Update the checksum and id of an entity based on a mapping."""
+            # TODO: Remove this method once moved to Entity with 'id' field
+            from renku.core.models.provenance.activity import Collection
+
             if entity.checksum not in checksum_mapping:
                 return
 
@@ -544,33 +568,51 @@ class StorageApiMixin(RepositoryApiMixin):
 
             if isinstance(entity, Collection) and entity.members:
                 for member in entity.members:
-                    _map_checksum(member, checksum_mapping)
+                    _map_checksum_old(member, checksum_mapping)
 
         # NOTE: Update workflow provenance
-        provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
+        # provenance_graph = ProvenanceGraph.from_database(database)
 
-        for activity in provenance_graph.activities:
-            if activity.generations:
-                for generation in activity.generations:
-                    entity = generation.entity
-                    _map_checksum(entity, sha_mapping)
+        # TODO: Update activities
+        # for activity in provenance_graph.activities:
+        #     # NOTE: This is a valid use-case since history will be re-written
+        #     activity._v_immutable = False
+        #     if activity.generations:
+        #         generations = []
+        #         for generation in activity.generations:
+        #             new_entity = _map_checksum(generation.entity, sha_mapping)
+        #             if new_entity:
+        #                 new_generation = Generation(id=generation.id, entity=new_entity)
+        #                 generations.append(new_generation)
+        #             else:
+        #                 generations.append(generation)
+        #         activity.generations = generations
 
-            if activity.usages:
-                for usage in activity.usages:
-                    entity = usage.entity
-                    _map_checksum(entity, sha_mapping)
+        #     if activity.usages:
+        #         usages = []
+        #         for usage in activity.usages:
+        #             new_entity = _map_checksum(usage.entity, sha_mapping)
+        #             if new_entity:
+        #                 new_usage = Usage(id=usage.id, entity=new_entity)
+        #                 usages.append(new_usage)
+        #             else:
+        #                 usages.append(usage)
+        #         activity.usages = usages
 
-            if activity.invalidations:
-                for entity in activity.invalidations:
-                    _map_checksum(entity, sha_mapping)
+        #     if activity.invalidations:
+        #         invalidations = []
+        #         for entity in activity.invalidations:
+        #             new_entity = _map_checksum(entity, sha_mapping)
+        #             if new_entity:
+        #                 invalidations.append(new_entity)
+        #             else:
+        #                 invalidations.append(entity)
+        #         activity.invalidations = invalidations
 
-        provenance_graph.to_json()
+        #     activity._v_immutable = True
 
         # NOTE: Update datasets provenance
-        datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
-
-        for dataset in datasets_provenance.datasets:
-            for file_ in dataset.files:
-                _map_checksum(file_.entity, sha_mapping)
-
-        datasets_provenance.to_json()
+        # TODO: Fix dataset provenance
+        # for dataset in datasets_provenance.datasets:
+        #     for file_ in dataset.files:
+        #         _map_checksum_old(file_.entity, sha_mapping)

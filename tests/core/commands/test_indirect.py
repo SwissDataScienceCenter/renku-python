@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
-from renku.core.models.cwl import command_line_tool
+from renku.core.management.workflow import plan_factory
 
 
 @pytest.mark.serial
@@ -32,7 +32,7 @@ def test_set_indirect_input_files_paths_via_env_var(tmp_path, env_var, reset_env
     """Test setting of RENKU_INDIRECT_PATH env variable."""
     os.environ["RENKU_INDIRECT_PATH"] = env_var
 
-    path = command_line_tool.get_indirect_inputs_path(tmp_path)
+    path = plan_factory.get_indirect_inputs_path(tmp_path)
 
     assert path.is_absolute()
 
@@ -47,7 +47,7 @@ def test_set_indirect_output_files_paths_via_env_var(tmp_path, env_var, reset_en
     """Test setting of RENKU_INDIRECT_PATH env variable."""
     os.environ["RENKU_INDIRECT_PATH"] = env_var
 
-    path = command_line_tool.get_indirect_outputs_path(tmp_path)
+    path = plan_factory.get_indirect_outputs_path(tmp_path)
 
     assert path.is_absolute()
 
@@ -63,4 +63,4 @@ def test_set_invalid_values_for_indirect_env_var(tmp_path, env_var, reset_enviro
     os.environ["RENKU_INDIRECT_PATH"] = env_var
 
     with pytest.raises(errors.InvalidFileOperation):
-        command_line_tool.get_indirect_inputs_path(tmp_path)
+        plan_factory.get_indirect_inputs_path(tmp_path)

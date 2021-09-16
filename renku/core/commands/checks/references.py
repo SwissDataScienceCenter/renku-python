@@ -26,7 +26,7 @@ def check_missing_references(client):
     """Find missing references."""
     from renku.core.models.refs import LinkReference
 
-    missing = [ref for ref in LinkReference.iter_items(client) if not ref.reference.exists()]
+    missing = [ref for ref in LinkReference.iter_items() if not ref.reference.exists()]
 
     if not missing:
         return True, None

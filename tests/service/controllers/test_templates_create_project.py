@@ -20,6 +20,7 @@ import pytest
 from marshmallow import ValidationError
 
 from renku.core.utils.scm import normalize_to_ascii
+from renku.version import is_release
 
 
 def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, mocker):
@@ -27,7 +28,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
     from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
     cache, user_data = ctrl_init
-    svc_client, headers, payload, rm_remote = svc_client_templates_creation
+    _svc_client, _headers, payload, _rm_remote = svc_client_templates_creation
 
     ctrl = TemplatesCreateProjectCtrl(cache, user_data, payload)
     ctrl_mock = mocker.patch.object(ctrl, "new_project_push", return_value=None)
@@ -54,6 +55,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "parameters",
         "project_name",
         "name",
+        "project_description",
         "new_project_url",
         "fullname",
         "project_slug",
@@ -77,7 +79,10 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "__repository__",
         "__sanitized_project_name__",
         "__project_slug__",
+        "__project_description__",
     }
+    if is_release():
+        expected_metadata.add("__renku_version__")
     assert expected_metadata == set(received_metadata.keys())
     assert payload["url"] == received_metadata["__template_source__"]
     assert payload["ref"] == received_metadata["__template_ref__"]
@@ -149,10 +154,10 @@ def test_except_project_name_handler(project_name, ctrl_init, svc_client_templat
     from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
     cache, user_data = ctrl_init
-    svc_client, headers, payload, rm_remote = svc_client_templates_creation
+    _svc_client, _headers, payload, _rm_remote = svc_client_templates_creation
     payload["project_name"] = project_name
 
     with pytest.raises(ValidationError) as exc_info:
         TemplatesCreateProjectCtrl(cache, user_data, payload)
 
-    assert "Invalid `git_url`" in str(exc_info.value)
+    assert "Project name contains only unsupported characters" in str(exc_info.value)

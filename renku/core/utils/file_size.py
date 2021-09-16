@@ -55,3 +55,11 @@ def parse_file_size(size_str):
     unit = units[res.group(2).lower()]
 
     return int(value * unit)
+
+
+def bytes_to_unit(size_in_bytes, unit: str):
+    """Return size in the provided unit."""
+    unit = unit.lower()
+    if unit not in units:
+        raise ValueError(f"Invalid unit '{unit}'. Valid units are: [{', '.join(units)}]")
+    return None if size_in_bytes is None else size_in_bytes / units[unit]

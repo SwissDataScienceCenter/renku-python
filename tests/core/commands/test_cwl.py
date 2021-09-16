@@ -20,21 +20,18 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
-from renku.core.models.entities import Collection, Entity
+from renku.core.management.workflow.plan_factory import PlanFactory
 
 
-def test_1st_tool(client):
+def test_1st_tool(client, client_database_injection_manager):
     """Check creation of 1st tool example from args."""
-    tool = CommandLineToolFactory(("echo", "Hello world!")).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with client_database_injection_manager(client):
+        plan = PlanFactory(("echo", "Hello world!")).to_plan()
 
-    tool = tool.association.plan
-    assert "Hello world!" == tool.arguments[0].value
+    assert "Hello world!" == plan.parameters[0].default_value
 
 
-def test_03_input(client):
+def test_03_input(client, client_database_injection_manager):
     """Check the essential input parameters."""
     whale = Path(client.path) / "whale.txt"
     whale.touch()
@@ -50,29 +47,24 @@ def test_03_input(client):
         "hello",
         "--file=whale.txt",
     ]
-    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with client_database_injection_manager(client):
+        plan = PlanFactory(argv, directory=client.path, working_dir=client.path).to_plan()
 
-    tool = tool.association.plan
+    assert ["-f"] == plan.parameters[0].to_argv()
 
-    assert ["-f"] == tool.arguments[0].to_argv()
+    assert "42" == plan.parameters[1].default_value
+    assert "-i" == plan.parameters[1].prefix
 
-    assert 42 == tool.arguments[1].value
-    assert "-i" == tool.arguments[1].prefix
+    assert "hello" == plan.parameters[2].default_value
+    assert "--example-string " == plan.parameters[2].prefix
 
-    assert "hello" == tool.arguments[2].value
-    assert "--example-string " == tool.arguments[2].prefix
+    assert plan.inputs[0].default_value == "whale.txt"
+    assert "--file=" == plan.inputs[0].prefix
 
-    assert tool.inputs[0].consumes.path == "whale.txt"
-    assert isinstance(tool.inputs[0].consumes, Entity)
-    assert not isinstance(tool.inputs[0].consumes, Collection)
-    assert "--file=" == tool.inputs[0].prefix
-
-    assert argv == tool.to_argv()
+    assert argv == plan.to_argv()
 
 
-def test_base_command_detection(client):
+def test_base_command_detection(client, client_database_injection_manager):
     """Test base command detection."""
     hello = Path(client.path) / "hello.tar"
     hello.touch()
@@ -81,22 +73,17 @@ def test_base_command_detection(client):
     client.repo.index.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
-    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with client_database_injection_manager(client):
+        plan = PlanFactory(argv, directory=client.path, working_dir=client.path).to_plan()
 
-    tool = tool.association.plan
+    assert "tar xf" == plan.command
+    assert plan.inputs[0].default_value == "hello.tar"
+    assert plan.inputs[0].prefix is None
 
-    assert "tar xf" == tool.command
-    assert tool.inputs[0].consumes.path == "hello.tar"
-    assert isinstance(tool.inputs[0].consumes, Entity)
-    assert not isinstance(tool.inputs[0].consumes, Collection)
-    assert tool.inputs[0].prefix is None
-
-    assert argv == tool.to_argv()
+    assert argv == plan.to_argv()
 
 
-def test_base_command_as_file_input(client):
+def test_base_command_as_file_input(client, client_database_injection_manager):
     """Test base command detection when it is a script file."""
     cwd = Path(client.path)
     script = cwd / "script.py"
@@ -109,29 +96,23 @@ def test_base_command_as_file_input(client):
     client.repo.index.commit("add file")
 
     argv = ["script.py", "input.csv"]
-    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path,).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with client_database_injection_manager(client):
+        plan = PlanFactory(argv, directory=client.path, working_dir=client.path).to_plan()
 
-    tool = tool.association.plan
-
-    assert not tool.command
-    assert 2 == len(tool.inputs)
+    assert not plan.command
+    assert 2 == len(plan.inputs)
 
 
-def test_short_base_command_detection(client):
-    """Test base command detection without arguments."""
-    tool = CommandLineToolFactory(("echo", "A")).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+def test_short_base_command_detection(client, client_database_injection_manager):
+    """Test base command detection without parameters."""
+    with client_database_injection_manager(client):
+        plan = PlanFactory(("echo", "A")).to_plan()
 
-    tool = tool.association.plan
-
-    assert "A" == tool.arguments[0].value
-    assert ["echo", "A"] == tool.to_argv()
+    assert "A" == plan.parameters[0].default_value
+    assert ["echo", "A"] == plan.to_argv()
 
 
-def test_04_output(client):
+def test_04_output(client, client_database_injection_manager):
     """Test describtion of outputs from a command."""
     hello = Path(client.path) / "hello.tar"
     hello.touch()
@@ -140,25 +121,25 @@ def test_04_output(client):
     client.repo.index.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path)
+    factory = PlanFactory(argv, directory=client.path, working_dir=client.path)
 
     # simulate run
 
     output = Path(client.path) / "hello.txt"
     output.touch()
 
-    parameters = list(factory.guess_outputs([output]))
+    factory.add_outputs([output])
+    parameters = factory.outputs
 
-    assert "File" == parameters[0][0].type
-    assert "hello.txt" == parameters[0][0].outputBinding.glob
+    assert "hello.txt" == parameters[0].default_value
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with client_database_injection_manager(client):
+        plan = factory.to_plan()
 
-    tool = tool.association.plan
-    assert argv == tool.to_argv()
+    assert argv == plan.to_argv()
 
 
-def test_05_stdout(client):
+def test_05_stdout(client, client_database_injection_manager):
     """Test stdout mapping."""
     output = Path(client.path) / "output.txt"
     output.touch()
@@ -167,18 +148,19 @@ def test_05_stdout(client):
     client.repo.index.commit("add output")
 
     argv = ["echo", "Hello world!"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path, stdout="output.txt",)
+    factory = PlanFactory(argv, directory=client.path, working_dir=client.path, stdout="output.txt")
 
     assert "output.txt" == factory.stdout
-    assert "stdout" == factory.outputs[0].type
+    factory.add_outputs(["output.txt"])
+    assert "stdout" == factory.outputs[0].mapped_to.stream_type
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with client_database_injection_manager(client):
+        plan = factory.to_plan()
 
-    tool = tool.association.plan
-    assert argv == tool.to_argv()
+    assert ["echo", '"Hello world!"'] == plan.to_argv()
 
 
-def test_stdout_with_conflicting_arg(client):
+def test_stdout_with_conflicting_arg(client, client_database_injection_manager):
     """Test stdout with conflicting argument value."""
     output = Path(client.path) / "lalala"
     output.touch()
@@ -187,20 +169,18 @@ def test_stdout_with_conflicting_arg(client):
     client.repo.index.commit("add lalala")
 
     argv = ["echo", "lalala"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path, stdout="lalala",)
+    factory = PlanFactory(argv, directory=client.path, working_dir=client.path, stdout="lalala")
 
-    assert "lalala" == factory.inputs[0].default
-    assert "string" == factory.inputs[0].type
+    assert "lalala" == factory.parameters[0].default_value
     assert "lalala" == factory.stdout
-    assert "stdout" == factory.outputs[0].type
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with client_database_injection_manager(client):
+        plan = factory.to_plan()
 
-    tool = tool.association.plan
-    assert argv == tool.to_argv()
+    assert argv == plan.to_argv()
 
 
-def test_06_params(client):
+def test_06_params(client, client_database_injection_manager):
     """Test referencing input parameters in other fields."""
     hello = Path(client.path) / "hello.tar"
     hello.touch()
@@ -208,31 +188,17 @@ def test_06_params(client):
     client.repo.index.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar", "goodbye.txt"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path,)
+    factory = PlanFactory(argv, directory=client.path, working_dir=client.path)
 
-    assert "goodbye.txt" == factory.inputs[1].default
-    assert "string" == factory.inputs[1].type
-    assert 2 == factory.inputs[1].inputBinding.position
+    assert "goodbye.txt" == factory.parameters[0].default_value
 
-    goodbye_id = factory.inputs[1].id
+    with client_database_injection_manager(client):
+        plan = factory.to_plan()
 
-    # simulate run
-
-    output = Path(client.path) / "goodbye.txt"
-    output.touch()
-
-    parameters = list(factory.guess_outputs([output]))
-
-    assert "File" == parameters[0][0].type
-    assert "$(inputs.{0})".format(goodbye_id) == parameters[0][0].outputBinding.glob
-
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
-
-    tool = tool.association.plan
-    assert argv == tool.to_argv()
+    assert argv == plan.to_argv()
 
 
-def test_09_array_inputs(client):
+def test_09_array_inputs(client, client_database_injection_manager):
     """Test specification of input parameters in arrays."""
     argv = [
         "echo",
@@ -245,20 +211,17 @@ def test_09_array_inputs(client):
         "-B=six",
         "-C=seven,eight,nine",
     ]
-    tool = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path).generate_process_run(
-        client=client, commit=client.repo.head.commit, path="dummy.yaml"
-    )
+    with client_database_injection_manager(client):
+        plan = PlanFactory(argv, directory=client.path, working_dir=client.path).to_plan()
 
-    tool = tool.association.plan
+    assert "seven,eight,nine" == plan.parameters[-1].default_value
+    assert "-C=" == plan.parameters[-1].prefix
 
-    assert "seven,eight,nine" == tool.arguments[-1].value
-    assert "-C=" == tool.arguments[-1].prefix
-
-    assert argv == tool.to_argv()
+    assert argv == plan.to_argv()
 
 
 @pytest.mark.parametrize("argv", [["wc"], ["wc", "-l"]])
-def test_stdin_and_stdout(argv, client):
+def test_stdin_and_stdout(argv, client, client_database_injection_manager):
     """Test stdout mapping."""
     input_ = Path(client.path) / "input.txt"
     input_.touch()
@@ -270,7 +233,7 @@ def test_stdin_and_stdout(argv, client):
     client.repo.index.add([str(input_), str(output), str(error)])
     client.repo.index.commit("add files")
 
-    factory = CommandLineToolFactory(
+    factory = PlanFactory(
         argv,
         directory=client.path,
         working_dir=client.path,
@@ -281,21 +244,22 @@ def test_stdin_and_stdout(argv, client):
 
     assert factory.stdin
     if len(argv) > 1:
-        assert factory.arguments
+        assert factory.parameters
 
     assert "output.txt" == factory.stdout
-    assert "stdout" == factory.outputs[0].type
+    factory.add_outputs(["output.txt", "error.log"])
+    assert "stdout" == factory.outputs[0].mapped_to.stream_type
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with client_database_injection_manager(client):
+        plan = factory.to_plan()
 
-    tool = tool.association.plan
-    assert argv == tool.to_argv()
-    assert any(i.mapped_to and i.mapped_to.stream_type == "stdin" for i in tool.inputs)
-    assert any(o.mapped_to and o.mapped_to.stream_type == "stdout" for o in tool.outputs)
-    assert any(o.mapped_to and o.mapped_to.stream_type == "stderr" for o in tool.outputs)
+    assert argv == plan.to_argv()
+    assert any(i.mapped_to and i.mapped_to.stream_type == "stdin" for i in plan.inputs)
+    assert any(o.mapped_to and o.mapped_to.stream_type == "stdout" for o in plan.outputs)
+    assert any(o.mapped_to and o.mapped_to.stream_type == "stderr" for o in plan.outputs)
 
 
-def test_input_directory(client):
+def test_input_directory(client, client_database_injection_manager):
     """Test input directory."""
     cwd = Path(client.path)
     src = cwd / "src"
@@ -311,39 +275,38 @@ def test_input_directory(client):
     client.repo.index.commit("add file and folder")
 
     argv = ["tar", "czvf", "src.tar", "src"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path,)
+    factory = PlanFactory(argv, directory=client.path, working_dir=client.path)
 
-    tool = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with client_database_injection_manager(client):
+        plan = factory.to_plan()
 
-    tool = tool.association.plan
-    assert argv == tool.to_argv()
+    assert argv == plan.to_argv()
 
-    inputs = sorted(tool.inputs, key=lambda x: x.position)
+    inputs = sorted(plan.inputs, key=lambda x: x.position)
 
-    assert src_tar.name == inputs[0].consumes.path
-    assert isinstance(inputs[0].consumes, Entity)
-    assert not isinstance(inputs[0].consumes, Collection)
-    assert inputs[1].consumes.path == src.name
-    assert isinstance(inputs[1].consumes, Collection)
+    assert src_tar.name == inputs[0].default_value
+    assert inputs[1].default_value == src.name
 
 
-def test_existing_output_directory(client, runner, project):
+@pytest.mark.skip("CWLConverter doesn't yet support new metadata, renable once it does")
+def test_existing_output_directory(client, runner, project, client_database_injection_manager):
     """Test creation of InitialWorkDirRequirement for output."""
-    from renku.core.models.workflow.converters.cwl import CWLConverter
+    from renku.core.management.workflow.converters.cwl import CWLConverter
 
     client.path = client.path
     output = client.path / "output"
 
     argv = ["script", "output"]
-    factory = CommandLineToolFactory(argv, directory=client.path, working_dir=client.path,)
+    factory = PlanFactory(argv, directory=client.path, working_dir=client.path)
 
     with factory.watch(client, no_output=True) as tool:
         # Script creates the directory.
         output.mkdir(parents=True)
 
-    run = factory.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
+    with client_database_injection_manager(client):
+        plan = factory.to_plan()
 
-    cwl, _ = CWLConverter.convert(run.association.plan, client)
+    cwl, _ = CWLConverter.convert(plan, client.path)
 
     assert 1 == len([r for r in cwl.requirements if hasattr(r, "listing")])
 
@@ -352,10 +315,11 @@ def test_existing_output_directory(client, runner, project):
         # The directory already exists.
         (output / "result.txt").touch()
 
-    assert 1 == len(tool.inputs)
+    assert 1 == len(tool.outputs)
 
-    run = tool.generate_process_run(client=client, commit=client.repo.head.commit, path="dummy.yaml")
-    cwl, _ = CWLConverter.convert(run.association.plan, client)
+    with client_database_injection_manager(client):
+        plan = tool.to_plan()
+    cwl, _ = CWLConverter.convert(plan, client.path)
 
     reqs = [r for r in cwl.requirements if hasattr(r, "listing")]
 

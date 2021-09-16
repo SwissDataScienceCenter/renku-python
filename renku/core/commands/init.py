@@ -18,6 +18,7 @@
 """Project initialization logic."""
 
 import json
+import re
 import tempfile
 from collections import OrderedDict, namedtuple
 from pathlib import Path
@@ -32,11 +33,15 @@ import yaml
 
 from renku.core import errors
 from renku.core.commands.git import set_git_home
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
+from renku.version import __version__, is_release
 
 TEMPLATE_MANIFEST = "manifest.yaml"
 
@@ -80,7 +85,7 @@ def create_template_sentence(templates, describe=False, instructions=False):
         for index, template_elem in enumerate(templates)
     ]
 
-    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters"),))
+    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters")))
 
     if describe:
         table_headers["description"] = "Description"
@@ -127,7 +132,7 @@ def select_template_from_manifest(
             repeat = True
 
     if template_index is not None:
-        if template_index > 0 and template_index <= len(template_manifest):
+        if 0 < template_index <= len(template_manifest):
             template_data = template_manifest[template_index - 1]
         else:
             communication.echo(f"The template at index {template_index} is not available.")
@@ -236,7 +241,7 @@ def prompt_for_value(name, template_variable):
 
 
 def verify_template_variables(template_data, metadata):
-    """Verifies that template variables are correcly set."""
+    """Verifies that template variables are correctly set."""
     template_variables = template_data.get("variables", {})
     template_variables_keys = set(template_variables.keys())
     input_parameters_keys = set(metadata.keys())
@@ -267,20 +272,24 @@ def verify_template_variables(template_data, metadata):
 
         metadata[key] = prompt_for_value(key, template_variables[key])
 
-    useless_variables = input_parameters_keys - template_variables_keys
-    if len(useless_variables) > 0:
+    # ignore internal variables, i.e. __\w__
+    internal_keys = re.compile(r"__\w+__$")
+    input_parameters_keys = set([i for i in input_parameters_keys if not internal_keys.match(i)])
+    unused_variables = input_parameters_keys - template_variables_keys
+    if len(unused_variables) > 0:
         communication.info(
             "These parameters are not used by the template and were "
-            "ignored:\n\t{}".format("\n\t".join(useless_variables))
+            "ignored:\n\t{}".format("\n\t".join(unused_variables))
         )
-        for key in useless_variables:
-            del metadata[key]
 
     return metadata
 
 
-def get_existing_template_files(client, template_path, metadata, force=False):
+@inject.autoparams()
+def get_existing_template_files(template_path, metadata, client_dispatcher: IClientDispatcher, force=False):
     """Gets files in the template that already exists in the repo."""
+    client = client_dispatcher.current_client
+
     template_files = list(client.get_template_files(template_path, metadata))
 
     existing = []
@@ -294,8 +303,11 @@ def get_existing_template_files(client, template_path, metadata, force=False):
     return existing
 
 
-def create_backup_branch(client, path):
+@inject.autoparams()
+def create_backup_branch(path, client_dispatcher: IClientDispatcher):
     """Creates a backup branch of the repo."""
+    client = client_dispatcher.current_client
+
     branch_name = None
     if not is_path_empty(path):
 
@@ -308,7 +320,7 @@ def create_backup_branch(client, path):
 
                 for ref in client.repo.references:
                     if branch_name == ref.name:
-                        branch_name = f"pre_renku_init_{hexsha}_{uuid4().hexsha}"
+                        branch_name = f"pre_renku_init_{hexsha}_{uuid4().hex}"
                         break
 
                 with client.worktree(
@@ -325,24 +337,30 @@ def create_backup_branch(client, path):
     return branch_name
 
 
+@inject.autoparams()
 def _init(
-    client,
     ctx,
     external_storage_requested,
     path,
     name,
+    description,
     template_id,
     template_index,
     template_source,
     template_ref,
     metadata,
+    custom_metadata,
     list_templates,
     force,
     describe,
     data_dir,
     initial_branch,
+    client_dispatcher: IClientDispatcher,
+    database_dispatcher: IDatabaseDispatcher,
 ):
     """Initialize a renku project."""
+    client = client_dispatcher.current_client
+
     template_manifest, template_folder, template_source, template_version = fetch_template(
         template_source, template_ref
     )
@@ -360,18 +378,22 @@ def _init(
 
     metadata = verify_template_variables(template_data, metadata)
 
-    # set local path and storage
+    # NOTE: set local path and storage
     store_directory(path)
     if not client.external_storage_requested:
         external_storage_requested = False
+
+    # NOTE: create new copy of LocalClient with modified values
     ctx.obj = client = attr.evolve(
         client, path=path, data_dir=data_dir, external_storage_requested=external_storage_requested
     )
+    client_dispatcher.push_created_client_to_stack(client)
+    database_dispatcher.push_database_to_stack(client.database_path, commit=True)
 
     communication.echo("Initializing Git repository...")
     client.init_repository(force, None, initial_branch=initial_branch)
 
-    # supply additional metadata
+    # NOTE: supply additional metadata
     metadata["__template_source__"] = template_source
     metadata["__template_ref__"] = template_ref
     metadata["__template_id__"] = template_id
@@ -379,12 +401,15 @@ def _init(
     metadata["__sanitized_project_name__"] = ""
     metadata["__repository__"] = ""
     metadata["__project_slug__"] = ""
+    metadata["__project_description__"] = description
+    if is_release() and "__renku_version__" not in metadata:
+        metadata["__renku_version__"] = __version__
     metadata["name"] = name  # NOTE: kept for backwards compatibility
     metadata["__name__"] = name
 
     template_path = template_folder / template_data["folder"]
 
-    existing = get_existing_template_files(client, template_path, metadata, force)
+    existing = get_existing_template_files(template_path=template_path, metadata=metadata, force=force)
 
     append = list(filter(lambda x: x.lower() in INIT_APPEND_FILES, existing))
     existing = list(filter(lambda x: x.lower() not in INIT_APPEND_FILES + INIT_KEEP_FILES, existing))
@@ -402,13 +427,15 @@ def _init(
             append_paths = "\n\t".join(append)
             message += f"The following files exist in the directory and will be appended to:\n\t{append_paths}\n"
 
-        communication.confirm(
-            f"{message}Proceed?", abort=True, warning=True,
-        )
+        communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 
-    branch_name = create_backup_branch(client, path)
+    branch_name = create_backup_branch(path=path)
 
-    # clone the repo
+    # Initialize an empty database
+    database_gateway = inject.instance(IDatabaseGateway)
+    database_gateway.initialize()
+
+    # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")
     with client.lock:
         try:
@@ -417,11 +444,13 @@ def _init(
                 client=client,
                 name=name,
                 metadata=metadata,
+                custom_metadata=custom_metadata,
                 template_version=template_version,
                 immutable_template_files=template_data.get("immutable_template_files", []),
                 automated_update=template_data.get("allow_template_update", False),
                 force=force,
                 data_dir=data_dir,
+                description=description,
             )
         except FileExistsError as e:
             raise errors.InvalidFileOperation(e)
@@ -437,10 +466,10 @@ def _init(
 
 def init_command():
     """Init command builder."""
-    return Command().command(_init)
+    return Command().command(_init).with_database()
 
 
-def fetch_template_from_git(source, ref="master", tempdir=None):
+def fetch_template_from_git(source, ref=None, tempdir=None):
     """Fetch the template from a git repository and checkout the relevant data.
 
     :param source: url or full path of the templates repository
@@ -457,17 +486,22 @@ def fetch_template_from_git(source, ref="master", tempdir=None):
     except git.exc.GitCommandError as e:
         raise errors.GitError("Cannot clone repo from {0}".format(source)) from e
 
-    try:
-        # fetch ref and set the HEAD
-        template_repo.remotes.origin.fetch(ref)
+    if ref:
         try:
-            template_repo.head.reset(template_repo.commit(ref))
-        except git.exc.BadName:
-            ref = "origin/{0}".format(ref)
-            template_repo.head.reset(template_repo.commit(ref))
+            # fetch ref and set the HEAD
+            template_repo.remotes.origin.fetch()
+            try:
+                template_repo.head.reset(template_repo.commit(ref))
+            except git.exc.BadName:
+                ref = "origin/{0}".format(ref)
+                template_repo.head.reset(template_repo.commit(ref))
+            git_repo = git.Git(str(tempdir))
+        except (git.exc.GitCommandError, git.exc.BadName) as e:
+            raise errors.GitError("Cannot fetch and checkout reference {0}".format(ref)) from e
+    else:
+        template_repo.remotes.origin.fetch()
+        template_repo.head.reset(template_repo.commit())
         git_repo = git.Git(str(tempdir))
-    except git.exc.GitCommandError as e:
-        raise errors.GitError("Cannot fetch and checkout reference {0}".format(ref)) from e
 
     # checkout the manifest
     try:
@@ -486,7 +520,7 @@ def fetch_template(template_source, template_ref):
     :return: tuple of (template manifest, template folder, template source, template version)
     """
     if template_source and template_source != "renku":
-        communication.echo("Fetching template from {0}@{1}... ".format(template_source, template_ref))
+        communication.echo("Fetching template from {0}@{1}... ".format(template_source, template_ref or ""))
         template_folder = Path(mkdtemp())
         _, template_version = fetch_template_from_git(template_source, template_ref, template_folder)
         template_manifest = read_template_manifest(template_folder, checkout=True)
@@ -494,10 +528,13 @@ def fetch_template(template_source, template_ref):
     else:
         from renku import __version__
 
+        if template_ref and template_ref != "master":
+            raise errors.ParameterError("Templates included in renku don't support specifying a template_ref")
+
         template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
         template_manifest = read_template_manifest(template_folder)
         template_source = "renku"
-        template_version = __version__
+        template_version = str(__version__)
 
     return template_manifest, template_folder, template_source, template_version
 
@@ -579,6 +616,7 @@ def create_from_template(
     client,
     name=None,
     metadata={},
+    custom_metadata=None,
     template_version=None,
     immutable_template_files=[],
     automated_update=False,
@@ -586,6 +624,7 @@ def create_from_template(
     data_dir=None,
     user=None,
     commit_message=None,
+    description=None,
 ):
     """Initialize a new project from a template."""
 
@@ -598,7 +637,7 @@ def create_from_template(
         metadata["__name__"] = name
 
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
-        with client.with_metadata(name=name) as project:
+        with client.with_metadata(name=name, description=description, custom_metadata=custom_metadata) as project:
             project.template_source = metadata["__template_source__"]
             project.template_ref = metadata["__template_ref__"]
             project.template_id = metadata["__template_id__"]
@@ -616,11 +655,13 @@ def create_from_template(
             (data_path / ".gitkeep").touch(exist_ok=True)
 
 
+@inject.autoparams()
 def _create_from_template_local(
-    client,
     template_path,
     name,
+    client_dispatcher: IClientDispatcher,
     metadata={},
+    custom_metadata=None,
     default_metadata={},
     template_version=None,
     immutable_template_files=[],
@@ -630,34 +671,37 @@ def _create_from_template_local(
     ref=None,
     invoked_from=None,
     initial_branch=None,
+    commit_message=None,
+    description=None,
 ):
-    """Initialize a new project from a template.
+    """Initialize a new project from a template."""
 
-    It creates a custom commit message and accepts custom user data.
-    """
-    command = "renku init" f' -n "{name}"' f' -s "{source}"' f' -r "{ref}"' f' -t "{template_path.name}"'
-    parameters = "".join([f' -p "{key}"="{value}"' for key, value in metadata.items()])
-    prefix = f"{invoked_from}: " if invoked_from else ""
-    commit_message = f"{prefix}{command}{parameters}"
+    client = client_dispatcher.current_client
 
     metadata = {**default_metadata, **metadata}
 
     client.init_repository(False, user, initial_branch=initial_branch)
+
+    # Initialize an empty database
+    database_gateway = inject.instance(IDatabaseGateway)
+    database_gateway.initialize()
 
     create_from_template(
         template_path=template_path,
         client=client,
         name=name,
         metadata=metadata,
+        custom_metadata=custom_metadata,
         template_version=template_version,
         immutable_template_files=immutable_template_files,
         automated_update=automated_template_update,
         force=False,
         user=user,
         commit_message=commit_message,
+        description=description,
     )
 
 
 def create_from_template_local_command():
     """Command to initialize a new project from a template."""
-    return Command().command(_create_from_template_local)
+    return Command().command(_create_from_template_local).with_database()

@@ -23,14 +23,17 @@ import unicodedata
 import urllib
 from urllib.parse import ParseResult
 
+from yagup import GitURL
+
 from renku.core import errors
-from renku.core.models.git import GitURL
+from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 
 def url_to_string(url):
     """Convert url from ``list`` or ``ParseResult`` to string."""
     if isinstance(url, list):
-        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params=None, query=None, fragment=None,).geturl()
+        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params=None, query=None, fragment=None).geturl()
 
     if isinstance(url, ParseResult):
         return url.geturl()
@@ -62,12 +65,14 @@ def get_host(client):
     return os.environ.get("RENKU_DOMAIN") or host
 
 
-def parse_authentication_endpoint(client, endpoint, use_remote=False):
+@inject.autoparams()
+def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher, use_remote=False):
     """Return a parsed url.
 
     If an endpoint is provided then use it, otherwise, look for a configured endpoint. If no configured endpoint exists
     then try to use project's remote url.
     """
+    client = client_dispatcher.current_client
     if not endpoint:
         endpoint = client.get_value(section="renku", key="endpoint")
         if not endpoint:
@@ -76,7 +81,7 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
             remote_url = get_remote(client.repo)
             if not remote_url:
                 return
-            endpoint = f"https://{GitURL.parse(remote_url).hostname}/"
+            endpoint = f"https://{GitURL.parse(remote_url).host}/"
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"
@@ -89,13 +94,15 @@ def parse_authentication_endpoint(client, endpoint, use_remote=False):
 
 
 def get_remote(repo):
-    """Return remote url of repo or its active branch."""
-    if not repo or not repo.remotes:
-        return
-    elif len(repo.remotes) == 1:
-        return repo.remotes[0].url
-    elif repo.active_branch.tracking_branch():
-        return repo.remotes[repo.active_branch.tracking_branch().remote_name].url
+    """Return remote name and url of repo or its active branch."""
+    if repo and repo.remotes:
+        if len(repo.remotes) == 1:
+            return repo.remotes[0].name, repo.remotes[0].url
+        elif repo.active_branch.tracking_branch():
+            name = repo.active_branch.tracking_branch().remote_name
+            return name, repo.remotes[name].url
+
+    return None, None
 
 
 def get_slug(name):

@@ -16,24 +16,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku dataset provider."""
+
 import os
 import re
 import shutil
 import urllib
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
+from typing import List
 
 import attr
 import requests
 
 from renku import LocalClient
 from renku.core import errors
+from renku.core.commands.login import read_renku_token
 from renku.core.commands.providers.api import ProviderApi
+from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.migrate import is_project_unsupported, migrate
-from renku.core.models.enums import ConfigFilter
+from renku.core.management.migrations.utils import MigrationType
+from renku.core.metadata.immutable import DynamicProxy
+from renku.core.models.dataset import get_dataset_data_dir
 from renku.core.utils import communication
-from renku.core.utils.migrate import MigrationType
-from renku.core.utils.urls import parse_authentication_endpoint
 
 
 @attr.s
@@ -43,13 +49,18 @@ class RenkuProvider(ProviderApi):
     is_doi = attr.ib(default=False)
     _accept = attr.ib(default="application/json")
     _authorization_header = attr.ib(default=None)
-    _authentication_endpoint = attr.ib(default="")
-    _use_gitlab_token = attr.ib(default=False)
+    _uri = attr.ib(default="")
+    _gitlab_token = attr.ib(default=None)
+    _renku_token = attr.ib(default=None)
 
     @staticmethod
     def supports(uri):
         """Whether or not this provider supports a given uri."""
         parsed_url = urllib.parse.urlparse(uri)
+
+        if not parsed_url.netloc:
+            return False
+
         _, dataset_id = RenkuProvider._extract_project_and_dataset_ids(parsed_url)
         return dataset_id is not None
 
@@ -58,16 +69,17 @@ class RenkuProvider(ProviderApi):
         """Whether this provider supports dataset import."""
         return True
 
-    def find_record(self, uri, client=None, **kwargs):
+    def find_record(self, uri, **kwargs):
         """Retrieves a dataset from Renku.
 
         :raises: ``NotFound``, ``OperationError``, ``ParameterError``
         :param uri: URL
         :return: ``_RenkuRecordSerializer``
         """
-        gitlab_token = kwargs.get("gitlab_token")
+        self._uri = uri
+        self._gitlab_token = kwargs.get("gitlab_token")
 
-        self._prepare_authentication(client, uri, gitlab_token=gitlab_token)
+        self._prepare_auth(uri)
 
         name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(uri)
 
@@ -80,7 +92,8 @@ class RenkuProvider(ProviderApi):
             latest_version_uri=latest_version_uri,
             project_url_ssh=project_url_ssh,
             project_url_http=project_url_http,
-            gitlab_token=gitlab_token,
+            gitlab_token=self._gitlab_token,
+            renku_token=self._renku_token,
         )
 
     def get_exporter(self, dataset, access_token):
@@ -162,7 +175,7 @@ class RenkuProvider(ProviderApi):
         return project_id, dataset_name_or_id
 
     def _query_knowledge_graph(self, url):
-        if self._authorization_header and not self._use_gitlab_token:
+        if self._renku_token and not self._gitlab_token:
             # NOTE: Authorization with renku token requires going through the gateway route
             url = url.replace("/knowledge-graph/", "/api/kg/")
 
@@ -174,8 +187,10 @@ class RenkuProvider(ProviderApi):
         if response.status_code == 404:
             raise errors.NotFound(f"Resource not found in knowledge graph: {url}")
         elif response.status_code in [401, 403]:
+            parsed_uri = urllib.parse.urlparse(self._uri)
+
             raise errors.OperationError(
-                f"Unauthorized access to knowledge graph: Run 'renku login {self._authentication_endpoint}'"
+                f"Unauthorized access to knowledge graph: Run 'renku login {parsed_uri.netloc}'"
             )
         elif response.status_code != 200:
             raise errors.OperationError(f"Cannot access knowledge graph: {url}\nResponse code: {response.status_code}")
@@ -188,29 +203,22 @@ class RenkuProvider(ProviderApi):
 
         return urls.get("ssh"), urls.get("http")
 
-    def _prepare_authentication(self, client, uri, gitlab_token):
-        if gitlab_token:
-            token = gitlab_token
-            self._use_gitlab_token = True
+    def _prepare_auth(self, uri):
+        if self._gitlab_token:
+            token = self._gitlab_token
         else:
-            token = self._read_renku_token(client, uri)
+            self._renku_token = read_renku_token(endpoint=uri)
+            token = self._renku_token
 
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
-
-    def _read_renku_token(self, client, uri):
-        """Read renku token from renku config file."""
-        try:
-            parsed_endpoint = parse_authentication_endpoint(client=client, endpoint=uri, use_remote=True)
-        except errors.ParameterError:
-            return
-        self._authentication_endpoint = parsed_endpoint.netloc
-        return client.get_value(section="http", key=parsed_endpoint.netloc, config_filter=ConfigFilter.GLOBAL_ONLY)
 
 
 class _RenkuRecordSerializer:
     """Renku record Serializer."""
 
-    def __init__(self, uri, identifier, name, latest_version_uri, project_url_ssh, project_url_http, gitlab_token):
+    def __init__(
+        self, uri, identifier, name, latest_version_uri, project_url_ssh, project_url_http, gitlab_token, renku_token
+    ):
         """Create a _RenkuRecordSerializer from a Dataset."""
         self._uri = uri
         self._identifier = identifier
@@ -219,10 +227,13 @@ class _RenkuRecordSerializer:
         self._project_url_ssh = project_url_ssh
         self._project_url_http = project_url_http
         self._gitlab_token = gitlab_token
+        self._renku_token = renku_token
 
         self._dataset = None
         self._project_url = None
+        self._project_repo = None
         self._remote_client = None
+        self._files_info = []
 
     @staticmethod
     def _get_file_size(remote_client, path):
@@ -262,15 +273,26 @@ class _RenkuRecordSerializer:
 
         # Return size of the file on disk
         full_path = remote_client.path / path
-        return os.path.getsize(full_path)
+        return float(os.path.getsize(full_path))
+
+    @property
+    def files_info(self) -> List[DynamicProxy]:
+        """Return list of dataset file proxies.
+
+        NOTE: This is only valid after a call to ``as_dataset``.
+        """
+        return self._files_info
 
     def as_dataset(self, client):
         """Return encapsulated dataset instance."""
-        self._fetch_dataset(client, gitlab_token=self._gitlab_token)
+        self._fetch_dataset()
         return self._dataset
 
-    def import_images(self, client, dataset):
+    @inject.autoparams()
+    def import_images(self, dataset, client_dispatcher: IClientDispatcher):
         """Add images from remote dataset."""
+        client = client_dispatcher.current_client
+
         if not self._dataset.images:
             return
 
@@ -284,7 +306,7 @@ class _RenkuRecordSerializer:
 
             shutil.copy(remote_image_path, local_image_path)
 
-        dataset.images = self._dataset.images
+        dataset.images = self._dataset.images or []
 
     def is_last_version(self, uri):
         """Check if dataset is at last possible version."""
@@ -294,6 +316,11 @@ class _RenkuRecordSerializer:
     def project_url(self):
         """URL of the Renku project in Gitlab."""
         return self._project_url
+
+    @property
+    def repository(self):
+        """The cloned repo that contains the dataset."""
+        return self._project_repo
 
     @staticmethod
     def _extract_dataset_id(uri):
@@ -316,14 +343,25 @@ class _RenkuRecordSerializer:
         """Whether the dataset datadir exists (might be missing in git if empty)."""
         return (self._remote_client.path / self._dataset.data_dir).exists()
 
-    def _fetch_dataset(self, client, gitlab_token):
+    @inject.autoparams()
+    def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
         repo_path = None
+        repo = None
+        client = client_dispatcher.current_client
+
+        parsed_uri = urllib.parse.urlparse(self._uri)
 
         urls = (self._project_url_ssh, self._project_url_http)
         # Clone the project
         for url in urls:
             try:
-                repo, repo_path = client.prepare_git_repo(url, gitlab_token=gitlab_token)
+                repo, repo_path = client.prepare_git_repo(
+                    url=url,
+                    gitlab_token=self._gitlab_token,
+                    renku_token=self._renku_token,
+                    deployment_hostname=parsed_uri.netloc,
+                    depth=None,
+                )
             except errors.GitError:
                 pass
             else:
@@ -334,26 +372,50 @@ class _RenkuRecordSerializer:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
 
         self._remote_client = LocalClient(repo_path)
-        self._migrate_project(self._remote_client)
+        client_dispatcher.push_created_client_to_stack(self._remote_client)
+        database_dispatcher.push_database_to_stack(self._remote_client.database_path)
 
-        self._dataset = self._remote_client.load_dataset(self._name)
+        try:
+
+            self._migrate_project()
+            self._project_repo = repo
+
+            self._dataset = self._remote_client.get_dataset(self._name)
+        finally:
+            database_dispatcher.pop_database()
+            client_dispatcher.pop_client()
 
         if not self._dataset:
             raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
 
-        for file_ in self._dataset.files:
-            file_.checksum = self._remote_client.repo.git.hash_object(file_.path)
-            file_.filesize = _RenkuRecordSerializer._get_file_size(self._remote_client, file_.path)
-            file_.filetype = Path(file_.path).suffix.replace(".", "")
+        self._dataset.data_dir = get_dataset_data_dir(self._remote_client, self._dataset)
+
+        files_info = []
+        for file in self._dataset.files:
+            file_info = DynamicProxy(file)
+            file_info.checksum = file.entity.checksum
+            file_info.filename = Path(file.entity.path).name
+            file_info.size_in_mb = _RenkuRecordSerializer._get_file_size(self._remote_client, file.entity.path)
+            file_info.filetype = Path(file.entity.path).suffix.replace(".", "")
+            files_info.append(file_info)
+
+        self._files_info = files_info
 
     @staticmethod
-    def _migrate_project(client):
-        if is_project_unsupported(client):
+    @inject.autoparams()
+    def _migrate_project(client_dispatcher: IClientDispatcher):
+        if is_project_unsupported():
             return
+
+        client = client_dispatcher.current_client
+
         # NOTE: We are not interested in migrating workflows when importing datasets
+        previous_migration_type = client.migration_type
         client.migration_type = ~MigrationType.WORKFLOWS
         try:
             communication.disable()
-            migrate(client, skip_template_update=True, skip_docker_update=True)
+            migrate(skip_template_update=True, skip_docker_update=True)
         finally:
+            client.migration_type = previous_migration_type
+
             communication.enable()

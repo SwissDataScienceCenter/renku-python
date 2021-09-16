@@ -18,31 +18,31 @@
 """Renku graph serializers."""
 from marshmallow import Schema, fields
 
+from renku.service.serializers.common import AsyncSchema, LocalRepositorySchema, MigrateSchema, RemoteRepositorySchema
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class GraphBuildRequest(Schema):
+class GraphExportRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
     """Request schema for dataset list view."""
 
-    git_url = fields.String(required=True)
-    callback_url = fields.URL(required=True)
-    revision = fields.String()
-    format = fields.String()
+    callback_url = fields.URL()
+    revision = fields.String(missing="HEAD", allow_none=True)
+    format = fields.String(missing="json-ld")
 
 
-class GraphBuildResponse(Schema):
+class GraphExportResponse(Schema):
     """Response schema for dataset list view."""
 
-    status = fields.String(default="ok")
+    graph = fields.String()
 
 
-class GraphBuildResponseRPC(JsonRPCResponse):
+class GraphExportResponseRPC(JsonRPCResponse):
     """RPC response schema for dataset list view."""
 
-    result = fields.Nested(GraphBuildResponse)
+    result = fields.Nested(GraphExportResponse)
 
 
-class GraphBuildCallback(Schema):
+class GraphExportCallback(Schema):
     """Callback serializer for graph build."""
 
     project_url = fields.String()
@@ -50,13 +50,13 @@ class GraphBuildCallback(Schema):
     type = fields.String(default="RENKU_LOG")
 
 
-class GraphBuildCallbackSuccess(GraphBuildCallback):
+class GraphExportCallbackSuccess(GraphExportCallback):
     """Success callback serializer for graph build."""
 
-    payload = fields.String()
+    payload = fields.String(default=None, missing=None)
 
 
-class GraphBuildCallbackError(GraphBuildCallback):
+class GraphExportCallbackError(GraphExportCallback):
     """Error callback serializer for graph build."""
 
     failure = fields.Dict()

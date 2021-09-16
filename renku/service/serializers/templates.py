@@ -20,16 +20,16 @@
 from urllib.parse import urlparse
 
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates
+from yagup import GitURL
+from yagup.exceptions import InvalidURL
 
-from renku.core.errors import ConfigurationError
-from renku.core.models.git import GitURL
 from renku.core.utils.scm import normalize_to_ascii
 from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
-from renku.service.serializers.cache import ProjectCloneContext
+from renku.service.serializers.cache import ProjectCloneContext, RepositoryCloneRequest
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class ManifestTemplatesRequest(ProjectCloneContext):
+class ManifestTemplatesRequest(RepositoryCloneRequest):
     """Request schema for listing manifest templates."""
 
     url = fields.String(required=True)
@@ -50,7 +50,7 @@ class TemplateParameterSchema(Schema):
     value = fields.String(missing="")
 
 
-class ProjectTemplateRequest(ManifestTemplatesRequest):
+class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     """Request schema for listing manifest templates."""
 
     identifier = fields.String(required=True)
@@ -60,6 +60,8 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     project_namespace = fields.String(required=True)
     project_repository = fields.String(required=True)
     project_slug = fields.String(required=True)
+    project_description = fields.String(missing=None)
+    project_custom_metadata = fields.Dict(missing=None)
 
     new_project_url = fields.String(required=True)
     project_name_stripped = fields.String(required=True)
@@ -71,12 +73,12 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
         """Set owner and name fields."""
         try:
             project_name_stripped = normalize_to_ascii(data["project_name"])
+            if len(project_name_stripped) == 0:
+                raise ValidationError("Project name contains only unsupported characters")
             new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
             _ = GitURL.parse(new_project_url)
-        except UnicodeError as e:
+        except InvalidURL as e:
             raise ValidationError("`git_url` contains unsupported characters") from e
-        except ConfigurationError as e:
-            raise ValidationError("Invalid `git_url`") from e
 
         project_slug = f"{data['project_namespace']}/{project_name_stripped}"
         data["new_project_url"] = new_project_url
@@ -90,7 +92,7 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
         """Validates git url."""
         try:
             GitURL.parse(value)
-        except ConfigurationError as e:
+        except InvalidURL as e:
             raise ValidationError(str(e))
 
         return value

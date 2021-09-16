@@ -37,6 +37,11 @@ or:
 This creates a new subdirectory named ``.renku`` that contains all the
 necessary files for managing the project configuration.
 
+Every project requires a ``name`` that can either be provided using
+``--name`` or automatically taken from the target folder.
+
+You can also provide a description for a project using ``--description``.
+
 If provided directory does not exist, it will be created.
 
 Use a different template
@@ -102,10 +107,29 @@ If you don't provide the required parameters through the option
 ``-parameter``, you will be asked to provide them. Empty values are allowed
 and passed to the template initialization function.
 
-.. note:: Every project requires a ``name`` that can either be provided using
-   ``--name`` or automatically taken from the target folder. This is
-   also considered as a special parameter, therefore it's automatically added
-   to the list of parameters forwarded to the ``init`` command.
+.. note::
+
+    Project's ``name`` is considered as a special parameter and it's
+    automatically added to the list of parameters forwarded to the ``init``
+    command.
+
+Provide custom metadata
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Custom metadata can be added to the projects knowledge graph by writing
+it to a json file and passing that via the `--metadata` option.
+
+.. code-block:: console
+
+    $ echo '{"@id": "https://example.com/id1", \
+        "@type": "https://schema.org/Organization", \
+        "https://schema.org/legalName": "ETHZ"}' > metadata.json
+
+    $ renku init --template-id python-minimal --parameter \
+    "description"="my new shiny project" --metadata metadata.json
+
+    Initializing new Renku repository... OK
+
 
 Update an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -165,6 +189,7 @@ was not installed previously.
 """
 
 import configparser
+import json
 import os
 from pathlib import Path
 from tempfile import mkdtemp
@@ -238,12 +263,9 @@ def check_git_user_config():
 
 
 @click.command()
-@click.argument(
-    "path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True),
-)
-@click.option(
-    "-n", "--name", callback=validate_name, help="Provide a custom project name.",
-)
+@click.argument("path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True))
+@click.option("-n", "--name", callback=validate_name, help="Provide a custom project name.")
+@click.option("--description", help="Provide a description for the project.")
 @click.option(
     "--data-dir",
     default=None,
@@ -251,17 +273,15 @@ def check_git_user_config():
     help="Data directory within the project",
 )
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
-@click.option(
-    "-i", "--template-index", help="Provide the index number of the template to use.", type=int,
-)
+@click.option("-i", "--template-index", help="Provide the index number of the template to use.", type=int)
 @click.option("-s", "--template-source", help="Provide the templates repository url or path.")
 @click.option(
-    "-r", "--template-ref", default="master", help="Specify the reference to checkout on remote template repository.",
+    "-r", "--template-ref", default=None, help="Specify the reference to checkout on remote template repository."
 )
 @click.option(
     "-p",
     "--parameter",
-    "metadata",
+    "parameters",
     multiple=True,
     type=click.STRING,
     callback=parse_parameters,
@@ -269,6 +289,14 @@ def check_git_user_config():
         "Provide parameters value. Should be invoked once per parameter. "
         'Please specify the values as follow: --parameter "param1"="value"'
     ),
+)
+@click.option(
+    "-m",
+    "--metadata",
+    "metadata",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Custom metadata to be associated with the project.",
 )
 @click.option("-l", "--list-templates", is_flag=True, help="List templates available in the template-source.")
 @click.option("-d", "--describe", is_flag=True, help="Show description for templates and parameters")
@@ -281,10 +309,12 @@ def init(
     external_storage_requested,
     path,
     name,
+    description,
     template_id,
     template_index,
     template_source,
     template_ref,
+    parameters,
     metadata,
     list_templates,
     force,
@@ -303,17 +333,27 @@ def init(
             "\tgit config --global --add user.email "
             '"john.doe@example.com"\n'
         )
+
+    if template_ref and not template_source:
+        raise errors.ParameterError("Can't use '--template-ref' without specifying '--template-source'")
+
+    custom_metadata = None
+    if metadata:
+        custom_metadata = json.loads(Path(metadata).read_text())
+
     communicator = ClickCallback()
     init_command().with_communicator(communicator).build().execute(
         ctx=ctx,
         external_storage_requested=external_storage_requested,
         path=path,
         name=name,
+        description=description,
         template_id=template_id,
         template_index=template_index,
         template_source=template_source,
         template_ref=template_ref,
-        metadata=metadata,
+        metadata=parameters,
+        custom_metadata=custom_metadata,
         list_templates=list_templates,
         force=force,
         describe=describe,

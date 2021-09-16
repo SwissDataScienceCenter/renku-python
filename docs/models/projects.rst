@@ -18,5 +18,5 @@
 Projects
 ========
 
-.. automodule:: renku.core.models.projects
+.. automodule:: renku.core.models.project
    :members:

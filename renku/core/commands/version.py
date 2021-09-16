@@ -144,7 +144,7 @@ def _check_version():
         click.secho(
             "You are using renku version {version}, however version "
             "{latest_version} is available.\n"
-            "You should consider upgrading ...".format(version=__version__, latest_version=latest_version,),
+            "You should consider upgrading ...".format(version=__version__, latest_version=latest_version),
             fg="yellow",
             bold=True,
         )

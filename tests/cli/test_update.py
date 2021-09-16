@@ -17,338 +17,322 @@
 # limitations under the License.
 """Test ``update`` command."""
 
+import os
 from pathlib import Path
 
 import git
 
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.models.entities import Collection
+from renku.core.metadata.gateway.activity_gateway import ActivityGateway
+from renku.core.models.workflow.plan import Plan
+from tests.utils import format_result_exception, write_and_commit_file
 
 
-def update_and_commit(data, file_, repo):
-    """Update source.txt."""
-    with file_.open("w") as fp:
-        fp.write(data)
+def test_update(runner, client, renku_cli, client_database_injection_manager):
+    """Test output is updated when source changes."""
+    repo = client.repo
+    source = os.path.join(client.path, "source.txt")
+    output = os.path.join(client.path, "output.txt")
 
-    repo.git.add(file_)
-    repo.index.commit("Updated source.txt")
+    write_and_commit_file(repo, source, "content")
+
+    exit_code, previous_activity = renku_cli("run", "head", "-1", source, stdout=output)
+    assert 0 == exit_code
+
+    write_and_commit_file(repo, source, "changed content")
+
+    exit_code, activity = renku_cli("update", "--all")
+
+    assert 0 == exit_code
+    plan = activity.association.plan
+    assert previous_activity.association.plan.id == plan.id
+    assert isinstance(plan, Plan)
+
+    assert "changed content" == Path(output).read_text()
+
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activity_collections = activity_gateway.get_all_activity_collections()
+
+        # NOTE: No ActivityCollection is created if update include only one activity
+        assert [] == activity_collections
 
 
-def test_update(runner, project, renku_cli, no_lfs_warning):
-    """Test automatic file update."""
-    from renku.core.utils.shacl import validate_graph
+def test_update_multiple_steps(runner, client, renku_cli, client_database_injection_manager):
+    """Test update in a multi-step workflow."""
+    repo = client.repo
+    source = os.path.join(client.path, "source.txt")
+    intermediate = os.path.join(client.path, "intermediate.txt")
+    output = os.path.join(client.path, "output.txt")
 
-    cwd = Path(project)
-    data = cwd / DATA_DIR
-    data.mkdir(exist_ok=True, parents=True)
-    source = cwd / "source.txt"
-    output = data / "result.txt"
+    write_and_commit_file(repo, source, "content")
 
+    exit_code, activity1 = renku_cli("run", "cp", source, intermediate)
+    assert 0 == exit_code
+    exit_code, activity2 = renku_cli("run", "cp", intermediate, output)
+    assert 0 == exit_code
+
+    write_and_commit_file(repo, source, "changed content")
+
+    exit_code, activities = renku_cli("update", "--all")
+
+    assert 0 == exit_code
+    plans = [a.association.plan for a in activities]
+    assert 2 == len(plans)
+    assert isinstance(plans[0], Plan)
+    assert isinstance(plans[1], Plan)
+    assert {p.id for p in plans} == {activity1.association.plan.id, activity2.association.plan.id}
+
+    assert "changed content" == Path(intermediate).read_text()
+    assert "changed content" == Path(output).read_text()
+
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activity_collections = activity_gateway.get_all_activity_collections()
+
+        assert 1 == len(activity_collections)
+        assert {a.id for a in activities} == {a.id for a in activity_collections[0].activities}
+
+
+def test_update_multiple_steps_with_path(runner, project, renku_cli):
+    """Test update in a multi-step workflow when a path is specified."""
     repo = git.Repo(project)
+    source = os.path.join(project, "source.txt")
+    intermediate = os.path.join(project, "intermediate.txt")
+    output = os.path.join(project, "output.txt")
 
-    update_and_commit("1", source, repo)
+    write_and_commit_file(repo, source, "content")
 
-    exit_code, run = renku_cli("run", "wc", "-c", stdin=source, stdout=output)
+    exit_code, activity1 = renku_cli("run", "cp", source, intermediate)
     assert 0 == exit_code
-    assert 0 == len(run.subprocesses)
-    previous_run_id = run._id
-
-    with output.open("r") as f:
-        assert f.read().strip() == "1"
-
-    result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
-
-    update_and_commit("12", source, repo)
-
-    result = runner.invoke(cli, ["status"])
-    assert 1 == result.exit_code
-
-    exit_code, run = renku_cli("update", "--all")
+    exit_code, _ = renku_cli("run", "cp", intermediate, output)
     assert 0 == exit_code
-    assert 0 == len(run.subprocesses)
-    assert previous_run_id == run._id
-    previous_run_id = run._id
 
-    result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    write_and_commit_file(repo, source, "changed content")
 
-    with output.open("r") as f:
-        assert f.read().strip() == "2"
+    exit_code, activity = renku_cli("update", intermediate)
 
-    # Source has been updated but output is unchanged.
-    update_and_commit("34", source, repo)
-
-    result = runner.invoke(cli, ["status"])
-    assert 1 == result.exit_code
-
-    exit_code, run = renku_cli("update", "--all")
     assert 0 == exit_code
-    assert 0 == len(run.subprocesses)
-    assert previous_run_id == run._id
+    plan = activity.association.plan
+    assert isinstance(plan, Plan)
+    assert plan.id == activity1.association.plan.id
+
+    assert "changed content" == Path(intermediate).read_text()
+    assert "content" == Path(output).read_text()
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
-
-    with output.open("r") as f:
-        assert f.read().strip() == "2"
-
-    from renku.cli.log import FORMATS
-
-    for output_format in FORMATS:
-        # Make sure the log contains the original parent.
-        result = runner.invoke(cli, ["log", "--format", output_format], catch_exceptions=False,)
-        assert 0 == result.exit_code, result.output
-        assert source.name in result.output, output_format
-
-        if output_format == "nt":
-            r, _, t = validate_graph(result.output, format="nt")
-            assert r is True, t
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "output.txt: intermediate.txt" in result.output
+    assert "source.txt" not in result.output
 
 
-def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
-    """Test automatic file update."""
-    cwd = Path(project)
-    data = cwd / "data"
-    data.mkdir(exist_ok=True, parents=True)
-    source = cwd / "source.txt"
-    intermediate = cwd / "intermediate.txt"
-    output = cwd / "result.txt"
-
+def test_update_with_directory_paths(project, renku_cli):
+    """Test update when a directory path is specified."""
     repo = git.Repo(project)
+    data = os.path.join(project, "data", "dataset", "my-data")
+    Path(data).mkdir(parents=True, exist_ok=True)
+    source = os.path.join(project, "source.txt")
+    output = os.path.join(data, "output.txt")
 
-    update_and_commit("1", source, repo)
+    write_and_commit_file(repo, source, "content")
 
-    exit_code, run = renku_cli("run", "cp", str(source), str(intermediate))
+    exit_code, previous_activity = renku_cli("run", "head", "-1", source, stdout=output)
     assert 0 == exit_code
-    assert 0 == len(run.subprocesses)
 
-    with intermediate.open("r") as f:
-        assert f.read().strip() == "1"
+    write_and_commit_file(repo, source, "changed content")
 
-    result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    exit_code, activity = renku_cli("update", data)
 
-    exit_code, run = renku_cli("run", "cp", str(intermediate), str(output))
     assert 0 == exit_code
-    assert 0 == len(run.subprocesses)
+    assert "changed content" == Path(output).read_text()
+    plan = activity.association.plan
+    assert previous_activity.association.plan.id == plan.id
 
-    with output.open("r") as f:
-        assert f.read().strip() == "1"
 
-    result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+def test_multiple_updates(runner, project, renku_cli):
+    """Test multiple updates of the same source."""
+    repo = git.Repo(project)
+    source = os.path.join(project, "source.txt")
+    intermediate = os.path.join(project, "intermediate.txt")
+    output = os.path.join(project, "output.txt")
 
-    update_and_commit("2", source, repo)
+    write_and_commit_file(repo, source, "content")
 
-    result = runner.invoke(cli, ["status"])
-    assert 1 == result.exit_code
-
-    exit_code, run = renku_cli("update", "--all")
+    exit_code, activity1 = renku_cli("run", "cp", source, intermediate)
     assert 0 == exit_code
-    assert 2 == len(run.subprocesses)
+    exit_code, activity2 = renku_cli("run", "cp", intermediate, output)
+    assert 0 == exit_code
 
-    result = runner.invoke(cli, ["log"], catch_exceptions=False)
-    assert "(part of" in result.output, result.output
+    write_and_commit_file(repo, source, "changed content")
+
+    exit_code, _ = renku_cli("update", "--all")
+    assert 0 == exit_code
+    assert "changed content" == Path(intermediate).read_text()
+
+    write_and_commit_file(repo, source, "more changed content")
+
+    exit_code, activities = renku_cli("update", "--all")
+
+    assert 0 == exit_code
+    plans = [a.association.plan for a in activities]
+    assert 2 == len(plans)
+    assert isinstance(plans[0], Plan)
+    assert isinstance(plans[1], Plan)
+    assert {p.id for p in plans} == {activity1.association.plan.id, activity2.association.plan.id}
+
+    assert "more changed content" == Path(intermediate).read_text()
+    assert "more changed content" == Path(output).read_text()
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
-
-    with output.open("r") as f:
-        assert f.read().strip() == "2"
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_workflow_without_outputs(runner, project, run):
+def test_update_workflow_without_outputs(runner, project, run):
     """Test workflow without outputs."""
     repo = git.Repo(project)
-    cwd = Path(project)
-    input_ = cwd / "input.txt"
-    with input_.open("w") as f:
-        f.write("first")
+    source = os.path.join(project, "source.txt")
 
-    repo.git.add("--all")
-    repo.index.commit("Created input.txt")
+    write_and_commit_file(repo, source, "content")
 
-    cmd = ["run", "cat", "--no-output", input_.name]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == runner.invoke(cli, ["run", "cat", "--no-output", source]).exit_code
 
-    cmd = ["status", "--no-output"]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    write_and_commit_file(repo, source, "changes")
 
-    with input_.open("w") as f:
-        f.write("second")
+    assert 1 == runner.invoke(cli, ["status"]).exit_code
 
-    repo.git.add("--all")
-    repo.index.commit("Updated input.txt")
+    assert 0 == run(args=["update", "--all"])
 
-    cmd = ["status", "--no-output"]
-    result = runner.invoke(cli, cmd)
-    assert 1 == result.exit_code
-    assert 0 == run(args=("update", "--no-output", "--all"))
+    result = runner.invoke(cli, ["status"])
 
-    cmd = ["status", "--no-output"]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    # NOTE: Activity is updated or otherwise status would still return 1
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_siblings_update(runner, project, run, no_lfs_warning):
-    """Test detection of siblings during update."""
-    cwd = Path(project)
-    parent = cwd / "parent.txt"
-    brother = cwd / "brother.txt"
-    sister = cwd / "sister.txt"
-    siblings = {brother, sister}
-
+def test_update_siblings(project, run, no_lfs_warning):
+    """Test all generations of an activity are updated together."""
     repo = git.Repo(project)
+    parent = os.path.join(project, "parent.txt")
+    brother = os.path.join(project, "brother.txt")
+    sister = os.path.join(project, "sister.txt")
+    siblings = [Path(brother), Path(sister)]
 
-    def update_source(data):
-        """Update parent.txt."""
-        with parent.open("w") as fp:
-            fp.write(data)
+    write_and_commit_file(repo, parent, "content")
 
-        repo.git.add("--all")
-        repo.index.commit("Updated parent.txt")
-
-    update_source("1")
-
-    # The output files do not exist.
-    assert not any(sibling.exists() for sibling in siblings)
-
-    cmd = ["run", "tee", "brother.txt"]
-    assert 0 == run(args=cmd, stdin=parent, stdout=sister)
+    assert 0 == run(args=["run", "tee", brother, sister], stdin=parent)
 
     # The output file is copied from the source.
     for sibling in siblings:
-        with sibling.open("r") as f:
-            assert f.read().strip() == "1", sibling
+        assert "content" == sibling.read_text()
 
-    update_source("2")
+    write_and_commit_file(repo, parent, "changed content")
 
-    # Siblings must be updated together.
-    for sibling in siblings:
-        assert 1 == run(args=("update", sibling.name))
-
-    # Update brother and check the sister has not been changed.
-    assert 0 == run(args=("update", "--with-siblings", brother.name))
+    assert 0 == run(args=["update", brother])
 
     for sibling in siblings:
-        with sibling.open("r") as f:
-            assert f.read().strip() == "2", sibling
-
-    update_source("3")
+        assert "changed content" == sibling.read_text()
 
     # Siblings kept together even when one is removed.
-    repo.index.remove([brother.name], working_tree=True)
+    repo.index.remove([brother], working_tree=True)
     repo.index.commit("Brother removed")
+    assert not os.path.exists(brother)
 
-    assert not brother.exists()
+    write_and_commit_file(repo, parent, "more content")
 
-    # Update should find also missing siblings.
-    assert 1 == run(args=("update", "--all",))
-    assert 0 == run(args=("update", "--with-siblings", "--all"))
+    # Update should create the missing sibling
+    assert 0 == run(args=["update", "--all"])
 
     for sibling in siblings:
-        with sibling.open("r") as f:
-            assert f.read().strip() == "3", sibling
+        assert "more content" == sibling.read_text()
 
 
-def test_siblings_in_output_directory(runner, project, run):
+def test_update_siblings_in_output_directory(project, run):
     """Files in output directory are linked or removed after update."""
     repo = git.Repo(project)
-    cwd = Path(project)
-    source = cwd / "source.txt"
-    output = cwd / "output"
-
-    files = [
-        ("first", "1"),
-        ("second", "2"),
-        ("third", "3"),
-    ]
+    source = os.path.join(project, "source.txt")
+    output = Path(os.path.join(project, "output"))  # a directory
 
     def write_source():
         """Write source from files."""
-        with source.open("w") as fp:
-            fp.write("\n".join(" ".join(line) for line in files) + "\n")
-
-        repo.git.add("--all")
-        repo.index.commit("Update source.txt")
+        write_and_commit_file(repo, source, content="\n".join(" ".join(line) for line in files) + "\n")
 
     def check_files():
         """Check file content."""
         assert len(files) == len(list(output.rglob("*")))
 
         for name, content in files:
-            with (output / name).open() as fp:
-                assert content == fp.read().strip(), name
+            assert content == (output / name).read_text().strip()
 
+    files = [("first", "1"), ("second", "2"), ("third", "3")]
     write_source()
 
     script = 'mkdir -p "$0"; ' "cat - | while read -r name content; do " 'echo "$content" > "$0/$name"; done'
-    base_sh = ["sh", "-c", script, "output"]
 
-    assert not output.exists()
-    assert 0 == run(args=["run"] + base_sh, stdin=source)
-    assert output.exists()
+    assert not os.path.exists(output)
+
+    assert 0 == run(args=["run", "sh", "-c", script, "output"], stdin=source)
+
+    assert os.path.exists(output)
     check_files()
 
-    files = [
-        ("first", "11"),
-        ("third", "3"),
-        ("fourth", "4"),
-    ]
+    files = [("third", "3"), ("fourth", "4")]
     write_source()
+
     assert 0 == run(args=["update", "output"])
+
     check_files()
 
 
-def test_relative_path_for_directory_input(client, run, renku_cli):
+def test_update_relative_path_for_directory_input(client, run, renku_cli):
     """Test having a directory input generates relative path in CWL."""
-    (client.path / DATA_DIR / "file1").write_text("file1")
-    client.repo.git.add("--all")
-    client.repo.index.commit("Add file")
+    write_and_commit_file(client.repo, client.path / DATA_DIR / "file1", "file1")
 
     assert 0 == run(args=["run", "ls", DATA_DIR], stdout="ls.data")
 
-    (client.path / DATA_DIR / "file2").write_text("file2")
-    client.repo.git.add("--all")
-    client.repo.index.commit("Add one more file")
+    write_and_commit_file(client.repo, client.path / DATA_DIR / "file2", "file2")
 
-    exit_code, cwl = renku_cli("update", "--all")
+    exit_code, activity = renku_cli("update", "--all")
+
     assert 0 == exit_code
-    assert 1 == len(cwl.inputs)
-    assert isinstance(cwl.inputs[0].consumes, Collection)
-    assert "data" == cwl.inputs[0].consumes.path
+    plan = activity.association.plan
+    assert 1 == len(plan.inputs)
+    assert "data" == plan.inputs[0].default_value
 
 
-def test_update_no_args(runner, project, renku_cli, no_lfs_warning):
+def test_update_no_args(runner, project, no_lfs_warning):
     """Test calling update with no args raises ParameterError."""
-    cwd = Path(project)
-    data = cwd / DATA_DIR
-    data.mkdir(exist_ok=True, parents=True)
-    source = cwd / "source.txt"
-    output = data / "result.txt"
-
     repo = git.Repo(project)
+    source = os.path.join(project, "source.txt")
+    output = os.path.join(project, "output.txt")
 
-    update_and_commit("1", source, repo)
+    write_and_commit_file(repo, source, "content")
 
-    exit_code, run = renku_cli("run", "wc", "-c", stdin=source, stdout=output)
-    assert 0 == exit_code
+    assert 0 == runner.invoke(cli, ["run", "cp", source, output]).exit_code
 
-    result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
-
-    update_and_commit("12", source, repo)
-
-    result = runner.invoke(cli, ["status"])
-    assert 1 == result.exit_code
+    write_and_commit_file(repo, source, "changed content")
 
     before_commit = repo.head.commit
 
-    exit_code, run = renku_cli("update")
-    assert 2 == exit_code
+    result = runner.invoke(cli, ["update"])
+
+    assert 2 == result.exit_code
+    assert "Either PATHS or --all/-a should be specified" in result.output
 
     assert before_commit == repo.head.commit
+
+
+def test_update_with_no_execution(project, runner):
+    """Test update when no workflow is executed."""
+    repo = git.Repo(project)
+    input = os.path.join(project, "data", "input.txt")
+    write_and_commit_file(repo, input, "content")
+
+    result = runner.invoke(cli, ["update", input], catch_exceptions=False)
+
+    assert 1 == result.exit_code

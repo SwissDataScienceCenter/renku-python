@@ -23,14 +23,19 @@ from uuid import uuid4
 import git
 
 from renku.core import errors
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape
 
 
-def _save_and_push(client, message=None, remote=None, paths=None):
+@inject.autoparams()
+def _save_and_push(client_dispatcher: IClientDispatcher, message=None, remote=None, paths=None):
     """Save and push local changes."""
+    client = client_dispatcher.current_client
+
     client.setup_credential_helper()
     if not paths:
         paths = client.dirty_paths
@@ -185,7 +190,7 @@ def repo_sync(repo, message=None, remote=None, paths=None):
                 # Reset cache
                 repo.git.checkout(old_active_branch)
                 ref = f"{origin}/{old_pushed_branch}"
-                repo.index.reset(commit=ref, head=True, working_tree=True)
+                repo.head.reset(commit=ref, index=True, working_tree=True)
 
         if result and failed_push:
             # NOTE: Couldn't push for some reason

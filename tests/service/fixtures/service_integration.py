@@ -18,13 +18,14 @@
 """Renku service fixtures for integration testing."""
 import contextlib
 import json
-import os
 import shutil
 import uuid
 from copy import deepcopy
 
 import pytest
 from git import GitCommandError, Repo
+
+from tests.utils import format_result_exception, modified_environ
 
 
 @contextlib.contextmanager
@@ -97,7 +98,7 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_re
 
     payload = {"git_url": it_remote_repo_url, "depth": -1}
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
@@ -145,6 +146,7 @@ def svc_client_with_repo(svc_client_setup):
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
     )
+
     assert response.json["result"]
 
     with _mock_cache_sync(repo):
@@ -234,46 +236,39 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 
     home = tmp_path / "user_home"
     home.mkdir()
-    old_home = os.environ.get("HOME", "")
-    old_xdg_home = os.environ.get("XDG_CONFIG_HOME", "")
 
-    try:
-        # NOTE: fake user home directory
-        os.environ["HOME"] = str(home)
-        os.environ["XDG_CONFIG_HOME"] = str(home)
-
-        with GitConfigParser(get_config_path("global"), read_only=False) as global_config:
-            global_config.set_value("user", "name", "Renku @ SDSC")
-            global_config.set_value("user", "email", "renku@datascience.ch")
-
-        # NOTE: init "remote" repo
-        runner = CliRunner()
-        with chdir(remote_repo_checkout_path):
-
-            result = runner.invoke(
-                cli, ["init", ".", "--template-id", "python-minimal", "--force"], "\n", catch_exceptions=False
-            )
-            assert 0 == result.exit_code
-
-            remote_name = remote_repo_checkout.active_branch.tracking_branch().remote_name
-            remote = remote_repo_checkout.remotes[remote_name]
-            result = remote.push()
-    finally:
-        os.environ["HOME"] = old_home
-        os.environ["XDG_CONFIG_HOME"] = old_xdg_home
+    with modified_environ(HOME=str(home), XDG_CONFIG_HOME=str(home)):
         try:
-            shutil.rmtree(home)
-        except OSError:  # noqa: B014
-            pass
+            with GitConfigParser(get_config_path("global"), read_only=False) as global_config:
+                global_config.set_value("user", "name", "Renku @ SDSC")
+                global_config.set_value("user", "email", "renku@datascience.ch")
 
-        payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH}
-        response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
+            # NOTE: init "remote" repo
+            runner = CliRunner()
+            with chdir(remote_repo_checkout_path):
 
-        assert response
-        assert {"result"} == set(response.json.keys())
+                result = runner.invoke(
+                    cli, ["init", ".", "--template-id", "python-minimal", "--force"], "\n", catch_exceptions=False
+                )
+                assert 0 == result.exit_code, format_result_exception(result)
 
-        project_id = response.json["result"]["project_id"]
-        assert isinstance(uuid.UUID(project_id), uuid.UUID)
+                remote_name = remote_repo_checkout.active_branch.tracking_branch().remote_name
+                remote = remote_repo_checkout.remotes[remote_name]
+                result = remote.push()
+        finally:
+            try:
+                shutil.rmtree(home)
+            except OSError:  # noqa: B014
+                pass
+
+            payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH}
+            response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+
+            assert response
+            assert {"result"} == set(response.json.keys())
+
+            project_id = response.json["result"]["project_id"]
+            assert isinstance(uuid.UUID(project_id), uuid.UUID)
 
     try:
         yield svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout

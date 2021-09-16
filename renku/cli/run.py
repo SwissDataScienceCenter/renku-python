@@ -211,7 +211,7 @@ from renku.core.commands.options import option_isolation
 from renku.core.commands.run import run_command
 
 
-@click.command(context_settings=dict(ignore_unknown_options=True,))
+@click.command(context_settings=dict(ignore_unknown_options=True))
 @click.option("--name", help="A name for the workflow step.")
 @click.option("--description", help="Workflow step's description.")
 @click.option("--keyword", multiple=True, help="List of keywords for the workflow.")

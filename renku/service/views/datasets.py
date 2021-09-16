@@ -39,9 +39,7 @@ DATASET_BLUEPRINT_TAG = "datasets"
 dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@dataset_blueprint.route(
-    "/datasets.list", methods=["GET"], provide_automatic_options=False,
-)
+@dataset_blueprint.route("/datasets.list", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @requires_cache
 @optional_identity
@@ -67,9 +65,7 @@ def list_datasets_view(user_data, cache):
     return DatasetsListCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@dataset_blueprint.route(
-    "/datasets.files_list", methods=["GET"], provide_automatic_options=False,
-)
+@dataset_blueprint.route("/datasets.files_list", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
 @requires_cache
 @optional_identity
@@ -95,9 +91,7 @@ def list_dataset_files_view(user_data, cache):
     return DatasetsFilesListCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@dataset_blueprint.route(
-    "/datasets.add", methods=["POST"], provide_automatic_options=False,
-)
+@dataset_blueprint.route("/datasets.add", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -125,9 +119,7 @@ def add_file_to_dataset_view(user_data, cache):
     return DatasetsAddFileCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@dataset_blueprint.route(
-    "/datasets.create", methods=["POST"], provide_automatic_options=False,
-)
+@dataset_blueprint.route("/datasets.create", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -155,9 +147,7 @@ def create_dataset_view(user_data, cache):
     return DatasetsCreateCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@dataset_blueprint.route(
-    "/datasets.remove", methods=["POST"], provide_automatic_options=False,
-)
+@dataset_blueprint.route("/datasets.remove", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -185,9 +175,7 @@ def remove_dataset_view(user_data, cache):
     return DatasetsRemoveCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@dataset_blueprint.route(
-    "/datasets.import", methods=["POST"], provide_automatic_options=False,
-)
+@dataset_blueprint.route("/datasets.import", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -215,9 +203,7 @@ def import_dataset_view(user_data, cache):
     return DatasetsImportCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@dataset_blueprint.route(
-    "/datasets.edit", methods=["POST"], provide_automatic_options=False,
-)
+@dataset_blueprint.route("/datasets.edit", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -245,9 +231,7 @@ def edit_dataset_view(user_data, cache):
     return DatasetsEditCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@dataset_blueprint.route(
-    "/datasets.unlink", methods=["POST"], provide_automatic_options=False,
-)
+@dataset_blueprint.route("/datasets.unlink", methods=["POST"], provide_automatic_options=False)
 @handle_common_except
 @accepts_json
 @requires_cache

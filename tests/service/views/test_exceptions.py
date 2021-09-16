@@ -20,9 +20,9 @@ import json
 import uuid
 
 import pytest
-from flaky import flaky
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE
+from tests.utils import retry_failed
 
 
 @pytest.mark.service
@@ -54,7 +54,7 @@ def test_auth_headers_exc(service_allowed_endpoint):
     else:
         client_method = methods.pop(method)
 
-    response = client_method(request["url"], headers=request["headers"],)
+    response = client_method(request["url"], headers=request["headers"])
 
     assert 200 == response.status_code
     assert response.json["error"]["code"] in [INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE]
@@ -63,7 +63,7 @@ def test_auth_headers_exc(service_allowed_endpoint):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@retry_failed
 def test_migration_required_flag(svc_client_setup):
     """Check migration required failure."""
     svc_client, headers, project_id, _, _ = svc_client_setup
@@ -73,19 +73,19 @@ def test_migration_required_flag(svc_client_setup):
         "name": uuid.uuid4().hex,
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert response.json["error"]["migration_required"]
 
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_headers):
     """Check migration required failure."""
     payload = {"git_url": it_non_renku_repo_url}
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert "result" in response.json
@@ -101,7 +101,7 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
         "name": uuid.uuid4().hex,
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert "error" in response.json
@@ -111,12 +111,12 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers):
     """Check migration required failure."""
     payload = {"git_url": it_no_commit_repo_url}
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert "result" in response.json
@@ -132,7 +132,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
         "name": uuid.uuid4().hex,
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers,)
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert "error" in response.json
@@ -142,17 +142,26 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 @pytest.mark.parametrize(
     "git_url,expected",
     [
-        ("https://github.com", {"error": {"code": -32602, "reason": "Validation error: `schema` - Invalid `git_url`"}}),
+        (
+            "https://github.com",
+            {"error": {"code": -32602, "reason": "Validation error: `git_url` - Invalid `git_url`"}},
+        ),
         (
             "https://github.com/SwissDataScienceCenter",
-            {"error": {"code": -32602, "reason": "Validation error: `schema` - Invalid `git_url`"}},
+            {"error": {"code": -32100, "reason": "Cannot clone repo from https://github.com/SwissDataScienceCenter"}},
         ),
-        ("https://test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found"}}),
-        ("https://www.test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found"}}),
+        (
+            "https://test.com/test2/test3",
+            {"error": {"code": -32100, "reason": "Cannot clone repo from https://test.com/test2/test3"}},
+        ),
+        (
+            "https://www.test.com/test2/test3",
+            {"error": {"code": -32100, "reason": "Cannot clone repo from https://www.test.com/test2/test3"}},
+        ),
     ],
 )
 def test_invalid_git_remote(git_url, expected, svc_client_with_templates):

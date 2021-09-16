@@ -17,51 +17,38 @@
 # limitations under the License.
 """Classes for tracking parameter values in provenance."""
 
-from pathlib import Path
-from typing import Any, Union
+from itertools import chain
+from typing import Any
 from uuid import uuid4
 
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
-from renku.core.models.workflow.parameter import (
-    CommandInput,
-    CommandInputSchema,
-    CommandOutput,
-    CommandOutputSchema,
-    CommandParameter,
-    CommandParameterSchema,
-)
+from renku.core import errors
+from renku.core.models.calamus import JsonLDSchema, fields, renku, schema
+from renku.core.models.workflow.plan import Plan
 
 
 class ParameterValue:
     """Value for a parameter in provenance."""
 
-    def __init__(self, *, id: str):
+    def __init__(self, *, id: str, parameter_id: str, value: Any):
         self.id = id
+        self.parameter_id: str = parameter_id
+        self.value: Any = value
 
     @staticmethod
     def generate_id(activity_id: str) -> str:
         """Generate a default id."""
-        return f"{activity_id}/parameter-value/{uuid4()}"
+        return f"{activity_id}/parameter-value/{uuid4().hex}"
 
+    def apply_value_to_parameter(self, plan: Plan) -> None:
+        """Apply the current value as actual_value on the plan's parameter."""
+        for parameter in chain(plan.inputs, plan.outputs, plan.parameters):
+            if parameter.id == self.parameter_id:
+                parameter.actual_value = self.value
+                return
 
-class PathParameterValue(ParameterValue):
-    """Value for a path parameter in provenance."""
-
-    def __init__(self, *, id: str, parameter: Union[CommandInput, CommandOutput], path: Union[Path, str]):
-        super().__init__(id=id)
-        self.parameter: Union[CommandInput, CommandOutput] = parameter
-        self.path: Union[Path, str] = str(path)
-
-
-class VariableParameterValue(ParameterValue):
-    """Value for a parameter in provenance."""
-
-    def __init__(self, *, id: str, parameter: CommandParameter, value: Any):
-        super().__init__(id=id)
-        self.parameter: CommandParameter = parameter
-        self.value: Any = value
+        raise errors.ParameterError(f"Parameter {self.parameter_id} not found on plan {plan.id}.")
 
 
 class ParameterValueSchema(JsonLDSchema):
@@ -76,30 +63,5 @@ class ParameterValueSchema(JsonLDSchema):
 
     id = fields.Id()
 
-
-class PathParameterValueSchema(ParameterValueSchema):
-    """PathParameterValue schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.PathParameterValue, schema.PropertyValue]
-        model = PathParameterValue
-        unknown = EXCLUDE
-
-    parameter = Nested(schema.valueReference, [CommandInputSchema, CommandOutputSchema], reverse=True)
-    path = fields.String(prov.atLocation)
-
-
-class VariableParameterValueSchema(ParameterValueSchema):
-    """VariableParameterValue schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.VariableParameterValue, schema.PropertyValue]
-        model = VariableParameterValue
-        unknown = EXCLUDE
-
-    parameter = Nested(schema.valueReference, CommandParameterSchema, reverse=True)
+    parameter = fields.IRI(schema.valueReference, attribute="parameter_id")
     value = fields.Raw(schema.value)

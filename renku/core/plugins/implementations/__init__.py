@@ -17,4 +17,8 @@
 # limitations under the License.
 """Renku plugin implementations."""
 
+from renku.core.management.workflow.converters.cwl import CWLExporter
+
 __all__ = []
+
+workflow_exporters = [CWLExporter]

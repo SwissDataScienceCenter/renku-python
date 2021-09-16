@@ -24,7 +24,7 @@ include .tx/config
 include *.md
 prune docs/_build
 recursive-include renku *.po *.pot *.mo
-recursive-include renku *.py
+recursive-include renku *.py *.tmpl
 # added by check_manifest.py
 chartpress.yaml
 include .coveragerc
@@ -53,9 +53,11 @@ recursive-include .travis *.sh
 recursive-include docs *.bat
 recursive-include docs *.css
 recursive-include docs *.html
+recursive-include docs *.ico
 recursive-include docs *.png
 recursive-include docs *.py
 recursive-include docs *.rst
+recursive-include docs *.svg
 recursive-include docs *.txt
 recursive-include docs Makefile
 recursive-include examples *.py

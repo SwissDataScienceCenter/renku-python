@@ -29,16 +29,17 @@ CLI_FIXTURE_LOCATIONS = [
 ]
 
 CORE_FIXTURE_LOCATIONS = [
+    "tests.core.fixtures.core_database",
     "tests.core.fixtures.core_datasets",
     "tests.core.fixtures.core_plugins",
     "tests.core.fixtures.core_projects",
     "tests.core.fixtures.core_serialization",
+    "tests.core.fixtures.core_workflow",
 ]
 
 GLOBAL_FIXTURE_LOCATIONS = [
     "tests.fixtures.common",
     "tests.fixtures.config",
-    "tests.fixtures.graph",
     "tests.fixtures.repository",
     "tests.fixtures.runners",
     "tests.fixtures.templates",

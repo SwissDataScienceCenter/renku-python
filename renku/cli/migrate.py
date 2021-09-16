@@ -64,12 +64,11 @@ from renku.core.errors import MigrationRequired, ProjectNotSupported
 
 @click.command()
 @click.option("-c", "--check", is_flag=True, help="Check if migration is required and quit.")
-@click.option("--no-commit", is_flag=True, hidden=True, help="Do not commit changes after the migration.")
 @click.option("-t", "--skip-template-update", is_flag=True, hidden=True, help="Do not update project template files.")
 @click.option(
     "-d", "--skip-docker-update", is_flag=True, hidden=True, help="Do not update Dockerfile to current renku version."
 )
-def migrate(check, no_commit, skip_template_update, skip_docker_update):
+def migrate(check, skip_template_update, skip_docker_update):
     """Check for migration and migrate to the latest Renku project version."""
     status = check_project().build().execute().output
 
@@ -107,9 +106,7 @@ def migrate(check, no_commit, skip_template_update, skip_docker_update):
 
     communicator = ClickCallback()
 
-    command = migrate_project().with_communicator(communicator)
-    if not no_commit:
-        command = command.with_commit()
+    command = migrate_project().with_communicator(communicator).with_commit()
     result = command.build().execute(skip_template_update=skip_template_update, skip_docker_update=skip_docker_update)
 
     result, _, _ = result.output
@@ -135,7 +132,9 @@ def migrationscheck():
         template_id,
         automated_update,
         docker_update_possible,
-    ) = (migrations_check().lock_project().build().execute().output)
+    ) = (
+        migrations_check().lock_project().build().execute().output
+    )
 
     click.echo(
         json.dumps(
@@ -158,9 +157,7 @@ def migrationscheck():
 
 
 @click.command(hidden=True)
-@click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
-)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def check_immutable_template_files(paths):
     """Check specified paths if they are marked immutable in the template."""
     result = check_immutable_template_files_command().build().execute(paths=paths)

@@ -20,7 +20,6 @@
 from __future__ import absolute_import, print_function
 
 import contextlib
-import datetime
 import os
 import subprocess
 import sys
@@ -29,7 +28,6 @@ from pathlib import Path
 import git
 import pytest
 from click.testing import CliRunner
-from cwlgen import parse_cwl
 
 from renku import __version__
 from renku.cli import cli
@@ -37,6 +35,7 @@ from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils.contexts import chdir
+from tests.utils import format_result_exception
 
 
 def test_version(runner):
@@ -49,7 +48,7 @@ def test_version(runner):
 def test_help(arg, runner):
     """Test cli help."""
     result = runner.invoke(cli, [arg])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Show this message and exit." in result.output
 
 
@@ -59,15 +58,15 @@ def test_run_from_non_root(runner, client, cwd):
     path.mkdir(parents=True, exist_ok=True)
     with chdir(path):
         result = runner.invoke(cli, ["dataset", "ls"])
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
         assert "Run CLI commands only from project's root" in result.output
 
         result = runner.invoke(cli, ["help"])
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
         assert "Run CLI commands only from project" not in result.output
 
     result = runner.invoke(cli, ["dataset", "ls"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "Run CLI commands only from project's root" not in result.output
 
 
@@ -96,95 +95,6 @@ def test_exit_code(cmd, exit_code, runner, project):
     assert exit_code == result.exit_code
 
 
-def test_git_pre_commit_hook(runner, project, capsys):
-    """Test detection of output edits."""
-    result = runner.invoke(cli, ["githooks", "install"])
-    assert 0 == result.exit_code
-    assert "Hook already exists." in result.output
-
-    repo = git.Repo(project)
-    cwd = Path(project)
-    output = cwd / "output.txt"
-
-    result = runner.invoke(cli, ["run", "touch", output.name])
-    assert 0 == result.exit_code
-    with output.open("w") as f:
-        f.write("hello")
-
-    repo.git.add("--all")
-    with pytest.raises(git.HookExecutionError) as error:
-        repo.index.commit("hello")
-
-    assert output.name in error.value.stdout
-
-    result = runner.invoke(cli, ["githooks", "uninstall"])
-    assert 0 == result.exit_code
-
-    repo.index.commit("hello")
-
-
-def test_git_pre_commit_hook_in_old_project(isolated_runner, old_dataset_project):
-    """Test proper messaging in git hooks when project requires migration."""
-    assert 0 == isolated_runner.invoke(cli, ["githooks", "install"]).exit_code
-
-    with old_dataset_project.with_metadata() as project:
-        project.created = datetime.datetime.now(datetime.timezone.utc)
-
-    old_dataset_project.repo.git.add("--all")
-
-    with pytest.raises(git.exc.HookExecutionError) as e:
-        old_dataset_project.repo.index.commit("update project metadata")
-
-    assert "Cannot verify validity of the commit: Project metadata is outdated." in str(e.value.stdout)
-    assert "Run 'renku migrate' command to fix the issue." in str(e.value.stdout)
-    assert "You are trying to update generated files" not in str(e.value.stdout)
-
-
-def test_git_pre_commit_hook_in_unsupported_project(unsupported_project):
-    """Test proper messaging in git hooks when project version is not supported."""
-    with unsupported_project.with_metadata() as project:
-        project.created = datetime.datetime.now(datetime.timezone.utc)
-
-    unsupported_project.repo.git.add("--all")
-
-    with pytest.raises(git.exc.HookExecutionError) as e:
-        unsupported_project.repo.index.commit("update project metadata")
-
-    assert "Cannot verify validity of the commit: Project was created with a newer version of Renku." in str(
-        e.value.stdout
-    )
-    assert "Upgrade Renku to the latest version." in str(e.value.stdout)
-    assert "You are trying to update generated files" not in str(e.value.stdout)
-
-
-def test_workflow(runner, project):
-    """Test workflow command."""
-    result = runner.invoke(cli, ["run", "touch", "data.csv"])
-    assert 0 == result.exit_code
-
-    with open("counted.txt", "w") as stdout:
-        with contextlib.redirect_stdout(stdout):
-            try:
-                cli.main(
-                    args=("run", "wc", "data.csv"), prog_name=runner.get_default_prog_name(cli),
-                )
-            except SystemExit as e:
-                assert e.code in {None, 0}
-
-    result = runner.invoke(cli, ["workflow", "create", "counted.txt", "-o", "workflow.cwl"], catch_exceptions=False,)
-    assert 0 == result.exit_code
-    workflow = parse_cwl("workflow.cwl")
-    assert 2 == len(workflow.steps)
-
-    # Compare default log and log for a specific file.
-    result_default = runner.invoke(cli, ["log"])
-    result_arg = runner.invoke(cli, ["log", "counted.txt"])
-
-    assert 0 == result_default.exit_code
-    assert 0 == result_arg.exit_code
-    assert result_default.output == result_arg.output
-
-
 def test_streams(runner, project, capsys, no_lfs_warning):
     """Test redirection of std streams."""
     repo = git.Repo(".")
@@ -195,6 +105,7 @@ def test_streams(runner, project, capsys, no_lfs_warning):
     repo.git.add("--all")
     repo.index.commit("Added source.txt")
 
+    workflow_name = "run1"
     with capsys.disabled():
         with open("source.txt", "rb") as stdin:
             with open("result.txt", "wb") as stdout:
@@ -203,7 +114,8 @@ def test_streams(runner, project, capsys, no_lfs_warning):
                     sys.stdin, sys.stdout = stdin, stdout
                     try:
                         cli.main(
-                            args=("run", "cut", "-d,", "-f", "2", "-s"), prog_name=runner.get_default_prog_name(cli),
+                            args=("run", "--name", workflow_name, "cut", "-d,", "-f", "2", "-s"),
+                            prog_name=runner.get_default_prog_name(cli),
                         )
                     except SystemExit as e:
                         assert e.code in {None, 0}
@@ -213,24 +125,24 @@ def test_streams(runner, project, capsys, no_lfs_warning):
     with open("result.txt", "r") as f:
         assert f.read().strip() == "second"
 
-    result = runner.invoke(cli, ["workflow", "create", "result.txt"])
-    assert 0 == result.exit_code
+    result = runner.invoke(cli, ["workflow", "export", workflow_name])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Check that source.txt is not shown in outputs.
-    result = runner.invoke(cli, ["show", "outputs", "source.txt"])
+    result = runner.invoke(cli, ["workflow", "outputs", "source.txt"])
     assert 1 == result.exit_code
 
-    result = runner.invoke(cli, ["show", "outputs"])
-    assert 0 == result.exit_code
-    assert {"result.txt",} == set(result.output.strip().split("\n"))
+    result = runner.invoke(cli, ["workflow", "outputs"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert {"result.txt"} == set(result.output.strip().split("\n"))
 
     # Check that source.txt is shown in inputs.
-    result = runner.invoke(cli, ["show", "inputs"])
-    assert 0 == result.exit_code
-    assert {"source.txt",} == set(result.output.strip().split("\n"))
+    result = runner.invoke(cli, ["workflow", "inputs"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert {"source.txt"} == set(result.output.strip().split("\n"))
 
     with open("source.txt", "w") as source:
         source.write("first,second,third,fourth")
@@ -282,7 +194,7 @@ def test_streams_and_args_names(runner, project, capsys, no_lfs_warning):
                 old_stdout = sys.stdout
                 sys.stdout = stdout
                 try:
-                    cli.main(args=("run", "echo", "lalala"),)
+                    cli.main(args=("run", "echo", "lalala"))
                 except SystemExit as e:
                     assert e.code in {None, 0}
             finally:
@@ -292,7 +204,7 @@ def test_streams_and_args_names(runner, project, capsys, no_lfs_warning):
         assert f.read().strip() == "lalala"
 
     result = runner.invoke(cli, ["status"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_show_inputs(tmpdir_factory, project, runner, run, template):
@@ -322,7 +234,7 @@ def test_show_inputs(tmpdir_factory, project, runner, run, template):
     woop_wc = Path(project) / "woop.wc"
     assert 0 == run(args=("run", "wc"), stdin=imported_woop, stdout=woop_wc)
 
-    result = runner.invoke(cli, ["show", "inputs"], catch_exceptions=False)
+    result = runner.invoke(cli, ["workflow", "inputs"], catch_exceptions=False)
     assert {str(imported_woop.resolve().relative_to(Path(project).resolve()))} == set(result.output.strip().split("\n"))
 
 
@@ -335,7 +247,7 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch, proj
     os.chdir("test-project")
 
     result = runner.invoke(cli, ["--no-external-storage"] + commands["init"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
         monkey.setattr(StorageApiMixin, "storage_installed", False)
@@ -346,7 +258,7 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch, proj
 
         # Since repo is not using external storage.
         result = runner.invoke(cli, ["--no-external-storage", "run", "touch", "output"])
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
 
     subprocess.call(["git", "clean", "-df"])
     result = runner.invoke(cli, ["--no-external-storage", "run", "touch", "output"])
@@ -361,7 +273,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch, project
     data, commands = project_init
 
     result = runner.invoke(cli, ["--external-storage"] + commands["init"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
         monkey.setattr(StorageApiMixin, "storage_installed", False)
@@ -377,7 +289,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch, project
     # Clean repo and check external storage.
     subprocess.call(["git", "clean", "-df"])
     result = runner.invoke(cli, ["run", "touch", "output2"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory_tree, project_init):
@@ -387,10 +299,10 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
     result = isolated_runner.invoke(
         cli, ["--no-external-storage"] + commands["init"] + commands["id"], commands["confirm"]
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = isolated_runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
@@ -414,16 +326,16 @@ def test_file_tracking(isolated_runner, project_init):
     os.mkdir("test-project")
     os.chdir("test-project")
     result = runner.invoke(cli, commands["init"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["run", "touch", "tracked"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "tracked" in Path(".gitattributes").read_text()
 
     result = runner.invoke(cli, ["-S", "run", "touch", "untracked"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "untracked" not in Path(".gitattributes").read_text()
 
 
@@ -443,13 +355,13 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     result = runner.invoke(
         cli, commands["init"] + commands["id"] + ["--no-external-storage"], commands["confirm"], catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     os.chdir("../bar")
     result = runner.invoke(
         cli, commands["init"] + commands["id"] + ["--no-external-storage"], commands["confirm"], catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     os.chdir("../foo")
     with monkeypatch.context() as monkey:
@@ -461,24 +373,22 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
         subprocess.call(["git", "clean", "-dff"])
 
     result = runner.invoke(cli, ["-S", "dataset", "add", "f", "../woop"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     os.chdir("../bar")
     result = runner.invoke(cli, ["-S", "dataset", "add", "b", "../foo/data/f/woop"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Produce a derived data from the imported data.
     with open("woop.wc", "w") as stdout:
         with contextlib.redirect_stdout(stdout):
             try:
-                cli.main(
-                    args=("-S", "run", "wc", "data/b/woop"), prog_name=runner.get_default_prog_name(cli),
-                )
+                cli.main(args=("-S", "run", "wc", "data/b/woop"), prog_name=runner.get_default_prog_name(cli))
             except SystemExit as e:
                 assert e.code in {None, 0}
 
     result = runner.invoke(cli, ["status"], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Modify the source data.
     os.chdir("../foo")
@@ -494,11 +404,11 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     result = runner.invoke(cli, ["status"], catch_exceptions=False)
     assert 0 != result.exit_code
 
-    # Test relative log output
-    cmd = ["--path", "../foo", "log"]
+    # Test relative graph export output
+    cmd = ["--path", "../foo", "graph", "export"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
     assert "../foo/data/f/woop" in result.output
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_status_consistency(client, project):
@@ -514,7 +424,7 @@ def test_status_consistency(client, project):
     client.repo.index.commit("add woop")
 
     result = runner.invoke(cli, ["run", "cp", "somedirectory/woop", "somedirectory/meeh"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with open("somedirectory/woop", "w") as fp:
         fp.write("weep")
@@ -525,14 +435,20 @@ def test_status_consistency(client, project):
     base_result = runner.invoke(cli, ["status"])
     os.chdir("somedirectory")
     comp_result = runner.invoke(cli, ["status"])
-    assert base_result.stdout.replace("somedirectory/", "") == comp_result.output
+
+    assert 1 == base_result.exit_code, format_result_exception(base_result)
+    assert 1 == comp_result.exit_code, format_result_exception(comp_result)
+
+    base_result_stdout = "\n".join(base_result.stdout.split("\n"))
+    comp_result_stdout = "\n".join(comp_result.output.split("\n"))
+    assert base_result_stdout.replace("somedirectory/", "") == comp_result_stdout
 
 
 def test_unchanged_output(runner, project):
     """Test detection of unchanged output."""
     cmd = ["run", "touch", "1"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     cmd = ["run", "touch", "1"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
@@ -547,7 +463,7 @@ def test_unchanged_stdout(runner, project, capsys, no_lfs_warning):
                 old_stdout = sys.stdout
                 sys.stdout = stdout
                 try:
-                    cli.main(args=("run", "echo", "1"),)
+                    cli.main(args=("run", "echo", "1"))
                 except SystemExit as e:
                     assert e.code in {None, 0}
             finally:
@@ -559,7 +475,7 @@ def test_unchanged_stdout(runner, project, capsys, no_lfs_warning):
                 old_stdout = sys.stdout
                 sys.stdout = stdout
                 try:
-                    cli.main(args=("run", "echo", "1"),)
+                    cli.main(args=("run", "echo", "1"))
                 except SystemExit as e:
                     # The stdout has not been modified!
                     assert e.code in {None, 1}
@@ -567,6 +483,7 @@ def test_unchanged_stdout(runner, project, capsys, no_lfs_warning):
                 sys.stdout = old_stdout
 
 
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_modified_output(runner, project, run):
     """Test detection of changed file as output."""
     cwd = Path(project)
@@ -592,7 +509,7 @@ def test_modified_output(runner, project, run):
     assert not output.exists()
 
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # The output file is copied from the source.
     with output.open("r") as f:
@@ -602,7 +519,7 @@ def test_modified_output(runner, project, run):
 
     # The input file has been updated and output is recreated.
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with output.open("r") as f:
         assert f.read().strip() == "2"
@@ -617,85 +534,17 @@ def test_modified_output(runner, project, run):
         assert f.read().strip() == "3"
 
 
-def test_siblings(runner, project):
-    """Test detection of siblings."""
-    siblings = {"brother", "sister"}
-
-    cmd = ["run", "touch"] + list(siblings)
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
-
-    for sibling in siblings:
-        cmd = ["show", "siblings", sibling]
-        result = runner.invoke(cli, cmd)
-        assert 0 == result.exit_code
-
-        output = {name.strip() for name in result.output.split("\n") if name.strip()}
-        assert output == siblings, "Checked {0}".format(sibling)
-
-
-def test_orphan(runner, project):
-    """Test detection of an orphan."""
-    cwd = Path(project)
-    orphan = cwd / "orphan.txt"
-
-    cmd = ["run", "touch", orphan.name]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
-
-    cmd = ["show", "siblings", "orphan.txt"]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
-    assert "orphan.txt\n" == result.output
-
-
-def test_only_child(runner, project):
-    """Test detection of an only child."""
-    cmd = ["run", "touch", "only_child"]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
-
-    cmd = ["show", "siblings", "only_child"]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
-    assert "only_child\n" == result.output
-
-
 def test_outputs(runner, project):
     """Test detection of outputs."""
     siblings = {"brother", "sister"}
 
     cmd = ["run", "touch"] + list(siblings)
     result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["show", "outputs"])
-    assert 0 == result.exit_code
+    result = runner.invoke(cli, ["workflow", "outputs"])
+    assert 0 == result.exit_code, format_result_exception(result)
     assert siblings == set(result.output.strip().split("\n"))
-
-
-def test_moved_file(runner, project):
-    """Test that moved files are displayed correctly."""
-    repo = git.Repo(project)
-    cwd = Path(project)
-    input_ = cwd / "input.txt"
-    with input_.open("w") as f:
-        f.write("first")
-
-    repo.git.add("--all")
-    repo.index.commit("Created input.txt")
-
-    result = runner.invoke(cli, ["log"])
-    assert 0 == result.exit_code
-    assert input_.name in result.output
-
-    repo.git.mv(input_.name, "renamed.txt")
-    repo.index.commit("Renamed input")
-
-    result = runner.invoke(cli, ["log"])
-    assert 0 == result.exit_code
-    assert input_.name not in result.output
-    assert "renamed.txt" in result.output
 
 
 def test_deleted_input(runner, project, capsys):
@@ -711,11 +560,12 @@ def test_deleted_input(runner, project, capsys):
 
     cmd = ["run", "mv", input_.name, "input.mv"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert not input_.exists()
     assert Path("input.mv").exists()
 
 
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_input_directory(runner, project, run, no_lfs_warning):
     """Test detection of input directory."""
     repo = git.Repo(project)
@@ -751,8 +601,8 @@ def test_input_directory(runner, project, run, no_lfs_warning):
     with output.open("r") as fp:
         assert "first\nsecond\n" == fp.read()
 
-    result = runner.invoke(cli, ["show", "inputs"])
-    assert 0 == result.exit_code
+    result = runner.invoke(cli, ["workflow", "inputs"])
+    assert 0 == result.exit_code, format_result_exception(result)
     assert set(str(p.relative_to(cwd)) for p in inputs.rglob("*") if p.name != ".gitkeep") == set(
         result.output.strip().split("\n")
     )
@@ -817,14 +667,14 @@ def test_lfs_size_limit(isolated_runner, project_init):
     os.mkdir("test-project")
     os.chdir("test-project")
     result = runner.invoke(cli, commands["init"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     large = Path("large")
     with large.open("w") as f:
         f.write("x" * 1024 ** 2)
 
     result = runner.invoke(cli, ["dataset", "add", "--create", "my-dataset", str(large)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "large" in Path(".gitattributes").read_text()
 
     small = Path("small")
@@ -832,7 +682,7 @@ def test_lfs_size_limit(isolated_runner, project_init):
         f.write("small file")
 
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(small)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert "small" not in Path(".gitattributes").read_text()
 
 
@@ -858,9 +708,9 @@ def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
     os.mkdir("test-project")
     os.chdir("test-project")
     result = runner.invoke(cli, commands["init"] + commands["id"], commands["confirm"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     with Path(".renkulfsignore").open("w") as f:
         f.write(ignore)
@@ -882,7 +732,7 @@ def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
         f.write("x" * 1024 ** 2)
 
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(filepath)], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # check if file is tracked or not
     if tracked:

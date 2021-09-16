@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrate datasets based on Git submodules."""
+import glob
 import os
 import shutil
 from pathlib import Path
@@ -23,9 +24,18 @@ from pathlib import Path
 from git import GitError, Repo
 
 from renku.core import errors
+from renku.core.management import LocalClient
+from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.management.migrations.m_0009__new_metadata_storage import _fetch_datasets
 from renku.core.management.migrations.models.v3 import DatasetFileSchemaV3, get_client_datasets
-from renku.core.models.datasets import DatasetFile, DatasetFileSchema
-from renku.core.models.entities import generate_file_id, generate_label
+from renku.core.management.migrations.models.v9 import (
+    DatasetFile,
+    OldDatasetFileSchema,
+    generate_file_id,
+    generate_label,
+)
 from renku.core.utils.urls import remove_credentials
 
 
@@ -34,8 +44,10 @@ def migrate(client):
     _migrate_submodule_based_datasets(client)
 
 
-def _migrate_submodule_based_datasets(client):
-    from renku.core.management import LocalClient
+@inject.autoparams()
+def _migrate_submodule_based_datasets(
+    client, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher
+):
     from renku.core.management.migrate import is_project_unsupported, migrate
 
     submodules = client.repo.submodules
@@ -77,10 +89,15 @@ def _migrate_submodule_based_datasets(client):
     remote_clients = {p: LocalClient(p) for p in repo_paths}
 
     for remote_client in remote_clients.values():
-        if not is_project_unsupported(remote_client):
-            migrate(
-                remote_client, skip_template_update=True, skip_docker_update=True,
-            )
+        client_dispatcher.push_created_client_to_stack(remote_client)
+        database_dispatcher.push_database_to_stack(remote_client.database_path, commit=True)
+
+        try:
+            if not is_project_unsupported():
+                migrate(skip_template_update=True, skip_docker_update=True)
+        finally:
+            database_dispatcher.pop_database()
+            client_dispatcher.pop_client()
 
     metadata = {}
 
@@ -101,7 +118,7 @@ def _migrate_submodule_based_datasets(client):
                 based_on.based_on = None
             else:
                 based_on = DatasetFile.from_revision(remote_client, path=path_within_repo, url=url)
-            data = DatasetFileSchema(client=remote_client).dump(based_on)
+            data = OldDatasetFileSchema(client=remote_client).dump(based_on)
             based_on = DatasetFileSchemaV3(client=remote_client).load(data)
         else:
             if url:
@@ -133,7 +150,7 @@ def _migrate_submodule_based_datasets(client):
                 file_.based_on = based_on
                 file_.url = remove_credentials(url)
                 file_.commit = client.find_previous_commit(file_.path)
-                file_._id = generate_file_id(client=client, hexsha=file_.commit.hexsha, path=file_.path)
+                file_._id = generate_file_id(client, hexsha=file_.commit.hexsha, path=file_.path)
                 file_._label = generate_label(file_.path, file_.commit.hexsha)
 
         dataset.to_yaml()
@@ -141,7 +158,8 @@ def _migrate_submodule_based_datasets(client):
 
 def _fetch_file_metadata(client, path):
     """Return metadata for a single file."""
-    for dataset in client.datasets.values():
-        for file_ in dataset.files:
-            if file_.path == path:
-                return file_
+    paths = glob.glob(f"{client.path}/.renku/datasets/*/*.yml" "")
+    for dataset in _fetch_datasets(client, client.repo.head.commit, paths, [])[0]:
+        for file in dataset.files:
+            if file.entity.path == path:
+                return file

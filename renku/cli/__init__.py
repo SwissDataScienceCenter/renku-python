@@ -79,16 +79,15 @@ from renku.cli.exception_handler import IssueFromTraceback
 from renku.cli.githooks import githooks as githooks_command
 from renku.cli.graph import graph
 from renku.cli.init import init as init_command
-from renku.cli.log import log
-from renku.cli.login import login, logout
+from renku.cli.login import login, logout, token
 from renku.cli.migrate import check_immutable_template_files, migrate, migrationscheck
 from renku.cli.move import move
+from renku.cli.project import project
 from renku.cli.remove import remove
 from renku.cli.rerun import rerun
 from renku.cli.run import run
 from renku.cli.save import save
 from renku.cli.service import service
-from renku.cli.show import show
 from renku.cli.status import status
 from renku.cli.storage import storage
 from renku.cli.update import update
@@ -130,7 +129,7 @@ def is_allowed_command(ctx):
 
 @with_plugins(iter_entry_points("renku.cli_plugins"))
 @click.group(
-    cls=IssueFromTraceback, context_settings={"auto_envvar_prefix": "RENKU", "help_option_names": ["-h", "--help"],}
+    cls=IssueFromTraceback, context_settings={"auto_envvar_prefix": "RENKU", "help_option_names": ["-h", "--help"]}
 )
 @click.option(
     "--version", is_flag=True, callback=print_version, expose_value=False, is_eager=True, help=print_version.__doc__
@@ -177,7 +176,7 @@ def cli(ctx, path, external_storage_requested):
             )
         )
 
-    ctx.obj = LocalClient(path=path, external_storage_requested=external_storage_requested,)
+    ctx.obj = LocalClient(path=path, external_storage_requested=external_storage_requested)
 
     if path != os.getcwd() and ctx.invoked_subcommand not in WARNING_UNPROTECTED_COMMANDS:
         click.secho(WARNING + "Run CLI commands only from project's root directory.\n", err=True)
@@ -198,20 +197,20 @@ cli.add_command(doctor)
 cli.add_command(githooks_command)
 cli.add_command(graph)
 cli.add_command(init_command)
-cli.add_command(log)
 cli.add_command(login)
 cli.add_command(logout)
 cli.add_command(migrate)
 cli.add_command(migrationscheck)
 cli.add_command(check_immutable_template_files)
 cli.add_command(move)
+cli.add_command(project)
 cli.add_command(remove)
 cli.add_command(rerun)
 cli.add_command(run)
 cli.add_command(save)
-cli.add_command(show)
 cli.add_command(status)
 cli.add_command(storage)
+cli.add_command(token)
 cli.add_command(update)
 cli.add_command(workflow)
 cli.add_command(service)
