@@ -12,6 +12,8 @@
 #
 # $ nix-shell --pure
 #
+# For the shell definition see ./shell.nix
+
 { system ? builtins.currentSystem }:
 let
     pkgs = import <nixpkgs> { inherit system; };
@@ -25,7 +27,7 @@ let
     };
 
 in with pkgs;
-    mach-nix.buildPythonApplication {
+    mach-nix.buildPythonPackage {
     pname = "renku";
     version = "0.16.0";
 
@@ -40,10 +42,5 @@ in with pkgs;
     nativeBuildInputs = [ git git-lfs nodejs ];
     propagatedBuildInputs = [ git git-lfs nodejs ];
     _.apispec.propagatedBuildInputs.mod = pySelf: self: oldVal: oldVal ++ [ pySelf.pyyaml ];
-
     GIT_SSL_NO_VERIFY = "true";
-    doCheck = true;
-    checkPhase = ''
-        python -m pytest -v -m "not integration and not publish and not service"
-    '';
 }
