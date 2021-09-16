@@ -31,7 +31,7 @@ def template():
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
         "id": "python-minimal",
         "index": 1,
-        "ref": "master",
+        "ref": "python-icon",
         # TODO: Add template parameters here once parameters are added to the template.
         "metadata": {},
         "default_metadata": {
