@@ -88,7 +88,6 @@ from renku.cli.rerun import rerun
 from renku.cli.run import run
 from renku.cli.save import save
 from renku.cli.service import service
-from renku.cli.show import show
 from renku.cli.status import status
 from renku.cli.storage import storage
 from renku.cli.update import update
@@ -209,7 +208,6 @@ cli.add_command(remove)
 cli.add_command(rerun)
 cli.add_command(run)
 cli.add_command(save)
-cli.add_command(show)
 cli.add_command(status)
 cli.add_command(storage)
 cli.add_command(token)

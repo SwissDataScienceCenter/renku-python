@@ -93,6 +93,7 @@ def create_dataset_helper(
     keywords=None,
     images=None,
     safe_image_paths=None,
+    custom_metadata=None,
 ):
     """Create a dataset in the repository."""
     client = client_dispatcher.current_client
@@ -110,6 +111,7 @@ def create_dataset_helper(
         keywords=keywords,
         images=images,
         safe_image_paths=safe_image_paths,
+        custom_metadata=custom_metadata,
     )
 
     return dataset
@@ -132,6 +134,7 @@ def _edit_dataset(
     images=None,
     skip_image_update=False,
     safe_image_paths=None,
+    custom_metadata=None,
 ):
     """Edit dataset metadata."""
     client = client_dispatcher.current_client
@@ -161,6 +164,10 @@ def _edit_dataset(
 
     if images_updated:
         updated["images"] = [{"content_url": i.content_url, "position": i.position} for i in dataset.images]
+
+    if custom_metadata:
+        client.update_dataset_custom_metadata(dataset, custom_metadata)
+        updated["custom_metadata"] = custom_metadata
 
     if not updated:
         return [], no_email_warnings

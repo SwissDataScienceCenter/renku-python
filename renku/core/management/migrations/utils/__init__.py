@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,16 +15,93 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper utils for migrations."""
+"""Migration utility functions."""
 
 import os
+import pathlib
+import threading
+import uuid
 from enum import IntFlag
+from urllib.parse import ParseResult, quote, urljoin, urlparse
 
 import pyld
 
 from renku.core.models.jsonld import read_yaml
 
 OLD_METADATA_PATH = "metadata.yml"
+OLD_DATASETS_PATH = "datasets"
+OLD_WORKFLOW_PATH = "workflow"
+
+thread_local_storage = threading.local()
+
+
+def generate_url_id(client, url_str, url_id):
+    """Generate @id field for Url."""
+    url = url_str or url_id
+    if url:
+        parsed_result = urlparse(url)
+        id_ = ParseResult("", *parsed_result[1:]).geturl()
+    else:
+        id_ = str(uuid.uuid4())
+
+    host = "localhost"
+    if client:
+        host = client.remote.get("host") or host
+    host = os.environ.get("RENKU_DOMAIN") or host
+
+    return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/urls", quote(id_, safe="")))
+
+
+def generate_dataset_tag_id(client, name, commit):
+    """Generate @id field for DatasetTag."""
+    host = "localhost"
+    if client:
+        host = client.remote.get("host") or host
+    host = os.environ.get("RENKU_DOMAIN") or host
+
+    name = "{0}@{1}".format(name, commit)
+
+    return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/datasettags", quote(name, safe="")))
+
+
+def generate_dataset_id(client, identifier):
+    """Generate @id field."""
+    # Determine the hostname for the resource URIs.
+    # If RENKU_DOMAIN is set, it overrides the host from remote.
+    # Default is localhost.
+    host = "localhost"
+    if client:
+        host = client.remote.get("host") or host
+    host = os.environ.get("RENKU_DOMAIN") or host
+
+    # always set the id by the identifier
+    return urljoin(f"https://{host}", pathlib.posixpath.join("/datasets", quote(identifier, safe="")))
+
+
+def generate_dataset_file_url(client, filepath):
+    """Generate url for DatasetFile."""
+    if not client:
+        return
+
+    try:
+        if not client.project:
+            return
+        project = client.project
+    except ValueError:
+        from renku.core.management.migrations.models.v9 import Project
+
+        metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
+        project = Project.from_yaml(metadata_path)
+
+        project_id = urlparse(project._id)
+    else:
+        project_id = urlparse(project.id)
+
+    filepath = quote(filepath, safe="/")
+    path = pathlib.posixpath.join(project_id.path, "files", "blob", filepath)
+    project_id = project_id._replace(path=path)
+
+    return project_id.geturl()
 
 
 class MigrationType(IntFlag):
@@ -142,3 +219,24 @@ def normalize(value):
             return {k: normalize(v) for k, v in value.items()}
 
     return value
+
+
+def get_datasets_path(client):
+    """Get the old datasets metadata path."""
+    return getattr(thread_local_storage, "temporary_datasets_path", client.path / client.renku_home / OLD_DATASETS_PATH)
+
+
+def set_temporary_datasets_path(temporary_datasets_path):
+    """Set a temporary datasets metadata path."""
+    thread_local_storage.temporary_datasets_path = temporary_datasets_path
+
+
+def is_using_temporary_datasets_path():
+    """Check if temporary datasets path is set."""
+    return bool(getattr(thread_local_storage, "temporary_datasets_path", None))
+
+
+def unset_temporary_datasets_path():
+    """Unset the current temporary datasets metadata path."""
+    if getattr(thread_local_storage, "temporary_datasets_path", None):
+        del thread_local_storage.temporary_datasets_path

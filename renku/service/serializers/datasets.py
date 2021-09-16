@@ -50,6 +50,8 @@ class DatasetDetailsRequest(DatasetDetails):
 
     images = fields.List(fields.Nested(ImageObjectRequest))
 
+    custom_metadata = fields.Dict()
+
 
 class DatasetCreateRequest(
     AsyncSchema, DatasetDetailsRequest, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
@@ -202,6 +204,7 @@ class DatasetEditRequest(
     description = fields.String(default=None)
     creators = fields.List(fields.Nested(DatasetCreators))
     keywords = fields.List(fields.String())
+    custom_metadata = fields.Dict(default=None)
 
 
 class DatasetEditResponse(RenkuSyncSchema):

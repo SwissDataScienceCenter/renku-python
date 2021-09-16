@@ -219,6 +219,12 @@ def svc_client_templates_creation(svc_client_with_templates):
         "project_namespace": "renku-python-integration-tests",
         "project_repository": "https://dev.renku.ch/gitlab",
         "project_description": "new service project",
+        "project_custom_metadata": {
+            "@id": "http://example.com/metadata12",
+            "@type": "https://schema.org/myType",
+            "https://schema.org/property1": 1,
+            "https://schema.org/property2": "test",
+        },
     }
 
     # clenup by invoking the GitLab delete API

@@ -45,6 +45,9 @@ the dataset.
 | -k, --keyword     | Dataset's keywords. Pass multiple times for a list   |
 |                   | of keywords.                                         |
 +-------------------+------------------------------------------------------+
+| -m, --metadata    | Path to file containing custom JSON-LD metadata to   |
+|                   | be added to the dataset.                             |
++-------------------+------------------------------------------------------+
 
 Editing a dataset's metadata
 
@@ -398,6 +401,9 @@ Unlink all files from a dataset:
     only the dataset record.
 """
 
+import json
+from pathlib import Path
+
 import click
 import requests
 from rich.console import Console
@@ -461,17 +467,36 @@ def list_dataset(format, columns):
     multiple=True,
     help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
+@click.option(
+    "-m",
+    "--metadata",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Custom metadata to be associated with the dataset.",
+)
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
-def create(name, title, description, creators, keyword):
+def create(name, title, description, creators, metadata, keyword):
     """Create an empty dataset in the current repo."""
     communicator = ClickCallback()
     creators = creators or ()
+
+    custom_metadata = None
+
+    if metadata:
+        custom_metadata = json.loads(Path(metadata).read_text())
 
     result = (
         create_dataset()
         .with_communicator(communicator)
         .build()
-        .execute(name=name, title=title, description=description, creators=creators, keywords=keyword)
+        .execute(
+            name=name,
+            title=title,
+            description=description,
+            creators=creators,
+            keywords=keyword,
+            custom_metadata=custom_metadata,
+        )
     )
 
     new_dataset = result.output
@@ -492,11 +517,23 @@ def create(name, title, description, creators, keyword):
     multiple=True,
     help="Creator's name, email, and affiliation. " "Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
+@click.option(
+    "-m",
+    "--metadata",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Custom metadata to be associated with the dataset.",
+)
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
-def edit(name, title, description, creators, keyword):
+def edit(name, title, description, creators, metadata, keyword):
     """Edit dataset metadata."""
     creators = creators or ()
     keywords = keyword or ()
+
+    custom_metadata = None
+
+    if metadata:
+        custom_metadata = json.loads(Path(metadata).read_text())
 
     result = (
         edit_dataset()
@@ -508,6 +545,7 @@ def edit(name, title, description, creators, keyword):
             creators=creators,
             keywords=keywords,
             skip_image_update=True,
+            custom_metadata=custom_metadata,
         )
     )
 
@@ -550,6 +588,10 @@ def show(name):
 
     if ds["version"]:
         click.echo(click.style("Version: ", bold=True, fg="magenta") + ds.get("version", ""))
+
+    if ds["annotations"]:
+        click.echo(click.style("Annotations: ", bold=True, fg="magenta"))
+        click.echo(json.dumps(ds.get("annotations", ""), indent=2))
 
     click.echo(click.style("Title: ", bold=True, fg="magenta") + click.style(ds.get("title", ""), bold=True))
 

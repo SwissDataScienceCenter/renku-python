@@ -55,6 +55,7 @@ class AbstractPlan(Persistent, ABC):
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str = None,
+        project_id: str = None,
         derived_from: str = None,
     ):
         self.description: str = description
@@ -62,6 +63,7 @@ class AbstractPlan(Persistent, ABC):
         self.invalidated_at: datetime = invalidated_at
         self.keywords: List[str] = keywords or []
         self.name: str = name
+        self.project_id: str = project_id
         self.derived_from: str = derived_from
 
         if not self.name:
@@ -92,7 +94,7 @@ class AbstractPlan(Persistent, ABC):
                 f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
             )
 
-    def assign_new_id(self):
+    def assign_new_id(self) -> str:
         """Assign a new UUID.
 
         This is required only when there is another plan which is exactly the same except the parameters' list.
@@ -100,11 +102,8 @@ class AbstractPlan(Persistent, ABC):
         current_uuid = self._extract_uuid()
         new_uuid = uuid4().hex
         self.id = self.id.replace(current_uuid, new_uuid)
-        if hasattr(self, "parameters"):
-            self.parameters = copy.deepcopy(self.parameters)
 
-            for a in self.parameters:
-                a.id = a.id.replace(current_uuid, new_uuid)
+        return new_uuid
 
     def _extract_uuid(self) -> str:
         path_start = self.id.find("/plans/")
@@ -150,7 +149,6 @@ class Plan(AbstractPlan):
         self.inputs: List[CommandInput] = inputs or []
         self.outputs: List[CommandOutput] = outputs or []
         self.parameters: List[CommandParameter] = parameters or []
-        self.project_id: str = project_id
         self.success_codes: List[int] = success_codes or []
         super().__init__(
             id=id,
@@ -158,6 +156,7 @@ class Plan(AbstractPlan):
             invalidated_at=invalidated_at,
             keywords=keywords,
             name=name,
+            project_id=project_id,
             derived_from=derived_from,
         )
 
@@ -218,6 +217,19 @@ class Plan(AbstractPlan):
         """Return the workflow a parameter belongs to."""
         if self.find_parameter(parameter):
             return self
+
+    def assign_new_id(self):
+        """Assign a new UUID.
+
+        This is required only when there is another plan which is exactly the same except the parameters' list.
+        """
+        new_uuid = super().assign_new_id()
+        current_uuid = self._extract_uuid()
+        if hasattr(self, "parameters"):
+            self.parameters = copy.deepcopy(self.parameters)
+
+            for a in self.parameters:
+                a.id = a.id.replace(current_uuid, new_uuid)
 
     def derive(self) -> "Plan":
         """Create a new ``Plan`` that is derived from self."""

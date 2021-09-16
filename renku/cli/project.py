@@ -35,7 +35,13 @@ for a project.
 |                   | Accepted format is                                   |
 |                   | 'Forename Surname <email> [affiliation]'.            |
 +-------------------+------------------------------------------------------+
+| -m, --metadata    | Path to json file containing custom metadata to be   |
+|                   | added to the project knowledge graph.                |
++-------------------+------------------------------------------------------+
 """
+
+import json
+from pathlib import Path
 
 import click
 
@@ -57,9 +63,25 @@ def project():
     type=click.STRING,
     help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
-def edit(description, creator):
+@click.option(
+    "-m",
+    "--metadata",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Custom metadata to be associated with the project.",
+)
+def edit(description, creator, metadata):
     """Edit project metadata."""
-    result = edit_project_command().build().execute(description=description, creator=creator)
+    custom_metadata = None
+
+    if metadata:
+        custom_metadata = json.loads(Path(metadata).read_text())
+
+    result = (
+        edit_project_command()
+        .build()
+        .execute(description=description, creator=creator, custom_metadata=custom_metadata)
+    )
 
     updated, no_email_warning = result.output
 

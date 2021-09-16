@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent an execution of a Plan."""
-
 from datetime import datetime
 from typing import List, Union
 from uuid import uuid4
@@ -121,7 +120,7 @@ class Activity(Persistent):
         # TODO: influenced = attr.ib(kw_only=True)
 
     @classmethod
-    @inject.autoparams()
+    @inject.autoparams("client_dispatcher", "project_gateway")
     def from_plan(
         cls,
         plan: Plan,
@@ -129,7 +128,7 @@ class Activity(Persistent):
         project_gateway: IProjectGateway,
         started_at_time: datetime,
         ended_at_time: datetime,
-        annotations: List[Annotation],
+        annotations: List[Annotation] = None,
         commit=None,
         update_commits=False,
     ):
@@ -214,7 +213,7 @@ class Activity(Persistent):
         return activity
 
     @cached_property
-    def plan_with_values(self):
+    def plan_with_values(self) -> Plan:
         """Get a copy of the associated plan with values from ParameterValues applied."""
         plan = self.association.plan.copy()
 
@@ -228,6 +227,25 @@ class Activity(Persistent):
         """Generate an identifier for an activity."""
         # TODO: make id generation idempotent
         return f"/activities/{uuid4().hex}"
+
+    def has_identical_inputs_and_outputs_as(self, other: "Activity"):
+        """Return true if all input and outputs paths are identical regardless of the order."""
+        return sorted(u.entity.path for u in self.usages) == sorted(u.entity.path for u in other.usages) and sorted(
+            g.entity.path for g in self.generations
+        ) == sorted(g.entity.path for g in other.generations)
+
+
+class ActivityCollection(Persistent):
+    """Represent a list of activities."""
+
+    def __init__(self, *, activities: List[Activity], id: str = None):
+        self.activities: List[Activity] = activities or []
+        self.id: str = id or ActivityCollection.generate_id()
+
+    @staticmethod
+    def generate_id() -> str:
+        """Generate an identifier for an activity."""
+        return f"/activity-collection/{uuid4().hex}"
 
 
 class AssociationSchema(JsonLDSchema):

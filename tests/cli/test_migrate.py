@@ -311,12 +311,11 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
         ["mv", "news"],
         ["rerun", "data"],
         ["run", "echo"],
-        ["show", "inputs"],
-        ["show", "outputs"],
-        ["show", "siblings"],
         ["status"],
         ["update", "--all"],
         ["workflow", "ls"],
+        ["workflow", "inputs"],
+        ["workflow", "outputs"],
     ],
 )
 def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):

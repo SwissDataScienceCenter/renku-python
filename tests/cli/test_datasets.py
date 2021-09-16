@@ -31,7 +31,6 @@ from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATA
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core.commands.providers import DataverseProvider, ProviderFactory, ZenodoProvider
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.dataset import Dataset
 from renku.core.models.refs import LinkReference
@@ -60,6 +59,14 @@ def test_datasets_create_clean(runner, project, client, load_dataset_with_inject
 
 def test_dataset_show(runner, client, subdirectory):
     """Test creating a dataset with metadata."""
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = client.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+
     result = runner.invoke(
         cli,
         [
@@ -78,6 +85,8 @@ def test_dataset_show(runner, client, subdirectory):
             "keyword-1",
             "-k",
             "keyword-2",
+            "--metadata",
+            str(metadata_path),
         ],
     )
     assert 0 == result.exit_code, format_result_exception(result)
@@ -92,6 +101,10 @@ def test_dataset_show(runner, client, subdirectory):
     assert "Created: " in result.output
     assert "Name: my-dataset" in result.output
     assert "John Doe <john.doe@mail.ch>" in result.output
+    assert "some_unique_value" in result.output
+    assert "https://schema.org/specialProperty" in result.output
+    assert "https://example.com/annotation1" in result.output
+    assert "https://schema.org/specialType" in result.output
     assert "##" not in result.output
 
 
@@ -163,7 +176,7 @@ def test_datasets_create_dirty(runner, project, client, load_dataset_with_inject
 def test_datasets_create_dirty_exception_untracked(runner, project, client):
     """Test exception raise for untracked file in renku directory."""
     # 1. Create a problem.
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -179,7 +192,7 @@ def test_datasets_create_dirty_exception_untracked(runner, project, client):
 def test_datasets_create_dirty_exception_staged(runner, project, client):
     """Test exception raise for staged file in renku directory."""
     # 1. Create a problem within .renku directory
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -202,7 +215,7 @@ def test_dataset_create_dirty_exception_all_untracked(runner, project, client):
         fp.write("a")
 
     # 2. Create a problem.
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -224,7 +237,7 @@ def test_datasets_create_dirty_exception_all_staged(runner, project, client):
     client.repo.git.add("a")
 
     # 2. Create a problem.
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -244,7 +257,7 @@ def test_dataset_create_exception_refs(runner, project, client):
     with (client.path / "a").open("w") as fp:
         fp.write("a")
 
-    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    datasets_dir = client.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -807,7 +820,6 @@ def test_datasets_ls_files_tabular_patterns(runner, project, directory_tree):
 def test_datasets_ls_files_tabular_creators(runner, client, directory_tree, load_dataset_with_injection):
     """Test listing of data within dataset with creators filters."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "-c", str(directory_tree)]).exit_code
-
     creator = load_dataset_with_injection("my-dataset", client).creators[0].name
 
     assert creator is not None
@@ -995,7 +1007,18 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory, load_dataset
     if dirty:
         (client.path / "README.md").write_text("Make repo dirty.")
 
-    result = runner.invoke(cli, ["dataset", "create", "dataset", "-t", "original title", "-k", "keyword-1"])
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = client.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+
+    result = runner.invoke(
+        cli,
+        ["dataset", "create", "dataset", "-t", "original title", "-k", "keyword-1", "--metadata", str(metadata_path)],
+    )
     assert 0 == result.exit_code, format_result_exception(result)
 
     creator1 = "Forename1 Surname1 <name.1@mail.com> [Affiliation 1]"
@@ -1026,11 +1049,26 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory, load_dataset
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully updated: keywords." in result.output
 
+    new_metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_other_unique_value",
+    }
+    metadata_path.write_text(json.dumps(new_metadata))
+
+    result = runner.invoke(
+        cli, ["dataset", "edit", "dataset", "--metadata", str(metadata_path)], catch_exceptions=False
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: custom_metadata." in result.output
+
     dataset = load_dataset_with_injection("dataset", client)
     assert " new description " == dataset.description
     assert "new title" == dataset.title
     assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
     assert {"keyword-2", "keyword-3"} == set(dataset.keywords)
+    assert 1 == len(dataset.annotations)
+    assert new_metadata == dataset.annotations[0].body
 
 
 @pytest.mark.parametrize("dirty", [False, True])

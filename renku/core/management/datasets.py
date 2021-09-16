@@ -51,9 +51,16 @@ from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.metadata.immutable import DynamicProxy
-from renku.core.models import dataset as new_datasets
-from renku.core.models.dataset import get_dataset_data_dir, is_dataset_name_valid
+from renku.core.models.dataset import (
+    Dataset,
+    DatasetFile,
+    ImageObject,
+    RemoteEntity,
+    get_dataset_data_dir,
+    is_dataset_name_valid,
+)
 from renku.core.models.provenance.agent import Person
+from renku.core.models.provenance.annotation import Annotation
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.git import (
@@ -72,9 +79,6 @@ from renku.core.utils.urls import get_slug, remove_credentials
 class DatasetsApiMixin(object):
     """Client for handling datasets."""
 
-    DATASETS = "datasets"
-    """Directory for storing dataset metadata in Renku."""
-
     POINTERS = "pointers"
     """Directory for storing external pointer files."""
 
@@ -84,47 +88,14 @@ class DatasetsApiMixin(object):
     DATASET_IMAGES = "dataset_images"
     """Directory for dataset images."""
 
-    DATASETS_PROVENANCE = "dataset.json"
-    """File for storing datasets' provenance."""
-
     SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
 
-    _temporary_datasets_path = None
-    _datasets_provenance = None
     _database = None
-
-    @property
-    def renku_datasets_path(self):
-        """Return a ``Path`` instance of Renku dataset metadata folder."""
-        if self._temporary_datasets_path:
-            return self._temporary_datasets_path
-
-        return self.path / self.renku_home / self.DATASETS
 
     @property
     def renku_dataset_images_path(self):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
-        if self._temporary_datasets_path:
-            return self._temporary_datasets_path
-
         return self.path / self.renku_home / self.DATASET_IMAGES
-
-    @property
-    def datasets_provenance_path(self):
-        """Path to store activity files."""
-        return self.renku_path / self.DATASETS_PROVENANCE
-
-    def set_temporary_datasets_path(self, path):
-        """Set path to Renku dataset metadata directory."""
-        self._temporary_datasets_path = path
-
-    def clear_temporary_datasets_path(self):
-        """Clear path to Renku dataset metadata directory."""
-        self._temporary_datasets_path = None
-
-    def is_using_temporary_datasets_path(self):
-        """Return true if temporary datasets path is set."""
-        return bool(self._temporary_datasets_path)
 
     @property
     def renku_pointers_path(self):
@@ -134,13 +105,13 @@ class DatasetsApiMixin(object):
         return path
 
     @property
-    def datasets(self) -> Dict[str, new_datasets.Dataset]:
+    def datasets(self) -> Dict[str, Dataset]:
         """A map from datasets name to datasets."""
         datasets_provenance = DatasetsProvenance()
         return {d.name: d for d in datasets_provenance.datasets}
 
     @staticmethod
-    def get_dataset(name, strict=False, immutable=False) -> Optional[new_datasets.Dataset]:
+    def get_dataset(name, strict=False, immutable=False) -> Optional[Dataset]:
         """Load dataset reference file."""
         return get_dataset(name=name, strict=strict, immutable=immutable)
 
@@ -187,6 +158,7 @@ class DatasetsApiMixin(object):
         images=None,
         safe_image_paths=None,
         update_provenance=True,
+        custom_metadata=None,
     ):
         """Create a dataset."""
         if not name:
@@ -207,7 +179,12 @@ class DatasetsApiMixin(object):
 
         keywords = keywords or ()
 
-        dataset = new_datasets.Dataset(
+        annotations = None
+
+        if custom_metadata:
+            annotations = [Annotation(id=Annotation.generate_id(), source="renku", body=custom_metadata)]
+
+        dataset = Dataset(
             identifier=None,
             name=name,
             title=title,
@@ -215,6 +192,7 @@ class DatasetsApiMixin(object):
             creators=creators,
             keywords=keywords,
             project_id=self.project.id,
+            annotations=annotations,
         )
 
         if images:
@@ -228,7 +206,16 @@ class DatasetsApiMixin(object):
 
         return dataset
 
-    def set_dataset_images(self, dataset: new_datasets.Dataset, images, safe_image_paths=None):
+    def update_dataset_custom_metadata(self, dataset: Dataset, custom_metadata: Dict):
+        """Update custom metadata on a dataset."""
+
+        existing_metadata = [a for a in dataset.annotations if a.source != "renku"]
+
+        existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
+
+        dataset.annotations = existing_metadata
+
+    def set_dataset_images(self, dataset: Dataset, images, safe_image_paths=None):
         """Set the images on a dataset."""
         safe_image_paths = safe_image_paths or []
 
@@ -264,10 +251,10 @@ class DatasetsApiMixin(object):
                 # NOTE: absolute url
                 if not img.get("mirror_locally", False):
                     dataset.images.append(
-                        new_datasets.ImageObject(
+                        ImageObject(
                             content_url=content_url,
                             position=position,
-                            id=new_datasets.ImageObject.generate_id(dataset, position),
+                            id=ImageObject.generate_id(dataset, position),
                         )
                     )
                     images_updated = True
@@ -307,10 +294,10 @@ class DatasetsApiMixin(object):
                 img_path = path
 
             dataset.images.append(
-                new_datasets.ImageObject(
+                ImageObject(
                     content_url=str(img_path.relative_to(self.path)),
                     position=position,
-                    id=new_datasets.ImageObject.generate_id(dataset=dataset, position=position),
+                    id=ImageObject.generate_id(dataset=dataset, position=position),
                 )
             )
             images_updated = True
@@ -486,7 +473,7 @@ class DatasetsApiMixin(object):
         # Generate the DatasetFiles
         dataset_files = []
         for data in files:
-            dataset_file = new_datasets.DatasetFile.from_path(
+            dataset_file = DatasetFile.from_path(
                 client=self, path=data["path"], source=data["source"], based_on=data.get("based_on")
             )
             dataset_files.append(dataset_file)
@@ -683,7 +670,7 @@ class DatasetsApiMixin(object):
                     operation = (src, dst, "move")
 
                 checksum = get_object_hash(repo=remote_client.repo, revision="HEAD", path=path)
-                based_on = new_datasets.RemoteEntity(checksum=checksum, path=path, url=url)
+                based_on = RemoteEntity(checksum=checksum, path=path, url=url)
 
                 results.append(
                     {
@@ -813,7 +800,7 @@ class DatasetsApiMixin(object):
         datasets = [d.copy() for d in self.datasets.values()]
         if to_dataset:
             # NOTE: Use the same dataset object or otherwise a race happens if dataset is in both source and destination
-            to_dataset: new_datasets.Dataset = next(d for d in datasets if d.name == to_dataset)
+            to_dataset: Dataset = next(d for d in datasets if d.name == to_dataset)
         modified_datasets = {}
 
         progress_name = "Updating dataset metadata"
@@ -823,7 +810,7 @@ class DatasetsApiMixin(object):
                 src = src.relative_to(self.path)
                 dst = dst.relative_to(self.path)
                 # NOTE: Files are moved at this point, so, we use can use dst
-                new_dataset_file = new_datasets.DatasetFile.from_path(self, dst)
+                new_dataset_file = DatasetFile.from_path(self, dst)
                 for dataset in datasets:
                     removed = dataset.unlink_file(src, missing_ok=True)
                     if removed:
@@ -892,7 +879,7 @@ class DatasetsApiMixin(object):
         modified_datasets = {}
 
         for file in updated_files:
-            new_file = new_datasets.DatasetFile.from_path(
+            new_file = DatasetFile.from_path(
                 client=self, path=file.entity.path, based_on=file.based_on, source=file.source
             )
             modified_datasets[file.dataset.name] = file.dataset
@@ -962,9 +949,7 @@ class DatasetsApiMixin(object):
                             self._create_external_file(src.resolve(), dst)
                         else:
                             shutil.copy(src, dst)
-                        file.based_on = new_datasets.RemoteEntity(
-                            checksum=checksum, path=based_on.path, url=based_on.url
-                        )
+                        file.based_on = RemoteEntity(checksum=checksum, path=based_on.path, url=based_on.url)
                         updated_files.append(file)
                     else:
                         # File was removed or renamed
@@ -1061,9 +1046,7 @@ class DatasetsApiMixin(object):
         for dataset in updated_datasets.values():
             for file in dataset.files:
                 if str(self.path / file.entity.path) in updated_files_paths:
-                    new_file = new_datasets.DatasetFile.from_path(
-                        client=self, path=file.entity.path, source=file.source
-                    )
+                    new_file = DatasetFile.from_path(client=self, path=file.entity.path, source=file.source)
                     dataset.add_or_update_files(new_file)
 
             datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
@@ -1297,10 +1280,8 @@ def _check_url(url):
 
 DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / RepositoryApiMixin.DATABASE_PATH,
-    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS,
     Path(RENKU_HOME) / DatasetsApiMixin.DATASET_IMAGES,
     Path(RENKU_HOME) / DatasetsApiMixin.POINTERS,
     Path(RENKU_HOME) / LinkReference.REFS,
-    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,
     ".gitattributes",
 ]

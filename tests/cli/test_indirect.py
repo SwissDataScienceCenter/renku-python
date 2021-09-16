@@ -44,8 +44,9 @@ def test_indirect_inputs_outputs(renku_cli, client):
         client.repo.git.add("--all")
         client.repo.index.commit("test setup")
 
-    exit_code, plan = renku_cli("run", "sh", "-c", "sh script.sh")
+    exit_code, activity = renku_cli("run", "sh", "-c", "sh script.sh")
 
+    plan = activity.association.plan
     assert 0 == exit_code
     assert 2 == len(plan.inputs)
     assert 1 == len(plan.parameters)
@@ -81,10 +82,10 @@ def test_duplicate_indirect_inputs(renku_cli, client):
         client.repo.git.add("--all")
         client.repo.index.commit("test setup")
 
-    exit_code, plan = renku_cli("run", "--no-output", "sh", "-c", "sh script.sh", "baz")
+    exit_code, activity = renku_cli("run", "--no-output", "sh", "-c", "sh script.sh", "baz")
 
     assert 0 == exit_code
-    assert {"baz", "foo/bar"} == {i.default_value for i in plan.inputs}
+    assert {"baz", "foo/bar"} == {i.default_value for i in activity.association.plan.inputs}
 
 
 def test_duplicate_indirect_outputs(renku_cli, client):
@@ -110,10 +111,10 @@ def test_duplicate_indirect_outputs(renku_cli, client):
         client.repo.git.add("--all")
         client.repo.index.commit("test setup")
 
-    exit_code, plan = renku_cli("run", "sh", "-c", "sh script.sh")
+    exit_code, activity = renku_cli("run", "sh", "-c", "sh script.sh")
 
     assert 0 == exit_code
-    assert {"baz", "foo/bar"} == {o.default_value for o in plan.outputs}
+    assert {"baz", "foo/bar"} == {o.default_value for o in activity.association.plan.outputs}
 
 
 def test_indirect_parameters(renku_cli, client):
@@ -133,8 +134,9 @@ def test_indirect_parameters(renku_cli, client):
         client.repo.git.add("--all")
         client.repo.index.commit("test setup")
 
-    exit_code, plan = renku_cli("run", "--no-output", "sh", "-c", "sh script.sh")
+    exit_code, activity = renku_cli("run", "--no-output", "sh", "-c", "sh script.sh")
 
+    plan = activity.association.plan
     assert 0 == exit_code
     assert {"c-1", "param 1", "param-2", "param3"} == {a.name for a in plan.parameters}
     assert {"sh script.sh", "forty-two", "42.42", "42"} == {a.default_value for a in plan.parameters}
@@ -175,7 +177,7 @@ def test_indirect_parameters_update(renku_cli, client):
         client.repo.git.add("--all")
         client.repo.index.commit("test setup")
 
-    exit_code, plan = renku_cli("update", "--all")
+    exit_code, activity = renku_cli("update", "--all")
 
     assert 0 == exit_code
-    assert {"forty-two-updated", "42.42", "42"} == {a.default_value for a in plan.parameters}
+    assert {"forty-two-updated", "42.42", "42"} == {a.default_value for a in activity.association.plan.parameters}

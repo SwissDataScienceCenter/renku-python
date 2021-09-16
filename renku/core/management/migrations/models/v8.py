@@ -23,9 +23,9 @@ from pathlib import Path
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core.management.migrations.models.v9 import generate_file_id
+from renku.core.management.migrations.utils import OLD_METADATA_PATH, get_datasets_path
 from renku.core.models import jsonld
 from renku.core.models.calamus import Uri, fields, prov, schema
-from renku.core.utils.migrate import OLD_METADATA_PATH
 
 from .v3 import CreatorMixinSchemaV3, DatasetTagSchemaV3, EntitySchemaV3, LanguageSchemaV3, PersonSchemaV3, UrlSchemaV3
 from .v7 import Base, DatasetFileSchemaV7
@@ -116,5 +116,5 @@ class DatasetSchemaV8(CreatorMixinSchemaV3, EntitySchemaV3):
 
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
-    paths = client.renku_datasets_path.rglob(OLD_METADATA_PATH)
+    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
     return [Dataset.from_yaml(path=path, client=client) for path in paths]

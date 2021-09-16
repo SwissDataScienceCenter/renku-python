@@ -17,6 +17,8 @@
 # limitations under the License.
 """Test ``project`` command."""
 
+import json
+
 from renku.cli import cli
 from renku.core.metadata.gateway.project_gateway import ProjectGateway
 from renku.core.models.provenance.agent import Person
@@ -29,12 +31,22 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
 
     creator = "Forename Surname [Affiliation]"
 
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = client.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+
     commit_sha_before = client.repo.head.object.hexsha
 
-    result = runner.invoke(cli, ["project", "edit", "-d", " new description ", "-c", creator])
+    result = runner.invoke(
+        cli, ["project", "edit", "-d", " new description ", "-c", creator, "--metadata", str(metadata_path)]
+    )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Successfully updated: creator, description." in result.output
+    assert "Successfully updated: creator, description, custom_metadata." in result.output
     assert "Warning: No email or wrong format for: Forename Surname" in result.output
 
     with client_database_injection_manager(client):
@@ -45,6 +57,7 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
     assert isinstance(project.creator, Person)
     assert "Forename Surname" == project.creator.name
     assert "Affiliation" == project.creator.affiliation
+    assert metadata == project.annotations[0].body
 
     assert client.repo.is_dirty()
     commit_sha_after = client.repo.head.object.hexsha

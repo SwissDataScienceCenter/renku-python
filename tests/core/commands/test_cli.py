@@ -20,7 +20,6 @@
 from __future__ import absolute_import, print_function
 
 import contextlib
-import datetime
 import os
 import subprocess
 import sys
@@ -96,70 +95,6 @@ def test_exit_code(cmd, exit_code, runner, project):
     assert exit_code == result.exit_code
 
 
-@pytest.mark.skip("renku show used in hook not implemented with new database.")
-def test_git_pre_commit_hook(runner, project, capsys):
-    """Test detection of output edits."""
-    result = runner.invoke(cli, ["githooks", "install"])
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "Hook already exists." in result.output
-
-    repo = git.Repo(project)
-    cwd = Path(project)
-    output = cwd / "output.txt"
-
-    result = runner.invoke(cli, ["run", "touch", output.name])
-    assert 0 == result.exit_code, format_result_exception(result)
-    with output.open("w") as f:
-        f.write("hello")
-
-    repo.git.add("--all")
-    with pytest.raises(git.HookExecutionError) as error:
-        repo.index.commit("hello")
-
-    assert output.name in error.value.stdout
-
-    result = runner.invoke(cli, ["githooks", "uninstall"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    repo.index.commit("hello")
-
-
-@pytest.mark.skip("renku show used in hook not implemented with new database.")
-def test_git_pre_commit_hook_in_old_project(isolated_runner, old_dataset_project):
-    """Test proper messaging in git hooks when project requires migration."""
-    assert 0 == isolated_runner.invoke(cli, ["githooks", "install"]).exit_code
-
-    with old_dataset_project.with_metadata() as project:
-        project.created = datetime.datetime.now(datetime.timezone.utc)
-
-    old_dataset_project.repo.git.add("--all")
-
-    with pytest.raises(git.exc.HookExecutionError) as e:
-        old_dataset_project.repo.index.commit("update project metadata")
-
-    assert "Cannot verify validity of the commit: Project metadata is outdated." in str(e.value.stdout)
-    assert "Run 'renku migrate' command to fix the issue." in str(e.value.stdout)
-    assert "You are trying to update generated files" not in str(e.value.stdout)
-
-
-@pytest.mark.skip("renku show used in hook not implemented with new database.")
-def test_git_pre_commit_hook_in_unsupported_project(unsupported_project):
-    """Test proper messaging in git hooks when project version is not supported."""
-    (unsupported_project.path / "README.md").write_text("changes")
-
-    unsupported_project.repo.git.add("--all")
-
-    with pytest.raises(git.exc.HookExecutionError) as e:
-        unsupported_project.repo.index.commit("update project metadata")
-
-    assert "Cannot verify validity of the commit: Project was created with a newer version of Renku." in str(
-        e.value.stdout
-    )
-    assert "Upgrade Renku to the latest version." in str(e.value.stdout)
-    assert "You are trying to update generated files" not in str(e.value.stdout)
-
-
-@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_streams(runner, project, capsys, no_lfs_warning):
     """Test redirection of std streams."""
     repo = git.Repo(".")
@@ -197,15 +132,15 @@ def test_streams(runner, project, capsys, no_lfs_warning):
     assert 0 == result.exit_code, format_result_exception(result)
 
     # Check that source.txt is not shown in outputs.
-    result = runner.invoke(cli, ["show", "outputs", "source.txt"])
+    result = runner.invoke(cli, ["workflow", "outputs", "source.txt"])
     assert 1 == result.exit_code
 
-    result = runner.invoke(cli, ["show", "outputs"])
+    result = runner.invoke(cli, ["workflow", "outputs"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert {"result.txt"} == set(result.output.strip().split("\n"))
 
     # Check that source.txt is shown in inputs.
-    result = runner.invoke(cli, ["show", "inputs"])
+    result = runner.invoke(cli, ["workflow", "inputs"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert {"source.txt"} == set(result.output.strip().split("\n"))
 
@@ -272,7 +207,6 @@ def test_streams_and_args_names(runner, project, capsys, no_lfs_warning):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_show_inputs(tmpdir_factory, project, runner, run, template):
     """Test show inputs with submodules."""
     second_project = Path(str(tmpdir_factory.mktemp("second_project")))
@@ -300,7 +234,7 @@ def test_show_inputs(tmpdir_factory, project, runner, run, template):
     woop_wc = Path(project) / "woop.wc"
     assert 0 == run(args=("run", "wc"), stdin=imported_woop, stdout=woop_wc)
 
-    result = runner.invoke(cli, ["show", "inputs"], catch_exceptions=False)
+    result = runner.invoke(cli, ["workflow", "inputs"], catch_exceptions=False)
     assert {str(imported_woop.resolve().relative_to(Path(project).resolve()))} == set(result.output.strip().split("\n"))
 
 
@@ -600,54 +534,6 @@ def test_modified_output(runner, project, run):
         assert f.read().strip() == "3"
 
 
-@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
-def test_siblings(runner, project):
-    """Test detection of siblings."""
-    siblings = {"brother", "sister"}
-
-    cmd = ["run", "touch"] + list(siblings)
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    for sibling in siblings:
-        cmd = ["show", "siblings", sibling]
-        result = runner.invoke(cli, cmd)
-        assert 0 == result.exit_code, format_result_exception(result)
-
-        output = {name.strip() for name in result.output.split("\n") if name.strip()}
-        assert output == siblings, "Checked {0}".format(sibling)
-
-
-@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
-def test_orphan(runner, project):
-    """Test detection of an orphan."""
-    cwd = Path(project)
-    orphan = cwd / "orphan.txt"
-
-    cmd = ["run", "touch", orphan.name]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    cmd = ["show", "siblings", "orphan.txt"]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "orphan.txt\n" == result.output
-
-
-@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
-def test_only_child(runner, project):
-    """Test detection of an only child."""
-    cmd = ["run", "touch", "only_child"]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    cmd = ["show", "siblings", "only_child"]
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "only_child\n" == result.output
-
-
-@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
 def test_outputs(runner, project):
     """Test detection of outputs."""
     siblings = {"brother", "sister"}
@@ -656,7 +542,7 @@ def test_outputs(runner, project):
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["show", "outputs"])
+    result = runner.invoke(cli, ["workflow", "outputs"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert siblings == set(result.output.strip().split("\n"))
 
@@ -679,7 +565,7 @@ def test_deleted_input(runner, project, capsys):
     assert Path("input.mv").exists()
 
 
-@pytest.mark.skip(reason="renku show not implemented with new metadata yet, reenable later")
+@pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_input_directory(runner, project, run, no_lfs_warning):
     """Test detection of input directory."""
     repo = git.Repo(project)
@@ -715,7 +601,7 @@ def test_input_directory(runner, project, run, no_lfs_warning):
     with output.open("r") as fp:
         assert "first\nsecond\n" == fp.read()
 
-    result = runner.invoke(cli, ["show", "inputs"])
+    result = runner.invoke(cli, ["workflow", "inputs"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert set(str(p.relative_to(cwd)) for p in inputs.rglob("*") if p.name != ".gitkeep") == set(
         result.output.strip().split("\n")

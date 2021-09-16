@@ -28,6 +28,7 @@ from renku.core.commands.view_model import plan_view
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
@@ -36,6 +37,7 @@ from renku.core.management.workflow.value_resolution import apply_run_values
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.utils import communication
+from renku.core.utils.os import get_relative_paths
 
 
 def _ref(name):
@@ -301,3 +303,73 @@ def _export_workflow(
 def export_workflow_command():
     """Command that exports a workflow into a given format."""
     return Command().command(_export_workflow).require_clean().with_database(write=False)
+
+
+@inject.autoparams()
+def _lookup_paths_in_paths(client_dispatcher: IClientDispatcher, lookup_paths: List[str], target_paths: List[str]):
+    """Return all lookup_paths that are in or under target_paths."""
+    client = client_dispatcher.current_client
+
+    dirs = []
+    files = set()
+
+    for p in lookup_paths:
+        path = Path(get_relative_paths(client.path, [p])[0])
+        if path.is_dir():
+            dirs.append(path)
+        else:
+            files.add(path)
+
+    target_dirs = []
+    target_files = set()
+
+    for p in target_paths:
+        path = Path(p)
+        if path.is_dir():
+            target_dirs.append(path)
+        else:
+            target_files.add(path)
+
+    result = set()
+
+    for target_file in target_files:
+        if target_file in files or any(d in target_file.parents for d in dirs):
+            result.add(str(target_file))
+
+    for target_dir in target_dirs:
+        if target_dir in dirs or any(target_dir in f.parents for f in files):
+            result.add(str(target_dir))
+
+    return result
+
+
+@inject.autoparams()
+def _workflow_inputs(activity_gateway: IActivityGateway, paths: List[str] = None):
+    """Get inputs used by workflows."""
+    usage_paths = activity_gateway.get_all_usage_paths()
+
+    if not paths:
+        return usage_paths
+
+    return _lookup_paths_in_paths(lookup_paths=paths, target_paths=usage_paths)
+
+
+def workflow_inputs_command():
+    """Command that shows inputs used by workflows."""
+    return Command().command(_workflow_inputs).require_migration().with_database(write=False)
+
+
+@inject.autoparams()
+def _workflow_outputs(activity_gateway: IActivityGateway, paths: List[str] = None):
+    """Get inputs used by workflows."""
+    generation_paths = activity_gateway.get_all_generation_paths()
+
+    if not paths:
+        return generation_paths
+
+    return _lookup_paths_in_paths(lookup_paths=paths, target_paths=generation_paths)
+
+
+def workflow_outputs_command():
+    """Command that shows inputs used by workflows."""
+    return Command().command(_workflow_outputs).require_migration().with_database(write=False)

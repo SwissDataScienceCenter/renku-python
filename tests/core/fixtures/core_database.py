@@ -22,11 +22,11 @@ import datetime
 from typing import Tuple
 
 import pytest
-from zc.relation.queryfactory import TransposingTransitive
 
 from renku.core import errors
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.metadata.database import Database
+from renku.core.metadata.gateway.database_gateway import initialize_database
 
 
 class DummyStorage:
@@ -91,46 +91,10 @@ class DummyDatabaseDispatcher:
 @pytest.fixture
 def database() -> Tuple[Database, DummyStorage]:
     """A Database with in-memory storage."""
-    import BTrees
-    from zc.relation.catalog import Catalog
-
-    from renku.core.metadata.gateway.database_gateway import (
-        IActivityDownstreamRelation,
-        dump_activity,
-        dump_downstream_relations,
-        load_activity,
-        load_downstream_relations,
-    )
-    from renku.core.models.dataset import Dataset
-    from renku.core.models.provenance.activity import Activity
-    from renku.core.models.workflow.plan import AbstractPlan
-
     storage = DummyStorage()
     database = Database(storage=storage)
 
-    database.add_index(name="activities", object_type=Activity, attribute="id")
-    database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
-    database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
-    database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
-
-    database.add_root_object(name="_downstream_relations", obj=BTrees.OOBTree.OOBTree())
-
-    activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
-    activity_catalog.addValueIndex(
-        IActivityDownstreamRelation["downstream"], dump_activity, load_activity, btree=BTrees.family32.OO, multiple=True
-    )
-    activity_catalog.addValueIndex(
-        IActivityDownstreamRelation["upstream"], dump_activity, load_activity, btree=BTrees.family32.OO, multiple=True
-    )
-    downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
-    activity_catalog.addDefaultQueryFactory(downstream_transitive_factory)
-    database.add_root_object(name="activity-catalog", obj=activity_catalog)
-
-    database.add_index(name="plans", object_type=AbstractPlan, attribute="id")
-    database.add_index(name="plans-by-name", object_type=AbstractPlan, attribute="name")
-
-    database.add_index(name="datasets", object_type=Dataset, attribute="name")
-    database.add_index(name="datasets-provenance-tails", object_type=Dataset, attribute="id")
+    initialize_database(database)
 
     yield database, storage
 
