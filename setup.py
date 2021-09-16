@@ -112,7 +112,7 @@ tests_require = [
 
 
 service_requires = [
-    "apispec>=4.0.0,<4.8.0",
+    "apispec>=4.0.0,<5.2.0",
     "apispec-webframeworks>=0.5.2,<0.6",
     "circus==0.17.1",
     "docker-compose==1.29.2",
