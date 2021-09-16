@@ -38,6 +38,7 @@ in with pkgs;
     '';
 
     nativeBuildInputs = [ git git-lfs nodejs ];
+    propagatedBuildInputs = [ git git-lfs nodejs ];
     _.apispec.propagatedBuildInputs.mod = pySelf: self: oldVal: oldVal ++ [ pySelf.pyyaml ];
 
     GIT_SSL_NO_VERIFY = "true";
