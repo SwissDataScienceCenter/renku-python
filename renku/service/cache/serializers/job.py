@@ -19,19 +19,18 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import Schema, fields, post_load
+from marshmallow import fields, post_load
 
 from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, Job
+from renku.service.serializers.common import CreationSchema, MandatoryUserSchema
 
 
-class JobSchema(Schema):
+class JobSchema(CreationSchema, MandatoryUserSchema):
     """Job serialization."""
 
-    created_at = fields.DateTime(missing=datetime.utcnow)
     updated_at = fields.DateTime(missing=datetime.utcnow)
 
     job_id = fields.String(missing=lambda: uuid.uuid4().hex)
-    user_id = fields.String(required=True)
     project_id = fields.String()
     renku_op = fields.String()
 

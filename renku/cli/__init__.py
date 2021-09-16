@@ -79,16 +79,15 @@ from renku.cli.exception_handler import IssueFromTraceback
 from renku.cli.githooks import githooks as githooks_command
 from renku.cli.graph import graph
 from renku.cli.init import init as init_command
-from renku.cli.log import log
 from renku.cli.login import login, logout, token
 from renku.cli.migrate import check_immutable_template_files, migrate, migrationscheck
 from renku.cli.move import move
+from renku.cli.project import project
 from renku.cli.remove import remove
 from renku.cli.rerun import rerun
 from renku.cli.run import run
 from renku.cli.save import save
 from renku.cli.service import service
-from renku.cli.show import show
 from renku.cli.status import status
 from renku.cli.storage import storage
 from renku.cli.update import update
@@ -198,18 +197,17 @@ cli.add_command(doctor)
 cli.add_command(githooks_command)
 cli.add_command(graph)
 cli.add_command(init_command)
-cli.add_command(log)
 cli.add_command(login)
 cli.add_command(logout)
 cli.add_command(migrate)
 cli.add_command(migrationscheck)
 cli.add_command(check_immutable_template_files)
 cli.add_command(move)
+cli.add_command(project)
 cli.add_command(remove)
 cli.add_command(rerun)
 cli.add_command(run)
 cli.add_command(save)
-cli.add_command(show)
 cli.add_command(status)
 cli.add_command(storage)
 cli.add_command(token)

@@ -19,20 +19,21 @@
 from flask import Blueprint, request
 
 from renku.service.config import SERVICE_PREFIX
-from renku.service.controllers.graph_build import GraphBuildCtrl
-from renku.service.views.decorators import accepts_json, handle_common_except, optional_identity
+from renku.service.controllers.graph_export import GraphExportCtrl
+from renku.service.views.decorators import accepts_json, handle_common_except, optional_identity, requires_cache
 
 GRAPH_BLUEPRINT_TAG = "graph"
 graph_blueprint = Blueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@graph_blueprint.route("/graph.build", methods=["POST"], provide_automatic_options=False)
+@graph_blueprint.route("/graph.export", methods=["GET"], provide_automatic_options=False)
 @handle_common_except
+@requires_cache
 @accepts_json
 @optional_identity
-def graph_build_view(identity):
+def graph_build_view(user_data, cache):
     """
-    Graph build view.
+    Graph export view.
 
     ---
     post:
@@ -40,14 +41,14 @@ def graph_build_view(identity):
       requestBody:
         content:
           application/json:
-            schema: GraphBuildRequest
+            schema: GraphExportRequest
       responses:
         200:
           description: "Status of the graph building"
           content:
             application/json:
-              schema: GraphBuildResponseRPC
+              schema: GraphExportResponseRPC
       tags:
         - graph
     """
-    return GraphBuildCtrl(identity, dict(request.json)).to_response()
+    return GraphExportCtrl(cache, user_data, dict(request.json)).to_response()

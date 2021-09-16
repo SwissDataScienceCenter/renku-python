@@ -24,12 +24,18 @@ from pathlib import Path
 
 import pyld
 
+from renku.core.management.migrations.utils import (
+    OLD_METADATA_PATH,
+    get_datasets_path,
+    get_pre_0_3_4_datasets_metadata,
+    is_using_temporary_datasets_path,
+)
 from renku.core.models.jsonld import read_yaml, write_yaml
-from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
 
 
 def migrate(client):
     """Migration function."""
+
     _migrate_project_metadata(client)
     _migrate_datasets_metadata(client)
 
@@ -41,13 +47,14 @@ def _migrate_project_metadata(client):
         "http://schema.org/Project": "http://xmlns.com/foaf/0.1/Project",
     }
 
-    _apply_on_the_fly_jsonld_migrations(
-        path=client.renku_metadata_path,
-        jsonld_context=_INITIAL_JSONLD_PROJECT_CONTEXT,
-        fields=_PROJECT_FIELDS,
-        jsonld_translate=jsonld_translate,
-        persist_changes=not client.is_using_temporary_datasets_path(),
-    )
+    if client.renku_path.joinpath(OLD_METADATA_PATH).exists():
+        _apply_on_the_fly_jsonld_migrations(
+            path=client.renku_path.joinpath(OLD_METADATA_PATH),
+            jsonld_context=_INITIAL_JSONLD_PROJECT_CONTEXT,
+            fields=_PROJECT_FIELDS,
+            jsonld_translate=jsonld_translate,
+            persist_changes=not is_using_temporary_datasets_path(),
+        )
 
 
 def _migrate_datasets_metadata(client):
@@ -63,7 +70,7 @@ def _migrate_datasets_metadata(client):
     }
 
     old_metadata_paths = get_pre_0_3_4_datasets_metadata(client)
-    new_metadata_paths = client.renku_datasets_path.rglob(client.METADATA)
+    new_metadata_paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
 
     for path in itertools.chain(old_metadata_paths, new_metadata_paths):
         _apply_on_the_fly_jsonld_migrations(
@@ -198,7 +205,11 @@ def _migrate_doi_identifier(data, client):
 
     if not is_uuid(_id):
         if not is_uuid(identifier):
-            data["identifier"] = str(uuid.uuid4())
+            possible_identifier = Path(identifier).name
+            if not is_uuid(possible_identifier):
+                data["identifier"] = str(uuid.uuid4())
+            else:
+                data["identifier"] = possible_identifier
         if is_doi(data.get("_id", "")):
             data["same_as"] = {"@type": ["schema:URL"], "url": data["_id"]}
             if data.get("@context"):
@@ -251,7 +262,7 @@ def _migrate_dataset_file_id(data, client):
 
 def _migrate_types(data):
     """Fix types."""
-    from renku.core.utils.migrate import migrate_types
+    from renku.core.management.migrations.utils import migrate_types
 
     migrate_types(data)
 

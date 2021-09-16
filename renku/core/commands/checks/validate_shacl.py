@@ -23,6 +23,7 @@ from rdflib.term import BNode
 
 from renku.core.commands.echo import WARNING
 from renku.core.models.jsonld import NoDatesSafeLoader
+from renku.core.models.project import ProjectSchema
 from renku.core.utils.shacl import validate_graph
 
 
@@ -54,9 +55,9 @@ def _shacl_graph_to_string(graph):
 
 def check_project_structure(client):
     """Validate project metadata against SHACL."""
-    project_path = client.renku_metadata_path
+    data = ProjectSchema().dump(client.project)
 
-    conform, graph, t = check_shacl_structure(project_path)
+    conform, graph, t = _check_shacl_structure(data)
 
     if conform:
         return True, None
@@ -70,14 +71,14 @@ def check_datasets_structure(client):
     """Validate dataset metadata against SHACL."""
     ok = True
 
-    problems = ["{0}Invalid structure of dataset metadata".format(WARNING)]
+    problems = [f"{WARNING}Invalid structure of dataset metadata"]
 
-    for path in client.renku_datasets_path.rglob(client.METADATA):
+    for dataset in client.datasets.values():
+        data = dataset.to_jsonld()
         try:
-            relative_path = path.relative_to(client.path)
-            conform, graph, t = check_shacl_structure(path)
+            conform, graph, t = _check_shacl_structure(data)
         except (Exception, BaseException) as e:
-            problems.append(f"Couldn't validate {relative_path}: {e}\n\n")
+            problems.append(f"Couldn't validate dataset '{dataset.name}': {e}\n\n")
             continue
 
         if conform:
@@ -85,7 +86,7 @@ def check_datasets_structure(client):
 
         ok = False
 
-        problems.append("{0}\n\t{1}\n".format(relative_path, _shacl_graph_to_string(graph)))
+        problems.append(f"{dataset.name}\n\t{_shacl_graph_to_string(graph)}\n")
 
     if ok:
         return True, None
@@ -93,11 +94,15 @@ def check_datasets_structure(client):
     return False, "\n".join(problems)
 
 
-def check_shacl_structure(path):
-    """Validates all metadata aginst the SHACL schema."""
+def _check_shacl_structure_for_path(path):
     with path.open(mode="r") as fp:
-        source = yaml.load(fp, Loader=NoDatesSafeLoader) or {}
+        data = yaml.load(fp, Loader=NoDatesSafeLoader) or {}
 
-    rdf = pyld.jsonld.to_rdf(source, options={"format": "application/n-quads", "produceGeneralizedRdf": True})
+    return _check_shacl_structure(data)
+
+
+def _check_shacl_structure(data):
+    """Validates all metadata against the SHACL schema."""
+    rdf = pyld.jsonld.to_rdf(data, options={"format": "application/n-quads", "produceGeneralizedRdf": True})
 
     return validate_graph(rdf)

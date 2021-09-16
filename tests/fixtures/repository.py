@@ -23,6 +23,8 @@ import shutil
 
 import pytest
 
+from tests.utils import format_result_exception
+
 
 @contextlib.contextmanager
 def _isolated_filesystem(tmpdir, name=None, delete=True):
@@ -60,19 +62,39 @@ def instance_path(renku_path, monkeypatch):
         yield renku_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def repository(tmpdir):
     """Yield a Renku repository."""
     from click.testing import CliRunner
+    from git.config import GitConfigParser, get_config_path
 
     from renku.cli import cli
 
     runner = CliRunner()
     with _isolated_filesystem(tmpdir, delete=True) as project_path:
-        result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
-        assert 0 == result.exit_code
+        home = tmpdir.mkdir("user_home")
+        old_home = os.environ.get("HOME", "")
+        old_xdg_home = os.environ.get("XDG_CONFIG_HOME", "")
 
-        yield os.path.realpath(project_path)
+        try:
+            # NOTE: fake user home directory
+            os.environ["HOME"] = str(home)
+            os.environ["XDG_CONFIG_HOME"] = str(home)
+            with GitConfigParser(get_config_path("global"), read_only=False) as global_config:
+                global_config.set_value("user", "name", "Renku @ SDSC")
+                global_config.set_value("user", "email", "renku@datascience.ch")
+
+            result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
+            assert 0 == result.exit_code, format_result_exception(result)
+
+            yield os.path.realpath(project_path)
+        finally:
+            os.environ["HOME"] = old_home
+            os.environ["XDG_CONFIG_HOME"] = old_xdg_home
+            try:
+                shutil.rmtree(home)
+            except OSError:  # noqa: B014
+                pass
 
 
 @pytest.fixture
@@ -119,3 +141,46 @@ def client(project, global_config_dir):
     yield LocalClient(path=project)
 
     LocalClient.get_value = original_get_value
+
+
+@pytest.fixture
+def client_injection_bindings():
+    """Return bindings needed for client dependency injection."""
+
+    def _create_client_bindings(client):
+        from renku.core.management.command_builder.client_dispatcher import ClientDispatcher
+        from renku.core.management.interface.client_dispatcher import IClientDispatcher
+
+        client_dispatcher = ClientDispatcher()
+        client_dispatcher.push_created_client_to_stack(client)
+        return {"bindings": {"LocalClient": client, IClientDispatcher: client_dispatcher}, "constructor_bindings": {}}
+
+    return _create_client_bindings
+
+
+@pytest.fixture
+def injection_binder(request):
+    """Return a binder that can work with bindings."""
+
+    def _binder(bindings):
+        from renku.core.management.command_builder.command import inject, remove_injector
+
+        def _bind(binder):
+            for key, value in bindings["bindings"].items():
+                binder.bind(key, value)
+            for key, value in bindings["constructor_bindings"].items():
+                binder.bind_to_constructor(key, value)
+
+            return binder
+
+        inject.configure(_bind, bind_in_runtime=False)
+        request.addfinalizer(lambda: remove_injector())
+        return
+
+    return _binder
+
+
+@pytest.fixture
+def injected_client(client, client_injection_bindings, injection_binder):
+    """Inject a client."""
+    injection_binder(client_injection_bindings(client))

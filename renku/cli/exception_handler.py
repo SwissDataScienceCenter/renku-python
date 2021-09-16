@@ -150,7 +150,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 from git import Repo
 
                 from renku.core.commands.git import get_git_home
-                from renku.core.models.provenance.agents import Person
+                from renku.core.models.provenance.agent import Person
 
                 repo = Repo(get_git_home())
                 user = Person.from_git(repo)

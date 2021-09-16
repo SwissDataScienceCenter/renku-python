@@ -26,17 +26,9 @@ Extract provenance information from the repository.
 Activities
 ----------
 
-.. py:module:: renku.core.models.provenance.activities
+.. py:module:: renku.core.models.provenance.activity
 
 .. autoclass:: Activity
-   :members:
-   :inherited-members:
-
-.. autoclass:: ProcessRun
-   :members:
-   :inherited-members:
-
-.. autoclass:: WorkflowRun
    :members:
    :inherited-members:
 
@@ -44,7 +36,7 @@ Activities
 Entities
 --------
 
-.. py:module:: renku.core.models.entities
+.. py:module:: renku.core.models.entity
 
 .. autoclass:: Entity
    :members:
@@ -58,7 +50,7 @@ Entities
 Agents
 ------
 
-.. py:module:: renku.core.models.provenance.agents
+.. py:module:: renku.core.models.provenance.agent
 
 .. autoclass:: Person
    :members:
@@ -69,15 +61,11 @@ Agents
    :inherited-members:
 
 
-Relations
----------
+Annotations
+-----------
 
-.. py:module:: renku.core.models.provenance.qualified
+.. py:module:: renku.core.models.provenance.annotation
 
-.. autoclass:: Usage
-   :members:
-   :inherited-members:
-
-.. autoclass:: Generation
+.. autoclass:: Annotation
    :members:
    :inherited-members:

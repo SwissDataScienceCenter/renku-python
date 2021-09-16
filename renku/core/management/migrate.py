@@ -25,8 +25,8 @@ public "migrate" function that accepts a client as its argument.
 
 When executing a migration, the migration file is imported as a module and the
 "migrate" function is executed. Migration version is checked against the Renku
-project version (in .renku/metadata.yml) and any migration which has a higher
-version is applied to the project.
+project version and any migration which has a higher version is applied to the
+project.
 """
 import hashlib
 import importlib
@@ -46,60 +46,77 @@ from renku.core.errors import (
     ProjectNotSupported,
     TemplateUpdateError,
 )
+from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.project_gateway import IProjectGateway
+from renku.core.management.migrations.utils import (
+    OLD_METADATA_PATH,
+    is_using_temporary_datasets_path,
+    read_project_version,
+)
 from renku.core.utils import communication
-from renku.core.utils.migrate import read_project_version
 
-SUPPORTED_PROJECT_VERSION = 8
+SUPPORTED_PROJECT_VERSION = 9
 
 
-def check_for_migration(client):
+def check_for_migration():
     """Checks if migration is required."""
-    if is_migration_required(client):
+    if is_migration_required():
         raise MigrationRequired
-    elif is_project_unsupported(client):
+    elif is_project_unsupported():
         raise ProjectNotSupported
 
 
-def is_migration_required(client):
+def is_migration_required():
     """Check if project requires migration."""
-    return is_renku_project(client) and _get_project_version(client) < SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and _get_project_version() < SUPPORTED_PROJECT_VERSION
 
 
-def is_project_unsupported(client):
+def is_project_unsupported():
     """Check if this version of Renku cannot work with the project."""
-    return is_renku_project(client) and _get_project_version(client) > SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and _get_project_version() > SUPPORTED_PROJECT_VERSION
 
 
-def is_template_update_possible(client):
+def is_template_update_possible():
     """Check if the project can be updated to a newer version of the project template."""
-    return _update_template(client, check_only=True)
+    return _update_template(check_only=True)
 
 
-def is_docker_update_possible(client):
+def is_docker_update_possible():
     """Check if the Dockerfile can be updated to a new version of renku-python."""
-    return _update_dockerfile(client, check_only=True)
+    return _update_dockerfile(check_only=True)
 
 
+@inject.autoparams()
 def migrate(
-    client,
+    client_dispatcher: IClientDispatcher,
+    project_gateway: IProjectGateway,
     force_template_update=False,
     skip_template_update=False,
     skip_docker_update=False,
     skip_migrations=False,
     project_version=None,
+    max_version=None,
 ):
     """Apply all migration files to the project."""
+    client = client_dispatcher.current_client
     template_updated = docker_updated = False
-    if not is_renku_project(client):
+    if not is_renku_project():
         return False, template_updated, docker_updated
+
+    try:
+        project = client.project
+    except ValueError:
+        project = None
 
     if (
         not skip_template_update
-        and client.project.template_source
-        and (force_template_update or client.project.automated_update)
+        and project
+        and project.template_source
+        and (force_template_update or project.automated_update)
     ):
         try:
-            template_updated, _, _ = _update_template(client)
+            template_updated, _, _ = _update_template()
         except TemplateUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -107,7 +124,7 @@ def migrate(
 
     if not skip_docker_update:
         try:
-            docker_updated, _, _ = _update_dockerfile(client)
+            docker_updated, _, _ = _update_dockerfile()
         except DockerfileUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -116,11 +133,13 @@ def migrate(
     if skip_migrations:
         return False, template_updated, docker_updated
 
-    project_version = project_version or _get_project_version(client)
+    project_version = project_version or _get_project_version()
     n_migrations_executed = 0
 
     version = 1
     for version, path in get_migrations():
+        if max_version and version > max_version:
+            break
         if version > project_version:
             module = importlib.import_module(path)
             module_name = module.__name__.split(".")[-1]
@@ -130,21 +149,28 @@ def migrate(
             except (Exception, BaseException) as e:
                 raise MigrationError("Couldn't execute migration") from e
             n_migrations_executed += 1
-    if n_migrations_executed > 0 and not client.is_using_temporary_datasets_path():
+    if n_migrations_executed > 0 and not is_using_temporary_datasets_path():
         client._project = None  # NOTE: force reloading of project metadata
         client.project.version = str(version)
-        client.project.to_yaml()
+        project_gateway.update_project(client.project)
 
         communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
 
     return n_migrations_executed != 0, template_updated, docker_updated
 
 
-def _update_template(client, check_only=False):
+@inject.autoparams()
+def _update_template(client_dispatcher: IClientDispatcher, project_gateway: IProjectGateway, check_only=False):
     """Update local files from the remote template."""
     from renku.core.commands.init import fetch_template
 
-    project = client.project
+    client = client_dispatcher.current_client
+
+    try:
+        project = client.project
+    except ValueError:
+        # NOTE: Old project, we don't know the status until it is migrated
+        return False, None, None
 
     if not project.template_version:
         return False, None, None
@@ -249,18 +275,21 @@ def _update_template(client, check_only=False):
     updated = "\n".join(updated_files)
     communication.echo(f"Updated project from template, updated files:\n{updated}")
 
-    project.template_version = template_version
-    project.to_yaml()
+    project.template_version = str(template_version)
+    project_gateway.update_project(project)
 
-    return True, str(project.template_version), str(template_version)
+    return True, project.template_version, template_version
 
 
-def _update_dockerfile(client, check_only=False):
+@inject.autoparams()
+def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
     """Update the dockerfile to the newest version of renku."""
     from renku import __version__
 
+    client = client_dispatcher.current_client
+
     if not client.docker_path.exists():
-        return False, None, None
+        return False
 
     communication.echo("Updating dockerfile...")
 
@@ -271,7 +300,7 @@ def _update_dockerfile(client, check_only=False):
     m = re.search(r"^ARG RENKU_VERSION=(\d+\.\d+\.\d+)$", dockercontent, flags=re.MULTILINE)
     if not m:
         if check_only:
-            return False, None, None
+            return False
         raise DockerfileUpdateError(
             "Couldn't update renku-python version in Dockerfile, as it doesn't contain an 'ARG RENKU_VERSION=...' line."
         )
@@ -279,10 +308,10 @@ def _update_dockerfile(client, check_only=False):
     docker_version = pkg_resources.parse_version(m.group(1))
 
     if docker_version >= current_version:
-        return True, False, str(docker_version)
+        return False
 
     if check_only:
-        return True, True, str(docker_version)
+        return True
 
     dockercontent = re.sub(
         r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockercontent, flags=re.MULTILINE
@@ -293,22 +322,26 @@ def _update_dockerfile(client, check_only=False):
 
     communication.echo("Updated dockerfile.")
 
-    return True, False, str(current_version)
+    return True
 
 
-def _get_project_version(client):
+@inject.autoparams()
+def _get_project_version(client_dispatcher: IClientDispatcher):
     try:
-        return int(read_project_version(client))
+        return int(read_project_version(client_dispatcher.current_client))
     except ValueError:
         return 1
 
 
-def is_renku_project(client):
+@inject.autoparams()
+def is_renku_project(client_dispatcher: IClientDispatcher):
     """Check if repository is a renku project."""
+    client = client_dispatcher.current_client
+
     try:
         return client.project is not None
-    except ValueError:  # Error in loading due to an older schema
-        return client.renku_metadata_path.exists()
+    except (ValueError):  # Error in loading due to an older schema
+        return client.renku_path.joinpath(OLD_METADATA_PATH).exists()
 
 
 def get_migrations():

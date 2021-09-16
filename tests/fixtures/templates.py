@@ -32,13 +32,15 @@ def template():
         "id": "python-minimal",
         "index": 1,
         "ref": "master",
-        "metadata": {"description": "nodesc"},
+        # TODO: Add template parameters here once parameters are added to the template.
+        "metadata": {},
         "default_metadata": {
             "__template_source__": "renku",
             "__template_ref__": "master",
             "__template_id__": "python-minimal",
             "__namespace__": "",
             "__repository__": "",
+            "__project_description__": "nodesc",
             "__project_slug__": "",
             "__renku_version__": renku_version,
         },
@@ -76,7 +78,7 @@ def project_init(template):
 
 
 @pytest.fixture
-def template_update(tmpdir, local_client, mocker, template):
+def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_database_injection_manager):
     """Create a mocked template for updates."""
 
     def _template_update(immutable_files=None, docker=False, after_template_version="0.0.2"):
@@ -96,9 +98,7 @@ def template_update(tmpdir, local_client, mocker, template):
         template_path = temppath / manifest[0]["folder"]
 
         if docker:
-            import renku
-
-            mocker.patch.object(renku, "__version__", return_value="0.0.1")
+            monkeypatch.setattr("renku.__version__", "0.0.1")
 
             # TODO: remove this once the renku template contains RENKU_VERSION
             dockerfile_path = template_path / "Dockerfile"
@@ -108,22 +108,25 @@ def template_update(tmpdir, local_client, mocker, template):
         local_client.init_repository()
 
         # NOTE: init project from template
-        create_from_template(
-            template_path,
-            local_client,
-            "name",
-            {**template["default_metadata"], **template["metadata"]},
-            template_version="0.0.1",
-            immutable_template_files=immutable_files or [],
-            automated_update=True,
-        )
+        with client_database_injection_manager(local_client):
+            create_from_template(
+                template_path,
+                local_client,
+                "name",
+                {**template["default_metadata"], **template["metadata"]},
+                template_version="0.0.1",
+                immutable_template_files=immutable_files or [],
+                automated_update=True,
+            )
+
         project_files = [
             f
             for f in local_client.path.glob("**/*")
             if ".git" not in str(f)
-            and not str(f).endswith(".renku/metadata.yml")
+            and ".renku/metadata" not in str(f)
             and not str(f).endswith(".renku/template_checksums.json")
         ]
+
         template_files = []
         for project_file in project_files:
             expected_file = template_path / project_file.relative_to(local_client.path)

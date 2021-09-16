@@ -46,7 +46,7 @@ from os import PathLike
 from pathlib import Path
 
 from renku.api.models.project import ensure_project_context
-from renku.core.models.cwl.command_line_tool import (
+from renku.core.management.workflow.plan_factory import (
     add_indirect_parameter,
     get_indirect_inputs_path,
     get_indirect_outputs_path,

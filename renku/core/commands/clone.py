@@ -17,13 +17,16 @@
 # limitations under the License.
 """Clone a Renku repo along with all Renku-specific initializations."""
 
-from renku.core.incubation.command import Command
 from renku.core.management.clone import clone
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 
+@inject.autoparams()
 def _project_clone(
-    client,
     url,
+    client_dispatcher: IClientDispatcher,
     path=None,
     install_githooks=True,
     skip_smudge=True,
@@ -35,7 +38,7 @@ def _project_clone(
     checkout_rev=None,
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
-    install_lfs = client.external_storage_requested
+    install_lfs = client_dispatcher.current_client.external_storage_requested
 
     return clone(
         url=url,
@@ -54,4 +57,4 @@ def _project_clone(
 
 def project_clone_command():
     """Command to clone a renku project."""
-    return Command().command(_project_clone)
+    return Command().command(_project_clone).with_database()

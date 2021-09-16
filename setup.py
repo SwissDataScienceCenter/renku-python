@@ -29,7 +29,7 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 
 URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
-REFERENCE = "0.1.15"
+REFERENCE = "0.1.23"
 
 
 class DownloadTemplates(Command):
@@ -89,14 +89,14 @@ readme = open("README.rst").read()
 history = open("CHANGES.rst").read()
 
 tests_require = [
-    "black==21.6b0",
+    "black==21.9b0",
     "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.6",
-    "fakeredis>=1.4.1,<1.5.3",
+    "fakeredis>=1.4.1,<1.6.2",
     "flake8>=3.8,<3.10",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
-    "isort>=5.3.2,<5.9.0",
+    "isort>=5.3.2,<5.10.0",
     "pydocstyle>=3.0.0,<6.1.2",
     "pytest-black>=0.3.10,<0.3.13",
     "pytest-cache==1.0",
@@ -105,39 +105,39 @@ tests_require = [
     "pytest-mock>=3.2.0,<3.7.0",
     "pytest-pep8==1.0.6",
     "pytest-timeout==1.4.2",
-    "pytest-xdist>=1.34.0,<2.3.0",
-    "pytest>=4.0.0,<6.2.5",
-    "responses>=0.7.0,<0.13.4",
+    "pytest-xdist>=1.34.0,<2.4.0",
+    "pytest>=4.0.0,<6.2.6",
+    "responses>=0.7.0,<0.14.1",
 ]
 
 
 service_requires = [
-    "apispec>=4.0.0,<4.6.0",
+    "apispec>=4.0.0,<5.2.0",
     "apispec-webframeworks>=0.5.2,<0.6",
     "circus==0.17.1",
     "docker-compose==1.29.2",
     "flask==2.0.1",
     "gunicorn",
-    "marshmallow==3.12.1",
+    "marshmallow==3.13.0",
     "ptvsd>=4.3.0,<4.4.0",
-    "python-dotenv==0.17.0",
+    "python-dotenv==0.19.0",
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
-    "rq==1.8.1",
-    "sentry-sdk[flask]>=0.7.4,<1.1.1",
+    "rq==1.10.0",
+    "sentry-sdk[flask]>=0.7.4,<1.3.2",
     "walrus==0.8.2",
 ]
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<3.0.2", "Sphinx>=1.6.3,<4.0.2", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<3.0.2", "renku-sphinx-theme>=0.2.0", "sphinx-rtd-theme>=0.5.0,<1.1"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
     "service": service_requires,
 }
 
-setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<6.0.2", "wheel"]
+setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<6.3.3", "wheel"]
 
 
 extras_require["all"] = list(setup_requires)
@@ -155,7 +155,7 @@ for name, reqs in extras_require.items():
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<21.3.0",
-    "calamus>=0.3.8,<0.3.9",
+    "calamus>=0.3.10,<0.3.11",
     "click-completion>=0.5.0,<=0.5.3",
     "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",
@@ -163,35 +163,40 @@ install_requires = [
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool>=3.0.20210319143721,<3.2",
+    "cwl-utils>=0.10",
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
-    "gitpython==3.1.14",
-    "humanize>=2.5.0,<3.8.0",
+    "gitpython==3.1.18",
+    "humanize>=2.5.0,<3.12.0",
+    "inject>=4.3.0,<4.4.0",
     "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
+    "networkx>=2.6.0,<2.7",
     "pathspec>=0.8.0,<1.0.0",
     "patool==1.12",
-    "pluggy==0.13.1",
+    "pluggy==1.0.0",
     "portalocker>=2.2.1,<2.4",
     "psutil>=5.4.7,<5.8.1",
     "pyasn1>=0.4.5,<=0.4.8",
     "pyjwt==2.1.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
-    "pyshacl==0.14.4",
-    "python-dateutil>=2.6.1,<=2.8.1",
+    "pyshacl==0.16.1.post1",
+    "python-dateutil>=2.6.1,<2.8.3",
     "python-editor==1.0.4",
     "PyYAML>=5.4,<=5.4.1",
     "rdflib-jsonld>=0.5.0,<0.6.0",
-    "rdflib>=5.0.0,<5.1",
-    "requests>=2.23.0,<=2.24.0",
-    "rich>=9.3.0,<10.4.0",
-    "setuptools_scm>=3.1.0,<6.0.2",
+    "rdflib>=5.0.0,<6.1",
+    "requests>=2.23.0,<2.27.0",
+    "rich>=9.3.0,<10.10.0",
+    "setuptools_scm>=3.1.0,<6.3.3",
     "tabulate>=0.7.7,<0.8.10",
-    "tqdm>=4.48.1,<4.60.1",
+    "tqdm>=4.48.1,<4.62.3",
     "wcmatch>=6.0.0,<8.3",
     "werkzeug>=0.15.5,<2.0.2",
     "yagup>=0.1.1",
+    "ZODB==5.6.0",
+    "zc.relation>=1.1,<1.2",
 ]
 
 
@@ -206,7 +211,7 @@ def renku_scheme(version):
     if version.exact or version.node is None:
         return version.format_choice("", "+dirty")
     else:
-        return version.format_choice("+{node}", "+{node}+dirty")
+        return version.format_choice("+{node}", "+{node}.dirty")
 
 
 setup(
@@ -255,9 +260,9 @@ setup(
         "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Development Status :: 4 - Beta",
     ],
 )

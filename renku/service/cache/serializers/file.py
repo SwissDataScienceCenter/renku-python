@@ -16,33 +16,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service file cache serializers."""
-import uuid
-from datetime import datetime
-
-from marshmallow import Schema, fields, post_load
+from marshmallow import fields, post_load
 
 from renku.service.cache.models.file import File
+from renku.service.serializers.common import FileDetailsSchema, MandatoryUserSchema
 
 
-class FileSchema(Schema):
+class FileSchema(FileDetailsSchema, MandatoryUserSchema):
     """Schema for file model."""
 
-    created_at = fields.DateTime(missing=datetime.utcnow)
-
-    file_id = fields.String(missing=lambda: uuid.uuid4().hex)
-    user_id = fields.String(required=True)
-
-    content_type = fields.String(missing="unknown")
-    file_name = fields.String(required=True)
-
-    # measured in bytes (comes from stat() - st_size)
-    file_size = fields.Integer(required=True)
-
-    relative_path = fields.String(required=True)
-    is_archive = fields.Boolean(missing=False)
-    is_dir = fields.Boolean(required=True)
-    unpack_archive = fields.Boolean(missing=False)
-    override_existing = fields.Boolean(missing=False)
+    override_existing = fields.Boolean(
+        missing=False,
+        description="Overried files. Useful when extracting from archives.",
+    )
 
     @post_load
     def make_file(self, data, **options):

@@ -21,7 +21,7 @@ class ProviderApi(abc.ABC):
     """Interface defining provider methods."""
 
     @abc.abstractmethod
-    def find_record(self, uri, client=None, **kwargs):
+    def find_record(self, uri, **kwargs):
         """Find record by uri."""
         pass
 
@@ -30,7 +30,7 @@ class ProviderApi(abc.ABC):
         """Get export manager."""
         pass
 
-    def set_parameters(self, client, **kwargs):
+    def set_parameters(self, **kwargs):
         """Set and validate required parameters for a provider."""
         pass
 

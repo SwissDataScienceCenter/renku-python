@@ -33,7 +33,7 @@ def directory_tree_files():
 
 
 @pytest.fixture()
-def directory_tree(tmp_path, directory_tree_files):
+def directory_tree(tmp_path, directory_tree_files) -> Path:
     """Create a test directory tree."""
     # initialize
     base = tmp_path / "directory_tree"
@@ -126,7 +126,7 @@ def project_init(template):
 
 
 @pytest.fixture
-def template_update(tmpdir, local_client, mocker, template):
+def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_database_injection_manager):
     """Create a mocked template for updates."""
 
     def _template_update(immutable_files=None, docker=False, after_template_version="0.0.2"):
@@ -146,9 +146,7 @@ def template_update(tmpdir, local_client, mocker, template):
         template_path = temppath / manifest[0]["folder"]
 
         if docker:
-            import renku
-
-            mocker.patch.object(renku, "__version__", return_value="0.0.1")
+            monkeypatch.setattr("renku.__version__", "0.0.1")
 
             # TODO: remove this once the renku template contains RENKU_VERSION
             dockerfile_path = template_path / "Dockerfile"
@@ -158,21 +156,22 @@ def template_update(tmpdir, local_client, mocker, template):
         local_client.init_repository()
 
         # NOTE: init project from template
-        create_from_template(
-            template_path,
-            local_client,
-            "name",
-            {**template["default_metadata"], **template["metadata"]},
-            template_version="0.0.1",
-            immutable_template_files=immutable_files or [],
-            automated_update=True,
-        )
+        with client_database_injection_manager(local_client):
+            create_from_template(
+                template_path,
+                local_client,
+                "name",
+                {**template["default_metadata"], **template["metadata"]},
+                template_version="0.0.1",
+                immutable_template_files=immutable_files or [],
+                automated_update=True,
+            )
 
         project_files = [
             f
             for f in local_client.path.glob("**/*")
             if ".git" not in str(f)
-            and not str(f).endswith(".renku/metadata.yml")
+            and ".renku/metadata/" not in str(f)
             and not str(f).endswith(".renku/template_checksums.json")
         ]
 

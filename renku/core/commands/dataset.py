@@ -16,11 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Repository datasets management."""
+
 import re
 import shutil
 import urllib
 from collections import OrderedDict
 from pathlib import Path
+from typing import List, Optional
 
 import click
 import git
@@ -33,23 +35,39 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, OperationError, ParameterError, UsageError
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
+from renku.core.management.dataset import get_dataset
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.dataset.tag import add_dataset_tag, remove_dataset_tags
 from renku.core.management.datasets import DATASET_METADATA_PATHS
-from renku.core.models.datasets import DatasetDetailsJson, Url, generate_default_name
-from renku.core.models.provenance.agents import Person
-from renku.core.models.refs import LinkReference
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.metadata.immutable import DynamicProxy
+from renku.core.models.dataset import (
+    Dataset,
+    DatasetDetailsJson,
+    DatasetTag,
+    Url,
+    generate_default_name,
+    get_dataset_data_dir,
+)
+from renku.core.models.provenance.agent import Person
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
 from renku.core.utils.doi import is_doi
+from renku.core.utils.metadata import construct_creators
 from renku.core.utils.urls import remove_credentials
 
 
-def _list_datasets(client, revision=None, format=None, columns=None):
+def _list_datasets(format=None, columns=None):
     """List all datasets."""
-    if revision is None:
-        datasets = client.datasets.values()
-    else:
-        datasets = client.datasets_from_commit(client.repo.commit(revision))
+    datasets_provenance = DatasetsProvenance()
+    datasets = [DynamicProxy(d) for d in datasets_provenance.datasets]
+    for dataset in datasets:
+        tags = datasets_provenance.get_all_tags(dataset)
+        dataset.tags = tags
+        dataset.tags_csv = ",".join(tag.name for tag in tags)
 
     if format is None:
         return list(datasets)
@@ -57,24 +75,35 @@ def _list_datasets(client, revision=None, format=None, columns=None):
     if format not in DATASETS_FORMATS:
         raise UsageError("format not supported")
 
-    return DATASETS_FORMATS[format](client, datasets, columns=columns)
+    return DATASETS_FORMATS[format](datasets, columns=columns)
 
 
 def list_datasets():
     """Command for listing datasets."""
-    return Command().command(_list_datasets)
+    return Command().command(_list_datasets).with_database().require_migration()
 
 
+@inject.autoparams()
 def create_dataset_helper(
-    client, name, title=None, description="", creators=None, keywords=None, images=None, safe_image_paths=[]
+    name,
+    client_dispatcher: IClientDispatcher,
+    title=None,
+    description="",
+    creators=None,
+    keywords=None,
+    images=None,
+    safe_image_paths=None,
+    custom_metadata=None,
 ):
     """Create a dataset in the repository."""
+    client = client_dispatcher.current_client
+
     if not creators:
         creators = [Person.from_git(client.repo)]
     else:
-        creators, _ = _construct_creators(creators)
+        creators, _ = construct_creators(creators)
 
-    dataset, _, _ = client.create_dataset(
+    dataset = client.create_dataset(
         name=name,
         title=title,
         description=description,
@@ -82,25 +111,33 @@ def create_dataset_helper(
         keywords=keywords,
         images=images,
         safe_image_paths=safe_image_paths,
+        custom_metadata=custom_metadata,
     )
-
-    client.update_datasets_provenance(dataset)
 
     return dataset
 
 
 def create_dataset():
     """Return a command for creating an empty dataset in the current repo."""
-    command = Command().command(create_dataset_helper).lock_dataset()
+    command = Command().command(create_dataset_helper).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
+@inject.autoparams()
 def _edit_dataset(
-    client, name, title, description, creators, keywords=None, images=[], skip_image_update=False, safe_image_paths=[]
+    name,
+    title,
+    description,
+    creators,
+    client_dispatcher: IClientDispatcher,
+    keywords=None,
+    images=None,
+    skip_image_update=False,
+    safe_image_paths=None,
+    custom_metadata=None,
 ):
     """Edit dataset metadata."""
-    creator_objs, no_email_warnings = _construct_creators(creators, ignore_email=True)
-    title = title.strip() if isinstance(title, str) else ""
+    client = client_dispatcher.current_client
 
     possible_updates = {
         "creators": creators,
@@ -109,12 +146,15 @@ def _edit_dataset(
         "title": title,
     }
 
-    dataset = client.load_dataset(name=name)
+    creators, no_email_warnings = construct_creators(creators, ignore_email=True)
+    title = title.strip() if isinstance(title, str) else ""
+
+    dataset = client.get_dataset(name=name)
 
     updated = {k: v for k, v in possible_updates.items() if v}
 
     if updated:
-        dataset.update_metadata(creators=creator_objs, description=description, keywords=keywords, title=title)
+        dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
 
     if skip_image_update:
         images_updated = False
@@ -125,71 +165,43 @@ def _edit_dataset(
     if images_updated:
         updated["images"] = [{"content_url": i.content_url, "position": i.position} for i in dataset.images]
 
+    if custom_metadata:
+        client.update_dataset_custom_metadata(dataset, custom_metadata)
+        updated["custom_metadata"] = custom_metadata
+
     if not updated:
         return [], no_email_warnings
 
-    dataset.to_yaml()
-
-    client.update_datasets_provenance(dataset)
+    datasets_provenance = DatasetsProvenance()
+    datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
 
     return updated, no_email_warnings
 
 
 def edit_dataset():
     """Command for editing dataset metadata."""
-    command = Command().command(_edit_dataset).lock_dataset()
+    command = Command().command(_edit_dataset).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _show_dataset(client, name):
+@inject.autoparams()
+def _show_dataset(name, client_dispatcher: IClientDispatcher):
     """Show detailed dataset information."""
-    dataset = client.load_dataset(name)
+    dataset = client_dispatcher.current_client.get_dataset(name)
     return DatasetDetailsJson().dump(dataset)
 
 
 def show_dataset():
     """Command for showing detailed dataset information."""
-    return Command().command(_show_dataset)
+    return Command().command(_show_dataset).with_database().require_migration()
 
 
-def _construct_creators(creators, ignore_email=False):
-    from collections.abc import Iterable
-
-    creators = creators or ()
-
-    if not isinstance(creators, Iterable) or isinstance(creators, str):
-        raise errors.ParameterError("Invalid type")
-
-    people = []
-    no_email_warnings = []
-    for creator in creators:
-        if isinstance(creator, str):
-            person = Person.from_string(creator)
-        elif isinstance(creator, dict):
-            person = Person.from_dict(creator)
-        else:
-            raise errors.ParameterError("Invalid type")
-
-        message = 'A valid format is "Name <email> [affiliation]"'
-
-        if not person.name:  # pragma: no cover
-            raise errors.ParameterError(f'Name is invalid: "{creator}".\n{message}')
-
-        if not person.email:
-            if not ignore_email:  # pragma: no cover
-                raise errors.ParameterError(f'Email is invalid: "{creator}".\n{message}')
-            else:
-                no_email_warnings.append(creator)
-
-        people.append(person)
-
-    return people, no_email_warnings
-
-
+@inject.autoparams()
 def _add_to_dataset(
-    client,
     urls,
     name,
+    client_dispatcher: IClientDispatcher,
+    database_gateway: IDatabaseGateway,
     external=False,
     force=False,
     overwrite=False,
@@ -203,8 +215,10 @@ def _add_to_dataset(
     destination_names=None,
     total_size=None,
     repository=None,
+    clear_files_before=False,
 ):
     """Add data to a dataset."""
+    client = client_dispatcher.current_client
     if len(urls) == 0:
         raise UsageError("No URL is specified")
     if sources and len(urls) > 1:
@@ -242,15 +256,16 @@ def _add_to_dataset(
                 all_at_once=all_at_once,
                 destination_names=destination_names,
                 repository=repository,
+                clear_files_before=clear_files_before,
             )
             if with_metadata:
-                # dataset has the correct list of files
-                with_metadata.files = dataset.files
-                with_metadata.url = dataset._id
-
                 dataset.update_metadata_from(with_metadata)
 
-        client.update_datasets_provenance(dataset)
+        # TODO: Remove this once we have a proper database dispatcher for injection
+        # we need to commit because "project clone" changes injection, so tha database instance here
+        # is not the same as the one in CommandBuilder
+        database_gateway.commit()
+
         return dataset
     except DatasetNotFound:
         raise DatasetNotFound(
@@ -265,19 +280,34 @@ def _add_to_dataset(
 
 def add_to_dataset():
     """Create a command for adding data to datasets."""
-    command = Command().command(_add_to_dataset).lock_dataset()
+    command = Command().command(_add_to_dataset).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
 
 
-def _list_files(client, datasets=None, creators=None, include=None, exclude=None, format=None, columns=None):
+@inject.autoparams()
+def _list_files(
+    client_dispatcher: IClientDispatcher,
+    datasets=None,
+    creators=None,
+    include=None,
+    exclude=None,
+    format=None,
+    columns=None,
+):
     """List dataset files."""
-    records = _filter(client, names=datasets, creators=creators, include=include, exclude=exclude)
+    client = client_dispatcher.current_client
+
+    records = _filter(names=datasets, creators=creators, include=include, exclude=exclude, immutable=True)
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
-        record.dataset_id = record.dataset._id
+        record.dataset_id = record.dataset.id
         record.creators_csv = record.dataset.creators_csv
         record.creators_full_csv = record.dataset.creators_full_csv
+        record.full_path = client.path / record.entity.path
+        record.path = record.entity.path
+        record.name = Path(record.entity.path).name
+        record.added = record.date_added
 
     if format is None:
         return records
@@ -285,16 +315,19 @@ def _list_files(client, datasets=None, creators=None, include=None, exclude=None
     if format not in DATASETS_FORMATS:
         raise UsageError("format not supported")
 
-    return DATASET_FILES_FORMATS[format](client, records, columns=columns)
+    return DATASET_FILES_FORMATS[format](records, columns=columns)
 
 
 def list_files():
     """Command for listing dataset files."""
-    return Command().command(_list_files)
+    return Command().command(_list_files).with_database().require_migration()
 
 
-def _file_unlink(client, name, include, exclude, yes=False):
+@inject.autoparams()
+def _file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, yes=False):
     """Remove matching files from a dataset."""
+    client = client_dispatcher.current_client
+
     if not include and not exclude:
         raise ParameterError(
             (
@@ -304,12 +337,12 @@ def _file_unlink(client, name, include, exclude, yes=False):
             )
         )
 
-    dataset = client.load_dataset(name=name)
+    dataset = client.get_dataset(name=name)
 
     if not dataset:
         raise ParameterError("Dataset does not exist.")
 
-    records = _filter(client, names=[name], include=include, exclude=exclude)
+    records = _filter(names=[name], include=include, exclude=exclude)
     if not records:
         raise ParameterError("No records found.")
 
@@ -317,147 +350,134 @@ def _file_unlink(client, name, include, exclude, yes=False):
         prompt_text = (
             f'You are about to remove following from "{name}" dataset.'
             + "\n"
-            + "\n".join([str(record.full_path) for record in records])
+            + "\n".join([str(record.entity.path) for record in records])
             + "\nDo you wish to continue?"
         )
         communication.confirm(prompt_text, abort=True, warning=True)
 
-    for item in records:
-        dataset.unlink_file(item.path)
+    for file in records:
+        dataset.unlink_file(file.entity.path)
 
-    dataset.to_yaml()
-    client.update_datasets_provenance(dataset)
+    datasets_provenance = DatasetsProvenance()
+    datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
 
     return records
 
 
 def file_unlink():
     """Command for removing matching files from a dataset."""
-    command = Command().command(_file_unlink).lock_dataset()
+    command = Command().command(_file_unlink).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _remove_dataset(client, name):
+@inject.autoparams()
+def _remove_dataset(name, client_dispatcher: IClientDispatcher):
     """Delete a dataset."""
-    dataset = client.load_dataset(name=name, strict=True)
-    dataset.mutate()
-    dataset.to_yaml()
-    client.update_datasets_provenance(dataset, remove=True)
-
-    client.repo.git.add(dataset.path)
-    client.repo.index.commit("renku dataset rm: final mutation")
-
-    ref_path = client.get_dataset_path(name)
-
-    metadata_path = client.path / dataset.path
-    shutil.rmtree(metadata_path, ignore_errors=True)
-
-    references = list(LinkReference.iter_items(client, common_path="datasets"))
-    for ref in references:
-        if ref.reference == ref_path:
-            ref.delete()
+    dataset = client_dispatcher.current_client.get_dataset(name=name, strict=True)
+    datasets_provenance = DatasetsProvenance()
+    datasets_provenance.remove(dataset=dataset)
 
 
 def remove_dataset():
     """Command for deleting a dataset."""
-    command = Command().command(_remove_dataset).lock_dataset()
+    command = Command().command(_remove_dataset).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _export_dataset(client, name, provider_name, publish, tag, **kwargs):
+@inject.autoparams()
+def _export_dataset(name, provider_name, publish, tag, client_dispatcher: IClientDispatcher, **kwargs):
     """Export data to 3rd party provider.
 
-    :raises: ``ValueError``, ``HTTPError``, ``InvalidAccessToken``,
-             ``DatasetNotFound``
+    :raises: ``ParameterError``, ``HTTPError``, ``InvalidAccessToken``, ``DatasetNotFound``
     """
+    client = client_dispatcher.current_client
+    datasets_provenance = DatasetsProvenance()
+
     provider_name = provider_name.lower()
 
     # TODO: all these callbacks are ugly, improve in #737
     config_key_secret = "access_token"
 
-    dataset_ = client.load_dataset(name, strict=True)
+    dataset = client.get_dataset(name, strict=True, immutable=True)
 
     try:
         provider = ProviderFactory.from_id(provider_name)
     except KeyError:
         raise ParameterError("Unknown provider.")
 
-    provider.set_parameters(client, **kwargs)
+    provider.set_parameters(**kwargs)
 
     selected_tag = None
-    selected_commit = client.repo.head.commit
+    tags = datasets_provenance.get_all_tags(dataset)
 
     if tag:
-        selected_tag = next((t for t in dataset_.tags if t.name == tag), None)
+        selected_tag = next((t for t in tags if t.name == tag), None)
 
         if not selected_tag:
-            raise ValueError("Tag {} not found".format(tag))
+            raise errors.ParameterError(f"Tag '{tag}' not found for dataset '{name}'")
+    elif tags:
+        selected_tag = _prompt_tag_selection(tags)
 
-        selected_commit = selected_tag.commit
-    elif dataset_.tags and len(dataset_.tags) > 0:
-        tag_result = _prompt_tag_selection(dataset_.tags)
+    if selected_tag:
+        dataset = datasets_provenance.get_by_id(selected_tag.dataset_id, immutable=True)
 
-        if tag_result:
-            selected_tag = tag_result
-            selected_commit = tag_result.commit
+        if not dataset:
+            raise DatasetNotFound(message=f"Cannot find dataset with id: '{selected_tag.dataset_id}'")
 
-            # If the tag is created automatically for imported datasets, it
-            # does not have the dataset yet and we need to use the next commit
-            with client.with_commit(selected_commit):
-                test_ds = client.load_dataset(name)
-            if not test_ds:
-                commits = client.dataset_commits(dataset_)
-                next_commit = selected_commit
-                for commit in commits:
-                    if commit.hexsha == selected_commit:
-                        selected_commit = next_commit.hexsha
-                        break
-                    next_commit = commit
+    data_dir = get_dataset_data_dir(client, dataset)
+    dataset = DynamicProxy(dataset)
+    dataset.data_dir = data_dir
 
-    with client.with_commit(selected_commit):
-        dataset_ = client.load_dataset(name)
-        if not dataset_:
-            raise DatasetNotFound(name=name)
+    access_token = client.get_value(provider_name, config_key_secret)
+    exporter = provider.get_exporter(dataset, access_token=access_token)
 
-        access_token = client.get_value(provider_name, config_key_secret)
-        exporter = provider.get_exporter(dataset_, access_token=access_token)
+    if access_token is None:
+        access_token = _prompt_access_token(exporter)
 
-        if access_token is None:
-            access_token = _prompt_access_token(exporter)
+        if access_token is None or len(access_token) == 0:
+            raise InvalidAccessToken()
 
-            if access_token is None or len(access_token) == 0:
-                raise InvalidAccessToken()
+        client.set_value(provider_name, config_key_secret, access_token, global_only=True)
+        exporter.set_access_token(access_token)
 
-            client.set_value(provider_name, config_key_secret, access_token, global_only=True)
-            exporter.set_access_token(access_token)
-
-        try:
-            destination = exporter.export(publish=publish, tag=selected_tag)
-        except errors.AuthenticationError:
-            client.remove_value(provider_name, config_key_secret, global_only=True)
-            raise
+    try:
+        destination = exporter.export(publish=publish, tag=selected_tag, client=client)
+    except errors.AuthenticationError:
+        client.remove_value(provider_name, config_key_secret, global_only=True)
+        raise
 
     communication.echo(f"Exported to: {destination}")
 
 
 def export_dataset():
     """Command for exporting a dataset to 3rd party provider."""
-    command = Command().command(_export_dataset)
+    command = Command().command(_export_dataset).with_database()
     return command.require_migration().require_clean()
 
 
+@inject.autoparams()
 def _import_dataset(
-    client, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False, gitlab_token=None
+    uri,
+    client_dispatcher: IClientDispatcher,
+    database_gateway: IDatabaseGateway,
+    name="",
+    extract=False,
+    yes=False,
+    previous_dataset=None,
+    delete=False,
+    gitlab_token=None,
 ):
     """Import data from a 3rd party provider or another renku project."""
+    client = client_dispatcher.current_client
+
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
         raise ParameterError(f"Could not process '{uri}'.\n{err}")
 
     try:
-        record = provider.find_record(uri, client, gitlab_token=gitlab_token)
+        record = provider.find_record(uri, gitlab_token=gitlab_token)
         dataset = record.as_dataset(client)
-        files = dataset.files
+        files = record.files_info
         total_size = 0
 
         if not yes:
@@ -465,7 +485,12 @@ def _import_dataset(
                 tabulate(
                     files,
                     headers=OrderedDict(
-                        (("checksum", None), ("filename", "name"), ("size_in_mb", "size (mb)"), ("filetype", "type"))
+                        (
+                            ("checksum", "checksum"),
+                            ("filename", "name"),
+                            ("size_in_mb", "size (mb)"),
+                            ("filetype", "type"),
+                        )
                     ),
                     floatfmt=".2f",
                 )
@@ -491,8 +516,6 @@ def _import_dataset(
     if not files:
         raise ParameterError(f"Dataset '{uri}' has no files.")
 
-    new_files = list(dataset.files)
-
     if not provider.is_git_based:
         if not name:
             name = generate_default_name(dataset.title, dataset.version)
@@ -502,9 +525,7 @@ def _import_dataset(
             dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", dataset.identifier))
 
         urls, names = zip(*[(f.source, f.filename) for f in files])
-
-        new_dataset = _add_to_dataset(
-            client,
+        dataset = _add_to_dataset(
             urls=urls,
             name=name,
             create=not previous_dataset,
@@ -515,14 +536,15 @@ def _import_dataset(
             destination_names=names,
             total_size=total_size,
             overwrite=True,
+            clear_files_before=True,
         )
 
         if previous_dataset:
-            dataset = _update_metadata(client, new_dataset, previous_dataset, new_files, delete, dataset.same_as)
+            dataset = _update_metadata(dataset, previous_dataset, delete, dataset.same_as)
 
         if dataset.version:
             tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", dataset.version)
-            _tag_dataset(client, name, tag_name, "Tag {} created by renku import".format(dataset.version))
+            add_dataset_tag(dataset=dataset, tag=tag_name, description=f"Tag {dataset.version} created by renku import")
     else:
         name = name or dataset.name
 
@@ -536,14 +558,13 @@ def _import_dataset(
         if record.datadir_exists:
             sources = [f"{dataset.data_dir}/**"]
 
-        for file_ in dataset.files:
+        for file in dataset.files:
             try:
-                Path(file_.path).relative_to(dataset.data_dir)
+                Path(file.entity.path).relative_to(dataset.data_dir)
             except ValueError:  # Files that are not in dataset's data directory
-                sources.append(file_.path)
+                sources.append(file.entity.path)
 
         new_dataset = _add_to_dataset(
-            client,
             urls=[record.project_url],
             name=name,
             sources=sources,
@@ -551,47 +572,53 @@ def _import_dataset(
             create=not previous_dataset,
             overwrite=True,
             repository=record.repository,
+            clear_files_before=True,
         )
 
         if previous_dataset:
-            _update_metadata(client, new_dataset, previous_dataset, new_files, delete, dataset.same_as)
+            _update_metadata(new_dataset, previous_dataset, delete, dataset.same_as)
 
     if provider.supports_images:
-        with client.with_dataset(name=name):
-            record.import_images(client, dataset)
+        record.import_images(dataset)
+
+    database_gateway.commit()
 
 
 def import_dataset():
     """Create a command for importing datasets."""
-    command = Command().command(_import_dataset).lock_dataset()
+    command = Command().command(_import_dataset).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _update_metadata(client, new_dataset, previous_dataset, new_files, delete, same_as):
+@inject.autoparams()
+def _update_metadata(new_dataset: Dataset, previous_dataset, delete, same_as, client_dispatcher: IClientDispatcher):
     """Update metadata and remove files that exists in ``previous_dataset`` but not in ``new_dataset``."""
-    current_paths = set(str(f.path) for f in new_files)
+    client = client_dispatcher.current_client
+
+    current_paths = set(str(f.entity.path) for f in new_dataset.files)
 
     # NOTE: remove files not present in the dataset anymore
-    for f in previous_dataset.files:
-        if str(f.path) in current_paths:
+    for file in previous_dataset.files:
+        if str(file.entity.path) in current_paths:
             continue
 
-        new_dataset.unlink_file(f.path)
-
         if delete:
-            client.remove_file(client.path / f.path)
+            client.remove_file(client.path / file.entity.path)
 
     new_dataset.same_as = same_as
     # NOTE: Remove derived_from because this is an updated and imported dataset
     new_dataset.derived_from = None
 
-    # NOTE: Disable mutation because dataset is already mutated after the update
-    new_dataset.to_yaml(immutable=True)
     return new_dataset
 
 
-def _update_datasets(client, names, creators, include, exclude, ref, delete, external=False):
-    """Update files from a remote Git repo."""
+@inject.autoparams()
+def _update_datasets(
+    names, creators, include, exclude, ref, delete, client_dispatcher: IClientDispatcher, external=False
+):
+    """Update dataset files."""
+    client = client_dispatcher.current_client
+
     ignored_datasets = []
 
     if (include or exclude) and names and any(d.same_as for d in client.datasets.values() if d.name in names):
@@ -613,7 +640,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
             if not provider:
                 continue
 
-            record = provider.find_record(uri, client)
+            record = provider.find_record(uri)
 
             if record.is_last_version(uri) and record.version == dataset.version:
                 continue
@@ -624,7 +651,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
             extract = True
             for f in dataset.files:
                 try:
-                    patoolib.get_archive_format(f.path)
+                    patoolib.get_archive_format(f.entity.path)
                 except patoolib.util.PatoolError:
                     continue
                 else:
@@ -632,7 +659,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
                     break
 
             _import_dataset(
-                client, uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
+                uri=uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
             )
 
             communication.echo(f"Updated dataset '{dataset.name}' from remote provider")
@@ -646,7 +673,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
     if names_provided and not names:
         return
 
-    records = _filter(client, names=names, creators=creators, include=include, exclude=exclude, ignore=ignored_datasets)
+    records = _filter(names=names, creators=creators, include=include, exclude=exclude, ignore=ignored_datasets)
 
     if not records:
         if ignored_datasets:
@@ -658,14 +685,14 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
     external_files = []
     local_files = []
 
-    for file_ in records:
-        if file_.based_on:
-            possible_updates.append(file_)
-            unique_remotes.add(file_.based_on.source)
-        elif file_.external:
-            external_files.append(file_)
+    for file in records:
+        if file.based_on:
+            possible_updates.append(file)
+            unique_remotes.add(file.based_on.url)
+        elif file.is_external:
+            external_files.append(file)
         else:
-            local_files.append(file_)
+            local_files.append(file)
 
     if ref and len(unique_remotes) > 1:
         raise ParameterError(
@@ -701,7 +728,7 @@ def _update_datasets(client, names, creators, include, exclude, ref, delete, ext
 
 def update_datasets():
     """Command for updating datasets."""
-    command = Command().command(_update_datasets).lock_dataset()
+    command = Command().command(_update_datasets).lock_dataset().with_database(write=True)
     return command.require_migration().require_clean().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
@@ -726,7 +753,16 @@ def _include_exclude(file_path, include=None, exclude=None):
     return True
 
 
-def _filter(client, names=None, creators=None, include=None, exclude=None, ignore=None):
+@inject.autoparams()
+def _filter(
+    client_dispatcher: IClientDispatcher,
+    names=None,
+    creators=None,
+    include=None,
+    exclude=None,
+    ignore=None,
+    immutable=False,
+) -> List[DynamicProxy]:
     """Filter dataset files by specified filters.
 
     :param names: Filter by specified dataset names.
@@ -734,7 +770,10 @@ def _filter(client, names=None, creators=None, include=None, exclude=None, ignor
     :param include: Include files matching file pattern.
     :param exclude: Exclude files matching file pattern.
     :param ignore: Ignored datasets.
+    :param immutable: Return immutable copies of dataset objects.
     """
+    client = client_dispatcher.current_client
+
     if isinstance(creators, str):
         creators = set(creators.split(","))
 
@@ -744,13 +783,16 @@ def _filter(client, names=None, creators=None, include=None, exclude=None, ignor
     records = []
     unused_names = set(names)
     for dataset in client.datasets.values():
+        if not immutable:
+            dataset = dataset.copy()
         if (not names or dataset.name in names) and (not ignore or dataset.name not in ignore):
             if unused_names:
                 unused_names.remove(dataset.name)
-            for file_ in dataset.files:
-                file_.dataset = dataset
-                file_.client = client
-                path = Path(file_.path)
+            for file in dataset.files:
+                record = DynamicProxy(file)
+                record.dataset = dataset
+                record.client = client
+                path = Path(record.entity.path)
                 match = _include_exclude(path, include, exclude)
 
                 if creators:
@@ -758,65 +800,57 @@ def _filter(client, names=None, creators=None, include=None, exclude=None, ignor
                     match = match and creators.issubset(dataset_creators)
 
                 if match:
-                    records.append(file_)
+                    records.append(record)
 
     if unused_names:
         unused_names = ", ".join(unused_names)
         raise ParameterError(f"Dataset does not exist: {unused_names}")
 
-    return sorted(records, key=lambda r: r.added)
+    return sorted(records, key=lambda r: r.date_added)
 
 
-def _tag_dataset(client, name, tag, description, force=False):
+def _add_dataset_tag(name, tag, description, force=False):
     """Creates a new tag for a dataset."""
-    dataset = client.load_dataset(name, strict=True)
-
-    try:
-        client.add_dataset_tag(dataset, tag, description, force)
-    except ValueError as e:
-        raise ParameterError(e)
-    else:
-        dataset.to_yaml()
-        client.update_datasets_provenance(dataset)
+    dataset = get_dataset(name, strict=True)
+    add_dataset_tag(dataset=dataset, tag=tag, description=description, force=force)
 
 
-def tag_dataset():
+def add_dataset_tag_command():
     """Command for creating a new tag for a dataset."""
-    command = Command().command(_tag_dataset).lock_dataset()
+    command = Command().command(_add_dataset_tag).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _remove_dataset_tags(client, name, tags):
+def _remove_dataset_tags(name, tags):
     """Removes tags from a dataset."""
-    dataset = client.load_dataset(name, strict=True)
-
-    try:
-        client.remove_dataset_tags(dataset, tags)
-    except ValueError as e:
-        raise ParameterError(e)
-    else:
-        dataset.to_yaml()
-        client.update_datasets_provenance(dataset)
+    dataset = get_dataset(name, strict=True)
+    remove_dataset_tags(dataset, tags)
 
 
-def remove_dataset_tags():
+def remove_dataset_tags_command():
     """Command for removing tags from a dataset."""
-    command = Command().command(_remove_dataset_tags).lock_dataset()
+    command = Command().command(_remove_dataset_tags).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _list_tags(client, name, format):
+@inject.autoparams()
+def _list_dataset_tags(name, format):
     """List all tags for a dataset."""
-    dataset = client.load_dataset(name, strict=True)
+    dataset = get_dataset(name, strict=True)
 
-    tags = sorted(dataset.tags, key=lambda t: t.created)
+    datasets_provenance = DatasetsProvenance()
+    tags = datasets_provenance.get_all_tags(dataset)
+    tags = sorted(tags, key=lambda t: t.date_created)
+    tags = [DynamicProxy(t) for t in tags]
+    for tag in tags:
+        tag.dataset = dataset.title
 
-    return DATASET_TAGS_FORMATS[format](client, tags)
+    return DATASET_TAGS_FORMATS[format](tags)
 
 
-def list_tags():
+def list_tags_command():
     """Command for listing a dataset's tags."""
-    return Command().command(_list_tags)
+    return Command().command(_list_dataset_tags).with_database().require_migration()
 
 
 def _prompt_access_token(exporter):
@@ -831,15 +865,12 @@ def _prompt_access_token(exporter):
     return communication.prompt(text_prompt, type=str)
 
 
-def _prompt_tag_selection(tags):
+def _prompt_tag_selection(tags) -> Optional[DatasetTag]:
     """Prompt user to chose a tag or <HEAD>."""
-    # Prompt user to select a tag to export
-    tags = sorted(tags, key=lambda t: t.created)
+    tags = sorted(tags, key=lambda t: t.date_created)
 
     text_prompt = "Tag to export: \n\n<HEAD>\t[1]\n"
-
-    text_prompt += "\n".join("{}\t[{}]".format(t.name, i) for i, t in enumerate(tags, start=2))
-
+    text_prompt += "\n".join(f"{t.name}\t[{i}]" for i, t in enumerate(tags, start=2))
     text_prompt += "\n\nTag"
     selection = communication.prompt(text_prompt, type=click.IntRange(1, len(tags) + 1), default=1)
 

@@ -21,15 +21,16 @@ from subprocess import PIPE, SubprocessError, run
 
 from humanize import naturalsize
 
-from renku.core.models.datasets import DatasetFileDetailsJson
+from renku.core.management.command_builder import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.models.dataset import DatasetFileDetailsJson
 
 from .tabulate import tabulate
 
 
-def tabular(client, records, *, columns=None):
+def tabular(records, *, columns=None):
     """Format dataset files with a tabular output.
 
-    :param client: LocalClient instance.
     :param records: Filtered collection.
     :param columns: List of columns to display
     """
@@ -37,10 +38,10 @@ def tabular(client, records, *, columns=None):
         columns = "added,creators,dataset,full_path"
 
     if "size" in columns.split(","):
-        _get_lfs_file_sizes(client, records)
+        _get_lfs_file_sizes(records)
 
     if "lfs" in columns.split(","):
-        _get_lfs_tracking(client, records)
+        _get_lfs_tracking(records)
 
     for record in records:
         record.creators = record.dataset.creators
@@ -53,8 +54,11 @@ def tabular(client, records, *, columns=None):
     )
 
 
-def _get_lfs_tracking(client, records):
+@inject.autoparams()
+def _get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
     """Check if files are tracked in git lfs."""
+    client = client_dispatcher.current_client
+
     paths = [r.path for r in records]
     attrs = client.find_attr(*paths)
 
@@ -65,8 +69,11 @@ def _get_lfs_tracking(client, records):
             record.is_lfs = False
 
 
-def _get_lfs_file_sizes(client, records):
+@inject.autoparams()
+def _get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
     """Try to get file size from Git LFS."""
+    client = client_dispatcher.current_client
+
     lfs_files_sizes = {}
 
     try:
@@ -98,28 +105,26 @@ def _get_lfs_file_sizes(client, records):
         record.size = size
 
 
-def jsonld(client, records, **kwargs):
+def jsonld(records, **kwargs):
     """Format dataset files as JSON-LD.
 
-    :param client: LocalClient instance.
     :param records: Filtered collection.
     """
     from renku.core.models.json import dumps
 
-    data = [record.as_jsonld() for record in records]
+    data = [record.to_jsonld() for record in records]
     return dumps(data, indent=2)
 
 
-def json(client, records, **kwargs):
+def json(records, **kwargs):
     """Format dataset files as JSON.
 
-    :param client: LocalClient instance.
     :param records: Filtered collection.
     """
     from renku.core.models.json import dumps
 
-    _get_lfs_file_sizes(client, records)
-    _get_lfs_tracking(client, records)
+    _get_lfs_file_sizes(records)
+    _get_lfs_tracking(records)
 
     for record in records:
         record.creators = record.dataset.creators
@@ -136,8 +141,8 @@ DATASET_FILES_FORMATS = {
 """Valid formatting options."""
 
 DATASET_FILES_COLUMNS = {
-    "added": ("added", None),
-    "commit": ("commit_sha", "commit"),
+    "added": ("date_added", "added"),
+    "commit": ("entity.checksum", "commit"),
     "creators": ("creators_csv", "creators"),
     "creators_full": ("creators_full_csv", "creators"),
     "dataset": ("title", "dataset"),

@@ -17,8 +17,11 @@
 # limitations under the License.
 """Test plugins for the ``run`` command."""
 
+import pytest
+
 from renku.cli import cli
 from renku.core.plugins import pluginmanager as pluginmanager
+from tests.utils import format_result_exception
 
 
 def test_renku_pre_run_hook(monkeypatch, dummy_pre_run_plugin_hook, runner, project):
@@ -32,7 +35,7 @@ def test_renku_pre_run_hook(monkeypatch, dummy_pre_run_plugin_hook, runner, proj
 
         result = runner.invoke(cli, ["run", "--no-output"] + cmd)
 
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
         assert 1 == dummy_pre_run_plugin_hook.called
 
 
@@ -45,16 +48,17 @@ def test_renku_run_cwl_hook(monkeypatch, dummy_run_plugin_hook, runner, project)
         m.setattr(pluginmanager, "get_plugin_manager", lambda: pm)
         cmd = ["echo", "test"]
         result = runner.invoke(cli, ["run", "--no-output"] + cmd)
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
 
         # check for dummy plugin
-        result = runner.invoke(cli, ["log", "--format", "json-ld"])
+        result = runner.invoke(cli, ["graph", "export", "--format", "json-ld"])
         assert "Dummy Cmdline Hook" in result.output
         assert "dummy cmdline hook body" in result.output
 
 
+@pytest.mark.skip("Skipped until we have updated our plugin annotations.")
 def test_renku_processrun_cwl_hook(monkeypatch, dummy_processrun_plugin_hook, runner, project):
-    """Tests that the renku run plugin hook on ``ProcessRun`` is called."""
+    """Tests that the renku run plugin hook on ``Activity`` is called."""
     pm = pluginmanager.get_plugin_manager()
     pm.register(dummy_processrun_plugin_hook)
 
@@ -62,9 +66,9 @@ def test_renku_processrun_cwl_hook(monkeypatch, dummy_processrun_plugin_hook, ru
         m.setattr(pluginmanager, "get_plugin_manager", lambda: pm)
         cmd = ["echo", "test"]
         result = runner.invoke(cli, ["run", "--no-output"] + cmd)
-        assert 0 == result.exit_code
+        assert 0 == result.exit_code, format_result_exception(result)
 
         # check for dummy plugin
-        result = runner.invoke(cli, ["log", "--format", "json-ld"])
-        assert "Dummy ProcessRun Hook" in result.output
-        assert "dummy ProcessRun hook body" in result.output
+        result = runner.invoke(cli, ["graph", "export", "--format", "json-ld"])
+        assert "Dummy Activity Hook" in result.output
+        assert "dummy Activity hook body" in result.output

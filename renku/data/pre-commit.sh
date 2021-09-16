@@ -39,40 +39,14 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
 fi
 
 if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
-  MODIFIED_OUTPUTS=$(renku show outputs "${MODIFIED_FILES[@]}")
-  EXIT_CODE=$?
-  if [ $EXIT_CODE -eq 3 ]; then
-    echo "Cannot verify validity of the commit: Project metadata is outdated."
-    echo "Run 'renku migrate' command to fix the issue."
-    echo
-    echo 'To commit anyway, use "git commit --no-verify".'
-    exit 1
-  fi
-  if [ $EXIT_CODE -eq 4 ]; then
-    echo "Cannot verify validity of the commit: Project was created with a newer version of Renku."
-    echo "Upgrade Renku to the latest version."
-    echo
-    echo 'To commit anyway, use "git commit --no-verify".'
-    exit 1
-  fi
-  if [ "$MODIFIED_OUTPUTS" ]; then
-    echo 'You are trying to update generated files.'
-    echo
-    echo 'Modified files:'
-    for file in "${MODIFIED_OUTPUTS[@]}"; do
-      echo "$file"
-    done
-    echo
-    echo 'To commit anyway, use "git commit --no-verify".'
-    exit 1
-  fi
-  IMMUTABLE_TEMPLATE_FILES=$(renku check-immutable-template-files "${MODIFIED_FILES[@]}")
-  if [ "$IMMUTABLE_TEMPLATE_FILES" ]; then
+  IFS=$'\n' read -r -d '' -a IMMUTABLE_TEMPLATE_FILES \
+    <<< "$(renku check-immutable-template-files "${MODIFIED_FILES[@]}")"
+  if [ ${#IMMUTABLE_TEMPLATE_FILES[@]} -ne 0 ]; then
     echo 'You are trying to update files marked as immutable in your project template.'
     echo 'This would prevent the project from being updated with new versions of the template in the future.'
     echo
     echo 'Immutable files:'
-    for file in "${MODIFIED_OUTPUTS[@]}"; do
+    for file in "${IMMUTABLE_TEMPLATE_FILES[@]}"; do
       echo "$file"
     done
     echo
@@ -82,9 +56,9 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
 fi
 
 if [ ${#ADDED_FILES[@]} -ne 0 ]; then
-  UNTRACKED_PATHS=$(renku storage check-lfs-hook "${ADDED_FILES[@]}")
-  if [ "$UNTRACKED_PATHS" ]; then
-
+  IFS=$'\n' read -r -d '' -a UNTRACKED_PATHS \
+    <<< "$(renku storage check-lfs-hook "${ADDED_FILES[@]}")"
+  if [ ${#UNTRACKED_PATHS[@]} -ne 0 ]; then
     echo 'You are trying to commit large files to Git instead of Git-LFS.'
     echo
     AUTOCOMMIT_LFS=${AUTOCOMMIT_LFS:=$(renku config show autocommit_lfs)}
@@ -94,13 +68,9 @@ if [ ${#ADDED_FILES[@]} -ne 0 ]; then
         echo "$file"
       done
       echo
-      saveIFS=$IFS
-      IFS=$' '
-      files=${UNTRACKED_PATHS[*]}
-      git lfs track -- "$files"
+      git lfs track -- "${UNTRACKED_PATHS[@]}"
       git add .gitattributes
-      git add -- "$files"
-      IFS=$saveIFS
+      git add -- "${UNTRACKED_PATHS[@]}"
     else
       echo 'Large files:'
       for file in "${UNTRACKED_PATHS[@]}"; do

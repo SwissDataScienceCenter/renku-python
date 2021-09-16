@@ -39,8 +39,12 @@ property:
 
 """
 
+from operator import attrgetter
+
 from renku.api.models.project import ensure_project_context
-from renku.core.models.datasets import Dataset as CoreDataset
+from renku.core.management.command_builder.database_dispatcher import DatabaseDispatcher
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
+from renku.core.models import dataset as core_dataset
 
 
 class Dataset:
@@ -67,11 +71,11 @@ class Dataset:
         self._files = []
 
     @classmethod
-    def __from_yaml(cls, path, client):
+    def _from_dataset(cls, dataset: core_dataset.Dataset):
         """Create an instance from Dataset metadata."""
         self = cls()
-        self._dataset = CoreDataset.from_yaml(path=path, client=client)
-        self._files = [DatasetFile(f) for f in self._dataset.files]
+        self._dataset = dataset
+        self._files = [DatasetFile._from_dataset_file(f) for f in self._dataset.files]
 
         return self
 
@@ -80,7 +84,14 @@ class Dataset:
     def list(project):
         """List all datasets in a project."""
         client = project.client
-        return [Dataset.__from_yaml(p, client) for p in client.get_datasets_metadata_files()] if client else []
+        if not client or not client.has_graph_files():
+            return []
+        database_dispatcher = DatabaseDispatcher()
+        database_dispatcher.push_database_to_stack(client.database_path)
+        dataset_gateway = DatasetGateway()
+        dataset_gateway.database_dispatcher = database_dispatcher
+
+        return [Dataset._from_dataset(d) for d in dataset_gateway.get_all_datasets()]
 
     def __getattribute__(self, name):
         dataset = object.__getattribute__(self, "_dataset")
@@ -98,17 +109,24 @@ class Dataset:
 class DatasetFile:
     """API DatasetFile model."""
 
-    _ATTRIBUTES = ["added", "full_path", "name", "path"]
+    _ATTRIBUTES = ["date_added", "name", "path", "entity"]
 
-    def __init__(self, dataset_file):
+    @classmethod
+    @ensure_project_context
+    def _from_dataset_file(cls, dataset_file: core_dataset.DatasetFile, project):
+        """Create an instance from Dataset metadata."""
+        self = cls()
         self._dataset_file = dataset_file
+        self.full_path = project.path / dataset_file.entity.path
 
-        for name in self._ATTRIBUTES:
-            setattr(self, name, None)
+        return self
 
     def __getattribute__(self, name):
         dataset_file = object.__getattribute__(self, "_dataset_file")
         if dataset_file is not None and name in DatasetFile._ATTRIBUTES:
-            return getattr(dataset_file, name)
+            if name == "path":
+                name = "entity.path"
+            getter = attrgetter(name)
+            return getter(dataset_file)
 
         return object.__getattribute__(self, name)

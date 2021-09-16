@@ -41,6 +41,190 @@ COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
 
 
+def prepare_commit(
+    client,
+    commit_only=None,
+    skip_dirty_checks=False,
+):
+    """Gather information about repo needed for committing later on."""
+    diff_before = set()
+
+    if commit_only == COMMIT_DIFF_STRATEGY:
+        staged = {git_unicode_unescape(item.a_path) for item in client.repo.index.diff(None)}
+
+        modified = {git_unicode_unescape(item.a_path) for item in client.repo.index.diff("HEAD")}
+
+        if staged or modified:
+            client.repo.git.reset()
+
+        # Exclude files created by pipes.
+        diff_before = {
+            file_ for file_ in client.repo.untracked_files if STARTED_AT - int(Path(file_).stat().st_ctime * 1e3) >= 1e3
+        }
+
+    if isinstance(commit_only, list) and not skip_dirty_checks:
+        for path_ in commit_only:
+            client.ensure_untracked(str(path_))
+            client.ensure_unstaged(str(path_))
+
+    return diff_before
+
+
+def finalize_commit(
+    client,
+    diff_before,
+    commit_only=None,
+    commit_empty=True,
+    raise_if_empty=False,
+    commit_message=None,
+    abbreviate_message=True,
+):
+    """Commit modified/added paths."""
+    from git import Actor
+
+    from renku.version import __version__, version_url
+
+    committer = Actor("renku {0}".format(__version__), version_url)
+
+    change_types = {git_unicode_unescape(item.a_path): item.change_type for item in client.repo.index.diff(None)}
+
+    if commit_only == COMMIT_DIFF_STRATEGY:
+        # Get diff generated in command.
+        staged_after = set(change_types.keys())
+
+        modified_after_change_types = {
+            git_unicode_unescape(item.a_path): item.change_type for item in client.repo.index.diff("HEAD")
+        }
+
+        modified_after = set(modified_after_change_types.keys())
+
+        change_types.update(modified_after_change_types)
+
+        diff_after = set(client.repo.untracked_files).union(staged_after).union(modified_after)
+
+        # Remove files not touched in command.
+        commit_only = list(diff_after - diff_before)
+
+    if isinstance(commit_only, list):
+        for path_ in commit_only:
+            p = client.path / path_
+            if p.exists() or change_types.get(str(path_)) == "D":
+                client.repo.git.add(path_)
+
+    if not commit_only:
+        client.repo.git.add("--all")
+
+    diffs = []
+    try:
+        diffs = [git_unicode_unescape(d.a_path) for d in client.repo.index.diff("HEAD")]
+    except git.exc.BadName:
+        pass
+
+    if not commit_empty and not diffs:
+        if raise_if_empty:
+            raise errors.NothingToCommit()
+        return
+
+    if commit_message and not isinstance(commit_message, str):
+        raise errors.CommitMessageEmpty()
+
+    elif not commit_message:
+        argv = [os.path.basename(sys.argv[0])] + [remove_credentials(arg) for arg in sys.argv[1:]]
+
+        commit_message = " ".join(argv)
+
+    if abbreviate_message:
+        commit_message = shorten_message(commit_message)
+
+    # Ignore pre-commit hooks since we have already done everything.
+    client.repo.index.commit(commit_message, committer=committer, skip_hooks=True)
+
+
+def prepare_worktree(
+    original_client,
+    path=None,
+    branch_name=None,
+    commit=None,
+):
+    """Set up a Git worktree to provide isolation."""
+    from git import NULL_TREE
+
+    from renku.core.utils.contexts import Isolation
+
+    path = path or tempfile.mkdtemp()
+    branch_name = branch_name or "renku/run/isolation/" + uuid.uuid4().hex
+
+    # TODO sys.argv
+
+    if commit is NULL_TREE:
+        args = ["add", "--detach", path]
+        original_client.repo.git.worktree(*args)
+        client = attr.evolve(original_client, path=path)
+        client.repo.git.checkout("--orphan", branch_name)
+        client.repo.git.rm("-rf", "*")
+    else:
+        args = ["add", "-b", branch_name, path]
+        if commit:
+            args.append(commit)
+        original_client.repo.git.worktree(*args)
+        client = attr.evolve(original_client, path=path)
+
+    client.repo.config_reader = original_client.repo.config_reader
+
+    # Keep current directory relative to repository root.
+    relative = Path(os.path.relpath(Path(".").resolve(), original_client.path))
+
+    # Reroute standard streams
+    original_mapped_std = get_mapped_std_streams(original_client.candidate_paths)
+    mapped_std = {}
+    for name, stream in original_mapped_std.items():
+        stream_path = Path(path) / (Path(stream).relative_to(original_client.path))
+        stream_path = stream_path.absolute()
+
+        if not stream_path.exists():
+            stream_path.parent.mkdir(parents=True, exist_ok=True)
+            stream_path.touch()
+
+        mapped_std[name] = stream_path
+
+    _clean_streams(original_client.repo, original_mapped_std)
+
+    new_cwd = Path(path) / relative
+    new_cwd.mkdir(parents=True, exist_ok=True)
+
+    isolation = Isolation(cwd=str(new_cwd), **mapped_std)
+    isolation.__enter__()
+    return client, isolation, path, branch_name
+
+
+def finalize_worktree(
+    client, isolation, path, branch_name, delete, new_branch, merge_args=("--ff-only",), exception=None
+):
+    """Cleanup and merge a previously created Git worktree."""
+    from git import GitCommandError
+
+    exc_info = (None, None, None)
+
+    if exception:
+        exc_info = (type(exception), exception, exception.__traceback__)
+
+    isolation.__exit__(*exc_info)
+
+    try:
+        client.repo.git.merge(branch_name, *merge_args)
+    except GitCommandError:
+        raise errors.FailedMerge(client.repo, branch_name, merge_args)
+
+    if delete:
+        client.repo.git.worktree("remove", path)
+
+        if new_branch:
+            # delete the created temporary branch
+            client.repo.git.branch("-d", branch_name)
+    if client.external_storage_requested:
+        client.checkout_paths_from_storage()
+
+
 def get_mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
     """Get a mapping of standard streams to given paths."""
     # FIXME add device number too
@@ -253,193 +437,34 @@ class GitCore:
         skip_dirty_checks=False,
     ):
         """Automatic commit."""
-        from git import Actor
 
-        from renku.version import __version__, version_url
-
-        diff_before = set()
-
-        if commit_only == COMMIT_DIFF_STRATEGY:
-            staged = {git_unicode_unescape(item.a_path) for item in self.repo.index.diff(None)}
-
-            modified = {git_unicode_unescape(item.a_path) for item in self.repo.index.diff("HEAD")}
-
-            if staged or modified:
-                self.repo.git.reset()
-
-            # Exclude files created by pipes.
-            diff_before = {
-                file_
-                for file_ in self.repo.untracked_files
-                if STARTED_AT - int(Path(file_).stat().st_ctime * 1e3) >= 1e3
-            }
-
-        if isinstance(commit_only, list) and not skip_dirty_checks:
-            for path_ in commit_only:
-                self.ensure_untracked(str(path_))
-                self.ensure_unstaged(str(path_))
-
-        project_metadata_path = str(self.renku_metadata_path)
+        diff_before = prepare_commit(self, commit_only=commit_only, skip_dirty_checks=skip_dirty_checks)
 
         yield
 
-        committer = Actor("renku {0}".format(__version__), version_url)
-
-        change_types = {}
-
-        if commit_only == COMMIT_DIFF_STRATEGY:
-            # Get diff generated in command.
-            change_types = {git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff(None)}
-            staged_after = set(change_types.keys())
-
-            modified_after_change_types = {
-                git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff("HEAD")
-            }
-
-            modified_after = set(modified_after_change_types.keys())
-
-            change_types.update(modified_after_change_types)
-
-            diff_after = set(self.repo.untracked_files).union(staged_after).union(modified_after)
-
-            # Remove files not touched in command.
-            commit_only = list(diff_after - diff_before)
-
-        if isinstance(commit_only, list):
-            for path_ in commit_only:
-                p = self.path / path_
-                if p.exists() or change_types.get(path_) == "D":
-                    self.repo.git.add(path_)
-
-        if not commit_only:
-            self.repo.git.add("--all")
-
-        diffs = []
-        try:
-            diffs = [git_unicode_unescape(d.a_path) for d in self.repo.index.diff("HEAD")]
-            if project_metadata_path in diffs:
-                diffs.remove(project_metadata_path)
-        except git.exc.BadName:
-            pass
-
-        if not commit_empty and not diffs:
-            if raise_if_empty:
-                raise errors.NothingToCommit()
-            return
-
-        if commit_message and not isinstance(commit_message, str):
-            raise errors.CommitMessageEmpty()
-
-        elif not commit_message:
-            argv = [os.path.basename(sys.argv[0])] + [remove_credentials(arg) for arg in sys.argv[1:]]
-
-            commit_message = " ".join(argv)
-
-        if abbreviate_message:
-            commit_message = shorten_message(commit_message)
-
-        try:
-            project = self.project
-            if project:
-                project.to_yaml()
-                self.repo.index.add(project_metadata_path)
-        except ValueError:
-            pass
-
-        # Ignore pre-commit hooks since we have already done everything.
-        self.repo.index.commit(commit_message, committer=committer, skip_hooks=True)
-
-    @contextmanager
-    def transaction(
-        self,
-        clean=True,
-        commit=True,
-        commit_empty=True,
-        commit_message=None,
-        commit_only=None,
-        ignore_std_streams=False,
-        raise_if_empty=False,
-    ):
-        """Perform Git checks and operations."""
-        if clean:
-            self.ensure_clean(ignore_std_streams=ignore_std_streams)
-
-        if commit:
-            with self.commit(
-                commit_empty=commit_empty,
-                commit_message=commit_message,
-                commit_only=commit_only,
-                raise_if_empty=raise_if_empty,
-            ):
-                yield self
-        else:
-            yield self
+        finalize_commit(
+            self,
+            diff_before,
+            commit_only=commit_only,
+            commit_empty=commit_empty,
+            raise_if_empty=raise_if_empty,
+            commit_message=commit_message,
+            abbreviate_message=abbreviate_message,
+        )
 
     @contextmanager
     def worktree(self, path=None, branch_name=None, commit=None, merge_args=("--ff-only",)):
         """Create new worktree."""
-        from git import NULL_TREE, GitCommandError
-
-        from renku.core.utils.contexts import Isolation
+        from git import NULL_TREE
 
         delete = path is None
-        path = path or tempfile.mkdtemp()
-        branch_name = branch_name or "renku/run/isolation/" + uuid.uuid4().hex
+        new_branch = commit is not NULL_TREE
 
-        # TODO sys.argv
-
-        new_branch = False
-
-        if commit is NULL_TREE:
-            args = ["add", "--detach", path]
-            self.repo.git.worktree(*args)
-            client = attr.evolve(self, path=path)
-            client.repo.git.checkout("--orphan", branch_name)
-            client.repo.git.rm("-rf", "*")
-        else:
-            args = ["add", "-b", branch_name, path]
-            if commit:
-                args.append(commit)
-            self.repo.git.worktree(*args)
-            client = attr.evolve(self, path=path)
-            new_branch = True
-
-        client.repo.config_reader = self.repo.config_reader
-
-        # Keep current directory relative to repository root.
-        relative = Path(os.path.relpath(Path(".").resolve(), self.path))
-
-        # Reroute standard streams
-        original_mapped_std = get_mapped_std_streams(self.candidate_paths)
-        mapped_std = {}
-        for name, stream in original_mapped_std.items():
-            stream_path = Path(path) / (Path(stream).relative_to(self.path))
-            stream_path = stream_path.absolute()
-
-            if not stream_path.exists():
-                stream_path.parent.mkdir(parents=True, exist_ok=True)
-                stream_path.touch()
-
-            mapped_std[name] = stream_path
-
-        _clean_streams(self.repo, original_mapped_std)
-
-        new_cwd = Path(path) / relative
-        new_cwd.mkdir(parents=True, exist_ok=True)
-
-        with Isolation(cwd=str(new_cwd), **mapped_std):
-            yield client
-
+        new_client, isolation, path, branch_name = prepare_worktree(self, path, branch_name, commit)
         try:
-            self.repo.git.merge(branch_name, *merge_args)
-        except GitCommandError:
-            raise errors.FailedMerge(self.repo, branch_name, merge_args)
-
-        if delete:
-            self.repo.git.worktree("remove", path)
-
-            if new_branch:
-                # delete the created temporary branch
-                self.repo.git.branch("-d", branch_name)
-        if self.external_storage_requested:
-            self.checkout_paths_from_storage()
+            yield
+        except (Exception, BaseException) as e:
+            finalize_worktree(new_client, isolation, path, branch_name, delete, new_branch, merge_args, exception=e)
+            raise
+        else:
+            finalize_worktree(new_client, isolation, path, branch_name, delete, new_branch, merge_args)

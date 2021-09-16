@@ -18,6 +18,7 @@
 """Renku service datasets remove controller."""
 from renku.core.commands.dataset import remove_dataset
 from renku.service.cache.models.job import Job
+from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOpSyncMixin
 from renku.service.serializers.datasets import DatasetRemoveRequest, DatasetRemoveResponseRPC
@@ -33,9 +34,7 @@ class DatasetsRemoveCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets remove controller."""
         self.ctx = DatasetsRemoveCtrl.REQUEST_SERIALIZER.load(request_data)
-
-        if self.ctx.get("commit_message") is None:
-            self.ctx["commit_message"] = "service: dataset remove {0}".format(self.ctx["name"])
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset remove {self.ctx['name']}"
 
         super(DatasetsRemoveCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
 

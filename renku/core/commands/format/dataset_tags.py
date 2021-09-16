@@ -22,16 +22,21 @@ from collections import OrderedDict
 from renku.core.models.tabulate import tabulate
 
 
-def tabular(client, tags):
+def tabular(tags):
     """Format dataset tags with a tabular output.
 
-    :param client: LocalClient instance.
     :param tags: Dataset tags.
     """
     return tabulate(
         tags,
         headers=OrderedDict(
-            (("created", None), ("name", None), ("description", None), ("dataset", None), ("commit", None))
+            (
+                ("date_created", "created"),
+                ("name", None),
+                ("description", None),
+                ("dataset", None),
+                ("dataset_id", "dataset id"),
+            )
         ),
         # workaround for tabulate issue 181
         # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
@@ -39,15 +44,14 @@ def tabular(client, tags):
     )
 
 
-def jsonld(client, tags):
+def jsonld(tags):
     """Format dataset tags as JSON-LD.
 
-    :param client: LocalClient instance.
     :param tags: Dataset tags.
     """
     from renku.core.models.json import dumps
 
-    data = [tag.as_jsonld() for tag in tags]
+    data = [tag.to_jsonld() for tag in tags]
     return dumps(data, indent=2)
 
 

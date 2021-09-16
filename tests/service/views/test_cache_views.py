@@ -23,12 +23,12 @@ import uuid
 
 import jwt
 import pytest
-from flaky import flaky
 from git import Repo
 
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
+from tests.utils import retry_failed
 
 
 @pytest.mark.service
@@ -226,7 +226,7 @@ def test_file_upload_with_users(svc_client, identity_headers):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_no_auth(svc_client, identity_headers, it_remote_repo_url):
     """Check error on cloning of remote repository."""
     payload = {
@@ -250,7 +250,7 @@ def test_clone_projects_no_auth(svc_client, identity_headers, it_remote_repo_url
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_with_auth(svc_client, identity_headers, it_remote_repo_url):
     """Check cloning of remote repository."""
     payload = {
@@ -266,7 +266,7 @@ def test_clone_projects_with_auth(svc_client, identity_headers, it_remote_repo_u
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_multiple(svc_client, identity_headers, it_remote_repo_url):
     """Check multiple cloning of remote repository."""
     project_ids = []
@@ -313,7 +313,7 @@ def test_clone_projects_multiple(svc_client, identity_headers, it_remote_repo_ur
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote_repo_url):
     """Check cache state of cloned projects with no headers."""
     payload = {
@@ -348,7 +348,7 @@ def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_clone_projects_invalid_headers(svc_client, identity_headers, it_remote_repo_url):
     """Check cache state of cloned projects with invalid headers."""
     payload = {
@@ -631,6 +631,24 @@ def test_execute_migrations_job(svc_client_setup):
 
 @pytest.mark.service
 @pytest.mark.integration
+def test_execute_migrations_remote(svc_client, identity_headers, it_remote_repo_url):
+    """Check execution of all migrations."""
+
+    response = svc_client.post(
+        "/cache.migrate",
+        data=json.dumps(dict(git_url=it_remote_repo_url, skip_docker_update=True)),
+        headers=identity_headers,
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["was_migrated"]
+    assert any(
+        m.startswith("Successfully applied") and m.endswith("migrations.") for m in response.json["result"]["messages"]
+    )
+
+
+@pytest.mark.service
+@pytest.mark.integration
 def test_check_migrations_local(svc_client_setup):
     """Check if migrations are required for a local project."""
     svc_client, headers, project_id, _, _ = svc_client_setup
@@ -687,7 +705,7 @@ def test_check_no_migrations(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @pytest.mark.serial
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
     """Check cache state is reset after pushing to a protected branch fails."""
     svc_client, headers, project_id, cache, user = svc_protected_old_repo
@@ -713,7 +731,7 @@ def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @pytest.mark.serial
-@flaky(max_runs=10, min_passes=1)
+@retry_failed
 def test_migrating_protected_branch(svc_protected_old_repo):
     """Check migrating on a protected branch does not change cache state."""
     svc_client, headers, project_id, _, _ = svc_protected_old_repo
@@ -740,11 +758,13 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @pytest.mark.serial
-@flaky(max_runs=10, min_passes=1)
-def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_cache_synchronization):
+@retry_failed
+def test_cache_gets_synchronized(
+    local_remote_repository, directory_tree, quick_cache_synchronization, client_database_injection_manager
+):
     """Test that the cache stays synchronized with the remote repo."""
     from renku.core.management.client import LocalClient
-    from renku.core.models.provenance.agents import Person
+    from renku.core.models.provenance.agent import Person
 
     svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
 
@@ -753,9 +773,10 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
 
     client = LocalClient(remote_repo_checkout.working_dir)
 
-    with client.commit(commit_message="Create dataset"):
-        with client.with_dataset("my_dataset", create=True) as dataset:
-            dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
+    with client_database_injection_manager(client):
+        with client.commit(commit_message="Create dataset"):
+            with client.with_dataset(name="my_dataset", create=True, commit_database=True) as dataset:
+                dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote.push()
     params = {
@@ -766,7 +787,7 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
     assert response
     assert 200 == response.status_code
 
-    assert {"datasets"} == set(response.json["result"].keys())
+    assert {"datasets"} == set(response.json["result"].keys()), response.json
     assert 1 == len(response.json["result"]["datasets"])
 
     payload = {
@@ -782,8 +803,9 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
 
     remote.pull()
 
-    datasets = client.datasets.values()
-    assert 2 == len(datasets)
+    with client_database_injection_manager(client):
+        datasets = client.datasets.values()
+        assert 2 == len(datasets)
 
     assert any(d.name == "my_dataset" for d in datasets)
     assert any(d.name == payload["name"] for d in datasets)

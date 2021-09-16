@@ -17,7 +17,9 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
-from renku.core.incubation.command import Command
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.migrate import (
     SUPPORTED_PROJECT_VERSION,
     _get_project_version,
@@ -40,20 +42,41 @@ DOCKERFILE_UPDATE_POSSIBLE = 64
 
 def migrations_check():
     """Return a command for a migrations check."""
-    return Command().command(_migrations_check)
+    return Command().command(_migrations_check).with_database(write=False)
 
 
-def _migrations_check(client):
+@inject.autoparams()
+def _migrations_check(client_dispatcher: IClientDispatcher):
     from renku import __version__
 
+    client = client_dispatcher.current_client
+
+    template_update_possible, current_version, new_version = is_template_update_possible()
+
+    try:
+        template_source = client.project.template_source
+        template_ref = client.project.template_ref
+        template_id = client.project.template_id
+        automated_update = bool(client.project.automated_update)
+    except ValueError:
+        template_source = None
+        template_ref = None
+        template_id = None
+        automated_update = False
+
     return {
-        "project_supported": not is_project_unsupported(client),
+        "project_supported": not is_project_unsupported(),
         "core_renku_version": __version__,
         "project_renku_version": client.latest_agent,
         "core_compatibility_status": _metadata_migration_check(client),
         "dockerfile_renku_status": _dockerfile_migration_check(client),
         "template_status": _template_migration_check(client),
     }
+
+
+def migrations_versions():
+    """Return a command to get source and destination migration versions."""
+    return Command().command(_migrations_versions).lock_project()
 
 
 def template_migration_check():
@@ -111,15 +134,14 @@ def _metadata_migration_check(client):
 
 def migrate_project():
     """Return a command to migrate all project's entities."""
-    return Command().command(_migrate_project).lock_project().require_clean()
+    return Command().command(_migrate_project).lock_project().require_clean().with_database(write=True)
 
 
 def _migrate_project(
-    client, force_template_update=False, skip_template_update=False, skip_docker_update=False, skip_migrations=False
+    force_template_update=False, skip_template_update=False, skip_docker_update=False, skip_migrations=False
 ):
     """Migrate all project's entities."""
     return migrate(
-        client=client,
         force_template_update=force_template_update,
         skip_template_update=skip_template_update,
         skip_docker_update=skip_docker_update,
@@ -129,32 +151,43 @@ def _migrate_project(
 
 def check_project():
     """Return a command to check if repository is a renku project, unsupported, or requires migration."""
-    return Command().command(_check_project)
+    return Command().command(_check_project).with_database(write=False)
 
 
-def _check_project(client):
-    if not is_renku_project(client):
+@inject.autoparams()
+def _check_project(client_dispatcher: IClientDispatcher):
+    client = client_dispatcher.current_client
+
+    if not is_renku_project():
         return NON_RENKU_REPOSITORY
-    elif is_project_unsupported(client):
+    elif is_project_unsupported():
         return UNSUPPORTED_PROJECT
+
+    try:
+        client.project
+    except ValueError:
+        return MIGRATION_REQUIRED
 
     status = 0
 
-    if is_template_update_possible(client)[0]:
+    if is_template_update_possible()[0]:
         status |= TEMPLATE_UPDATE_POSSIBLE
     if client.project.automated_update:
         status |= AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
-    if is_docker_update_possible(client)[0]:
+    if is_docker_update_possible()[0]:
         status |= DOCKERFILE_UPDATE_POSSIBLE
 
-    if is_migration_required(client):
+    if is_migration_required():
         return status | MIGRATION_REQUIRED
 
     return status | SUPPORTED_RENKU_PROJECT
 
 
-def _check_immutable_template_files(client, paths):
+@inject.autoparams()
+def _check_immutable_template_files(paths, client_dispatcher: IClientDispatcher):
     """Check paths and return a list of those that are marked immutable in the project template."""
+    client = client_dispatcher.current_client
+
     if not client.project.immutable_template_files:
         return []
 
@@ -164,4 +197,4 @@ def _check_immutable_template_files(client, paths):
 
 def check_immutable_template_files_command():
     """Command for checking immutable template files."""
-    return Command().command(_check_immutable_template_files)
+    return Command().command(_check_immutable_template_files).with_database()

@@ -28,7 +28,10 @@ import requests
 
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
+from renku.core.management.command_builder import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
+from renku.core.utils.git import get_content
 from renku.core.utils.requests import retry
 
 
@@ -63,9 +66,12 @@ class OLOSProvider(ProviderApi):
         """Create export manager for given dataset."""
         return OLOSExporter(dataset=dataset, access_token=access_token, server_url=self._server_url)
 
-    def set_parameters(self, client, *, dlcm_server=None, **kwargs):
+    @inject.autoparams()
+    def set_parameters(self, client_dispatcher: IClientDispatcher, *, dlcm_server=None, **kwargs):
         """Set and validate required parameters for a provider."""
         config_base_url = "server_url"
+
+        client = client_dispatcher.current_client
 
         if not dlcm_server:
             dlcm_server = client.get_value("olos", config_base_url)
@@ -96,7 +102,7 @@ class OLOSExporter(ExporterApi):
         """Endpoint for creation of access token."""
         return urllib.parse.urljoin(self._server_url, "/portal by clicking on the top-right menu and selecting 'token'")
 
-    def export(self, publish, **kwargs):
+    def export(self, publish, client=None, **kwargs):
         """Execute export process."""
         deposition = _OLOSDeposition(server_url=self._server_url, access_token=self.access_token)
 
@@ -108,12 +114,13 @@ class OLOSExporter(ExporterApi):
         communication.start_progress(progress_text, total=len(self.dataset.files))
 
         try:
-            for file_ in self.dataset.files:
+            for file in self.dataset.files:
                 try:
-                    path = Path(file_.path).relative_to(self.dataset.data_dir)
+                    path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
                 except ValueError:
-                    path = Path(file_.path)
-                deposition.upload_file(full_path=file_.full_path, path_in_dataset=path)
+                    path = Path(file.entity.path)
+                filepath = get_content(repo=client.repo, path=file.entity.path, checksum=file.entity.checksum)
+                deposition.upload_file(full_path=filepath, path_in_dataset=path)
                 communication.update_progress(progress_text, amount=1)
         finally:
             communication.finalize_progress(progress_text)
@@ -124,7 +131,7 @@ class OLOSExporter(ExporterApi):
         try:
             identifier = UUID(self.dataset.identifier, version=4)
         except ValueError:
-            identifier = uuid4()
+            identifier = uuid4().hex
         metadata = {
             "publicationDate": datetime.date.today().isoformat(),
             "description": self.dataset.description,

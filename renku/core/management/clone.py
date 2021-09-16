@@ -23,7 +23,9 @@ from pathlib import Path
 from git import GitCommandError, Repo
 
 from renku.core import errors
-from renku.core.management.githooks import install
+from renku.core.management.command_builder.command import inject
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.models.git import GitURL
 
 
@@ -38,8 +40,11 @@ def _handle_git_exception(e, raise_git_except, progress):
     raise e
 
 
+@inject.autoparams()
 def clone(
     url,
+    client_dispatcher: IClientDispatcher,
+    database_dispatcher: IDatabaseDispatcher,
     path=None,
     install_githooks=True,
     install_lfs=True,
@@ -52,7 +57,8 @@ def clone(
     checkout_rev=None,
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
-    from renku.core.management.client import LocalClient
+    from renku.core.management.githooks import install
+    from renku.core.management.migrate import is_renku_project
 
     path = path or GitURL.parse(url).name
 
@@ -113,18 +119,25 @@ def clone(
 
         config_writer.release()
 
-    client = LocalClient(path)
+    client_dispatcher.push_client_to_stack(path=path)
+    database_dispatcher.push_database_to_stack(client_dispatcher.current_client.database_path)
 
-    if install_githooks:
-        install(client=client, force=True)
+    try:
+        if install_githooks:
+            install(force=True)
 
-    if install_lfs:
-        command = ["git", "lfs", "install", "--local", "--force"]
-        if skip_smudge:
-            command += ["--skip-smudge"]
-        try:
-            repo.git.execute(command=command, with_exceptions=True)
-        except GitCommandError as e:
-            raise errors.GitError("Cannot install Git LFS") from e
+        if install_lfs:
+            command = ["git", "lfs", "install", "--local", "--force"]
+            if skip_smudge:
+                command += ["--skip-smudge"]
+            try:
+                repo.git.execute(command=command, with_exceptions=True)
+            except GitCommandError as e:
+                raise errors.GitError("Cannot install Git LFS") from e
 
-    return repo, bool(client.project)
+        project_initialized = is_renku_project()
+    finally:
+        database_dispatcher.pop_database()
+        client_dispatcher.pop_client()
+
+    return repo, project_initialized

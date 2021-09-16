@@ -24,22 +24,25 @@ from subprocess import call
 import click
 
 from renku.core import errors
-from renku.core.incubation.command import Command
-from renku.core.incubation.graph import unique_workflow
+from renku.core.management.command_builder import inject
+from renku.core.management.command_builder.command import Command
 from renku.core.management.git import get_mapped_std_streams
-from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
-from renku.core.models.provenance.provenance_graph import ProvenanceGraph
-from renku.core.utils import communication
+from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.plan_gateway import IPlanGateway
+from renku.core.management.workflow.plan_factory import PlanFactory
+from renku.core.models.provenance.activity import Activity
+from renku.core.utils.datetime8601 import local_now
 from renku.core.utils.urls import get_slug
 
 
 def run_command():
     """Tracking work on a specific problem."""
-    return Command().command(_run_command).require_migration().require_clean().with_commit()
+    return Command().command(_run_command).require_migration().require_clean().with_database(write=True).with_commit()
 
 
+@inject.autoparams()
 def _run_command(
-    client,
     name,
     description,
     keyword,
@@ -50,18 +53,21 @@ def _run_command(
     no_output_detection,
     success_codes,
     command_line,
+    client_dispatcher: IClientDispatcher,
+    activity_gateway: IActivityGateway,
+    plan_gateway: IPlanGateway,
 ):
     # NOTE: validate name as early as possible
+    client = client_dispatcher.current_client
+
     if name:
         valid_name = get_slug(name)
         if name != valid_name:
             raise errors.ParameterError(f"Invalid name: '{name}' (Hint: '{valid_name}' is valid).")
 
-        # TODO: refactor this once we switch to Database
-        if client.provenance_graph_path.exists():
-            workflows = unique_workflow(ProvenanceGraph.from_json(client.provenance_graph_path))
-            if name in workflows:
-                raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
+        workflows = plan_gateway.get_newest_plans_by_names()
+        if name in workflows:
+            raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
 
     paths = explicit_outputs if no_output_detection else client.candidate_paths
     mapped_std = get_mapped_std_streams(paths, streams=("stdout", "stderr"))
@@ -113,7 +119,7 @@ def _run_command(
                 sys.stderr = system_stderr
 
         working_dir = client.repo.working_dir
-        factory = CommandLineToolFactory(
+        factory = PlanFactory(
             command_line=command_line,
             explicit_inputs=explicit_inputs,
             explicit_outputs=explicit_outputs,
@@ -121,14 +127,14 @@ def _run_command(
             working_dir=working_dir,
             no_input_detection=no_input_detection,
             no_output_detection=no_output_detection,
-            successCodes=success_codes,
+            success_codes=success_codes,
             **{name: os.path.relpath(path, working_dir) for name, path in mapped_std.items()},
         )
-        with factory.watch(client, no_output=no_output) as tool:
+        with factory.watch(no_output=no_output) as tool:
             # Don't compute paths if storage is disabled.
             if client.check_external_storage():
                 # Make sure all inputs are pulled from a storage.
-                paths_ = (path for _, path in tool.iter_input_files(client.workflow_path))
+                paths_ = (path for _, path in tool.iter_input_files(client.path))
                 client.pull_paths_from_storage(*paths_)
 
             if tty_exists:
@@ -138,9 +144,13 @@ def _run_command(
                 if stderr_redirected:
                     sys.stderr = old_stderr
 
+            started_at_time = local_now()
+
             return_code = call(
                 factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()}
             )
+
+            ended_at_time = local_now()
 
             sys.stdout.flush()
             sys.stderr.flush()
@@ -155,13 +165,11 @@ def _run_command(
             if return_code not in (success_codes or {0}):
                 raise errors.InvalidSuccessCode(return_code, success_codes=success_codes)
 
-        client.process_and_store_run(command_line_tool=tool, name=name, description=description, keywords=keyword)
-
-        if factory.messages:
-            communication.echo(factory.messages)
-
-        if factory.warnings:
-            communication.echo(factory.warnings)
+        plan = tool.to_plan(name=name, description=description, keywords=keyword)
+        activity = Activity.from_plan(
+            plan=plan, started_at_time=started_at_time, ended_at_time=ended_at_time, annotations=tool.annotations
+        )
+        activity_gateway.add(activity)
 
     finally:
         if system_stdout:
