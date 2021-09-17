@@ -135,6 +135,7 @@ class ProjectTemplateResponse(Schema):
     url = fields.String(required=True)
     namespace = fields.String(required=True)
     name = fields.String(required=True)
+    slug = fields.String(required=True)
     project_id = fields.String(required=False, default=None)
 
 

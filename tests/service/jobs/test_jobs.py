@@ -136,6 +136,7 @@ def test_cleanup_project_old_keys(svc_client_with_user, service_job):
     project = {
         "project_id": uuid.uuid4().hex,
         "name": "my-project",
+        "slug": "my-project",
         "fullname": "full project name",
         "email": "my@email.com",
         "owner": "me",
@@ -172,6 +173,7 @@ def test_job_constructor_lock(svc_client_with_user, service_job):
     project = {
         "project_id": uuid.uuid4().hex,
         "name": "my-project",
+        "slug": "my-project",
         "fullname": "full project name",
         "email": "my@email.com",
         "owner": "me",

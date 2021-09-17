@@ -25,6 +25,7 @@ from werkzeug.utils import secure_filename
 
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
+from renku.core.utils.scm import normalize_to_ascii
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.common import (
     ArchiveSchema,
@@ -103,6 +104,7 @@ class ProjectCloneContext(RepositoryCloneRequest):
 
     # user data
     name = fields.String()
+    slug = fields.String()
     fullname = fields.String()
     email = fields.String()
     owner = fields.String()
@@ -133,6 +135,7 @@ class ProjectCloneContext(RepositoryCloneRequest):
         if git_url.name is None:
             raise ValidationError("Invalid `git_url`")
         data["name"] = git_url.name
+        data["slug"] = normalize_to_ascii(data["name"])
 
         return data
 
