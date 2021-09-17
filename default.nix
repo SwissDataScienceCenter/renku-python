@@ -14,7 +14,7 @@
 #
 # For the shell definition see ./shell.nix
 
-{ system ? builtins.currentSystem }:
+{ system ? builtins.currentSystem, version ? null }:
 let
     pkgs = import <nixpkgs> { inherit system; };
     mach-nix = import (builtins.fetchGit {
@@ -43,4 +43,5 @@ in with pkgs;
     propagatedBuildInputs = [ git git-lfs nodejs ];
     _.apispec.propagatedBuildInputs.mod = pySelf: self: oldVal: oldVal ++ [ pySelf.pyyaml ];
     GIT_SSL_NO_VERIFY = "true";
+    SETUPTOOLS_SCM_PRETEND_VERSION = version;
 }
