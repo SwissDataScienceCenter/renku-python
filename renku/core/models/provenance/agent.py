@@ -57,6 +57,11 @@ class Agent(Slots):
         """Create an instance from a Git commit."""
         return SoftwareAgent.from_commit(commit) if commit.author != commit.committer else Person.from_commit(commit)
 
+    @property
+    def full_identity(self):
+        """Return the identity of this Agent."""
+        return f"{self.name} <{self.id}>"
+
 
 class SoftwareAgent(Agent):
     """Represent executed software."""
