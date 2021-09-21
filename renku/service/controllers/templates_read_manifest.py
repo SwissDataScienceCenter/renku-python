@@ -58,9 +58,7 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
                 continue
 
             # NOTE: prevent path traversal attack
-            icon_path = template_folder / (
-                (template_folder / template["icon"]).resolve().relative_to(template_folder.resolve())
-            )
+            icon_path = template_folder / ((template_folder / template["icon"]).resolve().relative_to(template_folder))
 
             icon = Image.open(icon_path)
             icon.thumbnail(MAX_ICON_SIZE)
