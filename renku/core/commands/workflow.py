@@ -68,6 +68,9 @@ def _list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str])
     if format not in WORKFLOW_FORMATS:
         raise errors.UsageError(f'Provided format "{format}" is not supported ({", ".join(WORKFLOW_FORMATS.keys())})"')
 
+    if format == "json-ld":
+        return WORKFLOW_FORMATS[format](list(workflows.values()), columns=columns)
+
     return WORKFLOW_FORMATS[format](list(map(lambda x: plan_view(x), workflows.values())), columns=columns)
 
 
