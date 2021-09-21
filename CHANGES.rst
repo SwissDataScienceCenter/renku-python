@@ -18,6 +18,14 @@
 Changes
 =======
 
+`0.16.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.0...v0.16.1>`__ (2021-09-13)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Update to rdflib 6 and remove rdflib-jsonld which was not installable with setuptools>58.0.2
+
 `0.16.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.15.1...v0.16.0>`__ (2021-07-08)
 ----------------------------------------------------------------------------------------------------------
 
