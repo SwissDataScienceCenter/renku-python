@@ -55,11 +55,11 @@ default_missing_software_agent = SoftwareAgent(
 )
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
-    if MigrationType.WORKFLOWS not in client.migration_type:
+    if MigrationType.WORKFLOWS not in migration_context.options.type:
         return
-    _migrate_old_workflows(client)
+    _migrate_old_workflows(migration_context.client)
 
 
 def _migrate_old_workflows(client):

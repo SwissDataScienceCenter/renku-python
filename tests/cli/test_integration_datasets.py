@@ -1242,7 +1242,7 @@ def test_import_from_renku_project(tmpdir, client, runner, load_dataset_with_inj
 
     remote_client = LocalClient(path)
     with chdir(remote_client.path):
-        runner.invoke(cli, ["migrate"])
+        runner.invoke(cli, ["migrate", "--strict"])
 
     file = load_dataset_with_injection("testing-create-04", remote_client).find_file(
         "data/testing-create-04/ie_data_with_TRCAPE.xls"
@@ -1482,7 +1482,7 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
 
     assert {"remote-renku-project"} == {s.name for s in old_repository_with_submodules.submodules}
 
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert [] == old_repository_with_submodules.submodules
