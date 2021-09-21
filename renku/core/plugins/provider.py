@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Tuple
 
 import pluggy
 
+from renku.core import errors
 from renku.core.models.workflow.plan import AbstractPlan
 from renku.core.models.workflow.provider import IWorkflowProvider
 
@@ -55,3 +56,26 @@ def available_workflow_providers() -> List[str]:
     pm = get_plugin_manager()
     providers = pm.hook.workflow_provider()
     return [p[1] for p in providers]
+
+
+def execute(workflow: AbstractPlan, basedir: Path, config: Dict[str, Any], provider: str = "cwltool") -> List[str]:
+    """Executes a given workflow using the selected provider.
+
+    :param workflow: Workflow to be executed.
+    :param basedir: The root directory of the renku project.
+    :param config: Configuration values for the workflow provider.
+    :param provider: The workflow executor engine to be used.
+    :returns: List of paths that has been modified.
+    """
+    from renku.core.plugins.pluginmanager import get_plugin_manager
+
+    pm = get_plugin_manager()
+    providers = pm.hook.workflow_provider()
+    provider = next(filter(lambda x: provider == x[1], providers), None)
+    if not provider:
+        raise errors.ParameterError(f"The specified workflow executor '{provider}' is not available.")
+
+    providers.remove(provider)
+    executor = pm.subset_hook_caller("workflow_execute", list(map(lambda x: x[0], providers)))
+
+    return executor(workflow=workflow, basedir=basedir, config=config)

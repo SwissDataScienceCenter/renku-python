@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
+from renku.core.commands.update import execute_workflow
 from renku.core.commands.view_model import plan_view
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
 from renku.core.management.command_builder import inject
@@ -382,25 +383,9 @@ def workflow_outputs_command():
 
 @inject.autoparams()
 def _execute_workflow(
-    name_or_id: str,
-    set_params: List[str],
-    provider: str,
-    config: Optional[str],
-    values: Optional[str],
-    client_dispatcher: IClientDispatcher,
+    name_or_id: str, set_params: List[str], provider: str, config: Optional[str], values: Optional[str]
 ):
     workflow = _find_workflow(name_or_id)
-
-    from renku.core.plugins.pluginmanager import get_plugin_manager
-
-    pm = get_plugin_manager()
-    providers = pm.hook.workflow_provider()
-    provider = next(filter(lambda x: provider == x[1], providers), None)
-    if not provider:
-        raise errors.ParameterError(f"The specified workflow executor '{provider}' is not available.")
-
-    providers.remove(provider)
-    executor = pm.subset_hook_caller("workflow_execute", list(map(lambda x: x[0], providers)))
 
     # apply the provided parameter settings provided by user
     override_params = dict()
@@ -425,9 +410,16 @@ def _execute_workflow(
     if config:
         config = _safe_read_yaml(config)
 
-    client = client_dispatcher.current_client
-    output_paths = executor(workflow=workflow, basedir=client.path, config=config)
-    return client.remove_unmodified(output_paths)
+    if isinstance(workflow, CompositePlan):
+        import networkx as nx
+
+        graph = ExecutionGraph(workflow=workflow, virtual_links=True)
+        plans = list(nx.topological_sort(graph.workflow_graph))
+    else:
+        plans = [workflow]
+
+    execute_workflow(plans=plans, command_name="execute", provider=provider, config=config)
+    return None
 
 
 def execute_workflow_command():

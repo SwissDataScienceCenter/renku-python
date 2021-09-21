@@ -35,6 +35,7 @@ from renku.core.management.workflow.plan_factory import delete_indirect_files_li
 from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import Plan
+from renku.core.plugins.provider import execute
 from renku.core.utils.datetime8601 import local_now
 from renku.core.utils.git import add_to_git
 from renku.core.utils.metadata import add_activity_if_recent, get_modified_activities
@@ -130,6 +131,8 @@ def execute_workflow(
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
+    provider="cwltool",
+    config=None,
 ):
     """Execute a Run with/without subprocesses."""
     client = client_dispatcher.current_client
@@ -143,7 +146,9 @@ def execute_workflow(
 
     started_at_time = local_now()
 
-    modified_outputs = _execute_workflow_helper(plans=plans, client=client)
+    # NOTE: Create a ``CompositePlan`` because ``workflow_covert`` expects it
+    workflow = CompositePlan(id=CompositePlan.generate_id(), plans=plans, name=f"plan-collection-{uuid.uuid4().hex}")
+    modified_outputs = execute(workflow=workflow, basedir=client.path, provider=provider, config=config)
 
     ended_at_time = local_now()
 
@@ -167,86 +172,3 @@ def execute_workflow(
     if len(activities) > 1:
         activity_collection = ActivityCollection(activities=activities)
         activity_gateway.add_activity_collection(activity_collection)
-
-
-# TODO: This function is created as a patch from renku/core/commands/workflow.py::_execute_workflow and
-# renku/core/management/workflow/providers/cwltool_provider.py::CWLToolProvider::workflow_execute in the ``workflow
-# execute`` PR (renku-python/pull/2273). Once the PR is merged remove this function and refactor
-# renku/core/commands/workflow.py::_execute_workflow to accept a Plan and use it here.
-def _execute_workflow_helper(plans: List[Plan], client):
-    """Executes a given workflow using cwltool."""
-    import os
-    import shutil
-    import sys
-    import tempfile
-    from pathlib import Path
-    from urllib.parse import unquote
-
-    import cwltool.factory
-    from cwltool.context import LoadingContext, RuntimeContext
-
-    from renku.core import errors
-    from renku.core.commands.echo import progressbar
-
-    basedir = client.path
-
-    # NOTE: Create a ``CompositePlan`` because ``workflow_covert`` expects it
-    workflow = CompositePlan(id=CompositePlan.generate_id(), plans=plans, name=f"plan-collection-{uuid.uuid4().hex}")
-
-    with tempfile.NamedTemporaryFile() as f:
-        # export Plan to cwl
-        from renku.core.management.workflow.converters.cwl import CWLExporter
-
-        converter = CWLExporter()
-        converter.workflow_convert(workflow=workflow, basedir=basedir, output=Path(f.name), output_format=None)
-
-        # run cwl with cwltool
-        argv = sys.argv
-        sys.argv = ["cwltool"]
-
-        runtime_args = {"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True}
-        loading_args = {"relax_path_checks": True}
-
-        # Keep all environment variables.
-        runtime_context = RuntimeContext(kwargs=runtime_args)
-        loading_context = LoadingContext(kwargs=loading_args)
-
-        factory = cwltool.factory.Factory(loading_context=loading_context, runtime_context=runtime_context)
-        process = factory.make(os.path.relpath(str(f.name)))
-
-        try:
-            outputs = process()
-        except cwltool.factory.WorkflowStatus:
-            raise errors.RenkuException("WorkflowExecuteError()")
-
-        sys.argv = argv
-
-        # Move outputs to correct location in the repository.
-        output_dirs = process.factory.executor.output_dirs
-
-        def remove_prefix(location, prefix="file://"):
-            if location.startswith(prefix):
-                return unquote(location[len(prefix) :])
-            return unquote(location)
-
-        locations = {remove_prefix(output["location"]) for output in outputs.values()}
-        # make sure to not move an output if it's containing directory gets moved
-        locations = {
-            location for location in locations if not any(location.startswith(d) for d in locations if location != d)
-        }
-
-        output_paths = []
-        with progressbar(locations, label="Moving outputs") as bar:
-            for location in bar:
-                for output_dir in output_dirs:
-                    if location.startswith(output_dir):
-                        output_path = location[len(output_dir) :].lstrip(os.path.sep)
-                        destination = basedir / output_path
-                        output_paths.append(destination)
-                        if destination.is_dir():
-                            shutil.rmtree(str(destination))
-                            destination = destination.parent
-                        shutil.move(location, str(destination))
-                        continue
-
-        return client.remove_unmodified(output_paths)
