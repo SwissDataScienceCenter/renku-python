@@ -40,7 +40,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
 
     # Check ctrl_mock.
     assert ctrl_mock.call_count == 1
-    assert response.json["result"]["name"] == ctrl_mock.call_args[0][0].name
+    assert response.json["result"]["slug"] == ctrl_mock.call_args[0][0].name
 
     # Ctrl state.
     expected_context = {

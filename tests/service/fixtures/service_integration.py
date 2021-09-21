@@ -62,6 +62,7 @@ def integration_repo_path(headers, project_id, url_components):
         "project_id": project_id,
         "owner": url_components.owner,
         "name": url_components.name,
+        "slug": url_components.slug,
     }
 
     project_path = make_project_path(user, project)

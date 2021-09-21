@@ -91,7 +91,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "clone_depth": self.ctx["depth"],
             "git_url": self.ctx["new_project_url"],
             "name": self.ctx["project_name"],
-            "slug": self.ctx["project_slug"],
+            "slug": self.ctx["project_name_stripped"],
             "description": self.ctx["project_description"],
             "fullname": self.ctx["fullname"],
             "email": self.ctx["email"],
