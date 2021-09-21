@@ -188,6 +188,24 @@
                   "@id": "xsd:boolean"
                },
                "maxCount": 1
+            },
+            {
+               "path": "renku:hasDataset",
+               "sh:class": {
+                  "@id": "schema:Dataset"
+               }
+            },
+            {
+               "path": "renku:hasPlan",
+               "sh:class": {
+                  "@id": "prov:Plan"
+               }
+            },
+            {
+               "path": "renku:hasActivity",
+               "sh:class": {
+                  "@id": "prov:Activity"
+               }
             }
          ]
       },
