@@ -89,10 +89,10 @@ readme = open("README.rst").read()
 history = open("CHANGES.rst").read()
 
 tests_require = [
-    "black==21.8b0",
+    "black==21.9b0",
     "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.6",
-    "fakeredis>=1.4.1,<1.6.1",
+    "fakeredis>=1.4.1,<1.6.2",
     "flake8>=3.8,<3.10",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
@@ -107,12 +107,12 @@ tests_require = [
     "pytest-timeout==1.4.2",
     "pytest-xdist>=1.34.0,<2.4.0",
     "pytest>=4.0.0,<6.2.6",
-    "responses>=0.7.0,<0.13.5",
+    "responses>=0.7.0,<0.14.1",
 ]
 
 
 service_requires = [
-    "apispec>=4.0.0,<4.8.0",
+    "apispec>=4.0.0,<5.2.0",
     "apispec-webframeworks>=0.5.2,<0.6",
     "circus==0.17.1",
     "docker-compose==1.29.2",
@@ -123,21 +123,21 @@ service_requires = [
     "python-dotenv==0.19.0",
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
-    "rq==1.9.0",
+    "rq==1.10.0",
     "sentry-sdk[flask]>=0.7.4,<1.3.2",
     "walrus==0.8.2",
 ]
 
 
 extras_require = {
-    "docs": ["Jinja2>=2.11.3,<3.0.2", "renku-sphinx-theme>=0.2.0", "sphinx-rtd-theme>=0.5.0,<0.6"],
+    "docs": ["Jinja2>=2.11.3,<3.0.2", "renku-sphinx-theme>=0.2.0", "sphinx-rtd-theme>=0.5.0,<1.1"],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],
     "tests": tests_require,
     "service": service_requires,
 }
 
-setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<6.0.2", "wheel"]
+setup_requires = ["pytest-runner>=2.6.2,<5.4", "setuptools_scm>=3.1.0,<6.3.3", "wheel"]
 
 
 extras_require["all"] = list(setup_requires)
@@ -189,7 +189,7 @@ install_requires = [
     "rdflib>=5.0.0,<6.1",
     "requests>=2.23.0,<2.27.0",
     "rich>=9.3.0,<10.10.0",
-    "setuptools_scm>=3.1.0,<6.0.2",
+    "setuptools_scm>=3.1.0,<6.3.3",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.62.3",
     "wcmatch>=6.0.0,<8.3",
