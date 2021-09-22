@@ -153,6 +153,7 @@ def test_05_stdout(client, client_database_injection_manager):
     assert "output.txt" == factory.stdout
     factory.add_outputs(["output.txt"])
     assert "stdout" == factory.outputs[0].mapped_to.stream_type
+    assert 2 == factory.outputs[0].position
 
     with client_database_injection_manager(client):
         plan = factory.to_plan()
@@ -254,9 +255,16 @@ def test_stdin_and_stdout(argv, client, client_database_injection_manager):
         plan = factory.to_plan()
 
     assert argv == plan.to_argv()
-    assert any(i.mapped_to and i.mapped_to.stream_type == "stdin" for i in plan.inputs)
-    assert any(o.mapped_to and o.mapped_to.stream_type == "stdout" for o in plan.outputs)
-    assert any(o.mapped_to and o.mapped_to.stream_type == "stderr" for o in plan.outputs)
+    min_pos = len(argv) - 1
+    assert any(i.mapped_to and i.mapped_to.stream_type == "stdin" and i.position == min_pos + 1 for i in plan.inputs)
+    assert any(
+        o.position and o.mapped_to and o.mapped_to.stream_type == "stdout" and min_pos + 1 < o.position < min_pos + 4
+        for o in plan.outputs
+    )
+    assert any(
+        o.position and o.mapped_to and o.mapped_to.stream_type == "stderr" and min_pos + 1 < o.position < min_pos + 4
+        for o in plan.outputs
+    )
 
 
 def test_input_directory(client, client_database_injection_manager):
