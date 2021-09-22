@@ -18,13 +18,15 @@
 """Renku workflow commands."""
 
 
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from git import Actor
+
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
-from renku.core.commands.update import execute_workflow
 from renku.core.commands.view_model import plan_view
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
 from renku.core.management.command_builder import inject
@@ -34,11 +36,17 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.management.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
+from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
+from renku.core.plugins.provider import execute
 from renku.core.utils import communication
+from renku.core.utils.datetime8601 import local_now
+from renku.core.utils.git import add_to_git
 from renku.core.utils.os import get_relative_paths
+from renku.version import __version__, version_url
 
 
 def _ref(name):
@@ -382,6 +390,56 @@ def workflow_outputs_command():
 
 
 @inject.autoparams()
+def execute_workflow(
+    plans: List[Plan],
+    command_name,
+    client_dispatcher: IClientDispatcher,
+    activity_gateway: IActivityGateway,
+    plan_gateway: IPlanGateway,
+    provider="cwltool",
+    config=None,
+):
+    """Execute a Run with/without subprocesses."""
+    client = client_dispatcher.current_client
+
+    # NOTE: Pull inputs from Git LFS or other storage backends
+    if client.check_external_storage():
+        inputs = [i.actual_value for p in plans for i in p.inputs]
+        client.pull_paths_from_storage(*inputs)
+
+    delete_indirect_files_list(client.path)
+
+    started_at_time = local_now()
+
+    # NOTE: Create a ``CompositePlan`` because ``workflow_covert`` expects it
+    workflow = CompositePlan(id=CompositePlan.generate_id(), plans=plans, name=f"plan-collection-{uuid.uuid4().hex}")
+    modified_outputs = execute(workflow=workflow, basedir=client.path, provider=provider, config=config)
+
+    ended_at_time = local_now()
+
+    add_to_git(client.repo.git, *modified_outputs)
+
+    if client.repo.is_dirty():
+        postfix = "s" if len(modified_outputs) > 1 else ""
+        commit_msg = f"renku {command_name}: committing {len(modified_outputs)} modified file{postfix}"
+        committer = Actor(f"renku {__version__}", version_url)
+        client.repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
+
+    activities = []
+
+    for plan in plans:
+        # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
+        original_plan = plan_gateway.get_by_id(plan.id)
+        activity = Activity.from_plan(plan=original_plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
+        activity_gateway.add(activity)
+        activities.append(activity)
+
+    if len(activities) > 1:
+        activity_collection = ActivityCollection(activities=activities)
+        activity_gateway.add_activity_collection(activity_collection)
+
+
+@inject.autoparams()
 def _execute_workflow(
     name_or_id: str, set_params: List[str], provider: str, config: Optional[str], values: Optional[str]
 ):
@@ -419,7 +477,6 @@ def _execute_workflow(
         plans = [workflow]
 
     execute_workflow(plans=plans, command_name="execute", provider=provider, config=config)
-    return None
 
 
 def execute_workflow_command():

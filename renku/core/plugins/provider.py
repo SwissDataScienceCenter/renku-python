@@ -34,7 +34,7 @@ def workflow_provider() -> Tuple[IWorkflowProvider, str]:
 
     :returns: A tuple of the provider itself and the workflow executor backends name.
     """
-    pass
+    raise NotImplementedError
 
 
 @hookspec(firstresult=True)
@@ -46,7 +46,7 @@ def workflow_execute(workflow: AbstractPlan, basedir: Path, config: Dict[str, An
     :param workflow: a ``AbstractPlan`` object that describes the given workflow.
     :param config: a configuration for the provider.
     """
-    pass
+    raise NotImplementedError
 
 
 def available_workflow_providers() -> List[str]:

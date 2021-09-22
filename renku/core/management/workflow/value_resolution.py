@@ -32,7 +32,7 @@ class ValueResolver(ABC):
 
     def __init__(self, plan: AbstractPlan, values: Dict[str, Any]):
         self._values = values
-        self.missing_parameters: Set[str] = {}
+        self.missing_parameters: Set[str] = set()
         self._plan = plan
 
     @abstractmethod
@@ -66,7 +66,7 @@ class PlanValueResolver(ValueResolver):
     def apply(self) -> AbstractPlan:
         """Applies values and default_values to a ``Plan``."""
         if not self._values:
-            return
+            return self._plan
 
         values_keys = set(self._values.keys())
         for param in chain(self._plan.inputs, self._plan.outputs, self._plan.parameters):
@@ -107,13 +107,13 @@ class CompositePlanValueResolver(ValueResolver):
                 for name, step in self._values["steps"].items():
                     child_workflow = next((w for w in self._plan.plans if w.name == name), None)
                     if not child_workflow:
-                        raise errors.ChildWorkflowNotFound(name, self._plan.name)
+                        raise errors.ChildWorkflowNotFoundError(name, self._plan.name)
 
                     rv = ValueResolver.get(child_workflow, step)
                     _ = rv.apply()
                     self.missing_parameters.update({f"steps.name.{mp}" for mp in rv.missing_parameters})
 
-            self.missing_parameters.update(set(self._values.keys()) - set(["parameters", "steps"]))
+            self.missing_parameters.update(set(self._values.keys()) - {"parameters", "steps"})
 
         # apply defaults
         for mapping in self._plan.mappings:
