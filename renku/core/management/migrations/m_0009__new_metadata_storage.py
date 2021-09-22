@@ -64,11 +64,17 @@ NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 PLAN_CACHE = {}
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
+    client = migration_context.client
     committed = _commit_previous_changes(client)
     # TODO: set remove=True once the migration to the new metadata is finalized
-    generate_new_metadata(remove=False, committed=committed)
+    generate_new_metadata(
+        remove=False,
+        committed=committed,
+        strict=migration_context.options.strict,
+        migration_type=migration_context.options.type,
+    )
     _remove_dataset_metadata_files(client)
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
     metadata_path.unlink()
@@ -148,6 +154,8 @@ def remove_graph_files(client):
 
 @inject.autoparams()
 def generate_new_metadata(
+    strict,
+    migration_type: MigrationType,
     client_dispatcher: IClientDispatcher,
     database_gateway: IDatabaseGateway,
     activity_gateway: IActivityGateway,
@@ -184,15 +192,19 @@ def generate_new_metadata(
 
         try:
             # NOTE: Don't migrate workflows for dataset-only migrations
-            if MigrationType.WORKFLOWS in client.migration_type:
+            if MigrationType.WORKFLOWS in migration_type:
                 _process_workflows(client=client, activity_gateway=activity_gateway, commit=commit, remove=remove)
             _process_datasets(
                 client=client, commit=commit, datasets_provenance=datasets_provenance, is_last_commit=is_last_commit
             )
         except errors.MigrationError:
+            if strict:
+                raise
             communication.echo("")
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Migration failed: {traceback.format_exc()}")
         except Exception:
+            if strict:
+                raise
             communication.echo("")
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
@@ -656,15 +668,13 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
             project_version = read_project_version()
             set_temporary_datasets_path(datasets_path)
             communication.disable()
-            previous_migration_type = client.migration_type
-            client.migration_type = MigrationType.DATASETS
             renku.core.management.migrate.migrate(
                 project_version=project_version,
                 skip_template_update=True,
                 skip_docker_update=True,
                 max_version=8,
+                migration_type=MigrationType.DATASETS,
             )
-            client.migration_type = previous_migration_type
         finally:
             communication.enable()
             unset_temporary_datasets_path()

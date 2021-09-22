@@ -68,7 +68,8 @@ from renku.core.errors import MigrationRequired, ProjectNotSupported
 @click.option(
     "-d", "--skip-docker-update", is_flag=True, hidden=True, help="Do not update Dockerfile to current renku version."
 )
-def migrate(check, skip_template_update, skip_docker_update):
+@click.option("-s", "--strict", is_flag=True, hidden=True, help="Abort migrations if an error is raised.")
+def migrate(check, skip_template_update, skip_docker_update, strict):
     """Check for migration and migrate to the latest Renku project version."""
     status = check_project().build().execute().output
 
@@ -107,7 +108,9 @@ def migrate(check, skip_template_update, skip_docker_update):
     communicator = ClickCallback()
 
     command = migrate_project().with_communicator(communicator).with_commit()
-    result = command.build().execute(skip_template_update=skip_template_update, skip_docker_update=skip_docker_update)
+    result = command.build().execute(
+        skip_template_update=skip_template_update, skip_docker_update=skip_docker_update, strict=strict
+    )
 
     result, _, _ = result.output
 

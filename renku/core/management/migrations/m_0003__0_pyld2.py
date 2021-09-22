@@ -25,6 +25,6 @@ back-dated migration.
 from .m_0005__1_pyld2 import migrate_datasets_for_pyld2
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
-    migrate_datasets_for_pyld2(client)
+    migrate_datasets_for_pyld2(migration_context.client)
