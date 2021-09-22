@@ -16,6 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service template read manifest controller."""
+import base64
+from io import BytesIO
+
 from marshmallow import EXCLUDE
 
 from renku.core.commands.init import fetch_template
@@ -23,6 +26,8 @@ from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC
 from renku.service.views import result_response
+
+MAX_ICON_SIZE = (256, 256)
 
 
 class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
@@ -43,7 +48,25 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def template_manifest(self):
         """Reads template manifest."""
-        template_manifest, _, _, _ = fetch_template(self.ctx["git_url"], self.ctx["ref"])
+        from PIL import Image
+
+        template_manifest, template_folder, _, _ = fetch_template(self.ctx["git_url"], self.ctx["ref"])
+
+        # NOTE: convert icons to base64
+        for template in template_manifest:
+            if "icon" not in template:
+                continue
+
+            # NOTE: prevent path traversal attack
+            icon_path = template_folder / ((template_folder / template["icon"]).resolve().relative_to(template_folder))
+
+            icon = Image.open(icon_path)
+            icon.thumbnail(MAX_ICON_SIZE)
+
+            buffer = BytesIO()
+            icon.save(buffer, format="PNG")
+            template["icon"] = base64.b64encode(buffer.getvalue())
+
         return template_manifest
 
     def renku_op(self):
