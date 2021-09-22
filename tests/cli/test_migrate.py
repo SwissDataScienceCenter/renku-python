@@ -33,7 +33,7 @@ from tests.utils import format_result_exception
 @pytest.mark.migration
 def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
     """Test migrate on old repository."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty()
 
@@ -41,7 +41,7 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
 @pytest.mark.migration
 def test_migrate_project(isolated_runner, old_project, client_database_injection_manager):
     """Test migrate on old repository."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty()
 
@@ -77,7 +77,7 @@ def test_migration_check(isolated_runner, project):
 @pytest.mark.migration
 def test_correct_path_migrated(isolated_runner, old_project, client_database_injection_manager):
     """Check if path on dataset files has been correctly migrated."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     client = LocalClient(path=old_project.working_dir)
@@ -95,7 +95,7 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
 @pytest.mark.migration
 def test_correct_relative_path(isolated_runner, old_project, client_database_injection_manager):
     """Check if path on dataset has been correctly migrated."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     client = LocalClient(path=old_project.working_dir)
@@ -117,7 +117,7 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
     repo.index.add([".renku.lock"])
     repo.index.commit("locked")
 
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert not (repo_path / ".renku.lock").exists()
@@ -130,7 +130,7 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
 @pytest.mark.migration
 def test_graph_building_after_migration(isolated_runner, old_project):
     """Check that structural migration did not break graph building."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = isolated_runner.invoke(cli, ["graph", "export", "--full"])
@@ -140,7 +140,7 @@ def test_graph_building_after_migration(isolated_runner, old_project):
 @pytest.mark.migration
 def test_migrations_runs(isolated_runner, old_project):
     """Check that migration can be run more than once."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully applied" in result.output
     assert "OK" in result.output
@@ -162,7 +162,7 @@ def test_migration_version():
 @pytest.mark.migration
 def test_workflow_migration(isolated_runner, old_workflow_project):
     """Check that *.cwl workflows can be migrated."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -179,7 +179,7 @@ def test_comprehensive_dataset_migration(
     isolated_runner, old_dataset_project, load_dataset_with_injection, get_datasets_provenance_with_injection
 ):
     """Test migration of old project with all dataset variations."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
@@ -234,7 +234,7 @@ def test_comprehensive_dataset_migration(
 @pytest.mark.migration
 def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_project, load_dataset_with_injection):
     """Test migration of datasets with blank nodes creates IRI identifiers."""
-    assert 0 == isolated_runner.invoke(cli, ["migrate"]).exit_code
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
     dataset = load_dataset_with_injection("2019-01_us_fligh_1", old_dataset_project)
 
@@ -251,7 +251,7 @@ def test_migrate_non_renku_repository(isolated_runner):
     Repo.init(".")
     os.mkdir(".renku")
 
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Error: Not a renku project." in result.output

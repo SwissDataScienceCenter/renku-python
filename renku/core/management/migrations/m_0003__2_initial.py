@@ -37,8 +37,9 @@ from renku.core.models.refs import LinkReference
 from renku.core.utils.urls import url_to_string
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
+    client = migration_context.client
     _ensure_clean_lock(client)
     _do_not_track_lock_file(client)
     _migrate_datasets_pre_v0_3(client)

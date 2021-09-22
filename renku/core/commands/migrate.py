@@ -103,7 +103,11 @@ def migrate_project():
 
 
 def _migrate_project(
-    force_template_update=False, skip_template_update=False, skip_docker_update=False, skip_migrations=False
+    force_template_update=False,
+    skip_template_update=False,
+    skip_docker_update=False,
+    skip_migrations=False,
+    strict=False,
 ):
     """Migrate all project's entities."""
     return migrate(
@@ -111,6 +115,7 @@ def _migrate_project(
         skip_template_update=skip_template_update,
         skip_docker_update=skip_docker_update,
         skip_migrations=skip_migrations,
+        strict=strict,
     )
 
 
