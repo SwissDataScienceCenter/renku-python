@@ -22,8 +22,8 @@ let
         ref = "master";
     }) {
       inherit pkgs;
-      pypiDataRev = "5c6e5ecbc5a60fb9c43dc77be8e0eb8ac89f4fee";
-      pypiDataSha256 = "0gnq6r92bmnhqjykx3jff7lvg7wbpayd0wvb0drra8r8dvmr5b2d";
+      pypiDataRev = "6ad33b03549c6b0882d8c3d826ec7fbef84ecec4";
+      pypiDataSha256 = "0bk78imn5wf50frnsyn654l0wmz77g4n79gxnqvalp80mzj7dg1k";
     };
 
 in with pkgs;
