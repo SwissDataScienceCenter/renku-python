@@ -220,6 +220,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
         data["owner"] = "dummy"
 
         data["name"] = "project"
+        data["slug"] = "project"
 
         return data
 
@@ -266,7 +267,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
             assert response
-            assert {"result"} == set(response.json.keys())
+            assert {"result"} == set(response.json.keys()), response.json
 
             project_id = response.json["result"]["project_id"]
             assert isinstance(uuid.UUID(project_id), uuid.UUID)
