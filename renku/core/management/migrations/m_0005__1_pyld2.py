@@ -22,9 +22,9 @@ import re
 from renku.core.management.migrations.utils import OLD_METADATA_PATH, get_datasets_path
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
-    migrate_datasets_for_pyld2(client)
+    migrate_datasets_for_pyld2(migration_context.client)
 
 
 def migrate_datasets_for_pyld2(client):

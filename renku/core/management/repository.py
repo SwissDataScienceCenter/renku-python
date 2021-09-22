@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Client for handling a local repository."""
+
 import hashlib
 import json
 import os
@@ -34,7 +35,6 @@ from renku.core.management.command_builder import inject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.management.migrations.utils import MigrationType
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.project import Project
 from renku.core.utils import communication
@@ -123,8 +123,6 @@ class RepositoryApiMixin(GitCore):
 
     _remote_cache = attr.ib(factory=dict)
 
-    _migration_type = attr.ib(default=MigrationType.ALL)
-
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         #: Configure Renku path.
@@ -165,18 +163,6 @@ class RepositoryApiMixin(GitCore):
     def lock(self):
         """Create a Renku config lock."""
         return filelock.FileLock(str(self.renku_path.with_suffix(self.LOCK_SUFFIX)), timeout=0)
-
-    @property
-    def migration_type(self):
-        """Type of migration that is being executed on this client."""
-        return self._migration_type
-
-    @migration_type.setter
-    def migration_type(self, value):
-        """Set type of migration."""
-        if not isinstance(value, MigrationType):
-            raise ValueError(f"Invalid value for MigrationType: {type(value)}")
-        self._migration_type = value
 
     @property
     def docker_path(self):

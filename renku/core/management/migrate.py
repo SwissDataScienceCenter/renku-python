@@ -51,6 +51,9 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.migrations.utils import (
     OLD_METADATA_PATH,
+    MigrationContext,
+    MigrationOptions,
+    MigrationType,
     is_using_temporary_datasets_path,
     read_project_version,
 )
@@ -97,6 +100,8 @@ def migrate(
     skip_migrations=False,
     project_version=None,
     max_version=None,
+    strict=False,
+    migration_type=MigrationType.ALL,
 ):
     """Apply all migration files to the project."""
     client = client_dispatcher.current_client
@@ -136,6 +141,9 @@ def migrate(
     project_version = project_version or _get_project_version()
     n_migrations_executed = 0
 
+    migration_options = MigrationOptions(strict=strict, type=migration_type)
+    migration_context = MigrationContext(client=client, options=migration_options)
+
     version = 1
     for version, path in get_migrations():
         if max_version and version > max_version:
@@ -145,7 +153,7 @@ def migrate(
             module_name = module.__name__.split(".")[-1]
             communication.echo(f"Applying migration {module_name}...")
             try:
-                module.migrate(client)
+                module.migrate(migration_context)
             except (Exception, BaseException) as e:
                 raise MigrationError("Couldn't execute migration") from e
             n_migrations_executed += 1

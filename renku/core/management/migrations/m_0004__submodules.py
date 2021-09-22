@@ -39,9 +39,9 @@ from renku.core.management.migrations.models.v9 import (
 from renku.core.utils.urls import remove_credentials
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
-    _migrate_submodule_based_datasets(client)
+    _migrate_submodule_based_datasets(migration_context.client)
 
 
 @inject.autoparams()
