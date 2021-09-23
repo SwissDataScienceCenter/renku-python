@@ -17,6 +17,7 @@
 # limitations under the License.
 """Represent an execution of a Plan."""
 from datetime import datetime
+from itertools import chain
 from typing import List, Union
 from uuid import uuid4
 
@@ -205,7 +206,7 @@ class Activity(Persistent):
 
         pm = get_plugin_manager()
 
-        plugin_annotations = pm.hook.activity_annotations(activity=activity)
+        plugin_annotations = list(chain.from_iterable(pm.hook.activity_annotations(activity=activity)))
 
         if plugin_annotations:
             activity.annotations.extend(plugin_annotations)
