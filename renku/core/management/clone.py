@@ -17,15 +17,14 @@
 # limitations under the License.
 """Clone a Renku repo along with all Renku-specific initializations."""
 
-import os
 from pathlib import Path
-
-from git import GitCommandError, Repo
+from typing import Tuple
 
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
 
 
@@ -36,8 +35,6 @@ def _handle_git_exception(e, raise_git_except, progress):
         error = "".join([f"\n\t{line}" for line in lines if line.strip()])
         message = f"Cannot clone remote Renku project: Git exited with code {e.status} and error message:\n {error}"
         raise errors.GitError(message)
-
-    raise e
 
 
 @inject.autoparams()
@@ -55,10 +52,12 @@ def clone(
     config=None,
     raise_git_except=False,
     checkout_rev=None,
-):
+) -> Tuple[Repository, bool]:
     """Clone Renku project repo, install Git hooks and LFS."""
     from renku.core.management.githooks import install
     from renku.core.management.migrate import is_renku_project
+
+    assert config is None or isinstance(config, dict), f"Config should be a dict not '{type(config)}'"
 
     path = path or GitURL.parse(url).name
 
@@ -66,60 +65,52 @@ def clone(
         path = str(path)
 
     # Clone the project
-    if skip_smudge:
-        os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
-
-    clone_config = None
-    if isinstance(config, str):
-        clone_config = config
-        config = None
+    env = {"GIT_LFS_SKIP_SMUDGE": "1"} if skip_smudge else None
 
     try:
         # NOTE: Try to clone, assuming checkout_rev is a branch (if it is set)
-        repo = Repo.clone_from(
-            url, path, branch=checkout_rev, recursive=recursive, depth=depth, progress=progress, config=clone_config
+        repository = Repository.clone_from(
+            url, path, branch=checkout_rev, recursive=recursive, depth=depth, progress=progress, env=env
         )
-    except GitCommandError as e:
+    except errors.GitCommandError as e:
         # NOTE: clone without branch set, in case checkout_rev was not a branch but a tag or commit
         if not checkout_rev:
             _handle_git_exception(e, raise_git_except, progress)
+            raise
 
         try:
-            repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress, config=clone_config)
-        except GitCommandError as e:
+            repository = Repository.clone_from(url, path, recursive=recursive, depth=depth, progress=progress)
+        except errors.GitCommandError as e:
             _handle_git_exception(e, raise_git_except, progress)
+            raise
 
         try:
             # NOTE: Now that we cloned successfully, try to checkout the checkout_rev
-            repo.git.checkout(checkout_rev)
-        except GitCommandError as e:
+            repository.checkout(checkout_rev)
+        except errors.GitCommandError as e:
             msg = str(e)
             if "is not a commit and a branch" in msg and "cannot be created from it" in msg:
-                return repo, False  # NOTE: Project has no commits to check out
+                return repository, False  # NOTE: Project has no commits to check out
 
             raise
 
     try:
-        repo.head.commit
-    except ValueError:
+        _ = repository.head.commit
+    except errors.GitError:
         # NOTE: git repo has no head commit, which means it is empty/not a renku project
-        return repo, False
+        return repository, False
 
     if config:
-        config_writer = repo.config_writer()
+        with repository.configuration(writable=True) as config_writer:
+            for key, value in config.items():
+                try:
+                    section, option = key.rsplit(".", maxsplit=1)
+                except ValueError:
+                    raise errors.GitError(f"Cannot write to config: Invalid config '{key}'")
 
-        for key, value in config.items():
-            key_path = key.split(".")
-            key = key_path.pop()
+                config_writer.set_value(section, option, value)
 
-            if not key_path or not key:
-                raise errors.GitError("Cannot write to config. Section path or key is invalid.")
-
-            config_writer.set_value(".".join(key_path), key, value)
-
-        config_writer.release()
-
-    client_dispatcher.push_client_to_stack(path=path)
+    client_dispatcher.push_client_to_stack(path=path, external_storage_requested=install_lfs)
     database_dispatcher.push_database_to_stack(client_dispatcher.current_client.database_path)
 
     try:
@@ -127,12 +118,12 @@ def clone(
             install(force=True)
 
         if install_lfs:
-            command = ["git", "lfs", "install", "--local", "--force"]
+            command = ["lfs", "install", "--local", "--force"]
             if skip_smudge:
                 command += ["--skip-smudge"]
             try:
-                repo.git.execute(command=command, with_exceptions=True)
-            except GitCommandError as e:
+                repository.run_git_command(*command)
+            except errors.GitCommandError as e:
                 raise errors.GitError("Cannot install Git LFS") from e
 
         project_initialized = is_renku_project()
@@ -140,4 +131,4 @@ def clone(
         database_dispatcher.pop_database()
         client_dispatcher.pop_client()
 
-    return repo, project_initialized
+    return repository, project_initialized

@@ -23,6 +23,7 @@ import shutil
 
 import pytest
 
+from renku.core.metadata.repository import Repository
 from tests.utils import format_result_exception
 
 
@@ -66,7 +67,6 @@ def instance_path(renku_path, monkeypatch):
 def repository(tmpdir):
     """Yield a Renku repository."""
     from click.testing import CliRunner
-    from git.config import GitConfigParser, get_config_path
 
     from renku.cli import cli
 
@@ -80,7 +80,7 @@ def repository(tmpdir):
             # NOTE: fake user home directory
             os.environ["HOME"] = str(home)
             os.environ["XDG_CONFIG_HOME"] = str(home)
-            with GitConfigParser(get_config_path("global"), read_only=False) as global_config:
+            with Repository.global_configuration(writable=True) as global_config:
                 global_config.set_value("user", "name", "Renku @ SDSC")
                 global_config.set_value("user", "email", "renku@datascience.ch")
 
@@ -101,24 +101,22 @@ def repository(tmpdir):
 def project(repository):
     """Create a test project."""
     from click.testing import CliRunner
-    from git import Repo
 
     from renku.cli import cli
     from renku.core.utils.contexts import chdir
 
     runner = CliRunner()
 
-    repo = Repo(repository, search_parent_directories=True)
+    repo = Repository(repository, search_parent_directories=True)
     commit = repo.head.commit
 
     with chdir(repository):
         yield repository
 
         os.chdir(repository)
-        repo.head.reset(commit, index=True, working_tree=True)
+        repo.reset(commit, hard=True)
         # INFO: remove any extra non-tracked files (.pyc, etc)
-        repo.git.clean("-xdff")
-
+        repo.clean()
         assert 0 == runner.invoke(cli, ["githooks", "install", "--force"]).exit_code
 
 

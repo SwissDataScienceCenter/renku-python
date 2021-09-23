@@ -33,7 +33,6 @@ from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils.file_size import bytes_to_unit
-from renku.core.utils.git import get_content
 from renku.core.utils.requests import retry
 
 ZENODO_BASE_URL = "https://zenodo.org"
@@ -478,7 +477,7 @@ class ZenodoExporter(ExporterApi):
         # Step 3. Upload all files to created deposition
         with tqdm(total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                filepath = get_content(repo=client.repo, path=file.entity.path, checksum=file.entity.checksum)
+                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
                 deposition.upload_file(filepath, path_in_repo=file.entity.path)
                 progressbar.update(1)
 

@@ -26,6 +26,8 @@ from calamus.schema import JsonLDSchema as CalamusJsonLDSchema
 from calamus.utils import normalize_type, normalize_value
 from marshmallow.base import SchemaABC
 
+from renku.core import errors
+
 prov = fields.Namespace("http://www.w3.org/ns/prov#")
 rdfs = fields.Namespace("http://www.w3.org/2000/01/rdf-schema#")
 renku = fields.Namespace("https://swissdatasciencecenter.github.io/renku-ontology#")
@@ -63,12 +65,11 @@ class JsonLDSchema(CalamusJsonLDSchema):
             ):
                 try:
                     self._add_field_to_data(
-                        data, "commit", self._client.repo.commit(data["_label"].rsplit("@", maxsplit=1)[-1])
+                        data, "commit", self._client.repository.get_commit(data["_label"].rsplit("@", maxsplit=1)[-1])
                     )
-                except ValueError as e:
-                    if "could not be resolved, git returned" not in str(e):
-                        raise
+                except errors.GitCommitNotFoundError:
                     # NOTE: This means the commit does not exist in the local repository. Could be an external file?
+                    pass
 
         return data
 

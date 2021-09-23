@@ -28,7 +28,6 @@ from typing import Any, List, Optional, Set, Tuple
 
 import click
 import yaml
-from git import Actor
 
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
@@ -36,6 +35,7 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.types import PATH_OBJECTS, Directory, File
+from renku.core.metadata.repository import Actor
 from renku.core.models.datastructures import DirectoryTree
 from renku.core.models.workflow.parameter import (
     DIRECTORY_MIME_TYPE,
@@ -45,8 +45,7 @@ from renku.core.models.workflow.parameter import (
     MappedIOStream,
 )
 from renku.core.models.workflow.plan import Plan
-from renku.core.utils.git import add_to_git
-from renku.core.utils.scm import git_unicode_unescape, safe_path
+from renku.core.utils.scm import safe_path
 from renku.version import __version__, version_url
 
 STARTED_AT = int(time.time() * 1000)
@@ -505,7 +504,7 @@ class PlanFactory:
         client = client_dispatcher.current_client
         client.check_external_storage()
 
-        repo = client.repo
+        repository = client.repository
 
         # Remove indirect files list if any
         delete_indirect_files_list(self.working_dir)
@@ -518,7 +517,7 @@ class PlanFactory:
 
         yield self
 
-        if repo:
+        if repository:
             # Include indirect inputs and outputs before further processing
             self.add_indirect_inputs()
             self.add_indirect_outputs()
@@ -541,10 +540,10 @@ class PlanFactory:
             if not self.no_output_detection:
                 # Calculate possible output paths.
                 # Capture newly created files through redirects.
-                candidates |= {file_ for file_ in repo.untracked_files}
+                candidates |= {file_ for file_ in repository.untracked_files}
 
                 # Capture modified files through redirects.
-                candidates |= {git_unicode_unescape(o.a_path) for o in repo.index.diff(None) if not o.deleted_file}
+                candidates |= {o.a_path for o in repository.modified_changes if not o.deleted}
 
             # Include explicit outputs
             candidates |= {str(path.relative_to(self.working_dir)) for path in self.explicit_outputs}
@@ -565,22 +564,22 @@ class PlanFactory:
                     output_paths.append(output.default_value)
 
             if unmodified:
-                raise errors.UnmodifiedOutputs(repo, unmodified)
+                raise errors.UnmodifiedOutputs(repository, unmodified)
 
             if not no_output and not output_paths:
-                raise errors.OutputsNotFound(repo, inputs.values())
+                raise errors.OutputsNotFound(repository, inputs.values())
 
             if client.check_external_storage():
                 client.track_paths_in_storage(*output_paths)
 
-            add_to_git(repo.git, *output_paths)
+            client.repository.add(*output_paths)
 
-            if repo.is_dirty():
+            if repository.is_dirty():
                 commit_msg = f"renku run: committing {len(output_paths)} newly added files"
 
-                committer = Actor("renku {0}".format(__version__), version_url)
+                committer = Actor(name=f"renku {__version__}", email=version_url)
 
-                repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
+                repository.commit(commit_msg, committer=committer, no_verify=True)
 
                 self._had_changes = True
 
@@ -588,7 +587,7 @@ class PlanFactory:
         self.annotations = [a for r in results for a in r]
 
     def _path_relative_to_root(self, path) -> str:
-        """Make a potentially relative path in a subdirectory relative to the root of the repo."""
+        """Make a potentially relative path in a subdirectory relative to the root of the repository."""
         return str((self.directory / path).resolve().relative_to(self.working_dir))
 
     def _include_indirect_parameters(self):

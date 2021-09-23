@@ -17,10 +17,10 @@
 # limitations under the License.
 """Test ``login`` command."""
 
-import git
 import pytest
 
 from renku.cli import cli
+from renku.core import errors
 from renku.core.commands.login import read_renku_token
 from renku.core.utils.contexts import chdir
 from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT, USER_CODE
@@ -29,7 +29,7 @@ from tests.utils import format_result_exception
 
 def test_login(runner, client_with_remote, mock_login, client_database_injection_manager):
     """Test login command."""
-    remote_url = client_with_remote.repo.remotes[0].url
+    remote_url = client_with_remote.repository.remotes[0].url
 
     result = runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE)
 
@@ -37,11 +37,11 @@ def test_login(runner, client_with_remote, mock_login, client_database_injection
 
     with client_database_injection_manager(client_with_remote):
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
-        credential = client_with_remote.repo.config_reader().get_value("credential", "helper")
+        credential = client_with_remote.repository.configuration().get_value("credential", "helper")
         assert f"!renku token --hostname {ENDPOINT}" == credential
-        assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repo.remotes}
-        assert remote_url == client_with_remote.repo.remotes["renku-backup-origin"].url
-        assert client_with_remote.repo.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
+        assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repository.remotes}
+        assert remote_url == client_with_remote.repository.remotes["renku-backup-origin"].url
+        assert client_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
 
 
 @pytest.mark.parametrize("args", [[], ["--git"]])
@@ -196,19 +196,19 @@ def test_login_non_git(runner, client, directory_tree):
 
 def test_login_git_no_unique_remote(runner, client_with_remote):
     """Test login from a git directory with no clear remote."""
-    client_with_remote.repo.create_remote("second-remote", "second-remote.net")
-    client_with_remote.repo.create_head("branch-with-no-remote")
-    client_with_remote.repo.heads["branch-with-no-remote"].checkout()
+    client_with_remote.repository.remotes.add("second-remote", "second-remote.net")
+    client_with_remote.repository.branches.add("branch-with-no-remote")
+    client_with_remote.repository.checkout("branch-with-no-remote")
 
     result = runner.invoke(cli, ["login", "--git", ENDPOINT])
 
-    assert 2 == result.exit_code
+    assert 2 == result.exit_code, format_result_exception(result)
     assert "Cannot find a unique remote URL for project." in result.output
 
 
 def test_repeated_git_login(runner, client_with_remote, mock_login):
     """Test multiple logins to git repo fails to change remote URL after first time."""
-    remote_url = client_with_remote.repo.remotes[0].url
+    remote_url = client_with_remote.repository.remotes[0].url
 
     assert 0 == runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE).exit_code
 
@@ -217,26 +217,26 @@ def test_repeated_git_login(runner, client_with_remote, mock_login):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Backup remove 'renku-backup-origin' already exists. Ignoring '--git' flag." in result.output
     assert "Error: Cannot create backup remote 'renku-backup-origin' for" not in result.output
-    assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repo.remotes}
-    assert remote_url == client_with_remote.repo.remotes["renku-backup-origin"].url
-    assert client_with_remote.repo.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
-    assert not client_with_remote.repo.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo/repo")
+    assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repository.remotes}
+    assert remote_url == client_with_remote.repository.remotes["renku-backup-origin"].url
+    assert client_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
+    assert not client_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo/repo")
 
 
 def test_logout_git(runner, client_with_remote, mock_login):
     """Test logout removes backup remotes and restores original remote url."""
-    remote_url = client_with_remote.repo.remotes[0].url
+    remote_url = client_with_remote.repository.remotes[0].url
 
     assert 0 == runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE).exit_code
 
     result = runner.invoke(cli, ["logout"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert {"origin"} == {r.name for r in client_with_remote.repo.remotes}
-    assert remote_url == client_with_remote.repo.remotes["origin"].url
+    assert {"origin"} == {r.name for r in client_with_remote.repository.remotes}
+    assert remote_url == client_with_remote.repository.remotes["origin"].url
     try:
-        credential = client_with_remote.repo.git.config("credential.helper", local=True)
-    except git.exc.GitCommandError:  # NOTE: If already logged out, ``git config --unset`` raises an exception
+        credential = client_with_remote.repository.configuration(scope="local").get_value("credential", "helper")
+    except errors.GitConfigurationError:  # NOTE: If already logged out, ``git config --unset`` raises an exception
         credential = None
     assert credential is None
 

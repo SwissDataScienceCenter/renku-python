@@ -16,9 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service utility functions."""
-from git import Repo
 
 from renku.core.commands.save import repo_sync
+from renku.core.metadata.repository import Repository
 from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 
@@ -51,7 +51,7 @@ def valid_file(user, cached_file):
 
 def new_repo_push(repo_path, source_url, source_name="origin", source_branch="master"):
     """Push a new repo to origin."""
-    repo = Repo(repo_path)
-    repo.create_remote(source_name, source_url)
-    _, branch = repo_sync(repo, remote=source_name)
+    repository = Repository(repo_path)
+    repository.remotes.add(source_name, source_url)
+    _, branch = repo_sync(repository, remote=source_name)
     return branch == source_branch

@@ -29,6 +29,7 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable
+from renku.core.metadata.repository import Commit
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
 from renku.core.models.entity import Collection, CollectionSchema, Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent, SoftwareAgentSchema
@@ -130,7 +131,7 @@ class Activity(Persistent):
         started_at_time: datetime,
         ended_at_time: datetime,
         annotations: List[Annotation] = None,
-        commit=None,
+        commit: Commit = None,
         update_commits=False,
     ):
         """Convert a ``Plan`` to a ``Activity``."""
@@ -140,7 +141,7 @@ class Activity(Persistent):
         client = client_dispatcher.current_client
 
         if not commit:
-            commit = client.repo.head.commit
+            commit = client.repository.head.commit
 
         usages = {}
         generations = {}

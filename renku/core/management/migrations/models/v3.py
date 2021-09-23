@@ -56,9 +56,9 @@ class Person(Base):
     name = None
 
     @classmethod
-    def from_git(cls, git, client=None):
-        """Create an instance from a Git repo."""
-        name, email = get_user_info(git)
+    def from_repository(cls, repository, client=None):
+        """Create an instance from a repository."""
+        name, email = get_user_info(repository)
         instance = cls(name=name, email=email)
         instance.fix_id(client)
         return instance
@@ -96,7 +96,7 @@ class Project(Base):
         self = ProjectSchemaV3().load(data)
 
         if not self.creator:
-            self.creator = Person.from_git(client.repo)
+            self.creator = Person.from_repository(client.repository)
 
         if not self.name:
             self.name = client.remote.get("name")

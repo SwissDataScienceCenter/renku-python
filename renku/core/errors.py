@@ -136,12 +136,12 @@ class AuthenticationError(RenkuException):
 class DirtyRepository(RenkuException):
     """Raise when trying to work with dirty repository."""
 
-    def __init__(self, repo):
+    def __init__(self, repository):
         """Build a custom message."""
         super(DirtyRepository, self).__init__(
             "The repository is dirty. "
             'Please use the "git" command to clean it.'
-            "\n\n" + str(repo.git.status()) + "\n\n"
+            "\n\n" + str(repository.status()) + "\n\n"
             "Once you have added the untracked files, "
             'commit them with "git commit".'
         )
@@ -150,7 +150,7 @@ class DirtyRepository(RenkuException):
 class DirtyRenkuDirectory(RenkuException):
     """Raise when a directory in the renku repository is dirty."""
 
-    def __init__(self, repo):
+    def __init__(self, repository):
         """Build a custom message."""
         super(DirtyRenkuDirectory, self).__init__(
             (
@@ -160,7 +160,7 @@ class DirtyRenkuDirectory(RenkuException):
                 "need to be manually committed or removed."
             ).format(RENKU_HOME)
             + "\n\n"
-            + str(repo.git.status())
+            + str(repository.status())
             + "\n\n"
         )
 
@@ -228,20 +228,20 @@ class CommitMessageEmpty(RenkuException):
 class FailedMerge(RenkuException):
     """Raise when automatic merge failed."""
 
-    def __init__(self, repo, branch, merge_args):
+    def __init__(self, repository, branch, merge_args):
         """Build a custom message."""
         super(FailedMerge, self).__init__(
             "Failed merge of branch {0} with args {1}".format(branch, ",".join(merge_args))
             + "The automatic merge failed.\n\n"
             'Please use the "git" command to clean it.'
-            "\n\n" + str(repo.git.status())
+            "\n\n" + str(repository.status())
         )
 
 
 class UnmodifiedOutputs(RenkuException):
     """Raise when there are unmodified outputs in the repository."""
 
-    def __init__(self, repo, unmodified):
+    def __init__(self, repository, unmodified):
         """Build a custom message."""
         super(UnmodifiedOutputs, self).__init__(
             "There are no detected new outputs or changes.\n"
@@ -263,7 +263,7 @@ class InvalidOutputPath(RenkuException):
 class OutputsNotFound(RenkuException):
     """Raise when there are not any detected outputs in the repository."""
 
-    def __init__(self, repo, inputs):
+    def __init__(self, repository, inputs):
         """Build a custom message."""
         from pathlib import Path
 
@@ -326,9 +326,9 @@ class DatasetExistsError(RenkuException):
 
 
 class ExternalStorageNotInstalled(RenkuException):
-    """Raise when LFS is required but not found or installed in the repo."""
+    """Raise when LFS is required but not found or installed in the repository."""
 
-    def __init__(self, repo):
+    def __init__(self, repository):
         """Build a custom message."""
         msg = (
             "External storage is not installed, "
@@ -347,7 +347,7 @@ class ExternalStorageNotInstalled(RenkuException):
 class ExternalStorageDisabled(RenkuException):
     """Raise when disabled repository storage API is trying to be used."""
 
-    def __init__(self, repo):
+    def __init__(self, repository):
         """Build a custom message."""
         msg = (
             "External storage is not configured, "
@@ -384,7 +384,34 @@ class InvalidAccessToken(RenkuException):
 
 
 class GitError(RenkuException):
-    """Raised when a remote Git repo cannot be accessed."""
+    """Raised when a Git operation fails."""
+
+
+class GitCommandError(GitError):
+    """Raised when a Git command fails."""
+
+    def __init__(self, message="Git command failed.", command=None, stdout=None, stderr=None, status=None):
+        super().__init__(message)
+        self.command = command
+        self.stdout = stdout
+        self.stderr = stderr
+        self.status = status
+
+
+class GitCommitNotFoundError(GitError):
+    """Raised when a commit cannot be found in a Repository."""
+
+
+class GitRemoteNotFoundError(GitError):
+    """Raised when a remote cannot be found."""
+
+
+class GitReferenceNotFoundError(GitError):
+    """Raised when a branch or a reference cannot be found."""
+
+
+class GitConfigurationError(GitError):
+    """Raised when a git configuration cannot be accessed."""
 
 
 class GitLFSError(RenkuException):

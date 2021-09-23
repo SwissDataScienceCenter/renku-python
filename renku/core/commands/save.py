@@ -20,15 +20,12 @@
 from functools import reduce
 from uuid import uuid4
 
-import git
-
 from renku.core import errors
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.metadata.repository import Repository
 from renku.core.utils import communication
-from renku.core.utils.git import add_to_git
-from renku.core.utils.scm import git_unicode_unescape
 
 
 @inject.autoparams()
@@ -40,10 +37,10 @@ def _save_and_push(client_dispatcher: IClientDispatcher, message=None, remote=No
     if not paths:
         paths = client.dirty_paths
     else:
-        staged = client.repo.index.diff("HEAD")
-        if staged:
-            staged = {git_unicode_unescape(p.a_path) for p in staged}
-            not_passed = staged - set(paths)
+        staged_changes = client.repository.staged_changes
+        if staged_changes:
+            staged_paths = {c.a_path for c in staged_changes}
+            not_passed = staged_paths - set(paths)
 
             if not_passed:
                 raise errors.RenkuSaveError(
@@ -55,7 +52,7 @@ def _save_and_push(client_dispatcher: IClientDispatcher, message=None, remote=No
     if paths:
         client.track_paths_in_storage(*paths)
 
-    return repo_sync(client.repo, message, remote, paths)
+    return repo_sync(client.repository, message, remote, paths)
 
 
 def save_and_push_command():
@@ -63,56 +60,52 @@ def save_and_push_command():
     return Command().command(_save_and_push)
 
 
-def repo_sync(repo, message=None, remote=None, paths=None):
+def repo_sync(repository: Repository, message=None, remote=None, paths=None):
     """Commit and push paths."""
     origin = None
     saved_paths = []
 
     # get branch that's pushed
-    if repo.active_branch.tracking_branch():
-        ref = repo.active_branch.tracking_branch().name
+    if repository.active_branch.remote_branch:
+        ref = repository.active_branch.remote_branch.name
         pushed_branch = ref.split("/")[-1]
     else:
-        pushed_branch = repo.active_branch.name
+        pushed_branch = repository.active_branch.name
 
     if remote:
         # get/setup supplied remote for pushing
-        if repo.remotes:
-            existing = next((r for r in repo.remotes if r.url == remote), None)
+        if len(repository.remotes) > 0:
+            existing = next((r for r in repository.remotes if r.url == remote), None)
             if not existing:
-                existing = next((r for r in repo.remotes if r.name == remote), None)
-            origin = next((r for r in repo.remotes if r.name == "origin"), None)
+                existing = next((r for r in repository.remotes if r.name == remote), None)
+            origin = next((r for r in repository.remotes if r.name == "origin"), None)
             if existing:
                 origin = existing
             elif origin:
                 pushed_branch = uuid4().hex
-                origin = repo.create_remote(pushed_branch, remote)
+                origin = repository.remotes.add(name=pushed_branch, url=remote)
         if not origin:
-            origin = repo.create_remote("origin", remote)
-    elif not repo.active_branch.tracking_branch():
-        # No remote set on branch, push to available remote if only a single
-        # one is available
-        if len(repo.remotes) == 1:
-            origin = repo.remotes[0]
+            origin = repository.remotes.add(name="origin", url=remote)
+    elif not repository.active_branch.remote_branch:
+        # No remote set on branch, push to available remote if only a single one is available
+        if len(repository.remotes) == 1:
+            origin = repository.remotes[0]
         else:
             raise errors.ConfigurationError("No remote has been set up for the current branch")
     else:
         # get remote that's set up to track the local branch
-        origin = repo.remotes[repo.active_branch.tracking_branch().remote_name]
+        origin = repository.active_branch.remote_branch.remote
 
     if paths:
         # commit uncommitted changes
         try:
-            staged_files = (
-                {git_unicode_unescape(d.a_path) for d in repo.index.diff("HEAD")} if repo.head.is_valid() else set()
-            )
-
+            staged_files = {c.a_path for c in repository.staged_changes} if repository.head.is_valid() else set()
             path_to_save = set(paths) - staged_files
 
             if path_to_save:
-                add_to_git(repo.git, *path_to_save)
+                repository.add(*path_to_save)
 
-            saved_paths = [d.b_path for d in repo.index.diff("HEAD")]
+            saved_paths = [c.b_path for c in repository.staged_changes]
 
             if not message:
                 # Show saved files in message
@@ -124,21 +117,21 @@ def repo_sync(repo, message=None, remote=None, paths=None):
                 # limit first line to max_len characters
                 message += " ".join(p if l < max_len else "\n\t" + p for p, l in paths_with_lens)
 
-            repo.index.commit(message)
-        except git.exc.GitCommandError as e:
+            repository.commit(message)
+        except errors.GitCommandError as e:
             raise errors.GitError("Cannot commit changes") from e
 
     try:
         # NOTE: Push local changes to remote branch.
         merge_conflict = False
-        if origin.refs and repo.active_branch.tracking_branch() and repo.active_branch.tracking_branch() in origin.refs:
-            origin.fetch()
+        if len(origin.references) > 0 and repository.active_branch.remote_branch in origin.references:
+            repository.fetch("origin")
             try:
-                origin.pull(repo.active_branch)
-            except git.exc.GitCommandError:
+                repository.pull("origin", repository.active_branch)
+            except errors.GitCommandError:
                 # NOTE: Couldn't pull, probably due to conflicts, try a merge.
                 # NOTE: the error sadly doesn't tell any details.
-                unmerged_blobs = repo.index.unmerged_blobs().values()
+                unmerged_blobs = repository.unmerged_blobs.values()
                 conflicts = (stage != 0 for blobs in unmerged_blobs for stage, _ in blobs)
                 if any(conflicts):
                     merge_conflict = True
@@ -148,11 +141,11 @@ def repo_sync(repo, message=None, remote=None, paths=None):
                         " do you want to resolve them (if not, a new remote branch will be created)?",
                         warning=True,
                     ):
-                        repo.git.mergetool("-g")
-                        repo.git.commit("--no-edit")
+                        repository.run_git_command("mergetool", "-g")
+                        repository.commit("merging conflict", no_edit=True)
                         merge_conflict = False
                     else:
-                        repo.head.reset(index=True, working_tree=True)
+                        repository.reset(hard=True)
                 else:
                     raise
 
@@ -160,44 +153,29 @@ def repo_sync(repo, message=None, remote=None, paths=None):
         failed_push = None
 
         if not merge_conflict:
-            result = origin.push(repo.active_branch)
-            failed_push = [
-                push_info
-                for push_info in result
-                if push_info.flags & git.PushInfo.ERROR
-                or push_info.flags & git.PushInfo.REJECTED
-                or push_info.flags & git.PushInfo.REMOTE_REJECTED
-                or push_info.flags & git.PushInfo.REMOTE_FAILURE
-            ]
+            result = repository.push(origin, repository.active_branch)
+            failed_push = [r for r in result if r.failed]
 
         if merge_conflict or (result and "[remote rejected] (pre-receive hook declined)" in result[0].summary):
             # NOTE: Push to new remote branch if original one is protected and reset the cache.
             old_pushed_branch = pushed_branch
-            old_active_branch = repo.active_branch
+            old_active_branch = repository.active_branch
             pushed_branch = uuid4().hex
             try:
-                repo.create_head(pushed_branch)
-                result = repo.remote().push(pushed_branch)
-                failed_push = [
-                    push_info
-                    for push_info in result
-                    if push_info.flags & git.PushInfo.ERROR
-                    or push_info.flags & git.PushInfo.REJECTED
-                    or push_info.flags & git.PushInfo.REMOTE_REJECTED
-                    or push_info.flags & git.PushInfo.REMOTE_FAILURE
-                ]
+                repository.branches.add(pushed_branch)
+                result = repository.push("origin", pushed_branch)
+                failed_push = [r for r in result if r.failed]
             finally:
                 # Reset cache
-                repo.git.checkout(old_active_branch)
-                ref = f"{origin}/{old_pushed_branch}"
-                repo.head.reset(commit=ref, index=True, working_tree=True)
+                repository.checkout(old_active_branch)
+                repository.reset(reference=f"{origin}/{old_pushed_branch}", hard=True)
 
         if result and failed_push:
             # NOTE: Couldn't push for some reason
             msg = "\n".join(info.summary for info in failed_push)
             raise errors.GitError(f"Couldn't push changes. Reason:\n{msg}")
 
-    except git.exc.GitCommandError as e:
+    except errors.GitCommandError as e:
         raise errors.GitError("Cannot push changes") from e
 
     return saved_paths, pushed_branch

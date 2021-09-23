@@ -19,6 +19,8 @@
 
 import click
 
+from renku.core.metadata.repository import Repository
+
 GIT_KEY = "renku.git"
 GIT_ISOLATION = "renku.worktree"
 
@@ -35,9 +37,7 @@ def get_git_home(path="."):
     if ctx and GIT_KEY in ctx.meta:
         return ctx.meta[GIT_KEY]
 
-    from git import Repo
-
-    return Repo(path, search_parent_directories=True).working_dir
+    return Repository(path, search_parent_directories=True).path
 
 
 def set_git_isolation(value):
@@ -53,13 +53,3 @@ def get_git_isolation():
     ctx = click.get_current_context(silent=True)
     if ctx and GIT_ISOLATION in ctx.meta:
         return ctx.meta[GIT_ISOLATION]
-
-
-def _safe_issue_checkout(repo, issue=None):
-    """Safely checkout branch for the issue."""
-    branch_name = str(issue) if issue else "master"
-    if branch_name not in repo.heads:
-        branch = repo.create_head(branch_name)
-    else:
-        branch = repo.heads[branch_name]
-    branch.checkout()

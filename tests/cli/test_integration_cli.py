@@ -63,18 +63,14 @@ def test_renku_clone(runner, monkeypatch, url):
 def test_renku_clone_with_config(tmp_path, url):
     """Test cloning of a Renku repo and existence of required settings."""
     with chdir(tmp_path):
-        repo, _ = (
+        repository, _ = (
             project_clone_command()
             .build()
             .execute(url, config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"})
         ).output
 
-        assert "master" == repo.active_branch.name
-        reader = repo.config_reader()
-        reader.values()
-
-        lfs_config = dict(reader.items("filter.lfs"))
-        assert "0" == lfs_config.get("custom")
+        assert "master" == repository.active_branch.name
+        assert 0 == repository.configuration().get_value("filter.lfs", "custom")
 
 
 @pytest.mark.integration
@@ -83,7 +79,7 @@ def test_renku_clone_with_config(tmp_path, url):
 def test_renku_clone_checkout_rev(tmp_path, url):
     """Test cloning of a repo checking out a rev with static config."""
     with chdir(tmp_path):
-        repo, _ = (
+        repository, _ = (
             project_clone_command()
             .build()
             .execute(
@@ -93,12 +89,8 @@ def test_renku_clone_checkout_rev(tmp_path, url):
             )
         ).output
 
-        assert "97f907e1a3f992d4acdc97a35df73b8affc917a6" == str(repo.head.commit)
-        reader = repo.config_reader()
-        reader.values()
-
-        lfs_config = dict(reader.items("filter.lfs"))
-        assert "0" == lfs_config.get("custom")
+        assert "97f907e1a3f992d4acdc97a35df73b8affc917a6" == str(repository.head.commit)
+        assert 0 == repository.configuration().get_value("filter.lfs", "custom")
 
 
 @pytest.mark.integration
@@ -107,7 +99,7 @@ def test_renku_clone_checkout_rev(tmp_path, url):
 def test_renku_clone_checkout_revs(tmp_path, rev, detached):
     """Test cloning of a Renku repo checking out a rev."""
     with chdir(tmp_path):
-        repo, _ = (
+        repository, _ = (
             project_clone_command()
             .build()
             .execute("https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku.git", checkout_rev=rev)
@@ -115,9 +107,9 @@ def test_renku_clone_checkout_revs(tmp_path, rev, detached):
 
         if detached:
             # NOTE: cloning a tag sets head to the commit of the tag, get tag that the head commit points to
-            assert rev == repo.git.describe("--tags", repo.head.commit)
+            assert rev == repository.run_git_command("describe", "--tags", repository.head.commit)
         else:
-            assert rev == repo.head.ref.name
+            assert rev == repository.head.reference.name
 
 
 @pytest.mark.integration

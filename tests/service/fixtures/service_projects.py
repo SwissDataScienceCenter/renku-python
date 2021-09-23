@@ -22,9 +22,9 @@ import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
-import git
 import pytest
 
+from renku.core.metadata.repository import Repository
 from renku.core.utils.scm import normalize_to_ascii
 
 
@@ -73,17 +73,17 @@ def it_remote_repo_url_temp_branch(it_remote_repo_url):
 
         url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
         git_url = git_url._replace(netloc=url).geturl()
-        repo = git.Repo.clone_from(git_url, tempdir)
-        origin = repo.remote("origin")
+        repo = Repository.clone_from(url=git_url, path=tempdir)
+        origin = repo.remotes["origin"]
         branch_name = uuid.uuid4().hex
-        branch = repo.create_head(branch_name)
-        repo.git.push("--set-upstream", origin, branch)
+        branch = repo.branches.add(branch_name)
+        repo.push(origin, branch, set_upstream=True)
         try:
             yield it_remote_repo_url, branch_name
         finally:
             # NOTE: delete remote branch
-            origin.push(f":{branch}")
-            repo.delete_head(branch)
+            repo.push(origin, branch, delete=True)
+            repo.branches.remove(branch)
 
 
 @pytest.fixture(scope="module")

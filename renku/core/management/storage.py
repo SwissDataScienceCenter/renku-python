@@ -37,7 +37,7 @@ from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Collection
 from renku.core.utils import communication
 from renku.core.utils.file_size import parse_file_size
-from renku.core.utils.git import add_to_git, run_command
+from renku.core.utils.git import run_command
 
 from .git import _expand_directories
 from .repository import RepositoryApiMixin
@@ -100,7 +100,7 @@ class StorageApiMixin(RepositoryApiMixin):
     @cached_property
     def storage_installed_locally(self):
         """Verify that git-lfs is installed for the project."""
-        repo_config = self.repo.config_reader(config_level="repository")
+        repo_config = self.repository.configuration(scope="local")
         return repo_config.has_section('filter "lfs"')
 
     def check_external_storage(self):
@@ -111,10 +111,10 @@ class StorageApiMixin(RepositoryApiMixin):
         """
         storage_installed = self.storage_installed_locally and self.storage_installed
         if self.external_storage_requested and not storage_installed:
-            raise errors.ExternalStorageDisabled(self.repo)
+            raise errors.ExternalStorageDisabled(self.repository)
 
         if self.storage_installed_locally and not self.storage_installed:
-            raise errors.ExternalStorageNotInstalled(self.repo)
+            raise errors.ExternalStorageNotInstalled(self.repository)
 
         return storage_installed
 
@@ -172,7 +172,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
         # Calculate which paths can be tracked in lfs
         track_paths = []
-        attrs = self.find_attr(*paths)
+        attrs = self.repository.get_attributes(*paths)
 
         for path in paths:
             path = Path(path)
@@ -181,23 +181,22 @@ class StorageApiMixin(RepositoryApiMixin):
             if path.is_symlink():
                 continue
 
-            if path.is_absolute():
-                path = Path(path).relative_to(self.path)
-
             # Do not add files with filter=lfs in .gitattributes
             if attrs.get(str(path), {}).get("filter") == "lfs" or not (self.path / path).exists():
                 continue
 
+            relative_path = Path(path).relative_to(self.path) if path.is_absolute() else path
+
             if (
                 path.is_dir()
-                and not self.renku_lfs_ignore.match_file(path)
-                and not any(self.renku_lfs_ignore.match_tree(path))
+                and not self.renku_lfs_ignore.match_file(relative_path)
+                and not any(self.renku_lfs_ignore.match_tree(str(relative_path)))
             ):
                 track_paths.append(str(path / "**"))
-            elif not self.renku_lfs_ignore.match_file(path):
+            elif not self.renku_lfs_ignore.match_file(str(relative_path)):
                 file_size = os.path.getsize(str(os.path.relpath(self.path / path, os.getcwd())))
                 if file_size >= self.minimum_lfs_file_size:
-                    track_paths.append(str(path))
+                    track_paths.append(str(relative_path))
 
         if track_paths:
             try:
@@ -254,9 +253,9 @@ class StorageApiMixin(RepositoryApiMixin):
         """List paths tracked in lfs for a client."""
         client = client or self
 
-        if len(client.repo.remotes) < 1 or not client.repo.active_branch.tracking_branch():
+        if len(client.repository.remotes) < 1 or not client.repository.active_branch.remote_branch:
             raise errors.ConfigurationError(
-                f"No git remote is configured for {client.path} branch {client.repo.active_branch.name}."
+                f"No git remote is configured for {client.path} branch {client.repository.active_branch.name}."
                 + "Cleaning the storage cache would lead to a loss of data as "
                 + "it is not on a server. Please see "
                 + "https://www.atlassian.com/git/tutorials/syncing for "
@@ -277,7 +276,7 @@ class StorageApiMixin(RepositoryApiMixin):
         client_dict = defaultdict(list)
 
         for path in _expand_directories(paths):
-            client, commit, path = self.resolve_in_submodules(self.repo.commit(), path)
+            client, commit, path = self.get_in_submodules(self.repository.head.commit, path)
             try:
                 absolute_path = Path(path).resolve()
                 relative_path = absolute_path.relative_to(client.path)
@@ -305,13 +304,13 @@ class StorageApiMixin(RepositoryApiMixin):
         """Remove paths from lfs cache."""
         client_dict = defaultdict(list)
         clients = {}
-        tracked_paths = defaultdict(list)
-        unpushed_paths = defaultdict(list)
+        tracked_paths = {}
+        unpushed_paths = {}
         untracked_paths = []
         local_only_paths = []
 
         for path in _expand_directories(paths):
-            client, commit, path = self.resolve_in_submodules(self.repo.commit(), path)
+            client, _, path = self.get_in_submodules(self.repository.head.commit, path)
             try:
                 absolute_path = Path(path).resolve()
                 relative_path = absolute_path.relative_to(client.path)
@@ -361,7 +360,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 move(tmp_path, path)
 
                 # get lfs sha hash
-                old_pointer = client.repo.git.show("HEAD:{}".format(path))
+                old_pointer = client.repository.get_raw_content(path=path, revision="HEAD")
                 old_pointer = old_pointer.splitlines()[1]
                 old_pointer = old_pointer.split(" ")[1].split(":")[1]
 
@@ -373,7 +372,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 object_path.unlink()
 
             # add paths so they don't show as modified
-            add_to_git(client.repo.git, *paths)
+            client.repository.add(*paths)
 
         return untracked_paths, local_only_paths
 
@@ -393,7 +392,7 @@ class StorageApiMixin(RepositoryApiMixin):
         if not self.external_storage_requested:
             return
 
-        attrs = self.find_attr(*paths)
+        attrs = self.repository.get_attributes(*paths)
         track_paths = []
 
         for path in paths:
@@ -446,7 +445,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
     def check_lfs_migrate_info(self, everything=False):
         """Return list of file groups in history should be in LFS."""
-        ref = ["--everything"] if everything else ["--include-ref", self.repo.active_branch.name]
+        ref = ["--everything"] if everything else ["--include-ref", self.repository.active_branch.name]
 
         includes, excludes, above = self.get_lfs_migrate_filters()
 
@@ -511,12 +510,12 @@ class StorageApiMixin(RepositoryApiMixin):
         repo_root = Path(".")
 
         for old_commit_sha, new_commit_sha in commit_sha_mapping:
-            old_commit = self.repo.commit(old_commit_sha)
-            new_commit = self.repo.commit(new_commit_sha)
+            old_commit = self.repository.get_commit(old_commit_sha)
+            new_commit = self.repository.get_commit(new_commit_sha)
             processed = set()
 
-            for path in old_commit.stats.files.keys():
-                path_obj = Path(path)
+            for diff in old_commit.get_changes():
+                path_obj = Path(diff.a_path)
 
                 # NOTE: Get git object hash mapping for files and parent folders
                 while path_obj != repo_root:

@@ -438,8 +438,6 @@ class DataverseExporter(ExporterApi):
 
     def export(self, publish, client=None, **kwargs):
         """Execute export process."""
-        from renku.core.utils.git import get_content
-
         deposition = _DataverseDeposition(server_url=self._server_url, access_token=self.access_token)
         metadata = self._get_dataset_metadata()
         response = deposition.create_dataset(dataverse_name=self._dataverse_name, metadata=metadata)
@@ -451,7 +449,7 @@ class DataverseExporter(ExporterApi):
                     path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
                 except ValueError:
                     path = Path(file.entity.path)
-                filepath = get_content(repo=client.repo, path=file.entity.path, checksum=file.entity.checksum)
+                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
                 deposition.upload_file(full_path=filepath, path_in_dataset=path)
                 progressbar.update(1)
 

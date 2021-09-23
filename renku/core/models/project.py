@@ -90,7 +90,7 @@ class Project(persistent.Persistent):
     ) -> "Project":
         """Create an instance from a LocalClient."""
         namespace, name = cls.get_namespace_and_name(client=client, name=name, creator=creator)
-        creator = creator or Person.from_git(client.repo)
+        creator = creator or Person.from_repository(client.repository)
         annotations = None
 
         if custom_metadata:
@@ -113,7 +113,7 @@ class Project(persistent.Persistent):
             name = remote.get("name") or name
 
             if not creator:
-                creator = Person.from_git(client.repo)
+                creator = Person.from_repository(client.repository)
 
         if not namespace and creator:
             namespace = creator.email.split("@")[0]

@@ -26,6 +26,7 @@ from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE
 
 from renku.core.metadata.immutable import Slots
+from renku.core.metadata.repository import Commit
 from renku.core.models.calamus import StringList, fields, prov, schema
 from renku.core.models.git import get_user_info
 from renku.version import __version__, version_url
@@ -53,7 +54,7 @@ class Agent(Slots):
         return hash((self.id, self.name))
 
     @classmethod
-    def from_commit(cls, commit) -> Union["Person", "SoftwareAgent"]:
+    def from_commit(cls, commit: Commit) -> Union["Person", "SoftwareAgent"]:
         """Create an instance from a Git commit."""
         return SoftwareAgent.from_commit(commit) if commit.author != commit.committer else Person.from_commit(commit)
 
@@ -67,7 +68,7 @@ class SoftwareAgent(Agent):
     """Represent executed software."""
 
     @classmethod
-    def from_commit(cls, commit):
+    def from_commit(cls, commit: Commit):
         """Create an instance from a Git commit."""
         return cls(id=commit.committer.email, name=commit.committer.name)
 
@@ -116,21 +117,21 @@ class Person(Agent):
         return hash((self.id, self.full_identity))
 
     @classmethod
-    def from_commit(cls, commit):
+    def from_commit(cls, commit: Commit):
         """Create an instance from a Git commit."""
         return cls(name=commit.author.name, email=commit.author.email)
 
     @classmethod
-    def from_git(cls, git):
-        """Create an instance from a Git repo."""
-        name, email = get_user_info(git)
+    def from_repository(cls, repository):
+        """Create an instance from a repository."""
+        name, email = get_user_info(repository)
         return cls(email=email, name=name)
 
     @classmethod
     def from_client(cls, client) -> Optional["Person"]:
-        """Create an instance from a Renku project repo."""
-        if client.repo:
-            return cls.from_git(client.repo)
+        """Create an instance from a Renku project repository."""
+        if client.repository:
+            return cls.from_repository(client.repository)
 
     @classmethod
     def from_string(cls, string):

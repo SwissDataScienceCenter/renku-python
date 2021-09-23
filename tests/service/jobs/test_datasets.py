@@ -22,10 +22,10 @@ import uuid
 
 import jwt
 import pytest
-from git import Repo
 from werkzeug.utils import secure_filename
 
 from renku.core.errors import DatasetExistsError, MigrationRequired, ParameterError
+from renku.core.metadata.repository import Repository
 from renku.service.jobs.cleanup import cache_project_cleanup
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
@@ -76,15 +76,15 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
         },
     )
 
-    old_commit = Repo(dest).head.commit
+    old_commit = Repository(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
     commit_message = "service: import remote dataset"
     dataset_import(user_data, job_id, project_id, url, commit_message=commit_message)
 
-    new_commit = Repo(dest).head.commit
+    new_commit = Repository(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
-    assert commit_message == new_commit.message
+    assert f"{commit_message}\n" == new_commit.message
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
 
@@ -124,15 +124,15 @@ def test_dataset_import_job(doi, svc_client_with_repo):
         },
     )
 
-    old_commit = Repo(dest).head.commit
+    old_commit = Repository(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
     commit_message = "service: import remote dataset"
     dataset_import(user, job_id, project_id, doi, commit_message=commit_message)
 
-    new_commit = Repo(dest).head.commit
+    new_commit = Repository(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
-    assert commit_message == new_commit.message
+    assert f"{commit_message}\n" == new_commit.message
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
     assert response
@@ -179,13 +179,13 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
         },
     )
 
-    old_commit = Repo(dest).head.commit
+    old_commit = Repository(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
     with pytest.raises(ParameterError):
         dataset_import(user, job_id, project_id, doi)
 
-    new_commit = Repo(dest).head.commit
+    new_commit = Repository(dest).head.commit
     assert old_commit.hexsha == new_commit.hexsha
 
     response = svc_client.get(f"/jobs/{job_id}", data=json.dumps(payload), headers=headers)
@@ -228,18 +228,18 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
         },
     )
 
-    old_commit = Repo(dest).head.commit
+    old_commit = Repository(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
     dataset_import(user, job_id, project_id, doi)
 
-    new_commit = Repo(dest).head.commit
+    new_commit = Repository(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
 
     with pytest.raises(DatasetExistsError):
         dataset_import(user, job_id, project_id, doi)
 
-    new_commit2 = Repo(dest).head.commit
+    new_commit2 = Repository(dest).head.commit
     assert new_commit.hexsha == new_commit2.hexsha
 
     response = svc_client.get(f"/jobs/{job_id}", data=json.dumps(payload), headers=headers)
@@ -280,16 +280,16 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
             "project_id": project_id,
         },
     )
-    old_commit = Repo(dest).head.commit
+    old_commit = Repository(dest).head.commit
     job_id = response.json["result"]["files"][0]["job_id"]
     commit_message = "service: dataset add remote file"
 
     dataset_add_remote_file(user, job_id, project_id, True, commit_message, payload["name"], url)
 
-    new_commit = Repo(dest).head.commit
+    new_commit = Repository(dest).head.commit
 
     assert old_commit.hexsha != new_commit.hexsha
-    assert commit_message == new_commit.message
+    assert f"{commit_message}\n" == new_commit.message
 
 
 @pytest.mark.service
@@ -402,11 +402,11 @@ def test_dataset_project_lock(doi, svc_client_with_repo):
         },
     )
 
-    old_commit = Repo(dest).head.commit
+    old_commit = Repository(dest).head.commit
 
     cache_project_cleanup()
 
-    new_commit = Repo(dest).head.commit
+    new_commit = Repository(dest).head.commit
     assert old_commit.hexsha == new_commit.hexsha
     assert dest.exists() and [file for file in dest.glob("*")]
 

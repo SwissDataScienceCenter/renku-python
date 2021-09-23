@@ -23,7 +23,6 @@ import urllib
 import uuid
 import webbrowser
 
-import git
 import requests
 
 from renku.core import errors
@@ -51,10 +50,10 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
 
     remote_name, remote_url = None, None
     if git_login:
-        if not client.repo:
+        if not client.repository:
             raise errors.ParameterError("Cannot use '--git' flag outside a project.")
 
-        remote_name, remote_url = get_remote(client.repo)
+        remote_name, remote_url = get_remote(client.repository)
         if remote_name and remote_url:
             if not yes:
                 communication.confirm("Remote URL will be changed. Do you want to continue?", abort=True, warning=True)
@@ -115,9 +114,8 @@ def _store_token(netloc, access_token, client_dispatcher: IClientDispatcher):
 
 @inject.autoparams()
 def _store_git_credential_helper(netloc, client_dispatcher: IClientDispatcher):
-    client_dispatcher.current_client.repo.git.config(
-        "credential.helper", f"!renku token --hostname {netloc}", local=True
-    )
+    with client_dispatcher.current_client.repository.configuration(writable=True) as config:
+        config.set_value("credential", "helper", f"!renku token --hostname {netloc}")
 
 
 @inject.autoparams()
@@ -125,22 +123,22 @@ def _swap_git_remote(parsed_endpoint, remote_name, remote_url, client_dispatcher
     client = client_dispatcher.current_client
     backup_remote_name = f"{RENKU_BACKUP_PREFIX}-{remote_name}"
 
-    if backup_remote_name in [r.name for r in client.repo.remotes]:
+    if backup_remote_name in [r.name for r in client.repository.remotes]:
         communication.echo(f"Backup remove '{backup_remote_name}' already exists. Ignoring '--git' flag.")
         return
 
     new_remote_url = get_renku_repo_url(remote_url, deployment_hostname=parsed_endpoint.netloc)
 
     try:
-        client.repo.create_remote(backup_remote_name, url=remote_url)
-    except git.GitCommandError:
+        client.repository.remotes.add(name=backup_remote_name, url=remote_url)
+    except errors.GitCommandError:
         communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
     else:
         try:
-            client.repo.git.remote("set-url", remote_name, new_remote_url)
-        except git.GitCommandError:
-            client.repo.delete_remote(backup_remote_name)
-            raise errors.GitError(f"Cannot change remote url for '{remote_name}' to {new_remote_url}")
+            client.repository.remotes[remote_name].set_url(url=new_remote_url)
+        except errors.GitCommandError as e:
+            client.repository.remotes.remove(backup_remote_name)
+            raise errors.GitError(f"Cannot change remote url for '{remote_name}' to {new_remote_url}") from e
 
 
 @inject.autoparams()
@@ -180,32 +178,33 @@ def _logout(endpoint, client_dispatcher: IClientDispatcher):
 
 @inject.autoparams()
 def _remove_git_credential_helper(client_dispatcher: IClientDispatcher):
-    try:
-        client_dispatcher.current_client.repo.git.config("credential.helper", local=True, unset=True)
-    except git.exc.GitCommandError:  # NOTE: If already logged out, ``git config --unset`` raises an exception
-        pass
+    with client_dispatcher.current_client.repository.configuration(writable=True) as config:
+        try:
+            config.remove_value("credential", "helper")
+        except errors.GitError:  # NOTE: If already logged out, an exception is raised
+            pass
 
 
 @inject.autoparams()
 def _restore_git_remote(client_dispatcher: IClientDispatcher):
     client = client_dispatcher.current_client
 
-    if not client.repo:  # Outside a renku project
+    if not client.repository:  # Outside a renku project
         return
 
-    backup_remotes = [r.name for r in client.repo.remotes if r.name.startswith(RENKU_BACKUP_PREFIX)]
+    backup_remotes = [r.name for r in client.repository.remotes if r.name.startswith(RENKU_BACKUP_PREFIX)]
     for backup_remote in backup_remotes:
         remote_name = backup_remote.replace(f"{RENKU_BACKUP_PREFIX}-", "")
-        remote_url = client.repo.remotes[backup_remote].url
+        remote_url = client.repository.remotes[backup_remote].url
 
         try:
-            client.repo.git.remote("set-url", remote_name, remote_url)
-        except git.GitCommandError:
+            client.repository.remotes[remote_name].set_url(remote_url)
+        except errors.GitCommandError:
             raise errors.GitError(f"Cannot restore remote url for '{remote_name}' to {remote_url}")
 
         try:
-            client.repo.delete_remote(backup_remote)
-        except git.GitCommandError:
+            client.repository.remotes.remove(backup_remote)
+        except errors.GitCommandError:
             communication.error(f"Cannot delete backup remote '{backup_remote}'")
 
 

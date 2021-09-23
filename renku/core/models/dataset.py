@@ -181,7 +181,7 @@ class ImageObject(Slots):
 
 
 class RemoteEntity(Slots):
-    """Reference to an Entity in a remote repo."""
+    """Reference to an Entity in a remote repository."""
 
     __slots__ = ("checksum", "id", "path", "url")
 

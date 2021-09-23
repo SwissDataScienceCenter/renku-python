@@ -77,9 +77,11 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher):
 
     # 2. Manage .gitattributes for external storage.
     if client.check_external_storage():
-        tracked = tuple(path for path, attr in client.find_attr(*files).items() if attr.get("filter") == "lfs")
+        tracked = tuple(
+            path for path, attr in client.repository.get_attributes(*files).items() if attr.get("filter") == "lfs"
+        )
         client.untrack_paths_from_storage(*tracked)
-        existing = client.find_attr(*tracked)
+        existing = client.repository.get_attributes(*tracked)
         if existing:
             communication.warn("There are custom .gitattributes.\n")
             if communication.confirm('Do you want to edit ".gitattributes" now?'):

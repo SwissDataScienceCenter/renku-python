@@ -24,7 +24,6 @@ from urllib.parse import quote
 
 from renku.core.metadata.immutable import Immutable
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku
-from renku.core.utils.git import get_object_hash
 
 _entity_cache = {}
 
@@ -74,7 +73,7 @@ class Entity(Immutable):
             return cached_entry
 
         # TODO: What checksum we get at "HEAD" if object is staged but not committed
-        checksum = get_object_hash(repo=client.repo, revision=revision, path=path)
+        checksum = client.repository.get_object_hash(revision=revision, path=path)
         # NOTE: If object was not found at a revision it's either removed or exists in a different revision; keep the
         # entity and use revision as checksum
         checksum = checksum or revision

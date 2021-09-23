@@ -31,8 +31,10 @@ from renku.core.models.git import GitURL
 @inject.autoparams()
 def detect_registry_url(client_dispatcher: IClientDispatcher, auto_login=True):
     """Return a URL of the Docker registry."""
-    repo = client_dispatcher.current_client.repo
-    config = repo.config_reader()
+    from renku.core.metadata.repository import Repository
+
+    repository: Repository = client_dispatcher.current_client.repository
+    config = repository.configuration()
 
     # Find registry URL in .git/config
     remote_url = None
@@ -41,16 +43,16 @@ def detect_registry_url(client_dispatcher: IClientDispatcher, auto_login=True):
     except NoSectionError:
         registry_url = None
 
-    remote_branch = repo.head.reference.tracking_branch()
+    remote_branch = repository.active_branch.remote_branch
 
     if remote_branch is not None:
-        remote_name = remote_branch.remote_name
-        config_section = 'renku "{remote_name}"'.format(remote_name=remote_name)
+        remote_name = remote_branch.remote.name
+        config_section = f'renku "{remote_name}"'
         try:
             registry_url = config.get_value(config_section, "registry", registry_url)
         except NoSectionError:
             pass
-        remote_url = repo.remotes[remote_name].url
+        remote_url = remote_branch.remote.url
 
     if registry_url:
         # Look in [renku] and [renku "{remote_name}"] for registry_url key.

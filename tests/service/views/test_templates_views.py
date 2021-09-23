@@ -27,6 +27,7 @@ from time import sleep
 import pytest
 
 from renku.core.commands.init import fetch_template_from_git, read_template_manifest
+from renku.core.metadata.repository import Repository
 from renku.core.utils.scm import normalize_to_ascii
 from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
 from tests.utils import retry_failed
@@ -95,8 +96,6 @@ def test_compare_manifests(svc_client_with_templates):
 @retry_failed
 def test_create_project_from_template(svc_client_templates_creation):
     """Check reading manifest template."""
-    from git import Repo
-
     from renku.service.serializers.headers import RenkuHeaders
     from renku.service.utils import CACHE_PROJECTS_PATH
 
@@ -108,7 +107,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=anonymous_headers)
 
     assert response
-    assert response.json["error"]
+    assert response.json.get("error") is not None, response.json
     assert "Cannot push changes" in response.json["error"]["reason"]
 
     # NOTE:  fail: missing parameters
@@ -127,7 +126,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
     assert response
-    assert {"result"} == set(response.json.keys())
+    assert {"result"} == set(response.json.keys()), response.json["error"]
     stripped_name = normalize_to_ascii(payload["project_name"])
     assert stripped_name == response.json["result"]["slug"]
     expected_url = "{0}/{1}/{2}".format(payload["project_repository"], payload["project_namespace"], stripped_name)
@@ -142,8 +141,7 @@ def test_create_project_from_template(svc_client_templates_creation):
         / payload["project_namespace"]
         / stripped_name
     )
-    repo = Repo(project_path)
-    reader = repo.config_reader()
+    reader = Repository(project_path).configuration()
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 

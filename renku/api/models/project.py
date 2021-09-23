@@ -36,8 +36,10 @@ manager and interact with Renku inside it:
 """
 from functools import wraps
 
-from git import GitError, Repo
 from werkzeug.local import LocalStack
+
+from renku.core import errors
+from renku.core.metadata.repository import Repository
 
 
 class Project:
@@ -89,10 +91,10 @@ def _get_local_client():
     from renku.core.management.client import LocalClient
 
     try:
-        repo = Repo(".", search_parent_directories=True)
-    except GitError:
+        repository = Repository(".", search_parent_directories=True)
+    except errors.GitError:
         path = "."
     else:
-        path = repo.working_dir
+        path = repository.path
 
     return LocalClient(path)

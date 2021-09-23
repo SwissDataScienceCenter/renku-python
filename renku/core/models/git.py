@@ -17,7 +17,6 @@
 # limitations under the License.
 """Git utilities."""
 
-import configparser
 import os
 import re
 from pathlib import Path
@@ -152,39 +151,14 @@ class GitURL(object):
         return img
 
 
-@attr.s
-class Range:
-    """Represent parsed Git revision as an interval."""
-
-    start = attr.ib()
-    stop = attr.ib()
-
-    @classmethod
-    def rev_parse(cls, git, revision):
-        """Parse revision string."""
-        start, is_range, stop = revision.partition("..")
-        if not is_range:
-            start, stop = None, start
-        elif not stop:
-            stop = "HEAD"
-
-        return cls(start=git.rev_parse(start) if start else None, stop=git.rev_parse(stop))
-
-    def __str__(self):
-        """Format range."""
-        if self.start:
-            return "{self.start}..{self.stop}".format(self=self)
-        return str(self.stop)
-
-
-def get_user_info(git):
+def get_user_info(repository):
     """Get Git repository's owner name and email."""
 
-    git_config = git.config_reader()
+    git_config = repository.configuration()
     try:
         name = git_config.get_value("user", "name", None)
         email = git_config.get_value("user", "email", None)
-    except (configparser.NoOptionError, configparser.NoSectionError):  # pragma: no cover
+    except errors.GitConfigurationError:  # pragma: no cover
         raise errors.ConfigurationError(
             "The user name and email are not configured. "
             'Please use the "git config" command to configure them.\n\n'

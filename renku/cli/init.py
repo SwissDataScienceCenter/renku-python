@@ -188,17 +188,16 @@ was not installed previously.
 
 """
 
-import configparser
 import json
 import os
 from pathlib import Path
 from tempfile import mkdtemp
 
 import click
-from git import Repo
 
 from renku.core import errors
 from renku.core.commands.options import option_external_storage_requested
+from renku.core.metadata.repository import Repository
 
 _GITLAB_CI = ".gitlab-ci.yml"
 _DOCKERFILE = "Dockerfile"
@@ -250,14 +249,15 @@ def resolve_data_directory(data_dir, path):
 def check_git_user_config():
     """Check that git user information is configured."""
     dummy_git_folder = mkdtemp()
-    repo = Repo.init(dummy_git_folder)
-    git_config = repo.config_reader()
+    repository = Repository.initialize(dummy_git_folder)
+    git_config = repository.configuration()
     try:
         git_config.get_value("user", "name", None)
         git_config.get_value("user", "email", None)
-        return True
-    except (configparser.NoOptionError, configparser.NoSectionError):
+    except errors.GitConfigurationError:
         return False
+    else:
+        return True
 
 
 @click.command()

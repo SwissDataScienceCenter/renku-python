@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import List, Optional
 
 import click
-import git
 import patoolib
 import requests
 
@@ -44,6 +43,7 @@ from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.metadata.immutable import DynamicProxy
+from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import (
     Dataset,
     DatasetDetailsJson,
@@ -99,7 +99,7 @@ def create_dataset_helper(
     client = client_dispatcher.current_client
 
     if not creators:
-        creators = [Person.from_git(client.repo)]
+        creators = [Person.from_repository(client.repository)]
     else:
         creators, _ = construct_creators(creators)
 
@@ -118,7 +118,7 @@ def create_dataset_helper(
 
 
 def create_dataset():
-    """Return a command for creating an empty dataset in the current repo."""
+    """Return a command for creating an empty dataset in the current repository."""
     command = Command().command(create_dataset_helper).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
@@ -196,7 +196,7 @@ def show_dataset():
     return Command().command(_show_dataset).with_database().require_migration()
 
 
-@inject.autoparams()
+@inject.autoparams("client_dispatcher", "database_gateway")
 def _add_to_dataset(
     urls,
     name,
@@ -214,7 +214,7 @@ def _add_to_dataset(
     all_at_once=False,
     destination_names=None,
     total_size=None,
-    repository=None,
+    repository: Repository = None,
     clear_files_before=False,
 ):
     """Add data to a dataset."""
@@ -274,7 +274,7 @@ def _add_to_dataset(
             '"renku dataset add {0}" command with "--create" option for '
             "automatic dataset creation.".format(name)
         )
-    except (FileNotFoundError, git.exc.NoSuchPathError) as e:
+    except (FileNotFoundError, errors.GitCommandError) as e:
         raise ParameterError("Could not find paths/URLs: \n{0}".format("\n".join(urls))) from e
 
 

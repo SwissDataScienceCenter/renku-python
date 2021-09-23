@@ -36,8 +36,7 @@ def get_relative_paths(base: Union[Path, str], paths: List[Union[Path, str]]) ->
 
     for path in paths:
         try:
-            # NOTE: Do not use os.path.realpath or Path.resolve() because they resolve symlinks
-            absolute_path = os.path.abspath(os.path.join(base, path))
+            absolute_path = get_absolute_path(os.path.join(base, path))
             relative_path = Path(absolute_path).relative_to(base)
         except ValueError:
             raise errors.ParameterError(f"Path '{path}' is not within base path '{base}'")
@@ -52,3 +51,12 @@ def are_paths_related(a, b):
     common_path = os.path.commonpath((a, b))
     absolute_common_path = os.path.abspath(common_path)
     return absolute_common_path == os.path.abspath(a) or absolute_common_path == os.path.abspath(b)
+
+
+def get_absolute_path(path: Union[Path, str], cwd: Union[Path, str] = None) -> str:
+    """Return absolute normalized path without resolving symlinks."""
+    if cwd is not None:
+        path = os.path.join(cwd, path)
+
+    # NOTE: Do not use os.path.realpath or Path.resolve() because they resolve symlinks
+    return os.path.abspath(path)

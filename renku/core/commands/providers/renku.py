@@ -315,7 +315,7 @@ class _RenkuRecordSerializer:
 
     @property
     def repository(self):
-        """The cloned repo that contains the dataset."""
+        """The cloned repository that contains the dataset."""
         return self._project_repo
 
     @staticmethod
@@ -344,8 +344,7 @@ class _RenkuRecordSerializer:
         from renku.core.management.client import LocalClient
         from renku.core.models.dataset import get_dataset_data_dir
 
-        repo_path = None
-        repo = None
+        repository = None
         client = client_dispatcher.current_client
 
         parsed_uri = urllib.parse.urlparse(self._uri)
@@ -354,7 +353,7 @@ class _RenkuRecordSerializer:
         # Clone the project
         for url in urls:
             try:
-                repo, repo_path = client.prepare_git_repo(
+                repository = client.prepare_git_repo(
                     url=url,
                     gitlab_token=self._gitlab_token,
                     renku_token=self._renku_token,
@@ -370,14 +369,13 @@ class _RenkuRecordSerializer:
         if not self._project_url:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
 
-        self._remote_client = LocalClient(repo_path)
+        self._remote_client = LocalClient(repository.path)
         client_dispatcher.push_created_client_to_stack(self._remote_client)
         database_dispatcher.push_database_to_stack(self._remote_client.database_path)
 
         try:
-
             self._migrate_project()
-            self._project_repo = repo
+            self._project_repo = repository
 
             self._dataset = self._remote_client.get_dataset(self._name)
         finally:
@@ -411,6 +409,8 @@ class _RenkuRecordSerializer:
         try:
             communication.disable()
             # NOTE: We are not interested in migrating workflows when importing datasets
-            migrate(skip_template_update=True, skip_docker_update=True, migration_type=~MigrationType.WORKFLOWS)
+            migrate(
+                skip_template_update=True, skip_docker_update=True, migration_type=~MigrationType.WORKFLOWS, strict=True
+            )
         finally:
             communication.enable()

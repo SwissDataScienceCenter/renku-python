@@ -29,6 +29,7 @@ from yagup import GitURL
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.metadata.repository import Repository
 
 
 def url_to_string(url):
@@ -79,7 +80,7 @@ def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher
         if not endpoint:
             if not use_remote:
                 return
-            remote_url = get_remote(client.repo)
+            remote_url = get_remote(client.repository)
             if not remote_url:
                 return
             endpoint = f"https://{GitURL.parse(remote_url).host}/"
@@ -94,14 +95,14 @@ def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher
     return parsed_endpoint._replace(scheme="https", path="/", params="", query="", fragment="")
 
 
-def get_remote(repo):
+def get_remote(repository: Repository):
     """Return remote name and url of repo or its active branch."""
-    if repo and repo.remotes:
-        if len(repo.remotes) == 1:
-            return repo.remotes[0].name, repo.remotes[0].url
-        elif repo.active_branch.tracking_branch():
-            name = repo.active_branch.tracking_branch().remote_name
-            return name, repo.remotes[name].url
+    if repository and repository.remotes:
+        if len(repository.remotes) == 1:
+            return repository.remotes[0].name, repository.remotes[0].url
+        elif repository.active_branch.remote_branch:
+            name = repository.active_branch.remote_branch.remote.name
+            return name, repository.remotes[name].url
 
     return None, None
 

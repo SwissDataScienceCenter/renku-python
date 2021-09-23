@@ -23,10 +23,11 @@ from functools import wraps
 from pathlib import Path
 
 import portalocker
-from git import GitCommandError, Repo
 
+from renku.core import errors
 from renku.core.errors import RenkuException, UninitializedProject
 from renku.core.management.config import RENKU_HOME
+from renku.core.metadata.repository import Repository
 from renku.core.utils.contexts import click_context
 from renku.service.cache.models.job import Job
 from renku.service.cache.models.project import Project
@@ -188,35 +189,36 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 ref = self.request_data.get("ref", None)
 
                 if ref:
-                    repo = Repo(project.abs_path)
-                    if ref != repo.active_branch.name:
+                    repository = Repository(project.abs_path)
+                    if ref != repository.active_branch.name:
                         # NOTE: Command called for different branch than the one used in cache, change branch
-                        if not repo.remotes or len(repo.remotes) != 1:
+                        if len(repository.remotes) != 1:
                             raise RenkuException("Couldn't find remote for project in cache.")
-                        origin = repo.remotes[0]
+                        origin = repository.remotes[0]
                         remote_branch = f"{origin}/{ref}"
 
                         with project.write_lock():
                             # NOTE: Add new ref to remote branches
-                            repo.git.remote("set-branches", "--add", origin, ref)
+                            repository.run_git_command("remote", "set-branches", "--add", origin, ref)
                             if self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH:
-                                repo.git.fetch(origin, ref)
+                                repository.fetch(origin, ref)
                             else:
-                                repo.git.fetch("--depth={}".format(self.clone_depth), origin, ref)
+                                repository.fetch(origin, ref, depth=self.clone_depth)
 
                             # NOTE: Switch to new ref
-                            repo.git.checkout("--track", "-f", "-b", ref, remote_branch)
+                            repository.run_git_command("checkout", "--track", "-f", "-b", ref, remote_branch)
 
                             # NOTE: cleanup remote branches in case a remote was deleted (fetch fails otherwise)
-                            repo.git.remote("prune", origin)
+                            repository.run_git_command("remote", "prune", origin)
 
-                            for branch in repo.refs:
-                                if branch.tracking_branch() and not branch.tracking_branch().is_valid():
-                                    repo.git.branch("-D", branch)
+                            for branch in repository.branches:
+                                if branch.remote_branch and not branch.remote_branch.is_valid():
+                                    repository.branches.remove(branch, force=True)
                                     # NOTE: Remove left-over refspec
                                     try:
-                                        repo.git.config("--unset", f"remote.{origin}.fetch", f"origin.{branch}$")
-                                    except GitCommandError:
+                                        with repository.configuration(writable=True) as config:
+                                            config.remove_value(f"remote.{origin}.fetch", f"origin.{branch}$")
+                                    except errors.GitConfigurationError:
                                         pass
                 else:
                     self.reset_local_repo(project)
@@ -247,13 +249,13 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                     # NOTE: return immediately in case of multiple writers waiting
                     return
 
-                repo = Repo(project.abs_path)
+                repository = Repository(project.abs_path)
                 origin = None
-                tracking_branch = repo.active_branch.tracking_branch()
+                tracking_branch = repository.active_branch.remote_branch
                 if tracking_branch:
-                    origin = repo.remotes[tracking_branch.remote_name]
-                elif repo.remotes and len(repo.remotes) == 1:
-                    origin = repo.remotes[0]
+                    origin = tracking_branch.remote
+                elif len(repository.remotes) == 1:
+                    origin = repository.remotes[0]
 
                 if origin:
                     unshallow = self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH
@@ -261,14 +263,14 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                         try:
                             # NOTE: It could happen that repository is already un-shallowed,
                             # in this case we don't want to leak git exception, but still want to fetch.
-                            origin.fetch(repo.active_branch, unshallow=True)
-                        except GitCommandError:
-                            origin.fetch(repo.active_branch)
+                            repository.fetch("origin", repository.active_branch, unshallow=True)
+                        except errors.GitCommandError:
+                            repository.fetch("origin", repository.active_branch)
 
-                        repo.git.reset("--hard", f"{origin}/{repo.active_branch}")
+                        repository.reset(f"{origin}/{repository.active_branch}", hard=True)
                     else:
-                        origin.fetch(repo.active_branch)
-                        repo.git.reset("--hard", f"{origin}/{repo.active_branch.name}")
+                        repository.fetch("origin", repository.active_branch)
+                        repository.reset(f"{origin}/{repository.active_branch}", hard=True)
 
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
@@ -338,7 +340,7 @@ class RenkuOpSyncMixin(RenkuOperationMixin, metaclass=ABCMeta):
         if self.project_path is None:
             raise RenkuException("unable to sync with remote since no operation has been executed")
 
-        _, remote_branch = repo_sync(Repo(self.project_path), remote=remote)
+        _, remote_branch = repo_sync(Repository(self.project_path), remote=remote)
 
         return remote_branch
 
