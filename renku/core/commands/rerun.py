@@ -25,9 +25,10 @@ from renku.core.commands.workflow import execute_workflow
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.workflow import sort_activities
 from renku.core.models.provenance.activity import Activity
 from renku.core.utils import communication
-from renku.core.utils.metadata import add_activity_if_recent, sort_activities
+from renku.core.utils.metadata import add_activity_if_recent
 from renku.core.utils.os import get_relative_paths
 
 

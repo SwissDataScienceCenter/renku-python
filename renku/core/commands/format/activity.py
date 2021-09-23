@@ -22,6 +22,7 @@ from typing import List, Set
 
 from renku.core.commands.format.tabulate import tabulate
 from renku.core.models.provenance.activity import Activity
+from renku.core.utils.os import are_paths_related
 
 
 def tabulate_activities(activities: List[Activity], modified_inputs: Set[str]):
@@ -31,7 +32,9 @@ def tabulate_activities(activities: List[Activity], modified_inputs: Set[str]):
     ActivityDisplay = namedtuple("ActivityDisplay", fields)
 
     for activity in activities:
-        modified_usages = {u.entity.path for u in activity.usages if u.entity.path in modified_inputs}
+        modified_usages = {
+            u.entity.path for u in activity.usages if any(are_paths_related(u.entity.path, m) for m in modified_inputs)
+        }
         generations = {g.entity.path for g in activity.generations}
         modified_inputs |= generations
         plan = activity.association.plan.name

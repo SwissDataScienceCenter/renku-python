@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku activity database gateway implementation."""
 
-import os
 from pathlib import Path
 from typing import Dict, List, Set, Tuple, Union
 
@@ -30,6 +29,7 @@ from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.metadata.gateway.database_gateway import ActivityDownstreamRelation
 from renku.core.models.provenance.activity import Activity, ActivityCollection, Usage
 from renku.core.models.workflow.plan import AbstractPlan, Plan
+from renku.core.utils.os import are_paths_related
 
 
 class ActivityGateway(IActivityGateway):
@@ -113,12 +113,6 @@ class ActivityGateway(IActivityGateway):
             if not existing_activity or existing_activity.ended_at_time < activity.ended_at_time:
                 database["latest-activity-by-plan"].add(activity, key=plan.id, verify=False)
 
-        def paths_are_related(a, b):
-            """Return True if paths are equal or one is the parent of the other."""
-            common_path = os.path.commonpath((a, b))
-            absolute_common_path = os.path.abspath(common_path)
-            return absolute_common_path == os.path.abspath(a) or absolute_common_path == os.path.abspath(b)
-
         database = self.database_dispatcher.current_database
 
         database["activities"].add(activity)
@@ -135,7 +129,7 @@ class ActivityGateway(IActivityGateway):
             by_usage[usage.entity.path].append(activity)
 
             for path, activities in by_generation.items():
-                if paths_are_related(path, usage.entity.path):
+                if are_paths_related(path, usage.entity.path):
                     upstreams.update(activities)
 
         for generation in activity.generations:
@@ -144,7 +138,7 @@ class ActivityGateway(IActivityGateway):
             by_generation[generation.entity.path].append(activity)
 
             for path, activities in by_usage.items():
-                if paths_are_related(path, generation.entity.path):
+                if are_paths_related(path, generation.entity.path):
                     downstreams.update(activities)
 
         if upstreams:
