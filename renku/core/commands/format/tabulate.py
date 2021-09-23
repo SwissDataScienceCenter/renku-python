@@ -37,7 +37,7 @@ def tabulate(collection, columns, columns_mapping, columns_alignments=None, reve
     attr = list(headers.keys())[0]
     try:
         getter = attrgetter(attr)
-        collection = sorted(collection, key=lambda d: getter(d), reverse=reverse)
+        collection = sorted(collection, key=getter, reverse=reverse)
     except TypeError:
         pass
 
