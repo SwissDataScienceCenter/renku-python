@@ -235,6 +235,19 @@ class Activity(Persistent):
             g.entity.path for g in self.generations
         ) == sorted(g.entity.path for g in other.generations)
 
+    def compare_to(self, other: "Activity") -> int:
+        """Compare execution date with another activity; return a positive value if self is executed after the other."""
+        if self.ended_at_time < other.ended_at_time:
+            return -1
+        elif self.ended_at_time > other.ended_at_time:
+            return 1
+        elif self.started_at_time < other.started_at_time:
+            return -1
+        elif self.started_at_time > other.started_at_time:
+            return 1
+
+        return 0
+
 
 class ActivityCollection(Persistent):
     """Represent a list of activities."""
