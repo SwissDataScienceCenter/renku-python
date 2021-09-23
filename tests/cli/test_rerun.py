@@ -95,6 +95,8 @@ def test_rerun_with_from(project, renku_cli, source, content):
     input2 = cwd / "input2"
     intermediate1 = cwd / "intermediate1"
     intermediate2 = cwd / "intermediate2"
+    final1 = cwd / "final1"
+    final2 = cwd / "final2"
     output = cwd / "output"
 
     write_and_commit_file(repo, input1, "input1 old-")
@@ -102,8 +104,10 @@ def test_rerun_with_from(project, renku_cli, source, content):
 
     assert 0 == renku_cli("run", "cp", input1, intermediate1).exit_code
     assert 0 == renku_cli("run", "cp", input2, intermediate2).exit_code
+    assert 0 == renku_cli("run", "cp", intermediate1, final1).exit_code
+    assert 0 == renku_cli("run", "cp", intermediate2, final2).exit_code
 
-    assert 0 == renku_cli("run", "cat", intermediate1, intermediate2, stdout=output).exit_code
+    assert 0 == renku_cli("run", "cat", final1, final2, stdout=output).exit_code
 
     # Update both inputs
     write_and_commit_file(repo, input1, "input1 new-")
@@ -231,3 +235,78 @@ def test_output_directory(runner, project, run, no_lfs_size_limit):
     result = runner.invoke(cli, cmd, catch_exceptions=False)
     assert 1 == result.exit_code
     assert not (invalid_destination / data.name).exists()
+
+
+def test_rerun_overridden_output(project, renku_cli, runner):
+    """Test a path where final output is overridden won't be rerun."""
+    repo = git.Repo(project)
+    a = os.path.join(project, "a")
+    b = os.path.join(project, "b")
+    c = os.path.join(project, "c")
+
+    write_and_commit_file(repo, a, "content")
+
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r2", "cp", b, c]).exit_code
+    assert 0 == renku_cli("run", "--name", "r3", "wc", a, stdout=c).exit_code
+
+    result = runner.invoke(cli, ["rerun", "--dry-run", c])
+
+    assert 0 == result.exit_code
+    assert "r1" not in result.output
+    assert "r2" not in result.output
+    assert "r3" in result.output
+
+
+def test_rerun_overridden_outputs_partially(project, renku_cli, runner):
+    """Test a path where one of the final output is overridden won't be rerun."""
+    repo = git.Repo(project)
+    a = os.path.join(project, "a")
+    b = os.path.join(project, "b")
+    c = os.path.join(project, "c")
+    d = os.path.join(project, "d")
+
+    write_and_commit_file(repo, a, "content")
+
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
+    assert 0 == renku_cli("run", "--name", "r2", "tee", c, d, stdin=b).exit_code
+    assert 0 == renku_cli("run", "--name", "r3", "wc", a, stdout=c).exit_code
+
+    result = runner.invoke(cli, ["rerun", "--dry-run", c])
+
+    assert 0 == result.exit_code
+    assert "r1" not in result.output
+    assert "r2" not in result.output
+    assert "r3" in result.output
+
+    # Rerunning d will rerun r1 and r2
+    result = runner.invoke(cli, ["rerun", "--dry-run", d])
+
+    assert 0 == result.exit_code
+    assert "r1" in result.output
+    assert "r2" in result.output
+    assert "r3" not in result.output
+
+
+def test_rerun_multiple_paths_common_output(project, renku_cli, runner):
+    """Test when multiple paths generate the same output only the most recent path will be rerun."""
+    repo = git.Repo(project)
+    a = os.path.join(project, "a")
+    b = os.path.join(project, "b")
+    c = os.path.join(project, "c")
+    d = os.path.join(project, "d")
+
+    write_and_commit_file(repo, a, "content")
+
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r2", "cp", b, d]).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r3", "cp", a, c]).exit_code
+    assert 0 == renku_cli("run", "--name", "r4", "wc", c, stdout=d).exit_code
+
+    result = runner.invoke(cli, ["rerun", "--dry-run", d])
+
+    assert 0 == result.exit_code
+    assert "r1" not in result.output
+    assert "r2" not in result.output
+    assert "r3" in result.output
+    assert "r4" in result.output
