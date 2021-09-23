@@ -17,6 +17,7 @@
 # limitations under the License.
 """Represent an execution of a Plan."""
 from datetime import datetime
+from itertools import chain
 from typing import List, Union
 from uuid import uuid4
 
@@ -205,7 +206,7 @@ class Activity(Persistent):
 
         pm = get_plugin_manager()
 
-        plugin_annotations = pm.hook.activity_annotations(activity=activity)
+        plugin_annotations = list(chain.from_iterable(pm.hook.activity_annotations(activity=activity)))
 
         if plugin_annotations:
             activity.annotations.extend(plugin_annotations)
@@ -233,6 +234,19 @@ class Activity(Persistent):
         return sorted(u.entity.path for u in self.usages) == sorted(u.entity.path for u in other.usages) and sorted(
             g.entity.path for g in self.generations
         ) == sorted(g.entity.path for g in other.generations)
+
+    def compare_to(self, other: "Activity") -> int:
+        """Compare execution date with another activity; return a positive value if self is executed after the other."""
+        if self.ended_at_time < other.ended_at_time:
+            return -1
+        elif self.ended_at_time > other.ended_at_time:
+            return 1
+        elif self.started_at_time < other.started_at_time:
+            return -1
+        elif self.started_at_time > other.started_at_time:
+            return 1
+
+        return 0
 
 
 class ActivityCollection(Persistent):

@@ -21,10 +21,11 @@ from collections import defaultdict
 from typing import List, Set
 
 from renku.core import errors
-from renku.core.commands.update import execute_workflow
+from renku.core.commands.workflow import execute_workflow
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.workflow import sort_activities
 from renku.core.models.provenance.activity import Activity
 from renku.core.utils import communication
 from renku.core.utils.metadata import add_activity_if_recent
@@ -46,7 +47,11 @@ def rerun_command():
 
 @inject.autoparams()
 def _rerun(
-    sources: List[str], paths: List[str], client_dispatcher: IClientDispatcher, activity_gateway: IActivityGateway
+    dry_run: bool,
+    sources: List[str],
+    paths: List[str],
+    client_dispatcher: IClientDispatcher,
+    activity_gateway: IActivityGateway,
 ):
     client = client_dispatcher.current_client
 
@@ -59,6 +64,10 @@ def _rerun(
 
     if len(activities) == 0:
         raise errors.NothingToExecuteError()
+
+    activities = sort_activities(activities)
+    if dry_run:
+        return activities, set(sources)
 
     plans = [a.plan_with_values for a in activities]
 
@@ -87,7 +96,7 @@ def _get_activities(paths: List[str], sources: List[str], activity_gateway: IAct
             # NOTE: Add the activity to check if it also matches the condition
             upstream_chains.append((latest_activity,))
             # NOTE: Only include paths that is using at least one of the sources
-            upstream_chains = [c for c in upstream_chains if any(u.entity.path in sources for u in c[0].usages)]
+            upstream_chains = [c for c in upstream_chains if any(u.entity.path in sources for u in c[-1].usages)]
 
             # NOTE: Include activity only if any of its upstream match the condition
             if upstream_chains:

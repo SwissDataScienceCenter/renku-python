@@ -119,17 +119,28 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
+from renku.core.commands.format.activity import tabulate_activities
 from renku.core.commands.update import update_command
 
 
 @click.command()
 @click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all outdated files.")
+@click.option("--dry-run", "-n", is_flag=True, default=False, help="Show a preview of plans that will be executed.")
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
-def update(update_all, paths):
+def update(update_all, dry_run, paths):
     """Update existing files by rerunning their outdated workflow."""
     communicator = ClickCallback()
 
     try:
-        update_command().with_communicator(communicator).build().execute(update_all=update_all, paths=paths)
+        result = (
+            update_command()
+            .with_communicator(communicator)
+            .build()
+            .execute(update_all=update_all, dry_run=dry_run, paths=paths)
+        )
     except errors.NothingToExecuteError:
         exit(1)
+    else:
+        if dry_run:
+            activities, modified_inputs = result.output
+            click.echo(tabulate_activities(activities, modified_inputs))
