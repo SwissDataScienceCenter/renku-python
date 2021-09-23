@@ -45,3 +45,10 @@ def get_relative_paths(base: Union[Path, str], paths: List[Union[Path, str]]) ->
         relative_paths.append(str(relative_path))
 
     return relative_paths
+
+
+def are_paths_related(a, b):
+    """Return True if paths are equal or one is the parent of the other."""
+    common_path = os.path.commonpath((a, b))
+    absolute_common_path = os.path.abspath(common_path)
+    return absolute_common_path == os.path.abspath(a) or absolute_common_path == os.path.abspath(b)
