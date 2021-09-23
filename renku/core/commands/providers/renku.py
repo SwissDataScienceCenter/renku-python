@@ -402,20 +402,13 @@ class _RenkuRecordSerializer:
         self._files_info = files_info
 
     @staticmethod
-    @inject.autoparams()
-    def _migrate_project(client_dispatcher: IClientDispatcher):
+    def _migrate_project():
         if is_project_unsupported():
             return
 
-        client = client_dispatcher.current_client
-
-        # NOTE: We are not interested in migrating workflows when importing datasets
-        previous_migration_type = client.migration_type
-        client.migration_type = ~MigrationType.WORKFLOWS
         try:
             communication.disable()
-            migrate(skip_template_update=True, skip_docker_update=True)
+            # NOTE: We are not interested in migrating workflows when importing datasets
+            migrate(skip_template_update=True, skip_docker_update=True, migration_type=~MigrationType.WORKFLOWS)
         finally:
-            client.migration_type = previous_migration_type
-
             communication.enable()

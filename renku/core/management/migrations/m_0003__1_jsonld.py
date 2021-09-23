@@ -33,11 +33,11 @@ from renku.core.management.migrations.utils import (
 from renku.core.models.jsonld import read_yaml, write_yaml
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
 
-    _migrate_project_metadata(client)
-    _migrate_datasets_metadata(client)
+    _migrate_project_metadata(migration_context.client)
+    _migrate_datasets_metadata(migration_context.client)
 
 
 def _migrate_project_metadata(client):

@@ -18,9 +18,12 @@
 """Renku workflow commands."""
 
 
+import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+
+from git import Actor
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
@@ -33,11 +36,17 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
-from renku.core.management.workflow.value_resolution import apply_run_values
+from renku.core.management.workflow.plan_factory import delete_indirect_files_list
+from renku.core.management.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
+from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
+from renku.core.plugins.provider import execute
 from renku.core.utils import communication
+from renku.core.utils.datetime8601 import local_now
+from renku.core.utils.git import add_to_git
 from renku.core.utils.os import get_relative_paths
+from renku.version import __version__, version_url
 
 
 def _ref(name):
@@ -49,6 +58,15 @@ def _deref(ref):
     """Remove workflows prefix."""
     assert ref.startswith("workflows/")
     return ref[len("workflows/") :]
+
+
+def _safe_read_yaml(file: str) -> Dict[str, Any]:
+    try:
+        from renku.core.models import jsonld as jsonld
+
+        return jsonld.read_yaml(file)
+    except Exception as e:
+        raise errors.ParameterError(e)
 
 
 @inject.autoparams()
@@ -67,6 +85,9 @@ def _list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str])
 
     if format not in WORKFLOW_FORMATS:
         raise errors.UsageError(f'Provided format "{format}" is not supported ({", ".join(WORKFLOW_FORMATS.keys())})"')
+
+    if format == "json-ld":
+        return WORKFLOW_FORMATS[format](list(workflows.values()), columns=columns)
 
     return WORKFLOW_FORMATS[format](list(map(lambda x: plan_view(x), workflows.values())), columns=columns)
 
@@ -184,7 +205,8 @@ def _group_workflow(
 
     if link_all:
         # NOTE: propagate values to for linking to use
-        apply_run_values(plan)
+        rv = CompositePlanValueResolver(plan, None)
+        plan = rv.apply()
 
         graph = ExecutionGraph(plan, virtual_links=True)
 
@@ -276,27 +298,19 @@ def _export_workflow(
     if output:
         output = Path(output)
 
-    from renku.core.plugins.pluginmanager import get_plugin_manager
-
-    pm = get_plugin_manager()
-    supported_formats = pm.hook.workflow_format()
-    export_plugins = list(map(lambda x: x[0], supported_formats))
-    converter = list(map(lambda x: x[0], filter(lambda x: format in x[1], supported_formats)))
-    if not any(converter):
-        raise errors.ParameterError(f"The specified workflow exporter format '{format}' is not available.")
-    elif len(converter) > 1:
-        raise errors.ConfigurationError(
-            f"The specified format '{format}' is supported by more than one export plugins!"
-        )
-
     if values:
-        from renku.core.models import jsonld as jsonld
+        values = _safe_read_yaml(values)
+        rv = ValueResolver.get(workflow, values)
+        workflow = rv.apply()
+        if rv.missing_parameters:
+            communication.warn(
+                f'Could not resolve the following parameters in "{workflow.name}" workflow: '
+                f'{",".join(rv.missing_parameters)}'
+            )
 
-        values = jsonld.read_yaml(values)
-        workflow = apply_run_values(workflow, values)
+    from renku.core.plugins.workflow import workflow_converter
 
-    export_plugins.remove(converter[0])
-    converter = pm.subset_hook_caller("workflow_convert", export_plugins)
+    converter = workflow_converter(format)
     return converter(workflow=workflow, basedir=client.path, output=output, output_format=format)
 
 
@@ -373,3 +387,100 @@ def _workflow_outputs(activity_gateway: IActivityGateway, paths: List[str] = Non
 def workflow_outputs_command():
     """Command that shows inputs used by workflows."""
     return Command().command(_workflow_outputs).require_migration().with_database(write=False)
+
+
+@inject.autoparams()
+def execute_workflow(
+    plans: List[Plan],
+    command_name,
+    client_dispatcher: IClientDispatcher,
+    activity_gateway: IActivityGateway,
+    plan_gateway: IPlanGateway,
+    provider="cwltool",
+    config=None,
+):
+    """Execute a Run with/without subprocesses."""
+    client = client_dispatcher.current_client
+
+    # NOTE: Pull inputs from Git LFS or other storage backends
+    if client.check_external_storage():
+        inputs = [i.actual_value for p in plans for i in p.inputs]
+        client.pull_paths_from_storage(*inputs)
+
+    delete_indirect_files_list(client.path)
+
+    started_at_time = local_now()
+
+    # NOTE: Create a ``CompositePlan`` because ``workflow_covert`` expects it
+    workflow = CompositePlan(id=CompositePlan.generate_id(), plans=plans, name=f"plan-collection-{uuid.uuid4().hex}")
+    modified_outputs = execute(workflow=workflow, basedir=client.path, provider=provider, config=config)
+
+    ended_at_time = local_now()
+
+    add_to_git(client.repo.git, *modified_outputs)
+
+    if client.repo.is_dirty():
+        postfix = "s" if len(modified_outputs) > 1 else ""
+        commit_msg = f"renku {command_name}: committing {len(modified_outputs)} modified file{postfix}"
+        committer = Actor(f"renku {__version__}", version_url)
+        client.repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
+
+    activities = []
+
+    for plan in plans:
+        # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
+        original_plan = plan_gateway.get_by_id(plan.id)
+        activity = Activity.from_plan(plan=original_plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
+        activity_gateway.add(activity)
+        activities.append(activity)
+
+    if len(activities) > 1:
+        activity_collection = ActivityCollection(activities=activities)
+        activity_gateway.add_activity_collection(activity_collection)
+
+
+@inject.autoparams()
+def _execute_workflow(
+    name_or_id: str, set_params: List[str], provider: str, config: Optional[str], values: Optional[str]
+):
+    workflow = _find_workflow(name_or_id)
+
+    # apply the provided parameter settings provided by user
+    override_params = dict()
+    if values:
+        override_params.update(_safe_read_yaml(values))
+
+    if set_params:
+        for param in set_params:
+            name, value = param.split("=", maxsplit=1)
+            override_params[name] = value
+
+    if override_params:
+        rv = ValueResolver.get(workflow, override_params)
+        workflow = rv.apply()
+
+        if rv.missing_parameters:
+            communication.warn(
+                f'Could not resolve the following parameters in "{workflow.name}" workflow: '
+                f'{",".join(rv.missing_parameters)}'
+            )
+
+    if config:
+        config = _safe_read_yaml(config)
+
+    if isinstance(workflow, CompositePlan):
+        import networkx as nx
+
+        graph = ExecutionGraph(workflow=workflow, virtual_links=True)
+        plans = list(nx.topological_sort(graph.workflow_graph))
+    else:
+        plans = [workflow]
+
+    execute_workflow(plans=plans, command_name="execute", provider=provider, config=config)
+
+
+def execute_workflow_command():
+    """Command that executes a workflow."""
+    return (
+        Command().command(_execute_workflow).require_migration().require_clean().with_database(write=True).with_commit()
+    )
