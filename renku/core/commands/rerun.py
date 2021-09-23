@@ -21,7 +21,7 @@ from collections import defaultdict
 from typing import List, Set
 
 from renku.core import errors
-from renku.core.commands.update import execute_workflow
+from renku.core.commands.workflow import execute_workflow
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
