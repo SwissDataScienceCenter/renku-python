@@ -324,7 +324,7 @@ class PlanFactory:
 
         return candidates
 
-    def _get_mimetype(self, file: Path) -> str:
+    def _get_mimetype(self, file: Path) -> List[str]:
         """Return the MIME-TYPE of the given file."""
         # TODO: specify the actual mime-type of the file
         return ["application/octet-stream"]
