@@ -78,7 +78,7 @@ class AbstractPlan(Persistent, ABC):
         return f"/plans/{uuid}"
 
     def _get_default_name(self) -> str:
-        name = "-".join(str(a) for a in self.to_argv())
+        name = "-".join(str(a).replace(".", "_") for a in self.to_argv())
         if not name:
             return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 

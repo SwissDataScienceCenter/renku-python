@@ -19,8 +19,11 @@
 
 
 import itertools
+import operator
 import uuid
+from collections import defaultdict
 from datetime import datetime
+from functools import reduce
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -490,6 +493,24 @@ def execute_workflow(
 def _execute_workflow(
     name_or_id: str, set_params: List[str], provider: str, config: Optional[str], values: Optional[str]
 ):
+    def _nested_dict():
+        return defaultdict(_nested_dict)
+
+    def _merge_nested_dicts(dict1, dict2):
+        # from https://stackoverflow.com/a/7205672
+        for k in set(dict1.keys()).union(dict2.keys()):
+            if k in dict1 and k in dict2:
+                if isinstance(dict1[k], dict) and isinstance(dict2[k], dict):
+                    yield (k, dict(_merge_nested_dicts(dict1[k], dict2[k])))
+                else:
+                    # If one of the values is not a dict, you can't continue merging it.
+                    # Value from second dict overrides one in first and we move on.
+                    yield (k, dict2[k])
+            elif k in dict1:
+                yield (k, dict1[k])
+            else:
+                yield (k, dict2[k])
+
     workflow = _find_workflow(name_or_id)
 
     # apply the provided parameter settings provided by user
@@ -500,7 +521,17 @@ def _execute_workflow(
     if set_params:
         for param in set_params:
             name, value = param.split("=", maxsplit=1)
-            override_params[name] = value
+            keys = name.split(".")
+
+            if len(keys) > 1:
+                # create a nested dictionary
+                set_param = _nested_dict()
+                last_key = reduce(operator.getitem, keys[:-1], set_param)
+                last_key[keys[-1]] = value
+
+                override_params = dict(_merge_nested_dicts(override_params, dict(set_param)))
+            else:
+                override_params[name] = value
 
     if override_params:
         rv = ValueResolver.get(workflow, override_params)

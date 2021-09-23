@@ -110,7 +110,7 @@ def get_slug(name):
     lower_case = name.lower()
     no_space = re.sub(r"\s+", "_", lower_case)
     normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
-    no_invalid_characters = re.sub(r"[^a-zA-Z0-9._-]", "_", normalized)
+    no_invalid_characters = re.sub(r"[^a-zA-Z0-9_-]", "_", normalized)
     no_duplicates = re.sub(r"([._-])[._-]+", r"\1", no_invalid_characters)
     valid_start = re.sub(r"^[._-]", "", no_duplicates)
     valid_end = re.sub(r"[._-]$", "", valid_start)
