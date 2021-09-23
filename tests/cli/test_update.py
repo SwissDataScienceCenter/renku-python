@@ -322,7 +322,7 @@ def test_update_no_args(runner, project, no_lfs_warning):
     result = runner.invoke(cli, ["update"])
 
     assert 2 == result.exit_code
-    assert "Either PATHS or --all/-a should be specified" in result.output
+    assert "Either PATHS, --all/-a, or --dry-run/-n should be specified." in result.output
 
     assert before_commit == repo.head.commit
 
@@ -336,3 +336,77 @@ def test_update_with_no_execution(project, runner):
     result = runner.invoke(cli, ["update", input], catch_exceptions=False)
 
     assert 1 == result.exit_code
+
+
+def test_update_overridden_output(project, renku_cli, runner):
+    """Test a path where final output is overridden will be updated partially."""
+    repo = git.Repo(project)
+    a = os.path.join(project, "a")
+    b = os.path.join(project, "b")
+    c = os.path.join(project, "c")
+
+    write_and_commit_file(repo, a, "content")
+
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r2", "cp", b, c]).exit_code
+    assert 0 == renku_cli("run", "--name", "r3", "wc", a, stdout=c).exit_code
+
+    write_and_commit_file(repo, a, "new content")
+
+    result = runner.invoke(cli, ["update", "--dry-run"])
+
+    assert 0 == result.exit_code
+    assert "r1" in result.output
+    assert "r2" not in result.output
+    assert "r3" in result.output
+
+
+def test_update_overridden_outputs_partially(project, renku_cli, runner):
+    """Test a path where one of the final output is overridden will be updated completely but in proper order."""
+    repo = git.Repo(project)
+    a = os.path.join(project, "a")
+    b = os.path.join(project, "b")
+    c = os.path.join(project, "c")
+    d = os.path.join(project, "d")
+
+    write_and_commit_file(repo, a, "content")
+
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
+    assert 0 == renku_cli("run", "--name", "r2", "tee", c, d, stdin=b).exit_code
+    assert 0 == renku_cli("run", "--name", "r3", "wc", a, stdout=c).exit_code
+
+    write_and_commit_file(repo, a, "new content")
+
+    result = runner.invoke(cli, ["update", "--dry-run"])
+
+    assert 0 == result.exit_code
+    assert "r1" in result.output
+    assert "r2" in result.output
+    assert "r3" in result.output
+    assert result.output.find("r2") < result.output.find("r3")
+
+
+def test_update_multiple_paths_common_output(project, renku_cli, runner):
+    """Test multiple paths that generate the same output will be updated except the last overridden step."""
+    repo = git.Repo(project)
+    a = os.path.join(project, "a")
+    b = os.path.join(project, "b")
+    c = os.path.join(project, "c")
+    d = os.path.join(project, "d")
+
+    write_and_commit_file(repo, a, "content")
+
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r2", "cp", b, d]).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r3", "cp", a, c]).exit_code
+    assert 0 == renku_cli("run", "--name", "r4", "wc", c, stdout=d).exit_code
+
+    write_and_commit_file(repo, a, "new content")
+
+    result = runner.invoke(cli, ["update", "--dry-run"])
+
+    assert 0 == result.exit_code
+    assert "r1" in result.output
+    assert "r2" not in result.output
+    assert "r3" in result.output
+    assert "r4" in result.output

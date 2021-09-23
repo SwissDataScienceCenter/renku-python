@@ -381,6 +381,7 @@ FORMATS = {
 """Valid formatting options."""
 
 GRAPH_FORMATS = {
+    "jsonld": jsonld,
     "json-ld": jsonld,
     "json-ld-graph": jsonld_graph,
     "nt": nt,
