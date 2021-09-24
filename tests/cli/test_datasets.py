@@ -36,7 +36,7 @@ from renku.core.models.dataset import Dataset
 from renku.core.models.refs import LinkReference
 from renku.core.utils.git import get_object_hash
 from renku.core.utils.urls import get_slug
-from tests.utils import assert_dataset_is_mutated, format_result_exception
+from tests.utils import assert_dataset_is_mutated, format_result_exception, write_and_commit_file
 
 
 def test_datasets_create_clean(runner, project, client, load_dataset_with_injection):
@@ -2009,6 +2009,44 @@ def test_datasets_provenance_add_file(runner, client, directory_tree, load_datas
     dataset = load_dataset_with_injection("my-data", client)
 
     assert {"file1", "file2", "file3"} == {Path(f.entity.path).name for f in dataset.files}
+
+
+def test_immutability_of_dataset_files(runner, client, directory_tree, load_dataset_with_injection):
+    """Test DatasetFiles are generated when their Entity changes."""
+    assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "-c", str(directory_tree / "file1")]).exit_code
+
+    file1 = os.path.join(DATA_DIR, "my-data", "file1")
+
+    v1 = load_dataset_with_injection("my-data", client).find_file(file1)
+
+    # DatasetFile changes when Entity is changed
+    write_and_commit_file(client.repo, file1, "changed content")
+    assert 0 == runner.invoke(cli, ["dataset", "update"]).exit_code
+    v2 = load_dataset_with_injection("my-data", client).find_file(file1)
+
+    assert v1.id != v2.id
+
+    # DatasetFile doesn't change when Entity is unchanged
+    assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree / "dir1" / "file2")]).exit_code
+    v3 = load_dataset_with_injection("my-data", client).find_file(file1)
+
+    assert v2.id == v3.id
+
+    # DatasetFile changes when Entity is unchanged but is overwritten
+    assert (
+        0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree / "file1")]).exit_code
+    )
+    v4 = load_dataset_with_injection("my-data", client).find_file(file1)
+
+    assert v3.id != v4.id
+
+    # DatasetFile changes if the file is removed
+    assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "--include", "file1"], input="y").exit_code
+    dataset = load_dataset_with_injection("my-data", client)
+    v5 = next(f for f in dataset.dataset_files if f.is_removed())
+
+    assert "file1" in v5.entity.path
+    assert v4.id != v5.id
 
 
 @pytest.mark.serial

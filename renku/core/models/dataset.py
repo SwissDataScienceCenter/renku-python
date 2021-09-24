@@ -73,13 +73,15 @@ class Url:
         self.url_id: str = url_id
 
         if not self.url:
-            self.url = self.get_default_url()
+            self.url = self._get_default_url()
         elif isinstance(self.url, dict):
             if "_id" in self.url:
                 self.url["@id"] = self.url.pop("_id")
             self.url_id = self.url["@id"]
+            self.url_str = None
         elif isinstance(self.url, str):
             self.url_str = self.url
+            self.url_id = None
 
         if not self.id or self.id.startswith("_:"):
             self.id = Url.generate_id(url_str=self.url_str, url_id=self.url_id)
@@ -93,7 +95,12 @@ class Url:
 
         return f"/urls/{id}"
 
-    def get_default_url(self):
+    @property
+    def value(self):
+        """Returns the url value as string."""
+        return self.url_str or self.url_id
+
+    def _get_default_url(self):
         """Define default value for url field."""
         if self.url_str:
             return self.url_str
@@ -256,6 +263,14 @@ class DatasetFile(Slots):
         So, it should be marked by different DatasetFiles.
         """
         return f"/dataset-files/{uuid4().hex}"
+
+    @classmethod
+    def from_dataset_file(cls, other: "DatasetFile") -> "DatasetFile":
+        """Return a copy with a different id."""
+        self = other.copy()
+        self.id = DatasetFile.generate_id()
+
+        return self
 
     def copy(self) -> "DatasetFile":
         """Return a clone of this object."""
@@ -493,6 +508,7 @@ class Dataset(Persistent):
 
         # NOTE: Whatever remains in `current_files` are removed in the newer version
         for removed_file in current_files.values():
+            removed_file = DatasetFile.from_dataset_file(removed_file)
             removed_file.remove(date)
             files.append(removed_file)
 
