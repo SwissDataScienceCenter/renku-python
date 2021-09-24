@@ -257,7 +257,7 @@ class Plan(AbstractPlan):
     def to_argv(self) -> List[Any]:
         """Convert a Plan into argv list."""
         arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
-        arguments = filter(lambda a: a.position is not None, arguments)
+        arguments = filter(lambda a: a.position is not None and not getattr(a, "mapped_to", None), arguments)
         arguments = sorted(arguments, key=lambda a: a.position)
 
         argv = self.command.split(" ") if self.command else []

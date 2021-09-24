@@ -22,6 +22,7 @@ import re
 import shlex
 import time
 from contextlib import contextmanager
+from itertools import chain
 from pathlib import Path
 from typing import Any, List, Optional, Set, Tuple
 
@@ -235,9 +236,10 @@ class PlanFactory:
             self.add_command_parameter(default_value=prefix, position=position)
 
         if self.stdin:
+            position += 1
             default, type = self.guess_type(str(self.working_dir / self.stdin), ignore_filenames=output_streams)
             assert isinstance(default, File)
-            self.add_command_input(default_value=str(default), encoding_format=default.mime_type)
+            self.add_command_input(default_value=str(default), encoding_format=default.mime_type, position=position)
 
     def add_outputs(self, candidates: Set[str]):
         """Yield detected output and changed command input parameter."""
@@ -394,6 +396,12 @@ class PlanFactory:
             return
 
         mapped_stream = self.get_stream_mapping_for_value(default_value)
+
+        if mapped_stream and position is None:
+            position = (
+                max((p.position for p in chain(self.inputs, self.outputs, self.parameters) if p.position), default=0)
+                + 1
+            )
 
         self.outputs.append(
             CommandOutput(
