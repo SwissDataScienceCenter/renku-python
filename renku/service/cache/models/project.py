@@ -45,6 +45,7 @@ class Project(Model):
     git_url = TextField(index=True)
 
     name = TextField()
+    slug = TextField()
     fullname = TextField()
     description = TextField()
     email = TextField()
@@ -55,7 +56,7 @@ class Project(Model):
     @property
     def abs_path(self):
         """Full path of cached project."""
-        return CACHE_PROJECTS_PATH / self.user_id / self.project_id / self.owner / self.name
+        return CACHE_PROJECTS_PATH / self.user_id / self.project_id / self.owner / self.slug
 
     def read_lock(self):
         """Shared read lock on the project."""

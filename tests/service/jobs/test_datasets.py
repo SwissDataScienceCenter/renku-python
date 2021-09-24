@@ -67,7 +67,13 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
     dest = make_project_path(
-        user_data, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+        user_data,
+        {
+            "owner": url_components.owner,
+            "name": url_components.name,
+            "slug": url_components.slug,
+            "project_id": project_id,
+        },
     )
 
     old_commit = Repo(dest).head.commit
@@ -109,7 +115,13 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
     dest = make_project_path(
-        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+        user,
+        {
+            "owner": url_components.owner,
+            "name": url_components.name,
+            "slug": url_components.slug,
+            "project_id": project_id,
+        },
     )
 
     old_commit = Repo(dest).head.commit
@@ -158,7 +170,13 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
     dest = make_project_path(
-        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+        user,
+        {
+            "owner": url_components.owner,
+            "name": url_components.name,
+            "slug": url_components.slug,
+            "project_id": project_id,
+        },
     )
 
     old_commit = Repo(dest).head.commit
@@ -201,7 +219,13 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
     dest = make_project_path(
-        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+        user,
+        {
+            "owner": url_components.owner,
+            "name": url_components.name,
+            "slug": url_components.slug,
+            "project_id": project_id,
+        },
     )
 
     old_commit = Repo(dest).head.commit
@@ -248,7 +272,13 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"].keys())
 
     dest = make_project_path(
-        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+        user,
+        {
+            "owner": url_components.owner,
+            "name": url_components.name,
+            "slug": url_components.slug,
+            "project_id": project_id,
+        },
     )
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["files"][0]["job_id"]
@@ -363,7 +393,13 @@ def test_dataset_project_lock(doi, svc_client_with_repo):
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
     dest = make_project_path(
-        user, {"owner": url_components.owner, "name": url_components.name, "project_id": project_id}
+        user,
+        {
+            "owner": url_components.owner,
+            "name": url_components.name,
+            "slug": url_components.slug,
+            "project_id": project_id,
+        },
     )
 
     old_commit = Repo(dest).head.commit

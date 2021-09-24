@@ -36,11 +36,11 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
 
     # Check response.
     assert {"result"} == response.json.keys()
-    assert {"project_id", "url", "namespace", "name"} == response.json["result"].keys()
+    assert {"project_id", "url", "namespace", "name", "slug"} == response.json["result"].keys()
 
     # Check ctrl_mock.
     assert ctrl_mock.call_count == 1
-    assert response.json["result"]["name"] == ctrl_mock.call_args[0][0].name
+    assert response.json["result"]["slug"] == ctrl_mock.call_args[0][0].name
 
     # Ctrl state.
     expected_context = {
@@ -55,6 +55,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "parameters",
         "project_name",
         "name",
+        "slug",
         "project_description",
         "new_project_url",
         "fullname",
@@ -144,8 +145,8 @@ def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client
 
     # Check response.
     assert {"result"} == response.json.keys()
-    assert {"project_id", "url", "namespace", "name"} == response.json["result"].keys()
-    assert expected_name == response.json["result"]["name"]
+    assert {"project_id", "url", "namespace", "name", "slug"} == response.json["result"].keys()
+    assert expected_name == response.json["result"]["slug"]
 
 
 @pytest.mark.parametrize("project_name", ["здрасти", "---- --üäü ----", "-.-", "...", "----", "~.---", "`~~"])
