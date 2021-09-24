@@ -28,6 +28,7 @@ from git import Actor
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
 from renku.core.commands.view_model import plan_view
+from renku.core.commands.view_model.activity_graph import ActivityGraphViewModel
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
@@ -35,6 +36,7 @@ from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
+from renku.core.management.workflow.activity import create_activity_graph, get_activities_until_paths
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.management.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
@@ -45,7 +47,7 @@ from renku.core.plugins.provider import execute
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import local_now
 from renku.core.utils.git import add_to_git
-from renku.core.utils.os import get_relative_paths
+from renku.core.utils.os import are_paths_related, get_relative_paths
 from renku.version import __version__, version_url
 
 
@@ -439,7 +441,6 @@ def execute_workflow(
         activity_gateway.add_activity_collection(activity_collection)
 
 
-@inject.autoparams()
 def _execute_workflow(
     name_or_id: str, set_params: List[str], provider: str, config: Optional[str], values: Optional[str]
 ):
@@ -484,3 +485,34 @@ def execute_workflow_command():
     return (
         Command().command(_execute_workflow).require_migration().require_clean().with_database(write=True).with_commit()
     )
+
+
+@inject.autoparams()
+def _visualize_graph(
+    sources,
+    targets,
+    show_files,
+    activity_gateway: IActivityGateway,
+    client_dispatcher: IClientDispatcher,
+):
+    """Visualize an activity graph."""
+    client = client_dispatcher.current_client
+
+    sources = sources or []
+    sources = get_relative_paths(base=client.path, paths=sources)
+
+    if not targets:
+        usages = activity_gateway.get_all_usage_paths()
+        generations = activity_gateway.get_all_generation_paths()
+
+        targets = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
+    targets = get_relative_paths(base=client.path, paths=targets)
+
+    activities = get_activities_until_paths(targets, sources, activity_gateway)
+    graph = create_activity_graph(activities, with_inputs_outputs=show_files)
+    return ActivityGraphViewModel(graph)
+
+
+def visualize_graph_command():
+    """Execute the graph visualization command."""
+    return Command().command(_visualize_graph).require_migration().with_database(write=False)

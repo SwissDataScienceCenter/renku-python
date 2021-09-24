@@ -26,6 +26,7 @@ CLI_FIXTURE_LOCATIONS = [
     "tests.cli.fixtures.cli_providers",
     "tests.cli.fixtures.cli_repository",
     "tests.cli.fixtures.cli_runner",
+    "tests.cli.fixtures.cli_workflow",
 ]
 
 CORE_FIXTURE_LOCATIONS = [
