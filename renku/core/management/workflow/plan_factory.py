@@ -397,7 +397,7 @@ class PlanFactory:
 
         mapped_stream = self.get_stream_mapping_for_value(default_value)
 
-        if mapped_stream and not position:
+        if mapped_stream and position is None:
             position = (
                 max((p.position for p in chain(self.inputs, self.outputs, self.parameters) if p.position), default=0)
                 + 1
