@@ -1114,7 +1114,7 @@ def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     assert type(provider) is DataverseProvider
 
 
-def test_dataset_tag(tmpdir, runner, project, client, subdirectory):
+def test_dataset_tag(tmpdir, runner, client, subdirectory, get_datasets_provenance_with_injection):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -1138,6 +1138,11 @@ def test_dataset_tag(tmpdir, runner, project, client, subdirectory):
 
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
+
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("my-dataset")
+        all_tags = datasets_provenance.get_all_tags(dataset)
+        assert {dataset.id} == {t.dataset_id.value for t in all_tags}
 
 
 @pytest.mark.parametrize("form", ["tabular", "json-ld"])

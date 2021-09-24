@@ -35,7 +35,7 @@ def tabular(tags):
                 ("name", None),
                 ("description", None),
                 ("dataset", None),
-                ("dataset_id", "dataset id"),
+                ("dataset_id.value", "dataset id"),
             )
         ),
         # workaround for tabulate issue 181

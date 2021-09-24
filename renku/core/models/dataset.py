@@ -116,16 +116,16 @@ class DatasetTag(Persistent):
     def __init__(
         self,
         *,
-        dataset_id: str,
+        dataset_id: Url,
         date_created: datetime = None,
         description: str = None,
         id: str = None,
         name: str,
     ):
         if not id:
-            id = DatasetTag.generate_id(dataset_id=dataset_id, name=name)
+            id = DatasetTag.generate_id(dataset_id=dataset_id.value, name=name)
 
-        self.dataset_id: str = dataset_id
+        self.dataset_id: Url = dataset_id
         self.date_created: datetime = parse_date(date_created) or local_now()
         self.description: str = description
         self.id: str = id
@@ -614,7 +614,7 @@ class DatasetTagSchema(JsonLDSchema):
         model = DatasetTag
         unknown = EXCLUDE
 
-    dataset_id = fields.String(schema.location)
+    dataset_id = Nested(schema.about, UrlSchema, missing=None)
     date_created = fields.DateTime(schema.startDate, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     description = fields.String(schema.description, missing=None)
     id = fields.Id()

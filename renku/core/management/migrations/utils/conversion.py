@@ -36,7 +36,11 @@ def _convert_dataset_tag(tag: Optional[old_datasets.DatasetTag]) -> Optional[Dat
     """Convert old DatasetTag to new DatasetTag."""
     if not tag:
         return
-    return DatasetTag(dataset_id="dummy-id", date_created=tag.created, description=tag.description, name=tag.name)
+
+    # NOTE: ``dataset_id`` field will be set later when processing the migrated commit.
+    return DatasetTag(
+        dataset_id=Url(url_id="dummy-id"), date_created=tag.created, description=tag.description, name=tag.name
+    )
 
 
 def _convert_language(language: Optional[old_datasets.Language]) -> Optional[Language]:

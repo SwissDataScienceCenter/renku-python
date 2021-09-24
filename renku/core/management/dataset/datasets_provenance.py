@@ -24,7 +24,7 @@ from uuid import UUID
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.models.dataset import Dataset, DatasetTag
+from renku.core.models.dataset import Dataset, DatasetTag, Url
 from renku.core.models.provenance.agent import Person
 from renku.core.utils import communication
 
@@ -194,6 +194,9 @@ class DatasetsProvenance:
             if tag.name in current_tag_names:
                 continue
             tag = DatasetTag(
-                dataset_id=dataset.id, date_created=tag.date_created, description=tag.description, name=tag.name
+                dataset_id=Url(url_id=dataset.id),
+                date_created=tag.date_created,
+                description=tag.description,
+                name=tag.name,
             )
             self.add_tag(dataset, tag)
