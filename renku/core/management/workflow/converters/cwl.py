@@ -339,11 +339,13 @@ class CWLConverter(object):
         """Converts an input to a CWL input."""
         entity = input.consumes
         type_ = "Directory" if isinstance(entity, Collection) else "File"
+        position = input.position
 
         sanitized_id = input.sanitized_id
         sanitized_id = sanitized_id.replace("/", "_")
         if input.mapped_to:
             sanitized_id = "input_stdin"
+            position = None
 
         separate = None
         prefix = None
@@ -358,7 +360,7 @@ class CWLConverter(object):
         return cwlgen.CommandInputParameter(
             sanitized_id,
             param_type=type_,
-            input_binding=cwlgen.CommandLineBinding(position=input.position, prefix=prefix, separate=separate),
+            input_binding=cwlgen.CommandLineBinding(position=position, prefix=prefix, separate=separate),
             default={"path": os.path.abspath(os.path.join(basedir, entity.path)), "class": type_},
         )
 
@@ -705,10 +707,12 @@ class CWLExporter(IWorkflowConverter):
     def _convert_input(input: CommandInput, basedir: Path):
         """Converts an input to a CWL input."""
         type_ = "Directory" if DIRECTORY_MIME_TYPE in input.encoding_format else "File"
+        position = input.position
 
         sanitized_id = CWLExporter._sanitize_id(input.id)
         if input.mapped_to:
             sanitized_id = "input_stdin"
+            position = None
 
         separate = None
         prefix = None
@@ -723,7 +727,7 @@ class CWLExporter(IWorkflowConverter):
         return cwlgen.CommandInputParameter(
             sanitized_id,
             param_type=type_,
-            input_binding=cwlgen.CommandLineBinding(position=input.position, prefix=prefix, separate=separate),
+            input_binding=cwlgen.CommandLineBinding(position=position, prefix=prefix, separate=separate),
             default={"location": (basedir / input.actual_value).resolve().as_uri(), "class": type_},
         )
 
