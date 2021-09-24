@@ -232,6 +232,28 @@ def test_comprehensive_dataset_migration(
 
 
 @pytest.mark.migration
+def test_migrate_renku_dataset_same_as(isolated_runner, old_client_before_database, load_dataset_with_injection):
+    """Test migration of imported renku datasets remove dashes from the same_as field."""
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = load_dataset_with_injection("renku-dataset", old_client_before_database)
+
+    assert "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0" == dataset.same_as.value
+
+
+@pytest.mark.migration
+def test_migrate_renku_dataset_derived_from(isolated_runner, old_client_before_database, load_dataset_with_injection):
+    """Test migration of datasets remove dashes from the derived_from field."""
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = load_dataset_with_injection("local", old_client_before_database)
+
+    assert "/datasets/535b6e1ddb85442a897b2b3c72aec0c6" == dataset.derived_from.url_id
+
+
+@pytest.mark.migration
 def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_project, load_dataset_with_injection):
     """Test migration of datasets with blank nodes creates IRI identifiers."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
