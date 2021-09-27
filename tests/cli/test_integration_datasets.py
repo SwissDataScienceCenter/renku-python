@@ -35,7 +35,6 @@ from renku.core.utils.contexts import chdir
 from tests.utils import assert_dataset_is_mutated, format_result_exception, retry_failed, with_dataset
 
 
-@pytest.mark.skip("Add dataset doesn't store the dataset, investigate why this fails")
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.parametrize(
@@ -87,6 +86,8 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after, load_
 
     dataset = load_dataset_with_injection(doi["name"], client)
     assert doi["doi"] in dataset.same_as.url
+    assert dataset.date_created is None
+    assert dataset.date_published is not None
 
 
 @pytest.mark.parametrize(
@@ -1013,6 +1014,8 @@ def test_dataset_update_zenodo(client, runner, doi, load_dataset_with_injection)
     assert after_dataset.derived_from is None
     assert after_dataset.same_as is not None
     assert after_dataset.same_as != before_dataset.same_as
+    assert after_dataset.date_created is None
+    assert after_dataset.date_published is not None
 
 
 @pytest.mark.integration

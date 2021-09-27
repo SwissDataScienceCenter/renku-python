@@ -28,7 +28,7 @@ from renku.core.metadata.database import persistent
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, oa, prov, renku, schema
 from renku.core.models.provenance.agent import Person, PersonSchema
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
-from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
+from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.utils.scm import normalize_to_ascii
 
 
@@ -67,7 +67,7 @@ class Project(persistent.Persistent):
         self.annotations: List[Annotation] = annotations or []
         self.automated_update: bool = automated_update
         self.creator: Person = creator
-        self.date_created: datetime = fix_timezone(date_created) or local_now()
+        self.date_created: datetime = fix_datetime(date_created) or local_now()
         self.description: str = description
         self.id: str = id
         self.immutable_template_files: List[str] = immutable_template_files
