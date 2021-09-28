@@ -19,6 +19,7 @@
 
 import os
 import subprocess
+import time
 from pathlib import Path
 
 import git
@@ -247,7 +248,9 @@ def test_rerun_overridden_output(project, renku_cli, runner):
     write_and_commit_file(repo, a, "content")
 
     assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
+    time.sleep(1)
     assert 0 == runner.invoke(cli, ["run", "--name", "r2", "cp", b, c]).exit_code
+    time.sleep(1)
     assert 0 == renku_cli("run", "--name", "r3", "wc", a, stdout=c).exit_code
 
     result = runner.invoke(cli, ["rerun", "--dry-run", c])
@@ -269,7 +272,9 @@ def test_rerun_overridden_outputs_partially(project, renku_cli, runner):
     write_and_commit_file(repo, a, "content")
 
     assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
+    time.sleep(1)
     assert 0 == renku_cli("run", "--name", "r2", "tee", c, d, stdin=b).exit_code
+    time.sleep(1)
     assert 0 == renku_cli("run", "--name", "r3", "wc", a, stdout=c).exit_code
 
     result = runner.invoke(cli, ["rerun", "--dry-run", c])
@@ -299,8 +304,11 @@ def test_rerun_multiple_paths_common_output(project, renku_cli, runner):
     write_and_commit_file(repo, a, "content")
 
     assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
+    time.sleep(1)
     assert 0 == runner.invoke(cli, ["run", "--name", "r2", "cp", b, d]).exit_code
+    time.sleep(1)
     assert 0 == runner.invoke(cli, ["run", "--name", "r3", "cp", a, c]).exit_code
+    time.sleep(1)
     assert 0 == renku_cli("run", "--name", "r4", "wc", c, stdout=d).exit_code
 
     result = runner.invoke(cli, ["rerun", "--dry-run", d])
