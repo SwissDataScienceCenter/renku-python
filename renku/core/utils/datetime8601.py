@@ -54,12 +54,17 @@ def parse_date(value):
     return date
 
 
-def fix_timezone(value):
-    """Fix timezone of non-aware datetime objects."""
+def fix_datetime(value):
+    """Fix timezone of non-aware datetime objects and remove microseconds."""
     if value is None:
         return
-    if isinstance(value, datetime) and not value.tzinfo:
-        value = _set_to_local_timezone(value)
+
+    if isinstance(value, datetime):
+        if not value.tzinfo:
+            value = _set_to_local_timezone(value)
+        if value.microsecond:
+            value = value.replace(microsecond=0)
+
     return value
 
 
@@ -70,4 +75,4 @@ def _set_to_local_timezone(value):
 
 def local_now():
     """Return current datetime in local timezone."""
-    return datetime.now(timezone.utc).astimezone()
+    return datetime.now(timezone.utc).replace(microsecond=0).astimezone()

@@ -35,7 +35,7 @@ from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, f
 from renku.core.models.entity import CollectionSchema, Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
-from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
+from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.utils.git import get_path
 from renku.core.utils.urls import get_slug
 
@@ -237,8 +237,8 @@ class DatasetFile(Slots):
         super().__init__()
 
         self.based_on: RemoteEntity = based_on
-        self.date_added: datetime = fix_timezone(date_added) or local_now()
-        self.date_removed: datetime = fix_timezone(date_removed)
+        self.date_added: datetime = fix_datetime(date_added) or local_now()
+        self.date_removed: datetime = fix_datetime(date_removed)
         self.entity: Entity = entity
         self.id: str = id or DatasetFile.generate_id()
         self.is_external: bool = is_external
@@ -292,7 +292,7 @@ class DatasetFile(Slots):
 
     def remove(self, date: datetime = None):
         """Create a new instance and mark it as removed."""
-        date_removed = fix_timezone(date) or local_now()
+        date_removed = fix_datetime(date) or local_now()
         self.date_removed = date_removed
 
     def is_removed(self) -> bool:
@@ -341,6 +341,8 @@ class Dataset(Persistent):
         # if `date_published` is set, we are probably dealing with an imported dataset so `date_created` is not needed
         if date_published:
             date_created = None
+        else:
+            date_created = fix_datetime(date_created) or local_now()
         if initial_identifier is None:
             assert identifier is None, "Initial identifier can be None only when creating a new Dataset."
             initial_identifier = identifier = uuid4().hex
@@ -352,9 +354,9 @@ class Dataset(Persistent):
         self.creators: List[Person] = creators or []
         # `dataset_files` includes existing files and those that have been removed in the previous version
         self.dataset_files: List[DatasetFile] = dataset_files or []
-        self.date_created: datetime = fix_timezone(date_created) or local_now()
-        self.date_published: datetime = fix_timezone(date_published)
-        self.date_removed: datetime = fix_timezone(date_removed)
+        self.date_created: datetime = date_created
+        self.date_published: datetime = fix_datetime(date_published)
+        self.date_removed: datetime = fix_datetime(date_removed)
         self.derived_from: Url = derived_from
         self.description: str = description
         self.images: List[ImageObject] = images or []
@@ -478,7 +480,7 @@ class Dataset(Persistent):
 
     def remove(self, date: datetime = None):
         """Mark the dataset as removed."""
-        self.date_removed = fix_timezone(date) or local_now()
+        self.date_removed = fix_datetime(date) or local_now()
 
     def is_removed(self) -> bool:
         """Return true if dataset is removed."""
@@ -533,6 +535,9 @@ class Dataset(Persistent):
         for name in editable_fields:
             value = getattr(other, name)
             setattr(self, name, value)
+
+        if self.date_published is not None:
+            self.date_created = None
 
     def update_metadata(self, **kwargs):
         """Updates metadata."""

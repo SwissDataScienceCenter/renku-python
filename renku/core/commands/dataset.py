@@ -262,7 +262,7 @@ def _add_to_dataset(
                 dataset.update_metadata_from(with_metadata)
 
         # TODO: Remove this once we have a proper database dispatcher for injection
-        # we need to commit because "project clone" changes injection, so tha database instance here
+        # we need to commit because "project clone" changes injection, so the database instance here
         # is not the same as the one in CommandBuilder
         database_gateway.commit()
 

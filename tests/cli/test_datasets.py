@@ -21,6 +21,7 @@ import json
 import os
 import shutil
 import textwrap
+import time
 from pathlib import Path
 
 import git
@@ -1680,6 +1681,7 @@ def test_immutability_for_files(directory_tree, runner, client, load_dataset_wit
 
     old_dataset = load_dataset_with_injection("my-data", client)
 
+    time.sleep(1)
     # Add some files
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree)]).exit_code
 
@@ -1687,6 +1689,7 @@ def test_immutability_for_files(directory_tree, runner, client, load_dataset_wit
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
     old_dataset = dataset
 
+    time.sleep(1)
     # Add the same files again; it should mutate because files addition dates change
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)]).exit_code
 
@@ -1694,6 +1697,7 @@ def test_immutability_for_files(directory_tree, runner, client, load_dataset_wit
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
     old_dataset = dataset
 
+    time.sleep(1)
     # Remove some files
     assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "-I", "file1", "--yes"]).exit_code
 
@@ -1856,7 +1860,7 @@ def test_datasets_provenance_after_add_with_overwrite(
 ):
     """Test datasets provenance is updated if adding and overwriting same files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--create", str(directory_tree)]).exit_code
-
+    time.sleep(1)
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
