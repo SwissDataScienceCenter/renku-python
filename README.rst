@@ -208,6 +208,42 @@ The containerized version of the CLI can be launched using Docker command.
 It makes sure your current directory is mounted to the same place in the
 container.
 
+.. _nix-before-reference:
+
+Nix
+~~~
+.. _nix-after-reference
+
+The Renku CLI and Python library can be installed using ``nix``. See the `nix
+installation instructions
+<https://nixos.org/manual/nix/stable/#chap-installation>`_ to install it on your system.
+To get a development environment with ``renku`` inside, go to the root of this repository and
+type
+
+::
+
+  nix-shell
+
+This will build the renku-python library, put its executable in your path, and also install the
+other needed packages like ``git``, ``git-lfs``, and ``node-js``. If you want to avoid cloning manually,
+you can also jump straight into a shell with
+
+::
+
+  nix-shell -p 'callPackage (fetchTarball https://github.com/swissdatasciencecenter/renku-python/tarball/master) { version = "0.16.1.dev"; }'
+
+This is a useful pattern for installing different versions of ``renku-python``
+side-by-side.
+
+To use ``renku`` in another derivation, use this snippet:
+
+::
+
+  renku = pkgs.callPackage (pkgs.fetchGit {
+      url = "https://github.com/swissdatasciencecenter/renku-python";
+      ref = "master";
+  }) { version = "0.16.1.dev"; } ;
+
 
 CLI Example
 -----------
