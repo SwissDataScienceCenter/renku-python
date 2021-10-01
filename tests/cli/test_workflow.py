@@ -23,9 +23,6 @@ from pathlib import Path
 
 import pytest
 
-# todo: avoid using cwl_utils and parse the yaml directly
-# from cwl_utils import parser_v1_2 as cwlgen
-
 from renku.cli import cli
 from renku.core.metadata.database import Database
 from renku.core.models.jsonld import write_yaml
@@ -176,6 +173,8 @@ def test_workflow_remove_command(runner, project):
 
 def test_workflow_export_command(runner, project):
     """test workflow export with builder."""
+    import yaml
+
     result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", "run1", "touch", "data.csv"])
     assert 0 == result.exit_code
 
@@ -183,11 +182,11 @@ def test_workflow_export_command(runner, project):
     assert 0 == result.exit_code
     assert Path("run1.cwl").exists()
 
-    # todo: rewrite by parsing the yaml directly
-    # workflow = cwlgen.load_document("run1.cwl")
-    # assert workflow.baseCommand[0] == "touch"
-    # assert len(workflow.inputs) == 3
-    # assert len(workflow.outputs) == 1
+    with open("run1.cwl") as f:
+        workflow = yaml.safe_load(f)
+    assert workflow["baseCommand"][0] == "touch"
+    assert len(workflow["inputs"]) == 3
+    assert len(workflow["outputs"]) == 1
 
 
 def test_workflow_edit(runner, client, run_shell):
