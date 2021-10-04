@@ -85,21 +85,34 @@ Composing workflows into larger workflows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For more complex workflows consisting of several steps, you can use the
-``renku workflow group`` command. This creates a new workflow that has
+``renku workflow compose`` command. This creates a new workflow that has
 substeps.
 
 The basic usage is:
 
 .. code-block:: console
 
-   $ renku run --name step1 -- command
-   $ renku run --name step2 -- command
-   $ renku workflow group my-grouped-workflow step1 step2
+   $ renku run --name step1 -- cp input intermediate
+   $ renku run --name step2 -- cp intermediate output
+   $ renku workflow compose my-composed-workflow step1 step2
 
-This would create a new workflow ``my-grouped-workflow`` that consists
+This would create a new workflow ``my-composed-workflow`` that consists
 of ``step1`` and ``step2`` as steps. This new workflow is just
 like any other workflow in renku in that it can be executed, exported
-or grouped with other workflows.
+or composed with other workflows.
+
+Workflows can also be composed based on past activities and their
+inputs/outputs, using the ``--from`` and ``--to`` parameters. This finds
+chains of activities from inputs to outputs and then adds them to the
+composed plan, applying mappings (see below) where appropriate to make
+sure the correct values for execution are used in the composite. This
+also means that all the parameters in the used plans are exposed on the
+composed plan directly.
+In the example above, this would be:
+
+.. code-block:: console
+
+   $ renku workflow compose --from input --to output my-composed-workflow
 
 You can expose parameters of child steps on the parent workflow using
 ``--map``/``-m``  arguments followed by a mapping expression. Mapping expressions
@@ -113,12 +126,12 @@ position within a workflow.
 An absolute expression in the example above could be ``step1.my_dataset``
 to refer to the input, output or argument named ``my_dataset` on the step
 ``step1``. A relative expression could be ``@step2.@output1`` to refer
-to the first output of the second step of the grouped workflow.
+to the first output of the second step of the composed workflow.
 
 Valid relative expressions are ``@input<n>``, ``@output<n>`` and ``@param<n>``
 for the n'th input, output or argument of a step, respectively. For referring
-to steps inside a grouped workflow, you can use ``@step<n>``. For referencing
-a mapping on a grouped workflow, you can use ``@mapping<n>``. Of course, the
+to steps inside a composed workflow, you can use ``@step<n>``. For referencing
+a mapping on a composed workflow, you can use ``@mapping<n>``. Of course, the
 names of the objects for all these cases also work.
 
 The expressions can also be combined using ``,`` if a mapping should point
@@ -130,9 +143,9 @@ A full example of this would be:
 
 .. code-block:: console
 
-   $ renku workflow group --map input_file=step1.@input2 \
+   $ renku workflow compose --map input_file=step1.@input2 \
        --map output_file=@step1.my-output,@step2.step2s_output \
-       my-grouped-workflow step1 step2
+       my-composed-workflow step1 step2
 
 This would create a mapping called ``input_file`` on the parent workflow that
 points to the second input of ``step1`` and a mapping called ``output_file``
@@ -145,13 +158,13 @@ instance:
 
 .. code-block:: console
 
-   $ renku workflow group --map input_file=step1.@input2 \
+   $ renku workflow compose --map input_file=step1.@input2 \
        --set input_file=data.csv
-       my-grouped-workflow step1 step2
+       my-composed-workflow step1 step2
 
 
 This would lead to ``data.csv`` being used for the second input of
-``step1`` when ``my-grouped-workflow`` is executed (if it isn't overridden
+``step1`` when ``my-composed-workflow`` is executed (if it isn't overridden
 at execution time).
 
 You can add a description to the mappings to make them more human-readable
@@ -161,9 +174,9 @@ by using the ``--describe-param``/``-p`` parameter, as shown here:
 
 .. code-block:: console
 
-   $ renku workflow group --map input_file=step1.@input2 \
+   $ renku workflow compose --map input_file=step1.@input2 \
        -p input_file="The dataset to process"
-       my-grouped-workflow step1 step2
+       my-composed-workflow step1 step2
 
 You can also expose all inputs, outputs or parameters of child steps by
 using ``--map-inputs``, ``--map-outputs`` or ``--map-params``, respectively.
@@ -186,7 +199,7 @@ correctly.
 
 Renku can also add links for you automatically based on the default values
 of inputs and outputs, where inputs/outputs that have the same path get
-linked in the grouped run. To do this, pass the ``--link-all`` flag.
+linked in the composed run. To do this, pass the ``--link-all`` flag.
 
 .. warning:: Due to workflows having to be directed acyclic graphs, cycles
    in the dependencies are not allowed. E.g. step1 depending on step2
