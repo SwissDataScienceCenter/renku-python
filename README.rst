@@ -208,17 +208,13 @@ The containerized version of the CLI can be launched using Docker command.
 It makes sure your current directory is mounted to the same place in the
 container.
 
-.. _nix-before-reference:
 
 Nix
 ~~~
-.. _nix-after-reference
 
-The Renku CLI and Python library can be installed using ``nix``. See the `nix
-installation instructions
-<https://nixos.org/manual/nix/stable/#chap-installation>`_ to install it on your system.
-To get a development environment with ``renku`` inside, go to the root of this repository and
-type
+The Renku CLI and Python library can be installed using ``nix``. See the `nix installation instructions <https://nixos.org/manual/nix/stable/#chap-installation>`_
+to install it on your system. To get a development environment with ``renku`` inside, go to the root of this
+repository and type
 
 ::
 
