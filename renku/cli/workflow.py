@@ -428,8 +428,22 @@ def remove(name, force):
 @click.option("--map-all", is_flag=True, help="Combination of --map-inputs, --map-outputs, --map-params.")
 @click.option("--link-all", is_flag=True, help="Automatically link steps based on default values.")
 @click.option("--keyword", multiple=True, help="List of keywords for the workflow.")
+@click.option(
+    "--from",
+    "sources",
+    type=click.Path(exists=True, dir_okay=False),
+    multiple=True,
+    help="Start a composite plan from this file as input.",
+)
+@click.option(
+    "--to",
+    "sinks",
+    type=click.Path(exists=True, dir_okay=True),
+    multiple=True,
+    help="End a composite plan at this file as output.",
+)
 @click.argument("name", required=True)
-@click.argument("steps", nargs=-1, required=True, type=click.UNPROCESSED)
+@click.argument("steps", nargs=-1, type=click.UNPROCESSED)
 def compose(
     description,
     mappings,
@@ -442,10 +456,19 @@ def compose(
     map_all,
     link_all,
     keyword,
+    sources,
+    sinks,
     name,
     steps,
 ):
     """Create a composite workflow consisting of multiple steps."""
+
+    if (sources or sinks) and steps:
+        click.secho(ERROR + "--from/--to cannot be used at the same time as passing run/step names.")
+        exit(1)
+    elif not (sources or sinks or steps):
+        click.secho(ERROR + "Either --from/--to passing run/step names is required.")
+        exit(1)
 
     if map_all:
         map_inputs = map_outputs = map_params = True
@@ -466,6 +489,8 @@ def compose(
             link_all=link_all,
             keywords=keyword,
             steps=steps,
+            sources=sources,
+            sinks=sinks,
         )
     )
 
