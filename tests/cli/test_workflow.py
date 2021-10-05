@@ -94,6 +94,116 @@ def test_workflow_compose(runner, project, run_shell, client):
     assert composite_plan.mappings[1].description == "the final output file produced"
 
 
+def test_workflow_compose_from_paths(runner, project, run_shell, client):
+    """Test renku workflow compose with input/output paths."""
+    # Run a shell command with pipe.
+    output = run_shell('renku run --name run1 -- echo "a" > output1')
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Run a shell command with pipe.
+    output = run_shell("renku run --name run2 -- cp output1 output2")
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Run a shell command with pipe.
+    output = run_shell("renku run --name run3 -- cat output1 output2 > output3")
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    result = runner.invoke(
+        cli,
+        [
+            "workflow",
+            "compose",
+            "--to",
+            "output3",
+            "composite_workflow1",
+        ],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+
+    composite_plan = database["plans-by-name"]["composite_workflow1"]
+
+    assert composite_plan
+
+    assert len(composite_plan.plans) == 3
+    assert len(composite_plan.mappings) == 7
+    assert composite_plan.mappings[0].name == "1-output-2"
+    assert composite_plan.mappings[0].default_value == "output1"
+
+    assert composite_plan.mappings[6].name == "3-output-3"
+    assert composite_plan.mappings[6].default_value == "output3"
+
+    result = runner.invoke(
+        cli,
+        [
+            "workflow",
+            "compose",
+            "--from",
+            "output1",
+            "--to",
+            "output3",
+            "composite_workflow2",
+        ],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+
+    composite_plan = database["plans-by-name"]["composite_workflow2"]
+
+    assert composite_plan
+
+    assert len(composite_plan.plans) == 2
+    assert len(composite_plan.mappings) == 5
+    assert composite_plan.mappings[0].name == "1-input-1"
+    assert composite_plan.mappings[0].default_value == "output1"
+
+    assert composite_plan.mappings[4].name == "2-output-3"
+    assert composite_plan.mappings[4].default_value == "output3"
+
+    result = runner.invoke(
+        cli,
+        [
+            "workflow",
+            "compose",
+            "--from",
+            "output1",
+            "composite_workflow3",
+        ],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(client.database_path)
+
+    composite_plan = database["plans-by-name"]["composite_workflow3"]
+
+    assert composite_plan
+
+    assert len(composite_plan.plans) == 2
+    assert len(composite_plan.mappings) == 5
+    assert composite_plan.mappings[0].name == "1-input-1"
+    assert composite_plan.mappings[0].default_value == "output1"
+
+    assert composite_plan.mappings[4].name == "2-output-3"
+    assert composite_plan.mappings[4].default_value == "output3"
+
+
 def test_workflow_show(runner, project, run_shell, client):
     """Test renku workflow show."""
     # Run a shell command with pipe.
