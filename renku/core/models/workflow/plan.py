@@ -254,7 +254,7 @@ class Plan(AbstractPlan):
         """Comma-separated list of keywords associated with workflow."""
         return ", ".join(self.keywords)
 
-    def to_argv(self) -> List[Any]:
+    def to_argv(self, with_streams: bool = False) -> List[Any]:
         """Convert a Plan into argv list."""
         arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
         arguments = filter(lambda a: a.position is not None and not getattr(a, "mapped_to", None), arguments)
@@ -262,6 +262,11 @@ class Plan(AbstractPlan):
 
         argv = self.command.split(" ") if self.command else []
         argv.extend(e for a in arguments for e in a.to_argv())
+
+        if with_streams:
+            arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
+            arguments = filter(lambda a: a.position is not None and getattr(a, "mapped_to", None), arguments)
+            argv.extend(a.to_stream_representation() for a in arguments)
 
         return argv
 

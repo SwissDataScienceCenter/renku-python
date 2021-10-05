@@ -28,7 +28,7 @@ from renku.core.utils.os import are_paths_related
 def tabulate_activities(activities: List[Activity], modified_inputs: Set[str]):
     """Return some info about the activities in a tabular form."""
     collection = []
-    fields = "plan, execution_date, modified_inputs, outputs"
+    fields = "plan, execution_date, modified_inputs, outputs, command"
     ActivityDisplay = namedtuple("ActivityDisplay", fields)
 
     for activity in activities:
@@ -41,7 +41,15 @@ def tabulate_activities(activities: List[Activity], modified_inputs: Set[str]):
 
         modified_usages = ", ".join(sorted(modified_usages))
         generations = ", ".join(sorted(generations))
-        collection.append(ActivityDisplay(plan, activity.ended_at_time, modified_usages, generations))
+        collection.append(
+            ActivityDisplay(
+                plan,
+                activity.ended_at_time,
+                modified_usages,
+                generations,
+                " ".join(activity.plan_with_values.to_argv(with_streams=True)),
+            )
+        )
 
     return tabulate(collection=collection, columns=fields, columns_mapping=ACTIVITY_DISPLAY_COLUMNS, sort=False)
 
@@ -51,4 +59,5 @@ ACTIVITY_DISPLAY_COLUMNS = {
     "execution_date": ("execution_date", "date executed"),
     "modified_inputs": ("modified_inputs", "modified inputs"),
     "outputs": ("outputs", None),
+    "command": ("command", None),
 }
