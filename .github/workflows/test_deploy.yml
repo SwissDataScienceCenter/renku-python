@@ -291,6 +291,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew update || true
+        brew unlink git-lfs || true
         curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
         brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
@@ -323,6 +324,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew update || true
+        brew unlink git-lfs || true
         curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
         brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
@@ -361,6 +363,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew update || true
+          brew unlink git-lfs || true
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
@@ -399,6 +402,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew update || true
+          brew unlink git-lfs || true
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
@@ -487,6 +491,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew update || true
+        brew unlink git-lfs || true
         curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
         brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
