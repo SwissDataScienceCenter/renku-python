@@ -18,7 +18,7 @@
 """Renku activity database gateway implementation."""
 
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 from persistent.list import PersistentList
 
@@ -61,11 +61,23 @@ class ActivityGateway(IActivityGateway):
 
         return list(database["activities-by-generation"].keys())
 
-    def get_activities_by_generation(self, path: Union[Path, str]) -> List[Activity]:
+    def get_activities_by_generation(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
         """Return the list of all activities that generate a path."""
         by_generation = self.database_dispatcher.current_database["activities-by-generation"]
+        activities = by_generation.get(str(path), [])
 
-        return by_generation.get(str(path), [])
+        if not checksum:
+            return activities
+
+        result = []
+
+        for activity in activities:
+            generation = next((g for g in activity.generations if g.entity.checksum == checksum), None)
+
+            if generation:
+                result.append(activity)
+
+        return result
 
     def get_downstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""

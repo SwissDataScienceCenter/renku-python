@@ -809,7 +809,7 @@ def execute(
         )
 
 
-@workflow.command()
+@workflow.command(no_args_is_help=True)
 @click.option(
     "--from",
     "sources",
@@ -826,19 +826,33 @@ def execute(
     help="Comma-separated list of column to display: {}.".format(", ".join(ACTIVITY_GRAPH_COLUMNS.keys())),
     show_default=True,
 )
-@click.option("-h", "--hide-files", is_flag=True, help="Hide file nodes, only show activities.")
+@click.option("-x", "--exclude-files", is_flag=True, help="Hide file nodes, only show activities.")
 @click.option("-a", "--ascii", is_flag=True, help="Only use Ascii characters for formatting.")
 @click.option("-i", "--interactive", is_flag=True, help="Interactively explore activity graph.")
 @click.option("--no-color", is_flag=True, help="Don't colorize output.")
 @click.option("--pager", is_flag=True, help="Force use pager (less) for output.")
 @click.option("--no-pager", is_flag=True, help="Don't use pager (less) for output.")
+@click.option(
+    "--revision",
+    type=click.STRING,
+    help="Git revision to generate the graph for.",
+)
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
-def visualize(sources, columns, hide_files, ascii, interactive, no_color, pager, no_pager, paths):
-    """Graph visualization of a workflow pipeline."""
-    if pager and no_pager:
-        raise errors.ParameterError("Can't use both --pager and --no-pager")
+def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pager, no_pager, revision, paths):
+    """Visualization of workflows that produced outputs at the specified paths.
 
-    result = visualize_graph_command().build().execute(sources=sources, targets=paths, show_files=not hide_files)
+    Either PATHS or --from need to be set.
+    """
+    if pager and no_pager:
+        raise errors.ParameterError("Can't use both --pager and --no-pager.")
+    if revision and not paths:
+        raise errors.ParameterError("Can't use --revision without specifying PATHS.")
+
+    result = (
+        visualize_graph_command()
+        .build()
+        .execute(sources=sources, targets=paths, show_files=not exclude_files, revision=revision)
+    )
     text_output, navigation_data = result.output.text_representation(columns=columns, color=not no_color, ascii=ascii)
 
     if not text_output:
