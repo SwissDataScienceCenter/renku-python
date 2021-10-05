@@ -321,10 +321,7 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "maxCount": 1,
-               "sh:lessThanOrEquals": {
-                  "@id": "schema:datePublished"
-               }
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -553,19 +550,9 @@
                "maxCount": 1
             },
             {
-               "nodeKind": "sh:Literal",
-               "path": "schema:location",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
                "path": "schema:about",
-               "datatype": {
-                  "@id": "xsd:string"
+               "sh:class": {
+                  "@id": "schema:URL"
                },
                "minCount": 1,
                "maxCount": 1

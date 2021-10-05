@@ -16,8 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service templates view tests."""
+import base64
 import json
 from copy import deepcopy
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import sleep
@@ -35,6 +37,8 @@ from tests.utils import retry_failed
 @retry_failed
 def test_read_manifest_from_template(svc_client_with_templates):
     """Check reading manifest template."""
+    from PIL import Image
+
     svc_client, headers, template_params = svc_client_with_templates
 
     response = svc_client.get("/templates.read_manifest", query_string=template_params, headers=headers)
@@ -48,6 +52,9 @@ def test_read_manifest_from_template(svc_client_with_templates):
 
     default_template = templates[template_params["index"] - 1]
     assert default_template["folder"] == template_params["id"]
+    assert "icon" in default_template and default_template["icon"]
+    icon = Image.open(BytesIO(base64.b64decode(default_template["icon"])))
+    assert icon.size == (256, 256)
 
 
 @pytest.mark.service
@@ -122,7 +129,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert response
     assert {"result"} == set(response.json.keys())
     stripped_name = normalize_to_ascii(payload["project_name"])
-    assert stripped_name == response.json["result"]["name"]
+    assert stripped_name == response.json["result"]["slug"]
     expected_url = "{0}/{1}/{2}".format(payload["project_repository"], payload["project_namespace"], stripped_name)
     assert expected_url == response.json["result"]["url"]
 

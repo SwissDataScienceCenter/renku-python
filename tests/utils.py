@@ -21,9 +21,10 @@ import os
 import traceback
 import uuid
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import pytest
 from flaky import flaky
@@ -34,6 +35,9 @@ from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.models.dataset import Dataset
+from renku.core.models.entity import Entity
+from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
+from renku.core.models.workflow.plan import Plan
 
 
 def raises(error):
@@ -78,7 +82,8 @@ def assert_dataset_is_mutated(old: Dataset, new: Dataset, mutator=None):
     assert old.id != new.id
     assert old.identifier != new.identifier
     assert old.id == new.derived_from.url_id
-    assert old.date_created != new.date_created
+    if old.date_created and new.date_created:
+        assert old.date_created <= new.date_created
     assert new.same_as is None
     assert new.date_published is None
     assert new.identifier in new.id
@@ -212,3 +217,40 @@ def write_and_commit_file(repo: Repo, path: Union[Path, str], content: str):
 
     repo.git.add(path)
     repo.index.commit(f"Updated '{path}'")
+
+
+def create_dummy_activity(
+    plan: Union[Plan, str],
+    usages: List[Union[Path, str]] = (),
+    generations: List[Union[Path, str]] = (),
+    ended_at_time=None,
+) -> Activity:
+    """Create a dummy activity."""
+    if not isinstance(plan, Plan):
+        assert isinstance(plan, str)
+        plan = Plan(id=Plan.generate_id(), name=plan)
+
+    ended_at_time = ended_at_time or (datetime.utcnow() - timedelta(hours=1))
+    checksum = "abc123"
+
+    activity_id = Activity.generate_id()
+
+    return Activity(
+        id=activity_id,
+        ended_at_time=ended_at_time,
+        association=Association(id=Association.generate_id(activity_id), plan=plan),
+        generations=[
+            Generation(
+                id=Generation.generate_id(activity_id),
+                entity=Entity(id=Entity.generate_id(checksum, g), checksum=checksum, path=g),
+            )
+            for g in generations
+        ],
+        usages=[
+            Usage(
+                id=Usage.generate_id(activity_id),
+                entity=Entity(id=Entity.generate_id(checksum, u), checksum=checksum, path=u),
+            )
+            for u in usages
+        ],
+    )

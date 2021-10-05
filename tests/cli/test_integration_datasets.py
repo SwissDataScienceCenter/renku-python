@@ -35,7 +35,6 @@ from renku.core.utils.contexts import chdir
 from tests.utils import assert_dataset_is_mutated, format_result_exception, retry_failed, with_dataset
 
 
-@pytest.mark.skip("Add dataset doesn't store the dataset, investigate why this fails")
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.parametrize(
@@ -87,6 +86,8 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after, load_
 
     dataset = load_dataset_with_injection(doi["name"], client)
     assert doi["doi"] in dataset.same_as.url
+    assert dataset.date_created is None
+    assert dataset.date_published is not None
 
 
 @pytest.mark.parametrize(
@@ -1013,6 +1014,8 @@ def test_dataset_update_zenodo(client, runner, doi, load_dataset_with_injection)
     assert after_dataset.derived_from is None
     assert after_dataset.same_as is not None
     assert after_dataset.same_as != before_dataset.same_as
+    assert after_dataset.date_created is None
+    assert after_dataset.date_published is not None
 
 
 @pytest.mark.integration
@@ -1242,7 +1245,7 @@ def test_import_from_renku_project(tmpdir, client, runner, load_dataset_with_inj
 
     remote_client = LocalClient(path)
     with chdir(remote_client.path):
-        runner.invoke(cli, ["migrate"])
+        runner.invoke(cli, ["migrate", "--strict"])
 
     file = load_dataset_with_injection("testing-create-04", remote_client).find_file(
         "data/testing-create-04/ie_data_with_TRCAPE.xls"
@@ -1482,7 +1485,7 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
 
     assert {"remote-renku-project"} == {s.name for s in old_repository_with_submodules.submodules}
 
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert [] == old_repository_with_submodules.submodules

@@ -32,7 +32,7 @@ def ascii(graph, strict=False):
     from ..echo import echo_via_pager
 
     if strict:
-        raise SHACLValidationError("--strict not supported for json-ld-graph")
+        raise SHACLValidationError("--strict not supported for ascii")
 
     echo_via_pager(str(DAG(graph)))
 
@@ -311,7 +311,7 @@ def makefile(graph, strict=False):
     """Format graph as Makefile."""
 
     if strict:
-        raise SHACLValidationError("--strict not supported for json-ld-graph")
+        raise SHACLValidationError("--strict not supported for makefile")
 
     for activity in graph:
         if not isinstance(activity, Activity):
@@ -326,7 +326,7 @@ def makefile(graph, strict=False):
 
 def jsonld(graph, strict=False, to_stdout=True):
     """Format graph as JSON-LD file."""
-    ld = _jsonld(graph, "expand")
+    ld = _jsonld(graph, "flatten")
 
     if strict:
         r, _, t = validate_graph(ld, format="json-ld")
@@ -339,13 +339,6 @@ def jsonld(graph, strict=False, to_stdout=True):
         return
 
     return ld
-
-
-def jsonld_graph(graph, strict=False):
-    """Format graph as JSON-LD graph file."""
-    if strict:
-        raise SHACLValidationError("--strict not supported for json-ld-graph")
-    click.echo(_jsonld(graph, "flatten"))
 
 
 def nt(graph, strict=False):
@@ -381,8 +374,8 @@ FORMATS = {
 """Valid formatting options."""
 
 GRAPH_FORMATS = {
+    "jsonld": jsonld,
     "json-ld": jsonld,
-    "json-ld-graph": jsonld_graph,
     "nt": nt,
     "rdf": rdf,
     "dot": dot_full,

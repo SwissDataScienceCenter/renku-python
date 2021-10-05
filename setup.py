@@ -119,6 +119,7 @@ service_requires = [
     "flask==2.0.1",
     "gunicorn",
     "marshmallow==3.13.0",
+    "Pillow>=8.3.2,<9.0",
     "ptvsd>=4.3.0,<4.4.0",
     "python-dotenv==0.19.0",
     "redis==3.5.3",

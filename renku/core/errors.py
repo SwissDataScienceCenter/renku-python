@@ -407,8 +407,18 @@ class CommitProcessingError(RenkuException):
     """Raised when a commit couldn't be processed during graph build."""
 
 
-class WorkflowRerunError(RenkuException):
+class WorkflowExecuteError(RenkuException):
     """Raises when a workflow execution fails."""
+
+    def __init__(self):
+        """Build a custom message."""
+
+        msg = "Unable to finish executing workflow"
+        super(WorkflowExecuteError, self).__init__(msg)
+
+
+class WorkflowRerunError(RenkuException):
+    """Raises when a workflow re-execution fails."""
 
     def __init__(self, workflow_file):
         """Build a custom message."""
