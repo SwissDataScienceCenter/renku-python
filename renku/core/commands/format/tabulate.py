@@ -24,7 +24,7 @@ from renku.core import errors
 from renku.core.models.tabulate import tabulate as tabulate_
 
 
-def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort=True):
+def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort=True, reverse=False):
     """Format collection with a tabular output."""
     if not columns:
         raise errors.ParameterError("Columns cannot be empty.")
@@ -38,7 +38,7 @@ def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort
         try:
             attr = list(headers.keys())[0]
             getter = attrgetter(attr)
-            collection = sorted(collection, key=lambda d: getter(d))
+            collection = sorted(collection, key=getter, reverse=reverse)
         except TypeError:
             pass
 

@@ -279,19 +279,19 @@ def test_workflow_remove_command(runner, project):
     assert 2 == result.exit_code
 
     result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", workflow_name, "echo", "foo"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "remove", "--force", workflow_name])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_workflow_export_command(runner, project):
     """test workflow export with builder."""
     result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", "run1", "touch", "data.csv"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "export", "run1", "-o", "run1.cwl"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert Path("run1.cwl").exists()
 
     workflow = cwlgen.load_document("run1.cwl")
