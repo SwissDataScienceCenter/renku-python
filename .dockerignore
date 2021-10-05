@@ -6,3 +6,4 @@
 !entrypoint-svc.sh
 !.git
 !.gitignore
+.git/config

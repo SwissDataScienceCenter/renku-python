@@ -69,7 +69,9 @@ def test_jobs_view_expected_job(svc_client_cache):
         "extras": {"progress": 42},
     }
 
-    project = Project(project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject")
+    project = Project(
+        project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject", slug="testproject"
+    )
     project.abs_path.mkdir(parents=True, exist_ok=True)
     project.save()
 
@@ -105,7 +107,9 @@ def test_jobs_view_check_exclusion(svc_client_cache):
             "renku_op": "dataset_import",
         }
 
-        project = Project(project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject")
+        project = Project(
+            project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject", slug="testproject"
+        )
         project.abs_path.mkdir(parents=True, exist_ok=True)
         project.save()
 
@@ -169,7 +173,9 @@ def test_job_details_by_user(svc_client_with_user):
         for _ in range(10)
     ]
 
-    project = Project(project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject")
+    project = Project(
+        project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject", slug="testproject"
+    )
     project.abs_path.mkdir(parents=True, exist_ok=True)
     project.save()
 

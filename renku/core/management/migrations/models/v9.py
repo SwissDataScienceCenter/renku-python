@@ -63,7 +63,7 @@ from renku.core.models.dataset import generate_default_name, is_dataset_name_val
 from renku.core.models.git import get_user_info
 from renku.core.models.provenance.annotation import AnnotationSchema
 from renku.core.models.refs import LinkReference
-from renku.core.utils.datetime8601 import parse_date
+from renku.core.utils.datetime8601 import fix_datetime, parse_date
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.urls import get_host, get_slug
 from renku.version import __version__, version_url
@@ -1875,7 +1875,7 @@ class ProjectSchema(JsonLDSchema):
         """Pre dump hook."""
         if many:
             return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
-        obj.created = self._fix_timezone(obj.created)
+        obj.created = fix_datetime(obj.created)
         return obj
 
 
@@ -1978,7 +1978,7 @@ class OldDatasetTagSchema(JsonLDSchema):
         """Pre dump hook."""
         if many:
             return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
-        object.__setattr__(obj, "created", self._fix_timezone(obj.created))
+        object.__setattr__(obj, "created", fix_datetime(obj.created))
         return obj
 
 
@@ -2018,7 +2018,7 @@ class OldDatasetFileSchema(OldEntitySchema):
         """Pre dump hook."""
         if many:
             return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
-        obj.added = self._fix_timezone(obj.added)
+        obj.added = fix_datetime(obj.added)
         return obj
 
 
@@ -2079,8 +2079,8 @@ class OldDatasetSchema(OldEntitySchema, OldCreatorMixinSchema):
         """Pre dump hook."""
         if many:
             return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
-        obj.date_published = self._fix_timezone(obj.date_published)
-        obj.date_created = self._fix_timezone(obj.date_created)
+        obj.date_published = fix_datetime(obj.date_published)
+        obj.date_created = fix_datetime(obj.date_created)
         return obj
 
 

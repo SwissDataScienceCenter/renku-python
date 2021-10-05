@@ -22,7 +22,7 @@ from typing import List
 
 from renku.core import errors
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.models.dataset import Dataset, DatasetTag
+from renku.core.models.dataset import Dataset, DatasetTag, Url
 
 
 def add_dataset_tag(dataset: Dataset, tag: str, description="", force=False):
@@ -49,7 +49,7 @@ def add_dataset_tag(dataset: Dataset, tag: str, description="", force=False):
             raise errors.ParameterError(f"Tag '{tag}' already exists")
         datasets_provenance.remove_tag(dataset, existing_tag)
 
-    new_tag = DatasetTag(dataset_id=dataset.id, description=description, name=tag)
+    new_tag = DatasetTag(dataset_id=Url(url_id=dataset.id), description=description, name=tag)
 
     datasets_provenance.add_tag(dataset, new_tag)
 

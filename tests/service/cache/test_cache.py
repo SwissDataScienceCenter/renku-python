@@ -253,6 +253,7 @@ def test_service_cache_make_project(svc_client_cache):
     user = cache.ensure_user({"user_id": uuid.uuid4().hex})
     project_data = {
         "name": "renku-project-template",
+        "slug": "renku-project-template",
         "depth": 1,
         "git_url": "https://github.com/SwissDataScienceCenter/renku-project-template",
         "email": "contact@renkulab.io",

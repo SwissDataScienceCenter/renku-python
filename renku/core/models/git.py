@@ -26,7 +26,7 @@ from urllib.parse import urlparse
 import attr
 
 from renku.core import errors
-from renku.core.utils.scm import is_ascii
+from renku.core.utils.scm import is_ascii, normalize_to_ascii
 
 _RE_PROTOCOL = r"(?P<protocol>(git\+)?(https?|git|ssh|rsync))\://"
 
@@ -95,6 +95,7 @@ class GitURL(object):
     port = attr.ib(default=None)
     owner = attr.ib(default=None)
     name = attr.ib(default=None, converter=filter_repo_name)
+    slug = attr.ib(default=None)
     _regex = attr.ib(default=None, eq=False, order=False)
 
     def __attrs_post_init__(self):
@@ -106,6 +107,8 @@ class GitURL(object):
 
         if not self.name and self.pathname:
             self.name = filter_repo_name(Path(self.pathname).name)
+
+        self.slug = normalize_to_ascii(self.name)
 
     @classmethod
     def parse(cls, href):
