@@ -20,6 +20,7 @@
 
 import uuid
 from datetime import datetime
+from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -36,7 +37,7 @@ from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.management.workflow.activity import create_activity_graph, get_activities_until_paths
+from renku.core.management.workflow.activity import get_activities_until_paths, sort_activities, create_activity_graph
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.management.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
@@ -136,7 +137,7 @@ def show_workflow_command():
 
 
 @inject.autoparams()
-def _group_workflow(
+def _compose_workflow(
     name: str,
     description: str,
     mappings: List[str],
@@ -149,26 +150,53 @@ def _group_workflow(
     link_all: bool,
     keywords: List[str],
     steps: List[str],
+    sources: List[str],
+    sinks: List[str],
+    activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
     project_gateway: IProjectGateway,
+    client_dispatcher: IClientDispatcher,
 ) -> CompositePlan:
-    """Group workflows into a CompositePlan."""
+    """Compose workflows into a CompositePlan."""
 
     if plan_gateway.get_by_name(name):
         raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
 
     child_workflows = []
+    plan_activities = []
 
-    for workflow_name_or_id in steps:
-        child_workflow = plan_gateway.get_by_id(workflow_name_or_id)
+    if steps:
+        for workflow_name_or_id in steps:
+            child_workflow = plan_gateway.get_by_id(workflow_name_or_id)
 
-        if not child_workflow:
-            child_workflow = plan_gateway.get_by_name(workflow_name_or_id)
+            if not child_workflow:
+                child_workflow = plan_gateway.get_by_name(workflow_name_or_id)
 
-        if not child_workflow:
-            raise errors.ObjectNotFoundError(workflow_name_or_id)
+            if not child_workflow:
+                raise errors.ObjectNotFoundError(workflow_name_or_id)
 
-        child_workflows.append(child_workflow)
+            child_workflows.append(child_workflow)
+    else:
+        client = client_dispatcher.current_client
+        sources = sources or []
+        sources = get_relative_paths(base=client.path, paths=sources)
+
+        if not sinks:
+            usages = activity_gateway.get_all_usage_paths()
+            generations = activity_gateway.get_all_generation_paths()
+
+            sinks = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
+
+        sinks = get_relative_paths(base=client.path, paths=sinks)
+
+        activities = list(get_activities_until_paths(sinks, sources, activity_gateway))
+        activities = sort_activities(activities)
+
+        # we need to get the actual plans from the DB as plan_with_values returns a copy
+        for i, activity in enumerate(activities, 1):
+            child_workflow = activity.association.plan
+            child_workflows.append(child_workflow)
+            plan_activities.append((i, activity.plan_with_values))
 
     plan = CompositePlan(
         description=description,
@@ -184,6 +212,21 @@ def _group_workflow(
 
     if defaults:
         plan.set_mapping_defaults(defaults)
+
+    if plan_activities:
+        # Since composite is created from activities, we need to add mappings to set defaults to the values of
+        # the activities, to ensure values from the involved activities are preserved.
+        # If the user supplies their own mappings, those overrule the automatically added ones.
+
+        for i, child_plan in plan_activities:
+            for param in chain(child_plan.inputs, child_plan.outputs, child_plan.parameters):
+                try:
+                    mapping_name = f"{i}-{param.name}"
+                    plan.set_mappings_from_strings([f"{mapping_name}=@step{i}.{param.name}"])
+                except errors.MappingExistsError:
+                    continue
+
+                plan.set_mapping_defaults([f"{mapping_name}={param.actual_value}"])
 
     if links:
         plan.set_links_from_strings(links)
@@ -226,9 +269,9 @@ def _group_workflow(
 
 
 def compose_workflow_command():
-    """Command that creates a group of several workflows."""
+    """Command that creates a composite of several workflows."""
     return (
-        Command().command(_group_workflow).require_migration().require_clean().with_database(write=True).with_commit()
+        Command().command(_compose_workflow).require_migration().require_clean().with_database(write=True).with_commit()
     )
 
 
