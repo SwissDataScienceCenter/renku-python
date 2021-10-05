@@ -21,6 +21,7 @@ import json
 import os
 import shutil
 import textwrap
+import time
 from pathlib import Path
 
 import git
@@ -36,7 +37,7 @@ from renku.core.models.dataset import Dataset
 from renku.core.models.refs import LinkReference
 from renku.core.utils.git import get_object_hash
 from renku.core.utils.urls import get_slug
-from tests.utils import assert_dataset_is_mutated, format_result_exception
+from tests.utils import assert_dataset_is_mutated, format_result_exception, write_and_commit_file
 
 
 def test_datasets_create_clean(runner, project, client, load_dataset_with_injection):
@@ -1114,7 +1115,7 @@ def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     assert type(provider) is DataverseProvider
 
 
-def test_dataset_tag(tmpdir, runner, project, client, subdirectory):
+def test_dataset_tag(tmpdir, runner, client, subdirectory, get_datasets_provenance_with_injection):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -1138,6 +1139,11 @@ def test_dataset_tag(tmpdir, runner, project, client, subdirectory):
 
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
+
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("my-dataset")
+        all_tags = datasets_provenance.get_all_tags(dataset)
+        assert {dataset.id} == {t.dataset_id.value for t in all_tags}
 
 
 @pytest.mark.parametrize("form", ["tabular", "json-ld"])
@@ -1675,6 +1681,7 @@ def test_immutability_for_files(directory_tree, runner, client, load_dataset_wit
 
     old_dataset = load_dataset_with_injection("my-data", client)
 
+    time.sleep(1)
     # Add some files
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree)]).exit_code
 
@@ -1682,6 +1689,7 @@ def test_immutability_for_files(directory_tree, runner, client, load_dataset_wit
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
     old_dataset = dataset
 
+    time.sleep(1)
     # Add the same files again; it should mutate because files addition dates change
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)]).exit_code
 
@@ -1689,6 +1697,7 @@ def test_immutability_for_files(directory_tree, runner, client, load_dataset_wit
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
     old_dataset = dataset
 
+    time.sleep(1)
     # Remove some files
     assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "-I", "file1", "--yes"]).exit_code
 
@@ -1851,7 +1860,7 @@ def test_datasets_provenance_after_add_with_overwrite(
 ):
     """Test datasets provenance is updated if adding and overwriting same files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--create", str(directory_tree)]).exit_code
-
+    time.sleep(1)
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
@@ -2009,6 +2018,44 @@ def test_datasets_provenance_add_file(runner, client, directory_tree, load_datas
     dataset = load_dataset_with_injection("my-data", client)
 
     assert {"file1", "file2", "file3"} == {Path(f.entity.path).name for f in dataset.files}
+
+
+def test_immutability_of_dataset_files(runner, client, directory_tree, load_dataset_with_injection):
+    """Test DatasetFiles are generated when their Entity changes."""
+    assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "-c", str(directory_tree / "file1")]).exit_code
+
+    file1 = os.path.join(DATA_DIR, "my-data", "file1")
+
+    v1 = load_dataset_with_injection("my-data", client).find_file(file1)
+
+    # DatasetFile changes when Entity is changed
+    write_and_commit_file(client.repo, file1, "changed content")
+    assert 0 == runner.invoke(cli, ["dataset", "update"]).exit_code
+    v2 = load_dataset_with_injection("my-data", client).find_file(file1)
+
+    assert v1.id != v2.id
+
+    # DatasetFile doesn't change when Entity is unchanged
+    assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree / "dir1" / "file2")]).exit_code
+    v3 = load_dataset_with_injection("my-data", client).find_file(file1)
+
+    assert v2.id == v3.id
+
+    # DatasetFile changes when Entity is unchanged but is overwritten
+    assert (
+        0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree / "file1")]).exit_code
+    )
+    v4 = load_dataset_with_injection("my-data", client).find_file(file1)
+
+    assert v3.id != v4.id
+
+    # DatasetFile changes if the file is removed
+    assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "--include", "file1"], input="y").exit_code
+    dataset = load_dataset_with_injection("my-data", client)
+    v5 = next(f for f in dataset.dataset_files if f.is_removed())
+
+    assert "file1" in v5.entity.path
+    assert v4.id != v5.id
 
 
 @pytest.mark.serial

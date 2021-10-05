@@ -27,35 +27,37 @@ from renku.core.models.entity import Entity
 from renku.core.models.provenance import agent as new_agents
 
 
-def convert_url(url: Optional[old_datasets.Url]) -> Optional[Url]:
-    """Convert old Url to new Url."""
-    if not url:
-        return
-    return Url(url=url.url, url_id=url.url_id, url_str=url.url_str)
+def _convert_dataset_identifier(identifier: str) -> str:
+    """Remove - from a dataset identifier."""
+    return identifier.replace("-", "")
 
 
-def convert_dataset_tag(tag: Optional[old_datasets.DatasetTag]) -> Optional[DatasetTag]:
+def _convert_dataset_tag(tag: Optional[old_datasets.DatasetTag]) -> Optional[DatasetTag]:
     """Convert old DatasetTag to new DatasetTag."""
     if not tag:
         return
-    return DatasetTag(dataset_id="dummy-id", date_created=tag.created, description=tag.description, name=tag.name)
+
+    # NOTE: ``dataset_id`` field will be set later when processing the migrated commit.
+    return DatasetTag(
+        dataset_id=Url(url_id="dummy-id"), date_created=tag.created, description=tag.description, name=tag.name
+    )
 
 
-def convert_language(language: Optional[old_datasets.Language]) -> Optional[Language]:
+def _convert_language(language: Optional[old_datasets.Language]) -> Optional[Language]:
     """Convert old Language to new Language."""
     if not language:
         return
     return Language(alternate_name=language.alternate_name, name=language.name)
 
 
-def convert_image_object(image_object: Optional[old_datasets.ImageObject]) -> Optional[ImageObject]:
+def _convert_image_object(image_object: Optional[old_datasets.ImageObject]) -> Optional[ImageObject]:
     """Create from old ImageObject instance."""
     if not image_object:
         return
     return ImageObject(content_url=image_object.content_url, position=image_object.position, id=image_object.id)
 
 
-def create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> Optional[RemoteEntity]:
+def _create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> Optional[RemoteEntity]:
     """Create RemoteEntity from old DatasetFile."""
     if not dataset_file:
         return
@@ -63,14 +65,14 @@ def create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> Op
     return RemoteEntity(commit_sha=commit_sha, path=dataset_file.path, url=dataset_file.url)
 
 
-def convert_dataset_file(dataset_file: old_datasets.DatasetFile, client, revision: str) -> Optional[DatasetFile]:
+def _convert_dataset_file(dataset_file: old_datasets.DatasetFile, client, revision: str) -> Optional[DatasetFile]:
     """Convert old DatasetFile to new DatasetFile if available at revision."""
     entity = Entity.from_revision(client=client, path=dataset_file.path, revision=revision)
     if not entity:
         return
 
     return DatasetFile(
-        based_on=create_remote_entity(dataset_file.based_on),
+        based_on=_create_remote_entity(dataset_file.based_on),
         date_added=dataset_file.added,
         entity=entity,
         is_external=dataset_file.external,
@@ -78,7 +80,7 @@ def convert_dataset_file(dataset_file: old_datasets.DatasetFile, client, revisio
     )
 
 
-def convert_person(person: Optional[old_datasets.Person]) -> Optional[new_agents.Person]:
+def _convert_person(person: Optional[old_datasets.Person]) -> Optional[new_agents.Person]:
     """Create a Person from and old Person."""
     if not person:
         return
@@ -92,7 +94,7 @@ def convert_person(person: Optional[old_datasets.Person]) -> Optional[new_agents
     )
 
 
-def convert_agent(
+def _convert_agent(
     agent: Optional[Union[old_datasets.Person, old_datasets.SoftwareAgent]]
 ) -> Optional[Union[new_agents.Person, new_agents.SoftwareAgent]]:
     """Create an instance from Person/SoftwareAgent."""
@@ -100,7 +102,28 @@ def convert_agent(
         return new_agents.SoftwareAgent(id=agent.id, name=agent.label)
 
     assert not agent or isinstance(agent, old_datasets.Person), f"Invalid type {type(agent)}"
-    return convert_person(agent)
+    return _convert_person(agent)
+
+
+def _convert_same_as(url: Optional[old_datasets.Url]) -> Optional[Url]:
+    """Convert old Url to new Url."""
+    if not url:
+        return
+
+    if url.url_str:
+        parsed_url = urlparse(url.url_str)
+    else:
+        assert url.url_id
+        parsed_url = urlparse(url.url_id)
+
+    # NOTE: Test if dataset is imported from a renku deployment. This is good enough for all current deployments.
+    if "renku" in parsed_url.netloc:
+        path = _convert_dataset_identifier(parsed_url.path)
+        parsed_url = parsed_url._replace(path=path)
+
+    url_str = parsed_url.geturl()
+
+    return Url(url_str=url_str) if url.url_str else Url(url_id=url_str)
 
 
 def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tuple[Dataset, List[DatasetTag]]:
@@ -112,7 +135,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
         files = {f.path: f for f in files}  # NOTE: To make sure there are no duplicate paths
 
         for file in files.values():
-            new_file = convert_dataset_file(dataset_file=file, client=client, revision=revision)
+            new_file = _convert_dataset_file(dataset_file=file, client=client, revision=revision)
             if not new_file:
                 continue
 
@@ -126,15 +149,15 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             return
 
         url = derived_from.url.get("@id")
-        path = urlparse(url).path
+        path = _convert_dataset_identifier(urlparse(url).path)
 
         return Url(url_id=Dataset.generate_id(identifier=Path(path).name))
 
-    tags = [convert_dataset_tag(tag) for tag in (dataset.tags or [])]
+    tags = [_convert_dataset_tag(tag) for tag in (dataset.tags or [])]
 
     return (
         Dataset(
-            creators=[convert_agent(creator) for creator in dataset.creators],
+            creators=[_convert_agent(creator) for creator in dataset.creators],
             dataset_files=convert_dataset_files(dataset.files),
             date_created=dataset.date_created,
             date_published=dataset.date_published,
@@ -142,15 +165,15 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             derived_from=convert_derived_from(dataset.derived_from),
             description=dataset.description,
             id=None,
-            identifier=dataset.identifier.replace("-", ""),
-            images=[convert_image_object(image) for image in (dataset.images or [])],
-            in_language=convert_language(dataset.in_language),
+            identifier=_convert_dataset_identifier(dataset.identifier),
+            images=[_convert_image_object(image) for image in (dataset.images or [])],
+            in_language=_convert_language(dataset.in_language),
             keywords=dataset.keywords,
             license=dataset.license,
             name=dataset.name,
             project_id=client.project.id,
-            initial_identifier=dataset.initial_identifier.replace("-", ""),
-            same_as=convert_url(dataset.same_as),
+            initial_identifier=_convert_dataset_identifier(dataset.initial_identifier),
+            same_as=_convert_same_as(dataset.same_as),
             title=dataset.title,
             version=dataset.version,
         ),

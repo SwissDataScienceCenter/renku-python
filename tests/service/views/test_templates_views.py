@@ -129,7 +129,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert response
     assert {"result"} == set(response.json.keys())
     stripped_name = normalize_to_ascii(payload["project_name"])
-    assert stripped_name == response.json["result"]["name"]
+    assert stripped_name == response.json["result"]["slug"]
     expected_url = "{0}/{1}/{2}".format(payload["project_repository"], payload["project_namespace"], stripped_name)
     assert expected_url == response.json["result"]["url"]
 

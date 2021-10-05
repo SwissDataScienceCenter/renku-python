@@ -59,7 +59,7 @@ class DatasetGateway(IDatasetGateway):
             tags = PersistentList()
             self.database_dispatcher.current_database["datasets-tags"].add(tags, key=dataset.name)
 
-        assert tag.dataset_id == dataset.id, f"Tag has wrong dataset id: {tag.dataset_id} != {dataset.id}"
+        assert tag.dataset_id.value == dataset.id, f"Tag has wrong dataset id: {tag.dataset_id.value} != {dataset.id}"
 
         tags.append(tag)
 
