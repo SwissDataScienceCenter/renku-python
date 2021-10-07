@@ -879,5 +879,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 
     from renku.cli.utils.curses import CursesActivityGraphViewer
 
-    viewer = CursesActivityGraphViewer(text_output, navigation_data, result.output.vertical_space)
+    viewer = CursesActivityGraphViewer(
+        text_output, navigation_data, result.output.vertical_space, use_color=not no_color
+    )
     viewer.run()

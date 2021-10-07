@@ -19,6 +19,7 @@
 
 from collections import defaultdict, namedtuple
 from io import StringIO
+from textwrap import shorten
 from typing import List, Tuple
 
 import networkx
@@ -31,6 +32,8 @@ from grandalf.routing import EdgeViewer, route_with_lines
 from renku.core.models.provenance.activity import Activity
 
 Point = namedtuple("Point", ["x", "y"])
+
+MAX_NODE_LENGTH = 40
 
 
 class Shape:
@@ -264,7 +267,7 @@ class TextCanvas:
                 )
 
         self.offset = (extent[0].y, extent[0].x)
-        size = (extent[1].y - extent[0].y + 1, extent[1].x - extent[0].x + 1)
+        size = (extent[1].y - extent[0].y + 2, extent[1].x - extent[0].x + 2)
         self._canvas = np.chararray(size, unicode=True, itemsize=10)
         self._canvas[:] = " "
 
@@ -302,7 +305,7 @@ class ActivityGraphViewModel:
         """Return vertex text for a node."""
 
         if isinstance(node, Activity):
-            return "\n".join(c(node) for c in columns), True, node
+            return "\n".join(shorten(c(node), MAX_NODE_LENGTH, placeholder="...") for c in columns), True, node
 
         return node, False, None
 

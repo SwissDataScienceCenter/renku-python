@@ -45,7 +45,13 @@ class CursesActivityGraphViewer:
     HELP_OVERLAY_HEIGHT = 6
     DATE_FORMAT = "%Y-%m-%d %H:%M:S"
 
-    def __init__(self, text_data: str, navigation_data: List[List[Tuple[Point, Point, Activity]]], vertical_space: int):
+    def __init__(
+        self,
+        text_data: str,
+        navigation_data: List[List[Tuple[Point, Point, Activity]]],
+        vertical_space: int,
+        use_color: bool,
+    ):
         self.text_data = text_data
         self.navigation_data = navigation_data
         self.vertical_space = vertical_space
@@ -59,6 +65,7 @@ class CursesActivityGraphViewer:
         self.activity_overlay = None
         self.help_overlay = None
         self._select_activity()
+        self.use_color = use_color
 
     def _init_curses(self, screen):
         """Initialize curses screen for interactive mode."""
@@ -82,7 +89,7 @@ class CursesActivityGraphViewer:
 
         self.content_max_x = max(len(line) for line in text_data_lines)
         self.content_max_y = len(self.text_data)
-        self.content_pad = curses.newpad(self.content_max_y, self.cols)
+        self.content_pad = curses.newpad(self.content_max_y, self.content_max_x)
         for i, l in enumerate(text_data_lines):
             self._addstr_with_color_codes(self.content_pad, i, 0, l)
 
@@ -94,9 +101,14 @@ class CursesActivityGraphViewer:
 
     def _init_console_colors(self):
         """Setup curses color mapping."""
-        for i, (color_symbol, color) in enumerate(self.COLOR_MAPPING.items(), start=100):
-            curses.init_pair(i, color, -1)
-            self.color_cache[color_symbol] = i
+        if not self.use_color:
+            curses.init_pair(100, -1, -1)
+            for color_symbol, _ in self.COLOR_MAPPING.items():
+                self.color_cache[color_symbol] = 100
+        else:
+            for i, (color_symbol, color) in enumerate(self.COLOR_MAPPING.items(), start=100):
+                curses.init_pair(i, color, -1)
+                self.color_cache[color_symbol] = i
 
     def _select_activity(self):
         """Set the currently selected activity."""
@@ -124,12 +136,14 @@ class CursesActivityGraphViewer:
 
             if len(snippet) == 0:
                 continue
-            if color == "[1":
-                color = curses.A_BOLD
-            else:
-                color = curses.color_pair(self.color_cache[color])
 
-            window.addstr(y, x, snippet, color)
+            if color == "[1":
+                curses_color = curses.A_BOLD
+            else:
+                curses_color = curses.color_pair(self.color_cache[color])
+
+            window.addstr(y, x, snippet, curses_color)
+
             x += len(snippet)
 
     def _blink_text(self, window, start: Point, end: Point, bold: bool = True):
@@ -163,6 +177,11 @@ class CursesActivityGraphViewer:
 
         for line in text.splitlines():
             chunks = [line[p : p + width] for p in range(0, len(line), width)]
+            if not chunks:
+                # Lines containing only \n
+                i += 1
+                continue
+
             for chunk in chunks:
                 if i >= height:
                     # TODO: Add scrolling using a pad?
@@ -218,22 +237,25 @@ class CursesActivityGraphViewer:
             usages = "\n".join(u.entity.path for u in self.selected_activity.usages)
             generations = "\n".join(g.entity.path for g in self.selected_activity.generations)
             agents = ", ".join(getattr(a, "full_name", a.name) for a in self.selected_activity.agents)
+            full_command = " ".join(self.selected_activity.plan_with_values.to_argv(with_streams=True))
 
             content = (
                 "Id:\n"
-                f"{self.selected_activity.id}\n"
+                f"{self.selected_activity.id}\n\n"
                 "Started:\n"
-                f"{started_date}\n"
+                f"{started_date}\n\n"
                 "Ended:\n"
-                f"{ended_date}\n"
+                f"{ended_date}\n\n"
                 "Agents:\n"
-                f"{agents}\n"
+                f"{agents}\n\n"
                 "Plan Id:\n"
-                f"{self.selected_activity.association.plan.id}\n"
+                f"{self.selected_activity.association.plan.id}\n\n"
                 "Inputs:\n"
-                f"{usages}\n"
+                f"{usages}\n\n"
                 "Outputs:\n"
-                f"{generations}\n"
+                f"{generations}\n\n"
+                "Full Command:\n"
+                f"{full_command}\n\n"
             )
 
             self._add_multiline_text_with_wrapping(self.activity_overlay, content)
