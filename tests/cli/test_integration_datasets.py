@@ -877,6 +877,9 @@ def test_add_data_from_git(runner, client, params, path, load_dataset_with_injec
     assert file.source == remote
     assert file.based_on.url == remote
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
@@ -986,7 +989,6 @@ def test_dataset_update(client, runner, params, load_dataset_with_injection):
     assert after.based_on.id != before.based_on.id
     assert after.based_on.path == before.based_on.path
     assert after.based_on.url == url
-    assert after.based_on.commit_sha is None
     assert after.based_on.checksum in after.based_on.id
 
     result = runner.invoke(cli, ["doctor"])

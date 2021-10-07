@@ -165,7 +165,7 @@ install_requires = [
     "click>=7.0,<8.0.2",
     "cryptography>=3.4.1,<3.5",
     "cwlgen>=0.4.0,<=0.4.2",
-    "cwltool>=3.1.20210816212154,<3.1.20210921111717",
+    "cwltool==3.1.20210922203925",
     "cwl-utils>=0.10",
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",

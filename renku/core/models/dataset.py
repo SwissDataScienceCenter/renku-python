@@ -19,6 +19,7 @@
 
 import copy
 import os
+import posixpath
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -182,38 +183,32 @@ class ImageObject(Slots):
 class RemoteEntity(Slots):
     """Reference to an Entity in a remote repo."""
 
-    __slots__ = ("checksum", "commit_sha", "id", "path", "url")
+    __slots__ = ("checksum", "id", "path", "url")
 
-    def __init__(
-        self, *, checksum: str = None, commit_sha: str = None, id: str = None, path: Union[Path, str], url: str
-    ):
+    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], url: str):
         super().__init__()
-        entity_hash = commit_sha or checksum
-        assert entity_hash, "One of checksum or commit_sha must be provided."
-        assert checksum is None or commit_sha is None, "Either checksum or commit_sha must be provided, not both."
-
-        # NOTE: For compatibility we use commit_sha when migrating old projects. For all new instances use checksum.
-        self.commit_sha: str = commit_sha
         self.checksum: str = checksum
-        self.id: str = id or RemoteEntity.generate_id(entity_hash, path)
+        self.id: str = id or RemoteEntity.generate_id(checksum=checksum, path=path, url=url)
         self.path: str = str(path)
         self.url: str = url
 
     @staticmethod
-    def generate_id(commit_sha: str, path: Union[Path, str]) -> str:
+    def generate_id(checksum: str, path: Union[Path, str], url: str) -> str:
         """Generate an id."""
+        parsed_url = urlparse(url)
+        prefix = quote(posixpath.join(parsed_url.netloc, parsed_url.path))
         path = quote(str(path))
-        return f"/remote-entity/{commit_sha}/{path}"
+        return f"/remote-entity/{prefix}/{checksum}/{path}"
 
     def __eq__(self, other):
         if self is other:
             return True
         if not isinstance(other, RemoteEntity):
             return False
-        return self.commit_sha == other.commit_sha and self.path == other.path and self.url == other.url
+        return self.checksum == other.checksum and self.path == other.path and self.url == other.url
 
     def __hash__(self):
-        return hash((self.commit_sha, self.path, self.url))
+        return hash((self.checksum, self.path, self.url))
 
 
 class DatasetFile(Slots):
@@ -661,11 +656,11 @@ class RemoteEntitySchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Entity, schema.DigitalDocument]
+        rdf_type = [prov.Entity]
         model = RemoteEntity
         unknown = EXCLUDE
 
-    commit_sha = fields.String(renku.commit_sha)
+    checksum = fields.String(renku.checksum)
     id = fields.Id()
     path = fields.String(prov.atLocation)
     url = fields.String(schema.url)
