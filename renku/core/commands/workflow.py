@@ -309,8 +309,9 @@ def _edit_workflow(
 
         for param_string in rename_params:
             name, new_name = _kv_extract(param_string)
-            for param in workflow.inputs + workflow.outputs + workflow.parameters:
+            for param in chain(workflow.inputs, workflow.outputs, workflow.parameters):
                 if param.name == name:
+                    param = param.derive(plan_id=workflow.id)
                     param.name = new_name
                     break
             else:
@@ -318,8 +319,9 @@ def _edit_workflow(
 
         for description_string in describe_params:
             name, description = _kv_extract(description_string)
-            for param in workflow.inputs + workflow.outputs + workflow.parameters:
+            for param in chain(workflow.inputs, workflow.outputs, workflow.parameters):
                 if param.name == name:
+                    param = param.derive(plan_id=workflow.id)
                     param.description = description
                     break
             else:

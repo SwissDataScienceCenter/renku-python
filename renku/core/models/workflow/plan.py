@@ -274,8 +274,9 @@ class Plan(AbstractPlan):
         """Set parameters by parsing parameters strings."""
         for param_string in params_strings:
             name, value = param_string.split("=", maxsplit=1)
-            for param in self.inputs + self.outputs + self.parameters:
+            for param in itertools.chain(self.inputs, self.outputs, self.parameters):
                 if param.name == name:
+                    param = param.derive(plan_id=self.id)
                     param.default_value = value
                     break
             else:
