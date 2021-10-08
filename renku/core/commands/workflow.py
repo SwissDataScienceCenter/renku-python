@@ -189,7 +189,11 @@ def _compose_workflow(
 
         sinks = get_relative_paths(base=client.path, paths=sinks)
 
-        activities = list(get_activities_until_paths(sinks, sources, activity_gateway))
+        activities = list(
+            get_activities_until_paths(
+                sinks, sources, activity_gateway=activity_gateway, client_dispatcher=client_dispatcher
+            )
+        )
         activities = sort_activities(activities)
 
         # we need to get the actual plans from the DB as plan_with_values returns a copy
