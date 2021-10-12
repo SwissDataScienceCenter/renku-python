@@ -18,15 +18,15 @@
 """Renku cli for history of renku commands.
 
 You can use ``renku log`` to get a history of renku commands.
-At the moment, it only shows workflow executions
+At the moment, it only shows workflow executions.
 
 .. code-block:: console
 
     $ renku log
-    DATE                 TYPE                DESCRIPTION
-    -------------------  ------------------  -------------
-    2021-09-21 15:46:02  Workflow Execution  cp A C
-    2021-09-21 10:52:51  Workflow Execution  cp A B
+    DATE                 TYPE  DESCRIPTION
+    -------------------  ----  -------------
+    2021-09-21 15:46:02  Run   cp A C
+    2021-09-21 10:52:51  Run   cp A B
 """
 
 import click

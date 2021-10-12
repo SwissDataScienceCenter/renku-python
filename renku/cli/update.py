@@ -24,10 +24,10 @@ The information about dependencies for each file in a Renku project is stored
 in various metadata.
 
 When an update command is executed, Renku looks into the most recent execution
-of each workflow and checks which one is outdated (i.e. at least one of its
-inputs is modified). It generates a minimal dependency graph for each outdated
-file stored in the repository. It means that only the necessary steps will be
-executed.
+of each workflow (Run and Plan combination) and checks which one is outdated
+(i.e. at least one of its inputs is modified). It generates a minimal
+dependency graph for each outdated file stored in the repository. It means
+that only the necessary steps will be executed.
 
 Assume that the following history for the file ``H`` exists.
 
@@ -57,17 +57,17 @@ In this situation, you can do effectively three things:
 
      $ renku update --all
 
-* Update only ``H``
+* Update only ``E``
 
   .. code-block:: console
 
-     $ renku update H
+     $ renku update E
 
 * Update ``E`` and ``H``
 
   .. code-block:: console
 
-     $ renku update E H
+     $ renku update H
 
 .. note:: If there were uncommitted changes then the command fails.
    Check :program:`git status` to see details.

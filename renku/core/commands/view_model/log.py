@@ -41,7 +41,7 @@ def json(data, columns):
 class LogType(str, Enum):
     """Enum of different types of Log entries."""
 
-    ACTIVITY = "Workflow Execution"
+    ACTIVITY = "Run"
     DATASET = "Dataset"
 
 

@@ -17,72 +17,147 @@
 # limitations under the License.
 """Manage the set of CWL files created by ``renku`` commands.
 
-Manipulating workflows
-~~~~~~~~~~~~~~~~~~~~~~
+Activities and Plans
+~~~~~~~~~~~~~~~~~~~~
 
-Listing workflows:
+Renku records two different kinds of metadata when a workflow is executed,
+``Run`` and ``Plan``.
+Plans describe a recipe for a command, they function as a template that
+can be used directly or combined with other workflow templates to create more
+complex recipes.
+These Plans can be run in various ways, on creation with ``renku run`,`
+doing a ``renku rerun`` or ``renku update`` or manually using ``renku workflow
+execute``.
+
+Each time a ``Plan`` is run, we track that instance of it as an ``Run``.
+Activities track workflow execution through time. They track which Plan was
+run, at what time, with which values. This allows knowing which steps were
+taken in a repository, how they were taken and what results they produced.
+
+The ``renku workflow`` group of commands contains most of the commands used
+to interacti with Plans and Runs
+
+Working with Plans
+~~~~~~~~~~~~~~~~~~
+
+Listing Plans
+*************
 
 .. code-block:: console
 
     $ renku workflow ls
-    26be2e8d66f74130a087642768f2cef0_rerun.yaml:
-    199c4b9d462f4b27a4513e5e55f76eb2_cat.yaml:
-    9bea2eccf9624de387d9b06e61eec0b6_rerun.yaml:
-    b681b4e229764ceda161f6551370af12_update.yaml:
-    25d0805243e3468d92a3786df782a2c4_rerun.yaml:
+    ID                                       NAME
+    ---------------------------------------  ---------------
+    /plans/11a3702184394b93ac422df760e40999  cp-B-C-ca4da
+    /plans/96642cac86d9435e8abce2384f8618b9  cat-A-C-fa017
+    /plans/96c70626575c41c5a13853b070eaaaf5  my-other-run
+    /plans/9a0961844fcc46e1816fde00f57e24a8  my-run
 
-Each ``*.yaml`` file corresponds to a renku run/update/rerun execution.
+Each entry corresponds to a recorded Plan/workflow template. You can also
+show additional columns using the ``--columns`` parameter, which takes any
+combination of values from ``id``, ``name``, ``keywords`` and ``description``.
 
-Exporting workflows:
+Showing Plan Details
+********************
 
-You can export the workflow to create a file as Common Workflow Language
-by using:
+You can see the details of a plan by using ``renku workflow show``:
 
 .. code-block:: console
 
-    $ renku workflow set-name create output_file
+    $ renku workflow show my-run
+    Id: /plans/9a0961844fcc46e1816fde00f57e24a8
+    Name: run1
+    Command: cp A B
+    Success Codes:
+    Inputs:
+            - input-1:
+                    Default Value: A
+                    Position: 1
+    Outputs:
+            - output-2:
+                    Default Value: B
+                    Position: 2
+
+This shows the unique Id of the Plan, its name, the full command of the Plan
+if it was run without any modifications (more on that later), which exit codes
+should be considered successful executions (Defaults to ``0``) as well as its
+inputs, outputs and parameters.
+
+Executing Plans
+***************
+
+Plans can be executed using ``renku workflow execute``. They can be run as-is
+or their parameters can be modified as needed. Renku has a plugin architecture
+to allow execution using various execution backends.
+
+.. code-block:: console
+
+    $ renku workflow execute --provider cwltool --set input-1=file.txt my-run
+
+Parameters can be set using the ``--set`` keyword or by specifying them in a
+values YAML file and passing that using ``--values``. Provider specific
+settings can be passed as file using the ``--config`` parameter.
+
+Exporting Plans
+***************
+
+You can export a Plan to in a number of workflow languages, such as CWL (
+Common Workflow Language) by using ``renku workflow export``:
+
+.. code-block:: console
+
+    $ renku workflow export --format cwl my-run
     baseCommand:
-    - cat
+    - cp
     class: CommandLineTool
     cwlVersion: v1.0
-    id: 22943eca-fa4c-4f3b-a92d-f6ac7badc0d2
+    id: 63e3a2a8-5b40-49b2-a2f4-eecc37bc76b0
     inputs:
+    - default: B
+    id: _plans_9a0961844fcc46e1816fde00f57e24a8_outputs_2_arg
+    inputBinding:
+        position: 2
+    type: string
     - default:
         class: File
-        path: /home/user/project/intermediate
-    id: inputs_1
+        location: file:///home/user/my-project/A
+    id: _plans_9a0961844fcc46e1816fde00f57e24a8_inputs_1
     inputBinding:
         position: 1
     type: File
     - default:
-        class: File
-        path: /home/user/project/intermediate2
-    id: inputs_2
-    inputBinding:
-        position: 2
-    type: File
+        class: Directory
+        location: file:///home/user/my-project/.renku
+    id: input_renku_metadata
+    type: Directory
+    - default:
+        class: Directory
+        location: file:///home/user/my-project/.git
+    id: input_git_directory
+    type: Directory
     outputs:
-    - id: output_stdout
-    streamable: false
-    type: stdout
+    - id: _plans_9a0961844fcc46e1816fde00f57e24a8_outputs_2
+    outputBinding:
+        glob: $(inputs._plans_9a0961844fcc46e1816fde00f57e24a8_outputs_2_arg)
+    type: File
     requirements:
     InitialWorkDirRequirement:
         listing:
-        - entry: $(inputs.inputs_1)
-        entryname: intermediate
+        - entry: $(inputs._plans_9a0961844fcc46e1816fde00f57e24a8_inputs_1)
+        entryname: A
         writable: false
-        - entry: $(inputs.inputs_2)
-        entryname: intermediate2
+        - entry: $(inputs.input_renku_metadata)
+        entryname: .renku
         writable: false
-    stdout: output_file
+        - entry: $(inputs.input_git_directory)
+        entryname: .git
+        writable: false
 
-You can use ``--revision`` to specify the revision of the output file to
-generate the workflow for. You can also export to a file directly with
-``-o <path>``.
+You can export to a file directly with ``-o <path>``.
 
 
-Composing workflows into larger workflows
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Composing Plans into larger workflows
+*************************************
 
 For more complex workflows consisting of several steps, you can use the
 ``renku workflow compose`` command. This creates a new workflow that has
@@ -92,12 +167,12 @@ The basic usage is:
 
 .. code-block:: console
 
-   $ renku run --name step1 -- cp input intermediate
+   $ renku run --name step1-- cp input intermediate
    $ renku run --name step2 -- cp intermediate output
    $ renku workflow compose my-composed-workflow step1 step2
 
-This would create a new workflow ``my-composed-workflow`` that consists
-of ``step1`` and ``step2`` as steps. This new workflow is just
+This would create a new workflow called ``my-composed-workflow`` that
+consists of ``step1`` and ``step2`` as steps. This new workflow is just
 like any other workflow in renku in that it can be executed, exported
 or composed with other workflows.
 
@@ -137,7 +212,8 @@ names of the objects for all these cases also work.
 The expressions can also be combined using ``,`` if a mapping should point
 to more than one parameter of a child step.
 
-You can mix absolute and relative reference in the same expression, as you see fit.
+You can mix absolute and relative reference in the same expression, as you see
+fit.
 
 A full example of this would be:
 
@@ -169,8 +245,6 @@ at execution time).
 
 You can add a description to the mappings to make them more human-readable
 by using the ``--describe-param``/``-p`` parameter, as shown here:
-
-
 
 .. code-block:: console
 
@@ -216,29 +290,61 @@ order of precedence (lower precedence first):
 - Value passed to the input/output/parameter
 - Value propagated to an input from the source of a workflow link
 
-Input and output files
-~~~~~~~~~~~~~~~~~~~~~~
+Editing Plans
+*************
 
-You can list input and output files generated in the repository by running
-``renku workflow inputs`` and ``renku workflow outputs`` commands. Alternatively,
-you can check if all paths specified as arguments are input or output files
-respectively.
+Plans can be edited in some limited fashion, but we do not allow structural
+changes, as that might cause issues with the reproducibility and provenance of
+the project. If you want to do structural changes (e.g. adding/removing
+parameters), we recommend you record a new plan instead.
+
+You can change the name and description of Plans and of their parameters, as
+well as changing default values of the parameters using the ``renku workflow
+edit`` command:
 
 .. code-block:: console
 
-   $ renku run wc < source.txt > result.wc
-   $ renku workflow inputs
-   source.txt
-   $ renku workflow outputs
-   result.wc
-   $ renku workflow outputs source.txt
-   $ echo $?  # last command finished with an error code
-   1
+   $ renku workflow edit my-run --name new-run --description "my description"
+     --rename-param input-1=my-input --set my-input=other-file.txt
+     --describe-param my-input="My input parameter" my-run
+
+This would rename the Plan ``my-run`` to ``new-run``, change its description,
+rename its parameter ``input-1`` to ``my-input`` and set the default of this
+parameter to ``other-file.txt`` and set its description.
+
+Removing Plans
+**************
+
+Sometimes you might want to discard a recorded Plan or reuse its name with a
+new Plan. In these cases, you can delete the old plan using ``renku workflow
+remove <plan name>``. Once a Plan is removed, it doesn't show up in most renku
+workflow commands.
+``renku update`` ignores deleted Plans, but ``renku rerun`` will still rerun
+them if needed, to ensure reproducibility.
+
+Working with Runs
+~~~~~~~~~~~~~~~~~
+
+Listing Runs
+************
+
+To get a view of what commands have been execute in the project, you can use
+the ``renku log --workflows`` command:
+
+.. code-block:: console
+
+    $ renku log --workflows
+    DATE                 TYPE  DESCRIPTION
+    -------------------  ----  -------------
+    2021-09-21 15:46:02  Run   cp A C
+    2021-09-21 10:52:51  Run   cp A B
+
+Refer to the documentation of the :ref:`cli-log` command for more details.
 
 Visualizing Executions
-----------------------
+**********************
 
-You can visualize past executions made with renku using the ``renku workflow
+You can visualize past Runs made with renku using the ``renku workflow
 visualize`` command.
 This will show a directed graph of executions and how they are connected. This
 way you can see exactly how a file was generated and what steps it involded.
@@ -334,6 +440,26 @@ This will allow you to navigate between workflow execution and see details
 by pressing the <Enter> key.
 
 Use ``renku workflow visualize -h`` to see all available options.
+
+
+Input and output files
+~~~~~~~~~~~~~~~~~~~~~~
+
+You can list input and output files generated in the repository by running
+``renku workflow inputs`` and ``renku workflow outputs`` commands. Alternatively,
+you can check if all paths specified as arguments are input or output files
+respectively.
+
+.. code-block:: console
+
+   $ renku run wc < source.txt > result.wc
+   $ renku workflow inputs
+   source.txt
+   $ renku workflow outputs
+   result.wc
+   $ renku workflow outputs source.txt
+   $ echo $?  # last command finished with an error code
+   1
 
 """
 

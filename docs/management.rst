@@ -44,3 +44,13 @@ Git Internals
 
 .. automodule:: renku.core.models.git
    :members:
+
+Command Builder
+---------------
+
+Most renku commands require context (database/git/etc.) to be set up for them.
+The command builder pattern makes this easy by wrapping commands in factory
+methods.
+
+.. automodule:: renku.core.management.command_builder
+   :members:

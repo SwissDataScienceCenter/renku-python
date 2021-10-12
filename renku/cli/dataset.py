@@ -49,7 +49,7 @@ the dataset.
 |                   | be added to the dataset.                             |
 +-------------------+------------------------------------------------------+
 
-Editing a dataset's metadata
+Editing a dataset's metadata:
 
 Use ``edit`` subcommand to change metadata of a dataset. You can edit the same
 set of metadata as the create command by passing the options described in the
@@ -98,13 +98,17 @@ flag for it:
 
 Showing dataset details:
 
-. code-block:: console
+.. code-block:: console
 
     $ renku dataset show some-dataset
     Name: some-dataset
     Created: 2020-12-09 13:52:06.640778+00:00
     Creator(s): John Doe<john.doe@example.com> [SDSC]
     Keywords: Dataset, Data
+    Annotations:
+    [
+      {...}
+    ]
     Title: Some Dataset
     Description:
     Just some dataset

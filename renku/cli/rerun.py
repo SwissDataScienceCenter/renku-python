@@ -36,7 +36,16 @@ Recreate a specific output file by running:
 
      $ renku rerun C
 
+If you do not want step 1 to also be rerun, you can specify a starting point
+using the ``--from`` parameter:
+
+  .. code-block:: console
+
+     $ renku rerun --from B C
+
 Note that all other outputs of the executed workflow will be recreated as well.
+If the output didn't change, it will be removed from git and re-added to ensure
+that the reexecution is properly tracked.
 """
 
 import click
