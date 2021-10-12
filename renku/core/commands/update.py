@@ -28,6 +28,7 @@ from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.activity import sort_activities
 from renku.core.models.provenance.activity import Activity
 from renku.core.utils.metadata import add_activity_if_recent, get_modified_activities
@@ -75,12 +76,42 @@ def _update(update_all, dry_run, client_dispatcher: IClientDispatcher, activity_
     execute_workflow(plans=plans, command_name="update")
 
 
+@inject.autoparams()
+def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_dispatcher: IClientDispatcher) -> bool:
+    """Return whether this plan has been deleted."""
+    client = client_dispatcher.current_client
+
+    for usage in activity.usages:
+        if not (client.path / usage.entity.path).exists():
+            return False
+
+    plan = activity.association.plan
+
+    if plan.invalidated_at is not None:
+        return False
+
+    # get newest with same name
+    newest_plan = plan_gateway.get_by_name(plan.name)
+
+    if newest_plan.invalidated_at is not None:
+        return False
+
+    all_plans = plan_gateway.get_all_plans()
+
+    derived = plan
+    while derived:
+        plan = derived
+        derived = next((p for p in all_plans if p.derived_from and p.derived_from.url_id == plan.id), None)
+
+    return plan.invalidated_at is None
+
+
 def _get_modified_activities_and_paths(repo, activity_gateway) -> Tuple[Set[Activity], Set[str]]:
     """Return latest activities that one of their inputs is modified."""
     latest_activities = activity_gateway.get_latest_activity_per_plan().values()
     modified, _ = get_modified_activities(activities=latest_activities, repo=repo)
 
-    return {a for a, _ in modified}, {e.path for _, e in modified}
+    return {a for a, _ in modified if _is_activity_valid(a)}, {e.path for _, e in modified}
 
 
 def _get_downstream_activities(
@@ -115,6 +146,9 @@ def _get_downstream_activities(
 
         for chain in downstream_chains:
             for activity in chain:
+                if not _is_activity_valid(activity):
+                    # don't process further downstream activities as the plan in question was deleted
+                    break
                 include_newest_activity(activity)
 
     return {a for activities in all_activities.values() for a in activities}
