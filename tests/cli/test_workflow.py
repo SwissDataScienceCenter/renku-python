@@ -17,10 +17,13 @@
 # limitations under the License.
 """Test ``workflow`` commands."""
 
+import itertools
 import os
 import tempfile
 from pathlib import Path
 
+import pexpect
+import pyte
 import pytest
 from cwl_utils import parser_v1_2 as cwlgen
 
@@ -504,3 +507,149 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
                 if "outputs" in parameters[wf[0]]:
                     for o in parameters[wf[0]]["outputs"]:
                         assert Path(o).resolve().exists()
+
+
+def test_workflow_visualize_non_interactive(runner, project, client, workflow_graph):
+    """Test renku workflow visualize in non-interactive mode."""
+
+    # We don't use pytest paramtrization for performance reasons, so we don't need to build the workflow_graph fixture
+    # for each execution
+    columns = [[], ["-c", "command"], ["-c", "command,id,date"]]
+    from_command = [
+        ([], set()),
+        (["--from", "B"], {"A", "Z", "H", "J"}),
+        (["--from", "A"], {"H", "J"}),
+        (["--from", "B", "--from", "A"], {"H", "J"}),
+        (["--from", "H"], {"A", "S", "Z"}),
+    ]
+    paths = [([], set()), (["X"], {"H", "J"}), (["B", "Z"], {"H", "J", "X", "Y"}), (["J"], {"A", "S", "Z"})]
+
+    commands = list(itertools.product(columns, from_command, paths))
+
+    for command in commands:
+        excludes = set()
+        base_command = ["workflow", "visualize", "--no-pager"]
+        columns, from_command, paths = command
+        if columns:
+            base_command.extend(columns)
+        if from_command[0]:
+            base_command.extend(from_command[0])
+            excludes |= from_command[1]
+        if paths[0]:
+            base_command.extend(paths[0])
+            excludes |= paths[1]
+
+        result = runner.invoke(cli, base_command)
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        assert all(e not in result.output for e in excludes)
+
+    result = runner.invoke(
+        cli, ["workflow", "visualize", "--no-pager", "-x", "-a", "--no-color", "--revision", "HEAD^^", "H", "S"]
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "A" in result.output
+    assert "J" not in result.output
+    assert "S" in result.output
+    assert "H" in result.output
+
+
+@pytest.mark.skip(
+    "Doesn't actually work, not really a tty available in github actions, "
+    "see https://github.com/actions/runner/issues/241"
+)
+def test_workflow_visualize_interactive(runner, project, client, workflow_graph):
+    """Test renku workflow visualize in interactive mode."""
+
+    dimensions = (120, 120)
+    screen = pyte.Screen(dimensions[1], dimensions[0])
+    stream = pyte.Stream(screen)
+
+    output = []
+
+    def _try_and_show_error(child):
+        # If there was an error, we'd get the 'Aaaaahhh' screen, so get it to print the exception and return the
+        # screen after that.
+        child.send("\n")
+        child.expect(pexpect.TIMEOUT, timeout=2)
+        return _update_screen(child.before)
+
+    def _update_screen(data):
+        output.append(data)
+        for chunk in output:
+            stream.feed(chunk)
+
+        lines = screen.display
+        screen.reset()
+
+        return "\n".join(lines)
+
+    env = os.environ.copy()
+    env.update({"LINES": str(dimensions[0]), "COLUMNS": str(dimensions[1])})
+
+    # we need bash so everything behaves properly
+    child = pexpect.spawn("renku workflow visualize --interactive", encoding="utf-8", dimensions=dimensions, echo=False)
+    child.expect(pexpect.TIMEOUT, timeout=10)
+
+    content = _update_screen(child.before)
+
+    assert "Navigate using arrow keys" in content, _try_and_show_error(child)
+    assert "Press <q> to exit" in content, _try_and_show_error(child)
+    assert "echo test > A" in content, _try_and_show_error(child)
+
+    # show activity details
+    child.send(chr(10))
+    child.expect(pexpect.TIMEOUT, timeout=5)
+    content = _update_screen(child.before)
+    assert "Plan Id:" in content, _try_and_show_error(child)
+    assert "Inputs:" in content, _try_and_show_error(child)
+    assert "Outputs:" in content, _try_and_show_error(child)
+    assert "Agents:" in content, _try_and_show_error(child)
+    assert "Press <q> to exit" not in content, _try_and_show_error(child)
+
+    # move cursor around a bit, we use letters because ANSI codes don't seem to work in pexpect
+    child.send("k")
+    child.expect(pexpect.TIMEOUT, timeout=2)
+    _update_screen(child.before)
+    child.send("l")
+    child.expect(pexpect.TIMEOUT, timeout=2)
+    _update_screen(child.before)
+    child.send("k")
+    child.expect(pexpect.TIMEOUT, timeout=2)
+    _update_screen(child.before)
+    child.send("j")
+    child.expect(pexpect.TIMEOUT, timeout=2)
+    _update_screen(child.before)
+    child.send("i")
+    child.expect(pexpect.TIMEOUT, timeout=2)
+    _update_screen(child.before)
+
+    child.send(chr(10))
+    child.expect(pexpect.TIMEOUT, timeout=5)
+    content = _update_screen(child.before)
+    assert "Plan Id:" in content, _try_and_show_error(child)
+    assert "Inputs:" in content, _try_and_show_error(child)
+    assert "Outputs:" in content, _try_and_show_error(child)
+    assert "Agents:" in content, _try_and_show_error(child)
+    assert "Press <q> to exit" not in content, _try_and_show_error(child)
+
+    child.send("\n")
+    child.expect(pexpect.TIMEOUT, timeout=5)
+    _update_screen(child.before)
+
+    child.send("h")
+    child.expect(pexpect.TIMEOUT, timeout=5)
+    content = _update_screen(child.before)
+
+    assert "Navigate using arrow keys" in content, _try_and_show_error(child)
+    assert "Press <q> to exit" in content, _try_and_show_error(child)
+    assert "echo test > A" in content, _try_and_show_error(child)
+    assert "Inputs:" not in content, _try_and_show_error(child)
+    assert "Outputs:" not in content, _try_and_show_error(child)
+    assert "Agents:" not in content, _try_and_show_error(child)
+
+    child.send("q")
+
+    child.expect(pexpect.EOF, timeout=2)
+    assert not child.isalive()

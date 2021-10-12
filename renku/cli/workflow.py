@@ -235,8 +235,112 @@ respectively.
    $ echo $?  # last command finished with an error code
    1
 
+Visualizing Executions
+----------------------
+
+You can visualize past executions made with renku using the ``renku workflow
+visualize`` command.
+This will show a directed graph of executions and how they are connected. This
+way you can see exactly how a file was generated and what steps it involded.
+It also supports an interactive mode that lets you explore the graph in a more
+detailed way.
+
+.. code-block:: console
+
+   $ renku run echo "input" > input
+   $ renku run cp input intermediate
+   $ renku run cp intermediate output
+   $ renku workflow visualize
+        ╔════════════╗
+        ║echo > input║
+        ╚════════════╝
+                *
+                *
+                *
+            ┌─────┐
+            │input│
+            └─────┘
+                *
+                *
+                *
+    ╔═════════════════════╗
+    ║cp input intermediate║
+    ╚═════════════════════╝
+                *
+                *
+                *
+        ┌────────────┐
+        │intermediate│
+        └────────────┘
+                *
+                *
+                *
+    ╔══════════════════════╗
+    ║cp intermediate output║
+    ╚══════════════════════╝
+                *
+                *
+                *
+            ┌──────┐
+            │output│
+            └──────┘
+
+    $ renku workflow visualize intermediate
+        ╔════════════╗
+        ║echo > input║
+        ╚════════════╝
+            *
+            *
+            *
+            ┌─────┐
+            │input│
+            └─────┘
+            *
+            *
+            *
+    ╔═════════════════════╗
+    ║cp input intermediate║
+    ╚═════════════════════╝
+            *
+            *
+            *
+        ┌────────────┐
+        │intermediate│
+        └────────────┘
+    $ renku workflow visualize --from intermediate
+        ┌────────────┐
+        │intermediate│
+        └────────────┘
+                *
+                *
+                *
+    ╔══════════════════════╗
+    ║cp intermediate output║
+    ╚══════════════════════╝
+                *
+                *
+                *
+            ┌──────┐
+            │output│
+            └──────┘
+
+You can also run in interactive mode using the ``--interactive`` flag.
+
+.. code-block:: console
+
+   $ renku workflow visualize --interactive
+
+This will allow you to navigate between workflow execution and see details
+by pressing the <Enter> key.
+
+Use ``renku workflow visualize -h`` to see all available options.
+
 """
 
+import os
+import pydoc
+import shutil
+import sys
 from pathlib import Path
 
 import click
@@ -244,8 +348,10 @@ from rich.console import Console
 from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
+from renku.core import errors
 from renku.core.commands.echo import ERROR
 from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
+from renku.core.commands.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
 from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.commands.workflow import (
@@ -256,6 +362,7 @@ from renku.core.commands.workflow import (
     list_workflows_command,
     remove_workflow_command,
     show_workflow_command,
+    visualize_graph_command,
     workflow_inputs_command,
     workflow_outputs_command,
 )
@@ -700,3 +807,79 @@ def execute(
         click.echo(
             "Unchanged files:\n\n\t{0}".format("\n\t".join(click.style(path, fg="yellow") for path in result.output))
         )
+
+
+@workflow.command(no_args_is_help=True)
+@click.option(
+    "--from",
+    "sources",
+    type=click.Path(exists=True, dir_okay=False),
+    multiple=True,
+    help="Start drawing the graph from this file.",
+)
+@click.option(
+    "-c",
+    "--columns",
+    type=click.STRING,
+    default="command",
+    metavar="<columns>",
+    help="Comma-separated list of column to display: {}.".format(", ".join(ACTIVITY_GRAPH_COLUMNS.keys())),
+    show_default=True,
+)
+@click.option("-x", "--exclude-files", is_flag=True, help="Hide file nodes, only show activities.")
+@click.option("-a", "--ascii", is_flag=True, help="Only use Ascii characters for formatting.")
+@click.option("-i", "--interactive", is_flag=True, help="Interactively explore activity graph.")
+@click.option("--no-color", is_flag=True, help="Don't colorize output.")
+@click.option("--pager", is_flag=True, help="Force use pager (less) for output.")
+@click.option("--no-pager", is_flag=True, help="Don't use pager (less) for output.")
+@click.option(
+    "--revision",
+    type=click.STRING,
+    help="Git revision to generate the graph for.",
+)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
+def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pager, no_pager, revision, paths):
+    """Visualization of workflows that produced outputs at the specified paths.
+
+    Either PATHS or --from need to be set.
+    """
+    if pager and no_pager:
+        raise errors.ParameterError("Can't use both --pager and --no-pager.")
+    if revision and not paths:
+        raise errors.ParameterError("Can't use --revision without specifying PATHS.")
+
+    result = (
+        visualize_graph_command()
+        .build()
+        .execute(sources=sources, targets=paths, show_files=not exclude_files, revision=revision)
+    )
+    text_output, navigation_data = result.output.text_representation(columns=columns, color=not no_color, ascii=ascii)
+
+    if not text_output:
+        return
+
+    if not interactive:
+        max_width = max(node[1].x for layer in navigation_data for node in layer)
+        tty_size = shutil.get_terminal_size(fallback=(120, 120))
+
+        if no_pager or not sys.stdout.isatty() or os.system(f"less 2>{os.devnull}") != 0:
+            use_pager = False
+        elif pager:
+            use_pager = True
+        elif max_width < tty_size.columns:
+            use_pager = False
+        else:
+            use_pager = True
+
+        if use_pager:
+            pydoc.tempfilepager(text_output, "less --chop-long-lines -R --tilde")
+        else:
+            click.echo(text_output)
+        return
+
+    from renku.cli.utils.curses import CursesActivityGraphViewer
+
+    viewer = CursesActivityGraphViewer(
+        text_output, navigation_data, result.output.vertical_space, use_color=not no_color
+    )
+    viewer.run()
