@@ -295,6 +295,7 @@ def _edit_workflow(
     workflow = derived_from.derive()
     if new_name:
         workflow.name = new_name
+        plan_gateway.remove_from_index(derived_from.name, index_name="plans-by-name")
 
     if description:
         workflow.description = description

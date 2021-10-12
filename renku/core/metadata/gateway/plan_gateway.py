@@ -54,3 +54,8 @@ class PlanGateway(IPlanGateway):
         database = self.database_dispatcher.current_database
         database["plans"].add(plan)
         database["plans-by-name"].add(plan)
+
+    def remove_from_index(self, key: str, index_name: str = "plans") -> None:
+        """Remove a plan from the index."""
+        database = self.database_dispatcher.current_database
+        database[index_name].pop(key)
