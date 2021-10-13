@@ -90,7 +90,7 @@ history = open("CHANGES.rst").read()
 
 tests_require = [
     "black==21.9b0",
-    "check-manifest>=0.37,<0.47",
+    "check-manifest>=0.37,<0.48",
     "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.6.2",
     "flake8>=3.8,<3.10",
@@ -118,7 +118,7 @@ service_requires = [
     "apispec-webframeworks>=0.5.2,<0.6",
     "circus==0.17.1",
     "docker-compose==1.29.2",
-    "flask==2.0.1",
+    "flask==2.0.2",
     "gunicorn",
     "marshmallow==3.13.0",
     "Pillow>=8.3.2,<9.0",
@@ -127,7 +127,7 @@ service_requires = [
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
     "rq==1.10.0",
-    "sentry-sdk[flask]>=0.7.4,<1.3.2",
+    "sentry-sdk[flask]>=0.7.4,<1.4.4",
     "walrus==0.8.2",
 ]
 
