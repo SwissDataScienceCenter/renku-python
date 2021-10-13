@@ -310,13 +310,15 @@ def test_workflow_edit(runner, client, run_shell):
     result = runner.invoke(cli, ["run", "--name", workflow_name, "touch", "data.txt"])
     assert 0 == result.exit_code, format_result_exception(result)
 
+    database = Database.from_path(client.database_path)
+    test_plan = database["plans-by-name"][workflow_name]
+
     cmd = ["workflow", "edit", workflow_name, "--name", "first"]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
+    workflow_name = "first"
     database = Database.from_path(client.database_path)
-
-    test_plan = database["plans-by-name"][workflow_name]
     first_plan = database["plans-by-name"]["first"]
 
     assert first_plan

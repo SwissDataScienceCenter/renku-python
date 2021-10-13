@@ -272,12 +272,21 @@ class Plan(AbstractPlan):
 
     def set_parameters_from_strings(self, params_strings: List[str]) -> None:
         """Set parameters by parsing parameters strings."""
+
+        def _iter_with_reference(col):
+            return enumerate(itertools.zip_longest(col, itertools.repeat(col, len(col))))
+
         for param_string in params_strings:
             name, value = param_string.split("=", maxsplit=1)
-            for param in itertools.chain(self.inputs, self.outputs, self.parameters):
-                if param.name == name:
-                    param = param.derive(plan_id=self.id)
-                    param.default_value = value
+            for i, param in itertools.chain(
+                _iter_with_reference(self.inputs),
+                _iter_with_reference(self.outputs),
+                _iter_with_reference(self.parameters),
+            ):
+                if param[0].name == name:
+                    new_param = param[0].derive(plan_id=self.id)
+                    new_param.default_value = value
+                    param[1][i] = new_param
                     break
             else:
                 self.parameters.append(
