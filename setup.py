@@ -90,7 +90,7 @@ history = open("CHANGES.rst").read()
 
 tests_require = [
     "black==21.9b0",
-    "check-manifest>=0.37,<0.47",
+    "check-manifest>=0.37,<0.48",
     "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.6.2",
     "flake8>=3.8,<3.10",
@@ -127,7 +127,7 @@ service_requires = [
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
     "rq==1.10.0",
-    "sentry-sdk[flask]>=0.7.4,<1.3.2",
+    "sentry-sdk[flask]>=0.7.4,<1.4.4",
     "walrus==0.8.2",
 ]
 
@@ -163,7 +163,7 @@ install_requires = [
     "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",
     "click>=7.0,<8.0.2",
-    "cryptography>=3.4.1,<3.5",
+    "cryptography>=3.4.1,<35.1",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool==3.1.20210922203925",
     "cwl-utils>=0.10",
