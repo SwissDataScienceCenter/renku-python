@@ -114,9 +114,7 @@ def get_slug(name, invalid_chars: List[chr] = []):
 
     valid_chars_pattern = [r"\w", ".", "_", "-"]
     if len(invalid_chars):
-        for i, ch in enumerate(valid_chars_pattern):
-            if ch in invalid_chars:
-                del valid_chars_pattern[i]
+        valid_chars_pattern = [ch for ch in valid_chars_pattern if ch not in invalid_chars]
 
     no_invalid_characters = re.sub(f'[^{"".join(valid_chars_pattern)}]', "_", normalized)
     no_duplicates = re.sub(r"([._-])[._-]+", r"\1", no_invalid_characters)

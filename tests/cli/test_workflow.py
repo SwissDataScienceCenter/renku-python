@@ -511,9 +511,10 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
         if is_composite:
             overrides["steps"] = {}
             for p in plan.plans:
-                if p.name in parameters["steps"]:
-                    overrides["steps"][p.name] = {}
-                    for k, values in parameters["steps"][p.name].items():
+                if p.name not in parameters["steps"]:
+                    continue
+                overrides["steps"][p.name] = {}
+                for k, values in parameters["steps"][p.name].items():
                         for i, v in enumerate(values):
                             overrides["steps"][p.name][getattr(p, k)[i].name] = v
                             if k == "outputs":

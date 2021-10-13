@@ -525,9 +525,7 @@ def _execute_workflow(
 
             if len(keys) > 1:
                 # create a nested dictionary
-                set_param = _nested_dict()
-                last_key = reduce(operator.getitem, keys[:-1], set_param)
-                last_key[keys[-1]] = value
+                set_param = reduce(lambda x,y: {y:x}, reversed(keys), value)
 
                 override_params = dict(_merge_nested_dicts(override_params, dict(set_param)))
             else:
