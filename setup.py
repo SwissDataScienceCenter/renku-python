@@ -90,10 +90,10 @@ history = open("CHANGES.rst").read()
 
 tests_require = [
     "black==21.9b0",
-    "check-manifest>=0.37,<0.47",
+    "check-manifest>=0.37,<0.48",
     "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.6.2",
-    "flake8>=3.8,<3.10",
+    "flake8>=3.8,<4.1",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
     "isort>=5.3.2,<5.10.0",
@@ -127,7 +127,7 @@ service_requires = [
     "redis==3.5.3",
     "rq-scheduler==0.11.0",
     "rq==1.10.0",
-    "sentry-sdk[flask]>=0.7.4,<1.3.2",
+    "sentry-sdk[flask]>=0.7.4,<1.4.4",
     "walrus==0.8.2",
 ]
 
