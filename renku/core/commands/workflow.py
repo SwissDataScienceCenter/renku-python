@@ -303,22 +303,20 @@ def _edit_workflow(
         workflow.set_parameters_from_strings(set_params)
 
         def _mod_params(workflow, changed_params, attr):
-            def _iter_with_reference(col):
-                return enumerate(itertools.zip_longest(col, itertools.repeat(col, len(col))))
-
             for param_string in changed_params:
                 name, new_value = param_string.split("=", maxsplit=1)
                 new_value = new_value.strip(' "')
 
-                for i, param in itertools.chain(
-                    _iter_with_reference(workflow.inputs),
-                    _iter_with_reference(workflow.outputs),
-                    _iter_with_reference(workflow.parameters),
-                ):
-                    if param[0].name == name:
-                        new_param = param[0].derive(plan_id=workflow.id)
-                        setattr(new_param, attr, new_value)
-                        param[1][i] = new_param
+                found = False
+                for collection in [workflow.inputs, workflow.outputs, workflow.parameters]:
+                    for i, param in enumerate(collection):
+                        if param.name == name:
+                            new_param = param.derive(plan_id=workflow.id)
+                            setattr(new_param, attr, new_value)
+                            collection[i] = new_param
+                            found = True
+                            break
+                    if found:
                         break
                 else:
                     raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
