@@ -509,13 +509,8 @@ def _execute_workflow(
             name, value = param.split("=", maxsplit=1)
             keys = name.split(".")
 
-            if len(keys) > 1:
-                # create a nested dictionary
-                set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)
-
-                override_params = always_merger.merge(override_params, set_param)
-            else:
-                override_params[name] = value
+            set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)
+            override_params = always_merger.merge(override_params, set_param)
 
     if override_params:
         rv = ValueResolver.get(workflow, override_params)

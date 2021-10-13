@@ -455,7 +455,7 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
         ([("run1", "touch data.csv"), ("run2", "wc data.csv > output")], {}),
         (
             [("run1", "touch data.csv"), ("run2", "wc data.csv > output")],
-            {"steps": {"run1": {"outputs": ["foo"]}, "run2": {"inputs": ["foo"], "outputs": ["bar"]}}},
+            {"run1": {"outputs": ["foo"]}, "run2": {"inputs": ["foo"], "outputs": ["bar"]}},
         ),
     ],
 )
@@ -509,14 +509,14 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
         overrides = dict()
         outputs = []
         if is_composite:
-            overrides["steps"] = {}
+            overrides = {}
             for p in plan.plans:
-                if p.name not in parameters["steps"]:
+                if p.name not in parameters:
                     continue
-                overrides["steps"][p.name] = {}
-                for k, values in parameters["steps"][p.name].items():
+                overrides[p.name] = {}
+                for k, values in parameters[p.name].items():
                     for i, v in enumerate(values):
-                        overrides["steps"][p.name][getattr(p, k)[i].name] = v
+                        overrides[p.name][getattr(p, k)[i].name] = v
                         if k == "outputs":
                             outputs.append(v)
         else:

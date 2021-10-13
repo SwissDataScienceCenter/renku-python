@@ -229,14 +229,12 @@ def test_composite_plan_map_all_parameters(composite_plan):
             [],
             [],
             {
-                "steps": {
-                    "run1": {
-                        "run1_param2": "f",
-                    },
-                    "run2": {
-                        "run2_input2": "h",
-                    },
-                }
+                "run1": {
+                    "run1_param2": "f",
+                },
+                "run2": {
+                    "run2_input2": "h",
+                },
             },
             {
                 "run1": {
@@ -310,12 +308,10 @@ def test_composite_plan_map_all_parameters(composite_plan):
             ["m1=@step1.@input1", "m2=@step2.@output2"],
             ["m1=x", "m2=y"],
             {
-                "steps": {
-                    "run1": {
-                        "run1_param2": "f",
-                    },
-                    "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
-                }
+                "run1": {
+                    "run1_param2": "f",
+                },
+                "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
             },
             {
                 "run1": {
@@ -341,13 +337,11 @@ def test_composite_plan_map_all_parameters(composite_plan):
             ["m1=@step1.@input1", "m2=@step2.@output2"],
             ["m1=x", "m2=y"],
             {
-                "parameters": {"m2": "z"},
-                "steps": {
-                    "run1": {
-                        "run1_param2": "f",
-                    },
-                    "run2": {"run2_input2": "h"},  # NOTE: Override value provided by mapping
+                "m2": "z",
+                "run1": {
+                    "run1_param2": "f",
                 },
+                "run2": {"run2_input2": "h"},  # NOTE: Override value provided by mapping
             },
             {
                 "run1": {
@@ -373,13 +367,11 @@ def test_composite_plan_map_all_parameters(composite_plan):
             ["m1=@step1.@input1", "m2=@step2.@output2"],
             ["m1=x", "m2=y"],
             {
-                "parameters": {"m1": "42"},
-                "steps": {
-                    "run1": {
-                        "run1_param2": "f",
-                    },
-                    "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
+                "m1": "42",
+                "run1": {
+                    "run1_param2": "f",
                 },
+                "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
             },
             {
                 "run1": {

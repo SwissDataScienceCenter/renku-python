@@ -113,7 +113,7 @@ def get_slug(name, invalid_chars: List[chr] = []):
     normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
 
     valid_chars_pattern = [r"\w", ".", "_", "-"]
-    if len(invalid_chars):
+    if len(invalid_chars) > 0:
         valid_chars_pattern = [ch for ch in valid_chars_pattern if ch not in invalid_chars]
 
     no_invalid_characters = re.sub(f'[^{"".join(valid_chars_pattern)}]', "_", normalized)
