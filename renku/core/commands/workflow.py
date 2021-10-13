@@ -18,9 +18,9 @@
 """Renku workflow commands."""
 
 
+import itertools
 import uuid
 from datetime import datetime
-from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -223,7 +223,7 @@ def _compose_workflow(
         # If the user supplies their own mappings, those overrule the automatically added ones.
 
         for i, child_plan in plan_activities:
-            for param in chain(child_plan.inputs, child_plan.outputs, child_plan.parameters):
+            for param in itertools.chain(child_plan.inputs, child_plan.outputs, child_plan.parameters):
                 try:
                     mapping_name = f"{i}-{param.name}"
                     plan.set_mappings_from_strings([f"{mapping_name}=@step{i}.{param.name}"])
@@ -302,28 +302,27 @@ def _edit_workflow(
     if isinstance(workflow, Plan):
         workflow.set_parameters_from_strings(set_params)
 
-        def _kv_extract(kv_string):
-            k, v = kv_string.split("=", maxsplit=1)
-            v = v.strip(' "')
-            return k, v
+        def _mod_params(workflow, changed_params, attr):
+            for param_string in changed_params:
+                name, new_value = param_string.split("=", maxsplit=1)
+                new_value = new_value.strip(' "')
 
-        for param_string in rename_params:
-            name, new_name = _kv_extract(param_string)
-            for param in workflow.inputs + workflow.outputs + workflow.parameters:
-                if param.name == name:
-                    param.name = new_name
-                    break
-            else:
-                raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
+                found = False
+                for collection in [workflow.inputs, workflow.outputs, workflow.parameters]:
+                    for i, param in enumerate(collection):
+                        if param.name == name:
+                            new_param = param.derive(plan_id=workflow.id)
+                            setattr(new_param, attr, new_value)
+                            collection[i] = new_param
+                            found = True
+                            break
+                    if found:
+                        break
+                else:
+                    raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
 
-        for description_string in describe_params:
-            name, description = _kv_extract(description_string)
-            for param in workflow.inputs + workflow.outputs + workflow.parameters:
-                if param.name == name:
-                    param.description = description
-                    break
-            else:
-                raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
+        _mod_params(workflow, rename_params, "name")
+        _mod_params(workflow, describe_params, "description")
     elif isinstance(workflow, CompositePlan) and len(map_params):
         workflow.set_mappings_from_strings(map_params)
 
