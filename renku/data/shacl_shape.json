@@ -294,6 +294,14 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:url",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             }
          ]
       },
@@ -573,7 +581,7 @@
             {
                "path": "schema:isBasedOn",
                "sh:class": {
-                  "@id": "schema:DigitalDocument"
+                  "@id": "prov:Entity"
                },
                "maxCount": 1
             },

@@ -62,7 +62,7 @@ def _create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> O
     if not dataset_file:
         return
     commit_sha = dataset_file._label.rsplit("@", maxsplit=1)[-1]
-    return RemoteEntity(commit_sha=commit_sha, path=dataset_file.path, url=dataset_file.url)
+    return RemoteEntity(checksum=commit_sha, path=dataset_file.path, url=dataset_file.url)
 
 
 def _convert_dataset_file(dataset_file: old_datasets.DatasetFile, client, revision: str) -> Optional[DatasetFile]:

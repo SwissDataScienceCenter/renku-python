@@ -204,7 +204,7 @@ class CommandInput(CommandParameterBase):
 
     def to_stream_representation(self) -> str:
         """Input stream representation."""
-        return f" < {self.default_value}" if self.mapped_to else ""
+        return f"< {self.default_value}" if self.mapped_to else ""
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="input")
@@ -249,7 +249,7 @@ class CommandOutput(CommandParameterBase):
         if not self.mapped_to:
             return ""
 
-        return f" > {self.default_value}" if self.mapped_to.stream_type == "stdout" else f" 2> {self.default_value}"
+        return f"> {self.default_value}" if self.mapped_to.stream_type == "stdout" else f" 2> {self.default_value}"
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="output")
