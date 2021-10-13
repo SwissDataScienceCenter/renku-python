@@ -515,10 +515,10 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
                     continue
                 overrides["steps"][p.name] = {}
                 for k, values in parameters["steps"][p.name].items():
-                        for i, v in enumerate(values):
-                            overrides["steps"][p.name][getattr(p, k)[i].name] = v
-                            if k == "outputs":
-                                outputs.append(v)
+                    for i, v in enumerate(values):
+                        overrides["steps"][p.name][getattr(p, k)[i].name] = v
+                        if k == "outputs":
+                            outputs.append(v)
         else:
             for k, values in parameters[workflow_name].items():
                 for i, v in enumerate(values):

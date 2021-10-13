@@ -19,7 +19,6 @@
 
 
 import itertools
-import operator
 import uuid
 from collections import defaultdict
 from datetime import datetime
@@ -525,7 +524,7 @@ def _execute_workflow(
 
             if len(keys) > 1:
                 # create a nested dictionary
-                set_param = reduce(lambda x,y: {y:x}, reversed(keys), value)
+                set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)
 
                 override_params = dict(_merge_nested_dicts(override_params, dict(set_param)))
             else:
