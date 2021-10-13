@@ -495,21 +495,6 @@ def _execute_workflow(
     def _nested_dict():
         return defaultdict(_nested_dict)
 
-    def _merge_nested_dicts(dict1, dict2):
-        # from https://stackoverflow.com/a/7205672
-        for k in set(dict1.keys()).union(dict2.keys()):
-            if k in dict1 and k in dict2:
-                if isinstance(dict1[k], dict) and isinstance(dict2[k], dict):
-                    yield (k, dict(_merge_nested_dicts(dict1[k], dict2[k])))
-                else:
-                    # If one of the values is not a dict, you can't continue merging it.
-                    # Value from second dict overrides one in first and we move on.
-                    yield (k, dict2[k])
-            elif k in dict1:
-                yield (k, dict1[k])
-            else:
-                yield (k, dict2[k])
-
     workflow = _find_workflow(name_or_id)
 
     # apply the provided parameter settings provided by user
@@ -518,6 +503,8 @@ def _execute_workflow(
         override_params.update(_safe_read_yaml(values))
 
     if set_params:
+        from deepmerge import always_merger
+
         for param in set_params:
             name, value = param.split("=", maxsplit=1)
             keys = name.split(".")
@@ -526,7 +513,7 @@ def _execute_workflow(
                 # create a nested dictionary
                 set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)
 
-                override_params = dict(_merge_nested_dicts(override_params, dict(set_param)))
+                override_params = always_merger.merge(override_params, set_param)
             else:
                 override_params[name] = value
 
