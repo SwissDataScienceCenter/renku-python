@@ -18,9 +18,9 @@
 """Renku workflow commands."""
 
 
+import itertools
 import uuid
 from datetime import datetime
-import itertools
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -295,7 +295,6 @@ def _edit_workflow(
     workflow = derived_from.derive()
     if new_name:
         workflow.name = new_name
-        plan_gateway.remove_from_index(derived_from.name, index_name="plans-by-name")
 
     if description:
         workflow.description = description

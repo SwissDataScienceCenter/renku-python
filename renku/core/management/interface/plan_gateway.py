@@ -45,7 +45,3 @@ class IPlanGateway(ABC):
     def add(self, plan: AbstractPlan):
         """Add a plan to the database."""
         raise NotImplementedError
-
-    def remove_from_index(self, key: str, index_name: str = "plans") -> None:
-        """Remove a plan from the given index."""
-        raise NotImplementedError
