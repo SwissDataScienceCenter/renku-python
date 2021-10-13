@@ -385,7 +385,7 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, cli
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2"])
 def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
-    from renku.core.management import LocalClient
+    from renku.core.management.client import LocalClient
 
     def prepare_git_repo(*_, **__):
         raise errors.GitError
@@ -1237,7 +1237,7 @@ def test_empty_update(client, runner, data_repository):
 @retry_failed
 def test_import_from_renku_project(tmpdir, client, runner, load_dataset_with_injection):
     """Check metadata for an imported dataset from other renkulab repo."""
-    from renku.core.management import LocalClient
+    from renku.core.management.client import LocalClient
 
     url = "https://dev.renku.ch/gitlab/renku-testing/project-9.git"
 
@@ -1480,7 +1480,7 @@ def test_check_disk_space(runner, client, monkeypatch, url):
 @retry_failed
 def test_migration_submodule_datasets(isolated_runner, old_repository_with_submodules, load_dataset_with_injection):
     """Test migration of datasets that use submodules."""
-    from renku.core.management import LocalClient
+    from renku.core.management.client import LocalClient
 
     project_path = old_repository_with_submodules.working_dir
     os.chdir(project_path)

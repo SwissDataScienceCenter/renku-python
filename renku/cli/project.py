@@ -46,7 +46,6 @@ from pathlib import Path
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.project import edit_project_command
 
 
 @click.group()
@@ -72,6 +71,8 @@ def project():
 )
 def edit(description, creator, metadata):
     """Edit project metadata."""
+    from renku.core.commands.project import edit_project_command
+
     custom_metadata = None
 
     if metadata:

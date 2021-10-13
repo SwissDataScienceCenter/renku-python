@@ -28,9 +28,9 @@ from git import Actor
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
-from renku.core.commands.view_model import plan_view
 from renku.core.commands.view_model.activity_graph import ActivityGraphViewModel
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
+from renku.core.commands.view_model.plan import plan_view
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
