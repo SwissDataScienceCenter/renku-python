@@ -56,7 +56,7 @@ DATASET_METADATA_TEMPLATE = """
                         "typeName": "dsDescription"
                     },
                     {
-                        "value": [],
+                        "value": ["${subject}"],
                         "typeClass": "controlledVocabulary",
                         "multiple": true,
                         "typeName": "subject"
