@@ -40,6 +40,7 @@ from renku.core.commands.providers.doi import DOIProvider
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.metadata.immutable import DynamicProxy
+from renku.core.utils import communication
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.file_size import bytes_to_unit
 from renku.core.utils.requests import retry
@@ -54,6 +55,23 @@ DATAVERSE_METADATA_API = "datasets/export"
 DATAVERSE_VERSIONS_API = "datasets/:persistentId/versions"
 DATAVERSE_FILE_API = "access/datafile/:persistentId/"
 DATAVERSE_EXPORTER = "schema.org"
+
+DATAVERSE_SUBJECTS = [
+    "Agricultural Sciences",
+    "Arts and Humanities",
+    "Astronomy and Astrophysics",
+    "Business and Management",
+    "Chemistry",
+    "Computer and Information Science",
+    "Earth and Environmental Sciences",
+    "Engineering",
+    "Law",
+    "Mathematical Sciences",
+    "Medicine, Health and Life Sciences",
+    "Physics",
+    "Social Sciences",
+    "Other",
+]
 
 
 def check_dataverse_uri(url):
@@ -444,14 +462,25 @@ class DataverseExporter(ExporterApi):
 
     def _get_dataset_metadata(self):
         authors, contacts = self._get_creators()
+        subject = self._get_subject()
         metadata_template = Template(DATASET_METADATA_TEMPLATE)
         metadata = metadata_template.substitute(
             name=_escape_json_string(self.dataset.title),
             authors=json.dumps(authors),
             contacts=json.dumps(contacts),
             description=_escape_json_string(self.dataset.description),
+            subject=subject,
         )
         return json.loads(metadata)
+
+    def _get_subject(self):
+        text_prompt = "Subject of this dataset: \n\n"
+        text_prompt += "\n".join(f"{s}\t[{i}]" for i, s in enumerate(DATAVERSE_SUBJECTS, start=1))
+        text_prompt += "\n\nSubject"
+
+        selection = communication.prompt(text_prompt, type=int, default=len(DATAVERSE_SUBJECTS)) or 0
+
+        return DATAVERSE_SUBJECTS[selection - 1]
 
     def _get_creators(self):
         authors = []
