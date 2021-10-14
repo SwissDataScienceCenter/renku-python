@@ -105,7 +105,7 @@ tests_require = [
     "pytest-flake8>=1.0.6,<1.0.8",
     "pytest-mock>=3.2.0,<3.7.0",
     "pytest-pep8==1.0.6",
-    "pytest-timeout==1.4.2",
+    "pytest-timeout==2.0.1",
     "pytest-xdist>=1.34.0,<2.5.0",
     "pytest>=4.0.0,<6.2.6",
     "pyte>=0.8.0<0.9.0",
