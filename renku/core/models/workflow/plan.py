@@ -326,8 +326,8 @@ class PlanDetailsJson(marshmallow.Schema):
     """Serialize a plan to a response object."""
 
     name = marshmallow.fields.String(required=True)
+    full_command = marshmallow.fields.String(data_key="command")
     derived_from = marshmallow.fields.String()
-    title = marshmallow.fields.String()
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     id = marshmallow.fields.String()
