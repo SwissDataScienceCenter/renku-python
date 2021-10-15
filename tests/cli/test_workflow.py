@@ -35,6 +35,52 @@ from renku.core.plugins.provider import available_workflow_providers
 from tests.utils import format_result_exception
 
 
+def test_workflow_list(runner, project, run_shell, client):
+    """Test listing of workflows."""
+    # Run a shell command with pipe.
+    output = run_shell('renku run --name run1 --description desc1 -- echo "a" > output1')
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Run a shell command with pipe.
+    output = run_shell("renku run --name run2 --description desc2 -- cp output1 output2")
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    result = runner.invoke(cli, ["workflow", "ls"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "run1" in result.output
+    assert "run2" in result.output
+    assert "desc1" not in result.output
+    assert "desc2" not in result.output
+    assert "echo a > output1" in result.output
+    assert "cp output1 output2" in result.output
+
+    result = runner.invoke(cli, ["workflow", "ls", "-c", "id,description"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "run1" not in result.output
+    assert "run2" not in result.output
+    assert "desc1" in result.output
+    assert "desc2" in result.output
+    assert "echo a > output1" not in result.output
+    assert "cp output1 output2" not in result.output
+
+    result = runner.invoke(cli, ["workflow", "ls", "--format", "json"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "run1" in result.output
+    assert "run2" in result.output
+    assert "desc1" in result.output
+    assert "desc2" in result.output
+    assert "echo a > output1" in result.output
+    assert "cp output1 output2" in result.output
+
+
 def test_workflow_compose(runner, project, run_shell, client):
     """Test renku workflow compose."""
     # Run a shell command with pipe.

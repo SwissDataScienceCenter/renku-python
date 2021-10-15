@@ -506,7 +506,7 @@ def workflow():
     "-c",
     "--columns",
     type=click.STRING,
-    default="id,name",
+    default="id,name,command",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(WORKFLOW_COLUMNS.keys())),
     show_default=True,
