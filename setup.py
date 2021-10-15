@@ -169,7 +169,7 @@ install_requires = [
     "cwl-utils>=0.10",
     "deepmerge==0.3.0",
     "environ_config>=18.2.0,<21.3.0",
-    "filelock>=3.0.0,<=3.0.12",
+    "filelock>=3.0.0,<3.3.2",
     "gitpython==3.1.24",
     "grandalf==0.7",
     "humanize>=2.5.0,<3.12.0",
