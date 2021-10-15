@@ -17,10 +17,13 @@
 # limitations under the License.
 """Plan view model."""
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter
-from renku.core.models.workflow.plan import Plan
+from renku.core.models.workflow.plan import AbstractPlan, Plan
+
+from .composite_plan import CompositePlanViewModel
 
 
 class CommandInputViewModel:
@@ -178,3 +181,10 @@ class PlanViewModel:
             outputs=[CommandOutputViewModel.from_output(output) for output in plan.outputs],
             parameters=[CommandParameterViewModel.from_parameter(param) for param in plan.parameters],
         )
+
+
+def plan_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewModel]:
+    """Convert an ``CompositePlan`` or ``Plan`` to a ``ViewModel``."""
+    if isinstance(workflow, CompositePlan):
+        return CompositePlanViewModel.from_composite_plan(workflow)
+    return PlanViewModel.from_plan(workflow)

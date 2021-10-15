@@ -18,17 +18,19 @@
 """Renku project gateway interface."""
 
 from abc import ABC
+from typing import TYPE_CHECKING
 
-from renku.core.models.project import Project
+if TYPE_CHECKING:
+    from renku.core.models.project import Project
 
 
 class IProjectGateway(ABC):
     """Interface for the ProjectGateway."""
 
-    def get_project(self) -> Project:
+    def get_project(self) -> "Project":
         """Get project metadata."""
         raise NotImplementedError
 
-    def update_project(self, project: Project):
+    def update_project(self, project: "Project"):
         """Update project metadata."""
         raise NotImplementedError

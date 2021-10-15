@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
-from renku.core.management import LocalClient
+from renku.core.management.client import LocalClient
 from renku.core.management.command_builder.client_dispatcher import ClientDispatcher
 from renku.core.management.command_builder.database_dispatcher import DatabaseDispatcher
 

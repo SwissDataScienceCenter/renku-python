@@ -19,13 +19,9 @@
 import re
 from subprocess import PIPE, SubprocessError, run
 
-from humanize import naturalsize
-
+from renku.core.commands.format.tabulate import tabulate
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.models.dataset import DatasetFileDetailsJson
-
-from .tabulate import tabulate
 
 
 def tabular(records, *, columns=None):
@@ -34,6 +30,7 @@ def tabular(records, *, columns=None):
     :param records: Filtered collection.
     :param columns: List of columns to display
     """
+
     if not columns:
         columns = "added,creators,dataset,full_path"
 
@@ -72,6 +69,8 @@ def _get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
 @inject.autoparams()
 def _get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
     """Try to get file size from Git LFS."""
+    from humanize import naturalsize  # Slow import
+
     client = client_dispatcher.current_client
 
     lfs_files_sizes = {}
@@ -121,6 +120,7 @@ def json(records, **kwargs):
 
     :param records: Filtered collection.
     """
+    from renku.core.models.dataset import DatasetFileDetailsJson
     from renku.core.models.json import dumps
 
     _get_lfs_file_sizes(records)

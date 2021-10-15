@@ -97,7 +97,7 @@ def old_workflow_project(request, tmp_path):
 @pytest.fixture
 def old_dataset_project(tmp_path):
     """Prepares a testing repo created by old version of renku."""
-    from renku import LocalClient
+    from renku.core.management.client import LocalClient
     from renku.core.utils.contexts import chdir
 
     name = "old-datasets-v0.9.1.git"
@@ -146,7 +146,7 @@ def unsupported_project(client, client_database_injection_manager):
 @pytest.fixture
 def old_client_before_database(tmp_path):
     """A renku project from last version without Database."""
-    from renku import LocalClient
+    from renku.core.management.client import LocalClient
     from renku.core.utils.contexts import chdir
 
     name = "old-datasets-v0.16.0.git"
