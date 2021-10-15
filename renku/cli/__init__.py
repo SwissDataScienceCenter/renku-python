@@ -103,6 +103,18 @@ try:
 except ImportError:
     from importlib_metadata import entry_points
 
+
+def get_entry_points(name: str):
+    """Get entry points from importlib."""
+    all_entry_points = entry_points()
+
+    if hasattr(all_entry_points, "select"):
+        return all_entry_points.select(group=name)
+    else:
+        # Prior to Python 3.10, this returns a dict instead of the selection interface, which is slightly slower
+        return all_entry_points.get(name, [])
+
+
 #: Monkeypatch Click application.
 click_completion.init()
 
@@ -132,7 +144,7 @@ def is_allowed_command(ctx):
     return ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS or "-h" in sys.argv or "--help" in sys.argv
 
 
-@with_plugins(entry_points(group="renku.cli_plugins"))
+@with_plugins(get_entry_points("renku.cli_plugins"))
 @click.group(
     cls=IssueFromTraceback, context_settings={"auto_envvar_prefix": "RENKU", "help_option_names": ["-h", "--help"]}
 )
