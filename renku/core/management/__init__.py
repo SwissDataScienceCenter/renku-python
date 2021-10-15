@@ -16,7 +16,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku repository management."""
-
-from renku.core.management.client import LocalClient
-
-__all__ = ("LocalClient",)

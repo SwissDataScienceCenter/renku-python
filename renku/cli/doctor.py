@@ -20,13 +20,13 @@ import textwrap
 
 import click
 
-from renku.core.commands.doctor import DOCTOR_INFO, doctor_check_command
-
 
 @click.command()
 @click.pass_context
 def doctor(ctx):
     """Check your system and repository for potential problems."""
+    from renku.core.commands.doctor import DOCTOR_INFO, doctor_check_command
+
     click.secho("\n".join(textwrap.wrap(DOCTOR_INFO)) + "\n", bold=True)
     is_ok, problems = doctor_check_command().build().execute().output
 

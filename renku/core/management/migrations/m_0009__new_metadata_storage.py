@@ -30,7 +30,7 @@ from git import NULL_TREE, Commit, GitCommandError
 
 import renku.core.management.migrate
 from renku.core import errors
-from renku.core.management import LocalClient
+from renku.core.management.client import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.interface.activity_gateway import IActivityGateway

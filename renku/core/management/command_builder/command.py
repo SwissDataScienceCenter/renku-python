@@ -28,6 +28,7 @@ import inject
 
 from renku.core import errors
 from renku.core.utils.communication import CommunicationCallback
+from renku.core.utils.git import default_path
 
 _LOCAL = threading.local()
 
@@ -114,7 +115,7 @@ def update_injected_client(new_client, update_database: bool = True):
 
     Necessary because we sometimes use attr.evolve to modify a client and this doesn't affect the injected instance.
     """
-    from renku.core.management import LocalClient
+    from renku.core.management.client import LocalClient
     from renku.core.metadata.database import Database
 
     injector = getattr(_LOCAL, "injector", None)
@@ -161,10 +162,9 @@ class Command:
 
     def _injection_pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
         """Setup dependency injections."""
-        from renku.core.management import LocalClient
+        from renku.core.management.client import LocalClient
         from renku.core.management.command_builder.client_dispatcher import ClientDispatcher
         from renku.core.management.interface.client_dispatcher import IClientDispatcher
-        from renku.core.management.repository import default_path
 
         dispatcher = ClientDispatcher()
 

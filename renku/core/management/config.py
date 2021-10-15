@@ -24,7 +24,6 @@ from pathlib import Path
 import attr
 import click
 import portalocker
-from pkg_resources import resource_filename
 
 from renku.core.models.enums import ConfigFilter
 
@@ -81,6 +80,8 @@ class ConfigManagerMixin:
 
     def load_config(self, config_filter=ConfigFilter.ALL):
         """Loads local, global or both configuration object."""
+        from pkg_resources import resource_filename
+
         config = configparser.ConfigParser()
         config_files = [resource_filename("renku", "data/defaults.ini")]
 

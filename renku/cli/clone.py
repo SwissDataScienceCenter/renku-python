@@ -49,9 +49,6 @@ need the LFS data, pass ``--no-pull-data`` option to skip this step.
 
 import click
 
-from renku.core.commands.clone import project_clone_command
-from renku.core.commands.echo import GitProgress
-
 
 @click.command()
 @click.option("--no-pull-data", is_flag=True, help="Do not pull data from Git-LFS.", default=False)
@@ -59,6 +56,9 @@ from renku.core.commands.echo import GitProgress
 @click.argument("path", required=False, default=None)
 def clone(no_pull_data, url, path):
     """Clone a Renku repository."""
+    from renku.core.commands.clone import project_clone_command
+    from renku.core.commands.echo import GitProgress
+
     click.echo(f"Cloning {url} ...")
     project_clone_command().build().execute(url=url, path=path, skip_smudge=no_pull_data, progress=GitProgress())
     click.secho("OK", fg="green")

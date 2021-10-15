@@ -72,10 +72,8 @@ correct and that there isn't anything missing.
 
 import click
 
-from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
 from renku.core.commands.format.graph import GRAPH_FORMATS
-from renku.core.commands.graph import export_graph_command
 
 
 @click.group(hidden=True)
@@ -95,6 +93,8 @@ def graph():
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
 def export(format, revision, full, strict):
     r"""Export Renku graph metadata for project."""
+    from renku.cli.utils.callback import ClickCallback
+    from renku.core.commands.graph import export_graph_command
 
     if full:
         revision = None

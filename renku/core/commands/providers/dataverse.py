@@ -22,12 +22,11 @@ import re
 import urllib
 from pathlib import Path
 from string import Template
-from typing import List
+from typing import TYPE_CHECKING, List
 from urllib import parse as urlparse
 
 import attr
 import requests
-from marshmallow import pre_load
 from tqdm import tqdm
 
 from renku.core import errors
@@ -38,16 +37,16 @@ from renku.core.commands.providers.dataverse_metadata_templates import (
     DATASET_METADATA_TEMPLATE,
 )
 from renku.core.commands.providers.doi import DOIProvider
-from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.metadata.immutable import DynamicProxy
-from renku.core.models.dataset import DatasetFile
-from renku.core.models.provenance.agent import PersonSchema
+from renku.core.utils import communication
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.file_size import bytes_to_unit
-from renku.core.utils.git import get_content
 from renku.core.utils.requests import retry
+
+if TYPE_CHECKING:
+    from renku.core.commands.providers.models import ProviderDataset
 
 DATAVERSE_API_PATH = "api/v1"
 
@@ -57,31 +56,22 @@ DATAVERSE_VERSIONS_API = "datasets/:persistentId/versions"
 DATAVERSE_FILE_API = "access/datafile/:persistentId/"
 DATAVERSE_EXPORTER = "schema.org"
 
-
-class _DataverseDatasetSchema(ProviderDatasetSchema):
-    """Schema for Dataverse datasets."""
-
-    @pre_load
-    def fix_data(self, data, **kwargs):
-        """Fix data that is received from Dataverse."""
-        # Fix context
-        context = data.get("@context")
-        if context and isinstance(context, str):
-            if context == "http://schema.org":
-                context = "http://schema.org/"
-            data["@context"] = {"@base": context, "@vocab": context}
-
-        # Add type to creators
-        creators = data.get("creator", [])
-        for c in creators:
-            c["@type"] = [str(t) for t in PersonSchema.opts.rdf_type]
-
-        # Fix license to be a string
-        license = data.get("license")
-        if license and isinstance(license, dict):
-            data["license"] = license.get("url", "")
-
-        return data
+DATAVERSE_SUBJECTS = [
+    "Agricultural Sciences",
+    "Arts and Humanities",
+    "Astronomy and Astrophysics",
+    "Business and Management",
+    "Chemistry",
+    "Computer and Information Science",
+    "Earth and Environmental Sciences",
+    "Engineering",
+    "Law",
+    "Mathematical Sciences",
+    "Medicine, Health and Life Sciences",
+    "Physics",
+    "Social Sciences",
+    "Other",
+]
 
 
 def check_dataverse_uri(url):
@@ -319,8 +309,40 @@ class DataverseRecordSerializer:
 
         return [DataverseFileSerializer(**file_) for file_ in files]
 
-    def as_dataset(self, client) -> ProviderDataset:
+    def as_dataset(self, client) -> "ProviderDataset":
         """Deserialize ``DataverseRecordSerializer`` to ``Dataset``."""
+
+        from marshmallow import pre_load
+
+        from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
+        from renku.core.models.dataset import DatasetFile
+        from renku.core.models.provenance.agent import PersonSchema
+
+        class _DataverseDatasetSchema(ProviderDatasetSchema):
+            """Schema for Dataverse datasets."""
+
+            @pre_load
+            def fix_data(self, data, **kwargs):
+                """Fix data that is received from Dataverse."""
+                # Fix context
+                context = data.get("@context")
+                if context and isinstance(context, str):
+                    if context == "http://schema.org":
+                        context = "http://schema.org/"
+                    data["@context"] = {"@base": context, "@vocab": context}
+
+                # Add type to creators
+                creators = data.get("creator", [])
+                for c in creators:
+                    c["@type"] = [str(t) for t in PersonSchema.opts.rdf_type]
+
+                # Fix license to be a string
+                license = data.get("license")
+                if license and isinstance(license, dict):
+                    data["license"] = license.get("url", "")
+
+                return data
+
         files = self.get_files()
         dataset = ProviderDataset.from_jsonld(data=self._json, schema_class=_DataverseDatasetSchema)
 
@@ -416,6 +438,8 @@ class DataverseExporter(ExporterApi):
 
     def export(self, publish, client=None, **kwargs):
         """Execute export process."""
+        from renku.core.utils.git import get_content
+
         deposition = _DataverseDeposition(server_url=self._server_url, access_token=self.access_token)
         metadata = self._get_dataset_metadata()
         response = deposition.create_dataset(dataverse_name=self._dataverse_name, metadata=metadata)
@@ -438,14 +462,25 @@ class DataverseExporter(ExporterApi):
 
     def _get_dataset_metadata(self):
         authors, contacts = self._get_creators()
+        subject = self._get_subject()
         metadata_template = Template(DATASET_METADATA_TEMPLATE)
         metadata = metadata_template.substitute(
             name=_escape_json_string(self.dataset.title),
             authors=json.dumps(authors),
             contacts=json.dumps(contacts),
             description=_escape_json_string(self.dataset.description),
+            subject=subject,
         )
         return json.loads(metadata)
+
+    def _get_subject(self):
+        text_prompt = "Subject of this dataset: \n\n"
+        text_prompt += "\n".join(f"{s}\t[{i}]" for i, s in enumerate(DATAVERSE_SUBJECTS, start=1))
+        text_prompt += "\n\nSubject"
+
+        selection = communication.prompt(text_prompt, type=int, default=len(DATAVERSE_SUBJECTS)) or 0
+
+        return DATAVERSE_SUBJECTS[selection - 1]
 
     def _get_creators(self):
         authors = []
