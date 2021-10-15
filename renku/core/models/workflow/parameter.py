@@ -134,7 +134,7 @@ class CommandParameterBase:
         return getattr(self, "_v_actual_value_set", False)
 
     def _generate_name(self, base) -> str:
-        name = get_slug(self.prefix.strip(" -=")) if self.prefix else base
+        name = get_slug(self.prefix.strip(" -="), invalid_chars=["."]) if self.prefix else base
         position = self.position or uuid4().hex[:RANDOM_ID_LENGTH]
         return f"{name}-{position}"
 

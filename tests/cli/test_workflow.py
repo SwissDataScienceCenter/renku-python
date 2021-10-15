@@ -20,6 +20,7 @@
 import itertools
 import os
 import tempfile
+import uuid
 from pathlib import Path
 
 import pexpect
@@ -451,6 +452,7 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
         ([("run", 'echo "a" > output1')], {}),
         ([("run", 'echo "a" > output1')], {"run": {"outputs": ["replaced"]}}),
         ([("run", 'echo "a" > output1')], {"run": {"parameters": ["foo"], "outputs": ["bar"]}}),
+        ([("run1", "touch data.csv"), ("run2", "wc data.csv > output")], {}),
         (
             [("run1", "touch data.csv"), ("run2", "wc data.csv > output")],
             {"run1": {"outputs": ["foo"]}, "run2": {"inputs": ["foo"], "outputs": ["bar"]}},
@@ -467,6 +469,15 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
         # Assert not allocated stderr.
         assert output[1] is None
 
+    is_composite = True if len(workflows) > 1 else False
+
+    if is_composite:
+        composed_name = uuid.uuid4().hex
+        cmd = itertools.chain(["workflow", "compose", composed_name], map(lambda x: x[0], workflows))
+
+        result = runner.invoke(cli, cmd)
+        assert 0 == result.exit_code, format_result_exception(result)
+
     def _execute(args):
         with capsys.disabled():
             try:
@@ -477,38 +488,60 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
             except SystemExit as e:
                 assert e.code in {None, 0}
 
+    def _flatten_dict(obj, key_string=""):
+        if type(obj) == dict:
+            key_string = key_string + "." if key_string else key_string
+            for k in obj:
+                yield from _flatten_dict(obj[k], key_string + str(k))
+        else:
+            yield key_string, obj
+
+    workflow_name = composed_name if is_composite else workflows[0][0]
+
     if not parameters:
-        for wf in workflows:
-            execute_cmd = ["workflow", "execute", "-p", provider, wf[0]]
-            _execute(execute_cmd)
+        execute_cmd = ["workflow", "execute", "-p", provider, workflow_name]
+        _execute(execute_cmd)
     else:
         database = Database.from_path(client.database_path)
-        for wf in workflows:
-            if wf[0] in parameters:
-                plan = database["plans-by-name"][wf[0]]
-                execute_cmd = ["workflow", "execute", "-p", provider]
+        plan = database["plans-by-name"][workflow_name]
+        execute_cmd = ["workflow", "execute", "-p", provider]
 
-                overrides = dict()
-                for k, values in parameters[wf[0]].items():
+        overrides = dict()
+        outputs = []
+        if is_composite:
+            overrides = {}
+            for p in plan.plans:
+                if p.name not in parameters:
+                    continue
+                overrides[p.name] = {}
+                for k, values in parameters[p.name].items():
                     for i, v in enumerate(values):
-                        overrides[getattr(plan, k)[i].name] = v
+                        overrides[p.name][getattr(p, k)[i].name] = v
+                        if k == "outputs":
+                            outputs.append(v)
+        else:
+            for k, values in parameters[workflow_name].items():
+                for i, v in enumerate(values):
+                    overrides[getattr(plan, k)[i].name] = v
+                    if k == "outputs":
+                        outputs.append(v)
 
-                if yaml:
-                    fd, values_path = tempfile.mkstemp()
-                    os.close(fd)
-                    write_yaml(values_path, overrides)
-                    execute_cmd += ["--values", values_path]
-                else:
-                    [execute_cmd.extend(["--set", f"{k}={v}"]) for k, v in overrides.items()]
+        if yaml:
+            fd, values_path = tempfile.mkstemp()
+            os.close(fd)
+            write_yaml(values_path, overrides)
+            execute_cmd += ["--values", values_path]
+        else:
+            override_generator = _flatten_dict(overrides) if is_composite else overrides.items()
+            [execute_cmd.extend(["--set", f"{k}={v}"]) for k, v in override_generator]
 
-                execute_cmd.append(wf[0])
+        execute_cmd.append(workflow_name)
 
-                _execute(execute_cmd)
+        _execute(execute_cmd)
 
-                # check whether parameters setting was effective
-                if "outputs" in parameters[wf[0]]:
-                    for o in parameters[wf[0]]["outputs"]:
-                        assert Path(o).resolve().exists()
+        # check whether parameters setting was effective
+        for o in outputs:
+            assert Path(o).resolve().exists()
 
 
 def test_workflow_visualize_non_interactive(runner, project, client, workflow_graph):

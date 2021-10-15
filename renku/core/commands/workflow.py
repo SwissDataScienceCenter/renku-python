@@ -20,7 +20,9 @@
 
 import itertools
 import uuid
+from collections import defaultdict
 from datetime import datetime
+from functools import reduce
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -490,6 +492,9 @@ def execute_workflow(
 def _execute_workflow(
     name_or_id: str, set_params: List[str], provider: str, config: Optional[str], values: Optional[str]
 ):
+    def _nested_dict():
+        return defaultdict(_nested_dict)
+
     workflow = _find_workflow(name_or_id)
 
     # apply the provided parameter settings provided by user
@@ -498,9 +503,14 @@ def _execute_workflow(
         override_params.update(_safe_read_yaml(values))
 
     if set_params:
+        from deepmerge import always_merger
+
         for param in set_params:
             name, value = param.split("=", maxsplit=1)
-            override_params[name] = value
+            keys = name.split(".")
+
+            set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)
+            override_params = always_merger.merge(override_params, set_param)
 
     if override_params:
         rv = ValueResolver.get(workflow, override_params)

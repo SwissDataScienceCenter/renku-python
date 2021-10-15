@@ -167,6 +167,7 @@ install_requires = [
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool==3.1.20210922203925",
     "cwl-utils>=0.10",
+    "deepmerge==0.3.0",
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.18",
