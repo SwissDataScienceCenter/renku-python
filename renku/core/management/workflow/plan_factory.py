@@ -380,6 +380,7 @@ class PlanFactory:
                 position=position,
                 mapped_to=mapped_stream,
                 encoding_format=encoding_format,
+                postfix=postfix,
             )
         )
 
@@ -415,6 +416,7 @@ class PlanFactory:
                 position=position,
                 mapped_to=mapped_stream,
                 encoding_format=encoding_format,
+                postfix=postfix,
             )
         )
 

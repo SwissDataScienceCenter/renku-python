@@ -18,8 +18,10 @@
 """Renku database dispatcher interface."""
 
 from abc import ABC
+from typing import TYPE_CHECKING
 
-from renku.core.metadata.database import Database
+if TYPE_CHECKING:
+    from renku.core.metadata.database import Database
 
 
 class IDatabaseDispatcher(ABC):
@@ -29,7 +31,7 @@ class IDatabaseDispatcher(ABC):
     """
 
     @property
-    def current_database(self) -> Database:
+    def current_database(self) -> "Database":
         """Get the currently active database."""
         raise NotImplementedError
 

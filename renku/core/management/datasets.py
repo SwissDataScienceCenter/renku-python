@@ -610,7 +610,7 @@ class DatasetsApiMixin(object):
 
     def _add_from_git(self, url, sources, destination, ref, repository=None):
         """Process adding resources from another git repository."""
-        from renku import LocalClient
+        from renku.core.management.client import LocalClient
 
         u = parse.urlparse(url)
 
@@ -901,7 +901,7 @@ class DatasetsApiMixin(object):
 
         :return: List of files that should be deleted
         """
-        from renku import LocalClient
+        from renku.core.management.client import LocalClient
 
         visited_repos = {}
         updated_files: List[DynamicProxy] = []

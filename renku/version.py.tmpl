@@ -19,6 +19,11 @@
 
 import re
 
+try:
+    from importlib.metadata import distribution
+except ImportError:
+    from importlib_metadata import distribution
+
 __version__ = "{version}"
 
 
@@ -31,12 +36,8 @@ def is_release():
 
 def _get_distribution_url():
     try:
-        import pkg_resources
-
-        d = pkg_resources.get_distribution("renku")
-        metadata = d._get_metadata(d.PKG_INFO)
-        home_page = [m for m in metadata if m.startswith("Home-page:")]
-        return home_page[0].split(":", 1)[1].strip()
+        d = distribution("renku")
+        return d.metadata["Home-page"]
     except Exception:
         return "N/A"
 
