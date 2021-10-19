@@ -576,16 +576,18 @@ def test_default_init_parameters(isolated_runner, mocker, project_init, template
 def test_init_with_description(isolated_runner, template):
     """Test project initialization with description."""
     result = isolated_runner.invoke(
-        cli, ["init", "--description", "my project description", "new-project", "--template-id", template["id"]]
+        cli, ["init", "--description", "my project description", "new project", "--template-id", template["id"]]
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(Path("new-project") / ".renku" / "metadata")
+    database = Database.from_path(Path("new project") / ".renku" / "metadata")
     project = database.get("project")
 
+    assert "new project" == project.name
+    assert project.id.endswith("new-project")  # make sure id uses slug version of name without space
     assert "my project description" in project.template_metadata
     assert "my project description" == project.description
 
-    readme_content = (Path("new-project") / "README.md").read_text()
+    readme_content = (Path("new project") / "README.md").read_text()
     assert "my project description" in readme_content

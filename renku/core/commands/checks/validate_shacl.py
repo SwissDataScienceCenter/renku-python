@@ -18,8 +18,6 @@
 """Check KG structure using SHACL."""
 import pyld
 import yaml
-from rdflib.namespace import Namespace
-from rdflib.term import BNode
 
 from renku.core.commands.echo import WARNING
 from renku.core.models.jsonld import NoDatesSafeLoader
@@ -29,6 +27,9 @@ from renku.core.utils.shacl import validate_graph
 
 def _shacl_graph_to_string(graph):
     """Converts a shacl validation graph into human readable format."""
+    from rdflib.namespace import Namespace
+    from rdflib.term import BNode
+
     sh = Namespace("http://www.w3.org/ns/shacl#")
 
     problems = []

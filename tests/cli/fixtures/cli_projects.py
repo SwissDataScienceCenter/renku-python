@@ -68,7 +68,7 @@ def no_lfs_warning(client):
 @pytest.fixture
 def client_with_lfs_warning(project):
     """Return a Renku repository with lfs warnings active."""
-    from renku.core.management import LocalClient
+    from renku.core.management.client import LocalClient
 
     client = LocalClient(path=project)
     client.set_value("renku", "lfs_threshold", "0b")

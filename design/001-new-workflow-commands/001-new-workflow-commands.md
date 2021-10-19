@@ -117,7 +117,7 @@ This command allows execution of a workflow template using a specified runner/pr
 
 Syntax examples:
 ```
-$ renku workflow execute --provider <provider> --config <config file> <workflow name> --mapping <mapping>
+$ renku workflow execute --provider <provider> --config <config file> <workflow name> --values <file>
 $ renku workflow execute --provider <provider> --config <config file> <workflow name> --set learning_rate=0.9 --set step3.learning_rate=0.1 --set step3.result_file=/tmp/myresult.txt
 ```
 
@@ -306,19 +306,14 @@ Various new commands allow mapping values to parameters or parameters to other p
 In case of passing a file, the structure of the yaml file looks like:
 
 ```
-parameters:
-    learning_rate: 0.9
-    dataset_input: dataset.csv
-    chart_output: mychart.png
-steps:
-    myworkflow:
-        parameters:
-            lr: 0.8
-            lookuptable: lookup.xml
-    steps:
-        myotherworkflow:
-            parameters:
-                language: en
+learning_rate: 0.9
+dataset_input: dataset.csv
+chart_output: mychart.png
+myworkflow:
+    lr: 0.8
+    lookuptable: lookup.xml
+    myotherworkflow:
+        language: en
 ```
 
 At the top level, it specifies the parameter values of the workflow (run or grouped run) to be executed. It can also contain values for steps contained in a grouped run, by specifying the name of the step and setting parameters for that step. In case of the grouped run mapping its values to child steps, setting values for child steps directly overwrites those values for the step and all its (potential) children.
@@ -326,10 +321,9 @@ At the top level, it specifies the parameter values of the workflow (run or grou
 For `renku workflow loop` the values file looks like:
 
 ```
-parameters:
-    learning_rate: 0.9
-    dataset_input: dataset.csv
-    chart_output: mychart.{loop_index}.png
+learning_rate: 0.9
+dataset_input: dataset.csv
+chart_output: mychart.{loop_index}.png
 looped_parameters:
     - alpha: 0.1
       beta: 0.7
@@ -337,15 +331,11 @@ looped_parameters:
       beta: 0.6
     - alpha: 0.5
       beta: 0.2
-steps:
-    myworkflow:
-        parameters:
-            lr: 0.8
-            lookuptable: lookup.xml
-    steps:
-        myotherworkflow:
-            parameters:
-                language: en
+myworkflow:
+    lr: 0.8
+    lookuptable: lookup.xml
+    myotherworkflow:
+        language: en
 ```
 
 Where the workflow is run for each entry in `looped_parameters` and the templated variable `{loop}` is substituted for the loop index (1, 2, 3, ...).

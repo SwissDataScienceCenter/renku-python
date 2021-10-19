@@ -24,7 +24,7 @@ from pathlib import Path
 from git import GitError, Repo
 
 from renku.core import errors
-from renku.core.management import LocalClient
+from renku.core.management.client import LocalClient
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
@@ -39,9 +39,9 @@ from renku.core.management.migrations.models.v9 import (
 from renku.core.utils.urls import remove_credentials
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
-    _migrate_submodule_based_datasets(client)
+    _migrate_submodule_based_datasets(migration_context.client)
 
 
 @inject.autoparams()

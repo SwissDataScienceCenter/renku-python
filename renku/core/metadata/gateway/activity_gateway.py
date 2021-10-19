@@ -17,9 +17,8 @@
 # limitations under the License.
 """Renku activity database gateway implementation."""
 
-import os
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 from persistent.list import PersistentList
 
@@ -28,9 +27,9 @@ from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.metadata.gateway.database_gateway import ActivityDownstreamRelation
-from renku.core.models.entity import Collection
 from renku.core.models.provenance.activity import Activity, ActivityCollection, Usage
 from renku.core.models.workflow.plan import AbstractPlan, Plan
+from renku.core.utils.os import are_paths_related
 
 
 class ActivityGateway(IActivityGateway):
@@ -62,11 +61,23 @@ class ActivityGateway(IActivityGateway):
 
         return list(database["activities-by-generation"].keys())
 
-    def get_activities_by_generation(self, path: Union[Path, str]) -> List[Activity]:
+    def get_activities_by_generation(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
         """Return the list of all activities that generate a path."""
         by_generation = self.database_dispatcher.current_database["activities-by-generation"]
+        activities = by_generation.get(str(path), [])
 
-        return by_generation.get(str(path), [])
+        if not checksum:
+            return activities
+
+        result = []
+
+        for activity in activities:
+            generation = next((g for g in activity.generations if g.entity.checksum == checksum), None)
+
+            if generation:
+                result.append(activity)
+
+        return result
 
     def get_downstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
@@ -118,8 +129,8 @@ class ActivityGateway(IActivityGateway):
 
         database["activities"].add(activity)
 
-        upstreams = []
-        downstreams = []
+        upstreams = set()
+        downstreams = set()
 
         by_usage = database["activities-by-usage"]
         by_generation = database["activities-by-generation"]
@@ -129,30 +140,18 @@ class ActivityGateway(IActivityGateway):
                 by_usage[usage.entity.path] = PersistentList()
             by_usage[usage.entity.path].append(activity)
 
-            if isinstance(usage.entity, Collection):
-                # NOTE: Get dependants that are in a generated directory
-                for path, activities in by_generation.items():
-                    parent = Path(usage.entity.path).resolve()
-                    child = Path(os.path.abspath(path))
-                    if parent == child or parent in child.parents:
-                        upstreams.extend(activities)
-            elif usage.entity.path in by_generation:
-                upstreams.extend(by_generation[usage.entity.path])
+            for path, activities in by_generation.items():
+                if are_paths_related(path, usage.entity.path):
+                    upstreams.update(activities)
 
         for generation in activity.generations:
             if generation.entity.path not in by_generation:
                 by_generation[generation.entity.path] = PersistentList()
             by_generation[generation.entity.path].append(activity)
 
-            if isinstance(generation.entity, Collection):
-                # NOTE: Get dependants that are in a generated directory
-                for path, activities in by_usage.items():
-                    parent = Path(generation.entity.path).resolve()
-                    child = Path(os.path.abspath(path))
-                    if parent == child or parent in child.parents:
-                        downstreams.extend(activities)
-            elif generation.entity.path in by_usage:
-                downstreams.extend(by_usage[generation.entity.path])
+            for path, activities in by_usage.items():
+                if are_paths_related(path, generation.entity.path):
+                    downstreams.update(activities)
 
         if upstreams:
             for s in upstreams:

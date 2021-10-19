@@ -111,10 +111,11 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
 class ManifestTemplateSchema(Schema):
     """Manifest template schema."""
 
-    description = fields.String(required=True)
-    folder = fields.String(required=True)
-    name = fields.String(required=True)
-    variables = fields.Dict(missing={})
+    description = fields.String(required=True, description="Description of the template")
+    folder = fields.String(required=True, description="Folder the template resides in")
+    name = fields.String(required=True, description="Name of the template")
+    variables = fields.Dict(missing={}, description="Dictionary of values that can be set on this template")
+    icon = fields.String(missing=None, description="base64 encoded icon for the template in PNG format")
 
 
 class ManifestTemplatesResponse(Schema):
@@ -135,6 +136,7 @@ class ProjectTemplateResponse(Schema):
     url = fields.String(required=True)
     namespace = fields.String(required=True)
     name = fields.String(required=True)
+    slug = fields.String(required=True)
     project_id = fields.String(required=False, default=None)
 
 

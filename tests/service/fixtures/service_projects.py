@@ -25,13 +25,17 @@ from urllib.parse import urlparse
 import git
 import pytest
 
+from renku.core.utils.scm import normalize_to_ascii
+
 
 @pytest.fixture
 def project_metadata(project):
     """Create project with metadata."""
+    name = Path(project).name
     metadata = {
         "project_id": uuid.uuid4().hex,
-        "name": Path(project).name,
+        "name": name,
+        "slug": normalize_to_ascii(name),
         "fullname": "full project name",
         "email": "my@email.com",
         "owner": "me",

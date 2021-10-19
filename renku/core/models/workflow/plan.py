@@ -78,7 +78,7 @@ class AbstractPlan(Persistent, ABC):
         return f"/plans/{uuid}"
 
     def _get_default_name(self) -> str:
-        name = "-".join(str(a) for a in self.to_argv())
+        name = "-".join(str(a).replace(".", "_") for a in self.to_argv())
         if not name:
             return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
@@ -254,14 +254,19 @@ class Plan(AbstractPlan):
         """Comma-separated list of keywords associated with workflow."""
         return ", ".join(self.keywords)
 
-    def to_argv(self) -> List[Any]:
+    def to_argv(self, with_streams: bool = False) -> List[Any]:
         """Convert a Plan into argv list."""
         arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
-        arguments = filter(lambda a: a.position is not None, arguments)
+        arguments = filter(lambda a: a.position is not None and not getattr(a, "mapped_to", None), arguments)
         arguments = sorted(arguments, key=lambda a: a.position)
 
         argv = self.command.split(" ") if self.command else []
         argv.extend(e for a in arguments for e in a.to_argv())
+
+        if with_streams:
+            arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
+            arguments = filter(lambda a: a.position is not None and getattr(a, "mapped_to", None), arguments)
+            argv.extend(a.to_stream_representation() for a in arguments)
 
         return argv
 
@@ -269,9 +274,16 @@ class Plan(AbstractPlan):
         """Set parameters by parsing parameters strings."""
         for param_string in params_strings:
             name, value = param_string.split("=", maxsplit=1)
-            for param in self.inputs + self.outputs + self.parameters:
-                if param.name == name:
-                    param.default_value = value
+            found = False
+            for collection in [self.inputs, self.outputs, self.parameters]:
+                for i, param in enumerate(collection):
+                    if param.name == name:
+                        new_param = param.derive(plan_id=self.id)
+                        new_param.default_value = value
+                        collection[i] = new_param
+                        found = True
+                        break
+                if found:
                     break
             else:
                 self.parameters.append(
@@ -314,8 +326,8 @@ class PlanDetailsJson(marshmallow.Schema):
     """Serialize a plan to a response object."""
 
     name = marshmallow.fields.String(required=True)
+    full_command = marshmallow.fields.String(data_key="command")
     derived_from = marshmallow.fields.String()
-    title = marshmallow.fields.String()
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     id = marshmallow.fields.String()

@@ -26,7 +26,7 @@ from pathlib import Path
 from subprocess import SubprocessError, run
 from typing import Optional, Union
 
-from git import Commit, Git, GitCommandError, Repo
+from git import Commit, Git, GitCommandError, InvalidGitRepositoryError, Repo
 
 from renku.core import errors
 from renku.core.models.git import GitURL
@@ -228,3 +228,14 @@ def find_previous_commit(
 def get_path(url: str):
     """Return path part of a url."""
     return urllib.parse.urlparse(url).path
+
+
+def default_path(path="."):
+    """Return default repository path."""
+
+    from renku.core.commands.git import get_git_home
+
+    try:
+        return get_git_home(path=path)
+    except InvalidGitRepositoryError:
+        return path

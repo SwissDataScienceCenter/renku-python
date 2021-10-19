@@ -22,10 +22,12 @@ import pathlib
 import threading
 import uuid
 from enum import IntFlag
+from typing import NamedTuple
 from urllib.parse import ParseResult, quote, urljoin, urlparse
 
 import pyld
 
+from renku.core.management.client import LocalClient
 from renku.core.models.jsonld import read_yaml
 
 OLD_METADATA_PATH = "metadata.yml"
@@ -33,6 +35,29 @@ OLD_DATASETS_PATH = "datasets"
 OLD_WORKFLOW_PATH = "workflow"
 
 thread_local_storage = threading.local()
+
+
+class MigrationType(IntFlag):
+    """Type of migration that is being executed."""
+
+    DATASETS = 1
+    WORKFLOWS = 2
+    STRUCTURAL = 4
+    ALL = DATASETS | WORKFLOWS | STRUCTURAL
+
+
+class MigrationOptions(NamedTuple):
+    """Migration options."""
+
+    strict: bool
+    type: MigrationType = MigrationType.ALL
+
+
+class MigrationContext(NamedTuple):
+    """Context containing required migration information."""
+
+    client: LocalClient
+    options: MigrationOptions
 
 
 def generate_url_id(client, url_str, url_id):
@@ -102,15 +127,6 @@ def generate_dataset_file_url(client, filepath):
     project_id = project_id._replace(path=path)
 
     return project_id.geturl()
-
-
-class MigrationType(IntFlag):
-    """Type of migration that is being executed."""
-
-    DATASETS = 1
-    WORKFLOWS = 2
-    STRUCTURAL = 4
-    ALL = DATASETS | WORKFLOWS | STRUCTURAL
 
 
 def migrate_types(data):

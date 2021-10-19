@@ -18,6 +18,7 @@
 """Classes to represent inputs/outputs/parameters in a Plan."""
 
 import urllib
+from abc import abstractmethod
 from pathlib import PurePosixPath
 from typing import Any, List, Optional
 from uuid import uuid4
@@ -25,7 +26,7 @@ from uuid import uuid4
 from marshmallow import EXCLUDE
 
 from renku.core.errors import ParameterError
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, renku, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.utils.urls import get_slug
 
 RANDOM_ID_LENGTH = 4
@@ -67,6 +68,8 @@ class CommandParameterBase:
         name: str,
         position: Optional[int] = None,
         prefix: Optional[str] = None,
+        derived_from: str = None,
+        postfix: str = None,
     ):
         self.default_value: Any = default_value
         self.description: str = description
@@ -75,6 +78,8 @@ class CommandParameterBase:
         self.position: Optional[int] = position
         self.prefix: str = prefix
         self._v_actual_value_set = False
+        self.derived_from: str = derived_from
+        self.postfix: str = postfix
 
         if not self.name:
             self.name = self._get_default_name()
@@ -129,11 +134,16 @@ class CommandParameterBase:
         return getattr(self, "_v_actual_value_set", False)
 
     def _generate_name(self, base) -> str:
-        name = get_slug(self.prefix.strip(" -=")) if self.prefix else base
+        name = get_slug(self.prefix.strip(" -="), invalid_chars=["."]) if self.prefix else base
         position = self.position or uuid4().hex[:RANDOM_ID_LENGTH]
         return f"{name}-{position}"
 
     def _get_default_name(self) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def derive(self, plan_id: str) -> "CommandParameterBase":
+        """Create a new command parameter from self."""
         raise NotImplementedError
 
 
@@ -149,6 +159,8 @@ class CommandParameter(CommandParameterBase):
         name: str = None,
         position: Optional[int] = None,
         prefix: str = None,
+        derived_from: str = None,
+        postfix: str = None,
     ):
         super().__init__(
             default_value=default_value,
@@ -157,6 +169,8 @@ class CommandParameter(CommandParameterBase):
             name=name,
             position=position,
             prefix=prefix,
+            derived_from=derived_from,
+            postfix=postfix,
         )
 
     @staticmethod
@@ -168,6 +182,19 @@ class CommandParameter(CommandParameterBase):
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="parameter")
+
+    def derive(self, plan_id: str) -> "CommandParameter":
+        """Create a new ``CommandParameter`` that is derived from self."""
+        return CommandParameter(
+            default_value=self.default_value,
+            description=self.description,
+            id=CommandParameter.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix),
+            name=self.name,
+            position=self.position,
+            prefix=self.prefix,
+            derived_from=self.id,
+            postfix=self.postfix,
+        )
 
 
 class CommandInput(CommandParameterBase):
@@ -184,6 +211,8 @@ class CommandInput(CommandParameterBase):
         position: Optional[int] = None,
         prefix: str = None,
         encoding_format: List[str] = None,
+        derived_from: str = None,
+        postfix: str = None,
     ):
         super().__init__(
             default_value=default_value,
@@ -192,6 +221,8 @@ class CommandInput(CommandParameterBase):
             name=name,
             position=position,
             prefix=prefix,
+            derived_from=derived_from,
+            postfix=postfix,
         )
         self.mapped_to: MappedIOStream = mapped_to
         _validate_mime_type(encoding_format)
@@ -204,10 +235,25 @@ class CommandInput(CommandParameterBase):
 
     def to_stream_representation(self) -> str:
         """Input stream representation."""
-        return f" < {self.default_value}" if self.mapped_to else ""
+        return f"< {self.default_value}" if self.mapped_to else ""
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="input")
+
+    def derive(self, plan_id: str) -> "CommandInput":
+        """Create a new ``CommandInput`` that is derived from self."""
+        return CommandInput(
+            default_value=self.default_value,
+            description=self.description,
+            id=CommandInput.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix),
+            mapped_to=self.mapped_to,
+            name=self.name,
+            position=self.position,
+            prefix=self.prefix,
+            encoding_format=self.encoding_format,
+            derived_from=self.id,
+            postfix=self.postfix,
+        )
 
 
 class CommandOutput(CommandParameterBase):
@@ -225,6 +271,8 @@ class CommandOutput(CommandParameterBase):
         position: Optional[int] = None,
         prefix: str = None,
         encoding_format: List[str] = None,
+        derived_from: str = None,
+        postfix: str = None,
     ):
         super().__init__(
             default_value=default_value,
@@ -233,6 +281,8 @@ class CommandOutput(CommandParameterBase):
             name=name,
             position=position,
             prefix=prefix,
+            derived_from=derived_from,
+            postfix=postfix,
         )
         self.create_folder: bool = create_folder
         self.mapped_to: MappedIOStream = mapped_to
@@ -249,10 +299,25 @@ class CommandOutput(CommandParameterBase):
         if not self.mapped_to:
             return ""
 
-        return f" > {self.default_value}" if self.mapped_to.stream_type == "stdout" else f" 2> {self.default_value}"
+        return f"> {self.default_value}" if self.mapped_to.stream_type == "stdout" else f" 2> {self.default_value}"
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="output")
+
+    def derive(self, plan_id: str) -> "CommandOutput":
+        """Create a new ``CommandOutput`` that is derived from self."""
+        return CommandOutput(
+            default_value=self.default_value,
+            description=self.description,
+            id=CommandOutput.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix),
+            mapped_to=self.mapped_to,
+            name=self.name,
+            position=self.position,
+            prefix=self.prefix,
+            encoding_format=self.encoding_format,
+            derived_from=self.id,
+            postfix=self.postfix,
+        )
 
 
 class ParameterMapping(CommandParameterBase):
@@ -359,6 +424,7 @@ class CommandParameterBaseSchema(JsonLDSchema):
     name = fields.String(schema.name, missing=None)
     position = fields.Integer(renku.position, missing=None)
     prefix = fields.String(renku.prefix, missing=None)
+    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
 
 
 class CommandParameterSchema(CommandParameterBaseSchema):

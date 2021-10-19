@@ -21,9 +21,9 @@ from renku.core.management.migrations.models.v7 import get_client_datasets
 from renku.core.management.migrations.utils import generate_dataset_file_url
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
-    _fix_dataset_file_source_and_url(client)
+    _fix_dataset_file_source_and_url(migration_context.client)
 
 
 def _fix_dataset_file_source_and_url(client):

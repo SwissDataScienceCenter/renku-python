@@ -28,7 +28,8 @@ from renku.core.metadata.database import persistent
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, oa, prov, renku, schema
 from renku.core.models.provenance.agent import Person, PersonSchema
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
-from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
+from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
+from renku.core.utils.scm import normalize_to_ascii
 
 
 class Project(persistent.Persistent):
@@ -66,7 +67,7 @@ class Project(persistent.Persistent):
         self.annotations: List[Annotation] = annotations or []
         self.automated_update: bool = automated_update
         self.creator: Person = creator
-        self.date_created: datetime = fix_timezone(date_created) or local_now()
+        self.date_created: datetime = fix_datetime(date_created) or local_now()
         self.description: str = description
         self.id: str = id
         self.immutable_template_files: List[str] = immutable_template_files
@@ -80,7 +81,12 @@ class Project(persistent.Persistent):
 
     @classmethod
     def from_client(
-        cls, client, name: str = None, description: str = None, custom_metadata: Dict = None, creator: Person = None
+        cls,
+        client,
+        name: str = None,
+        description: str = None,
+        custom_metadata: Dict = None,
+        creator: Person = None,
     ) -> "Project":
         """Create an instance from a LocalClient."""
         namespace, name = cls.get_namespace_and_name(client=client, name=name, creator=creator)
@@ -121,9 +127,9 @@ class Project(persistent.Persistent):
         assert name, "Cannot generate Project id with no name"
 
         namespace = quote(namespace.strip("/"), safe="/")
-        name = quote(name, safe="")
+        slug = normalize_to_ascii(name)
 
-        return f"/projects/{namespace}/{name}"
+        return f"/projects/{namespace}/{slug}"
 
     def update_metadata(self, custom_metadata=None, **kwargs):
         """Updates metadata."""

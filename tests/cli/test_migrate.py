@@ -22,8 +22,8 @@ from pathlib import Path
 
 import pytest
 
-from renku import LocalClient
 from renku.cli import cli
+from renku.core.management.client import LocalClient
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.core.models.dataset import RemoteEntity
@@ -33,7 +33,7 @@ from tests.utils import format_result_exception
 @pytest.mark.migration
 def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
     """Test migrate on old repository."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty()
 
@@ -41,7 +41,7 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
 @pytest.mark.migration
 def test_migrate_project(isolated_runner, old_project, client_database_injection_manager):
     """Test migrate on old repository."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty()
 
@@ -77,7 +77,7 @@ def test_migration_check(isolated_runner, project):
 @pytest.mark.migration
 def test_correct_path_migrated(isolated_runner, old_project, client_database_injection_manager):
     """Check if path on dataset files has been correctly migrated."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     client = LocalClient(path=old_project.working_dir)
@@ -95,7 +95,7 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
 @pytest.mark.migration
 def test_correct_relative_path(isolated_runner, old_project, client_database_injection_manager):
     """Check if path on dataset has been correctly migrated."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     client = LocalClient(path=old_project.working_dir)
@@ -117,7 +117,7 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
     repo.index.add([".renku.lock"])
     repo.index.commit("locked")
 
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert not (repo_path / ".renku.lock").exists()
@@ -130,7 +130,7 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
 @pytest.mark.migration
 def test_graph_building_after_migration(isolated_runner, old_project):
     """Check that structural migration did not break graph building."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = isolated_runner.invoke(cli, ["graph", "export", "--full"])
@@ -140,7 +140,7 @@ def test_graph_building_after_migration(isolated_runner, old_project):
 @pytest.mark.migration
 def test_migrations_runs(isolated_runner, old_project):
     """Check that migration can be run more than once."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully applied" in result.output
     assert "OK" in result.output
@@ -162,7 +162,7 @@ def test_migration_version():
 @pytest.mark.migration
 def test_workflow_migration(isolated_runner, old_workflow_project):
     """Check that *.cwl workflows can be migrated."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -179,7 +179,7 @@ def test_comprehensive_dataset_migration(
     isolated_runner, old_dataset_project, load_dataset_with_injection, get_datasets_provenance_with_injection
 ):
     """Test migration of old project with all dataset variations."""
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
@@ -193,7 +193,7 @@ def test_comprehensive_dataset_migration(
     assert "Cornell University" == dataset.creators[0].affiliation
     assert "Rooth, Mats" == dataset.creators[0].name
     assert dataset.date_published is None
-    assert "2020-08-10T21:35:05.115412+00:00" == dataset.date_created.isoformat("T")
+    assert "2020-08-10T21:35:05+00:00" == dataset.date_created.isoformat("T")
     assert "Replication material for a paper to be presented" in dataset.description
     assert "https://doi.org/10.7910/DVN/EV6KLF" == dataset.same_as.url
     assert "1" == tags[0].name
@@ -203,7 +203,7 @@ def test_comprehensive_dataset_migration(
 
     file_ = dataset.find_file("data/dataverse/copy.sh")
     assert "https://dataverse.harvard.edu/api/access/datafile/3050656" == file_.source
-    assert "2020-08-10T21:35:10.877832+00:00" == file_.date_added.isoformat("T")
+    assert "2020-08-10T21:35:10+00:00" == file_.date_added.isoformat("T")
     assert file_.based_on is None
     assert not hasattr(file_, "creators")
 
@@ -218,7 +218,7 @@ def test_comprehensive_dataset_migration(
     assert isinstance(file_.based_on, RemoteEntity)
     assert file_.source == file_.based_on.url
     assert "Makefile" == file_.based_on.path
-    assert "49f331d7388785208ccfb3cfb9156b226d9b59ea" == file_.based_on.commit_sha
+    assert "49f331d7388785208ccfb3cfb9156b226d9b59ea" == file_.based_on.checksum
 
     file_ = dataset.find_file("data/mixed/data.txt")
     assert file_.entity.id.endswith("/data/mixed/data.txt")
@@ -232,9 +232,31 @@ def test_comprehensive_dataset_migration(
 
 
 @pytest.mark.migration
+def test_migrate_renku_dataset_same_as(isolated_runner, old_client_before_database, load_dataset_with_injection):
+    """Test migration of imported renku datasets remove dashes from the same_as field."""
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = load_dataset_with_injection("renku-dataset", old_client_before_database)
+
+    assert "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0" == dataset.same_as.value
+
+
+@pytest.mark.migration
+def test_migrate_renku_dataset_derived_from(isolated_runner, old_client_before_database, load_dataset_with_injection):
+    """Test migration of datasets remove dashes from the derived_from field."""
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = load_dataset_with_injection("local", old_client_before_database)
+
+    assert "/datasets/535b6e1ddb85442a897b2b3c72aec0c6" == dataset.derived_from.url_id
+
+
+@pytest.mark.migration
 def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_project, load_dataset_with_injection):
     """Test migration of datasets with blank nodes creates IRI identifiers."""
-    assert 0 == isolated_runner.invoke(cli, ["migrate"]).exit_code
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
     dataset = load_dataset_with_injection("2019-01_us_fligh_1", old_dataset_project)
 
@@ -251,7 +273,7 @@ def test_migrate_non_renku_repository(isolated_runner):
     Repo.init(".")
     os.mkdir(".renku")
 
-    result = isolated_runner.invoke(cli, ["migrate"])
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Error: Not a renku project." in result.output

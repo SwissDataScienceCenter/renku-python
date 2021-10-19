@@ -262,7 +262,7 @@ def _add_to_dataset(
                 dataset.update_metadata_from(with_metadata)
 
         # TODO: Remove this once we have a proper database dispatcher for injection
-        # we need to commit because "project clone" changes injection, so tha database instance here
+        # we need to commit because "project clone" changes injection, so the database instance here
         # is not the same as the one in CommandBuilder
         database_gateway.commit()
 
@@ -419,10 +419,10 @@ def _export_dataset(name, provider_name, publish, tag, client_dispatcher: IClien
         selected_tag = _prompt_tag_selection(tags)
 
     if selected_tag:
-        dataset = datasets_provenance.get_by_id(selected_tag.dataset_id, immutable=True)
+        dataset = datasets_provenance.get_by_id(selected_tag.dataset_id.value, immutable=True)
 
         if not dataset:
-            raise DatasetNotFound(message=f"Cannot find dataset with id: '{selected_tag.dataset_id}'")
+            raise DatasetNotFound(message=f"Cannot find dataset with id: '{selected_tag.dataset_id.value}'")
 
     data_dir = get_dataset_data_dir(client, dataset)
     dataset = DynamicProxy(dataset)

@@ -28,17 +28,13 @@ from typing import List
 import attr
 import requests
 
-from renku import LocalClient
 from renku.core import errors
 from renku.core.commands.login import read_renku_token
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.management.migrate import is_project_unsupported, migrate
-from renku.core.management.migrations.utils import MigrationType
 from renku.core.metadata.immutable import DynamicProxy
-from renku.core.models.dataset import get_dataset_data_dir
 from renku.core.utils import communication
 
 
@@ -345,6 +341,9 @@ class _RenkuRecordSerializer:
 
     @inject.autoparams()
     def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
+        from renku.core.management.client import LocalClient
+        from renku.core.models.dataset import get_dataset_data_dir
+
         repo_path = None
         repo = None
         client = client_dispatcher.current_client
@@ -402,20 +401,16 @@ class _RenkuRecordSerializer:
         self._files_info = files_info
 
     @staticmethod
-    @inject.autoparams()
-    def _migrate_project(client_dispatcher: IClientDispatcher):
+    def _migrate_project():
+        from renku.core.management.migrate import is_project_unsupported, migrate  # Slow import
+        from renku.core.management.migrations.utils import MigrationType
+
         if is_project_unsupported():
             return
 
-        client = client_dispatcher.current_client
-
-        # NOTE: We are not interested in migrating workflows when importing datasets
-        previous_migration_type = client.migration_type
-        client.migration_type = ~MigrationType.WORKFLOWS
         try:
             communication.disable()
-            migrate(skip_template_update=True, skip_docker_update=True)
+            # NOTE: We are not interested in migrating workflows when importing datasets
+            migrate(skip_template_update=True, skip_docker_update=True, migration_type=~MigrationType.WORKFLOWS)
         finally:
-            client.migration_type = previous_migration_type
-
             communication.enable()

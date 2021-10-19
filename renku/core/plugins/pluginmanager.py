@@ -20,15 +20,17 @@ from functools import lru_cache
 
 import pluggy
 
-from renku.core.plugins import implementations as default_implementations
-from renku.core.plugins import run as run_hook_specs
-from renku.core.plugins import workflow as workflow_hook_specs
-
 
 @lru_cache(None)
 def get_plugin_manager():
     """The ``pluggy`` plugin manager."""
+    from renku.core.plugins import implementations as default_implementations
+    from renku.core.plugins import provider as provider_hook_specs
+    from renku.core.plugins import run as run_hook_specs
+    from renku.core.plugins import workflow as workflow_hook_specs
+
     pm = pluggy.PluginManager("renku")
+    pm.add_hookspecs(provider_hook_specs)
     pm.add_hookspecs(run_hook_specs)
     pm.add_hookspecs(workflow_hook_specs)
     pm.load_setuptools_entrypoints("renku")
