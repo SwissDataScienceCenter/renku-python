@@ -153,7 +153,7 @@ def test_create_dataset_custom_message(project):
     )
 
     last_commit = Repo(".").head.commit
-    assert "my dataset" == last_commit.message
+    assert "my dataset" == last_commit.message.splitlines()[0]
 
 
 def test_list_datasets_default(project):

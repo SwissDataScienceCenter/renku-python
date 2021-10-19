@@ -154,6 +154,13 @@ Renku Command Line
 
 .. automodule:: renku.cli.migrate
 
+.. _cli-rollback:
+
+``renku rollback``
+------------------
+
+.. automodule:: renku.cli.rollback
+
 .. _cli-service:
 
 ``renku service``

@@ -92,7 +92,9 @@ def _commit_previous_changes(client):
 
         client.repo.git.add(str(client.renku_path))
 
-        client.repo.index.commit("renku migrate: committing structural changes", skip_hooks=True)
+        client.repo.index.commit(
+            "renku migrate: committing structural changes" + client.transaction_id, skip_hooks=True
+        )
         return True
 
     return False

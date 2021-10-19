@@ -24,6 +24,7 @@ import shutil
 import subprocess
 from contextlib import contextmanager
 from subprocess import check_output
+from uuid import uuid4
 
 import attr
 import filelock
@@ -129,6 +130,8 @@ class RepositoryApiMixin(GitCore):
 
         self._project = None
 
+        self._transaction_id = None
+
         super().__attrs_post_init__()
 
         # initialize submodules
@@ -176,6 +179,14 @@ class RepositoryApiMixin(GitCore):
             self._project = project_gateway.get_project()
 
         return self._project
+
+    @property
+    def transaction_id(self):
+        """Get a transaction id for the current client to be used for grouping git commits."""
+        if not self._transaction_id:
+            self._transaction_id = uuid4().hex
+
+        return f"\n\nrenku-transaction: {self._transaction_id}"
 
     @property
     def remote(self, remote_name="origin"):

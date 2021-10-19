@@ -63,8 +63,6 @@ class Entity(Immutable):
     @classmethod
     def from_revision(cls, client, path: Union[Path, str], revision: str = None) -> "Entity":
         """Return dependency from given path and revision."""
-        revision = revision or "HEAD"
-        assert isinstance(revision, str), f"Invalid revision: {revision}"
 
         # FIXME: Implement the cache properly: It's mainly used in migrations
         global _entity_cache

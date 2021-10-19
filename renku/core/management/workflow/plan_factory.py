@@ -28,7 +28,6 @@ from typing import Any, List, Optional, Set, Tuple
 
 import click
 import yaml
-from git import Actor
 
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
@@ -47,7 +46,6 @@ from renku.core.models.workflow.parameter import (
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils.git import add_to_git
 from renku.core.utils.scm import git_unicode_unescape, safe_path
-from renku.version import __version__, version_url
 
 STARTED_AT = int(time.time() * 1000)
 
@@ -576,12 +574,6 @@ class PlanFactory:
             add_to_git(repo.git, *output_paths)
 
             if repo.is_dirty():
-                commit_msg = f"renku run: committing {len(output_paths)} newly added files"
-
-                committer = Actor("renku {0}".format(__version__), version_url)
-
-                repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
-
                 self._had_changes = True
 
         results = pm.hook.cmdline_tool_annotations(tool=self)

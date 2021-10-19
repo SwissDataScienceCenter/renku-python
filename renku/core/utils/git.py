@@ -131,7 +131,12 @@ def get_object_hash(repo: Repo, path: Union[Path, str], revision: str = None) ->
                 except GitCommandError:
                     pass
 
-    revision = revision or "HEAD"
+    if not revision:
+        try:
+            return repo.git.hash_object(str(path))
+        except GitCommandError:
+            # If object does not exist anymore, hash-object doesn't work, fall back to rev-parse
+            revision = "HEAD"
 
     try:
         return repo.git.rev_parse(f"{revision}:{str(path)}")

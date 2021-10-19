@@ -459,11 +459,7 @@ class DatasetsApiMixin(object):
         self.repo.git.add(self.renku_pointers_path, force=True)
 
         staged_files = self.repo.index.diff("HEAD")
-        if staged_files:
-            msg = "renku dataset: committing {} newly added files".format(len(files_to_commit))
-            skip_hooks = not self.external_storage_requested
-            self.repo.index.commit(msg, skip_hooks=skip_hooks)
-        else:
+        if not staged_files:
             communication.warn("No new file was added to project")
 
         if not files:
@@ -964,11 +960,6 @@ class DatasetsApiMixin(object):
         file_paths = {str(self.path / f.entity.path) for f in updated_files + deleted_files}
         # Force-add to include possible ignored files that are in datasets
         add_to_git(self.repo.git, *file_paths, force=True)
-        skip_hooks = not self.external_storage_requested
-        self.repo.index.commit(
-            "renku dataset: updated {} files and deleted {} files".format(len(updated_files), len(deleted_files)),
-            skip_hooks=skip_hooks,
-        )
 
         self._update_datasets_metadata(updated_files, deleted_files, delete)
 
@@ -1032,7 +1023,6 @@ class DatasetsApiMixin(object):
 
         add_to_git(self.repo.git, *updated_files_paths, force=True)
         self.repo.git.add(self.renku_pointers_path, force=True)
-        self.repo.index.commit("renku dataset: updated {} external files".format(len(updated_files_paths)))
 
         datasets_provenance = DatasetsProvenance()
 

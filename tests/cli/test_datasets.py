@@ -619,7 +619,7 @@ def test_dataset_add_many(tmpdir, runner, project, client):
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert len(client.repo.head.commit.message) <= 100
+    assert len(client.repo.head.commit.message.splitlines()[0]) <= 100
 
 
 def test_dataset_file_path_from_subdirectory(runner, client, subdirectory, load_dataset_with_injection):
@@ -1487,7 +1487,6 @@ def test_add_existing_and_new_files(runner, client, directory_tree, external):
 
 def test_add_existing_files_updates_metadata(runner, client, large_file, load_dataset_with_injection):
     """Check overwriting existing files updates their metadata."""
-    # assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "--create", large_file]).exit_code
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", "--create", str(large_file)])
     assert result.exit_code == 0, result.output
 
@@ -1495,6 +1494,7 @@ def test_add_existing_files_updates_metadata(runner, client, large_file, load_da
 
     before = load_dataset_with_injection("my-dataset", client).find_file(path)
 
+    time.sleep(2)
     large_file.write_text("New modified content.")
 
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "--overwrite", str(large_file)]).exit_code

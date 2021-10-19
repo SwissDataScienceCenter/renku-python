@@ -626,7 +626,7 @@ def test_workflow_visualize_non_interactive(runner, project, client, workflow_gr
         assert all(e not in result.output for e in excludes)
 
     result = runner.invoke(
-        cli, ["workflow", "visualize", "--no-pager", "-x", "-a", "--no-color", "--revision", "HEAD^^", "H", "S"]
+        cli, ["workflow", "visualize", "--no-pager", "-x", "-a", "--no-color", "--revision", "HEAD^", "H", "S"]
     )
 
     assert 0 == result.exit_code, format_result_exception(result)

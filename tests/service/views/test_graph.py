@@ -24,7 +24,7 @@ import pytest
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-@pytest.mark.parametrize("revision", [None, "HEAD", "HEAD^^", "HEAD^^..HEAD"])
+@pytest.mark.parametrize("revision", [None, "HEAD", "HEAD^", "HEAD^..HEAD"])
 def test_graph_export_job(svc_client_cache, it_remote_repo_url, revision):
     """Test graph export job."""
     svc_client, headers, _ = svc_client_cache

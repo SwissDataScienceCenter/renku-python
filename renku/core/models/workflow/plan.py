@@ -40,6 +40,7 @@ from renku.core.models.workflow.parameter import (
     CommandParameterBase,
     CommandParameterSchema,
 )
+from renku.core.utils.datetime8601 import local_now
 
 MAX_GENERATED_NAME_LENGTH = 25
 
@@ -52,6 +53,7 @@ class AbstractPlan(Persistent, ABC):
         *,
         description: str = None,
         id: str,
+        date_created: datetime = None,
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str = None,
@@ -60,6 +62,7 @@ class AbstractPlan(Persistent, ABC):
     ):
         self.description: str = description
         self.id: str = id
+        self.date_created: datetime = date_created or local_now()
         self.invalidated_at: datetime = invalidated_at
         self.keywords: List[str] = keywords or []
         self.name: str = name
@@ -137,6 +140,7 @@ class Plan(AbstractPlan):
         description: str = None,
         id: str,
         inputs: List[CommandInput] = None,
+        date_created: datetime = None,
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str = None,
@@ -153,6 +157,7 @@ class Plan(AbstractPlan):
         super().__init__(
             id=id,
             description=description,
+            date_created=date_created,
             invalidated_at=invalidated_at,
             keywords=keywords,
             name=name,
@@ -243,6 +248,7 @@ class Plan(AbstractPlan):
             description=self.description,
             id=self.id,
             inputs=self.inputs.copy(),
+            date_created=local_now(),
             invalidated_at=self.invalidated_at,
             keywords=self.keywords.copy(),
             name=self.name,
@@ -316,7 +322,8 @@ class PlanSchema(JsonLDSchema):
     description = fields.String(schema.description, missing=None)
     id = fields.Id()
     inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
-    invalidated_at = fields.DateTime(prov.invalidatedAtTime, add_value_types=True)
+    date_created = fields.DateTime(schema.dateCreated, format="iso")
+    invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
     derived_from = fields.String(prov.wasDerivedFrom, missing=None)

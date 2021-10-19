@@ -96,11 +96,11 @@ def _migrate_old_workflows(client):
         add_to_git(client.repo.git, *paths)
 
         if client.repo.is_dirty():
-            commit_msg = "renku migrate: " "committing migrated workflow"
+            commit_msg = "renku migrate: committing migrated workflow"
 
             committer = Actor("renku {0}".format(__version__), version_url)
 
-            client.repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
+            client.repo.index.commit(commit_msg + client.transaction_id, committer=committer, skip_hooks=True)
 
 
 def _migrate_cwl(client, path, commit):

@@ -77,7 +77,6 @@ def test_activity_parameter_values(mocker):
         started_at_time=datetime.utcnow(),
         ended_at_time=datetime.utcnow(),
         annotations=[],
-        commit=commit,
     )
 
     assert len(activity.generations) == 3

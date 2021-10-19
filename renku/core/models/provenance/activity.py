@@ -35,6 +35,7 @@ from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAge
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
 from renku.core.models.provenance.parameter import ParameterValue, ParameterValueSchema
 from renku.core.models.workflow.plan import Plan, PlanSchema
+from renku.version import __version__, version_url
 
 NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 
@@ -130,7 +131,6 @@ class Activity(Persistent):
         started_at_time: datetime,
         ended_at_time: datetime,
         annotations: List[Annotation] = None,
-        commit=None,
         update_commits=False,
     ):
         """Convert a ``Plan`` to a ``Activity``."""
@@ -138,9 +138,6 @@ class Activity(Persistent):
         from renku.core.plugins.pluginmanager import get_plugin_manager
 
         client = client_dispatcher.current_client
-
-        if not commit:
-            commit = client.repo.head.commit
 
         usages = {}
         generations = {}
@@ -158,7 +155,7 @@ class Activity(Persistent):
             if input_path in usages:
                 continue
 
-            entity = Entity.from_revision(client, path=input_path, revision=commit.hexsha)
+            entity = Entity.from_revision(client, path=input_path)
 
             dependency = Usage(entity=entity, id=Usage.generate_id(activity_id))
 
@@ -174,7 +171,7 @@ class Activity(Persistent):
             if output_path in generations:
                 continue
 
-            entity = Entity.from_revision(client, path=output_path, revision=commit.hexsha)
+            entity = Entity.from_revision(client, path=output_path)
 
             generation = Generation(entity=entity, id=Usage.generate_id(activity_id))
 
@@ -187,7 +184,7 @@ class Activity(Persistent):
                 ParameterValue(id=ParameterValue.generate_id(activity_id), parameter_id=parameter.id, value=value)
             )
 
-        agent = SoftwareAgent.from_commit(commit)
+        agent = SoftwareAgent(id=version_url, name=f"renku {__version__}")
         person = Person.from_client(client)
         association = Association(agent=agent, id=Association.generate_id(activity_id), plan=plan)
 
