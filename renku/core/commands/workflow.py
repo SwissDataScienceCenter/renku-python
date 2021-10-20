@@ -577,3 +577,103 @@ def _visualize_graph(
 def visualize_graph_command():
     """Execute the graph visualization command."""
     return Command().command(_visualize_graph).require_migration().with_database(write=False)
+
+
+def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool):
+    import copy
+    import re
+
+    from deepmerge import always_merger
+
+    from renku.core.models.tabulate import tabulate
+
+    loop_index_re = re.compile(r"{loop_index}")
+
+    def _extract_loop_parameters(values):
+        loop_params = {"indexed": {}, "params": {}}
+        for k, v in values.items():
+            if isinstance(v, str) and loop_index_re.search(v):
+                loop_params["indexed"][k] = v
+            elif isinstance(v, list):
+                if len(v) == 1:
+                    communication.warn(
+                        f"The parameter '{k}' has only one element '{v}', changing it to be a fixed parameter!"
+                    )
+                    continue
+                loop_params["params"][k] = v
+            elif isinstance(v, dict):
+                inner_params = _extract_loop_parameters(v)
+                loop_params["params"].update([(f"{k}.{ik}", iv) for ik, iv in inner_params["params"].items()])
+                loop_params["indexed"].update([(f"{k}.{ik}", iv) for ik, iv in inner_params["indexed"].items()])
+        return loop_params
+
+    workflow = _find_workflow(name_or_id)
+    mapping = _safe_read_yaml(mapping_path)
+
+    loop_params = _extract_loop_parameters(mapping)
+
+    # user input validation
+    values = {}
+    for k in itertools.chain(loop_params["indexed"].keys(), loop_params["params"].keys()):
+        keys = k.split(".")
+        set_param = reduce(lambda x, y: {y: x}, reversed(keys), None)
+        values = always_merger.merge(values, set_param)
+
+    rv = ValueResolver.get(workflow, values)
+    rv.apply()
+    for collection in [loop_params["indexed"], loop_params["params"]]:
+        remove_keys = []
+        for p in collection.keys():
+            keys = p.split(".")
+            # FIXME: depth!
+            if keys[0] in rv.missing_parameters:
+                remove_keys.append(p)
+
+        for rk in remove_keys:
+            collection.pop(rk)
+
+    if (len(loop_params["indexed"]) == 0) and (len(loop_params["params"]) == 0):
+        communication.error(
+            f"Please check the specified mapping file '{mapping_path}' as "
+            f"none of the provided loop paramaters are present in '{workflow.name}' workflow"
+        )
+        return
+
+    if rv.missing_parameters:
+        communication.warn(
+            f'Could not resolve the following parameters in "{workflow.name}" workflow: '
+            f'{", ".join(rv.missing_parameters)}'
+        )
+
+    # construct iterations
+    plans = []
+    execute_plan = []
+
+    for i, values in enumerate(itertools.product(*loop_params["params"].values())):
+        plan_params = copy.deepcopy(mapping)
+        iteration_values = {}
+        for k, v in loop_params["indexed"].items():
+            keys = k.split(".")
+            value = loop_index_re.sub(str(i), v)
+            set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)
+            plan_params = always_merger.merge(plan_params, value)
+            iteration_values[k] = value
+
+        for j, k in enumerate(loop_params["params"].keys()):
+            keys = k.split(".")
+            set_param = reduce(lambda x, y: {y: x}, reversed(keys), values[j])
+            plan_params = always_merger.merge(plan_params, set_param)
+            iteration_values[k] = values[j]
+
+        execute_plan.append(iteration_values)
+        rv = ValueResolver.get(copy.deepcopy(workflow), plan_params)
+        plans.append(rv.apply())
+
+    communication.echo(f"\n\n{tabulate(execute_plan, execute_plan[0].keys())}")
+    if not dry_run:
+        execute_workflow(plans=plans, command_name="loop")
+
+
+def loop_workflow_command():
+    """Command that executes several workflows given a set of variables."""
+    return Command().command(_loop_workflow).require_migration().require_clean().with_database(write=True).with_commit()

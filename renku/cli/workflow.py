@@ -1060,3 +1060,41 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
         text_output, navigation_data, result.output.vertical_space, use_color=not no_color
     )
     viewer.run()
+
+
+@workflow.command()
+@click.option(
+    "--mapping",
+    metavar="<file>",
+    type=click.Path(exists=True, dir_okay=False),
+    help="YAML file containing parameter mappings to be used.",
+)
+@click.option(
+    "--dry-run",
+    "dry_run",
+    is_flag=True,
+    default=False,
+    help="Print the generated plans with their parameters instead of executing.",
+    show_default=True,
+)
+@click.argument("name_or_id", required=True)
+def loop(name_or_id, mapping, dry_run):
+    """Generate and execute a set of workflows based on provided set of parameters."""
+    from renku.core.commands.workflow import loop_workflow_command
+
+    if dry_run:
+        from renku.core.commands.view_model.plan import PlanViewModel
+        from renku.core.commands.workflow import show_workflow_command
+
+        plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+
+        if plan:
+            if isinstance(plan, PlanViewModel):
+                _print_plan(plan)
+            else:
+                _print_composite_plan(plan)
+
+    communicator = ClickCallback()
+    loop_workflow_command().with_communicator(communicator).build().execute(
+        name_or_id=name_or_id, mapping_path=mapping, dry_run=dry_run
+    )
