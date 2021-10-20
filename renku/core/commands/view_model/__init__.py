@@ -16,18 +16,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku commands view models module."""
-
-from typing import Union
-
-from renku.core.models.workflow.composite_plan import CompositePlan
-from renku.core.models.workflow.plan import AbstractPlan
-
-from .composite_plan import CompositePlanViewModel
-from .plan import PlanViewModel
-
-
-def plan_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewModel]:
-    """Convert an ``CompositePlan`` or ``Plan`` to a ``ViewModel``."""
-    if isinstance(workflow, CompositePlan):
-        return CompositePlanViewModel.from_composite_plan(workflow)
-    return PlanViewModel.from_plan(workflow)

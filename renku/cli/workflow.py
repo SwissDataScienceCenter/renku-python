@@ -468,8 +468,10 @@ import pydoc
 import shutil
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
+from lazy_object_proxy import Proxy
 from rich.console import Console
 from rich.markdown import Markdown
 
@@ -478,25 +480,27 @@ from renku.core import errors
 from renku.core.commands.echo import ERROR
 from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
 from renku.core.commands.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
-from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
-from renku.core.commands.view_model.plan import PlanViewModel
-from renku.core.commands.workflow import (
-    compose_workflow_command,
-    edit_workflow_command,
-    execute_workflow_command,
-    export_workflow_command,
-    list_workflows_command,
-    remove_workflow_command,
-    show_workflow_command,
-    visualize_graph_command,
-    workflow_inputs_command,
-    workflow_outputs_command,
-)
-from renku.core.plugins.provider import available_workflow_providers
-from renku.core.plugins.workflow import supported_formats
+
+if TYPE_CHECKING:
+    from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
+    from renku.core.commands.view_model.plan import PlanViewModel
 
 
-def _print_plan(plan: PlanViewModel):
+def _supported_formats():
+    """Deferred import as plugins are slow."""
+    from renku.core.plugins.workflow import supported_formats
+
+    return supported_formats()
+
+
+def _available_workflow_providers():
+    """Deferred import as plugins are slow."""
+    from renku.core.plugins.provider import available_workflow_providers
+
+    return available_workflow_providers()
+
+
+def _print_plan(plan: "PlanViewModel"):
     """Print a plan to stdout."""
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(plan.name, bold=True))
@@ -578,7 +582,7 @@ def _print_plan(plan: PlanViewModel):
                 )
 
 
-def _print_composite_plan(composite_plan: CompositePlanViewModel):
+def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
     """Print a CompositePlan to stdout."""
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(composite_plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(composite_plan.name, bold=True))
@@ -628,13 +632,15 @@ def workflow():
     "-c",
     "--columns",
     type=click.STRING,
-    default="id,name",
+    default="id,name,command",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(WORKFLOW_COLUMNS.keys())),
     show_default=True,
 )
 def list_workflows(format, columns):
     """List or manage workflows with subcommands."""
+    from renku.core.commands.workflow import list_workflows_command
+
     result = list_workflows_command().build().execute(format=format, columns=columns)
     click.echo(result.output)
 
@@ -643,6 +649,9 @@ def list_workflows(format, columns):
 @click.argument("name_or_id", metavar="<name_or_id>")
 def show(name_or_id):
     """Show details for workflow <name_or_id>."""
+    from renku.core.commands.view_model.plan import PlanViewModel
+    from renku.core.commands.workflow import show_workflow_command
+
     plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
 
     if plan:
@@ -659,6 +668,8 @@ def show(name_or_id):
 @click.option("--force", is_flag=True, help="Override the existence check.")
 def remove(name, force):
     """Remove a workflow named <name>."""
+    from renku.core.commands.workflow import remove_workflow_command
+
     remove_workflow_command().build().execute(name=name, force=force)
 
 
@@ -708,6 +719,7 @@ def compose(
     steps,
 ):
     """Create a composite workflow consisting of multiple steps."""
+    from renku.core.commands.workflow import compose_workflow_command
 
     if (sources or sinks) and steps:
         click.secho(ERROR + "--from/--to cannot be used at the same time as passing run/step names.")
@@ -778,6 +790,9 @@ def compose(
 )
 def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params):
     """Edit workflow details."""
+    from renku.core.commands.view_model.plan import PlanViewModel
+    from renku.core.commands.workflow import edit_workflow_command
+
     result = (
         edit_workflow_command()
         .build()
@@ -804,7 +819,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 @click.option(
     "--format",
     default="cwl",
-    type=click.Choice(supported_formats(), case_sensitive=False),
+    type=click.Choice(Proxy(_supported_formats), case_sensitive=False),
     show_default=True,
     help="Workflow language format.",
 )
@@ -825,6 +840,8 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 )
 def export(workflow_name, format, output, values):
     """Export workflow."""
+    from renku.core.commands.workflow import export_workflow_command
+
     communicator = ClickCallback()
 
     result = (
@@ -846,6 +863,8 @@ def inputs(ctx, paths):
 
     <PATHS>    Limit results to these paths.
     """
+    from renku.core.commands.workflow import workflow_inputs_command
+
     result = workflow_inputs_command().build().execute(paths=paths)
 
     input_paths = result.output
@@ -867,6 +886,8 @@ def outputs(ctx, paths):
 
     <PATHS>    Limit results to these paths.
     """
+    from renku.core.commands.workflow import workflow_outputs_command
+
     result = workflow_outputs_command().build().execute(paths=paths)
 
     output_paths = result.output
@@ -887,7 +908,7 @@ def outputs(ctx, paths):
     "--provider",
     default="cwltool",
     show_default=True,
-    type=click.Choice(available_workflow_providers(), case_sensitive=False),
+    type=click.Choice(Proxy(_available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
 )
 @click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
@@ -914,6 +935,8 @@ def execute(
     name_or_id,
 ):
     """Execute a given workflow."""
+    from renku.core.commands.workflow import execute_workflow_command
+
     communicator = ClickCallback()
 
     result = (
@@ -969,6 +992,8 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 
     Either PATHS or --from need to be set.
     """
+    from renku.core.commands.workflow import visualize_graph_command
+
     if pager and no_pager:
         raise errors.ParameterError("Can't use both --pager and --no-pager.")
     if revision and not paths:

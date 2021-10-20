@@ -119,8 +119,6 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
-from renku.core.commands.format.activity import tabulate_activities
-from renku.core.commands.update import update_command
 
 
 @click.command()
@@ -129,6 +127,9 @@ from renku.core.commands.update import update_command
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 def update(update_all, dry_run, paths):
     """Update existing files by rerunning their outdated workflow."""
+    from renku.core.commands.format.activity import tabulate_activities
+    from renku.core.commands.update import update_command
+
     communicator = ClickCallback()
 
     try:

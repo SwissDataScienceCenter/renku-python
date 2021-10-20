@@ -17,10 +17,13 @@
 # limitations under the License.
 """Plan view model."""
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter
-from renku.core.models.workflow.plan import Plan
+from renku.core.models.workflow.plan import AbstractPlan, Plan
+
+from .composite_plan import CompositePlanViewModel
 
 
 class CommandInputViewModel:
@@ -116,32 +119,6 @@ class CommandParameterViewModel:
         )
 
 
-def _get_full_command(plan: Plan):
-    """Get the full command for a Plan."""
-    argv = []
-
-    if plan.command:
-        argv.extend(plan.command.split(" "))
-
-    arguments = plan.inputs + plan.outputs + plan.parameters
-
-    arguments = filter(lambda x: x.position, arguments)
-    arguments = sorted(arguments, key=lambda x: x.position)
-    argv.extend(e for a in arguments for e in a.to_argv())
-
-    stream_repr = []
-
-    for input_ in plan.inputs:
-        if input_.mapped_to:
-            stream_repr.append(input_.to_stream_representation())
-
-    for output in plan.outputs:
-        if output.mapped_to:
-            stream_repr.append(output.to_stream_representation())
-
-    return " ".join(argv) + " ".join(stream_repr)
-
-
 class PlanViewModel:
     """A view model for a ``Plan``."""
 
@@ -172,9 +149,16 @@ class PlanViewModel:
             id=plan.id,
             name=plan.name,
             description=plan.description,
-            full_command=_get_full_command(plan),
+            full_command=" ".join(plan.to_argv(with_streams=True)),
             success_codes=", ".join(str(c) for c in plan.success_codes),
             inputs=[CommandInputViewModel.from_input(input) for input in plan.inputs],
             outputs=[CommandOutputViewModel.from_output(output) for output in plan.outputs],
             parameters=[CommandParameterViewModel.from_parameter(param) for param in plan.parameters],
         )
+
+
+def plan_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewModel]:
+    """Convert an ``CompositePlan`` or ``Plan`` to a ``ViewModel``."""
+    if isinstance(workflow, CompositePlan):
+        return CompositePlanViewModel.from_composite_plan(workflow)
+    return PlanViewModel.from_plan(workflow)

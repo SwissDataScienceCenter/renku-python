@@ -18,17 +18,21 @@
 """Third party data registry integration."""
 from urllib.parse import urlparse
 
-from renku.core.commands.providers.dataverse import DataverseProvider
-from renku.core.commands.providers.olos import OLOSProvider
-from renku.core.commands.providers.renku import RenkuProvider
-from renku.core.commands.providers.zenodo import ZenodoProvider
 from renku.core.utils.doi import is_doi
 
 
 class ProviderFactory:
     """Create a provider type from URI."""
 
-    PROVIDERS = {"OLOS": OLOSProvider, "Renku": RenkuProvider, "Zenodo": ZenodoProvider, "Dataverse": DataverseProvider}
+    @staticmethod
+    def providers():
+        """Returns all supported providers."""
+        from renku.core.commands.providers.dataverse import DataverseProvider
+        from renku.core.commands.providers.olos import OLOSProvider
+        from renku.core.commands.providers.renku import RenkuProvider
+        from renku.core.commands.providers.zenodo import ZenodoProvider
+
+        return {"OLOS": OLOSProvider, "Renku": RenkuProvider, "Zenodo": ZenodoProvider, "Dataverse": DataverseProvider}
 
     @staticmethod
     def from_uri(uri):
@@ -42,7 +46,7 @@ class ProviderFactory:
         provider = None
         warning = ""
 
-        for _, potential_provider in ProviderFactory.PROVIDERS.items():
+        for _, potential_provider in ProviderFactory.providers().items():
             try:
                 if potential_provider.supports(uri):
                     provider = potential_provider
@@ -50,7 +54,7 @@ class ProviderFactory:
             except (Exception, BaseException) as e:
                 warning += "Couldn't test provider {prov}: {err}\n".format(prov=potential_provider, err=e)
 
-        supported_providers = ", ".join(ProviderFactory.PROVIDERS.keys())
+        supported_providers = ", ".join(ProviderFactory.providers().keys())
 
         if is_doi_ and provider is None:
             return (
@@ -76,7 +80,7 @@ class ProviderFactory:
     @staticmethod
     def from_id(provider_id):
         """Get provider type based on identifier."""
-        provider = next((p for n, p in ProviderFactory.PROVIDERS.items() if n.lower() == provider_id.lower()), None)
+        provider = next((p for n, p in ProviderFactory.providers().items() if n.lower() == provider_id.lower()), None)
 
         if not provider:
             raise KeyError(f"Provider {provider_id} not found.")

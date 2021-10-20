@@ -38,6 +38,7 @@ from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.project import Project
 from renku.core.utils import communication
+from renku.core.utils.git import default_path
 
 from .git import GitCore
 
@@ -45,18 +46,6 @@ DEFAULT_DATA_DIR = "data"
 
 INIT_APPEND_FILES = [".gitignore"]
 INIT_KEEP_FILES = ["readme.md", "readme.rst"]
-
-
-def default_path(path="."):
-    """Return default repository path."""
-    from git import InvalidGitRepositoryError
-
-    from renku.core.commands.git import get_git_home
-
-    try:
-        return get_git_home(path=path)
-    except InvalidGitRepositoryError:
-        return path
 
 
 def path_converter(path):

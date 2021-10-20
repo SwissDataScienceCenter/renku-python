@@ -22,8 +22,8 @@ from pathlib import Path
 
 import pytest
 
-from renku import LocalClient
 from renku.cli import cli
+from renku.core.management.client import LocalClient
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.core.models.dataset import RemoteEntity

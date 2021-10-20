@@ -27,7 +27,7 @@ from urllib.parse import ParseResult, quote, urljoin, urlparse
 
 import pyld
 
-from renku import LocalClient
+from renku.core.management.client import LocalClient
 from renku.core.models.jsonld import read_yaml
 
 OLD_METADATA_PATH = "metadata.yml"

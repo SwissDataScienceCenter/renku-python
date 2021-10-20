@@ -76,13 +76,6 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import WARNING
-from renku.core.commands.storage import (
-    check_lfs_command,
-    check_lfs_hook_command,
-    clean_command,
-    fix_lfs_command,
-    pull_command,
-)
 
 
 @click.group()
@@ -94,6 +87,8 @@ def storage():
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def pull(paths):
     """Pull the specified paths from external storage."""
+    from renku.core.commands.storage import pull_command
+
     pull_command().build().execute(paths=paths)
 
 
@@ -101,6 +96,8 @@ def pull(paths):
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def clean(paths):
     """Remove files from lfs cache/turn them back into pointer files."""
+    from renku.core.commands.storage import clean_command
+
     communicator = ClickCallback()
     clean_command().with_communicator(communicator).build().execute(paths=paths)
 
@@ -111,6 +108,8 @@ def clean(paths):
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def check_lfs_hook(paths):
     """Check specified paths are tracked in external storage."""
+    from renku.core.commands.storage import check_lfs_hook_command
+
     paths = check_lfs_hook_command().build().execute(paths=paths).output
     if paths:
         click.echo(os.linesep.join(paths))
@@ -121,6 +120,8 @@ def check_lfs_hook(paths):
 @click.option("--all", is_flag=True, help="Include all branches.")
 def check(all):
     """Check if large files are committed to Git history."""
+    from renku.core.commands.storage import check_lfs_command
+
     files = check_lfs_command().build().execute(everything=all).output
     if files:
         message = WARNING + "Git history contains large files\n\t" + "\n\t".join(files)
@@ -135,6 +136,8 @@ def check(all):
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 def migrate(migrate_all, paths):
     """Migrate large files committed to git by moving them to LFS."""
+    from renku.core.commands.storage import check_lfs_command, fix_lfs_command
+
     if not paths:
         if not migrate_all:
             click.echo("Please specify paths to migrate or use the --all flag to migrate all large files.")

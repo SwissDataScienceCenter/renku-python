@@ -218,7 +218,6 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.options import option_isolation
-from renku.core.commands.run import run_command
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
@@ -254,6 +253,8 @@ def run(
     command_line,
 ):
     """Tracking work on a specific problem."""
+    from renku.core.commands.run import run_command
+
     communicator = ClickCallback()
     command = run_command()
 

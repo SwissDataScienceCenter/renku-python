@@ -30,7 +30,7 @@ from git import NULL_TREE, Commit, GitCommandError
 
 import renku.core.management.migrate
 from renku.core import errors
-from renku.core.management import LocalClient
+from renku.core.management.client import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.interface.activity_gateway import IActivityGateway
@@ -240,6 +240,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=argument.name,
             position=argument.position,
             prefix=argument.prefix,
+            postfix=PurePosixPath(argument._id).name,
         )
 
     def convert_input(input: old_schema.CommandInput) -> CommandInput:
@@ -258,6 +259,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=input.name,
             position=input.position,
             prefix=input.prefix,
+            postfix=PurePosixPath(input._id).name,
         )
 
     def convert_output(output: old_schema.CommandOutput) -> CommandOutput:
@@ -277,6 +279,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=output.name,
             position=output.position,
             prefix=output.prefix,
+            postfix=PurePosixPath(output._id).name,
         )
 
     plan = Plan(
