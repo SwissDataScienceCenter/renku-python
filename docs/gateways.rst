@@ -16,14 +16,25 @@
     limitations under the License.
 
 
-Internals
-=========
+Gateways
+========
 
-Internals of the ``renku-python`` library.
+Renku uses several gateways to abstract away dependencies on external systems
+such as the database or git.
 
-.. toctree::
-   models/index
-   database
-   gateways
-   management
-   plugins
+Interfaces
+----------
+
+Interfaces that the Gateways implement.
+
+.. automodule:: renku.core.management.interface
+   :members:
+
+Implementations
+---------------
+
+Implementation of Gateway interfaces.
+
+.. automodule:: renku.core.metadata.gateway
+   :members:
+

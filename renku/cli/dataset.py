@@ -20,6 +20,10 @@ r"""Renku CLI commands for handling of datasets.
 Manipulating datasets
 ~~~~~~~~~~~~~~~~~~~~~
 
+.. image:: _static/asciicasts/dataset-create.delay.gif
+   :width: 600
+   :alt: Create a Dataset
+
 Creating an empty dataset inside a Renku project:
 
 .. code-block:: console
@@ -49,7 +53,11 @@ the dataset.
 |                   | be added to the dataset.                             |
 +-------------------+------------------------------------------------------+
 
-Editing a dataset's metadata
+Editing a dataset's metadata:
+
+.. image:: _static/asciicasts/dataset-edit.delay.gif
+   :width: 600
+   :alt: Editing a Dataset
 
 Use ``edit`` subcommand to change metadata of a dataset. You can edit the same
 set of metadata as the create command by passing the options described in the
@@ -98,13 +106,17 @@ flag for it:
 
 Showing dataset details:
 
-. code-block:: console
+.. code-block:: console
 
     $ renku dataset show some-dataset
     Name: some-dataset
     Created: 2020-12-09 13:52:06.640778+00:00
     Creator(s): John Doe<john.doe@example.com> [SDSC]
     Keywords: Dataset, Data
+    Annotations:
+    [
+      {...}
+    ]
     Title: Some Dataset
     Description:
     Just some dataset
@@ -120,6 +132,9 @@ Deleting a dataset:
 Working with data
 ~~~~~~~~~~~~~~~~~
 
+.. image:: _static/asciicasts/dataset-add.delay.gif
+   :width: 600
+   :alt: Add data to a Dataset
 
 Adding data to the dataset:
 
@@ -293,6 +308,10 @@ knowing the dataset's ID.
 
 
 Importing data from an external provider:
+
+.. image:: _static/asciicasts/dataset-import.delay.gif
+   :width: 600
+   :alt: Import a Dataset
 
 .. code-block:: console
 

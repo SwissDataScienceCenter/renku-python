@@ -512,15 +512,15 @@ def _execute_workflow(
             set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)
             override_params = always_merger.merge(override_params, set_param)
 
-    if override_params:
-        rv = ValueResolver.get(workflow, override_params)
-        workflow = rv.apply()
+    rv = ValueResolver.get(workflow, override_params)
 
-        if rv.missing_parameters:
-            communication.warn(
-                f'Could not resolve the following parameters in "{workflow.name}" workflow: '
-                f'{",".join(rv.missing_parameters)}'
-            )
+    workflow = rv.apply()
+
+    if rv.missing_parameters:
+        communication.warn(
+            f'Could not resolve the following parameters in "{workflow.name}" workflow: '
+            f'{",".join(rv.missing_parameters)}'
+        )
 
     if config:
         config = _safe_read_yaml(config)
