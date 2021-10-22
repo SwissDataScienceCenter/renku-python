@@ -20,6 +20,10 @@ r"""Recreate files created by the "run" command.
 Recreating files
 ~~~~~~~~~~~~~~~~
 
+.. image:: _static/asciicasts/rerun.delay.gif
+   :width: 600
+   :alt: Rerun workflow
+
 Assume you have run a step 2 that uses a stochastic algorithm, so each run
 will be slightly different. The goal is to regenerate output ``C`` several
 times to compare the output. In this situation it is not possible to simply

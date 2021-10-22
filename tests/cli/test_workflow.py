@@ -734,3 +734,54 @@ def test_workflow_visualize_interactive(runner, project, client, workflow_graph)
 
     child.expect(pexpect.EOF, timeout=2)
     assert not child.isalive()
+
+
+def test_workflow_compose_execute(runner, project, run_shell, client):
+    """Test renku workflow compose with execute."""
+    # Run a shell command with pipe.
+    output = run_shell('renku run --name run1 -- echo "a" > output1')
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Run a shell command with pipe.
+    output = run_shell("renku run --name run2 -- cp output1 output2")
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Run a shell command with pipe.
+    output = run_shell('renku run --name run3 -- echo "b" > output3')
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Run a shell command with pipe.
+    output = run_shell("renku run --name run4 -- cp output3 output4")
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # we need to run in a subprocess to ensure the execute below uses a clean Database, to test against
+    # issues with cached parameters
+    output = run_shell("renku workflow compose --link run2.output-2=run4.input-1 composite_workflow1 run1 run2 run4")
+
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    assert "b\n" == Path("output4").read_text()
+
+    output = run_shell('renku workflow execute --set run1.parameter-1="xyz" composite_workflow1')
+
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    assert "xyz\n" == Path("output4").read_text()

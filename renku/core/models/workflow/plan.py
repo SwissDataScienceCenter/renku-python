@@ -211,7 +211,11 @@ class Plan(AbstractPlan):
 
     def find_parameter(self, parameter: CommandParameterBase) -> bool:
         """Find if a parameter exists on this plan."""
-        return parameter in self.inputs + self.outputs + self.parameters
+        return any(parameter.id == p.id for p in self.inputs + self.outputs + self.parameters)
+
+    def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
+        """Get a parameter on this plan by id."""
+        return next((p for p in self.inputs + self.outputs + self.parameters if parameter_id == p.id), None)
 
     def find_parameter_workflow(self, parameter: CommandParameterBase) -> "Plan":
         """Return the workflow a parameter belongs to."""

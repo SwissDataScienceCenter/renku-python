@@ -44,6 +44,10 @@ Working with Plans
 Listing Plans
 *************
 
+.. image:: _static/asciicasts/list_plans.delay.gif
+   :width: 600
+   :alt: List Plans
+
 .. code-block:: console
 
     $ renku workflow ls
@@ -60,6 +64,10 @@ combination of values from ``id``, ``name``, ``keywords`` and ``description``.
 
 Showing Plan Details
 ********************
+
+.. image:: _static/asciicasts/show_plan.delay.gif
+   :width: 600
+   :alt: Show Plan
 
 You can see the details of a plan by using ``renku workflow show``:
 
@@ -86,6 +94,10 @@ inputs, outputs and parameters.
 
 Executing Plans
 ***************
+
+.. image:: _static/asciicasts/execute_plan.delay.gif
+   :width: 600
+   :alt: Execute Plans
 
 Plans can be executed using ``renku workflow execute``. They can be run as-is
 or their parameters can be modified as needed. Renku has a plugin architecture
@@ -159,6 +171,9 @@ You can export into a file directly with ``-o <path>``.
 
 Composing Plans into larger workflows
 *************************************
+.. image:: _static/asciicasts/compose_plan.delay.gif
+   :width: 600
+   :alt: Composing Plans
 
 For more complex workflows consisting of several steps, you can use the
 ``renku workflow compose`` command. This creates a new workflow that has
@@ -294,6 +309,10 @@ order of precedence (lower precedence first):
 Editing Plans
 *************
 
+.. image:: _static/asciicasts/edit_plan.delay.gif
+   :width: 600
+   :alt: Editing Plans
+
 Plans can be edited in some limited fashion, but we do not allow structural
 changes, as that might cause issues with the reproducibility and provenance of
 the project. If you want to do structural changes (e.g. adding/removing
@@ -344,6 +363,10 @@ Refer to the documentation of the :ref:`cli-log` command for more details.
 
 Visualizing Executions
 **********************
+
+.. image:: _static/asciicasts/visualize_runs.delay.gif
+   :width: 600
+   :alt: Visualizing Runs
 
 You can visualize past Runs made with renku using the ``renku workflow
 visualize`` command.

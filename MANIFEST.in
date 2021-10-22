@@ -55,6 +55,7 @@ recursive-include docs *.css
 recursive-include docs *.html
 recursive-include docs *.ico
 recursive-include docs *.png
+recursive-include docs *.gif
 recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs *.svg

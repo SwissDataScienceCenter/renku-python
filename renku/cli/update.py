@@ -17,6 +17,10 @@
 # limitations under the License.
 r"""Update outdated files created by the "run" command.
 
+.. image:: _static/asciicasts/update.delay.gif
+   :width: 600
+   :alt: Update outdate files
+
 Recreating outdated files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
