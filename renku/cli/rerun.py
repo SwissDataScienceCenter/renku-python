@@ -45,7 +45,7 @@ using the ``--from`` parameter:
 
 Note that all other outputs of the executed workflow will be recreated as well.
 If the output didn't change, it will be removed from git and re-added to ensure
-that the reexecution is properly tracked.
+that the re-execution is properly tracked.
 """
 
 import click

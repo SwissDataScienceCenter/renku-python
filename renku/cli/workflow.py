@@ -17,8 +17,8 @@
 # limitations under the License.
 """Manage the set of CWL files created by ``renku`` commands.
 
-Activities and Plans
-~~~~~~~~~~~~~~~~~~~~
+Runs and Plans
+~~~~~~~~~~~~~~
 
 Renku records two different kinds of metadata when a workflow is executed,
 ``Run`` and ``Plan``.
@@ -29,13 +29,14 @@ These Plans can be run in various ways, on creation with ``renku run`,`
 doing a ``renku rerun`` or ``renku update`` or manually using ``renku workflow
 execute``.
 
-Each time a ``Plan`` is run, we track that instance of it as an ``Run``.
-Activities track workflow execution through time. They track which Plan was
-run, at what time, with which values. This allows knowing which steps were
-taken in a repository, how they were taken and what results they produced.
+Each time a ``Plan`` is run, we track that instance of it as a ``Run``.
+Runs track workflow execution through time. They track which Plan was
+run, at what time, with which specific values. This gives an insight into what
+were the steps taken in a repository, how they were taken and what results they
+produced.
 
 The ``renku workflow`` group of commands contains most of the commands used
-to interacti with Plans and Runs
+to interact with Plans and Runs
 
 Working with Plans
 ~~~~~~~~~~~~~~~~~~
@@ -80,7 +81,7 @@ You can see the details of a plan by using ``renku workflow show``:
 
 This shows the unique Id of the Plan, its name, the full command of the Plan
 if it was run without any modifications (more on that later), which exit codes
-should be considered successful executions (Defaults to ``0``) as well as its
+should be considered successful executions (defaults to ``0``) as well as its
 inputs, outputs and parameters.
 
 Executing Plans
@@ -101,8 +102,8 @@ settings can be passed as file using the ``--config`` parameter.
 Exporting Plans
 ***************
 
-You can export a Plan to in a number of workflow languages, such as CWL (
-Common Workflow Language) by using ``renku workflow export``:
+You can export a Plan to a number of different workflow languages, such as CWL
+(Common Workflow Language) by using ``renku workflow export``:
 
 .. code-block:: console
 
@@ -153,7 +154,7 @@ Common Workflow Language) by using ``renku workflow export``:
         entryname: .git
         writable: false
 
-You can export to a file directly with ``-o <path>``.
+You can export into a file directly with ``-o <path>``.
 
 
 Composing Plans into larger workflows
@@ -176,9 +177,9 @@ consists of ``step1`` and ``step2`` as steps. This new workflow is just
 like any other workflow in renku in that it can be executed, exported
 or composed with other workflows.
 
-Workflows can also be composed based on past activities and their
+Workflows can also be composed based on past Runs and their
 inputs/outputs, using the ``--from`` and ``--to`` parameters. This finds
-chains of activities from inputs to outputs and then adds them to the
+chains of Runs from inputs to outputs and then adds them to the
 composed plan, applying mappings (see below) where appropriate to make
 sure the correct values for execution are used in the composite. This
 also means that all the parameters in the used plans are exposed on the
@@ -975,9 +976,9 @@ def execute(
     help="Comma-separated list of column to display: {}.".format(", ".join(ACTIVITY_GRAPH_COLUMNS.keys())),
     show_default=True,
 )
-@click.option("-x", "--exclude-files", is_flag=True, help="Hide file nodes, only show activities.")
+@click.option("-x", "--exclude-files", is_flag=True, help="Hide file nodes, only show Runs.")
 @click.option("-a", "--ascii", is_flag=True, help="Only use Ascii characters for formatting.")
-@click.option("-i", "--interactive", is_flag=True, help="Interactively explore activity graph.")
+@click.option("-i", "--interactive", is_flag=True, help="Interactively explore run graph.")
 @click.option("--no-color", is_flag=True, help="Don't colorize output.")
 @click.option("--pager", is_flag=True, help="Force use pager (less) for output.")
 @click.option("--no-pager", is_flag=True, help="Don't use pager (less) for output.")
