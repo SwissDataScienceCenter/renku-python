@@ -123,11 +123,11 @@ def identity_headers():
         "session_state": "12345",
         "acr": "1",
         "email_verified": False,
-        "preferred_username": "andi@bleuler.com",
-        "given_name": "Andreas",
-        "family_name": "Bleuler",
-        "name": "Andreas Bleuler",
-        "email": "andi@bleuler.com",
+        "preferred_username": "renkubot@datascience.ch",
+        "given_name": "Renku",
+        "family_name": "Bot",
+        "name": "Renkubot",
+        "email": "renkubot@datascience.ch",
     }
 
     headers = {
