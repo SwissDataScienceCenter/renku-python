@@ -209,14 +209,13 @@ def injection_manager(bindings):
 
 def write_and_commit_file(repository: Repository, path: Union[Path, str], content: str):
     """Write content to a given file and make a commit."""
-    filepath = Path(path)
-    path = str(path)
+    path = repository.path / path
 
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    filepath.write_text(content)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
 
     repository.add(path)
-    repository.commit(f"Updated '{path}'")
+    repository.commit(f"Updated '{path.relative_to(repository.path)}'")
 
 
 def create_dummy_activity(

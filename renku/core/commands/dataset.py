@@ -26,7 +26,6 @@ from typing import List, Optional
 
 import click
 import patoolib
-import requests
 
 from renku.core import errors
 from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
@@ -43,7 +42,6 @@ from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.metadata.immutable import DynamicProxy
-from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import (
     Dataset,
     DatasetDetailsJson,
@@ -52,10 +50,10 @@ from renku.core.models.dataset import (
     generate_default_name,
     get_dataset_data_dir,
 )
-from renku.core.models.provenance.agent import Person
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
 from renku.core.utils.doi import is_doi
+from renku.core.utils.git import get_git_user
 from renku.core.utils.metadata import construct_creators
 from renku.core.utils.urls import remove_credentials
 
@@ -99,7 +97,7 @@ def create_dataset_helper(
     client = client_dispatcher.current_client
 
     if not creators:
-        creators = [Person.from_repository(client.repository)]
+        creators = [get_git_user(client.repository)]
     else:
         creators, _ = construct_creators(creators)
 
@@ -173,7 +171,7 @@ def _edit_dataset(
         return [], no_email_warnings
 
     datasets_provenance = DatasetsProvenance()
-    datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
+    datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
 
     return updated, no_email_warnings
 
@@ -214,10 +212,12 @@ def _add_to_dataset(
     all_at_once=False,
     destination_names=None,
     total_size=None,
-    repository: Repository = None,
+    repository=None,
     clear_files_before=False,
 ):
     """Add data to a dataset."""
+    from renku.core.utils import requests
+
     client = client_dispatcher.current_client
     if len(urls) == 0:
         raise UsageError("No URL is specified")
@@ -228,9 +228,9 @@ def _add_to_dataset(
         total_size = 0
         for url in urls:
             try:
-                with requests.get(url, stream=True, allow_redirects=True) as r:
-                    total_size += int(r.headers.get("content-length", 0))
-            except requests.exceptions.RequestException:
+                response = requests.head(url, allow_redirects=True)
+                total_size += int(response.headers.get("content-length", 0))
+            except errors.RequestError:
                 pass
     usage = shutil.disk_usage(client.path)
 
@@ -359,7 +359,7 @@ def _file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, y
         dataset.unlink_file(file.entity.path)
 
     datasets_provenance = DatasetsProvenance()
-    datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
+    datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
 
     return records
 

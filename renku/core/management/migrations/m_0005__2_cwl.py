@@ -45,9 +45,8 @@ from renku.core.management.migrations.models.v9 import (
     WorkflowRun,
 )
 from renku.core.management.migrations.utils import OLD_DATASETS_PATH, OLD_WORKFLOW_PATH, MigrationType
-from renku.core.metadata.repository import Actor, Commit
+from renku.core.metadata.repository import Actor, Commit, git_unicode_unescape
 from renku.core.utils import communication
-from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
 default_missing_software_agent = SoftwareAgent(

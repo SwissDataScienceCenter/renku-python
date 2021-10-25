@@ -19,7 +19,6 @@
 
 import json
 import re
-import tempfile
 from collections import OrderedDict, namedtuple
 from pathlib import Path
 from tempfile import mkdtemp
@@ -32,8 +31,8 @@ import yaml
 
 from renku.core import errors
 from renku.core.commands.git import set_git_home
+from renku.core.management import RENKU_HOME
 from renku.core.management.command_builder.command import Command, inject
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
@@ -41,6 +40,7 @@ from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.metadata.repository import Repository
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
+from renku.core.utils.git import clone_repository
 from renku.version import __version__, is_release
 
 TEMPLATE_MANIFEST = "manifest.yaml"
@@ -93,7 +93,8 @@ def create_template_sentence(templates, describe=False, instructions=False):
 
 def store_directory(value):
     """Store directory as a new Git home."""
-    Path(value).mkdir(parents=True, exist_ok=True)
+    value = Path(value)
+    value.mkdir(parents=True, exist_ok=True)
     set_git_home(value)
     return value
 
@@ -367,39 +368,15 @@ def fetch_template_from_git(source, ref=None, tempdir=None):
     :param tempdir: temporary work directory path
     :return: tuple of (template folder, template version)
     """
-    if tempdir is None:
-        tempdir = Path(tempfile.mkdtemp())
-
-    try:
-        # clone the repo locally without checking out files
-        template_repository = Repository.clone_from(source, tempdir, no_checkout=True)
-    except errors.GitCommandError as e:
-        raise errors.GitError(f"Cannot clone repo from {source}") from e
-
-    if ref:
-        try:
-            # fetch ref and set the HEAD
-            template_repository.fetch("origin")
-            try:
-                commit = template_repository.get_commit(ref)
-            except errors.GitCommitNotFoundError:
-                ref = f"origin/{ref}"
-                commit = template_repository.get_commit(ref)
-
-            template_repository.reset(commit, soft=True)
-        except (errors.GitCommandError, errors.GitCommitNotFoundError) as e:
-            raise errors.GitError(f"Cannot fetch and checkout reference {ref}") from e
-    else:
-        template_repository.fetch("origin")
-        template_repository.reset(template_repository.head.commit)
+    template_repository = clone_repository(url=source, path=tempdir, checkout_revision=ref, install_lfs=False)
 
     # checkout the manifest
     try:
-        Repository(tempdir).checkout(TEMPLATE_MANIFEST)
+        template_repository.checkout(TEMPLATE_MANIFEST)
     except errors.GitCommandError as e:
         raise errors.GitError(f"Cannot checkout manifest file {TEMPLATE_MANIFEST}") from e
 
-    return tempdir / TEMPLATE_MANIFEST, template_repository.head.commit.hexsha
+    return template_repository.path / TEMPLATE_MANIFEST, template_repository.head.commit.hexsha
 
 
 def fetch_template(template_source, template_ref):
@@ -472,6 +449,7 @@ def read_template_manifest(folder, checkout=False):
     :param folder: path where to find the template manifest file
     :param checkout: checkout the template folder from local repo
     """
+    folder = Path(folder)
     manifest_path = folder / TEMPLATE_MANIFEST
     try:
         manifest = yaml.safe_load(manifest_path.read_text())

@@ -23,15 +23,13 @@ import urllib
 import uuid
 import webbrowser
 
-import requests
-
 from renku.core import errors
 from renku.core.management.command_builder import Command, inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils import communication
-from renku.core.utils.git import get_renku_repo_url
-from renku.core.utils.urls import get_remote, parse_authentication_endpoint
+from renku.core.utils.git import get_remote, get_renku_repo_url
+from renku.core.utils.urls import parse_authentication_endpoint
 
 CONFIG_SECTION = "http"
 RENKU_BACKUP_PREFIX = "renku-backup"
@@ -44,6 +42,8 @@ def login_command():
 
 @inject.autoparams()
 def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
+    from renku.core.utils import requests
+
     client = client_dispatcher.current_client
 
     parsed_endpoint = _parse_endpoint(endpoint)
@@ -53,7 +53,10 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
         if not client.repository:
             raise errors.ParameterError("Cannot use '--git' flag outside a project.")
 
-        remote_name, remote_url = get_remote(client.repository)
+        remote = get_remote(client.repository)
+        if remote:
+            remote_name, remote_url = remote.name, remote.url
+
         if remote_name and remote_url:
             if not yes:
                 communication.confirm("Remote URL will be changed. Do you want to continue?", abort=True, warning=True)
@@ -72,7 +75,7 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
 
     try:
         response = requests.get(cli_token_url)
-    except requests.RequestException as e:
+    except errors.RequestError as e:
         raise errors.OperationError("Cannot get access token from remote host.") from e
 
     if response.status_code == 200:
@@ -114,7 +117,7 @@ def _store_token(netloc, access_token, client_dispatcher: IClientDispatcher):
 
 @inject.autoparams()
 def _store_git_credential_helper(netloc, client_dispatcher: IClientDispatcher):
-    with client_dispatcher.current_client.repository.configuration(writable=True) as config:
+    with client_dispatcher.current_client.repository.get_configuration(writable=True) as config:
         config.set_value("credential", "helper", f"!renku token --hostname {netloc}")
 
 
@@ -178,7 +181,7 @@ def _logout(endpoint, client_dispatcher: IClientDispatcher):
 
 @inject.autoparams()
 def _remove_git_credential_helper(client_dispatcher: IClientDispatcher):
-    with client_dispatcher.current_client.repository.configuration(writable=True) as config:
+    with client_dispatcher.current_client.repository.get_configuration(writable=True) as config:
         try:
             config.remove_value("credential", "helper")
         except errors.GitError:  # NOTE: If already logged out, an exception is raised

@@ -45,7 +45,7 @@ def user_project_clone(cache, user_data, project_data):
                     "user.email": project_data["email"],
                     "pull.rebase": False,
                 },
-                checkout_rev=project_data["ref"],
+                checkout_revision=project_data["ref"],
             )
         ).output
         project.save()

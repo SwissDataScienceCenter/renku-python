@@ -191,13 +191,12 @@ was not installed previously.
 import json
 import os
 from pathlib import Path
-from tempfile import mkdtemp
 
 import click
 
 from renku.core import errors
 from renku.core.commands.options import option_external_storage_requested
-from renku.core.metadata.repository import Repository
+from renku.core.utils.git import check_global_git_user_is_configured
 
 _GITLAB_CI = ".gitlab-ci.yml"
 _DOCKERFILE = "Dockerfile"
@@ -244,20 +243,6 @@ def resolve_data_directory(data_dir, path):
         raise errors.ParameterError(f"Cannot use {data_dir} as data directory.")
 
     return data_dir
-
-
-def check_git_user_config():
-    """Check that git user information is configured."""
-    dummy_git_folder = mkdtemp()
-    repository = Repository.initialize(dummy_git_folder)
-    git_config = repository.configuration()
-    try:
-        git_config.get_value("user", "name", None)
-        git_config.get_value("user", "email", None)
-    except errors.GitConfigurationError:
-        return False
-    else:
-        return True
 
 
 @click.command()
@@ -326,14 +311,7 @@ def init(
 
     data_dir = resolve_data_directory(data_dir, path)
 
-    if not check_git_user_config():
-        raise errors.ConfigurationError(
-            "The user name and email are not configured. "
-            'Please use the "git config" command to configure them.\n\n'
-            '\tgit config --global --add user.name "John Doe"\n'
-            "\tgit config --global --add user.email "
-            '"john.doe@example.com"\n'
-        )
+    check_global_git_user_is_configured()
 
     if template_ref and not template_source:
         raise errors.ParameterError("Can't use '--template-ref' without specifying '--template-source'")

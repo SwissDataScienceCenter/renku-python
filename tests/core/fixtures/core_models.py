@@ -17,8 +17,13 @@
 # limitations under the License.
 """Renku fixtures for models."""
 
+import os
+import urllib
+
 import pytest
 
+from renku.core.metadata.repository import Repository
+from tests.fixtures.config import IT_PROTECTED_REMOTE_REPO_URL, IT_REMOTE_NON_RENKU_REPO_URL
 from tests.utils import clone_compressed_repository
 
 
@@ -68,3 +73,35 @@ def git_repository(tmp_path):
 
     with chdir(repository.path):
         yield repository
+
+
+@pytest.fixture
+def git_repository_with_remote(git_repository):
+    """A Git repository with remote."""
+    git_repository.run_git_command("remote", "set-url", "origin", IT_PROTECTED_REMOTE_REPO_URL)
+
+    yield git_repository
+
+
+@pytest.fixture
+def git_repository_with_multiple_remotes(git_repository_with_remote):
+    """A Git repository with remote."""
+    git_repository_with_remote.run_git_command("remote", "add", "second-remote", IT_REMOTE_NON_RENKU_REPO_URL)
+
+    yield git_repository_with_remote
+
+
+@pytest.fixture
+def protected_git_repository(tmp_path):
+    """A Git repository with remote."""
+    parsed_url = urllib.parse.urlparse(IT_PROTECTED_REMOTE_REPO_URL)
+
+    url = f"oauth2:{os.getenv('IT_OAUTH_GIT_TOKEN')}@{parsed_url.netloc}"
+    parsed_url = parsed_url._replace(netloc=url).geturl()
+
+    repository = Repository.clone_from(url=parsed_url, path=tmp_path)
+
+    with repository.get_configuration(writable=True) as config:
+        config.set_value("pull", "rebase", "false")
+
+    yield repository

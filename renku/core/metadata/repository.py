@@ -18,6 +18,7 @@
 """An abstraction layer for the underlying VCS."""
 
 import configparser
+import math
 import os
 import subprocess
 import tempfile
@@ -28,15 +29,33 @@ from pathlib import Path
 from typing import Any, BinaryIO, Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
 
 import git
-from git.config import get_config_path
 
 from renku.core import errors
-from renku.core.utils.git import split_paths
 from renku.core.utils.os import get_absolute_path
-from renku.core.utils.scm import git_unicode_unescape
 
 NULL_TREE = git.NULL_TREE
 _MARKER = object()
+
+
+def git_unicode_unescape(s: str, encoding: str = "utf-8") -> str:
+    """Undoes git/gitpython unicode encoding."""
+    if s is None:
+        return ""
+
+    if s.startswith('"'):
+        return s.strip('"').encode("latin1").decode("unicode-escape").encode("latin1").decode(encoding)
+    return s
+
+
+def split_paths(*paths):
+    """Return a generator with split list of paths."""
+    argument_batch_size = 100
+
+    batch_count = math.ceil(len(paths) / argument_batch_size)
+    batch_count = max(batch_count, 1)
+
+    for index in range(batch_count):
+        yield paths[index * argument_batch_size : (index + 1) * argument_batch_size]
 
 
 class BaseRepository:
@@ -210,18 +229,16 @@ class BaseRepository:
         set_upstream: bool = False,
         delete: bool = False,
         force: bool = False,
-    ) -> List["PushStatus"]:
+    ):
         """Push local changes to a remote repository."""
-        if isinstance(remote, str):
-            remote = self.remotes[remote]
-        elif remote is None:
-            try:
-                remote = self.active_branch.remote_branch.remote
-            except AttributeError:
-                raise errors.GitRemoteNotFoundError(f"Cannot find a remote for branch '{self.active_branch}'")
-
-        return remote._push_helper(
-            refspec=refspec, no_verify=no_verify, set_upstream=set_upstream, delete=delete, force=force
+        self.run_git_command(
+            "push",
+            _to_string(remote),
+            _to_string(refspec),
+            no_verify=no_verify,
+            set_upstream=set_upstream,
+            delete=delete,
+            force=force,
         )
 
     def remove(
@@ -279,7 +296,7 @@ class BaseRepository:
         revision = revision or "HEAD"
         assert isinstance(revision, (Commit, str)), f"'revision' must be Commit/str not '{type(revision)}'"
 
-        commit = find_previous_commit_helper(repository=self, path=path, revision=str(revision))
+        commit = _find_previous_commit_helper(repository=self, path=path, revision=str(revision))
         if not commit:
             raise errors.GitCommitNotFoundError(f"Cannot find previous commit for '{path}' from '{revision}'")
         return commit
@@ -312,6 +329,18 @@ class BaseRepository:
             raise errors.GitCommitNotFoundError(f"Cannot find a commit with revision '{revision}'") from e
         else:
             return Commit.from_commit(self._repository, commit)
+
+    def get_ignored_paths(self, *paths: Union[Path, str]) -> List[str]:
+        """Return ignored paths matching ``.gitignore`` file."""
+        ignored = []
+
+        for batch in split_paths(*paths):
+            try:
+                ignored.extend(self.run_git_command("check-ignore", *batch).split(os.linesep))
+            except errors.GitCommandError:
+                pass
+
+        return ignored
 
     def get_content(
         self, *, path: Union[Path, str], revision: str = None, checksum: str = None, binary: bool = False
@@ -416,7 +445,38 @@ class BaseRepository:
             # were migrated (this can happen only for Usage); the project might be broken too.
             return get_object_hash_from_submodules()
 
-    def configuration(self, writable=False, scope: str = None) -> "Configuration":
+    def get_user(self) -> "Actor":
+        """Return the local/global git user."""
+        configuration = self.get_configuration()
+        return Repository._get_user_from_configuration(configuration)
+
+    @staticmethod
+    def get_global_user() -> "Actor":
+        """Return the global git user."""
+        configuration = Repository.get_global_configuration()
+        return Repository._get_user_from_configuration(configuration)
+
+    @staticmethod
+    def _get_user_from_configuration(configuration: "Configuration") -> "Actor":
+        try:
+            name = configuration.get_value("user", "name", None)
+            email = configuration.get_value("user", "email", None)
+        except errors.GitConfigurationError:  # pragma: no cover
+            raise errors.GitConfigurationError(
+                'The user name and email are not configured. Please use the "git config" command to configure them.\n\n'
+                '\tgit config --global --add user.name "John Doe"\n'
+                '\tgit config --global --add user.email "john.doe@example.com"\n'
+            )
+
+        # Check the git configuration.
+        if not name:  # pragma: no cover
+            raise errors.GitMissingUsername
+        if not email:  # pragma: no cover
+            raise errors.GitMissingEmail
+
+        return Actor(name=name, email=email)
+
+    def get_configuration(self, writable=False, scope: str = None) -> "Configuration":
         """Return git configuration.
 
         NOTE: Scope can be "global" or "local".
@@ -424,7 +484,7 @@ class BaseRepository:
         return Configuration(repository=self._repository, scope=scope, writable=writable)
 
     @staticmethod
-    def global_configuration(writable: bool = False) -> "Configuration":
+    def get_global_configuration(writable: bool = False) -> "Configuration":
         """Return global git configuration."""
         return Configuration(repository=None, writable=writable)
 
@@ -450,7 +510,7 @@ class Repository(BaseRepository):
         self, path: Union[Path, str] = ".", search_parent_directories: bool = False, repository: git.Repo = None
     ):
         super().__init__()
-        self._repository: git.Repo = repository or create_repository(path, search_parent_directories)
+        self._repository: git.Repo = repository or _create_repository(path, search_parent_directories)
         self._path = Path(self._repository.working_dir).resolve()
 
     @classmethod
@@ -514,11 +574,11 @@ class Submodule(BaseRepository):
 
     def __init__(self, parent: git.Repo, name: str, path: Union[Path, str], url: str):
         super().__init__(path=path, repository=None)
-        self._parent: git.Repo = parent or create_repository(path=path, search_parent_directories=True)
+        self._parent: git.Repo = parent or _create_repository(path=path, search_parent_directories=True)
         self._name: str = name
         self._url: str = url
         try:
-            self._repository: git.Repo = create_repository(path, search_parent_directories=False)
+            self._repository: git.Repo = _create_repository(path, search_parent_directories=False)
         except errors.GitError:
             # NOTE: Submodule directory doesn't exists yet, so, we ignore the error
             pass
@@ -941,31 +1001,6 @@ class Remote:
         """Change URL of a remote."""
         _run_git_command(self._repository, "remote", "set-url", self.name, url)
 
-    def _push_helper(
-        self,
-        refspec: Union["Branch", str] = None,
-        *,
-        no_verify: bool = False,
-        set_upstream: bool = False,
-        delete: bool = False,
-        force: bool = False,
-    ) -> List["PushStatus"]:
-        """Helper method to be called from Repository. Don't call from outside the repository module."""
-        try:
-            push_info = self._remote.push(
-                refspec=_to_string(refspec), no_verify=no_verify, set_upstream=set_upstream, delete=delete, force=force
-            )
-        except git.GitCommandError as e:
-            raise errors.GitCommandError(
-                message=f"Git command failed: {str(e)}",
-                command=e.command,
-                stdout=e.stdout,
-                stderr=e.stderr,
-                status=e.status,
-            ) from e
-        else:
-            return [PushStatus(flags=i.flags, summary=i.summary) for i in push_info]
-
 
 class RemoteManager:
     """Manage remotes of a Repository."""
@@ -1032,7 +1067,7 @@ class Configuration:
 
         if repository is None:
             assert scope is None or scope == "global", "Scope can only be global"
-            config_file = get_config_path("global")
+            config_file = git.config.get_config_path("global")
             self._configuration = git.GitConfigParser(
                 config_level="global", read_only=not writable, file_or_files=config_file, repo=None
             )
@@ -1080,29 +1115,7 @@ class Configuration:
         return self._configuration.has_section(section)
 
 
-class PushStatus(NamedTuple):
-    """Status of a git push action."""
-
-    flags: int
-    summary: str
-
-    @property
-    def failed(self) -> bool:
-        """Return true if push failed."""
-        return bool(
-            self.flags & git.PushInfo.ERROR
-            or self.flags & git.PushInfo.REJECTED
-            or self.flags & git.PushInfo.REMOTE_REJECTED
-            or self.flags & git.PushInfo.REMOTE_FAILURE
-        )
-
-    @property
-    def remote_rejected(self):
-        """Return true if remote rejected the push."""
-        return bool(self.flags & git.PushInfo.REMOTE_REJECTED)
-
-
-def create_repository(path: Union[Path, str], search_parent_directories: bool = False) -> git.Repo:
+def _create_repository(path: Union[Path, str], search_parent_directories: bool = False) -> git.Repo:
     """Create a git Repository."""
     try:
         if os.path.isdir(path):
@@ -1130,7 +1143,7 @@ def _to_string(value) -> Optional[str]:
     return str(value) if value else None
 
 
-def find_previous_commit_helper(
+def _find_previous_commit_helper(
     repository: BaseRepository,
     path: Union[Path, str],
     revision: str = None,
@@ -1156,7 +1169,7 @@ def find_previous_commit_helper(
             except ValueError:
                 continue
             else:
-                commit = find_previous_commit_helper(
+                commit = _find_previous_commit_helper(
                     repository=submodule,
                     path=absolute_path,
                     revision=revision,

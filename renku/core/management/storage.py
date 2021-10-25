@@ -21,6 +21,7 @@ import functools
 import itertools
 import os
 import re
+import shlex
 import tempfile
 from collections import defaultdict
 from pathlib import Path
@@ -100,7 +101,7 @@ class StorageApiMixin(RepositoryApiMixin):
     @cached_property
     def storage_installed_locally(self):
         """Verify that git-lfs is installed for the project."""
-        repo_config = self.repository.configuration(scope="local")
+        repo_config = self.repository.get_configuration(scope="local")
         return repo_config.has_section('filter "lfs"')
 
     def check_external_storage(self):
@@ -254,7 +255,7 @@ class StorageApiMixin(RepositoryApiMixin):
         client = client or self
 
         if len(client.repository.remotes) < 1 or not client.repository.active_branch.remote_branch:
-            raise errors.ConfigurationError(
+            raise errors.GitConfigurationError(
                 f"No git remote is configured for {client.path} branch {client.repository.active_branch.name}."
                 + "Cleaning the storage cache would lead to a loss of data as "
                 + "it is not on a server. Please see "
@@ -283,7 +284,7 @@ class StorageApiMixin(RepositoryApiMixin):
             except ValueError:  # An external file
                 absolute_path = Path(os.path.abspath(path))
                 relative_path = absolute_path.relative_to(client.path)
-            client_dict[client.path].append(str(relative_path))
+            client_dict[client.path].append(shlex.quote(str(relative_path)))
 
         for client_path, paths in client_dict.items():
             result = run_command(
@@ -297,7 +298,7 @@ class StorageApiMixin(RepositoryApiMixin):
             )
 
             if result.returncode != 0:
-                raise errors.GitLFSError(f"Error executing 'git lfs pull: \n {result.stdout}")
+                raise errors.GitLFSError(f"Cannot pull LFS objects from server:\n {result.stdout}")
 
     @check_external_storage_wrapper
     def clean_storage_cache(self, *paths):

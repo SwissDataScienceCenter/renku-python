@@ -39,7 +39,6 @@ from functools import wraps
 from werkzeug.local import LocalStack
 
 from renku.core import errors
-from renku.core.metadata.repository import Repository
 
 
 class Project:
@@ -89,6 +88,7 @@ def _get_current_project():
 
 def _get_local_client():
     from renku.core.management.client import LocalClient
+    from renku.core.metadata.repository import Repository
 
     try:
         repository = Repository(".", search_parent_directories=True)

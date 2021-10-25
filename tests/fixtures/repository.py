@@ -80,9 +80,10 @@ def repository(tmpdir):
             # NOTE: fake user home directory
             os.environ["HOME"] = str(home)
             os.environ["XDG_CONFIG_HOME"] = str(home)
-            with Repository.global_configuration(writable=True) as global_config:
+            with Repository.get_global_configuration(writable=True) as global_config:
                 global_config.set_value("user", "name", "Renku @ SDSC")
                 global_config.set_value("user", "email", "renku@datascience.ch")
+                global_config.set_value("pull", "rebase", "false")
 
             result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
             assert 0 == result.exit_code, format_result_exception(result)

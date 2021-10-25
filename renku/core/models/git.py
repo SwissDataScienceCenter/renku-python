@@ -25,7 +25,7 @@ from urllib.parse import urlparse
 import attr
 
 from renku.core import errors
-from renku.core.utils.scm import is_ascii, normalize_to_ascii
+from renku.core.utils.os import is_ascii, normalize_to_ascii
 
 _RE_PROTOCOL = r"(?P<protocol>(git\+)?(https?|git|ssh|rsync))\://"
 
@@ -138,7 +138,7 @@ class GitURL(object):
             if matches:
                 return cls(href=href, regex=regex, **matches.groupdict())
         else:
-            raise errors.ConfigurationError(f"`{href}` is not a valid Git remote")
+            raise errors.GitConfigurationError(f"`{href}` is not a valid Git remote")
 
     @property
     def image(self):
@@ -149,28 +149,3 @@ class GitURL(object):
         if self.name:
             img += "/" + self.name
         return img
-
-
-def get_user_info(repository):
-    """Get Git repository's owner name and email."""
-
-    git_config = repository.configuration()
-    try:
-        name = git_config.get_value("user", "name", None)
-        email = git_config.get_value("user", "email", None)
-    except errors.GitConfigurationError:  # pragma: no cover
-        raise errors.ConfigurationError(
-            "The user name and email are not configured. "
-            'Please use the "git config" command to configure them.\n\n'
-            '\tgit config --global --add user.name "John Doe"\n'
-            "\tgit config --global --add user.email "
-            '"john.doe@example.com"\n'
-        )
-
-    # Check the git configuration.
-    if not name:  # pragma: no cover
-        raise errors.MissingUsername()
-    if not email:  # pragma: no cover
-        raise errors.MissingEmail()
-
-    return name, email

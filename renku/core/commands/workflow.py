@@ -49,7 +49,6 @@ from renku.core.plugins.provider import execute
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import local_now
 from renku.core.utils.os import are_paths_related, get_relative_paths
-from renku.version import __version__, version_url
 
 
 def _ref(name):
@@ -448,6 +447,8 @@ def execute_workflow(
     config=None,
 ):
     """Execute a Run with/without subprocesses."""
+    from renku.version import __version__, version_url
+
     client = client_dispatcher.current_client
 
     # NOTE: Pull inputs from Git LFS or other storage backends

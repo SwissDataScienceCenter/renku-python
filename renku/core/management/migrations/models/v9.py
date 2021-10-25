@@ -61,7 +61,6 @@ from renku.core.models.calamus import (
     schema,
 )
 from renku.core.models.dataset import generate_default_name, is_dataset_name_valid
-from renku.core.models.git import get_user_info
 from renku.core.models.provenance.annotation import AnnotationSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import fix_datetime, parse_date
@@ -1185,8 +1184,8 @@ class Person:
     @classmethod
     def from_repository(cls, repository):
         """Create an instance from a repository."""
-        name, email = get_user_info(repository)
-        return cls(email=email, name=name)
+        user = repository.get_user()
+        return cls(email=user.email, name=user.name)
 
     @classmethod
     def from_string(cls, string):

@@ -31,7 +31,6 @@ from renku.core.management.migrations.utils import (
 )
 from renku.core.models import jsonld
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, StringList, Uri, fields, prov, rdfs, renku, schema
-from renku.core.models.git import get_user_info
 from renku.core.utils.urls import get_host
 
 
@@ -58,8 +57,8 @@ class Person(Base):
     @classmethod
     def from_repository(cls, repository, client=None):
         """Create an instance from a repository."""
-        name, email = get_user_info(repository)
-        instance = cls(name=name, email=email)
+        user = repository.get_user()
+        instance = cls(name=user.name, email=user.email)
         instance.fix_id(client)
         return instance
 

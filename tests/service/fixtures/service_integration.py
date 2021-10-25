@@ -239,7 +239,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 
     with modified_environ(HOME=str(home), XDG_CONFIG_HOME=str(home)):
         try:
-            with remote_repo_checkout.configuration(scope="global", writable=True) as global_config:
+            with remote_repo_checkout.get_configuration(scope="global", writable=True) as global_config:
                 global_config.set_value("user", "name", "Renku @ SDSC")
                 global_config.set_value("user", "email", "renku@datascience.ch")
 

@@ -22,10 +22,10 @@ from urllib3.exceptions import HTTPError
 
 from renku.core import errors
 from renku.core.commands.dataset import add_to_dataset, import_dataset
-from renku.core.commands.save import repo_sync
 from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
 from renku.core.utils.contexts import click_context
+from renku.core.utils.git import push_changes
 from renku.service.logger import worker_log
 from renku.service.utils.callback import ServiceCallback
 from renku.service.views.decorators import requires_cache
@@ -57,7 +57,7 @@ def dataset_import(
             )
 
             worker_log.debug("operation successful - syncing with remote")
-            _, remote_branch = repo_sync(Repository(project.abs_path), remote="origin")
+            remote_branch = push_changes(Repository(project.abs_path), remote="origin")
             user_job.update_extras("remote_branch", remote_branch)
 
             user_job.complete()
@@ -101,7 +101,7 @@ def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset
                 raise result.error
 
             worker_log.debug("operation successful - syncing with remote")
-            _, remote_branch = repo_sync(Repository(project.abs_path), remote="origin")
+            remote_branch = push_changes(Repository(project.abs_path), remote="origin")
             user_job.update_extras("remote_branch", remote_branch)
 
             user_job.complete()

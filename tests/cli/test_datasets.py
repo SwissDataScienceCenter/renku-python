@@ -1376,7 +1376,6 @@ def test_lfs_hook(client, subdirectory, large_file):
     client.track_paths_in_storage(*filenames)
     client.repository.add(all=True)
     commit = client.repository.commit("large files tracked")
-    # TODO: Why a newline is added to the message
     assert "large files tracked\n" == commit.message
 
     tracked_lfs_files = set(client.repository.run_git_command("lfs", "ls-files", "--name-only").split("\n"))

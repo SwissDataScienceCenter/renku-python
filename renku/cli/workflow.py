@@ -496,14 +496,13 @@ from typing import TYPE_CHECKING
 
 import click
 from lazy_object_proxy import Proxy
-from rich.console import Console
-from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
 from renku.core.commands.echo import ERROR
 from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
 from renku.core.commands.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
+from renku.core.utils.os import print_markdown
 
 if TYPE_CHECKING:
     from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
@@ -530,7 +529,7 @@ def _print_plan(plan: "PlanViewModel"):
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(plan.name, bold=True))
 
     if plan.description:
-        Console().print(Markdown(plan.description))
+        print_markdown(plan.description)
 
     click.echo(click.style("Command: ", bold=True, fg="magenta") + click.style(plan.full_command, bold=True))
     click.echo(click.style("Success Codes: ", bold=True, fg="magenta") + click.style(plan.success_codes, bold=True))
@@ -612,7 +611,7 @@ def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(composite_plan.name, bold=True))
 
     if composite_plan.description:
-        Console().print(Markdown(composite_plan.description))
+        print_markdown(composite_plan.description)
 
     click.echo(click.style("Steps: ", bold=True, fg="magenta"))
     for step in composite_plan.steps:

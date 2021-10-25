@@ -29,7 +29,8 @@ from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, String
 from renku.core.models.provenance.agent import Person, PersonSchema
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
 from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.git import get_git_user
+from renku.core.utils.os import normalize_to_ascii
 
 
 class Project(persistent.Persistent):
@@ -90,7 +91,7 @@ class Project(persistent.Persistent):
     ) -> "Project":
         """Create an instance from a LocalClient."""
         namespace, name = cls.get_namespace_and_name(client=client, name=name, creator=creator)
-        creator = creator or Person.from_repository(client.repository)
+        creator = creator or get_git_user(client.repository)
         annotations = None
 
         if custom_metadata:
@@ -113,7 +114,7 @@ class Project(persistent.Persistent):
             name = remote.get("name") or name
 
             if not creator:
-                creator = Person.from_repository(client.repository)
+                creator = get_git_user(client.repository)
 
         if not namespace and creator:
             namespace = creator.email.split("@")[0]

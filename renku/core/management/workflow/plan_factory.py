@@ -30,8 +30,8 @@ import click
 import yaml
 
 from renku.core import errors
+from renku.core.management import RENKU_HOME
 from renku.core.management.command_builder.command import inject
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.types import PATH_OBJECTS, Directory, File
@@ -45,7 +45,7 @@ from renku.core.models.workflow.parameter import (
     MappedIOStream,
 )
 from renku.core.models.workflow.plan import Plan
-from renku.core.utils.scm import safe_path
+from renku.core.utils.git import is_path_safe
 from renku.version import __version__, version_url
 
 STARTED_AT = int(time.time() * 1000)
@@ -548,7 +548,7 @@ class PlanFactory:
             # Include explicit outputs
             candidates |= {str(path.relative_to(self.working_dir)) for path in self.explicit_outputs}
 
-            candidates = {path for path in candidates if safe_path(path)}
+            candidates = {path for path in candidates if is_path_safe(path)}
 
             self.add_outputs(candidates)
 

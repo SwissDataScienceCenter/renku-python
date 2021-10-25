@@ -20,7 +20,6 @@ import base64
 import json
 from copy import deepcopy
 from io import BytesIO
-from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import sleep
 
@@ -28,7 +27,7 @@ import pytest
 
 from renku.core.commands.init import fetch_template_from_git, read_template_manifest
 from renku.core.metadata.repository import Repository
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.os import normalize_to_ascii
 from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
 from tests.utils import retry_failed
 
@@ -72,9 +71,8 @@ def test_compare_manifests(svc_client_with_templates):
     assert response.json["result"]["templates"]
 
     with TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        manifest_file, _ = fetch_template_from_git(template_params["url"], template_params["ref"], temp_path)
-        manifest = read_template_manifest(temp_path)
+        manifest_file, _ = fetch_template_from_git(template_params["url"], template_params["ref"], temp_dir)
+        manifest = read_template_manifest(temp_dir)
 
         assert manifest_file and manifest_file.exists()
         assert manifest
@@ -141,7 +139,7 @@ def test_create_project_from_template(svc_client_templates_creation):
         / payload["project_namespace"]
         / stripped_name
     )
-    reader = Repository(project_path).configuration()
+    reader = Repository(project_path).get_configuration()
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 

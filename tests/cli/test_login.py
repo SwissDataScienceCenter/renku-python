@@ -37,7 +37,7 @@ def test_login(runner, client_with_remote, mock_login, client_database_injection
 
     with client_database_injection_manager(client_with_remote):
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
-        credential = client_with_remote.repository.configuration().get_value("credential", "helper")
+        credential = client_with_remote.repository.get_configuration().get_value("credential", "helper")
         assert f"!renku token --hostname {ENDPOINT}" == credential
         assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repository.remotes}
         assert remote_url == client_with_remote.repository.remotes["renku-backup-origin"].url
@@ -235,7 +235,7 @@ def test_logout_git(runner, client_with_remote, mock_login):
     assert {"origin"} == {r.name for r in client_with_remote.repository.remotes}
     assert remote_url == client_with_remote.repository.remotes["origin"].url
     try:
-        credential = client_with_remote.repository.configuration(scope="local").get_value("credential", "helper")
+        credential = client_with_remote.repository.get_configuration(scope="local").remove_value("credential", "helper")
     except errors.GitConfigurationError:  # NOTE: If already logged out, ``git config --unset`` raises an exception
         credential = None
     assert credential is None

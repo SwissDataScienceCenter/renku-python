@@ -70,7 +70,7 @@ def test_renku_clone_with_config(tmp_path, url):
         ).output
 
         assert "master" == repository.active_branch.name
-        assert 0 == repository.configuration().get_value("filter.lfs", "custom")
+        assert 0 == repository.get_configuration().get_value("filter.lfs", "custom")
 
 
 @pytest.mark.integration
@@ -85,12 +85,12 @@ def test_renku_clone_checkout_rev(tmp_path, url):
             .execute(
                 url,
                 config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"},
-                checkout_rev="97f907e1a3f992d4acdc97a35df73b8affc917a6",
+                checkout_revision="97f907e1a3f992d4acdc97a35df73b8affc917a6",
             )
         ).output
 
         assert "97f907e1a3f992d4acdc97a35df73b8affc917a6" == str(repository.head.commit)
-        assert 0 == repository.configuration().get_value("filter.lfs", "custom")
+        assert 0 == repository.get_configuration().get_value("filter.lfs", "custom")
 
 
 @pytest.mark.integration
@@ -102,7 +102,7 @@ def test_renku_clone_checkout_revs(tmp_path, rev, detached):
         repository, _ = (
             project_clone_command()
             .build()
-            .execute("https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku.git", checkout_rev=rev)
+            .execute("https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku.git", checkout_revision=rev)
         ).output
 
         if detached:

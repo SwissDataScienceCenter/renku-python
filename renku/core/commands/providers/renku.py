@@ -26,7 +26,6 @@ from subprocess import PIPE, SubprocessError, run
 from typing import List
 
 import attr
-import requests
 
 from renku.core import errors
 from renku.core.commands.login import read_renku_token
@@ -36,6 +35,7 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils import communication
+from renku.core.utils.git import clone_renku_repository, get_cache_directory_for_repository
 
 
 @attr.s
@@ -171,13 +171,15 @@ class RenkuProvider(ProviderApi):
         return project_id, dataset_name_or_id
 
     def _query_knowledge_graph(self, url):
+        from renku.core.utils import requests
+
         if self._renku_token and not self._gitlab_token:
             # NOTE: Authorization with renku token requires going through the gateway route
             url = url.replace("/knowledge-graph/", "/api/kg/")
 
         try:
             response = requests.get(url, headers=self._authorization_header)
-        except urllib.error.HTTPError as e:
+        except errors.RequestError as e:
             raise errors.OperationError(f"Cannot access knowledge graph: {url}") from e
 
         if response.status_code == 404:
@@ -353,8 +355,9 @@ class _RenkuRecordSerializer:
         # Clone the project
         for url in urls:
             try:
-                repository = client.prepare_git_repo(
+                repository = clone_renku_repository(
                     url=url,
+                    path=get_cache_directory_for_repository(client=client, url=url),
                     gitlab_token=self._gitlab_token,
                     renku_token=self._renku_token,
                     deployment_hostname=parsed_uri.netloc,

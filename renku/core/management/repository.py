@@ -28,30 +28,20 @@ from jinja2 import Template
 
 from renku.core import errors
 from renku.core.compat import Path
+from renku.core.management import RENKU_HOME
 from renku.core.management.command_builder import inject
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.git import GitCore
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.metadata.repository import Commit, Repository
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.project import Project
 from renku.core.utils import communication
+from renku.core.utils.git import default_path
 
 DEFAULT_DATA_DIR = "data"
 
 INIT_APPEND_FILES = [".gitignore"]
 INIT_KEEP_FILES = ["readme.md", "readme.rst"]
-
-
-def default_path(path="."):
-    """Return default repository path."""
-    from renku.core.commands.git import get_git_home
-
-    try:
-        return get_git_home(path=path)
-    except errors.GitError:
-        return path
 
 
 def path_converter(path):
@@ -225,7 +215,7 @@ class RepositoryApiMixin(GitCore):
         """Return if project is set for the client."""
         return self._project is not None
 
-    def get_in_submodules(self, commit: Commit, path):
+    def get_in_submodules(self, commit, path):
         """Resolve filename in submodules."""
         from renku.core.management.client import LocalClient
 
@@ -284,20 +274,18 @@ class RepositoryApiMixin(GitCore):
 
     def init_repository(self, force=False, user=None, initial_branch=None):
         """Initialize an empty Renku repository."""
-        from renku.core.models.provenance.agent import Person
+        from renku.core.metadata.repository import Repository
 
         # initialize repo and set user data
         path = self.path.absolute()
         self.repository = Repository.initialize(path=path, branch=initial_branch)
         if user:
-            with self.repository.configuration(writable=True) as config_writer:
+            with self.repository.get_configuration(writable=True) as config_writer:
                 for key, value in user.items():
                     config_writer.set_value("user", key, value)
 
-        # verify if author information is available
-        Person.from_repository(self.repository)
-
-        self.repository = Repository(path)
+        # verify if git user information is available
+        _ = self.repository.get_user()
 
     def get_template_files(self, template_path, metadata):
         """Gets paths in a rendered renku template."""

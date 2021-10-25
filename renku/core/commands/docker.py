@@ -31,10 +31,8 @@ from renku.core.models.git import GitURL
 @inject.autoparams()
 def detect_registry_url(client_dispatcher: IClientDispatcher, auto_login=True):
     """Return a URL of the Docker registry."""
-    from renku.core.metadata.repository import Repository
-
-    repository: Repository = client_dispatcher.current_client.repository
-    config = repository.configuration()
+    repository = client_dispatcher.current_client.repository
+    config = repository.get_configuration()
 
     # Find registry URL in .git/config
     remote_url = None
@@ -68,7 +66,7 @@ def detect_registry_url(client_dispatcher: IClientDispatcher, auto_login=True):
         hostname = ".".join(["registry"] + hostname_parts)
         url = attr.evolve(url, hostname=hostname)
     else:
-        raise errors.ConfigurationError("Configure renku.repository_url or Git remote.")
+        raise errors.GitConfigurationError("Configure renku.repository_url or Git remote.")
 
     if auto_login and url.username and url.password:
         try:

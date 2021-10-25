@@ -19,7 +19,7 @@
 import pytest
 from marshmallow import ValidationError
 
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.os import normalize_to_ascii
 from renku.version import is_release
 
 

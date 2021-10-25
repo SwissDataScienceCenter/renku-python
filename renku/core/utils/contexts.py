@@ -24,6 +24,8 @@ from pathlib import Path
 
 import click
 
+from renku.core.utils.git import default_path
+
 
 @contextlib.contextmanager
 def chdir(path):
@@ -104,9 +106,8 @@ def measure(message="TOTAL"):
 
 def click_context(path, command):
     """Provide a click context with repo path injected."""
+    from renku.core.management import RENKU_HOME
     from renku.core.management.client import LocalClient
-    from renku.core.management.config import RENKU_HOME
-    from renku.core.utils.git import default_path
 
     return click.Context(
         click.Command(command),

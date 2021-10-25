@@ -26,13 +26,10 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
 
 import attr
 
 from renku.core import errors
-from renku.core.metadata.repository import NULL_TREE, Actor, Commit, Repository
-from renku.core.utils.git import split_paths
 from renku.core.utils.os import get_absolute_path
 from renku.core.utils.scm import shorten_message
 from renku.core.utils.urls import remove_credentials
@@ -78,6 +75,7 @@ def finalize_commit(
     abbreviate_message=True,
 ):
     """Commit modified/added paths."""
+    from renku.core.metadata.repository import Actor
     from renku.version import __version__, version_url
 
     committer = Actor(name=f"renku {__version__}", email=version_url)
@@ -137,9 +135,10 @@ def prepare_worktree(
     original_client,
     path=None,
     branch_name=None,
-    commit: Commit = None,
+    commit=None,
 ):
     """Set up a Git worktree to provide isolation."""
+    from renku.core.metadata.repository import NULL_TREE
     from renku.core.utils.contexts import Isolation
 
     path = path or tempfile.mkdtemp()
@@ -147,7 +146,7 @@ def prepare_worktree(
 
     # TODO sys.argv
 
-    if commit is NULL_TREE:  # TODO: This check is wrong since commit is/was never NULL_TREE
+    if commit is NULL_TREE:
         args = ["add", "--detach", path]
         original_client.repository.run_git_command("worktree", *args)
         client = attr.evolve(original_client, path=path)
@@ -160,7 +159,7 @@ def prepare_worktree(
         original_client.repository.run_git_command("worktree", *args)
         client = attr.evolve(original_client, path=path)
 
-    client.repository.configuration = original_client.repository.configuration
+    client.repository.get_configuration = original_client.repository.get_configuration
 
     # Keep current directory relative to repository root.
     relative = Path(os.path.relpath(Path(".").resolve(), original_client.path))
@@ -243,7 +242,7 @@ def get_mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
     return dict(stream_inos(lookup_paths)) if standard_inos else {}
 
 
-def _clean_streams(repository: Repository, mapped_streams):
+def _clean_streams(repository, mapped_streams):
     """Clean mapped standard streams."""
     for stream_name in ("stdout", "stderr"):
         stream = mapped_streams.get(stream_name)
@@ -281,13 +280,11 @@ def _expand_directories(paths):
 class GitCore:
     """Wrap Git client."""
 
-    repo = attr.ib(init=False)
-    """Store an instance of the Git repository."""
-
-    repository: Optional[Repository] = attr.ib(init=False, default=None)
+    repository = attr.ib(init=False, default=None)
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
+        from renku.core.metadata.repository import Repository
 
         #: Create an instance of a Git repository for the given path.
         try:
@@ -319,14 +316,7 @@ class GitCore:
 
     def find_ignored_paths(self, *paths):
         """Return ignored paths matching ``.gitignore`` file."""
-        ignored = []
-        for batch in split_paths(*paths):
-            try:
-                ignored.extend(self.repository.run_git_command("check-ignore", *batch).split(os.linesep))
-            except errors.GitCommandError:
-                pass
-
-        return ignored
+        return self.repository.get_ignored_paths(*paths)
 
     def remove_unmodified(self, paths, autocommit=True):
         """Remove unmodified paths and return their names."""
@@ -386,10 +376,10 @@ class GitCore:
 
     def setup_credential_helper(self):
         """Setup git credential helper to ``cache`` if not set already."""
-        credential_helper = self.repository.configuration().get_value("credential", "helper", "")
+        credential_helper = self.repository.get_configuration().get_value("credential", "helper", "")
 
         if not credential_helper:
-            with self.repository.configuration(writable=True) as w:
+            with self.repository.get_configuration(writable=True) as w:
                 w.set_value("credential", "helper", "cache")
 
     @contextmanager
@@ -419,8 +409,10 @@ class GitCore:
         )
 
     @contextmanager
-    def worktree(self, path=None, branch_name=None, commit: Commit = None, merge_args=("--ff-only",)):
+    def worktree(self, path=None, branch_name=None, commit=None, merge_args=("--ff-only",)):
         """Create new worktree."""
+        from renku.core.metadata.repository import NULL_TREE
+
         delete = branch_name is None
         new_branch = commit is not NULL_TREE
 

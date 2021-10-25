@@ -42,6 +42,7 @@ from tests.utils import retry_failed
     ],
 )
 @pytest.mark.integration
+@pytest.mark.service
 @retry_failed
 def test_dataset_url_import_job(url, svc_client_with_repo):
     """Test dataset import via url."""

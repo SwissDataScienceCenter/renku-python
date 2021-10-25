@@ -30,8 +30,8 @@ from renku.core import errors
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Url, get_dataset_data_dir
-from renku.core.models.provenance.agent import Person
 from renku.core.utils.contexts import chdir
+from renku.core.utils.git import get_git_user
 from tests.utils import assert_dataset_is_mutated, format_result_exception, retry_failed, with_dataset
 
 
@@ -385,16 +385,16 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, cli
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2"])
 def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
-    from renku.core.management.client import LocalClient
+    from renku.core.commands.providers import renku
 
-    def prepare_git_repo(*_, **__):
+    def clone_renku_repository_mock(*_, **__):
         raise errors.GitError
 
     with monkeypatch.context() as monkey:
-        monkey.setattr(LocalClient, "prepare_git_repo", prepare_git_repo)
+        monkey.setattr(renku, "clone_renku_repository", clone_renku_repository_mock)
 
         result = runner.invoke(cli, ["dataset", "import", url], input="y")
-        assert 2 == result.exit_code
+        assert 2 == result.exit_code, format_result_exception(result)
         assert f"Invalid parameter value for {url}" in result.output
         assert "Cannot clone remote projects:" in result.output
 
@@ -1436,19 +1436,19 @@ def test_add_removes_credentials(runner, client, url, load_dataset_with_injectio
 )
 def test_add_with_content_disposition(runner, client, monkeypatch, disposition, filename, load_dataset_with_injection):
     """Check filename is read from content disposition."""
-    import renku.core.management.datasets
+    import renku.core.utils.requests
 
     url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
 
     with monkeypatch.context() as monkey:
         # NOTE: mock requests headers
-        original_disposition = renku.core.management.datasets._filename_from_headers
+        original_disposition = renku.core.utils.requests.get_filename_from_headers
 
-        def _fake_disposition(request):
-            request.headers["content-disposition"] = disposition
-            return original_disposition(request)
+        def _fake_disposition(response):
+            response.headers["content-disposition"] = disposition
+            return original_disposition(response)
 
-        monkey.setattr(renku.core.management.datasets, "_filename_from_headers", _fake_disposition)
+        monkey.setattr(renku.core.utils.requests, "get_filename_from_headers", _fake_disposition)
         result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", url])
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -1547,7 +1547,7 @@ def test_immutability_after_import(runner, client, load_dataset_with_injection):
     assert 0 == runner.invoke(cli, ["dataset", "edit", "my-dataset", "-k", "new-data"]).exit_code
 
     dataset = load_dataset_with_injection("my-dataset", client)
-    mutator = Person.from_repository(client.repository)
+    mutator = get_git_user(client.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
@@ -1565,7 +1565,7 @@ def test_immutability_after_update(client, runner, load_dataset_with_injection):
     assert 0 == runner.invoke(cli, ["dataset", "update"], catch_exceptions=False).exit_code
 
     dataset = load_dataset_with_injection("my-data", client)
-    mutator = Person.from_repository(client.repository)
+    mutator = get_git_user(client.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 

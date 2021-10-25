@@ -21,59 +21,23 @@ import os
 from typing import List
 
 import click
-import requests
 
-from renku.core.management.config import RENKU_HOME
+from renku.core.management import RENKU_HOME
 
 
 class RenkuException(Exception):
     """A base class for all Renku related exception.
 
-    You can catch all errors raised by Renku SDK by using
-    ``except RenkuException:``.
+    You can catch all errors raised by Renku SDK by using ``except RenkuException:``.
     """
 
 
-class APIError(requests.exceptions.HTTPError, RenkuException):
-    """Catch HTTP errors from API calls."""
-
-    @classmethod
-    def from_http_exception(cls, e):
-        """Create ``APIError`` from ``requests.exception.HTTPError``."""
-        assert isinstance(e, requests.exceptions.HTTPError)
-        response = e.response
-        try:
-            message = response.json()["message"]
-        except (KeyError, ValueError):
-            message = response.content.strip()
-
-        raise cls(message)
+class RequestError(RenkuException):
+    """Raise when a ``requests`` call fails."""
 
 
-class NotFound(APIError):
-    """Raise when an API object is not found."""
-
-
-class UnexpectedStatusCode(APIError):
-    """Raise when the status code does not match specification."""
-
-    def __init__(self, response):
-        """Build custom message."""
-        super(UnexpectedStatusCode, self).__init__(
-            "Unexpected status code: {0}".format(response.status_code), response=response
-        )
-
-    @classmethod
-    def return_or_raise(cls, response, expected_status_code):
-        """Check for ``expected_status_code``."""
-        try:
-            if response.status_code in expected_status_code:
-                return response
-        except TypeError:
-            if response.status_code == expected_status_code:
-                return response
-
-        raise cls(response)
+class NotFound(RenkuException):
+    """Raise when an object is not found in KG."""
 
 
 class ParameterError(RenkuException):
@@ -100,33 +64,7 @@ class UsageError(RenkuException):
 
 
 class ConfigurationError(RenkuException):
-    """Raise in case of misconfiguration."""
-
-
-class MissingUsername(ConfigurationError):
-    """Raise when the username is not configured."""
-
-    def __init__(self, message=None):
-        """Build a custom message."""
-        message = message or (
-            "The user name is not configured. "
-            'Please use the "git config" command to configure it.\n\n'
-            '\tgit config --set user.name "John Doe"\n'
-        )
-        super(MissingUsername, self).__init__(message)
-
-
-class MissingEmail(ConfigurationError):
-    """Raise when the email is not configured."""
-
-    def __init__(self, message=None):
-        """Build a custom message."""
-        message = message or (
-            "The email address is not configured. "
-            'Please use the "git config" command to configure it.\n\n'
-            '\tgit config --set user.email "john.doe@example.com"\n'
-        )
-        super().__init__(message)
+    """Raise in case of misconfiguration; use GitConfigurationError for git-related configuration errors."""
 
 
 class AuthenticationError(RenkuException):
@@ -412,6 +350,32 @@ class GitReferenceNotFoundError(GitError):
 
 class GitConfigurationError(GitError):
     """Raised when a git configuration cannot be accessed."""
+
+
+class GitMissingUsername(GitConfigurationError):
+    """Raise when the username is not configured."""
+
+    def __init__(self, message=None):
+        """Build a custom message."""
+        message = message or (
+            "The user name is not configured. "
+            'Please use the "git config" command to configure it.\n\n'
+            '\tgit config --set user.name "John Doe"\n'
+        )
+        super().__init__(message)
+
+
+class GitMissingEmail(GitConfigurationError):
+    """Raise when the email is not configured."""
+
+    def __init__(self, message=None):
+        """Build a custom message."""
+        message = message or (
+            "The email address is not configured. "
+            'Please use the "git config" command to configure it.\n\n'
+            '\tgit config --set user.email "john.doe@example.com"\n'
+        )
+        super().__init__(message)
 
 
 class GitLFSError(RenkuException):

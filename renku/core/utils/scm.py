@@ -16,45 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helpers utils for interacting with remote source code management tools."""
-import re
+
 from functools import reduce
-from pathlib import Path
 
 from renku.core.errors import ParameterError
-
-
-def is_ascii(data):
-    """Check if provided string contains only ascii characters."""
-    return len(data) == len(data.encode())
-
-
-def normalize_to_ascii(input_string, sep="-"):
-    """Adjust chars to make the input compatible as scm source."""
-    replace_all = [sep, "_", "."]
-    for replacement in replace_all:
-        input_string = input_string.replace(replacement, " ")
-
-    return (
-        sep.join(
-            [
-                component
-                for component in re.sub(r"[^a-zA-Z0-9_.-]+", " ", input_string).split(" ")
-                if component and is_ascii(component)
-            ]
-        )
-        .lower()
-        .strip(sep)
-    )
-
-
-def git_unicode_unescape(s: str, encoding: str = "utf-8") -> str:
-    """Undoes git/gitpython unicode encoding."""
-    if s is None:
-        return ""
-
-    if s.startswith('"'):
-        return s.strip('"').encode("latin1").decode("unicode-escape").encode("latin1").decode(encoding)
-    return s
 
 
 def shorten_message(message: str, line_length: int = 100, body_length: int = 65000):
@@ -95,19 +60,3 @@ def shorten_message(message: str, line_length: int = 100, body_length: int = 650
         ("", 0),
     )[0]
     return wrapped_message[1:]
-
-
-def safe_path(filepath):
-    """Check if the path should be used in output."""
-    if isinstance(filepath, Path):
-        filepath = str(filepath)
-
-    # Should not be in ignore paths.
-    if filepath in {".gitignore", ".gitattributes"}:
-        return False
-
-    # Ignore everything in .renku ...
-    if filepath.startswith(".renku"):
-        return False
-
-    return True

@@ -26,7 +26,7 @@ import portalocker
 
 from renku.core import errors
 from renku.core.errors import RenkuException, UninitializedProject
-from renku.core.management.config import RENKU_HOME
+from renku.core.management import RENKU_HOME
 from renku.core.metadata.repository import Repository
 from renku.core.utils.contexts import click_context
 from renku.service.cache.models.job import Job
@@ -216,7 +216,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                                     repository.branches.remove(branch, force=True)
                                     # NOTE: Remove left-over refspec
                                     try:
-                                        with repository.configuration(writable=True) as config:
+                                        with repository.get_configuration(writable=True) as config:
                                             config.remove_value(f"remote.{origin}.fetch", f"origin.{branch}$")
                                     except errors.GitConfigurationError:
                                         pass
@@ -335,14 +335,12 @@ class RenkuOpSyncMixin(RenkuOperationMixin, metaclass=ABCMeta):
 
     def sync(self, remote="origin"):
         """Sync with remote."""
-        from renku.core.commands.save import repo_sync
+        from renku.core.utils.git import push_changes
 
         if self.project_path is None:
             raise RenkuException("unable to sync with remote since no operation has been executed")
 
-        _, remote_branch = repo_sync(Repository(self.project_path), remote=remote)
-
-        return remote_branch
+        return push_changes(Repository(self.project_path), remote=remote)
 
     def execute_and_sync(self, remote="origin"):
         """Execute operation which controller implements and sync with the remote."""

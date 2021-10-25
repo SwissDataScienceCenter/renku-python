@@ -29,14 +29,11 @@ from renku.core.utils.git import get_hook_path
 HOOKS = ("pre-commit",)
 
 
-@inject.autoparams()
-def install(force, client_dispatcher: IClientDispatcher):
+def install(force, repository):
     """Install Git hooks."""
-    client = client_dispatcher.current_client
-
     warning_messages = []
     for hook in HOOKS:
-        hook_path = get_hook_path(name=hook, repository=client.repository)
+        hook_path = get_hook_path(name=hook, repository=repository)
         if hook_path.exists():
             if not force:
                 warning_messages.append("Hook already exists. Skipping {0}".format(str(hook_path)))

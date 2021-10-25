@@ -149,10 +149,8 @@ class IssueFromTraceback(RenkuExceptionsHandler):
             with capture_internal_exceptions():
                 from renku.core.commands.git import get_git_home
                 from renku.core.metadata.repository import Repository
-                from renku.core.models.provenance.agent import Person
 
-                repo = Repository(get_git_home())
-                user = Person.from_repository(repo)
+                user = Repository(get_git_home()).get_user()
 
                 scope.user = {"name": user.name, "email": user.email}
 

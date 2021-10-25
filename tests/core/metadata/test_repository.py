@@ -144,3 +144,15 @@ def test_repository_iterate_commits_with_path(git_repository):
 
     assert 3 == len(commits)
     assert [f"{LAST_COMMIT_SHA[:7]}", "556dc54", f"{FIRST_COMMIT_SHA[:7]}"] == [c.hexsha[:7] for c in commits]
+
+
+def test_repository_no_active_branch_when_detached(git_repository):
+    """Test getting active branch when a repository is in detached HEAD state."""
+    git_repository.run_git_command("checkout", "HEAD~")
+
+    assert git_repository.active_branch is None
+
+
+def test_repository_get_active_branch(git_repository):
+    """Test getting active branch in a repository."""
+    assert "master" == git_repository.active_branch.name

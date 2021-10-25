@@ -26,7 +26,6 @@ from typing import TYPE_CHECKING, List
 from urllib import parse as urlparse
 
 import attr
-import requests
 from tqdm import tqdm
 
 from renku.core import errors
@@ -43,7 +42,6 @@ from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils import communication
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.file_size import bytes_to_unit
-from renku.core.utils.requests import retry
 
 if TYPE_CHECKING:
     from renku.core.commands.providers.models import ProviderDataset
@@ -76,29 +74,30 @@ DATAVERSE_SUBJECTS = [
 
 def check_dataverse_uri(url):
     """Check if an URL points to a dataverse instance."""
+    from renku.core.utils import requests
+
     url_parts = list(urlparse.urlparse(url))
     url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
 
     url_parts[3:6] = [""] * 3
     version_url = urlparse.urlunparse(url_parts)
 
-    with retry() as session:
-        response = session.get(version_url)
+    response = requests.get(version_url)
 
-        if response.status_code != 200:
-            return False
+    if response.status_code != 200:
+        return False
 
-        version_data = response.json()
+    version_data = response.json()
 
-        if "status" not in version_data or "data" not in version_data:
-            return False
+    if "status" not in version_data or "data" not in version_data:
+        return False
 
-        version_info = version_data["data"]
+    version_info = version_data["data"]
 
-        if "version" not in version_info or "build" not in version_info:
-            return False
+    if "version" not in version_info or "build" not in version_info:
+        return False
 
-        return True
+    return True
 
 
 def check_dataverse_doi(doi):
@@ -186,11 +185,12 @@ class DataverseProvider(ProviderApi):
 
     def _make_request(self, uri):
         """Execute network request."""
-        with retry() as session:
-            response = session.get(uri, headers={"Accept": self._accept})
-            if response.status_code != 200:
-                raise LookupError("record not found. Status: {}".format(response.status_code))
-            return response
+        from renku.core.utils import requests
+
+        response = requests.get(uri, headers={"Accept": self._accept})
+        if response.status_code != 200:
+            raise LookupError("record not found. Status: {}".format(response.status_code))
+        return response
 
     def find_record(self, uri, **kwargs):
         """Retrieves a record from Dataverse.
@@ -565,11 +565,12 @@ class _DataverseDeposition:
         return urllib.parse.urlunparse(url_parts)
 
     def _post(self, url, json=None, data=None, files=None):
+        from renku.core.utils import requests
+
         headers = {"X-Dataverse-key": self.access_token}
         try:
-            with retry() as session:
-                return session.post(url=url, json=json, data=data, files=files, headers=headers)
-        except requests.exceptions.RequestException as e:
+            return requests.post(url=url, json=json, data=data, files=files, headers=headers)
+        except errors.RequestError as e:
             raise errors.ExportError("Cannot POST to remote server.") from e
 
     @staticmethod
