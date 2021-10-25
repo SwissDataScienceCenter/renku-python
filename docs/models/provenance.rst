@@ -32,6 +32,22 @@ Activities
    :members:
    :inherited-members:
 
+.. autoclass:: ActivityCollection
+   :members:
+   :inherited-members:
+
+.. autoclass:: Association
+   :members:
+   :inherited-members:
+
+.. autoclass:: Generation
+   :members:
+   :inherited-members:
+
+.. autoclass:: Usage
+   :members:
+   :inherited-members:
+
 
 Entities
 --------
@@ -67,5 +83,15 @@ Annotations
 .. py:module:: renku.core.models.provenance.annotation
 
 .. autoclass:: Annotation
+   :members:
+   :inherited-members:
+
+
+Parameters
+----------
+
+.. py:module:: renku.core.models.provenance.parameter
+
+.. autoclass:: ParameterValue
    :members:
    :inherited-members:

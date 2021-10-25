@@ -88,3 +88,13 @@ def test_graph_export_strict_dataset(tmpdir, runner, project, client, format, su
     result = runner.invoke(cli, ["graph", "export", "--strict", f"--format={format}"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert all(p in result.output for p in test_paths), result.output
+
+    # check that only most recent dataset is exported
+    assert 1 == result.output.count("http://schema.org/Dataset")
+
+    result = runner.invoke(cli, ["graph", "export", "--strict", f"--format={format}", "--full"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert all(p in result.output for p in test_paths), result.output
+
+    # check that all datasets are exported
+    assert 2 == result.output.count("http://schema.org/Dataset")

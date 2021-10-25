@@ -550,3 +550,7 @@ class GraphCycleError(RenkuException):
 
 class NothingToExecuteError(RenkuException):
     """Raised when a rerun/update command does not execute any workflows."""
+
+
+class TerminalSizeError(RenkuException):
+    """Raised when terminal is too small for a command."""

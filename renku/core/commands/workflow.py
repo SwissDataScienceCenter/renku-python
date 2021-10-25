@@ -18,8 +18,11 @@
 """Renku workflow commands."""
 
 
+import itertools
 import uuid
+from collections import defaultdict
 from datetime import datetime
+from functools import reduce
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -27,14 +30,16 @@ from git import Actor
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
-from renku.core.commands.view_model import plan_view
+from renku.core.commands.view_model.activity_graph import ActivityGraphViewModel
 from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
+from renku.core.commands.view_model.plan import plan_view
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
+from renku.core.management.workflow.activity import create_activity_graph, get_activities_until_paths, sort_activities
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.management.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
@@ -45,7 +50,7 @@ from renku.core.plugins.provider import execute
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import local_now
 from renku.core.utils.git import add_to_git
-from renku.core.utils.os import get_relative_paths
+from renku.core.utils.os import are_paths_related, get_relative_paths
 from renku.version import __version__, version_url
 
 
@@ -134,7 +139,7 @@ def show_workflow_command():
 
 
 @inject.autoparams()
-def _group_workflow(
+def _compose_workflow(
     name: str,
     description: str,
     mappings: List[str],
@@ -147,26 +152,57 @@ def _group_workflow(
     link_all: bool,
     keywords: List[str],
     steps: List[str],
+    sources: List[str],
+    sinks: List[str],
+    activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
     project_gateway: IProjectGateway,
+    client_dispatcher: IClientDispatcher,
 ) -> CompositePlan:
-    """Group workflows into a CompositePlan."""
+    """Compose workflows into a CompositePlan."""
 
     if plan_gateway.get_by_name(name):
         raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
 
     child_workflows = []
+    plan_activities = []
 
-    for workflow_name_or_id in steps:
-        child_workflow = plan_gateway.get_by_id(workflow_name_or_id)
+    if steps:
+        for workflow_name_or_id in steps:
+            child_workflow = plan_gateway.get_by_id(workflow_name_or_id)
 
-        if not child_workflow:
-            child_workflow = plan_gateway.get_by_name(workflow_name_or_id)
+            if not child_workflow:
+                child_workflow = plan_gateway.get_by_name(workflow_name_or_id)
 
-        if not child_workflow:
-            raise errors.ObjectNotFoundError(workflow_name_or_id)
+            if not child_workflow:
+                raise errors.ObjectNotFoundError(workflow_name_or_id)
 
-        child_workflows.append(child_workflow)
+            child_workflows.append(child_workflow)
+    else:
+        client = client_dispatcher.current_client
+        sources = sources or []
+        sources = get_relative_paths(base=client.path, paths=sources)
+
+        if not sinks:
+            usages = activity_gateway.get_all_usage_paths()
+            generations = activity_gateway.get_all_generation_paths()
+
+            sinks = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
+
+        sinks = get_relative_paths(base=client.path, paths=sinks)
+
+        activities = list(
+            get_activities_until_paths(
+                sinks, sources, activity_gateway=activity_gateway, client_dispatcher=client_dispatcher
+            )
+        )
+        activities = sort_activities(activities)
+
+        # we need to get the actual plans from the DB as plan_with_values returns a copy
+        for i, activity in enumerate(activities, 1):
+            child_workflow = activity.association.plan
+            child_workflows.append(child_workflow)
+            plan_activities.append((i, activity.plan_with_values))
 
     plan = CompositePlan(
         description=description,
@@ -182,6 +218,21 @@ def _group_workflow(
 
     if defaults:
         plan.set_mapping_defaults(defaults)
+
+    if plan_activities:
+        # Since composite is created from activities, we need to add mappings to set defaults to the values of
+        # the activities, to ensure values from the involved activities are preserved.
+        # If the user supplies their own mappings, those overrule the automatically added ones.
+
+        for i, child_plan in plan_activities:
+            for param in itertools.chain(child_plan.inputs, child_plan.outputs, child_plan.parameters):
+                try:
+                    mapping_name = f"{i}-{param.name}"
+                    plan.set_mappings_from_strings([f"{mapping_name}=@step{i}.{param.name}"])
+                except errors.MappingExistsError:
+                    continue
+
+                plan.set_mapping_defaults([f"{mapping_name}={param.actual_value}"])
 
     if links:
         plan.set_links_from_strings(links)
@@ -224,9 +275,9 @@ def _group_workflow(
 
 
 def compose_workflow_command():
-    """Command that creates a group of several workflows."""
+    """Command that creates a composite of several workflows."""
     return (
-        Command().command(_group_workflow).require_migration().require_clean().with_database(write=True).with_commit()
+        Command().command(_compose_workflow).require_migration().require_clean().with_database(write=True).with_commit()
     )
 
 
@@ -253,28 +304,27 @@ def _edit_workflow(
     if isinstance(workflow, Plan):
         workflow.set_parameters_from_strings(set_params)
 
-        def _kv_extract(kv_string):
-            k, v = kv_string.split("=", maxsplit=1)
-            v = v.strip(' "')
-            return k, v
+        def _mod_params(workflow, changed_params, attr):
+            for param_string in changed_params:
+                name, new_value = param_string.split("=", maxsplit=1)
+                new_value = new_value.strip(' "')
 
-        for param_string in rename_params:
-            name, new_name = _kv_extract(param_string)
-            for param in workflow.inputs + workflow.outputs + workflow.parameters:
-                if param.name == name:
-                    param.name = new_name
-                    break
-            else:
-                raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
+                found = False
+                for collection in [workflow.inputs, workflow.outputs, workflow.parameters]:
+                    for i, param in enumerate(collection):
+                        if param.name == name:
+                            new_param = param.derive(plan_id=workflow.id)
+                            setattr(new_param, attr, new_value)
+                            collection[i] = new_param
+                            found = True
+                            break
+                    if found:
+                        break
+                else:
+                    raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
 
-        for description_string in describe_params:
-            name, description = _kv_extract(description_string)
-            for param in workflow.inputs + workflow.outputs + workflow.parameters:
-                if param.name == name:
-                    param.description = description
-                    break
-            else:
-                raise errors.ParameterNotFoundError(parameter=name, workflow=workflow.name)
+        _mod_params(workflow, rename_params, "name")
+        _mod_params(workflow, describe_params, "description")
     elif isinstance(workflow, CompositePlan) and len(map_params):
         workflow.set_mappings_from_strings(map_params)
 
@@ -439,10 +489,12 @@ def execute_workflow(
         activity_gateway.add_activity_collection(activity_collection)
 
 
-@inject.autoparams()
 def _execute_workflow(
     name_or_id: str, set_params: List[str], provider: str, config: Optional[str], values: Optional[str]
 ):
+    def _nested_dict():
+        return defaultdict(_nested_dict)
+
     workflow = _find_workflow(name_or_id)
 
     # apply the provided parameter settings provided by user
@@ -451,19 +503,24 @@ def _execute_workflow(
         override_params.update(_safe_read_yaml(values))
 
     if set_params:
+        from deepmerge import always_merger
+
         for param in set_params:
             name, value = param.split("=", maxsplit=1)
-            override_params[name] = value
+            keys = name.split(".")
 
-    if override_params:
-        rv = ValueResolver.get(workflow, override_params)
-        workflow = rv.apply()
+            set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)
+            override_params = always_merger.merge(override_params, set_param)
 
-        if rv.missing_parameters:
-            communication.warn(
-                f'Could not resolve the following parameters in "{workflow.name}" workflow: '
-                f'{",".join(rv.missing_parameters)}'
-            )
+    rv = ValueResolver.get(workflow, override_params)
+
+    workflow = rv.apply()
+
+    if rv.missing_parameters:
+        communication.warn(
+            f'Could not resolve the following parameters in "{workflow.name}" workflow: '
+            f'{",".join(rv.missing_parameters)}'
+        )
 
     if config:
         config = _safe_read_yaml(config)
@@ -484,3 +541,40 @@ def execute_workflow_command():
     return (
         Command().command(_execute_workflow).require_migration().require_clean().with_database(write=True).with_commit()
     )
+
+
+@inject.autoparams()
+def _visualize_graph(
+    sources: List[str],
+    targets: List[str],
+    show_files: bool,
+    activity_gateway: IActivityGateway,
+    client_dispatcher: IClientDispatcher,
+    revision: Optional[str] = None,
+):
+    """Visualize an activity graph."""
+    client = client_dispatcher.current_client
+
+    sources = sources or []
+    sources = get_relative_paths(base=client.path, paths=sources)
+
+    if not targets:
+        usages = activity_gateway.get_all_usage_paths()
+        generations = activity_gateway.get_all_generation_paths()
+
+        targets = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
+
+    activities = get_activities_until_paths(
+        paths=targets,
+        sources=sources,
+        revision=revision,
+        activity_gateway=activity_gateway,
+        client_dispatcher=client_dispatcher,
+    )
+    graph = create_activity_graph(activities, with_inputs_outputs=show_files)
+    return ActivityGraphViewModel(graph)
+
+
+def visualize_graph_command():
+    """Execute the graph visualization command."""
+    return Command().command(_visualize_graph).require_migration().with_database(write=False)

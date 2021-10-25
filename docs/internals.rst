@@ -23,5 +23,7 @@ Internals of the ``renku-python`` library.
 
 .. toctree::
    models/index
+   database
+   gateways
    management
    plugins

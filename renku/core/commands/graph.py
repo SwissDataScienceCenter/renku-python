@@ -137,6 +137,11 @@ def _get_graph_for_all_objects(
     for dataset in datasets:
         objects.extend(dataset_gateway.get_all_tags(dataset))
 
+        current_dataset = dataset
+        while current_dataset.derived_from:
+            current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)
+            objects.append(current_dataset)
+
     return convert_entities_to_graph(objects, project)
 
 

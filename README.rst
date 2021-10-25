@@ -263,7 +263,7 @@ Run an analysis:
 
 ::
 
-    $ renku run wc < data/my-dataset/README.rst > wc_readme
+    $ renku run --name my-workflow -- wc < data/my-dataset/README.rst > wc_readme
 
 Trace the data provenance:
 

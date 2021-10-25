@@ -93,7 +93,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
-        python -m pip install -e .[all]
+        python -m pip install .[all]
     - name: Build Package
       run: python setup.py sdist bdist_wheel
     - name: test with twine
@@ -122,7 +122,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install coveralls setuptools wheel
-        python -m pip install -e .[nodocs]
+        python -m pip install .[nodocs]
         python setup.py --version
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -163,7 +163,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install coveralls setuptools wheel
-        python -m pip install -e .[nodocs]
+        python -m pip install .[nodocs]
         python setup.py --version
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -209,7 +209,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls setuptools wheel
-          python -m pip install -e .[nodocs]
+          python -m pip install .[nodocs]
           python setup.py --version
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
@@ -255,7 +255,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls setuptools wheel
-          python -m pip install -e .[nodocs]
+          python -m pip install .[nodocs]
           python setup.py --version
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
@@ -291,11 +291,12 @@ jobs:
     - name: Install dependencies
       run: |
         brew update || true
+        brew unlink git-lfs || true
         curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
         brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel twine
-        python -m pip install -e .[all]
+        python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
@@ -323,11 +324,12 @@ jobs:
     - name: Install dependencies
       run: |
         brew update || true
+        brew unlink git-lfs || true
         curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
         brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel twine
-        python -m pip install -e .[all]
+        python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
@@ -361,11 +363,12 @@ jobs:
       - name: Install dependencies
         run: |
           brew update || true
+          brew unlink git-lfs || true
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install setuptools wheel twine
-          python -m pip install -e .[all]
+          python -m pip install .[all]
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -399,11 +402,12 @@ jobs:
       - name: Install dependencies
         run: |
           brew update || true
+          brew unlink git-lfs || true
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install setuptools wheel twine
-          python -m pip install -e .[all]
+          python -m pip install .[all]
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -436,7 +440,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install coveralls setuptools wheel
-        python -m pip install -e .[nodocs]
+        python -m pip install .[nodocs]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
@@ -487,11 +491,12 @@ jobs:
     - name: Install dependencies
       run: |
         brew update || true
+        brew unlink git-lfs || true
         curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
         brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel
-        python -m pip install -e .[all]
+        python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
@@ -531,7 +536,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
-        python -m pip install -e .[all]
+        python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Tag if necessary

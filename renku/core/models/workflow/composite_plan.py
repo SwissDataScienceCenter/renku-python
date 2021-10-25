@@ -211,6 +211,19 @@ class CompositePlan(AbstractPlan):
 
         return False
 
+    def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
+        """Get a parameter on this plan by id."""
+        mapping = next((p for p in self.mappings if parameter_id == p.id), None)
+
+        if mapping:
+            return mapping
+
+        for plan in self.plans:
+            parameter = plan.get_parameter_by_id(parameter_id)
+
+            if parameter:
+                return parameter
+
     def find_parameter_workflow(self, parameter: CommandParameterBase) -> Optional[Union["CompositePlan", Plan]]:
         """Return the workflow a parameter belongs to."""
         if parameter in self.mappings:

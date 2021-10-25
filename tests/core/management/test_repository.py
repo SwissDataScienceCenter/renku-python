@@ -20,8 +20,8 @@
 import tempfile
 from pathlib import Path
 
-from renku import LocalClient
 from renku.core.commands.dataset import create_dataset
+from renku.core.management.client import LocalClient
 
 
 def test_latest_version(project, client_database_injection_manager):

@@ -22,8 +22,8 @@ from pathlib import Path
 
 import pytest
 
-from renku import LocalClient
 from renku.cli import cli
+from renku.core.management.client import LocalClient
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.core.models.dataset import RemoteEntity
@@ -218,7 +218,7 @@ def test_comprehensive_dataset_migration(
     assert isinstance(file_.based_on, RemoteEntity)
     assert file_.source == file_.based_on.url
     assert "Makefile" == file_.based_on.path
-    assert "49f331d7388785208ccfb3cfb9156b226d9b59ea" == file_.based_on.commit_sha
+    assert "49f331d7388785208ccfb3cfb9156b226d9b59ea" == file_.based_on.checksum
 
     file_ = dataset.find_file("data/mixed/data.txt")
     assert file_.entity.id.endswith("/data/mixed/data.txt")

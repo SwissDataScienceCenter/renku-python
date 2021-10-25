@@ -83,6 +83,7 @@ def repository(tmpdir):
             with GitConfigParser(get_config_path("global"), read_only=False) as global_config:
                 global_config.set_value("user", "name", "Renku @ SDSC")
                 global_config.set_value("user", "email", "renku@datascience.ch")
+                global_config.set_value("pull", "rebase", False)
 
             result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
             assert 0 == result.exit_code, format_result_exception(result)
@@ -125,7 +126,7 @@ def project(repository):
 @pytest.fixture
 def client(project, global_config_dir):
     """Return a Renku repository."""
-    from renku.core.management import LocalClient
+    from renku.core.management.client import LocalClient
     from renku.core.models.enums import ConfigFilter
 
     original_get_value = LocalClient.get_value

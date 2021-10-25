@@ -45,7 +45,6 @@ cutting and pasting to other commands).
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.status import get_status_command
 
 
 @click.command()
@@ -53,6 +52,8 @@ from renku.core.commands.status import get_status_command
 @click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 def status(ctx, paths):
     """Show a status of the repository."""
+    from renku.core.commands.status import get_status_command
+
     communicator = ClickCallback()
     result = get_status_command().with_communicator(communicator).build().execute(paths=paths)
 
