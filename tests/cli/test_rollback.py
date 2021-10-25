@@ -63,23 +63,18 @@ def test_rollback(client, runner, project):
 
     result = runner.invoke(cli, ["rollback"], input="1\nn")
     assert 1 == result.exit_code, format_result_exception(result)
-    assert "Entities that would be removed:" in result.output
     assert "\tPlan: run3\n" in result.output
     assert "run2" not in result.output
-    assert "Files that would be modified:" in result.output
-    assert "Files that would be removed:\n\toutput\n" in result.output
+    assert "\n\toutput\n" in result.output
     assert "bar" not in result.output
     assert "\n\tinput" in result.output
     assert "\n\toutput" in result.output
 
     result = runner.invoke(cli, ["rollback"], input="7\nn")
     assert 1 == result.exit_code, format_result_exception(result)
-    assert "Entities that would be removed:" in result.output
     assert "\tPlan: run1\n" in result.output
     assert "\tPlan: run2\n" in result.output
     assert "\tPlan: run3\n" in result.output
-    assert "Files that would be modified:" not in result.output
-    assert "Files that would be removed:" in result.output
     assert "\n\tbar" in result.output
     assert "\n\tfoo" in result.output
     assert "\n\tinput" in result.output

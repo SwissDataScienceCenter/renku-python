@@ -74,41 +74,29 @@ def _get_confirmation_message(diff, client):
     confirmation_message = "The following changes would be done:\n\nMetadata:\n"
 
     if modifications["metadata"]["restored"]:
-        confirmation_message += (
-            "\nEntities that would be restored:\n\t" + "\n\t".join(modifications["metadata"]["restored"]) + "\n"
-        )
+        confirmation_message += "\nRestored ↻:\n\t" + "\n\t".join(modifications["metadata"]["restored"]) + "\n"
         has_changes = True
 
     if modifications["metadata"]["modified"]:
-        confirmation_message += (
-            "\nEntities that would be modified:\n\t" + "\n\t".join(modifications["metadata"]["modified"]) + "\n"
-        )
+        confirmation_message += "\nModified ♻️:\n\t" + "\n\t".join(modifications["metadata"]["modified"]) + "\n"
         has_changes = True
 
     if modifications["metadata"]["removed"]:
-        confirmation_message += (
-            "\nEntities that would be removed:\n\t" + "\n\t".join(modifications["metadata"]["removed"]) + "\n"
-        )
+        confirmation_message += "\nRemoved 🔥:\n\t" + "\n\t".join(modifications["metadata"]["removed"]) + "\n"
         has_changes = True
 
     confirmation_message += "\nFiles:\n"
 
     if modifications["files"]["restored"]:
-        confirmation_message += (
-            "\nFiles that would be restored:\n\t" + "\n\t".join(modifications["files"]["restored"]) + "\n"
-        )
+        confirmation_message += "\nRestored ↻:\n\t" + "\n\t".join(modifications["files"]["restored"]) + "\n"
         has_changes = True
 
     if modifications["files"]["modified"]:
-        confirmation_message += (
-            "\nFiles that would be modified:\n\t" + "\n\t".join(modifications["files"]["modified"]) + "\n"
-        )
+        confirmation_message += "\nModified ♻️:\n\t" + "\n\t".join(modifications["files"]["modified"]) + "\n"
         has_changes = True
 
     if modifications["files"]["removed"]:
-        confirmation_message += (
-            "\nFiles that would be removed:\n\t" + "\n\t".join(modifications["files"]["removed"]) + "\n"
-        )
+        confirmation_message += "\nRemoved 🔥:\n\t" + "\n\t".join(modifications["files"]["removed"]) + "\n"
         has_changes = True
 
     confirmation_message += "\nProceed?"
@@ -290,7 +278,8 @@ def _checkpoint_iterator(commits):
 
         transaction_id = match.group(0)
         entry = (
-            f"{datetime.utcfromtimestamp(commit.authored_date):%Y-%m-%d %H:%M:%S} \t{commit_message.splitlines()[0]}",
+            f"{datetime.utcfromtimestamp(commit.authored_date):%Y-%m-%d %H:%M:%S} "
+            f"\t{commit.hexsha[:7]}\t{commit_message.splitlines()[0]}",
             commit,
             transaction_id,
         )
