@@ -3,13 +3,14 @@
 To maintain for backwards compatibility and not force migrations on users, we need to support multiple versions of the core-service in parallel.
 
 This boils down to two concerns, supporting multiple metadata versions for the metadata in the repository, and supporting multiple versions
-of the core service API.
+of the core service API to allow backwards compatibility of the interface.
 
 ## Multiple Metadata Versions
 
-This section is about how to deal with changes in how renku stores its internal metadata (in `.renku/`).
+This section is about how to deal with changes in how renku stores its internal metadata (in `.renku/`) and breaking changes to the metadata format.
 
 ### Problem
+
 We sometimes have to change how we store metadata internally in renku. This can be big changes like switching from the *.yml based approach of storing metadata
 to the database based approach that is being introduced in 1.0.0, or minor changes like adding new fields to entities.
 
@@ -23,33 +24,57 @@ Because of this, it makes more sense to deploy new and old versions of the core 
 
 `/cache.migrations_check` only actually needs `.renku/metadata/root` and `.renku/metadata/project` checked out to work, plus optionally `Dockerfile` to return dockerfile info.
 
-We don't want to clone the repo as that might be slow on big projects, so we could just go with the approach outlined here https://stackoverflow.com/a/64776113/212971 and clone those files to a temporary folder, and return the migrations_check on that and that would return the normal migrations check. We would need to do this twice, once with (".renku/metadata/root", ".renku/metadata/project", "Dockerfile") and if that fails (old project) then with (".renku/metadata.yml", "Dockerfile").
+We need to clone at least `.renku/metadata/project` in a project to know the metadata version, so that files has to be accessed no matter what. Since this is the case, we might as well clone all 3 of the files mentioned above and do a full `cache.migrations_check` to figure out the metadata version, bypassing the cache. Otherwise we'd have multiple endpoints serving essentially the same information. We can selectively clone to a temp directory using the `git archive` approach mentioned on https://stackoverflow.com/a/64776113/212971 .
 
-This should be faster than cloning the repo, though still slow from a UX perspective (one call takes ~0.7s on my machine).
+`cache.migrations_check` would be changed to:
 
-Then if the migrations check says project is out of date, the UI can try the earlier core service.
+- Try and download/clone `.renku/metadata/root` and `.renku/metadata/project` to a temporary directory for the project
+  - If that fails, try and download/clone `.renku/metadata.yml` to the same temporary directory
+  - If that fails, return
+- Try and download/clone `Dockerfile` to a temporary directory for the project.
+- run the migrations check code and return all the migrations check information.
+
+This lets the Ui know if a project is supported and what metadata version (currently `9`) the project is on, as well as what metadata version the core-service supports.
+If the request returns  `"result": { "project_supported": true, ...}` it can use this version of the service.
+If `"result": {"project_supported": false, ...}`, it can get the `result: {"core_compatibility_status": {"project_metadata_version": "8", ...}, ...}` value, e.g. `7`,
+check if there is a core-service for metadata version 7 deployed (more on that later) and if so, use that version of the core-service. If no core-service for this version
+is deployed, the project is not supported and need a migration.
+
+### Deployment
+
+Deploying multiple core-service side-by-side in the `renku-core` chart should be relatively easy, we can create multiple [deployments](https://github.com/SwissDataScienceCenter/renku-python/blob/master/helm-chart/renku-core/templates/deployment.yaml)
+with unique names for each version (only differing in the `image` field and maybe some configuration values if those are changed).
+
+The deployment for the main/current renku core service can be named `renku-core` as it is now, and other can be called `renku-core-v8`, `renku-core-v7` etc.
+This allows use of `renku-core` as the main/first entrypoint as before, and client that can't handle the multiple versions can use that as if nothing changed.
+
+In addition, a new ConfigMap is created that contains a list of all the available versions and their deployments, like
+
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: renku-core-versions
+data:
+  renku-core-versions: |-
+    9: renku-core
+    8: renku-core-v8
+    7: renku-core-v7
+```
+
+This configmap can then be served through Nninx, allowing clients to lookup which versions of `renku-core` are deployed and where to reach them.
 
 ### Service URLs/UX
 
-The URL for the request is something like https://renkulab.io/api/renku/cache.migrations_check. We could deploy an earlier version at something like https://renkulab.io/api/previous/renku/cache.migrations_check and the UI remembers if a project failed the check and then defaults to previous. And maybe have the current one at https://renkulab.io/api/current/renku/cache.migrations_check ?
-
-If a user clicks the "migrate" button, this has to be sent to the current version of the service (important if UI is defaulting to `previous`) and after it has to default to current again.
-
-An important thing to note is that all this is only necessary for changes to our metadata, not for version changes. e.g. if we have (0.16.2, 1.0.0) deployed, and we make a bugfix release 1.0.1 that does not change the metdata model, we want to make a renku release that has (0.16.2,1.0.1), NOT (1.0.0, 1.0.1). We might be able to automate this in some smart way, since we have the metadata version (currently `9`) stored, and we know if this changes. Doing it manually also works.
-
-#### Fancier alternative
-If we could merge https://github.com/SwissDataScienceCenter/renku-python/pull/2122 we could go for a much smarter approach, since there we actually get back the metadata version, e.g. `9`, not renku version like `0.16.2`. In this case, the initial /cache.migrations_check request tells you if the repo is not supported and exactly what metadata version the project is on.
-Then we could have as many core services deployed as we want, e.g. `https://renkulab.io/api/renku/` for the current one, `https://renkulab.io/api/v8/renku/` for metadata version 8, `https://renkulab.io/api/v7/renku/` for 7 and so on. And the UI could directly go to the correct one based on the initial `check_migration` request.
+The gateway can serve the different `renku-core` instances on different urls. I suggest `https://renkulab.io/api/renku/` for the main one, and
+`https://renkulab.io/api/renku-v8/`, `https://renkulab.io/api/renku-v7/` etc. for the others.
 
 
-### Caveats
-Some things won't work on older versions of the core service, namely:
-- Dataset import from a repo that's on a newer version
-- Migrate project (obviously)
 
 ## Core service API versioning
 
 ### Problem
+
 There are two other issues with running multiple versions of core-service in parallel, namely:
 - New endpoints that don't exist
 - Existing endpoints that have a modified interface
@@ -57,19 +82,64 @@ There are two other issues with running multiple versions of core-service in par
 For new endpoints that don't exist, well, we won't backport them to old versions, that's too much effort. The question there is, how does the UI know what is and isn't supported? Similarly, for existing endpoints where the interface changes, we can try and deprecate things but keep them functional in case of deleted parameters, but if we add parameters, the service also raises an exception if it gets a parameter that it doesn't know.
 So the UI couldn't just call old endpoints and expect everything to work.
 
-
 ### API Versioning
-We could handle this manually but I'd bet money this will lead to errors at some point. Plus we wouldn't want to just have the UI figure out how to call different versions of core service.
 
-We would need to modify the `/version` endpoint to return the current API version of the service. A big question is whether a single version of core-service
-should support multiple API versions. In some cases this is trivial (e.g. when adding a non-mandatory field like images on dataset), sometimes harder (e.g.
-the switch from returning slug&name for project instead of returning slug as `name` ) to very hard (e.g. new migrations_check endpoint where the underlying code
-to calculate migrations status was completely reworked).
+We introduce a new API versioning scheme for `renku-python` where we version our endpoints. An initial version, 1.0 is defined as the state of the service as it is right now
+(1.0.0 release / 0.16.2 release). In the 1.0.0 release we also include changes from https://github.com/SwissDataScienceCenter/renku-python/pull/2122 which will be 1.1 of the API.
+Major versions follow the main `renku-python` versioning scheme. If we release `renku-python` version 2.0.0 we bump the API version to 2.0, and otherwise we bump the minor version
+on breaking API changes.
+Versioning is done through the URL, e.g. `https://renkulab.io/api/renku/1.0/`, `https://renkulab.io/api/renku/1.1/`, `https://renkulab.io/api/renku-v7/1.0/` but with the special case
+of no version being passed (e.g. `https://renkulab.io/api/renku/cache.migrations_check`) defaulting to 1.0 (or lowest supported version), for backwards compatibility.
 
-It is also not clear in how much we should rely on UI dealing with these things. Having code like "if core-service-version==v1 then send_v1_request() else send_v2_request()"
-does introduce additional overhead and a balance should be struck between continuing support for old project and developing new features for user that keep up to date.
-If we do go with an approach like this, the question becomes how to handle the versioning, be it with separate URLs like /renku/v1/datasets.list, with query parameters
-like /renku/datasets.list?version=1 or with headers like "Accept: version=1.0".
+In the `renku-python` code we achieve this by having Blueprint specifications for each version, as outlined in https://gist.github.com/berend/fb8fd98be235aec7c6d12782805d7bff .
+If an endpoint has a breaking change, it results in a new (minor) version. Unchange endpoints are available in both the new and old version, so each version offers the full
+range of capabilities and each client can just use the API version it supports, without being affected by new breaking changes.
 
-An alternative would be to selectively phase out support. E.g. if we change something fundamental about dataset.add_file, then users can't add files to datasets anymore
-through the UI unless they migrate, but other endpoints still work. This results in less overhead for us, but at the cost of only partial support for old projects in some cases.
+The `/version` endpoint is modified to return
+
+```
+{
+    "result": {
+        "latest_version": "1.0.0",
+        "supported_project_version": 9,
+        "minimum_api_version": "1.0",
+        "maximum_api_version": "1.1"
+    }
+}
+```
+
+where `latest_version` (the pypi packet version of `renku-python` used in the service) and `supported_project_version` (the metadata version supported on this instance of core-service) already exist.
+A final version of `renku-python` 0.16.x is made (version 0.16.3) that returns `1.0` hard coded for `minimum_api_version` and `maximum_api_version` to support renku-core versions
+ < 1.0.0.
+
+## Lifecycle
+
+A fix lifecycle should be defined both for metadata versions and API versions. This is to make clear how long each of them are supported on the platform.
+
+Since versions might change on an irregular schedule, it makes sense to limit this by time rather than version number.
+
+A proposal would be to support past versions for 12 months.
+If e.g. metadata version 8 was introduced 12 months ago, we drop support for metadata version 7 i.e. `renku-core-v7` no longer gets deployed and is not supported anymore.
+
+For API versions (like 1.1), the current version of `renku-python` has to at least support as a `minimum_api_version` the `maximum_api_version` of the oldest still supported
+`renku-core` deployment, so that there is at leats one API version that is available on all `renku-core` deployments.
+
+Versions that are less than 6 months old get hotfixes/backports of fixes, within reason, whereas versions older than that are provided as-is.
+
+## Special Case Migrations
+
+Requests for `cache.migrate` MUST be sent to the newest deployed version of `renku-core`. While the migration is running, no write requests are allowed to be sent to any version of the service.
+
+## Special Case Dataset Import
+
+Dataset import from other renku projects might not work if the deployment of `renku-core` used for the import is older than what was used in the project that is imported from.
+There is no solution for this and dataset import in these cases is only possible if a user migrates to a version at least the same as the source project.
+Clients get an error in this case and need to deal with it appropriately.
+
+## Summary
+
+A client wishing to make a request to a `renku-core` service for a project would follow the following flowchart:
+
+![request flow](request-flow.svg)
+
+A client can store the result of the above for repeat calls.
