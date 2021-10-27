@@ -469,3 +469,8 @@ def test_init_with_description(isolated_runner, template):
 
     readme_content = (Path("new project") / "README.md").read_text()
     assert "my project description" in readme_content
+
+    os.chdir("new project")
+    result = isolated_runner.invoke(cli, ["graph", "export", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "my project description" in result.output
