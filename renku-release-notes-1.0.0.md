@@ -38,7 +38,7 @@ As before, you can record workflows using `renku run`, with the change that you 
 
 You can use `renku rerun` and `renku update` as before, but their responsibilities are more clearly defined now.  `renku rerun` is intended for reproducing a result by re-executing a past chain of `Runs` again in the same way and `renku update` is intended for updating outputs of past `Runs` based on changed/updated input data.
 
-To execute a recorded `Plan` independently of pasdt executions, you can use `renku workflow execute my-plan`, which would essentially re-execute the original `renku run`. To make things more interesting, you can change the values used by the plan, using `--set parameter=value`, e.g. `renku workflow execute --set input-1=other-dataset.csv my-plan`, which would execute `my-plan` but with `other-dataset.csv` as the input file. Use `renku workflow show my-plan` to see the available parameters and `renku workflow edit my-plan` to rename parameters, add a description to the plan and other things.
+To execute a recorded `Plan` independently of past executions, you can use `renku workflow execute my-plan`, which would essentially re-execute the original `renku run`. To make things more interesting, you can change the values used by the plan, using `--set parameter=value`, e.g. `renku workflow execute --set input-1=other-dataset.csv my-plan`, which would execute `my-plan` but with `other-dataset.csv` as the input file. Use `renku workflow show my-plan` to see the available parameters and `renku workflow edit my-plan` to rename parameters, add a description to the plan and other things.
 
 You can use the `Plans` you create as building blocks for more complicated pipelines, by composing them using the `renku workflow compose` command, which lets you group  `Plans` arbitrarily, defining links between steps and mapping for values. These composite `Plans` can then be executed and worked with the same as `Plans` created by `renku-run`. This way, you can create complex workflows by example, instead of having to write workflow specifications by hand.
 
@@ -61,7 +61,7 @@ We now store all the metadata for a project in in a custom object database. This
 
 We sometimes need to change our data model to support adding new features, and these changes mean that the data in projects needs to be updated to be in line with our current code base, which we do in the form of migrations (Which you can run through clicking the Migrate button on renkulab or locally with `renku migrate`). The move to this new database storage speeds up migrations for our metadata dramatically, with projects that previously took hours to migrate now being migrated in minutes to seconds, greatly reducing downtime on migration for new releases.
 
-We can also easily add indices and other optimizations in the database to enable speedy lookups of data and improve performance overall. This is especially noticable on large projects, where renku commands such as `renku status` that could previously take several minutes to complete now only take a few seconds.
+We can also easily add indices and other optimizations in the database to enable speedy lookups of data and improve performance overall. This is especially noticeable on large projects, where renku commands such as `renku status` that could previously take several minutes to complete now only take a few seconds.
 
 The database is stored in a compressed format, reducing storage requirements that could be pretty sizeable on bigger projects.
 
