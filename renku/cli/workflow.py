@@ -633,7 +633,7 @@ def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
             )
             click.echo(click.style("\tMaps to: ", bold=True, fg="magenta"))
             for maps_to in mapping.maps_to:
-                click.style(maps_to, bold=True)
+                click.echo(click.style(f"\t\t{maps_to}", bold=True))
 
     if composite_plan.links:
         click.echo(click.style("Links: ", bold=True, fg="magenta"))
