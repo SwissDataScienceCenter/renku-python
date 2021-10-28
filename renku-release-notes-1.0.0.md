@@ -2,7 +2,9 @@
 
 After a period of relative silence, we are happy to announce the release of the Renku Python library version 1.0.0 :tada:
 
-This release contains a ton of changes, with a complete overhaul of workflow commands, cleaning up existing commands and a big improvement in both performance and storage requirements of the Renku CLI.
+This release contains a ton of changes, with a complete overhaul of workflow commands and cleaning up existing commands. We also introduced plugin support that allows Renku to support arbitrary workflow backends for execution.
+
+We also reworked our metadata storage, leading to a big improvement in both performance and storage requirements when working with the commandline interface in projects.
 
 ## New Workflows
 
@@ -47,13 +49,13 @@ You can use the `Plans` you create as building blocks for more complicated pipel
 You can also export your `Plans` into various formats such as CWL (Common Workflow Language) using `renku workflow export`, which allows you to run them outside of renku.
 
 ### Plugin Support
-One main feature of this release is that the execution backends and converters for `Plans` are now completely plugin based, allowing us and third parties to support running Renku workflows on your tool of choice and exporting Renku workflows to your format of choice, if a plugin has been implemented.
+Another main feature of this release is that the execution backends and converters for `Plans` are now completely plugin based, allowing us and third parties to support running Renku workflows on your tool of choice and exporting Renku workflows to your format of choice, if a plugin has been implemented.
 
 Implementation of execution plugins is relatively easy and they can be packaged in their own Python packages and installed alongside Renku, which will automatically pick up all plugins available on your system.
 
 This is a big step in interoperability for Renku and makes it easier to run Renku workflows on environments like HPC clusters or the cloud.
 
-## New Metadata Storage
+## New Metadata Storage / Performance Improvements
 
 We have completely reworked how we store Renku metadata inside projects. Before, metadata was stored in YAML files that contained data in a relatively inefficient storage format. In addition, the metadata was stored in individual Git commits, meaning that for some Renku commands we had to scan through the Git history to gather all the relevant information. This also meant that on updates to Renkulab with breaking changes in the Renku CLI, we had to process each commit in a project individually to regenerate our metadata, which on some larger projects could take weeks.
 
