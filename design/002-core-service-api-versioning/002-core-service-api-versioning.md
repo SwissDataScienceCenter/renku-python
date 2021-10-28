@@ -62,7 +62,7 @@ data:
     7: renku-core-v7
 ```
 
-This configmap can then be served through Nninx, allowing clients to lookup which versions of `renku-core` are deployed and where to reach them.
+This configmap can then be served through NginX, allowing clients to lookup which versions of `renku-core` are deployed and where to reach them.
 
 ### Service URLs/UX
 
@@ -86,8 +86,8 @@ So the UI couldn't just call old endpoints and expect everything to work.
 
 We introduce a new API versioning scheme for `renku-python` where we version our endpoints. An initial version, 1.0 is defined as the state of the service as it is right now
 (1.0.0 release / 0.16.2 release). In the 1.0.0 release we also include changes from https://github.com/SwissDataScienceCenter/renku-python/pull/2122 which will be 1.1 of the API.
-Major versions follow the main `renku-python` versioning scheme. If we release `renku-python` version 2.0.0 we bump the API version to 2.0, and otherwise we bump the minor version
-on breaking API changes.
+The major version is bumped on breaking changes and the minor version on non-breaking changes.
+
 Versioning is done through the URL, e.g. `https://renkulab.io/api/renku/1.0/`, `https://renkulab.io/api/renku/1.1/`, `https://renkulab.io/api/renku-v7/1.0/` but with the special case
 of no version being passed (e.g. `https://renkulab.io/api/renku/cache.migrations_check`) defaulting to 1.0 (or lowest supported version), for backwards compatibility.
 
@@ -118,7 +118,7 @@ A fix lifecycle should be defined both for metadata versions and API versions. T
 
 Since versions might change on an irregular schedule, it makes sense to limit this by time rather than version number.
 
-A proposal would be to support past versions for 12 months.
+We support past versions for up to 12 months.
 If e.g. metadata version 8 was introduced 12 months ago, we drop support for metadata version 7 i.e. `renku-core-v7` no longer gets deployed and is not supported anymore.
 
 For API versions (like 1.1), the current version of `renku-python` has to at least support as a `minimum_api_version` the `maximum_api_version` of the oldest still supported
