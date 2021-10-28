@@ -24,8 +24,6 @@ When you do a `renku run` command, Renku will create both a `Plan` for the comma
 
 ### Working with New Workflows
 
-![renku_wf_demonstration|690x453](renku_wf_demonstration.gif)
-
 There is a lot of new workflow functionality, such as:
 
 - Running workflows independent of past executions
@@ -36,13 +34,21 @@ There is a lot of new workflow functionality, such as:
 - Exporting workflows to various workflow format
 - Extended plugin support
 
+![update-rerun|690x453](update_rerun.gif)
+
 As before, you can record workflows using `renku run`, with the change that you can now also specify a name for the generated `Plan`, like `renku run --name my-plan myscript.py dataset.csv summary.csv`.
 
 You can use `renku rerun` and `renku update` as before, but their responsibilities are more clearly defined now.  `renku rerun` is intended for reproducing a result by re-executing a past chain of `Runs` again in the same way and `renku update` is intended for updating outputs of past `Runs` based on changed/updated input data.
 
+![execute-plan|690x453](execute_plan.gif)
+
 To execute a recorded `Plan` independently of past executions, you can use `renku workflow execute my-plan`, which would essentially re-execute the original `renku run`. To make things more interesting, you can change the values used by the plan, using `--set parameter=value`, e.g. `renku workflow execute --set input-1=other-dataset.csv my-plan`, which would execute `my-plan` but with `other-dataset.csv` as the input file. Use `renku workflow show my-plan` to see the available parameters and `renku workflow edit my-plan` to rename parameters, add a description to the plan and other things.
 
+![compose-plan|690x453](compose_plan.gif)
+
 You can use the `Plans` you create as building blocks for more complicated pipelines, by composing them using the `renku workflow compose` command, which lets you group  `Plans` arbitrarily, defining links between steps and mapping for values. These composite `Plans` can then be executed and worked with the same as `Plans` created by `renku-run`. This way, you can create complex workflows by example, instead of having to write workflow specifications by hand.
+
+To see how a file was created, we have a new command `renku workflow visualize` that shows a graph of all the workflows involved in creating a file. Try out its `-i` flag for interactive mode!
 
 [TODO: Insert something about renku workflow loop, ideally with asciinema]
 
