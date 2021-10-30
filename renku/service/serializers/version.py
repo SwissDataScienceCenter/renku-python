@@ -22,6 +22,8 @@ class VersionResponse(Schema):
 
     latest_version = fields.String()
     supported_project_version = fields.Number()
+    minimum_api_version = fields.String()
+    maximum_api_version = fields.String()
 
 
 class VersionResponseRPC(Schema):
