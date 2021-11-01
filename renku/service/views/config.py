@@ -21,7 +21,7 @@ from flask import request
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.config_set import SetConfigCtrl
 from renku.service.controllers.config_show import ShowConfigCtrl
-from renku.service.views.api_versions import V1_0, VersionedBlueprint
+from renku.service.views.api_versions import V0_9, V1_0, VersionedBlueprint
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
@@ -34,7 +34,7 @@ CONFIG_BLUEPRINT_TAG = "config"
 config_blueprint = VersionedBlueprint("config", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@config_blueprint.route("/config.show", methods=["GET"], provide_automatic_options=False, versions=[V1_0])
+@config_blueprint.route("/config.show", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0])
 @handle_common_except
 @requires_cache
 @optional_identity
@@ -60,7 +60,7 @@ def show_config(user_data, cache):
     return ShowConfigCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@config_blueprint.route("/config.set", methods=["POST"], provide_automatic_options=False, versions=[V1_0])
+@config_blueprint.route("/config.set", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0])
 @handle_common_except
 @accepts_json
 @requires_cache
