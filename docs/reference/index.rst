@@ -16,14 +16,18 @@
     limitations under the License.
 
 
-Internals
+Reference
 =========
 
 Internals of the ``renku-python`` library.
 
 .. toctree::
-   models/index
-   database
-   gateways
-   management
-   plugins
+    :maxdepth: 1
+
+    commands
+    models/index
+    database
+    gateways
+    management
+    plugins
+    service

@@ -20,7 +20,7 @@ r"""Renku CLI commands for handling of datasets.
 Manipulating datasets
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: _static/asciicasts/dataset-create.delay.gif
+.. image:: ../_static/asciicasts/dataset-create.delay.gif
    :width: 600
    :alt: Create a Dataset
 
@@ -55,7 +55,7 @@ the dataset.
 
 Editing a dataset's metadata:
 
-.. image:: _static/asciicasts/dataset-edit.delay.gif
+.. image:: ../_static/asciicasts/dataset-edit.delay.gif
    :width: 600
    :alt: Editing a Dataset
 
@@ -132,7 +132,7 @@ Deleting a dataset:
 Working with data
 ~~~~~~~~~~~~~~~~~
 
-.. image:: _static/asciicasts/dataset-add.delay.gif
+.. image:: ../_static/asciicasts/dataset-add.delay.gif
    :width: 600
    :alt: Add data to a Dataset
 
@@ -309,7 +309,7 @@ knowing the dataset's ID.
 
 Importing data from an external provider:
 
-.. image:: _static/asciicasts/dataset-import.delay.gif
+.. image:: ../_static/asciicasts/dataset-import.delay.gif
    :width: 600
    :alt: Import a Dataset
 

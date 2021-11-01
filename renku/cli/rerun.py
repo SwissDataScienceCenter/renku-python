@@ -20,7 +20,7 @@ r"""Recreate files created by the "run" command.
 Recreating files
 ~~~~~~~~~~~~~~~~
 
-.. image:: _static/asciicasts/rerun.delay.gif
+.. image:: ../_static/asciicasts/rerun.delay.gif
    :width: 600
    :alt: Rerun workflow
 
