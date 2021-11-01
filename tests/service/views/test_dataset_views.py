@@ -27,6 +27,7 @@ from pathlib import Path
 import pytest
 from werkzeug.utils import secure_filename
 
+from renku.core.utils.scm import normalize_to_ascii
 from renku.service.config import (
     GIT_ACCESS_DENIED_ERROR_CODE,
     INVALID_HEADERS_ERROR_CODE,
@@ -1126,9 +1127,12 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
     user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
 
+    name = Path(project).name
+
     project_meta = {
         "project_id": uuid.uuid4().hex,
-        "name": Path(project).name,
+        "name": name,
+        "slug": normalize_to_ascii(name),
         "fullname": "full project name",
         "email": "my@email.com",
         "owner": "me",

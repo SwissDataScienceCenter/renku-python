@@ -20,9 +20,9 @@
 from renku.core.management.migrations.models.v8 import get_client_datasets
 
 
-def migrate(client):
+def migrate(migration_context):
     """Migration function."""
-    _fix_dataset_metadata(client)
+    _fix_dataset_metadata(migration_context.client)
 
 
 def _fix_dataset_metadata(client):

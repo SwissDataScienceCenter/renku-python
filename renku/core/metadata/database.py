@@ -687,6 +687,9 @@ class ObjectReader:
         self._classes: Dict[str, type] = {}
         self._database = database
 
+        # a cache for normal (non-persistent objects with an id) to deduplicate them on load
+        self._normal_object_cache = {}
+
     def _get_class(self, type_name: str) -> type:
         cls = self._classes.get(type_name)
         if cls:
@@ -797,10 +800,16 @@ class ObjectReader:
                 data = self._deserialize_helper(data)
                 assert isinstance(data, dict)
 
+                if "id" in data and data["id"] in self._normal_object_cache:
+                    return self._normal_object_cache[data["id"]]
+
                 for name, value in data.items():
                     object.__setattr__(new_object, name, value)
 
                 if issubclass(cls, Immutable):
                     new_object = cls.make_instance(new_object)
+
+                if "id" in data and isinstance(data["id"], str) and data["id"].startswith("/"):
+                    self._normal_object_cache[data["id"]] = new_object
 
             return new_object

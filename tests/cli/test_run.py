@@ -22,6 +22,8 @@ import os
 import pytest
 
 from renku.cli import cli
+from renku.core.metadata.gateway.activity_gateway import ActivityGateway
+from renku.core.metadata.gateway.plan_gateway import PlanGateway
 from tests.utils import format_result_exception
 
 
@@ -69,24 +71,24 @@ def test_run_clean(runner, project, run_shell):
     assert "a unique string" in result.output
 
 
-def test_run_metadata(renku_cli, client):
+def test_run_metadata(renku_cli, client, client_database_injection_manager):
     """Test run with workflow metadata."""
     exit_code, activity = renku_cli(
         "run", "--name", "run-1", "--description", "first run", "--keyword", "key1", "--keyword", "key2", "touch", "foo"
     )
 
-    plan = activity.association.plan
     assert 0 == exit_code
+    plan = activity.association.plan
     assert "run-1" == plan.name
     assert "first run" == plan.description
     assert {"key1", "key2"} == set(plan.keywords)
 
-    # TODO: implement with new database
-    # database = Database.from_path(client.database_path)
-    # plan = DependencyGraph.from_database(database).plans[0]
-    # assert "run-1" == plan.name
-    # assert "first run" == plan.description
-    # assert {"key1", "key2"} == set(plan.keywords)
+    with client_database_injection_manager(client):
+        plan_gateway = PlanGateway()
+        plan = plan_gateway.get_by_id(plan.id)
+        assert "run-1" == plan.name
+        assert "first run" == plan.description
+        assert {"key1", "key2"} == set(plan.keywords)
 
 
 @pytest.mark.parametrize(
@@ -96,16 +98,15 @@ def test_run_metadata(renku_cli, client):
         (["echo", "-n", "some long value"], "echo--n-some_long_v-"),
     ],
 )
-def test_generated_run_name(runner, client, command, name):
+def test_generated_run_name(runner, client, command, name, client_database_injection_manager):
     """Test generated run name."""
     result = runner.invoke(cli, ["run", "--no-output"] + command)
 
     assert 0 == result.exit_code, format_result_exception(result)
-    # database = Database.from_path(client.database_path)
-    # TODO: rewrite for new database code
-    # dependency_graph = DependencyGraph.from_database(database)
-    # assert 1 == len(dependency_graph.plans)
-    # assert name == dependency_graph.plans[0].name[:-5]
+    with client_database_injection_manager(client):
+        plan_gateway = PlanGateway()
+        plan = plan_gateway.get_all_plans()[0]
+        assert name == plan.name[:-5]
 
 
 def test_run_invalid_name(runner, client):
@@ -117,7 +118,7 @@ def test_run_invalid_name(runner, client):
     assert "Invalid name: 'invalid name' (Hint: 'invalid_name' is valid)." in result.output
 
 
-def test_run_argument_parameters(runner, client):
+def test_run_argument_parameters(runner, client, client_database_injection_manager):
     """Test names and values of workflow/provenance arguments and parameters."""
     result = runner.invoke(
         cli,
@@ -138,39 +139,39 @@ def test_run_argument_parameters(runner, client):
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    # TODO: implement with new database
-    # database = Database.from_path(client.database_path)
-    # dependency_graph = DependencyGraph.from_database(database)
-    # assert 1 == len(dependency_graph.plans)
-    # plan = dependency_graph.plans[0]
+    with client_database_injection_manager(client):
+        plan_gateway = PlanGateway()
+        plans = plan_gateway.get_all_plans()
+        assert 1 == len(plans)
+        plan = plans[0]
 
-    # assert 2 == len(plan.inputs)
-    # plan.inputs.sort(key=lambda i: i.name)
-    # assert plan.inputs[0].name.startswith("input-")
-    # assert "template-2" == plan.inputs[1].name
+        assert 2 == len(plan.inputs)
+        plan.inputs.sort(key=lambda i: i.name)
+        assert plan.inputs[0].name.startswith("input-")
+        assert "template-2" == plan.inputs[1].name
 
-    # assert 1 == len(plan.outputs)
-    # assert plan.outputs[0].name.startswith("output-")
+        assert 1 == len(plan.outputs)
+        assert plan.outputs[0].name.startswith("output-")
 
-    # assert 2 == len(plan.parameters)
-    # plan.parameters.sort(key=lambda i: i.name)
-    # assert "delta-3" == plan.parameters[0].name
-    # assert "n-1" == plan.parameters[1].name
+        assert 2 == len(plan.parameters)
+        plan.parameters.sort(key=lambda i: i.name)
+        assert "delta-3" == plan.parameters[0].name
+        assert "n-1" == plan.parameters[1].name
 
-    # FIXME: Uncomment these line once graph export is implemented using the new graph
-    # provenance_graph = ProvenanceGraph.from_database(database)
-    # assert 1 == len(provenance_graph.activities)
-    # activity = provenance_graph.activities[0]
+        activity_gateway = ActivityGateway()
+        activities = activity_gateway.get_all_activities()
+        assert 1 == len(activities)
+        activity = activities[0]
 
-    # assert 2 == len(activity.usages)
-    # activity.usages.sort(key=lambda e: e.entity.path)
-    # assert "Dockerfile" == activity.usages[0].entity.path
-    # assert "requirements.txt" == activity.usages[1].entity.path
+        assert 2 == len(activity.usages)
+        activity.usages.sort(key=lambda e: e.entity.path)
+        assert "Dockerfile" == activity.usages[0].entity.path
+        assert "requirements.txt" == activity.usages[1].entity.path
 
-    # assert 5 == len(activity.parameters)
-    # parameters_values = {p.parameter.default_value for p in activity.parameters}
-    # assert {42, "Dockerfile", "README.md", "requirements.txt", "some message"} == parameters_values
+        assert 5 == len(activity.parameters)
+        parameters_values = {p.value for p in activity.parameters}
+        assert {"42", "Dockerfile", "README.md", "requirements.txt", "some message"} == parameters_values
 
-    # result = runner.invoke(cli, ["graph", "export", "--format", "jsonld", "--strict"])
-    #
-    # assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["graph", "export", "--format", "jsonld", "--strict"])
+
+    assert 0 == result.exit_code, format_result_exception(result)

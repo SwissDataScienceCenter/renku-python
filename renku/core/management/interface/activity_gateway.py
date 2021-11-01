@@ -19,7 +19,7 @@
 
 from abc import ABC
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 from renku.core.models.provenance.activity import Activity, ActivityCollection, Usage
 from renku.core.models.workflow.plan import AbstractPlan
@@ -44,7 +44,7 @@ class IActivityGateway(ABC):
         """Return all generation paths."""
         raise NotImplementedError
 
-    def get_activities_by_generation(self, path: Union[Path, str]) -> List[Activity]:
+    def get_activities_by_generation(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
         """Return the list of all activities that generate a path."""
         raise NotImplementedError
 

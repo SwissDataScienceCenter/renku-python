@@ -17,6 +17,10 @@
 # limitations under the License.
 r"""Update outdated files created by the "run" command.
 
+.. image:: _static/asciicasts/update.delay.gif
+   :width: 600
+   :alt: Update outdate files
+
 Recreating outdated files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -24,10 +28,10 @@ The information about dependencies for each file in a Renku project is stored
 in various metadata.
 
 When an update command is executed, Renku looks into the most recent execution
-of each workflow and checks which one is outdated (i.e. at least one of its
-inputs is modified). It generates a minimal dependency graph for each outdated
-file stored in the repository. It means that only the necessary steps will be
-executed.
+of each workflow (Run and Plan combination) and checks which one is outdated
+(i.e. at least one of its inputs is modified). It generates a minimal
+dependency graph for each outdated file stored in the repository. It means
+that only the necessary steps will be executed.
 
 Assume that the following history for the file ``H`` exists.
 
@@ -57,17 +61,17 @@ In this situation, you can do effectively three things:
 
      $ renku update --all
 
-* Update only ``H``
+* Update only ``E``
 
   .. code-block:: console
 
-     $ renku update H
+     $ renku update E
 
 * Update ``E`` and ``H``
 
   .. code-block:: console
 
-     $ renku update E H
+     $ renku update H
 
 .. note:: If there were uncommitted changes then the command fails.
    Check :program:`git status` to see details.
@@ -119,17 +123,29 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
-from renku.core.commands.update import update_command
 
 
 @click.command()
 @click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all outdated files.")
+@click.option("--dry-run", "-n", is_flag=True, default=False, help="Show a preview of plans that will be executed.")
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
-def update(update_all, paths):
+def update(update_all, dry_run, paths):
     """Update existing files by rerunning their outdated workflow."""
+    from renku.core.commands.format.activity import tabulate_activities
+    from renku.core.commands.update import update_command
+
     communicator = ClickCallback()
 
     try:
-        update_command().with_communicator(communicator).build().execute(update_all=update_all, paths=paths)
+        result = (
+            update_command()
+            .with_communicator(communicator)
+            .build()
+            .execute(update_all=update_all, dry_run=dry_run, paths=paths)
+        )
     except errors.NothingToExecuteError:
         exit(1)
+    else:
+        if dry_run:
+            activities, modified_inputs = result.output
+            click.echo(tabulate_activities(activities, modified_inputs))

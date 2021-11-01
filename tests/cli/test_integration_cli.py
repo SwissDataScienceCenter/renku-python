@@ -43,7 +43,7 @@ def test_renku_clone(runner, monkeypatch, url):
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert "Hook already exists." in result.output
 
-        result = runner.invoke(cli, ["migrate"])
+        result = runner.invoke(cli, ["migrate", "--strict"])
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
         # Check Git LFS is enabled

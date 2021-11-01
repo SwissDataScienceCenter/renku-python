@@ -65,7 +65,6 @@ from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.git import (
     add_to_git,
-    find_previous_commit,
     get_oauth_url,
     get_object_hash,
     get_renku_repo_url,
@@ -611,7 +610,7 @@ class DatasetsApiMixin(object):
 
     def _add_from_git(self, url, sources, destination, ref, repository=None):
         """Process adding resources from another git repository."""
-        from renku import LocalClient
+        from renku.core.management.client import LocalClient
 
         u = parse.urlparse(url)
 
@@ -902,7 +901,7 @@ class DatasetsApiMixin(object):
 
         :return: List of files that should be deleted
         """
-        from renku import LocalClient
+        from renku.core.management.client import LocalClient
 
         visited_repos = {}
         updated_files: List[DynamicProxy] = []
@@ -928,14 +927,8 @@ class DatasetsApiMixin(object):
 
                 checksum = get_object_hash(repo, based_on.path)
 
-                # NOTE: Use commit sha to compare if available for compatibility
-                if based_on.commit_sha is not None:
-                    remote_commit = find_previous_commit(repo, based_on.path)
-                    found = bool(remote_commit)
-                    changed = found and based_on.commit_sha != remote_commit.hexsha
-                else:
-                    found = bool(checksum)
-                    changed = found and based_on.checksum != checksum
+                found = bool(checksum)
+                changed = found and based_on.checksum != checksum
 
                 src = Path(repo.working_dir) / based_on.path
                 dst = self.renku_path.parent / file.entity.path

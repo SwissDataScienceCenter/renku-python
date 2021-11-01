@@ -26,8 +26,6 @@ from calamus.schema import JsonLDSchema as CalamusJsonLDSchema
 from calamus.utils import normalize_type, normalize_value
 from marshmallow.base import SchemaABC
 
-from renku.core.utils.datetime8601 import fix_timezone
-
 prov = fields.Namespace("http://www.w3.org/ns/prov#")
 rdfs = fields.Namespace("http://www.w3.org/2000/01/rdf-schema#")
 renku = fields.Namespace("https://swissdatasciencecenter.github.io/renku-ontology#")
@@ -79,10 +77,6 @@ class JsonLDSchema(CalamusJsonLDSchema):
             if name in data:
                 raise ValueError(f"Field {name} is already in data {data}")
             data[name] = value
-
-    def _fix_timezone(self, value):
-        """Fix timezone of non-aware datetime objects."""
-        return fix_timezone(value)
 
 
 class Uri(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.Dict):

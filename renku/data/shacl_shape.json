@@ -102,6 +102,14 @@
             },
             {
                "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "schema:schemaVersion",
                "datatype": {
                   "@id": "xsd:string"
@@ -294,6 +302,14 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:url",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             }
          ]
       },
@@ -321,10 +337,7 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "maxCount": 1,
-               "sh:lessThanOrEquals": {
-                  "@id": "schema:datePublished"
-               }
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -553,19 +566,9 @@
                "maxCount": 1
             },
             {
-               "nodeKind": "sh:Literal",
-               "path": "schema:location",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
                "path": "schema:about",
-               "datatype": {
-                  "@id": "xsd:string"
+               "sh:class": {
+                  "@id": "schema:URL"
                },
                "minCount": 1,
                "maxCount": 1
@@ -586,7 +589,7 @@
             {
                "path": "schema:isBasedOn",
                "sh:class": {
-                  "@id": "schema:DigitalDocument"
+                  "@id": "prov:Entity"
                },
                "maxCount": 1
             },

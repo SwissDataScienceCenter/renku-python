@@ -21,6 +21,7 @@ import os
 import shutil
 import traceback
 import uuid
+from itertools import chain
 from pathlib import Path, PurePosixPath
 from typing import List, Optional, Union
 from urllib.parse import urlparse
@@ -29,7 +30,7 @@ from git import NULL_TREE, Commit, GitCommandError
 
 import renku.core.management.migrate
 from renku.core import errors
-from renku.core.management import LocalClient
+from renku.core.management.client import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.interface.activity_gateway import IActivityGateway
@@ -60,12 +61,20 @@ from renku.core.utils.scm import git_unicode_unescape
 
 NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 
+PLAN_CACHE = {}
 
-def migrate(client):
+
+def migrate(migration_context):
     """Migration function."""
+    client = migration_context.client
     committed = _commit_previous_changes(client)
     # TODO: set remove=True once the migration to the new metadata is finalized
-    generate_new_metadata(remove=False, committed=committed)
+    generate_new_metadata(
+        remove=False,
+        committed=committed,
+        strict=migration_context.options.strict,
+        migration_type=migration_context.options.type,
+    )
     _remove_dataset_metadata_files(client)
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
     metadata_path.unlink()
@@ -145,6 +154,8 @@ def remove_graph_files(client):
 
 @inject.autoparams()
 def generate_new_metadata(
+    strict,
+    migration_type: MigrationType,
     client_dispatcher: IClientDispatcher,
     database_gateway: IDatabaseGateway,
     activity_gateway: IActivityGateway,
@@ -181,15 +192,19 @@ def generate_new_metadata(
 
         try:
             # NOTE: Don't migrate workflows for dataset-only migrations
-            if MigrationType.WORKFLOWS in client.migration_type:
+            if MigrationType.WORKFLOWS in migration_type:
                 _process_workflows(client=client, activity_gateway=activity_gateway, commit=commit, remove=remove)
             _process_datasets(
                 client=client, commit=commit, datasets_provenance=datasets_provenance, is_last_commit=is_last_commit
             )
         except errors.MigrationError:
+            if strict:
+                raise
             communication.echo("")
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Migration failed: {traceback.format_exc()}")
         except Exception:
+            if strict:
+                raise
             communication.echo("")
             communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
@@ -208,6 +223,10 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
         return run_id.rstrip("/").rsplit("/", maxsplit=1)[-1]
 
     uuid = extract_run_uuid(run._id)
+
+    if uuid in PLAN_CACHE:
+        return PLAN_CACHE[uuid]
+
     plan_id = Plan.generate_id(uuid=uuid)
 
     def convert_argument(argument: old_schema.CommandArgument) -> CommandParameter:
@@ -221,6 +240,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=argument.name,
             position=argument.position,
             prefix=argument.prefix,
+            postfix=PurePosixPath(argument._id).name,
         )
 
     def convert_input(input: old_schema.CommandInput) -> CommandInput:
@@ -239,6 +259,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=input.name,
             position=input.position,
             prefix=input.prefix,
+            postfix=PurePosixPath(input._id).name,
         )
 
     def convert_output(output: old_schema.CommandOutput) -> CommandOutput:
@@ -258,9 +279,10 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=output.name,
             position=output.position,
             prefix=output.prefix,
+            postfix=PurePosixPath(output._id).name,
         )
 
-    return Plan(
+    plan = Plan(
         command=run.command,
         description=run.description,
         id=plan_id,
@@ -273,14 +295,22 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
         success_codes=run.successcodes,
     )
 
+    PLAN_CACHE[uuid] = plan
+
+    return plan
+
 
 def _get_process_runs(workflow_run: old_schema.WorkflowRun) -> List[old_schema.ProcessRun]:
     # NOTE: Use Plan subprocesses to get activities because it is guaranteed to have correct order
+    assert (
+        workflow_run.association.plan.subprocesses
+    ), "Can only get subprocesses if the associated plan has subprocesses"
     sorted_ids = [s.process._id for s in workflow_run.association.plan.subprocesses]
     activities = []
     # NOTE: it's possible to have subprocesses with similar ids but it does not matter since they have the same
     # plan
     # TODO: Remove these redundant subprocesses
+
     for id_ in sorted_ids:
         for s in workflow_run.subprocesses.values():
             if s.association.plan._id == id_:
@@ -308,14 +338,15 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
 
         workflow = old_schema.Activity.from_yaml(path=path, client=client)
 
-        if isinstance(workflow, old_schema.ProcessRun):
-            activities = [workflow]
-        else:
+        if isinstance(workflow, old_schema.WorkflowRun):
             activities = _get_process_runs(workflow)
+        else:
+            activities = [workflow]
 
         for old_activity in activities:
-            new_activity = _process_run_to_new_activity(process_run=old_activity)
-            activity_gateway.add(new_activity)
+            new_activities = _process_run_to_new_activity(process_run=old_activity)
+            for new_activity in new_activities:
+                activity_gateway.add(new_activity)
 
         if remove:
             try:
@@ -325,50 +356,72 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
 
 
 @inject.autoparams("client_dispatcher")
-def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client_dispatcher: IClientDispatcher) -> Activity:
+def _process_run_to_new_activity(
+    process_run: old_schema.ProcessRun, client_dispatcher: IClientDispatcher
+) -> List[Activity]:
     """Convert a ProcessRun to a new Activity."""
     assert not isinstance(process_run, old_schema.WorkflowRun)
 
     client = client_dispatcher.current_client
 
-    activity_id = Activity.generate_id()
-
     run = process_run.association.plan
 
     if run.subprocesses:
-        assert len(run.subprocesses) == 1, f"Run in ProcessRun has multiple steps: {run._id}"
-        run = run.subprocesses[0].process
+        runs = [s.process for s in run.subprocesses]
+    else:
+        runs = [run]
 
-    plan = _convert_run_to_plan(run, client)
+    activities = []
+    for run in runs:
+        activity_id = Activity.generate_id()
 
-    agents = [_old_agent_to_new_agent(a) for a in process_run.agents or []]
-    association_agent = _old_agent_to_new_agent(process_run.association.agent)
-    association = Association(agent=association_agent, id=Association.generate_id(activity_id), plan=plan)
+        plan = _convert_run_to_plan(run, client)
 
-    # NOTE: The same entity can have the same id during different times in its lifetime (e.g. different commit_sha,
-    # but the same content). When it gets flattened, some fields will have multiple values which will cause an error
-    # during deserialization. Make sure that no such Entity attributes exists (store those information in the
-    # Generation object).
+        agents = [_old_agent_to_new_agent(a) for a in process_run.agents or []]
+        association_agent = _old_agent_to_new_agent(process_run.association.agent)
+        association = Association(agent=association_agent, id=Association.generate_id(activity_id), plan=plan)
 
-    invalidations = [_convert_invalidated_entity(e, client) for e in (process_run.invalidated or [])]
-    generations = [_convert_generation(g, activity_id, client) for g in (process_run.generated or [])]
-    usages = [_convert_usage(u, activity_id, client) for u in (process_run.qualified_usage or [])]
+        # NOTE: The same entity can have the same id during different times in its lifetime (e.g. different commit_sha,
+        # but the same content). When it gets flattened, some fields will have multiple values which will cause an error
+        # during deserialization. Make sure that no such Entity attributes exists (store those information in the
+        # Generation object).
 
-    parameters = _create_parameters(activity_id=activity_id, plan=plan, usages=usages, generations=generations)
+        invalidations = [_convert_invalidated_entity(e, client) for e in (process_run.invalidated or [])]
 
-    return Activity(
-        agents=agents,
-        annotations=process_run.annotations,
-        association=association,
-        ended_at_time=process_run.ended_at_time,
-        generations=generations,
-        id=activity_id,
-        invalidations=invalidations,
-        parameters=parameters,
-        # project=process_run._project,
-        started_at_time=process_run.started_at_time,
-        usages=usages,
-    )
+        generations = []
+
+        for potential_generation in chain(process_run.generated or [], process_run.qualified_usage or []):
+            if all(output.produces.path != potential_generation.entity.path for output in run.outputs):
+                continue
+
+            generations.append(_convert_generation(potential_generation, activity_id, client))
+
+        usages = []
+        for potential_usage in process_run.qualified_usage or []:
+            if all(input.consumes.path != potential_usage.entity.path for input in run.inputs):
+                continue
+
+            usages.append(_convert_usage(potential_usage, activity_id, client))
+
+        parameters = _create_parameters(activity_id=activity_id, plan=plan, usages=usages, generations=generations)
+
+        activities.append(
+            Activity(
+                agents=agents,
+                annotations=process_run.annotations,
+                association=association,
+                ended_at_time=process_run.ended_at_time,
+                generations=generations,
+                id=activity_id,
+                invalidations=invalidations,
+                parameters=parameters,
+                # project=process_run._project,
+                started_at_time=process_run.started_at_time,
+                usages=usages,
+            )
+        )
+
+    return activities
 
 
 def _convert_usage(usage: old_schema.Usage, activity_id: str, client) -> Usage:
@@ -499,8 +552,6 @@ def _create_parameters(activity_id, plan: Plan, usages: List[Usage], generations
         id = ParameterValue.generate_id(activity_id)
         parameters.append(ParameterValue(id=id, parameter_id=input.id, value=usage.entity.path))
 
-    assert not inputs, f"Not all inputs are converted: {inputs}"
-
     outputs = {o.default_value: o for o in plan.outputs}
 
     for generation in generations:
@@ -508,8 +559,6 @@ def _create_parameters(activity_id, plan: Plan, usages: List[Usage], generations
         assert output is not None, f"Cannot find generation path '{generation.entity.path}' in plan {plan.id}"
         id = ParameterValue.generate_id(activity_id)
         parameters.append(ParameterValue(id=id, parameter_id=output.id, value=generation.entity.path))
-
-    assert not outputs, f"Not all outputs are converted: {outputs}"
 
     for parameter in plan.parameters:
         id = ParameterValue.generate_id(activity_id)
@@ -622,15 +671,13 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
             project_version = read_project_version()
             set_temporary_datasets_path(datasets_path)
             communication.disable()
-            previous_migration_type = client.migration_type
-            client.migration_type = MigrationType.DATASETS
             renku.core.management.migrate.migrate(
                 project_version=project_version,
                 skip_template_update=True,
                 skip_docker_update=True,
                 max_version=8,
+                migration_type=MigrationType.DATASETS,
             )
-            client.migration_type = previous_migration_type
         finally:
             communication.enable()
             unset_temporary_datasets_path()

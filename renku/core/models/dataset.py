@@ -19,6 +19,7 @@
 
 import copy
 import os
+import posixpath
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -35,7 +36,7 @@ from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, f
 from renku.core.models.entity import CollectionSchema, Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
-from renku.core.utils.datetime8601 import fix_timezone, local_now, parse_date
+from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.utils.git import get_path
 from renku.core.utils.urls import get_slug
 
@@ -73,13 +74,15 @@ class Url:
         self.url_id: str = url_id
 
         if not self.url:
-            self.url = self.get_default_url()
+            self.url = self._get_default_url()
         elif isinstance(self.url, dict):
             if "_id" in self.url:
                 self.url["@id"] = self.url.pop("_id")
             self.url_id = self.url["@id"]
+            self.url_str = None
         elif isinstance(self.url, str):
             self.url_str = self.url
+            self.url_id = None
 
         if not self.id or self.id.startswith("_:"):
             self.id = Url.generate_id(url_str=self.url_str, url_id=self.url_id)
@@ -93,7 +96,12 @@ class Url:
 
         return f"/urls/{id}"
 
-    def get_default_url(self):
+    @property
+    def value(self):
+        """Returns the url value as string."""
+        return self.url_str or self.url_id
+
+    def _get_default_url(self):
         """Define default value for url field."""
         if self.url_str:
             return self.url_str
@@ -109,16 +117,16 @@ class DatasetTag(Persistent):
     def __init__(
         self,
         *,
-        dataset_id: str,
+        dataset_id: Url,
         date_created: datetime = None,
         description: str = None,
         id: str = None,
         name: str,
     ):
         if not id:
-            id = DatasetTag.generate_id(dataset_id=dataset_id, name=name)
+            id = DatasetTag.generate_id(dataset_id=dataset_id.value, name=name)
 
-        self.dataset_id: str = dataset_id
+        self.dataset_id: Url = dataset_id
         self.date_created: datetime = parse_date(date_created) or local_now()
         self.description: str = description
         self.id: str = id
@@ -175,38 +183,32 @@ class ImageObject(Slots):
 class RemoteEntity(Slots):
     """Reference to an Entity in a remote repo."""
 
-    __slots__ = ("checksum", "commit_sha", "id", "path", "url")
+    __slots__ = ("checksum", "id", "path", "url")
 
-    def __init__(
-        self, *, checksum: str = None, commit_sha: str = None, id: str = None, path: Union[Path, str], url: str
-    ):
+    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], url: str):
         super().__init__()
-        entity_hash = commit_sha or checksum
-        assert entity_hash, "One of checksum or commit_sha must be provided."
-        assert checksum is None or commit_sha is None, "Either checksum or commit_sha must be provided, not both."
-
-        # NOTE: For compatibility we use commit_sha when migrating old projects. For all new instances use checksum.
-        self.commit_sha: str = commit_sha
         self.checksum: str = checksum
-        self.id: str = id or RemoteEntity.generate_id(entity_hash, path)
+        self.id: str = id or RemoteEntity.generate_id(checksum=checksum, path=path, url=url)
         self.path: str = str(path)
         self.url: str = url
 
     @staticmethod
-    def generate_id(commit_sha: str, path: Union[Path, str]) -> str:
+    def generate_id(checksum: str, path: Union[Path, str], url: str) -> str:
         """Generate an id."""
+        parsed_url = urlparse(url)
+        prefix = quote(posixpath.join(parsed_url.netloc, parsed_url.path))
         path = quote(str(path))
-        return f"/remote-entity/{commit_sha}/{path}"
+        return f"/remote-entity/{prefix}/{checksum}/{path}"
 
     def __eq__(self, other):
         if self is other:
             return True
         if not isinstance(other, RemoteEntity):
             return False
-        return self.commit_sha == other.commit_sha and self.path == other.path and self.url == other.url
+        return self.checksum == other.checksum and self.path == other.path and self.url == other.url
 
     def __hash__(self):
-        return hash((self.commit_sha, self.path, self.url))
+        return hash((self.checksum, self.path, self.url))
 
 
 class DatasetFile(Slots):
@@ -230,8 +232,8 @@ class DatasetFile(Slots):
         super().__init__()
 
         self.based_on: RemoteEntity = based_on
-        self.date_added: datetime = fix_timezone(date_added) or local_now()
-        self.date_removed: datetime = fix_timezone(date_removed)
+        self.date_added: datetime = fix_datetime(date_added) or local_now()
+        self.date_removed: datetime = fix_datetime(date_removed)
         self.entity: Entity = entity
         self.id: str = id or DatasetFile.generate_id()
         self.is_external: bool = is_external
@@ -257,6 +259,14 @@ class DatasetFile(Slots):
         """
         return f"/dataset-files/{uuid4().hex}"
 
+    @classmethod
+    def from_dataset_file(cls, other: "DatasetFile") -> "DatasetFile":
+        """Return a copy with a different id."""
+        self = other.copy()
+        self.id = DatasetFile.generate_id()
+
+        return self
+
     def copy(self) -> "DatasetFile":
         """Return a clone of this object."""
         return copy.copy(self)
@@ -277,7 +287,7 @@ class DatasetFile(Slots):
 
     def remove(self, date: datetime = None):
         """Create a new instance and mark it as removed."""
-        date_removed = fix_timezone(date) or local_now()
+        date_removed = fix_datetime(date) or local_now()
         self.date_removed = date_removed
 
     def is_removed(self) -> bool:
@@ -326,6 +336,8 @@ class Dataset(Persistent):
         # if `date_published` is set, we are probably dealing with an imported dataset so `date_created` is not needed
         if date_published:
             date_created = None
+        else:
+            date_created = fix_datetime(date_created) or local_now()
         if initial_identifier is None:
             assert identifier is None, "Initial identifier can be None only when creating a new Dataset."
             initial_identifier = identifier = uuid4().hex
@@ -337,9 +349,9 @@ class Dataset(Persistent):
         self.creators: List[Person] = creators or []
         # `dataset_files` includes existing files and those that have been removed in the previous version
         self.dataset_files: List[DatasetFile] = dataset_files or []
-        self.date_created: datetime = fix_timezone(date_created) or local_now()
-        self.date_published: datetime = fix_timezone(date_published)
-        self.date_removed: datetime = fix_timezone(date_removed)
+        self.date_created: datetime = date_created
+        self.date_published: datetime = fix_datetime(date_published)
+        self.date_removed: datetime = fix_datetime(date_removed)
         self.derived_from: Url = derived_from
         self.description: str = description
         self.images: List[ImageObject] = images or []
@@ -463,7 +475,7 @@ class Dataset(Persistent):
 
     def remove(self, date: datetime = None):
         """Mark the dataset as removed."""
-        self.date_removed = fix_timezone(date) or local_now()
+        self.date_removed = fix_datetime(date) or local_now()
 
     def is_removed(self) -> bool:
         """Return true if dataset is removed."""
@@ -493,6 +505,7 @@ class Dataset(Persistent):
 
         # NOTE: Whatever remains in `current_files` are removed in the newer version
         for removed_file in current_files.values():
+            removed_file = DatasetFile.from_dataset_file(removed_file)
             removed_file.remove(date)
             files.append(removed_file)
 
@@ -517,6 +530,9 @@ class Dataset(Persistent):
         for name in editable_fields:
             value = getattr(other, name)
             setattr(self, name, value)
+
+        if self.date_published is not None:
+            self.date_created = None
 
     def update_metadata(self, **kwargs):
         """Updates metadata."""
@@ -598,7 +614,7 @@ class DatasetTagSchema(JsonLDSchema):
         model = DatasetTag
         unknown = EXCLUDE
 
-    dataset_id = fields.String(schema.location)
+    dataset_id = Nested(schema.about, UrlSchema, missing=None)
     date_created = fields.DateTime(schema.startDate, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     description = fields.String(schema.description, missing=None)
     id = fields.Id()
@@ -640,11 +656,11 @@ class RemoteEntitySchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Entity, schema.DigitalDocument]
+        rdf_type = [prov.Entity]
         model = RemoteEntity
         unknown = EXCLUDE
 
-    commit_sha = fields.String(renku.commit_sha)
+    checksum = fields.String(renku.checksum)
     id = fields.Id()
     path = fields.String(prov.atLocation)
     url = fields.String(schema.url)

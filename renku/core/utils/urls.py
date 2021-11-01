@@ -21,6 +21,7 @@ import os
 import re
 import unicodedata
 import urllib
+from typing import List
 from urllib.parse import ParseResult
 
 from yagup import GitURL
@@ -105,12 +106,17 @@ def get_remote(repo):
     return None, None
 
 
-def get_slug(name):
+def get_slug(name, invalid_chars: List[chr] = []):
     """Create a slug from name."""
     lower_case = name.lower()
     no_space = re.sub(r"\s+", "_", lower_case)
     normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
-    no_invalid_characters = re.sub(r"[^a-zA-Z0-9._-]", "_", normalized)
+
+    valid_chars_pattern = [r"\w", ".", "_", "-"]
+    if len(invalid_chars) > 0:
+        valid_chars_pattern = [ch for ch in valid_chars_pattern if ch not in invalid_chars]
+
+    no_invalid_characters = re.sub(f'[^{"".join(valid_chars_pattern)}]', "_", normalized)
     no_duplicates = re.sub(r"([._-])[._-]+", r"\1", no_invalid_characters)
     valid_start = re.sub(r"^[._-]", "", no_duplicates)
     valid_end = re.sub(r"[._-]$", "", valid_start)

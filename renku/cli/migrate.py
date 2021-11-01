@@ -46,18 +46,6 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import ERROR, INFO
-from renku.core.commands.migrate import (
-    AUTOMATED_TEMPLATE_UPDATE_SUPPORTED,
-    DOCKERFILE_UPDATE_POSSIBLE,
-    MIGRATION_REQUIRED,
-    NON_RENKU_REPOSITORY,
-    TEMPLATE_UPDATE_POSSIBLE,
-    UNSUPPORTED_PROJECT,
-    check_immutable_template_files_command,
-    check_project,
-    migrate_project,
-    migrations_check,
-)
 from renku.core.errors import MigrationRequired, ProjectNotSupported
 
 
@@ -67,8 +55,20 @@ from renku.core.errors import MigrationRequired, ProjectNotSupported
 @click.option(
     "-d", "--skip-docker-update", is_flag=True, hidden=True, help="Do not update Dockerfile to current renku version."
 )
-def migrate(check, skip_template_update, skip_docker_update):
+@click.option("-s", "--strict", is_flag=True, hidden=True, help="Abort migrations if an error is raised.")
+def migrate(check, skip_template_update, skip_docker_update, strict):
     """Check for migration and migrate to the latest Renku project version."""
+    from renku.core.commands.migrate import (
+        AUTOMATED_TEMPLATE_UPDATE_SUPPORTED,
+        DOCKERFILE_UPDATE_POSSIBLE,
+        MIGRATION_REQUIRED,
+        NON_RENKU_REPOSITORY,
+        TEMPLATE_UPDATE_POSSIBLE,
+        UNSUPPORTED_PROJECT,
+        check_project,
+        migrate_project,
+    )
+
     status = check_project().build().execute().output
 
     template_update_possible = status & TEMPLATE_UPDATE_POSSIBLE and status & AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
@@ -106,7 +106,9 @@ def migrate(check, skip_template_update, skip_docker_update):
     communicator = ClickCallback()
 
     command = migrate_project().with_communicator(communicator).with_commit()
-    result = command.build().execute(skip_template_update=skip_template_update, skip_docker_update=skip_docker_update)
+    result = command.build().execute(
+        skip_template_update=skip_template_update, skip_docker_update=skip_docker_update, strict=strict
+    )
 
     result, _, _ = result.output
 
@@ -119,6 +121,8 @@ def migrate(check, skip_template_update, skip_docker_update):
 @click.command(hidden=True)
 def migrationscheck():
     """Check status of the project and current renku-python version."""
+    from renku.core.commands.migrate import migrations_check
+
     result = migrations_check().lock_project().build().execute().output
     click.echo(json.dumps(result))
 
@@ -127,6 +131,8 @@ def migrationscheck():
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def check_immutable_template_files(paths):
     """Check specified paths if they are marked immutable in the template."""
+    from renku.core.commands.migrate import check_immutable_template_files_command
+
     result = check_immutable_template_files_command().build().execute(paths=paths)
     paths = result.output
     if paths:

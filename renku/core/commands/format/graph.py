@@ -22,8 +22,6 @@ import functools
 import click
 
 from renku.core.errors import OperationError, SHACLValidationError
-from renku.core.models.provenance.activity import Activity
-from renku.core.utils.shacl import validate_graph
 
 
 def ascii(graph, strict=False):
@@ -32,7 +30,7 @@ def ascii(graph, strict=False):
     from ..echo import echo_via_pager
 
     if strict:
-        raise SHACLValidationError("--strict not supported for json-ld-graph")
+        raise SHACLValidationError("--strict not supported for ascii")
 
     echo_via_pager(str(DAG(graph)))
 
@@ -50,9 +48,6 @@ def _jsonld(graph, format, *args, **kwargs):
 def _conjunctive_graph(graph):
     """Convert a renku ``Graph`` to an rdflib ``ConjunctiveGraph``."""
     from rdflib import ConjunctiveGraph
-    from rdflib.plugin import Parser, register
-
-    register("json-ld", Parser, "rdflib_jsonld.parser", "JsonLDParser")
 
     return ConjunctiveGraph().parse(data=_jsonld(graph, "expand"), format="json-ld")
 
@@ -312,9 +307,10 @@ def _rdf2dot_reduced(g, stream):
 
 def makefile(graph, strict=False):
     """Format graph as Makefile."""
+    from renku.core.models.provenance.activity import Activity
 
     if strict:
-        raise SHACLValidationError("--strict not supported for json-ld-graph")
+        raise SHACLValidationError("--strict not supported for makefile")
 
     for activity in graph:
         if not isinstance(activity, Activity):
@@ -329,7 +325,9 @@ def makefile(graph, strict=False):
 
 def jsonld(graph, strict=False, to_stdout=True):
     """Format graph as JSON-LD file."""
-    ld = _jsonld(graph, "expand")
+    from renku.core.utils.shacl import validate_graph
+
+    ld = _jsonld(graph, "flatten")
 
     if strict:
         r, _, t = validate_graph(ld, format="json-ld")
@@ -344,15 +342,10 @@ def jsonld(graph, strict=False, to_stdout=True):
     return ld
 
 
-def jsonld_graph(graph, strict=False):
-    """Format graph as JSON-LD graph file."""
-    if strict:
-        raise SHACLValidationError("--strict not supported for json-ld-graph")
-    click.echo(_jsonld(graph, "flatten"))
-
-
 def nt(graph, strict=False):
     """Format graph as n-tuples."""
+    from renku.core.utils.shacl import validate_graph
+
     nt = _conjunctive_graph(graph).serialize(format="nt")
     if strict:
         r, _, t = validate_graph(nt, format="nt")
@@ -365,6 +358,8 @@ def nt(graph, strict=False):
 
 def rdf(graph, strict=False):
     """Output the graph as RDF."""
+    from renku.core.utils.shacl import validate_graph
+
     xml = _conjunctive_graph(graph).serialize(format="application/rdf+xml")
     if strict:
         r, _, t = validate_graph(xml, format="xml")
@@ -384,8 +379,8 @@ FORMATS = {
 """Valid formatting options."""
 
 GRAPH_FORMATS = {
+    "jsonld": jsonld,
     "json-ld": jsonld,
-    "json-ld-graph": jsonld_graph,
     "nt": nt,
     "rdf": rdf,
     "dot": dot_full,

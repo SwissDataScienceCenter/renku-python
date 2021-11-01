@@ -21,10 +21,9 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
-from renku.core.models.workflow.composite_plan import CompositePlan
-from renku.core.models.workflow.plan import Plan
+from renku.core.models.workflow.plan import AbstractPlan
 
 
 class IWorkflowConverter(metaclass=ABCMeta):
@@ -37,7 +36,7 @@ class IWorkflowConverter(metaclass=ABCMeta):
 
     @abstractmethod
     def workflow_convert(
-        self, workflow: Union[CompositePlan, Plan], basedir: Path, output: Optional[Path], output_format: Optional[str]
+        self, workflow: AbstractPlan, basedir: Path, output: Optional[Path], output_format: Optional[str]
     ) -> str:
         """Converts a single workflow step to a desired workflow format."""
         pass

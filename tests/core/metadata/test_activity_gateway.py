@@ -20,9 +20,9 @@
 from datetime import datetime, timedelta
 
 from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
+from renku.core.models.provenance.activity import Activity, Association
 from renku.core.models.workflow.plan import Plan
+from tests.utils import create_dummy_activity
 
 
 def test_activity_gateway_get_latest_activity(dummy_database_injection_manager):
@@ -83,44 +83,9 @@ def test_activity_gateway_get_latest_plan_usages(dummy_database_injection_manage
     plan = Plan(id=Plan.generate_id(), name="plan")
     plan2 = Plan(id=Plan.generate_id(), name="plan2")
 
-    activity1_id = Activity.generate_id()
-    activity1 = Activity(
-        id=activity1_id,
-        ended_at_time=datetime.utcnow() - timedelta(hours=1),
-        association=Association(id=Association.generate_id(activity1_id), plan=plan),
-        usages=[
-            Usage(
-                id=Usage.generate_id(activity1_id),
-                entity=Entity(id=Entity.generate_id("abcdefg", "in1"), checksum="abcdefg", path="in1"),
-            )
-        ],
-    )
-
-    activity2_id = Activity.generate_id()
-    activity2 = Activity(
-        id=activity2_id,
-        ended_at_time=datetime.utcnow(),
-        association=Association(id=Association.generate_id(activity2_id), plan=plan),
-        usages=[
-            Usage(
-                id=Usage.generate_id(activity2_id),
-                entity=Entity(id=Entity.generate_id("abcdefg", "in1"), checksum="abcdefg", path="in1"),
-            )
-        ],
-    )
-
-    activity3_id = Activity.generate_id()
-    activity3 = Activity(
-        id=activity3_id,
-        ended_at_time=datetime.utcnow(),
-        association=Association(id=Association.generate_id(activity3_id), plan=plan2),
-        usages=[
-            Usage(
-                id=Usage.generate_id(activity3_id),
-                entity=Entity(id=Entity.generate_id("abcdefg", "in2"), checksum="abcdefg", path="in2"),
-            )
-        ],
-    )
+    activity1 = create_dummy_activity(plan=plan, usages=["in1"])
+    activity2 = create_dummy_activity(plan=plan, usages=["in1"])
+    activity3 = create_dummy_activity(plan=plan2, usages=["in2"])
 
     with dummy_database_injection_manager(None):
         activity_gateway = ActivityGateway()
@@ -136,86 +101,14 @@ def test_activity_gateway_get_latest_plan_usages(dummy_database_injection_manage
         assert latest_usages[plan2] == activity3.usages
 
 
-def test_activity_gateway_downstream_activities_and_chains(dummy_database_injection_manager):
-    """test getting downstream activities and activity chains work."""
-
+def test_activity_gateway_downstream_activities(dummy_database_injection_manager):
+    """test getting downstream activities work."""
     plan = Plan(id=Plan.generate_id(), name="plan")
 
-    intermediate_id = Activity.generate_id()
-    intermediate = Activity(
-        id=intermediate_id,
-        ended_at_time=datetime.utcnow() - timedelta(hours=1),
-        association=Association(id=Association.generate_id(intermediate_id), plan=plan),
-        generations=[
-            Generation(
-                id=Generation.generate_id(intermediate_id),
-                entity=Entity(
-                    id=Entity.generate_id("abcdefg", "intermediate_out"), checksum="abcdefg", path="intermediate_out"
-                ),
-            )
-        ],
-        usages=[
-            Usage(
-                id=Usage.generate_id(intermediate_id),
-                entity=Entity(
-                    id=Entity.generate_id("abcdefg", "intermediate_in"), checksum="abcdefg", path="intermediate_in"
-                ),
-            )
-        ],
-    )
-
-    previous_id = Activity.generate_id()
-    previous = Activity(
-        id=previous_id,
-        ended_at_time=datetime.utcnow() - timedelta(hours=1),
-        association=Association(id=Association.generate_id(previous_id), plan=plan),
-        generations=[
-            Generation(
-                id=Generation.generate_id(previous_id),
-                entity=Entity(
-                    id=Entity.generate_id("abcdefg", "intermediate_in"), checksum="abcdefg", path="intermediate_in"
-                ),
-            )
-        ],
-    )
-
-    following_id = Activity.generate_id()
-    following = Activity(
-        id=following_id,
-        ended_at_time=datetime.utcnow() - timedelta(hours=1),
-        association=Association(id=Association.generate_id(following_id), plan=plan),
-        usages=[
-            Usage(
-                id=Usage.generate_id(following_id),
-                entity=Entity(
-                    id=Entity.generate_id("abcdefg", "intermediate_out"), checksum="abcdefg", path="intermediate_out"
-                ),
-            )
-        ],
-    )
-
-    unrelated_id = Activity.generate_id()
-    unrelated = Activity(
-        id=unrelated_id,
-        ended_at_time=datetime.utcnow() - timedelta(hours=1),
-        association=Association(id=Association.generate_id(unrelated_id), plan=plan),
-        generations=[
-            Generation(
-                id=Generation.generate_id(unrelated_id),
-                entity=Entity(
-                    id=Entity.generate_id("abcdefg", "unrelated_out"), checksum="abcdefg", path="unrelated_out"
-                ),
-            )
-        ],
-        usages=[
-            Usage(
-                id=Usage.generate_id(unrelated_id),
-                entity=Entity(
-                    id=Entity.generate_id("abcdefg", "unrelated_in"), checksum="abcdefg", path="unrelated_in"
-                ),
-            )
-        ],
-    )
+    intermediate = create_dummy_activity(plan=plan, usages=["some/data"], generations=["other/data/file"])
+    previous = create_dummy_activity(plan=plan, generations=["some/"])
+    following = create_dummy_activity(plan=plan, usages=["other/data"])
+    unrelated = create_dummy_activity(plan=plan, usages=["unrelated_in"], generations=["unrelated_out"])
 
     with dummy_database_injection_manager(None):
         activity_gateway = ActivityGateway()
@@ -230,19 +123,75 @@ def test_activity_gateway_downstream_activities_and_chains(dummy_database_inject
         assert not downstream
 
         downstream = activity_gateway.get_downstream_activities(intermediate)
-        assert {following_id} == {a.id for a in downstream}
+        assert {following.id} == {a.id for a in downstream}
 
         downstream = activity_gateway.get_downstream_activities(previous)
-        assert {following_id, intermediate_id} == {a.id for a in downstream}
+        assert {following.id, intermediate.id} == {a.id for a in downstream}
 
-        downstream_chains = activity_gateway.get_downstream_activity_chains(following)
 
-        assert not downstream_chains
+def test_activity_gateway_downstream_activity_chains(dummy_database_injection_manager):
+    """test getting downstream activity chains work."""
+    r1 = create_dummy_activity(plan="r1", usages=["a"], generations=["b"])
+    r2 = create_dummy_activity(plan="r2", usages=["b"], generations=["c"])
+    r3 = create_dummy_activity(plan="r3", usages=["d"], generations=["e"])
+    r4 = create_dummy_activity(plan="r4", usages=["c", "e"], generations=["f", "g"])
+    r5 = create_dummy_activity(plan="r5", usages=["f"], generations=["h"])
+    r6 = create_dummy_activity(plan="r6", usages=["g"], generations=["i"])
+    r7 = create_dummy_activity(plan="r7", usages=["x"], generations=["y"])
 
-        downstream_chains = activity_gateway.get_downstream_activity_chains(intermediate)
-        assert [{following_id}] == [{a.id for a in chain} for chain in downstream_chains]
+    with dummy_database_injection_manager(None):
+        activity_gateway = ActivityGateway()
 
-        downstream_chains = activity_gateway.get_downstream_activity_chains(previous)
-        assert [{intermediate_id}, {following_id, intermediate_id}] == [
-            {a.id for a in chain} for chain in downstream_chains
-        ]
+        activity_gateway.add(r1)
+        activity_gateway.add(r3)
+        activity_gateway.add(r2)
+        activity_gateway.add(r4)
+        activity_gateway.add(r5)
+        activity_gateway.add(r6)
+        activity_gateway.add(r7)
+
+        assert [] == activity_gateway.get_downstream_activity_chains(r6)
+
+        downstream_chains = activity_gateway.get_downstream_activity_chains(r1)
+        assert {(r2.id,), (r2.id, r4.id), (r2.id, r4.id, r5.id), (r2.id, r4.id, r6.id)} == {
+            tuple(a.id for a in chain) for chain in downstream_chains
+        }
+
+        downstream_chains = activity_gateway.get_downstream_activity_chains(r4)
+        assert {(r5.id,), (r6.id,)} == {tuple(a.id for a in chain) for chain in downstream_chains}
+
+        assert [] == activity_gateway.get_downstream_activity_chains(r7)
+
+
+def test_activity_gateway_upstream_activity_chains(dummy_database_injection_manager):
+    """test getting upstream activity chains work."""
+    r1 = create_dummy_activity(plan="r1", usages=["a"], generations=["b"])
+    r2 = create_dummy_activity(plan="r2", usages=["b"], generations=["c"])
+    r3 = create_dummy_activity(plan="r3", usages=["d"], generations=["e"])
+    r4 = create_dummy_activity(plan="r4", usages=["c", "e"], generations=["f", "g"])
+    r5 = create_dummy_activity(plan="r5", usages=["f"], generations=["h"])
+    r6 = create_dummy_activity(plan="r6", usages=["g"], generations=["i"])
+    r7 = create_dummy_activity(plan="r7", usages=["x"], generations=["y"])
+
+    with dummy_database_injection_manager(None):
+        activity_gateway = ActivityGateway()
+
+        activity_gateway.add(r1)
+        activity_gateway.add(r3)
+        activity_gateway.add(r2)
+        activity_gateway.add(r4)
+        activity_gateway.add(r5)
+        activity_gateway.add(r6)
+        activity_gateway.add(r7)
+
+        assert [] == activity_gateway.get_upstream_activity_chains(r1)
+
+        downstream_chains = activity_gateway.get_upstream_activity_chains(r6)
+        assert {(r4.id,), (r4.id, r3.id), (r4.id, r2.id), (r4.id, r2.id, r1.id)} == {
+            tuple(a.id for a in chain) for chain in downstream_chains
+        }
+
+        downstream_chains = activity_gateway.get_upstream_activity_chains(r4)
+        assert {(r3.id,), (r2.id,), (r2.id, r1.id)} == {tuple(a.id for a in chain) for chain in downstream_chains}
+
+        assert [] == activity_gateway.get_upstream_activity_chains(r7)

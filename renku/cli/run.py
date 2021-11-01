@@ -28,6 +28,16 @@ Tracking execution of your command line script is done by simply adding the
 * input files or directories if linked to existing paths in the repository,
 * output files or directories if modified or created while running the command.
 
+It will create a ``Plan`` (Workflow Template) that can be reused and a ``Run``
+which is a record of a past workflow execution for provenance purposes. Refer
+to the :ref:`cli-workflow` documentation for more details on this distinction.
+
+Basic usage is:
+
+.. code-block:: console
+
+    $ renku run --name <plan name> -- <console command>
+
 .. note:: If there were uncommitted changes in the repository, then the
    ``renku run`` command fails. See :program:`git status` for details.
 
@@ -208,7 +218,6 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.options import option_isolation
-from renku.core.commands.run import run_command
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
@@ -244,6 +253,8 @@ def run(
     command_line,
 ):
     """Tracking work on a specific problem."""
+    from renku.core.commands.run import run_command
+
     communicator = ClickCallback()
     command = run_command()
 

@@ -24,7 +24,7 @@ import pytest
 
 from renku.core import errors
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
-from renku.core.management.workflow.value_resolution import apply_run_values
+from renku.core.management.workflow.value_resolution import CompositePlanValueResolver
 from renku.core.models.workflow.composite_plan import CompositePlan
 
 
@@ -229,14 +229,12 @@ def test_composite_plan_map_all_parameters(composite_plan):
             [],
             [],
             {
-                "steps": {
-                    "run1": {
-                        "run1_param2": "f",
-                    },
-                    "run2": {
-                        "run2_input2": "h",
-                    },
-                }
+                "run1": {
+                    "run1_param2": "f",
+                },
+                "run2": {
+                    "run2_input2": "h",
+                },
             },
             {
                 "run1": {
@@ -310,12 +308,10 @@ def test_composite_plan_map_all_parameters(composite_plan):
             ["m1=@step1.@input1", "m2=@step2.@output2"],
             ["m1=x", "m2=y"],
             {
-                "steps": {
-                    "run1": {
-                        "run1_param2": "f",
-                    },
-                    "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
-                }
+                "run1": {
+                    "run1_param2": "f",
+                },
+                "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
             },
             {
                 "run1": {
@@ -341,13 +337,11 @@ def test_composite_plan_map_all_parameters(composite_plan):
             ["m1=@step1.@input1", "m2=@step2.@output2"],
             ["m1=x", "m2=y"],
             {
-                "parameters": {"m2": "z"},
-                "steps": {
-                    "run1": {
-                        "run1_param2": "f",
-                    },
-                    "run2": {"run2_input2": "h"},  # NOTE: Override value provided by mapping
+                "m2": "z",
+                "run1": {
+                    "run1_param2": "f",
                 },
+                "run2": {"run2_input2": "h"},  # NOTE: Override value provided by mapping
             },
             {
                 "run1": {
@@ -373,13 +367,11 @@ def test_composite_plan_map_all_parameters(composite_plan):
             ["m1=@step1.@input1", "m2=@step2.@output2"],
             ["m1=x", "m2=y"],
             {
-                "parameters": {"m1": "42"},
-                "steps": {
-                    "run1": {
-                        "run1_param2": "f",
-                    },
-                    "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
+                "m1": "42",
+                "run1": {
+                    "run1_param2": "f",
                 },
+                "run2": {"run2_input2": "h", "run2_output2": "a"},  # NOTE: Override value provided by mapping
             },
             {
                 "run1": {
@@ -409,9 +401,10 @@ def test_composite_plan_actual_values(composite_plan, mappings, defaults, values
 
     grouped.set_mappings_from_strings(mappings)
     grouped.set_mapping_defaults(defaults)
-    apply_run_values(grouped, values)
+    rv = CompositePlanValueResolver(grouped, values)
 
-    actual = _get_nested_actual_values(grouped)
+    actual = _get_nested_actual_values(rv.apply())
+    assert len(rv.missing_parameters) == 0
 
     assert actual == expected
 
@@ -496,7 +489,10 @@ def test_composite_plan_auto_links(composite_plan, mappings, defaults, links, ra
     grouped.set_mappings_from_strings(mappings)
     grouped.set_mapping_defaults(defaults)
 
-    apply_run_values(grouped)
+    rv = CompositePlanValueResolver(grouped, None)
+    grouped = rv.apply()
+    assert len(rv.missing_parameters) == 0
+
     graph = ExecutionGraph(grouped, virtual_links=True)
 
     assert bool(graph.virtual_links) == links
