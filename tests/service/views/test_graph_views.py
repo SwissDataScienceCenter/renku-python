@@ -38,7 +38,7 @@ def test_graph_export_view(svc_client_cache, it_remote_repo_url):
         "migrate_project": True,
     }
 
-    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
+    response = svc_client.get("/v1.0/graph.export", data=json.dumps(payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -53,7 +53,7 @@ def test_graph_export_no_callback(svc_client_cache, it_remote_repo_url):
     svc_client, headers, _ = svc_client_cache
     payload = {"git_url": it_remote_repo_url, "revision": "HEAD", "migrate_project": True}
 
-    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
+    response = svc_client.get("/v1.0/graph.export", data=json.dumps(payload), headers=headers)
 
     assert response
     assert {"result": {"graph": None}} == response.json
@@ -68,6 +68,6 @@ def test_graph_export_no_revision(svc_client_cache, it_remote_repo_url):
 
     payload = {"git_url": it_remote_repo_url, "callback_url": "https://webhook.site", "migrate_project": True}
 
-    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
+    response = svc_client.get("/v1.0/graph.export", data=json.dumps(payload), headers=headers)
     assert response
     assert_rpc_response(response)
