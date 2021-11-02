@@ -59,7 +59,7 @@ Editing a dataset's metadata:
    :width: 600
    :alt: Editing a Dataset
 
-Use ``edit`` subcommand to change metadata of a dataset. You can edit the same
+Use the ``edit`` sub-command to change metadata of a dataset. You can edit the same
 set of metadata as the create command by passing the options described in the
 table above.
 

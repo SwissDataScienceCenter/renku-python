@@ -220,7 +220,7 @@ to refer to the input, output or argument named ``my_dataset` on the step
 to the first output of the second step of the composed workflow.
 
 Valid relative expressions are ``@input<n>``, ``@output<n>`` and ``@param<n>``
-for the n'th input, output or argument of a step, respectively. For referring
+for the nth input, output or argument of a step, respectively. For referring
 to steps inside a composed workflow, you can use ``@step<n>``. For referencing
 a mapping on a composed workflow, you can use ``@mapping<n>``. Of course, the
 names of the objects for all these cases also work.
@@ -274,7 +274,7 @@ using ``--map-inputs``, ``--map-outputs`` or ``--map-params``, respectively.
 On execution, renku will automatically detect links between steps, if an input
 of one step uses the same path as an output of another step, and execute
 them in the correct order. Since this depends on what values are passed
-at runtime, you might want to enforce a certain order of steps by explicitely
+at runtime, you might want to enforce a certain order of steps by explicitly
 mapping outputs to inputs.
 
 You can do that using the ``--link <source>=<sink>`` parameters, e.g.
@@ -284,7 +284,7 @@ path as ``step1.@output1``, irrespective of which values are passed at
 execution time.
 
 This way, you can ensure that the steps in your workflow are always executed
-in the correct order and that the dependencies between steps are modelled
+in the correct order and that the dependencies between steps are modeled
 correctly.
 
 Renku can also add links for you automatically based on the default values
@@ -371,7 +371,7 @@ Visualizing Executions
 You can visualize past Runs made with renku using the ``renku workflow
 visualize`` command.
 This will show a directed graph of executions and how they are connected. This
-way you can see exactly how a file was generated and what steps it involded.
+way you can see exactly how a file was generated and what steps it involved.
 It also supports an interactive mode that lets you explore the graph in a more
 detailed way.
 
