@@ -190,6 +190,7 @@ install_requires = [
     "pyshacl==0.17.2",
     "python-dateutil>=2.6.1,<2.8.3",
     "python-editor==1.0.4",
+    "python-gitlab>=2.10.1,<2.11",
     "PyYAML>=5.4,<=5.4.1",
     "rdflib>=6.0.0,<7.0",
     "requests>=2.23.0,<2.27.0",
