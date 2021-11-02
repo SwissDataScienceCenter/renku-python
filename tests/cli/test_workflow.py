@@ -17,8 +17,10 @@
 # limitations under the License.
 """Test ``workflow`` commands."""
 
+import functools
 import itertools
 import os
+import re
 import tempfile
 import uuid
 from pathlib import Path
@@ -785,3 +787,74 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
     assert output[1] is None
 
     assert "xyz\n" == Path("output4").read_text()
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+@pytest.mark.parametrize(
+    "workflow, parameters",
+    [
+        (("run", 'echo "a" > output'), {"run": {}}),
+        (
+            ("run", 'echo "a" > output'),
+            {"run": {"parameters": [["b", "c", "d"]], "outputs": [["foo", "bar", "foobar"]]}},
+        ),
+        (
+            ("run", 'echo "a" > output'),
+            {"run": {"parameters": [["b", "c", "d"]], "outputs": ["output_{loop_index}"]}},
+        ),
+    ],
+)
+def test_workflow_loop(runner, project, run_shell, client, workflow, parameters, provider):
+    """Test renku workflow loop."""
+
+    # Run a shell command with pipe.
+    output = run_shell(f"renku run --name {workflow[0]} -- {workflow[1]}")
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    execute_cmd = ["renku", "workflow", "loop", "-p", provider, workflow[0]]
+    if workflow[0] in parameters:
+        values = {}
+        outputs = []
+        loop_index_re = re.compile(r"{loop_index}")
+
+        if len(parameters[workflow[0]]) > 0:
+            database = Database.from_path(client.database_path)
+            plan = database["plans-by-name"][workflow[0]]
+
+            for item in itertools.zip_longest(plan.parameters, parameters[workflow[0]]["parameters"]):
+                if item[1] is not None:
+                    values[item[0].name] = item[1]
+
+            for item in itertools.zip_longest(plan.outputs, parameters[workflow[0]]["outputs"]):
+                if item[1] is not None:
+                    values[item[0].name] = item[1]
+                    if isinstance(item[1], str) and loop_index_re.search(item[1]):
+                        cardinality = functools.reduce(
+                            lambda prod, x: prod * len(x), parameters[workflow[0]]["parameters"], 1
+                        )
+                        outputs += [loop_index_re.sub(str(i), item[1]) for i in range(cardinality)]
+                    else:
+                        outputs += item[1]
+
+        fd, values_path = tempfile.mkstemp()
+        os.close(fd)
+        write_yaml(values_path, values)
+        execute_cmd += ["--mapping", values_path]
+
+        output = run_shell(" ".join(execute_cmd))
+
+        # Assert not allocated stderr.
+        assert output[1] is None
+
+        if len(parameters[workflow[0]]) == 0:
+            # no effective mapping was suppiled
+            # this should result in an error
+            assert output[0].startswith(b"Error:")
+            return
+
+        # check whether parameters setting was effective
+        for o in outputs:
+            assert Path(o).resolve().exists()

@@ -642,9 +642,7 @@ def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: 
     for collection in [loop_params["indexed"], loop_params["params"], *loop_params["tagged"].values()]:
         remove_keys = []
         for p in collection.keys():
-            keys = p.split(".")
-            # FIXME: depth!
-            if keys[0] in rv.missing_parameters:
+            if any(p.startswith(mp) for mp in rv.missing_parameters):
                 remove_keys.append(p)
 
         for rk in remove_keys:
@@ -694,7 +692,7 @@ def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: 
 
     def _flatten(values):
         for i in values:
-            if isinstance(i, list) or isinstance(i, tuple):
+            if isinstance(i, (list, tuple)):
                 for k in i:
                     yield k
             else:
