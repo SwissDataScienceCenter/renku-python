@@ -606,13 +606,13 @@ def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: 
                     continue
 
                 if TAG_MARKER_CHAR in k:
-                    tagged = k.split("@", maxsplit=1)
-                    if tagged[1] in loop_params["tagged"]:
-                        loop_params["tagged"][tagged[1]][tagged[0]] = v
+                    name, tag = k.split("@", maxsplit=1)
+                    if tag in loop_params["tagged"]:
+                        loop_params["tagged"][tag][name] = v
                     else:
-                        loop_params["tagged"][tagged[1]] = {tagged[0]: v}
+                        loop_params["tagged"][tag] = {name: v}
 
-                    params[tagged[0]] = v
+                    params[name] = v
                 else:
                     loop_params["params"][k] = v
                     params[k] = v
@@ -654,12 +654,10 @@ def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: 
         if len(tagged_params) == 0:
             empty_tags.append(k)
         else:
-            tag_size = -1
-            for p in tagged_params.values():
+            tag_size = len(tagged_params.values()[0])
+            for p in tagged_params.values()[1:]:
                 num_params = len(p)
-                if tag_size == -1:
-                    tag_size = num_params
-                elif tag_size != num_params:
+                if tag_size != num_params:
                     communication.error(
                         f"'{k}' tagged parameters '{tagged_params}' has different number of possible values!"
                     )
