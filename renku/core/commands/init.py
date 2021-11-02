@@ -38,9 +38,9 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.management.migrations.utils import OLD_METADATA_PATH
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.models.tabulate import tabulate
-from renku.core.management.migrations.utils import OLD_METADATA_PATH
 from renku.core.utils import communication
 from renku.version import __version__, is_release
 
