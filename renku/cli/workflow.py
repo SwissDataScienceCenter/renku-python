@@ -1077,8 +1077,18 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
     help="Print the generated plans with their parameters instead of executing.",
     show_default=True,
 )
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    default="cwltool",
+    show_default=True,
+    type=click.Choice(Proxy(_available_workflow_providers), case_sensitive=False),
+    help="The workflow engine to use.",
+)
+@click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
 @click.argument("name_or_id", required=True)
-def loop(name_or_id, mapping, dry_run):
+def loop(name_or_id, mapping, dry_run, provider, config):
     """Generate and execute a set of workflows based on provided set of parameters."""
     from renku.core.commands.workflow import loop_workflow_command
 
@@ -1096,5 +1106,5 @@ def loop(name_or_id, mapping, dry_run):
 
     communicator = ClickCallback()
     loop_workflow_command().with_communicator(communicator).build().execute(
-        name_or_id=name_or_id, mapping_path=mapping, dry_run=dry_run
+        name_or_id=name_or_id, mapping_path=mapping, dry_run=dry_run, provider=provider, config=config
     )
