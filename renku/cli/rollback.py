@@ -42,10 +42,10 @@ deleted/lost.
 
     Metadata:
 
-    Entities that would be modified:
+        Modified ♻️:
             Dataset: e
 
-    Entities that would be removed:
+        Removed 🔥:
             Plan: cp-blabla-asdasf-0b535
             Plan: test
             Run: /activities/cc3ab70952fc499e93e7e4075a076bf5 (Plan name: cp-blabla-asdasf-0b535)
@@ -53,10 +53,10 @@ deleted/lost.
 
     Files:
 
-    Files that would be restored:
+        Restored ↻:
             blabla
 
-    Files that would be removed:
+        Removed 🔥:
             asdasf
 
     Proceed? [y/N]: y
