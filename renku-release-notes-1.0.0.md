@@ -50,7 +50,18 @@ You can use the `Plans` you create as building blocks for more complicated pipel
 
 To see how a file was created, we have a new command `renku workflow visualize` that shows a graph of all the workflows involved in creating a file. Try out its `-i` flag for interactive mode!
 
-[TODO: Insert something about renku workflow loop, ideally with asciinema]
+You can use `renku workflow loop` command to run your existing `Plans` with different parametrization. Simply create a YAML file for your `Plan`, where list all the parameters that you would liketo run with different values. These possible values for a parameter should be given as a list. In some circumstances, one would like to mark each iteration of the loop in a parameter, for such case one could use the `{loop_index}` template in the parameter's value. The template variable is going to be substituted with the loop index (0, 1, 2, ...).
+
+For example, in case of a `Plan` that trains a simple machine learning model, the mapping file could look like something like this:
+```
+learning_rate-3: [0.01, 0.001, 0.0001]
+n_estimators-4: [100, 200, 300, 400]
+output-5: model_{loop_index}
+```
+
+Once you created the parameter mapping file, simply run `renku workflow --mapping values.yaml my-plan`.
+
+![loop|690x453](loop.gif)
 
 You can also export your `Plans` into various formats such as CWL (Common Workflow Language) using `renku workflow export`, which allows you to run them outside of renku.
 
