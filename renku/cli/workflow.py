@@ -1071,7 +1071,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 )
 @click.option(
     "--dry-run",
-    "dry_run",
+    "-n",
     is_flag=True,
     default=False,
     help="Print the generated plans with their parameters instead of executing.",

@@ -335,7 +335,7 @@ myworkflow:
         language: en
 ```
 
-where the the paramaters with list values are considered as the loop parameters and the templated variable `{loop_index}` is substituted with the loop index (1, 2, 3, ...).
+where the the paramaters with list values are considered as the loop parameters and the templated variable `{loop_index}` is substituted with the loop index (0, 1, 2, ...).
 There are two distinct type of loop paramaters:
  1. The parameter's value is a simple list, `alpha` and `beta` in the above example. These list values are simply the possible values of the given parameter. The loop command will generate the cartesian product of these possible values and will be used in each iteration. Hence, the length of the list of possible values is not constrained, i.e. it can contain arbitrary amount of values.
  2. Tagged loop parameters, `gamma` and `delta` in the above example. A parameter can be tagged in the values file by adding the `@<TAG>` suffix to the parameter's name. Parameters of the same tag shall have the same number of possible values. This is because these values are going to be iterated over as a tuple, in the provided order. For example in case of `gamma` and `delta` the workflow loop would simply result in three iterations: `[(1.0, 10.0), (2.0, 20.0), (3.0, 30.0)]`

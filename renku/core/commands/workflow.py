@@ -19,6 +19,7 @@
 
 
 import itertools
+import re
 import uuid
 from collections import defaultdict
 from datetime import datetime
@@ -579,70 +580,66 @@ def visualize_graph_command():
     return Command().command(_visualize_graph).require_migration().with_database(write=False)
 
 
-def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: str, config: Optional[str]):
-    import copy
-    import re
+def _extract_loop_parameters(values: Dict[str, Any], loop_index_pattern: re.Pattern, tag_separator: str = "@"):
+    """Recursively extracts the loop paramaters from the workflow values given by the user."""
+    loop_params = {"indexed": {}, "params": {}, "tagged": {}}
+    params = {}
+    for param_name, param_value in values.items():
+        if isinstance(param_value, str) and loop_index_pattern.search(param_value):
+            loop_params["indexed"][param_name] = param_value
+            params[param_name] = param_value
+        elif isinstance(param_value, list):
+            if len(param_value) == 1:
+                communication.warn(
+                    f"The parameter '{param_name}' has only one element '{param_value}', "
+                    "changing it to be a fixed parameter!"
+                )
+                params[param_name] = param_value[0]
+                continue
 
-    from deepmerge import always_merger
-
-    from renku.core.models.tabulate import tabulate
-
-    loop_index_re = re.compile(r"{loop_index}")
-    TAG_MARKER_CHAR = "@"
-
-    def _extract_loop_parameters(values):
-        loop_params = {"indexed": {}, "params": {}, "tagged": {}}
-        params = {}
-        for k, v in values.items():
-            if isinstance(v, str) and loop_index_re.search(v):
-                loop_params["indexed"][k] = v
-                params[k] = v
-            elif isinstance(v, list):
-                if len(v) == 1:
-                    communication.warn(
-                        f"The parameter '{k}' has only one element '{v}', changing it to be a fixed parameter!"
-                    )
-                    params[k] = v[0]
-                    continue
-
-                if TAG_MARKER_CHAR in k:
-                    name, tag = k.split("@", maxsplit=1)
-                    if tag in loop_params["tagged"]:
-                        loop_params["tagged"][tag][name] = v
-                    else:
-                        loop_params["tagged"][tag] = {name: v}
-
-                    params[name] = v
+            if tag_separator in param_name:
+                name, tag = param_name.split(tag_separator, maxsplit=1)
+                if tag in loop_params["tagged"]:
+                    loop_params["tagged"][tag][name] = param_value
                 else:
-                    loop_params["params"][k] = v
-                    params[k] = v
-            elif isinstance(v, dict):
-                inner_loop_params, inner_params = _extract_loop_parameters(v)
-                loop_params["params"].update([(f"{k}.{ik}", iv) for ik, iv in inner_loop_params["params"].items()])
-                loop_params["indexed"].update([(f"{k}.{ik}", iv) for ik, iv in inner_loop_params["indexed"].items()])
-                for tag, param in inner_loop_params["tagged"].items():
-                    if tag in loop_params["tagged"]:
-                        loop_params["tagged"][tag].update([(f"{k}.{ik}", iv) for ik, iv in param.items()])
-                    else:
-                        loop_params["tagged"][tag] = dict([(f"{k}.{ik}", iv) for ik, iv in param.items()])
-                params[k] = inner_params
+                    loop_params["tagged"][tag] = {name: param_value}
+
+                params[name] = param_value
             else:
-                params[k] = v
-        return loop_params, params
+                loop_params["params"][param_name] = param_value
+                params[param_name] = param_value
+        elif isinstance(param_value, dict):
+            inner_loop_params, inner_params = _extract_loop_parameters(param_value, loop_index_pattern, tag_separator)
+            loop_params["params"].update([(f"{param_name}.{ik}", iv) for ik, iv in inner_loop_params["params"].items()])
+            loop_params["indexed"].update(
+                [(f"{param_name}.{ik}", iv) for ik, iv in inner_loop_params["indexed"].items()]
+            )
+            for tag, param in inner_loop_params["tagged"].items():
+                if tag in loop_params["tagged"]:
+                    loop_params["tagged"][tag].update([(f"{param_name}.{ik}", iv) for ik, iv in param.items()])
+                else:
+                    loop_params["tagged"][tag] = dict([(f"{param_name}.{ik}", iv) for ik, iv in param.items()])
+            params[param_name] = inner_params
+        else:
+            params[param_name] = param_value
+    return loop_params, params
 
-    workflow = _find_workflow(name_or_id)
-    mapping = _safe_read_yaml(mapping_path)
 
-    loop_params, workflow_params = _extract_loop_parameters(mapping)
+def _validate_loop_parameters(
+    workflow: AbstractPlan, workflow_params: Dict[str, Any], loop_params: Dict[str, Any], mapping_path: str
+) -> Dict[str, Any]:
+    """Validates the user provided loop parameters."""
+    import copy
 
-    # user input validation
-    rv = ValueResolver.get(workflow, workflow_params)
+    rv = ValueResolver.get(copy.deepcopy(workflow), workflow_params)
     rv.apply()
 
+    mp_paths = [mp.split(".") for mp in rv.missing_parameters]
     for collection in [loop_params["indexed"], loop_params["params"], *loop_params["tagged"].values()]:
         remove_keys = []
         for p in collection.keys():
-            if any(p.startswith(mp) for mp in rv.missing_parameters):
+            parameter_path = p.split(".")
+            if any(parameter_path[: len(mp)] == mp for mp in mp_paths):
                 remove_keys.append(p)
 
         for rk in remove_keys:
@@ -654,13 +651,15 @@ def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: 
         if len(tagged_params) == 0:
             empty_tags.append(k)
         else:
-            tag_size = len(tagged_params.values()[0])
-            for p in tagged_params.values()[1:]:
+            tagged_params_values = list(tagged_params.values())
+            tag_size = len(tagged_params_values[0])
+            for p in tagged_params_values[1:]:
                 num_params = len(p)
                 if tag_size != num_params:
                     communication.error(
                         f"'{k}' tagged parameters '{tagged_params}' has different number of possible values!"
                     )
+                    return None
 
     for et in empty_tags:
         loop_params["tagged"].pop(et)
@@ -670,22 +669,33 @@ def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: 
             f"Please check the specified mapping file '{mapping_path}' as "
             f"none of the provided loop paramaters are present in '{workflow.name}' workflow"
         )
-        return
+        return None
 
     if rv.missing_parameters:
-        communication.warn(
+        communication.confirm(
             f'Could not resolve the following parameters in "{workflow.name}" workflow: '
-            f'{", ".join(rv.missing_parameters)}'
+            f'{", ".join(rv.missing_parameters)}. Resume the execution?',
+            abort=True,
         )
 
-    # construct iterations
+    return loop_params
+
+
+def _build_loop_iterations(
+    workflow: AbstractPlan, workflow_params: Dict[str, Any], loop_params: Dict[str, Any], loop_index_pattern: re.Pattern
+) -> List[AbstractPlan]:
+    """Instantiate the workflows for each iteration of the loop."""
+    import copy
+
+    from deepmerge import always_merger
+
     plans = []
     execute_plan = []
 
     columns = list(loop_params["params"].keys())
     tagged_values = []
     for tag in loop_params["tagged"].values():
-        columns += tag.keys()
+        columns.extend(tag.keys())
         tagged_values.append(zip(*tag.values()))
 
     def _flatten(values):
@@ -700,7 +710,7 @@ def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: 
         plan_params = copy.deepcopy(workflow_params)
         iteration_values = {}
         for k, v in loop_params["indexed"].items():
-            value = loop_index_re.sub(str(i), v)
+            value = loop_index_pattern.sub(str(i), v)
             set_param = reduce(lambda x, y: {y: x}, reversed(k.split(".")), value)
             plan_params = always_merger.merge(plan_params, set_param)
             iteration_values[k] = value
@@ -713,6 +723,24 @@ def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: 
         execute_plan.append(iteration_values)
         rv = ValueResolver.get(copy.deepcopy(workflow), plan_params)
         plans.append(rv.apply())
+
+    return plans, execute_plan
+
+
+def _loop_workflow(name_or_id: str, mapping_path: str, dry_run: bool, provider: str, config: Optional[str]):
+    from renku.core.models.tabulate import tabulate
+
+    workflow = _find_workflow(name_or_id)
+    mapping = _safe_read_yaml(mapping_path)
+
+    loop_index_pattern = re.compile(r"{loop_index}")
+    loop_params, workflow_params = _extract_loop_parameters(mapping, loop_index_pattern)
+
+    loop_params = _validate_loop_parameters(workflow, workflow_params, loop_params, mapping_path)
+    if loop_params is None:
+        return
+
+    plans, execute_plan = _build_loop_iterations(workflow, workflow_params, loop_params, loop_index_pattern)
 
     communication.echo(f"\n\n{tabulate(execute_plan, execute_plan[0].keys())}")
     if not dry_run:

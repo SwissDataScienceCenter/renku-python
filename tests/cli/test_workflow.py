@@ -17,7 +17,6 @@
 # limitations under the License.
 """Test ``workflow`` commands."""
 
-import functools
 import itertools
 import os
 import re
@@ -791,70 +790,71 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize(
-    "workflow, parameters",
+    "workflow, parameters, num_iterations",
     [
-        (("run", 'echo "a" > output'), {"run": {}}),
+        ('echo "a" > output', {}, 0),
+        ('echo "a" > output', {"parameter-1": ["b", "c", "d"], "output-2": "output_{loop_index}"}, 3),
         (
-            ("run", 'echo "a" > output'),
-            {"run": {"parameters": [["b", "c", "d"]], "outputs": [["foo", "bar", "foobar"]]}},
+            "head -n 1 Dockerfile > output",
+            {
+                "input-2": ["environment.yml", "Dockerfile", "requirements.txt"],
+                "n-1": ["3", "4"],
+                "output-3": "output_{loop_index}",
+            },
+            6,
         ),
         (
-            ("run", 'echo "a" > output'),
-            {"run": {"parameters": [["b", "c", "d"]], "outputs": ["output_{loop_index}"]}},
+            "head -n 1 Dockerfile > output",
+            {
+                "input-2@tag1": ["environment.yml", "Dockerfile", "requirements.txt"],
+                "n-1@tag1": ["3", "4", "5"],
+                "output-3": "output_{loop_index}",
+            },
+            3,
         ),
     ],
 )
-def test_workflow_loop(runner, project, run_shell, client, workflow, parameters, provider):
+def test_workflow_loop(runner, run_shell, client, workflow, parameters, provider, num_iterations):
     """Test renku workflow loop."""
 
+    workflow_name = "foobar"
+
     # Run a shell command with pipe.
-    output = run_shell(f"renku run --name {workflow[0]} -- {workflow[1]}")
+    output = run_shell(f"renku run --name {workflow_name} -- {workflow}")
     # Assert expected empty stdout.
     assert b"" == output[0]
     # Assert not allocated stderr.
     assert output[1] is None
 
-    execute_cmd = ["renku", "workflow", "loop", "-p", provider, workflow[0]]
-    if workflow[0] in parameters:
-        values = {}
-        outputs = []
-        loop_index_re = re.compile(r"{loop_index}")
+    loop_cmd = ["renku", "workflow", "loop", "-p", provider, workflow_name]
+    outputs = []
+    loop_index_re = re.compile(r"{loop_index}")
 
-        if len(parameters[workflow[0]]) > 0:
-            database = Database.from_path(client.database_path)
-            plan = database["plans-by-name"][workflow[0]]
+    for k, v in filter(lambda x: x[0].startswith("output"), parameters.items()):
+        if isinstance(v, str) and loop_index_re.search(v):
+            outputs += [loop_index_re.sub(str(i), v) for i in range(num_iterations)]
+        else:
+            outputs.extend(v)
 
-            for item in itertools.zip_longest(plan.parameters, parameters[workflow[0]]["parameters"]):
-                if item[1] is not None:
-                    values[item[0].name] = item[1]
+    fd, values_path = tempfile.mkstemp()
+    os.close(fd)
+    write_yaml(values_path, parameters)
+    loop_cmd += ["--mapping", values_path]
 
-            for item in itertools.zip_longest(plan.outputs, parameters[workflow[0]]["outputs"]):
-                if item[1] is not None:
-                    values[item[0].name] = item[1]
-                    if isinstance(item[1], str) and loop_index_re.search(item[1]):
-                        cardinality = functools.reduce(
-                            lambda prod, x: prod * len(x), parameters[workflow[0]]["parameters"], 1
-                        )
-                        outputs += [loop_index_re.sub(str(i), item[1]) for i in range(cardinality)]
-                    else:
-                        outputs += item[1]
+    output = run_shell(" ".join(loop_cmd))
 
-        fd, values_path = tempfile.mkstemp()
-        os.close(fd)
-        write_yaml(values_path, values)
-        execute_cmd += ["--mapping", values_path]
+    # Assert not allocated stderr.
+    assert output[1] is None
 
-        output = run_shell(" ".join(execute_cmd))
+    # Check for error keyword in stdout
+    assert b"error" not in output[0]
 
-        # Assert not allocated stderr.
-        assert output[1] is None
+    if len(parameters) == 0:
+        # no effective mapping was suppiled
+        # this should result in an error
+        assert output[0].startswith(b"Error:")
+        return
 
-        if len(parameters[workflow[0]]) == 0:
-            # no effective mapping was suppiled
-            # this should result in an error
-            assert output[0].startswith(b"Error:")
-            return
-
-        # check whether parameters setting was effective
-        for o in outputs:
-            assert Path(o).resolve().exists()
+    # check whether parameters setting was effective
+    for o in outputs:
+        assert Path(o).resolve().exists()
