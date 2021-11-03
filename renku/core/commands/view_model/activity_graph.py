@@ -68,12 +68,15 @@ class ActivityGraphViewModel:
         from grandalf.layouts import SugiyamaLayout
         from grandalf.routing import EdgeViewer, route_with_lines
 
+        from renku.core.models.provenance.activity import Activity
+
         columns = [ACTIVITY_GRAPH_COLUMNS[c] for c in columns.split(",")]
 
         self.layouts = []
 
         components = networkx.weakly_connected_components(self.graph)
         subgraphs = [self.graph.subgraph(component).copy() for component in components]
+        subgraphs = filter(lambda s: any(isinstance(n, Activity) for n in s), subgraphs)
         subgraphs = sorted(subgraphs, key=self._subgraph_order_key)
 
         for subgraph in subgraphs:
