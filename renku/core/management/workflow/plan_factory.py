@@ -543,7 +543,7 @@ class PlanFactory:
                 candidates |= {file_ for file_ in repository.untracked_files}
 
                 # Capture modified files through redirects.
-                candidates |= {o.a_path for o in repository.modified_changes if not o.deleted}
+                candidates |= {o.a_path for o in repository.unstaged_changes if not o.deleted}
 
             # Include explicit outputs
             candidates |= {str(path.relative_to(self.working_dir)) for path in self.explicit_outputs}

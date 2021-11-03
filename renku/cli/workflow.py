@@ -502,7 +502,6 @@ from renku.core import errors
 from renku.core.commands.echo import ERROR
 from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
 from renku.core.commands.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
-from renku.core.utils.os import print_markdown
 
 if TYPE_CHECKING:
     from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
@@ -525,6 +524,8 @@ def _available_workflow_providers():
 
 def _print_plan(plan: "PlanViewModel"):
     """Print a plan to stdout."""
+    from renku.core.utils.os import print_markdown
+
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(plan.name, bold=True))
 
@@ -607,6 +608,8 @@ def _print_plan(plan: "PlanViewModel"):
 
 def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
     """Print a CompositePlan to stdout."""
+    from renku.core.utils.os import print_markdown
+
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(composite_plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(composite_plan.name, bold=True))
 

@@ -429,7 +429,6 @@ from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
-from renku.core.utils.os import print_markdown
 
 
 @click.group()
@@ -575,6 +574,7 @@ def edit(name, title, description, creators, metadata, keyword):
 def show(name):
     """Show metadata of a dataset."""
     from renku.core.commands.dataset import show_dataset
+    from renku.core.utils.os import print_markdown
 
     result = show_dataset().build().execute(name=name)
     ds = result.output

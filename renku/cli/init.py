@@ -196,7 +196,6 @@ import click
 
 from renku.core import errors
 from renku.core.commands.options import option_external_storage_requested
-from renku.core.utils.git import check_global_git_user_is_configured
 
 _GITLAB_CI = ".gitlab-ci.yml"
 _DOCKERFILE = "Dockerfile"
@@ -308,6 +307,7 @@ def init(
     """Initialize a project in PATH. Default is the current path."""
     from renku.cli.utils.callback import ClickCallback
     from renku.core.commands.init import init_command
+    from renku.core.utils.git import check_global_git_user_is_configured
 
     data_dir = resolve_data_directory(data_dir, path)
 

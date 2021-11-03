@@ -47,7 +47,7 @@ def prepare_commit(
     diff_before = set()
 
     if commit_only == COMMIT_DIFF_STRATEGY:
-        if len(client.repository.staged_changes) > 0 or len(client.repository.modified_changes) > 0:
+        if len(client.repository.staged_changes) > 0 or len(client.repository.unstaged_changes) > 0:
             client.repository.reset()
 
         # Exclude files created by pipes.
@@ -80,7 +80,7 @@ def finalize_commit(
 
     committer = Actor(name=f"renku {__version__}", email=version_url)
 
-    change_types = {item.a_path: item.change_type for item in client.repository.modified_changes}
+    change_types = {item.a_path: item.change_type for item in client.repository.unstaged_changes}
 
     if commit_only == COMMIT_DIFF_STRATEGY:
         # Get diff generated in command.
@@ -295,7 +295,7 @@ class GitCore:
     @property
     def modified_paths(self):
         """Return paths of modified files."""
-        return [item.b_path for item in self.repository.modified_changes if item.b_path]
+        return [item.b_path for item in self.repository.unstaged_changes if item.b_path]
 
     @property
     def dirty_paths(self):
@@ -325,7 +325,7 @@ class GitCore:
         # Keep only unchanged files in the output paths.
         tracked_paths = {
             diff.b_path
-            for diff in self.repository.modified_changes
+            for diff in self.repository.unstaged_changes
             if diff.change_type in {"A", "R", "M", "T"} and diff.b_path in tested_paths
         }
         unchanged_paths = tested_paths - tracked_paths

@@ -93,3 +93,12 @@ def normalize_to_ascii(input_string, sep="-"):
         .lower()
         .strip(sep)
     )
+
+
+def delete_file(path: Union[Path, str], ignore_errors: bool = True):
+    """Delete a file."""
+    try:
+        os.unlink(path)
+    except OSError:
+        if not ignore_errors:
+            raise

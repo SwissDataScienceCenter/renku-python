@@ -31,7 +31,7 @@ from typing import Any, BinaryIO, Callable, Dict, Generator, List, NamedTuple, O
 import git
 
 from renku.core import errors
-from renku.core.utils.os import get_absolute_path
+from renku.core.utils.os import delete_file, get_absolute_path
 
 NULL_TREE = git.NULL_TREE
 _MARKER = object()
@@ -121,7 +121,7 @@ class BaseRepository:
             raise errors.GitError("Cannot get staged changes") from e
 
     @property
-    def modified_changes(self) -> List["Diff"]:
+    def unstaged_changes(self) -> List["Diff"]:
         """Return a list of changes that are not staged."""
         try:
             diff = self._repository.index.diff(None, ignore_submodules=True)
@@ -252,13 +252,8 @@ class BaseRepository:
         """Remove paths from repository or index."""
         self.run_git_command("rm", "--", *paths, cached=index, ignore_unmatch=not_exists_ok, r=recursive, force=force)
 
-    def reset(
-        self, reference: Union["Branch", "Commit", "Reference", str] = None, hard: bool = False, soft: bool = False
-    ):
+    def reset(self, reference: Union["Branch", "Commit", "Reference", str] = None, hard: bool = False):
         """Reset a git repository to a given reference."""
-        if hard:
-            assert not soft, "Cannot set both hard and soft to true"
-
         self.run_git_command("reset", _to_string(reference), hard=hard)
 
     def status(self) -> str:
@@ -349,7 +344,10 @@ class BaseRepository:
         output = self.copy_content_to_file(path=path, checksum=checksum, revision=revision)
         output = Path(output)
 
-        return output.read_bytes() if binary else output.read_text()
+        content = output.read_bytes() if binary else output.read_text()
+        delete_file(output)
+
+        return content
 
     def get_raw_content(self, *, path: Union[Path, str], revision: str = None, checksum: str = None) -> str:
         """Get raw content of a file in a given revision as text without applying any filter on it."""
@@ -584,11 +582,8 @@ class Submodule(BaseRepository):
             pass
 
     @classmethod
-    def from_submodule(cls, parent: git.Repo, submodule: Optional[git.Submodule]) -> Optional["Submodule"]:
+    def from_submodule(cls, parent: git.Repo, submodule: git.Submodule) -> "Submodule":
         """Create an instance from a git submodule."""
-        if submodule is None:
-            return
-
         path = Path(parent.working_dir) / submodule.path
         return cls(parent=parent, name=submodule.name, path=path, url=submodule.url)
 

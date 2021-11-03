@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 CLI_GITLAB_ENDPOINT = "repos"
 
 
+# TODO: Make sure caching is thread-safe
 _entity_cache = {}
 
 
