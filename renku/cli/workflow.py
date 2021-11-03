@@ -215,7 +215,7 @@ of workflows and properties, and relative references specifying the
 position within a workflow.
 
 An absolute expression in the example above could be ``step1.my_dataset``
-to refer to the input, output or argument named ``my_dataset` on the step
+to refer to the input, output or argument named ``my_dataset`` on the step
 ``step1``. A relative expression could be ``@step2.@output1`` to refer
 to the first output of the second step of the composed workflow.
 
