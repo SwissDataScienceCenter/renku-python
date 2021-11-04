@@ -19,7 +19,8 @@
 
 import copy
 import datetime
-from typing import Tuple
+from pathlib import Path
+from typing import Tuple, Union
 
 import pytest
 
@@ -75,7 +76,7 @@ class DummyDatabaseDispatcher:
         """Get the currently active database."""
         return self.database
 
-    def push_database_to_stack(self, path: str, commit: bool = False) -> None:
+    def push_database_to_stack(self, path: Union[Path, str], commit: bool = False) -> None:
         """Create and push a new database to the stack."""
         pass
 

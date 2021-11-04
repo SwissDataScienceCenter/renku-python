@@ -27,9 +27,9 @@ from pathlib import Path
 
 from cwlgen import CommandLineTool, parse_cwl
 from cwlgen.requirements import InitialWorkDirRequirement
-from git import NULL_TREE, Actor
 from werkzeug.utils import secure_filename
 
+from renku.core import errors
 from renku.core.management.migrations.models.v3 import Dataset
 from renku.core.management.migrations.models.v9 import (
     Collection,
@@ -45,9 +45,8 @@ from renku.core.management.migrations.models.v9 import (
     WorkflowRun,
 )
 from renku.core.management.migrations.utils import OLD_DATASETS_PATH, OLD_WORKFLOW_PATH, MigrationType
+from renku.core.metadata.repository import Actor, Commit, git_unicode_unescape
 from renku.core.utils import communication
-from renku.core.utils.git import add_to_git
-from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
 default_missing_software_agent = SoftwareAgent(
@@ -70,7 +69,7 @@ def _migrate_old_workflows(client):
         commit1 = e1[1]
         commit2 = e2[1]
 
-        return _compare_commits(client, commit1, commit2)
+        return commit1.compare_to(commit2)
 
     cache = RepositoryCache.from_client(client)
     client.cache = cache
@@ -92,15 +91,12 @@ def _migrate_old_workflows(client):
         path = _migrate_cwl(client, cwl_file, commit)
         os.remove(cwl_file)
 
-        paths = [cwl_file, path]
-        add_to_git(client.repo.git, *paths)
+        client.repository.add(cwl_file, path)
 
-        if client.repo.is_dirty():
-            commit_msg = "renku migrate: " "committing migrated workflow"
-
-            committer = Actor("renku {0}".format(__version__), version_url)
-
-            client.repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
+        if client.repository.is_dirty():
+            commit_msg = "renku migrate: committing migrated workflow"
+            committer = Actor(name=f"renku {__version__}", email=version_url)
+            client.repository.commit(commit_msg, committer=committer, no_verify=True)
 
 
 def _migrate_cwl(client, path, commit):
@@ -350,7 +346,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
 
 def _entity_from_path(client, path, commit):
     """Gets the entity associated with a path."""
-    client, commit, path = client.resolve_in_submodules(client.cache.find_previous_commit(path, revision=commit), path)
+    client, commit, path = client.get_in_submodules(client.cache.find_previous_commit(path, revision=commit), path)
 
     entity_cls = Entity
     if (client.path / path).is_dir():
@@ -362,17 +358,16 @@ def _entity_from_path(client, path, commit):
         return entity_cls(commit=commit, client=client, path=str(path))
 
 
-def _invalidations_from_commit(client, commit):
+def _invalidations_from_commit(client, commit: Commit):
     """Gets invalidated files from a commit."""
     results = []
     collections = dict()
-    for file_ in commit.diff(commit.parents or NULL_TREE):
-        # only process deleted files (note they appear as ADDED)
-        # in this backwards diff
-        if file_.change_type != "A":
+    for file in commit.get_changes():
+        # NOTE: only process deleted files
+        if not file.deleted:
             continue
-        path_ = Path(git_unicode_unescape(file_.a_path))
-        entity = _get_activity_entity(client, commit, path_, collections, deleted=True)
+        path = Path(file.a_path)
+        entity = _get_activity_entity(client, commit, path, collections, deleted=True)
 
         results.append(entity)
 
@@ -381,7 +376,7 @@ def _invalidations_from_commit(client, commit):
 
 def _get_activity_entity(client, commit, path, collections, deleted=False):
     """Gets the entity associated with this Activity and path."""
-    client, commit, path = client.resolve_in_submodules(commit, path)
+    client, commit, path = client.get_in_submodules(commit, path)
     output_path = client.path / path
     parents = list(output_path.relative_to(client.path).parents)
 
@@ -428,7 +423,7 @@ def parse_cwl_cached(path):
 
 
 class RepositoryCache:
-    """Cache for a git repo."""
+    """Cache for a git repository."""
 
     def __init__(self, client, cache, cwl_files_commits):
         self.client = client
@@ -437,33 +432,33 @@ class RepositoryCache:
 
     @classmethod
     def from_client(cls, client):
-        """Return a cached repo."""
+        """Return a cached repository."""
         cache = defaultdict(list)
         cwl_files_commits_map = {}
 
-        for n, commit in enumerate(client.repo.iter_commits(full_history=True), start=1):
+        for n, commit in enumerate(client.repository.iterate_commits(full_history=True), start=1):
             communication.echo(f"Caching commit {n}", end="\r")
 
             cwl_files = []
-            for file in commit.diff(commit.parents or NULL_TREE):
-                # Ignore deleted files (they appear as ADDED in this backwards diff)
-                if file.change_type == "A":
+            for file in commit.get_changes():
+                # Ignore deleted files
+                if file.deleted:
                     continue
 
-                path = git_unicode_unescape(file.a_path)
+                path = file.a_path
                 cache[path].append(commit)
 
                 if path.startswith(f"{client.renku_home}/workflow/") and path.endswith(".cwl"):
                     cwl_files.append(os.path.realpath(client.path / path))
 
-            cls._update_cwl_files_and_commits(client, commit, cwl_files_commits_map, cwl_files)
+            cls._update_cwl_files_and_commits(commit, cwl_files_commits_map, cwl_files)
 
         communication.echo(40 * " ", end="\r")
 
         return RepositoryCache(client, cache, cwl_files_commits_map)
 
     @staticmethod
-    def _update_cwl_files_and_commits(client, commit, cwl_files_commits_map, cwl_files):
+    def _update_cwl_files_and_commits(commit, cwl_files_commits_map, cwl_files):
         if len(cwl_files) != 1:
             return
 
@@ -472,7 +467,7 @@ class RepositoryCache:
 
         if existing_commit is None:
             cwl_files_commits_map[path] = commit
-        elif _compare_commits(client, existing_commit, commit) < 0:  # existing commit is older
+        elif existing_commit.compare_to(commit) < 0:  # existing commit is older
             cwl_files_commits_map[path] = commit
 
     def find_previous_commit(self, path, revision="HEAD"):
@@ -480,8 +475,8 @@ class RepositoryCache:
 
         def find_from_client(path, revision):
             try:
-                return self.client.find_previous_commit(paths=path, revision=revision, full=True)
-            except KeyError:
+                return self.client.repository.get_previous_commit(paths=path, revision=revision, full_history=True)
+            except errors.GitCommitNotFoundError:
                 communication.warn(f"Cannot find previous commit for {path} from {str(revision)}")
                 return revision
 
@@ -492,7 +487,7 @@ class RepositoryCache:
         path = str(path)
 
         if revision == "HEAD":
-            revision = self.client.head.commit
+            revision = self.client.repository.head.commit
 
         commits = self.cache.get(git_unicode_unescape(path))
         if not commits:
@@ -502,29 +497,8 @@ class RepositoryCache:
             return revision
 
         for commit in commits:
-            if _compare_commits(self.client, commit, revision) <= 0:
+            if commit.compare_to(revision) <= 0:
                 return commit
 
         # No commit was found
         return find_from_client(path, revision)
-
-
-def _compare_commits(client, commit1, commit2):
-    """Return -1 if commit1 is made before commit2."""
-    if client.repo.is_ancestor(commit1, commit2):
-        return -1
-    if client.repo.is_ancestor(commit2, commit1):
-        return 1
-
-    if commit1.committed_date < commit2.committed_date:
-        return -1
-    if commit1.committed_date > commit2.committed_date:
-        return 1
-
-    if commit1.authored_date < commit2.authored_date:
-        return -1
-    if commit1.authored_date > commit2.authored_date:
-        return 1
-
-    # NOTE: There is no ordering between the commits and there is no easy way for users to fix this
-    return 0

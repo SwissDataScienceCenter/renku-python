@@ -26,8 +26,8 @@ from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.models.provenance.agent import Person
 from renku.core.utils import communication
+from renku.core.utils.git import get_git_user
 
 
 @inject.autoparams()
@@ -70,16 +70,18 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher):
                     client.remove_file(client.path / key)
 
                 datasets_provenance = DatasetsProvenance()
-                datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
+                datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
             communication.update_progress(progress_text, amount=1)
     finally:
         communication.finalize_progress(progress_text)
 
     # 2. Manage .gitattributes for external storage.
     if client.check_external_storage():
-        tracked = tuple(path for path, attr in client.find_attr(*files).items() if attr.get("filter") == "lfs")
+        tracked = tuple(
+            path for path, attr in client.repository.get_attributes(*files).items() if attr.get("filter") == "lfs"
+        )
         client.untrack_paths_from_storage(*tracked)
-        existing = client.find_attr(*tracked)
+        existing = client.repository.get_attributes(*tracked)
         if existing:
             communication.warn("There are custom .gitattributes.\n")
             if communication.confirm('Do you want to edit ".gitattributes" now?'):

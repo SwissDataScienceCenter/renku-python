@@ -25,13 +25,11 @@ import attr
 import click
 import portalocker
 
+from renku.core.management import RENKU_HOME
 from renku.core.models.enums import ConfigFilter
 
 APP_NAME = "Renku"
 """Application name for storing configuration."""
-
-RENKU_HOME = ".renku"
-"""Project directory name."""
 
 
 def _get_global_config_dir():

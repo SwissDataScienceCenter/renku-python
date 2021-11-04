@@ -17,16 +17,18 @@
 # limitations under the License.
 """Clone a Renku repo along with all Renku-specific initializations."""
 
-from renku.core.management.clone import clone
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.utils.git import clone_repository
 
 
 @inject.autoparams()
 def _project_clone(
     url,
     client_dispatcher: IClientDispatcher,
+    database_dispatcher: IDatabaseDispatcher,
     path=None,
     install_githooks=True,
     skip_smudge=True,
@@ -35,12 +37,14 @@ def _project_clone(
     progress=None,
     config=None,
     raise_git_except=False,
-    checkout_rev=None,
+    checkout_revision=None,
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
+    from renku.core.management.migrate import is_renku_project
+
     install_lfs = client_dispatcher.current_client.external_storage_requested
 
-    return clone(
+    repository = clone_repository(
         url=url,
         path=path,
         install_githooks=install_githooks,
@@ -51,8 +55,19 @@ def _project_clone(
         progress=progress,
         config=config,
         raise_git_except=raise_git_except,
-        checkout_rev=checkout_rev,
+        checkout_revision=checkout_revision,
     )
+
+    client_dispatcher.push_client_to_stack(path=repository.path, external_storage_requested=install_lfs)
+    database_dispatcher.push_database_to_stack(client_dispatcher.current_client.database_path)
+
+    try:
+        project_initialized = is_renku_project()
+    finally:
+        database_dispatcher.pop_database()
+        client_dispatcher.pop_client()
+
+    return repository, project_initialized
 
 
 def project_clone_command():

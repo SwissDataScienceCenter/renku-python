@@ -49,13 +49,13 @@ def get_activities_until_paths(
 
     if revision:
         client = client_dispatcher.current_client
-        commit = client.repo.commit(revision)
+        commit = client.repository.get_commit(revision)
 
     for path in paths:
         checksum = None
         if commit:
             try:
-                blob = commit.tree / path
+                blob = commit.tree[path]
             except KeyError:
                 raise errors.GitError(f"Couldn't find file {path} at revision {revision}")
             checksum = blob.hexsha

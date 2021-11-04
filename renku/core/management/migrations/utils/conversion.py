@@ -23,8 +23,8 @@ from urllib.parse import urlparse
 
 from renku.core.management.migrations.models import v9 as old_datasets
 from renku.core.models.dataset import Dataset, DatasetFile, DatasetTag, ImageObject, Language, RemoteEntity, Url
-from renku.core.models.entity import Entity
 from renku.core.models.provenance import agent as new_agents
+from renku.core.utils.git import get_entity_from_revision
 
 
 def _convert_dataset_identifier(identifier: str) -> str:
@@ -67,7 +67,7 @@ def _create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> O
 
 def _convert_dataset_file(dataset_file: old_datasets.DatasetFile, client, revision: str) -> Optional[DatasetFile]:
     """Convert old DatasetFile to new DatasetFile if available at revision."""
-    entity = Entity.from_revision(client=client, path=dataset_file.path, revision=revision)
+    entity = get_entity_from_revision(repository=client.repository, path=dataset_file.path, revision=revision)
     if not entity:
         return
 
