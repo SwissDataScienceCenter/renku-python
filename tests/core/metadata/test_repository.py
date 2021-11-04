@@ -159,28 +159,36 @@ def test_repository_get_active_branch(git_repository):
     assert "master" == git_repository.active_branch.name
 
 
-def test_hash_objects(git_repository):
+@pytest.mark.parametrize("path", ["A", Path("A")])
+def test_hash_objects(git_repository, path):
     """Test hashing objects using different methods."""
-    assert "e2466bab1aeb2df4e21c9b594c3249a75db2c263" == git_repository.get_object_hash(Path("A"), revision="HEAD")
-    assert "e2466bab1aeb2df4e21c9b594c3249a75db2c263" == Repository.hash_object(Path("A"))
+    committed_object_hash = "e2466bab1aeb2df4e21c9b594c3249a75db2c263"
+
+    assert committed_object_hash == git_repository.get_object_hash(path, revision="HEAD")
+    assert committed_object_hash == git_repository.get_object_hash(git_repository.path / path, revision="HEAD")
+    assert committed_object_hash == Repository.hash_object(path)
+    assert committed_object_hash == Repository.hash_object(git_repository.path / path)
 
 
 def test_hash_modified_objects(git_repository):
     """Test hashing modified objects that are not committed yet."""
     (git_repository.path / "A").write_text("modified")
 
+    committed_object_hash = "e2466bab1aeb2df4e21c9b594c3249a75db2c263"
+    modified_object_hash = "d84012fbd8415354de6b29158b6e5e17c4fda70b"
+
     # NOTE: get_object_hash returns hash of the object in the repository if revision is specified and returns the
     # current object's hash if revision is None
-    assert "e2466bab1aeb2df4e21c9b594c3249a75db2c263" == git_repository.get_object_hash("A", revision="HEAD")
-    assert "d84012fbd8415354de6b29158b6e5e17c4fda70b" == git_repository.get_object_hash("A", revision=None)
-    assert "d84012fbd8415354de6b29158b6e5e17c4fda70b" == Repository.hash_object("A")
+    assert committed_object_hash == git_repository.get_object_hash("A", revision="HEAD")
+    assert modified_object_hash == git_repository.get_object_hash("A", revision=None)
+    assert modified_object_hash == Repository.hash_object("A")
 
+    # NOTE: Returned results are the same if object is staged
     git_repository.add("A")
 
-    # NOTE: Returned results are the same if object is stages
-    assert "e2466bab1aeb2df4e21c9b594c3249a75db2c263" == git_repository.get_object_hash("A", revision="HEAD")
-    assert "d84012fbd8415354de6b29158b6e5e17c4fda70b" == git_repository.get_object_hash("A")
-    assert "d84012fbd8415354de6b29158b6e5e17c4fda70b" == Repository.hash_object("A")
+    assert committed_object_hash == git_repository.get_object_hash("A", revision="HEAD")
+    assert modified_object_hash == git_repository.get_object_hash("A")
+    assert modified_object_hash == Repository.hash_object("A")
 
 
 def test_hash_deleted_objects(git_repository):

@@ -426,7 +426,7 @@ class BaseRepository:
         """
         absolute_path = get_absolute_path(path, self.path)
 
-        # NOTE: If revision is not specified, we use hash-object to get the hash of the (possibly) modified object.
+        # NOTE: If revision is not specified, we use hash-object to hash the (possibly) modified object
         if not revision:
             try:
                 return Repository.hash_object(absolute_path)
@@ -443,8 +443,10 @@ class BaseRepository:
                 else:
                     return submodule.get_object_hash(path=absolute_path, revision="HEAD")
 
+        relative_path = os.path.relpath(absolute_path, start=self.path)
+
         try:
-            return self.run_git_command("rev-parse", f"{revision}:{path}")
+            return self.run_git_command("rev-parse", f"{revision}:{relative_path}")
         except errors.GitCommandError:
             # NOTE: The file can be in a submodule or it was not there when the command ran but was there when workflows
             # were migrated (this can happen only for Usage); the project might be broken too.
