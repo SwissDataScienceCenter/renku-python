@@ -20,8 +20,6 @@
 from collections import namedtuple
 from textwrap import shorten
 
-import networkx
-
 Point = namedtuple("Point", ["x", "y"])
 
 MAX_NODE_LENGTH = 40
@@ -39,7 +37,7 @@ class NodeViewer:
 class ActivityGraphViewModel:
     """A view model for outputting a directed activity graph."""
 
-    def __init__(self, graph: networkx.Graph):
+    def __init__(self, graph):
         self.graph = graph
 
     def _format_vertex(self, node, columns) -> str:
@@ -64,6 +62,7 @@ class ActivityGraphViewModel:
 
     def layout_graph(self, columns):
         """Create a Sugiyama layout of the graph."""
+        import networkx
         from grandalf.graphs import Edge, Graph, Vertex
         from grandalf.layouts import SugiyamaLayout
         from grandalf.routing import EdgeViewer, route_with_lines

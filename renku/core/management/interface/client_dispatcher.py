@@ -18,6 +18,8 @@
 """Renku client dispatcher interface."""
 
 from abc import ABC
+from pathlib import Path
+from typing import Union
 
 
 class IClientDispatcher(ABC):
@@ -31,7 +33,9 @@ class IClientDispatcher(ABC):
         """Get the currently active client."""
         raise NotImplementedError
 
-    def push_client_to_stack(self, path: str, renku_home: str, external_storage_requested: bool) -> None:
+    def push_client_to_stack(
+        self, path: Union[Path, str], renku_home: str = ".renku", external_storage_requested: bool = True
+    ) -> None:
         """Create and push a new client to the stack."""
         raise NotImplementedError
 

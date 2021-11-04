@@ -41,7 +41,9 @@ class DatasetFile(Base):
         if hasattr(self, "path") and (not self._id or self._id.startswith("_:")):
             hexsha = "UNCOMMITTED"
             if self.client and Path(self.path).exists():
-                hexsha = self.client.find_previous_commit(self.path).hexsha
+                commit = self.client.repository.get_previous_commit(self.path)
+                if commit:
+                    hexsha = commit.hexsha
 
             self._id = generate_file_id(client=self.client, hexsha=hexsha, path=self.path)
 

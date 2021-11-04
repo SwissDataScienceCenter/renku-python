@@ -18,7 +18,8 @@
 """Renku database dispatcher interface."""
 
 from abc import ABC
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from renku.core.metadata.database import Database
@@ -35,7 +36,7 @@ class IDatabaseDispatcher(ABC):
         """Get the currently active database."""
         raise NotImplementedError
 
-    def push_database_to_stack(self, path: str, commit: bool = False) -> None:
+    def push_database_to_stack(self, path: Union[Path, str], commit: bool = False) -> None:
         """Create and push a new database to the stack."""
         raise NotImplementedError
 

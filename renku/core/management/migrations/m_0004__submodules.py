@@ -21,8 +21,6 @@ import os
 import shutil
 from pathlib import Path
 
-from git import GitError, Repo
-
 from renku.core import errors
 from renku.core.management.client import LocalClient
 from renku.core.management.command_builder.command import inject
@@ -36,6 +34,7 @@ from renku.core.management.migrations.models.v9 import (
     generate_file_id,
     generate_label,
 )
+from renku.core.metadata.repository import Repository
 from renku.core.utils.urls import remove_credentials
 
 
@@ -50,12 +49,14 @@ def _migrate_submodule_based_datasets(
 ):
     from renku.core.management.migrate import is_project_unsupported, migrate
 
-    submodules = client.repo.submodules
-    if not submodules:
+    submodules = client.repository.submodules
+    if len(submodules) == 0:
         return
 
     repo_paths = []
     symlinks = []
+
+    submodules.update()
 
     for dataset in get_client_datasets(client):
         for file_ in dataset.files:
@@ -68,8 +69,7 @@ def _migrate_submodule_based_datasets(
             if "/.renku/vendors/" not in str(target):
                 continue
 
-            repo = Repo(target.parent, search_parent_directories=True)
-            repo_path = repo.working_dir
+            repo_path = Repository(path=target.parent, search_parent_directories=True).path
             if repo_path not in repo_paths:
                 repo_paths.append(repo_path)
 
@@ -78,13 +78,7 @@ def _migrate_submodule_based_datasets(
     if not symlinks:
         return
 
-    for s in submodules:
-        try:
-            s.update()
-        except GitError:
-            pass
-
-    submodules_urls = {s.path: s.url for s in submodules}
+    submodules_urls = {s.relative_path: s.url for s in submodules}
 
     remote_clients = {p: LocalClient(p) for p in repo_paths}
 
@@ -105,11 +99,11 @@ def _migrate_submodule_based_datasets(
         remote_client = remote_clients[repo_path]
         path_within_repo = target.relative_to(repo_path)
 
-        repo_is_remote = ".renku/vendors/local" not in repo_path
+        repo_is_remote = ".renku/vendors/local" not in str(repo_path)
         based_on = None
-        submodule_path = Path(repo_path).relative_to(client.path)
+        submodule_path = repo_path.relative_to(client.path)
 
-        url = submodules_urls.get(str(submodule_path), "")
+        url = submodules_urls.get(submodule_path, "")
 
         if repo_is_remote:
             based_on = _fetch_file_metadata(remote_client, path_within_repo)
@@ -136,11 +130,11 @@ def _migrate_submodule_based_datasets(
         except FileNotFoundError:
             raise errors.InvalidFileOperation(f"File was not found: {target}")
 
-    for s in submodules:
-        if s.path.startswith(".renku/vendors/"):
+    for submodule in submodules:
+        if str(submodule.relative_path).startswith(".renku/vendors/"):
             try:
-                s.remove(force=True)
-            except ValueError:
+                client.repository.submodules.remove(submodule, force=True)
+            except errors.GitError:
                 pass
 
     for dataset in get_client_datasets(client):
@@ -149,7 +143,7 @@ def _migrate_submodule_based_datasets(
                 based_on, url = metadata[file_.path]
                 file_.based_on = based_on
                 file_.url = remove_credentials(url)
-                file_.commit = client.find_previous_commit(file_.path)
+                file_.commit = client.repository.get_previous_commit(file_.path)
                 file_._id = generate_file_id(client, hexsha=file_.commit.hexsha, path=file_.path)
                 file_._label = generate_label(file_.path, file_.commit.hexsha)
 
@@ -159,7 +153,7 @@ def _migrate_submodule_based_datasets(
 def _fetch_file_metadata(client, path):
     """Return metadata for a single file."""
     paths = glob.glob(f"{client.path}/.renku/datasets/*/*.yml" "")
-    for dataset in _fetch_datasets(client, client.repo.head.commit, paths, [])[0]:
+    for dataset in _fetch_datasets(client, client.repository.head.commit.hexsha, paths, [])[0]:
         for file in dataset.files:
             if file.entity.path == path:
                 return file

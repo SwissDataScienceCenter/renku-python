@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Command builder for repo."""
+"""Command builder for repository."""
 
 from renku.core import errors
 from renku.core.management.command_builder.command import Command, CommandResult, check_finalized

@@ -31,7 +31,6 @@ from renku.core.management.migrations.utils import (
 )
 from renku.core.models import jsonld
 from renku.core.models.calamus import DateTimeList, JsonLDSchema, StringList, Uri, fields, prov, rdfs, renku, schema
-from renku.core.models.git import get_user_info
 from renku.core.utils.urls import get_host
 
 
@@ -56,10 +55,10 @@ class Person(Base):
     name = None
 
     @classmethod
-    def from_git(cls, git, client=None):
-        """Create an instance from a Git repo."""
-        name, email = get_user_info(git)
-        instance = cls(name=name, email=email)
+    def from_repository(cls, repository, client=None):
+        """Create an instance from a repository."""
+        user = repository.get_user()
+        instance = cls(name=user.name, email=user.email)
         instance.fix_id(client)
         return instance
 
@@ -96,7 +95,7 @@ class Project(Base):
         self = ProjectSchemaV3().load(data)
 
         if not self.creator:
-            self.creator = Person.from_git(client.repo)
+            self.creator = Person.from_repository(client.repository)
 
         if not self.name:
             self.name = client.remote.get("name")

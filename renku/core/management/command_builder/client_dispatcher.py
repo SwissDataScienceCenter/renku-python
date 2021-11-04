@@ -16,12 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku client dispatcher."""
-
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 from renku.core import errors
+from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 
@@ -43,7 +43,7 @@ class ClientDispatcher(IClientDispatcher):
         return self.client_stack[-1]
 
     def push_client_to_stack(
-        self, path: str, renku_home: str = RENKU_HOME, external_storage_requested: bool = True
+        self, path: Union[Path, str], renku_home: str = RENKU_HOME, external_storage_requested: bool = True
     ) -> None:
         """Create and push a new client to the stack."""
         new_client = LocalClient(path)
