@@ -115,7 +115,8 @@ class PlanFactory:
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
-        if self.is_existing_path(self.command_line[0]):
+        existing_path, relative = self.is_existing_path(self.command_line[0])
+        if existing_path and relative:
             return [], list(self.command_line)
 
         cmd = [self.command_line[0]]
@@ -125,7 +126,7 @@ class PlanFactory:
             # only guess subcommand for more arguments
             return cmd, args
 
-        while args and re.match(self._RE_SUBCOMMAND, args[0]) and not self.is_existing_path(args[0]):
+        while args and re.match(self._RE_SUBCOMMAND, args[0]) and not self.is_existing_path(args[0])[0]:
             cmd.append(args.pop(0))
 
         return cmd, args
@@ -133,7 +134,7 @@ class PlanFactory:
     def is_existing_path(self, candidate, ignore=None):
         """Return a path instance if it exists in current directory."""
         if ignore and candidate in ignore:
-            return
+            return None, False
 
         candidate = Path(candidate)
 
@@ -145,9 +146,11 @@ class PlanFactory:
                 path = candidate.resolve()
                 path.relative_to(self.directory)
             except ValueError:  # An external file
-                return Path(os.path.abspath(candidate))
+                return Path(os.path.abspath(candidate)), False
             else:
-                return path
+                return path, True
+
+        return None, False
 
     def add_inputs_and_parameters(self, *arguments):
         """Yield command input parameters."""
@@ -274,7 +277,7 @@ class PlanFactory:
             parameter_candidates[str(input_path)] = parameter
 
         for path in candidates:
-            candidate = self.is_existing_path(self.working_dir / path)
+            candidate = self.is_existing_path(self.working_dir / path)[0]
 
             if candidate is None:
                 raise errors.UsageError('Path "{0}" does not exist.'.format(path))
@@ -330,7 +333,7 @@ class PlanFactory:
 
     def guess_type(self, value: str, ignore_filenames: Set[str] = None) -> Tuple[Any, str]:
         """Return new value and CWL parameter type."""
-        candidate = self.is_existing_path(value, ignore=ignore_filenames)
+        candidate = self.is_existing_path(value, ignore=ignore_filenames)[0]
         if candidate:
             try:
                 if candidate.is_dir():
@@ -482,7 +485,7 @@ class PlanFactory:
 
             input_paths.append(explicit_input)
 
-            if self.is_existing_path(explicit_input) is None:
+            if self.is_existing_path(explicit_input)[0] is None:
                 raise errors.UsageError(
                     "The input file or directory does not exist."
                     "\n\n\t" + click.style(str(explicit_input), fg="yellow") + "\n\n"

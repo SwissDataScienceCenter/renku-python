@@ -71,6 +71,30 @@ def test_run_clean(runner, project, run_shell):
     assert "a unique string" in result.output
 
 
+@pytest.mark.serial
+@pytest.mark.shelled
+def test_run_external_command_file(runner, client, project, run_shell, client_database_injection_manager):
+    """Test tracking of run command in clean repo."""
+    # Run a shell command with pipe.
+    output = run_shell('renku run $(which echo) "a unique string" > my_output_file')
+
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Assert created output file.
+    result = runner.invoke(cli, ["graph", "export"])
+    assert "my_output_file" in result.output
+    assert "a unique string" in result.output
+
+    with client_database_injection_manager(client):
+        plan_gateway = PlanGateway()
+        plan = plan_gateway.get_all_plans()[0]
+        assert plan.command
+        assert plan.command.endswith("/echo")
+
+
 def test_run_metadata(renku_cli, client, client_database_injection_manager):
     """Test run with workflow metadata."""
     exit_code, activity = renku_cli(
