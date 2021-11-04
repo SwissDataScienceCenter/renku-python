@@ -50,19 +50,19 @@ You can use the `Plans` you create as building blocks for more complicated pipel
 
 To see how a file was created, we have a new command `renku workflow visualize` that shows a graph of all the workflows involved in creating a file. Try out its `-i` flag for interactive mode!
 
-You can use `renku workflow loop` command to run your existing `Plans` with different parametrization. Simply create a YAML file for your `Plan`, where you list all the parameters that you would like to run with different values. These possible values for a parameter should be given as a list. In some circumstances, one would like to mark each iteration of the loop in a parameter, for such case one could use the `{loop_index}` template in the parameter's value. The template variable is going to be substituted with the loop index (0, 1, 2, ...).
+You can use `renku workflow iterate` command to run your existing `Plans` with different parametrization. The iteration parameters could either be specified in a simple YAML file or with the `--map param1=[values]` command line argument. The possible values for a parameter should be given as a list. In some circumstances, one would like to mark each iteration index in a parameter's value, for such case one could use the `{iter_index}` template in the parameter's value. The template variable is going to be substituted with the iteration index (0, 1, 2, ...).
 
 For example, in case of a `Plan` that trains a simple machine learning model, the mapping file could look like something like this:
 ```
-learning_rate-3: [0.01, 0.001, 0.0001]
-n_estimators-4: [100, 200, 300, 400]
-output-5: model_{loop_index}
+learning_rate: [0.01, 0.001, 0.0001]
+n_estimators: [100, 200, 300, 400]
+output: model_{iter_index}
 ```
-This would execute your plan several times with values taken from the cartesian product of values in `learning_rate-3` and `n_estimators-4`, producing the output files `model_0`, `model_1`, etc.
+This would execute your plan several times with values taken from the cartesian product of values in `learning_rate` and `n_estimators`, producing the output files `model_0`, `model_1`, etc.
 
-Once you created the parameter mapping file, simply run `renku workflow --mapping values.yaml my-plan`.
+Once you created the parameter mapping file, simply run `renku workflow iterate --mapping values.yaml my-plan`.
 
-![loop|690x453](loop.gif)
+![iterate|690x453](iterate.gif)
 
 You can also export your `Plans` into various formats such as CWL (Common Workflow Language) using `renku workflow export`, which allows you to run them outside of renku.
 
