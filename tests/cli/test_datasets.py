@@ -881,7 +881,7 @@ def test_datasets_ls_files_correct_commit(runner, client, directory_tree):
     """Test ls-files shows the size stored in git and not the current file size."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "-c", str(directory_tree / "file1")]).exit_code
 
-    commit = client.repository.get_previous_commit(paths=client.path / DATA_DIR / "my-dataset" / "file1")
+    commit = client.repository.get_previous_commit(path=client.path / DATA_DIR / "my-dataset" / "file1")
 
     # check include / exclude filters
     result = runner.invoke(cli, ["dataset", "ls-files", "--columns=commit,path"])
