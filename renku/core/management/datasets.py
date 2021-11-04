@@ -887,7 +887,7 @@ class DatasetsApiMixin(object):
                     remote_client = LocalClient(remote_repository.path)
                     visited_repos[url] = remote_repository, remote_client
 
-                checksum = remote_repository.get_object_hash(based_on.path)
+                checksum = remote_repository.get_object_hash(path=based_on.path, revision="HEAD")
                 found = bool(checksum)
                 changed = found and based_on.checksum != checksum
 

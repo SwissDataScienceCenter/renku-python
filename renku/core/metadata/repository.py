@@ -425,7 +425,14 @@ class BaseRepository:
         NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
         """
         absolute_path = get_absolute_path(path, self.path)
-        revision = revision or "HEAD"
+
+        # NOTE: If revision is not specified, we use hash-object to get the hash of the (possibly) modified object.
+        if not revision:
+            try:
+                return Repository.hash_object(absolute_path)
+            except errors.GitCommandError:
+                # NOTE: If object does not exist anymore, hash-object doesn't work, fall back to rev-parse
+                revision = "HEAD"
 
         def get_object_hash_from_submodules() -> Optional[str]:
             for submodule in self.submodules:
