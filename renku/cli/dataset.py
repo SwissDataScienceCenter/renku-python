@@ -424,12 +424,8 @@ import json
 from pathlib import Path
 
 import click
-import requests
-from rich.console import Console
-from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core import errors
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
@@ -578,6 +574,7 @@ def edit(name, title, description, creators, metadata, keyword):
 def show(name):
     """Show metadata of a dataset."""
     from renku.core.commands.dataset import show_dataset
+    from renku.core.utils.os import print_markdown
 
     result = show_dataset().build().execute(name=name)
     ds = result.output
@@ -606,7 +603,7 @@ def show(name):
     click.echo(click.style("Title: ", bold=True, fg="magenta") + click.style(ds.get("title", ""), bold=True))
 
     click.echo(click.style("Description: ", bold=True, fg="magenta"))
-    Console().print(Markdown(ds.get("description", "") or ""))
+    print_markdown(ds.get("description", "") or "")
 
 
 @dataset.command()
@@ -786,6 +783,7 @@ def export_provider_options(*param_decls, **attrs):
 @export_provider_options()
 def export_(name, provider, publish, tag, **kwargs):
     """Export data to 3rd party provider."""
+    from renku.core import errors
     from renku.core.commands.dataset import export_dataset
 
     try:
@@ -793,7 +791,7 @@ def export_(name, provider, publish, tag, **kwargs):
         export_dataset().lock_dataset().with_communicator(communicator).build().execute(
             name=name, provider_name=provider, publish=publish, tag=tag, **kwargs
         )
-    except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, requests.HTTPError) as e:
+    except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, errors.RequestError) as e:
         raise click.BadParameter(e)
 
     click.secho("OK", fg="green")

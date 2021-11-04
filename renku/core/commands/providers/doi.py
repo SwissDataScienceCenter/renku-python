@@ -23,7 +23,6 @@ import attr
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.errors import RenkuImportError
 from renku.core.utils.doi import extract_doi, is_doi
-from renku.core.utils.requests import retry
 
 DOI_BASE_URL = "https://dx.doi.org"
 
@@ -96,15 +95,16 @@ class DOIProvider(ProviderApi):
 
     def _query(self, doi):
         """Retrieve metadata for given doi."""
+        from renku.core.utils import requests
+
         doi = extract_doi(doi)
         url = make_doi_url(doi)
 
-        with retry() as session:
-            response = session.get(url, headers=self.headers)
-            if response.status_code != 200:
-                raise LookupError("record not found. Status: {}".format(response.status_code))
+        response = requests.get(url, headers=self.headers)
+        if response.status_code != 200:
+            raise LookupError("record not found. Status: {}".format(response.status_code))
 
-            return response
+        return response
 
     def find_record(self, uri, client=None, **kwargs):
         """Finds DOI record."""

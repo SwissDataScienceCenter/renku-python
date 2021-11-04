@@ -29,8 +29,8 @@ def test_lfs_storage_clean_no_remote(runner, project, client):
     """Test ``renku storage clean`` command with no remote set."""
     with (client.path / "tracked").open("w") as fp:
         fp.write("tracked file")
-    client.repo.git.add("*")
-    client.repo.index.commit("tracked file")
+    client.repository.add("*")
+    client.repository.commit("tracked file")
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
     assert 1 == result.exit_code
@@ -43,17 +43,17 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
 
     with (client.path / "tracked").open("w") as fp:
         fp.write("tracked file")
-    client.repo.git.add("*")
-    client.repo.index.commit("tracked file")
+    client.repository.add("*")
+    client.repository.commit("tracked file")
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "These paths were ignored as they are not tracked" in result.output
 
     subprocess.call(["git", "lfs", "track", "tracked"])
-    client.repo.git.add("*")
-    client.repo.index.commit("Tracked in lfs")
-    client.repo.git.push("--no-verify", "origin")
+    client.repository.add("*")
+    client.repository.commit("Tracked in lfs")
+    client.repository.push("origin", no_verify=True)
 
     with (client.path / "tracked").open("r") as fp:
         assert "tracked file" in fp.read()
@@ -87,8 +87,8 @@ def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
     with (client_with_remote.path / "tracked").open("w") as fp:
         fp.write("tracked file")
     subprocess.call(["git", "lfs", "track", "tracked"])
-    client_with_remote.repo.git.add("*")
-    client_with_remote.repo.index.commit("tracked file")
+    client_with_remote.repository.add("*")
+    client_with_remote.repository.commit("tracked file")
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
 
@@ -102,8 +102,8 @@ def test_lfs_migrate(runner, project, client):
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
         (client.path / _file).write_text(_file)
 
-    client.repo.git.add("*")
-    client.repo.index.commit("add files")
+    client.repository.add("*")
+    client.repository.commit("add files")
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -114,7 +114,7 @@ def test_lfs_migrate(runner, project, client):
     result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    previous_head = client.repo.head.commit.hexsha
+    previous_head = client.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
     assert 0 == result.exit_code, format_result_exception(result)
@@ -123,8 +123,9 @@ def test_lfs_migrate(runner, project, client):
     assert "regular_file" in result.output
     assert "*.ini" not in result.output
 
-    assert previous_head != client.repo.head.commit.hexsha
-    changed_files = client.repo.head.commit.stats.files.keys()
+    # TODO: Make sure that this test fails
+    assert previous_head != client.repository.head.commit.hexsha
+    changed_files = [c.a_path for c in client.repository.head.commit.get_changes()]
     assert ".renku/metadata/activities" not in changed_files
 
 
@@ -134,8 +135,8 @@ def test_lfs_migrate_no_changes(runner, project, client):
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
         (client.path / _file).write_text(_file)
 
-    client.repo.git.add("*")
-    client.repo.index.commit("add files")
+    client.repository.add("*")
+    client.repository.commit("add files")
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -143,13 +144,13 @@ def test_lfs_migrate_no_changes(runner, project, client):
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    previous_head = client.repo.head.commit.hexsha
+    previous_head = client.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
     assert 0 == result.exit_code, format_result_exception(result)
     assert "All files are already in LFS" in result.output
 
-    assert previous_head == client.repo.head.commit.hexsha
+    assert previous_head == client.repository.head.commit.hexsha
 
 
 def test_lfs_migrate_explicit_path(runner, project, client):
@@ -158,8 +159,8 @@ def test_lfs_migrate_explicit_path(runner, project, client):
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
         (client.path / _file).write_text(_file)
 
-    client.repo.git.add("*")
-    client.repo.index.commit("add files")
+    client.repository.add("*")
+    client.repository.commit("add files")
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -167,11 +168,11 @@ def test_lfs_migrate_explicit_path(runner, project, client):
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    previous_head = client.repo.head.commit.hexsha
+    previous_head = client.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["storage", "migrate", "regular_file"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert previous_head != client.repo.head.commit.hexsha
+    assert previous_head != client.repository.head.commit.hexsha
 
     assert "oid sha256:" in (client.path / "regular_file").read_text()
