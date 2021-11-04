@@ -21,7 +21,7 @@ Recreating files
 ~~~~~~~~~~~~~~~~
 
 .. image:: ../_static/asciicasts/rerun.delay.gif
-   :width: 600
+   :width: 850
    :alt: Rerun workflow
 
 Assume you have run a step 2 that uses a stochastic algorithm, so each run

@@ -45,7 +45,7 @@ Listing Plans
 *************
 
 .. image:: ../_static/asciicasts/list_plans.delay.gif
-   :width: 600
+   :width: 850
    :alt: List Plans
 
 .. code-block:: console
@@ -66,7 +66,7 @@ Showing Plan Details
 ********************
 
 .. image:: ../_static/asciicasts/show_plan.delay.gif
-   :width: 600
+   :width: 850
    :alt: Show Plan
 
 You can see the details of a plan by using ``renku workflow show``:
@@ -96,7 +96,7 @@ Executing Plans
 ***************
 
 .. image:: ../_static/asciicasts/execute_plan.delay.gif
-   :width: 600
+   :width: 850
    :alt: Execute Plans
 
 Plans can be executed using ``renku workflow execute``. They can be run as-is
@@ -172,7 +172,7 @@ You can export into a file directly with ``-o <path>``.
 Composing Plans into larger workflows
 *************************************
 .. image:: ../_static/asciicasts/compose_plan.delay.gif
-   :width: 600
+   :width: 850
    :alt: Composing Plans
 
 For more complex workflows consisting of several steps, you can use the
@@ -310,7 +310,7 @@ Editing Plans
 *************
 
 .. image:: ../_static/asciicasts/edit_plan.delay.gif
-   :width: 600
+   :width: 850
    :alt: Editing Plans
 
 Plans can be edited in some limited fashion, but we do not allow structural
@@ -365,7 +365,7 @@ Visualizing Executions
 **********************
 
 .. image:: ../_static/asciicasts/visualize_runs.delay.gif
-   :width: 600
+   :width: 850
    :alt: Visualizing Runs
 
 You can visualize past Runs made with renku using the ``renku workflow

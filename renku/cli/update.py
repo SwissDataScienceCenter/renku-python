@@ -18,7 +18,7 @@
 r"""Update outdated files created by the "run" command.
 
 .. image:: ../_static/asciicasts/update.delay.gif
-   :width: 600
+   :width: 850
    :alt: Update outdate files
 
 Recreating outdated files
