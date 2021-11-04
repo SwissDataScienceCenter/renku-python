@@ -392,7 +392,7 @@ class Collection(Entity):
 
 @attr.s(eq=False, order=False)
 class MappedIOStream(object):
-    """Represents an IO stream (stdin, stdout, stderr)."""
+    """Represents an IO stream (``stdin``, ``stdout``, ``stderr``)."""
 
     client = attr.ib(default=None, kw_only=True)
 

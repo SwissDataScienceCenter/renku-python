@@ -181,8 +181,8 @@ environment variable. When set, it points to a sub-directory within the
 Exit codes
 ~~~~~~~~~~
 
-All Unix commands return a number between 0 and 255 which is called
-"exit code". In case other numbers are returned, they are treaded module 256
+All Unix commands return a number between 0 and 255 which is called an
+"exit code". In case other numbers are returned, they are treated modulo 256
 (-10 is equivalent to 246, 257 is equivalent to 1). The exit-code 0 represents
 a *success* and non-zero exit-code indicates a *failure*.
 

@@ -20,8 +20,8 @@ r"""Renku CLI commands for handling of datasets.
 Manipulating datasets
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: _static/asciicasts/dataset-create.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/dataset-create.delay.gif
+   :width: 850
    :alt: Create a Dataset
 
 Creating an empty dataset inside a Renku project:
@@ -55,11 +55,11 @@ the dataset.
 
 Editing a dataset's metadata:
 
-.. image:: _static/asciicasts/dataset-edit.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/dataset-edit.delay.gif
+   :width: 850
    :alt: Editing a Dataset
 
-Use ``edit`` subcommand to change metadata of a dataset. You can edit the same
+Use the ``edit`` sub-command to change metadata of a dataset. You can edit the same
 set of metadata as the create command by passing the options described in the
 table above.
 
@@ -132,8 +132,8 @@ Deleting a dataset:
 Working with data
 ~~~~~~~~~~~~~~~~~
 
-.. image:: _static/asciicasts/dataset-add.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/dataset-add.delay.gif
+   :width: 850
    :alt: Add data to a Dataset
 
 Adding data to the dataset:
@@ -309,8 +309,8 @@ knowing the dataset's ID.
 
 Importing data from an external provider:
 
-.. image:: _static/asciicasts/dataset-import.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/dataset-import.delay.gif
+   :width: 850
    :alt: Import a Dataset
 
 .. code-block:: console
