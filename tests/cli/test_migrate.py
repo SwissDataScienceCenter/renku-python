@@ -18,6 +18,7 @@
 """Test ``migrate`` command."""
 import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -271,6 +272,7 @@ def test_migrate_non_renku_repository(isolated_runner):
     """Test migration prints proper message when run on non-renku repository."""
     Repository.initialize(".")
     os.mkdir(".renku")
+    sys.argv = ["migrate", "--strict"]
 
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
 
@@ -301,6 +303,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
     """Test migration check on non-renku repository."""
     Repository.initialize(".")
     os.mkdir(".renku")
+    sys.argv = ["migrate", "--strict"]
 
     result = isolated_runner.invoke(cli, ["migrate", "--check"])
 

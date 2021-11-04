@@ -185,7 +185,6 @@ def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
     from renku.core.management import RENKU_HOME
     from renku.core.management.client import LocalClient
-    from renku.core.management.config import RENKU_HOME
     from renku.core.management.migrations.utils import OLD_METADATA_PATH
     from renku.core.management.repository import RepositoryApiMixin
     from renku.core.metadata.database import Database
