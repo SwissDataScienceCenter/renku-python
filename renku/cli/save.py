@@ -72,7 +72,6 @@ You can also specify which paths to save:
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.save import save_and_push_command
 
 
 @click.command(name="save")
@@ -88,6 +87,8 @@ from renku.core.commands.save import save_and_push_command
 @click.argument("paths", type=click.Path(exists=False, dir_okay=True), nargs=-1)
 def save(message, destination, paths):
     """Save and push local changes."""
+    from renku.core.commands.save import save_and_push_command
+
     communicator = ClickCallback()
     saved_paths, branch = (
         save_and_push_command()

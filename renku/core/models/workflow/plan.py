@@ -78,7 +78,7 @@ class AbstractPlan(Persistent, ABC):
         return f"/plans/{uuid}"
 
     def _get_default_name(self) -> str:
-        name = "-".join(str(a) for a in self.to_argv())
+        name = "-".join(str(a).replace(".", "_") for a in self.to_argv())
         if not name:
             return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
@@ -211,7 +211,11 @@ class Plan(AbstractPlan):
 
     def find_parameter(self, parameter: CommandParameterBase) -> bool:
         """Find if a parameter exists on this plan."""
-        return parameter in self.inputs + self.outputs + self.parameters
+        return any(parameter.id == p.id for p in self.inputs + self.outputs + self.parameters)
+
+    def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
+        """Get a parameter on this plan by id."""
+        return next((p for p in self.inputs + self.outputs + self.parameters if parameter_id == p.id), None)
 
     def find_parameter_workflow(self, parameter: CommandParameterBase) -> "Plan":
         """Return the workflow a parameter belongs to."""
@@ -274,9 +278,16 @@ class Plan(AbstractPlan):
         """Set parameters by parsing parameters strings."""
         for param_string in params_strings:
             name, value = param_string.split("=", maxsplit=1)
-            for param in self.inputs + self.outputs + self.parameters:
-                if param.name == name:
-                    param.default_value = value
+            found = False
+            for collection in [self.inputs, self.outputs, self.parameters]:
+                for i, param in enumerate(collection):
+                    if param.name == name:
+                        new_param = param.derive(plan_id=self.id)
+                        new_param.default_value = value
+                        collection[i] = new_param
+                        found = True
+                        break
+                if found:
                     break
             else:
                 self.parameters.append(
@@ -319,8 +330,8 @@ class PlanDetailsJson(marshmallow.Schema):
     """Serialize a plan to a response object."""
 
     name = marshmallow.fields.String(required=True)
+    full_command = marshmallow.fields.String(data_key="command")
     derived_from = marshmallow.fields.String()
-    title = marshmallow.fields.String()
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     id = marshmallow.fields.String()

@@ -16,7 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku database dispatcher."""
-
+from pathlib import Path
+from typing import Union
 
 from renku.core import errors
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
@@ -40,7 +41,7 @@ class DatabaseDispatcher(IDatabaseDispatcher):
 
         return self.database_stack[-1][0]
 
-    def push_database_to_stack(self, path: str, commit: bool = False) -> None:
+    def push_database_to_stack(self, path: Union[Path, str], commit: bool = False) -> None:
         """Create and push a new client to the stack."""
         new_database = Database.from_path(path)
         self.database_stack.append((new_database, commit))

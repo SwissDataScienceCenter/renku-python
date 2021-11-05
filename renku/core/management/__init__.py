@@ -17,6 +17,5 @@
 # limitations under the License.
 """Renku repository management."""
 
-from renku.core.management.client import LocalClient
-
-__all__ = ("LocalClient",)
+RENKU_HOME = ".renku"
+"""Project directory name."""

@@ -18,8 +18,11 @@
 """Renku database dispatcher interface."""
 
 from abc import ABC
+from pathlib import Path
+from typing import TYPE_CHECKING, Union
 
-from renku.core.metadata.database import Database
+if TYPE_CHECKING:
+    from renku.core.metadata.database import Database
 
 
 class IDatabaseDispatcher(ABC):
@@ -29,11 +32,11 @@ class IDatabaseDispatcher(ABC):
     """
 
     @property
-    def current_database(self) -> Database:
+    def current_database(self) -> "Database":
         """Get the currently active database."""
         raise NotImplementedError
 
-    def push_database_to_stack(self, path: str, commit: bool = False) -> None:
+    def push_database_to_stack(self, path: Union[Path, str], commit: bool = False) -> None:
         """Create and push a new database to the stack."""
         raise NotImplementedError
 

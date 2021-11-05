@@ -20,13 +20,10 @@
 from collections.abc import Iterable
 from typing import List, Set, Tuple, Union
 
-from git import Repo
-
 from renku.core import errors
 from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Activity
 from renku.core.models.provenance.agent import Person
-from renku.core.utils.git import get_object_hash
 
 
 def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
@@ -78,7 +75,7 @@ def construct_creator(creator: Union[dict, str], ignore_email):
 
 
 def get_modified_activities(
-    activities: List[Activity], repo: Repo
+    activities: List[Activity], repository
 ) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
     """Get lists of activities that have modified/deleted usage entities."""
     modified = set()
@@ -87,7 +84,7 @@ def get_modified_activities(
     for activity in activities:
         for usage in activity.usages:
             entity = usage.entity
-            current_checksum = get_object_hash(repo=repo, path=entity.path)
+            current_checksum = repository.get_object_hash(path=entity.path)
             if current_checksum is None:
                 deleted.add((activity, entity))
             elif current_checksum != entity.checksum:

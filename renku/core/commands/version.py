@@ -24,7 +24,6 @@ import sys
 import attr
 import click
 import lockfile
-import requests
 
 
 def print_version(ctx, param, value):
@@ -40,6 +39,8 @@ def print_version(ctx, param, value):
 
 def find_latest_version(name, allow_prereleases=False):
     """Find a latest version on PyPI."""
+    from renku.core.utils import requests
+
     response = requests.get("https://pypi.org/pypi/{name}/json".format(name=name))
 
     if response.status_code != 200:

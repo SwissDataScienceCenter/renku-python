@@ -24,15 +24,12 @@ from pathlib import Path
 import attr
 import click
 import portalocker
-from pkg_resources import resource_filename
 
+from renku.core.management import RENKU_HOME
 from renku.core.models.enums import ConfigFilter
 
 APP_NAME = "Renku"
 """Application name for storing configuration."""
-
-RENKU_HOME = ".renku"
-"""Project directory name."""
 
 
 def _get_global_config_dir():
@@ -81,6 +78,8 @@ class ConfigManagerMixin:
 
     def load_config(self, config_filter=ConfigFilter.ALL):
         """Loads local, global or both configuration object."""
+        from pkg_resources import resource_filename
+
         config = configparser.ConfigParser()
         config_files = [resource_filename("renku", "data/defaults.ini")]
 

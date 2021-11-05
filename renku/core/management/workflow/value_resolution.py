@@ -99,21 +99,16 @@ class CompositePlanValueResolver(ValueResolver):
         """Applies values and default_values to a ``CompositePlan``."""
 
         if self._values:
-            if "parameters" in self._values:
-                # NOTE: Set mapping parameter values
-                self._apply_parameters_values()
+            self._apply_parameters_values()
 
-            if "steps" in self._values:
-                for name, step in self._values["steps"].items():
-                    child_workflow = next((w for w in self._plan.plans if w.name == name), None)
-                    if not child_workflow:
-                        raise errors.ChildWorkflowNotFoundError(name, self._plan.name)
+            for name, step in filter(lambda x: isinstance(x[1], dict), self._values.items()):
+                child_workflow = next((w for w in self._plan.plans if w.name == name), None)
+                if not child_workflow:
+                    raise errors.ChildWorkflowNotFoundError(name, self._plan.name)
 
-                    rv = ValueResolver.get(child_workflow, step)
-                    _ = rv.apply()
-                    self.missing_parameters.update({f"steps.name.{mp}" for mp in rv.missing_parameters})
-
-            self.missing_parameters.update(set(self._values.keys()) - {"parameters", "steps"})
+                rv = ValueResolver.get(child_workflow, step)
+                _ = rv.apply()
+                self.missing_parameters.update({f"{name}.{mp}" for mp in rv.missing_parameters})
 
         # apply defaults
         for mapping in self._plan.mappings:
@@ -138,7 +133,7 @@ class CompositePlanValueResolver(ValueResolver):
 
     def _apply_parameters_values(self) -> None:
         """Apply values to mappings of a CompositePlan."""
-        for k, v in self._values["parameters"].items():
+        for k, v in filter(lambda x: not isinstance(x[1], dict), self._values.items()):
             mapping = next((m for m in self._plan.mappings if m.name == k), None)
 
             if not mapping:

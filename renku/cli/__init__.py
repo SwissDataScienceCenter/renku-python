@@ -69,7 +69,6 @@ import click
 import click_completion
 import yaml
 from click_plugins import with_plugins
-from pkg_resources import iter_entry_points
 
 from renku.cli.clone import clone
 from renku.cli.config import config
@@ -97,9 +96,24 @@ from renku.core.commands.echo import WARNING
 from renku.core.commands.options import install_completion, option_external_storage_requested
 from renku.core.commands.version import check_version, print_version
 from renku.core.errors import UsageError
-from renku.core.management.client import LocalClient
-from renku.core.management.config import RENKU_HOME, ConfigManagerMixin
-from renku.core.management.repository import default_path
+from renku.core.utils.git import default_path
+
+try:
+    from importlib.metadata import entry_points
+except ImportError:
+    from importlib_metadata import entry_points
+
+
+def get_entry_points(name: str):
+    """Get entry points from importlib."""
+    all_entry_points = entry_points()
+
+    if hasattr(all_entry_points, "select"):
+        return all_entry_points.select(group=name)
+    else:
+        # Prior to Python 3.10, this returns a dict instead of the selection interface, which is slightly slower
+        return all_entry_points.get(name, [])
+
 
 #: Monkeypatch Click application.
 click_completion.init()
@@ -117,6 +131,8 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
 
 def print_global_config_path(ctx, param, value):
     """Print global application's config path."""
+    from renku.core.management.config import ConfigManagerMixin
+
     if not value or ctx.resilient_parsing:
         return
     click.echo(ConfigManagerMixin().global_config_path)
@@ -128,7 +144,7 @@ def is_allowed_command(ctx):
     return ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS or "-h" in sys.argv or "--help" in sys.argv
 
 
-@with_plugins(iter_entry_points("renku.cli_plugins"))
+@with_plugins(get_entry_points("renku.cli_plugins"))
 @click.group(
     cls=IssueFromTraceback, context_settings={"auto_envvar_prefix": "RENKU", "help_option_names": ["-h", "--help"]}
 )
@@ -167,6 +183,9 @@ def is_allowed_command(ctx):
 @click.pass_context
 def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
+    from renku.core.management import RENKU_HOME
+    from renku.core.management.client import LocalClient
+
     renku_path = Path(path) / RENKU_HOME
     if not renku_path.exists() and not is_allowed_command(ctx):
         raise UsageError(

@@ -40,8 +40,12 @@ def user_project_clone(cache, user_data, project_data):
                 path=project.abs_path,
                 depth=project_data["depth"],
                 raise_git_except=True,
-                config={"user.name": project_data["fullname"], "user.email": project_data["email"]},
-                checkout_rev=project_data["ref"],
+                config={
+                    "user.name": project_data["fullname"],
+                    "user.email": project_data["email"],
+                    "pull.rebase": False,
+                },
+                checkout_revision=project_data["ref"],
             )
         ).output
         project.save()

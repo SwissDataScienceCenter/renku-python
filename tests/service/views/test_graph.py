@@ -38,4 +38,4 @@ def test_graph_export_job(svc_client_cache, it_remote_repo_url, revision):
 
     response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
     assert response
-    assert {"graph"} == set(response.json["result"].keys())
+    assert {"graph"} == set(response.json.get("result", {}).keys()), response.json

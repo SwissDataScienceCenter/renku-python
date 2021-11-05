@@ -16,10 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service apispec views."""
-from apispec import APISpec
+from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec_webframeworks.flask import FlaskPlugin
 from flask import Blueprint, current_app, jsonify
+from flask.views import MethodView
 
 from renku.service.config import (
     API_VERSION,
@@ -85,11 +86,28 @@ HTTP_SERVER_ERROR = -32000
 
 """
 
+
+class MultiURLFlaskPlugin(FlaskPlugin):
+    """FlaskPlugin extension that supports multiple URLs per endpoint."""
+
+    def path_helper(self, path, operations, *, view, app=None, **kwargs):
+        """Path helper that allows passing a Flask view function."""
+        rule = self._rule_for_view(view, app=app)
+        operations.update(yaml_utils.load_operations_from_docstring(view.__doc__))
+        if hasattr(view, "view_class") and issubclass(view.view_class, MethodView):
+            for method in view.methods:
+                if method in rule.methods:
+                    method_name = method.lower()
+                    method = getattr(view.view_class, method_name)
+                    operations[method_name] = yaml_utils.load_yaml_from_docstring(method.__doc__)
+        return self.flaskpath2openapi(path)
+
+
 spec = APISpec(
     title=SERVICE_NAME,
     openapi_version=OPENAPI_VERSION,
     version=API_VERSION,
-    plugins=[FlaskPlugin(), MarshmallowPlugin()],
+    plugins=[MultiURLFlaskPlugin(), MarshmallowPlugin()],
     servers=[{"url": SERVICE_API_BASE_PATH}],
     security=[{"oidc": []}, {"JWT": [], "gitlab-token": []}],
     info={"description": TOP_LEVEL_DESCRIPTION},
@@ -109,5 +127,5 @@ def openapi():
 def get_apispec(app):
     """Return the apispec."""
     for rule in current_app.url_map.iter_rules():
-        spec.path(view=app.view_functions[rule.endpoint])
+        spec.path(path=rule.rule, view=app.view_functions[rule.endpoint])
     return spec

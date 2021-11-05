@@ -16,16 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Serializers for dataset list files."""
+
 import re
 from subprocess import PIPE, SubprocessError, run
 
-from humanize import naturalsize
-
+from renku.core.commands.format.tabulate import tabulate
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.models.dataset import DatasetFileDetailsJson
-
-from .tabulate import tabulate
 
 
 def tabular(records, *, columns=None):
@@ -34,6 +31,7 @@ def tabular(records, *, columns=None):
     :param records: Filtered collection.
     :param columns: List of columns to display
     """
+
     if not columns:
         columns = "added,creators,dataset,full_path"
 
@@ -59,11 +57,11 @@ def _get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
     """Check if files are tracked in git lfs."""
     client = client_dispatcher.current_client
 
-    paths = [r.path for r in records]
-    attrs = client.find_attr(*paths)
+    paths = (r.path for r in records)
+    attrs = client.repository.get_attributes(*paths)
 
     for record in records:
-        if attrs.get(record.path, {}).get("filter") == "lfs":
+        if attrs.get(str(record.path), {}).get("filter") == "lfs":
             record.is_lfs = True
         else:
             record.is_lfs = False
@@ -72,6 +70,8 @@ def _get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
 @inject.autoparams()
 def _get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
     """Try to get file size from Git LFS."""
+    from humanize import naturalsize  # Slow import
+
     client = client_dispatcher.current_client
 
     lfs_files_sizes = {}
@@ -97,7 +97,9 @@ def _get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
                 size = size.replace(" B", "  B")
             lfs_files_sizes[path] = size
 
-    non_lfs_files_sizes = {o.path: o.size for o in client.repo.tree().traverse() if o.path not in lfs_files_sizes}
+    non_lfs_files_sizes = {
+        o.path: o.size for o in client.repository.head.commit.traverse() if o.path not in lfs_files_sizes
+    }
     non_lfs_files_sizes = {k: naturalsize(v).upper().replace("BYTES", " B") for k, v in non_lfs_files_sizes.items()}
 
     for record in records:
@@ -121,6 +123,7 @@ def json(records, **kwargs):
 
     :param records: Filtered collection.
     """
+    from renku.core.models.dataset import DatasetFileDetailsJson
     from renku.core.models.json import dumps
 
     _get_lfs_file_sizes(records)

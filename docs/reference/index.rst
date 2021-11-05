@@ -16,31 +16,18 @@
     limitations under the License.
 
 
-Repository API
-==============
+Reference
+=========
 
-This API is built on top of Git and Git-LFS.
+Internals of the ``renku-python`` library.
 
-.. automodule:: renku.core.management
-   :members:
+.. toctree::
+    :maxdepth: 1
 
-Datasets
---------
-
-.. automodule:: renku.core.management.datasets
-   :members:
-
-Repository
-----------
-
-.. automodule:: renku.core.management.repository
-   :members:
-
-Git Internals
--------------
-
-.. automodule:: renku.core.management.git
-   :members:
-
-.. automodule:: renku.core.models.git
-   :members:
+    commands
+    models/index
+    database
+    gateways
+    management
+    plugins
+    service

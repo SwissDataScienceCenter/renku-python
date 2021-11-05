@@ -48,17 +48,16 @@ class DownloadTemplates(Command):
 
         with TemporaryDirectory() as tempdir:
             # download and extract template data
-            temppath = Path(tempdir)
             print("downloading Renku templates...")
-            fetch_template_from_git(URL, REFERENCE, temppath)
-            read_template_manifest(temppath, checkout=True)
+            fetch_template_from_git(URL, REFERENCE, tempdir)
+            read_template_manifest(tempdir, checkout=True)
 
             # copy templates
             current_path = Path.cwd()
             template_path = current_path / "renku" / "templates"
             if template_path.exists():
                 shutil.rmtree(str(template_path))
-            shutil.copytree(str(temppath), str(template_path), ignore=shutil.ignore_patterns(".git"))
+            shutil.copytree(tempdir, str(template_path), ignore=shutil.ignore_patterns(".git"))
 
 
 class bdist_egg(_bdist_egg):
@@ -93,7 +92,7 @@ tests_require = [
     "check-manifest>=0.37,<0.48",
     "coverage>=4.5.3,<5.6",
     "fakeredis>=1.4.1,<1.6.2",
-    "flake8>=3.8,<3.10",
+    "flake8>=3.8,<4.1",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.1.1",
     "isort>=5.3.2,<5.10.0",
@@ -105,7 +104,7 @@ tests_require = [
     "pytest-flake8>=1.0.6,<1.0.8",
     "pytest-mock>=3.2.0,<3.7.0",
     "pytest-pep8==1.0.6",
-    "pytest-timeout==1.4.2",
+    "pytest-timeout==2.0.1",
     "pytest-xdist>=1.34.0,<2.5.0",
     "pytest>=4.0.0,<6.2.6",
     "pyte>=0.8.0<0.9.0",
@@ -158,7 +157,7 @@ for name, reqs in extras_require.items():
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "attrs>=19.3.0,<21.3.0",
-    "calamus>=0.3.12,<0.4",
+    "calamus>=0.3.13,<0.4",
     "click-completion>=0.5.0,<=0.5.3",
     "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",
@@ -167,11 +166,13 @@ install_requires = [
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool==3.1.20210922203925",
     "cwl-utils>=0.10",
+    "deepmerge==0.3.0",
     "environ_config>=18.2.0,<21.3.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.24",
     "grandalf==0.7",
     "humanize>=2.5.0,<3.12.0",
+    "importlib-metadata>=4.8.1,<4.9.0; python_version < '3.8.0'",
     "inject>=4.3.0,<4.4.0",
     "jinja2>=2.10.3,<3.0.2",
     "ndg-httpsclient==0.5.1",
@@ -186,18 +187,18 @@ install_requires = [
     "pyjwt==2.1.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
-    "pyshacl==0.17.0.post1",
+    "pyshacl==0.17.2",
     "python-dateutil>=2.6.1,<2.8.3",
     "python-editor==1.0.4",
     "PyYAML>=5.4,<=5.4.1",
     "rdflib>=6.0.0,<7.0",
     "requests>=2.23.0,<2.27.0",
-    "rich>=9.3.0,<10.11.0",
+    "rich>=9.3.0,<10.13.0",
     "setuptools_scm>=3.1.0,<6.3.3",
     "tabulate>=0.7.7,<0.8.10",
     "tqdm>=4.48.1,<4.62.4",
     "wcmatch>=6.0.0,<8.3",
-    "werkzeug>=0.15.5,<2.0.2",
+    "werkzeug>=0.15.5,<2.0.3",
     "yagup>=0.1.1",
     "ZODB==5.6.0",
     "zc.relation>=1.1,<1.2",
