@@ -128,13 +128,13 @@ execution of a Plan, with parameter-sets provided by the user.
             --map parameter-2=[10,20] my-run
 
 The set of possible values for a parameter can be given by ``--map`` command
-line argument or or by specifying them in a values YAML file and passing that
+line argument or by specifying them in a values YAML file and passing that
 using ``--mapping``.
 
 By default ``renku workflow iterate`` will execute all the combination of the
 given parameters' list of possible values. Sometimes it is desired that instead
 of all the combination of possible values, a specific tuple of values are
-executed. This could be done by marking the parameters that should be bind
+executed. This could be done by marking the parameters that should be bound
 together with the ``@tag`` suffix in their names.
 
 .. code-block:: console
@@ -144,7 +144,7 @@ together with the ``@tag`` suffix in their names.
 
 This will result in only three distinct execution of the ``my-run`` Plan,
 with the following parameter combinations: ``[(1,10), (2,5), (3,30)]``. It is
-important to note, that parameters that have the same tag, should have the same
+important to note that parameters that have the same tag, should have the same
 number of possible values, i.e. the values list should have the same length.
 
 There's a special template variable for parameter values ``{iter_index}``, which
@@ -153,7 +153,7 @@ variable is going to be substituted with the iteration index (0, 1, 2, ...).
 
 .. code-block:: console
 
-    $ renku workflow iterate --map parameter-1@tag1=[10,20,30] \
+    $ renku workflow iterate --map parameter-1=[10,20,30] \
             --map output=output_{iter_index}.txt my-run
 
 This would execute ``my-run`` three times, where ``parameter-1`` values would be
