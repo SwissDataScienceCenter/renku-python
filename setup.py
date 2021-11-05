@@ -108,7 +108,7 @@ tests_require = [
     "pytest-xdist>=1.34.0,<2.5.0",
     "pytest>=4.0.0,<6.2.6",
     "pyte>=0.8.0<0.9.0",
-    "responses>=0.7.0,<0.14.1",
+    "responses>=0.7.0,<0.15.1",
 ]
 
 
@@ -117,7 +117,7 @@ service_requires = [
     "apispec-webframeworks>=0.5.2,<0.6",
     "circus==0.17.1",
     "docker-compose==1.29.2",
-    "flask==2.0.1",
+    "flask==2.0.2",
     "gunicorn",
     "marshmallow==3.13.0",
     "Pillow>=8.3.2,<9.0",
@@ -162,7 +162,7 @@ install_requires = [
     "click-option-group>=0.5.2,<0.6.0",
     "click-plugins==1.1.1",
     "click>=7.0,<8.0.2",
-    "cryptography>=3.4.1,<3.5",
+    "cryptography>=3.4.1,<35.1",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool==3.1.20210922203925",
     "cwl-utils>=0.10",
