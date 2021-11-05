@@ -35,7 +35,6 @@ from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.plan import AbstractPlan
-from renku.core.utils.scm import git_unicode_unescape
 
 
 class IActivityDownstreamRelation(Interface):
@@ -142,28 +141,20 @@ class DatabaseGateway(IDatabaseGateway):
     def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
         """Get all database objects modified in a revision."""
         # TODO: use gateway once #renku-python/issues/2253 is done
-        from git import NULL_TREE
 
         client_dispatcher = inject.instance(IClientDispatcher)
         client = client_dispatcher.current_client
 
         if ".." in revision_or_range:
-            commits = client.repo.iter_commits(rev=revision_or_range)
+            commits = client.repository.iterate_commits(revision=revision_or_range)
         else:
-            commits = [client.repo.commit(revision_or_range)]
+            commits = [client.repository.get_commit(revision_or_range)]
 
         for commit in commits:
-            if commit.parents:
-                parent = commit.parents[0]
-                child = commit
-            else:
-                # NOTE: For some reason diffs are the other way around when diffing NULL_TREE
-                parent = commit
-                child = NULL_TREE
-            for file_ in parent.diff(child, paths=f"{client.database_path}/**"):
-                if file_.change_type == "D":
+            for file in commit.get_changes(paths=f"{client.database_path}/**"):
+                if file.deleted:
                     continue
 
-                oid = Path(git_unicode_unescape(file_.a_path)).name
+                oid = Path(file.a_path).name
 
                 yield self.database_dispatcher.current_database.get(oid)

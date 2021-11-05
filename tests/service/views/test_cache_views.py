@@ -23,8 +23,8 @@ import uuid
 
 import jwt
 import pytest
-from git import Repo
 
+from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
@@ -710,9 +710,9 @@ def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
     svc_client, headers, project_id, cache, user = svc_protected_old_repo
 
     project = cache.get_project(user, project_id)
-    repo = Repo(path=project.abs_path)
-    commit_sha_before = repo.head.object.hexsha
-    active_branch_before = repo.active_branch.name
+    repository = Repository(path=project.abs_path)
+    commit_sha_before = repository.head.commit.hexsha
+    active_branch_before = repository.active_branch.name
 
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
@@ -721,10 +721,10 @@ def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
     assert response.json["result"]["was_migrated"]
 
     project = cache.get_project(user, project_id)
-    repo = Repo(path=project.abs_path)
+    repository = Repository(path=project.abs_path)
 
-    assert commit_sha_before == repo.head.object.hexsha
-    assert active_branch_before == repo.active_branch.name
+    assert commit_sha_before == repository.head.commit.hexsha
+    assert active_branch_before == repository.active_branch.name
 
 
 @pytest.mark.service
@@ -761,23 +761,20 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 def test_cache_gets_synchronized(
     local_remote_repository, directory_tree, quick_cache_synchronization, client_database_injection_manager
 ):
-    """Test that the cache stays synchronized with the remote repo."""
+    """Test that the cache stays synchronized with the remote repository."""
     from renku.core.management.client import LocalClient
     from renku.core.models.provenance.agent import Person
 
     svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
 
-    remote_name = remote_repo_checkout.active_branch.tracking_branch().remote_name
-    remote = remote_repo_checkout.remotes[remote_name]
-
-    client = LocalClient(remote_repo_checkout.working_dir)
+    client = LocalClient(remote_repo_checkout.path)
 
     with client_database_injection_manager(client):
         with client.commit(commit_message="Create dataset"):
             with client.with_dataset(name="my_dataset", create=True, commit_database=True) as dataset:
                 dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
-    remote.push()
+    remote_repo_checkout.push()
     params = {
         "project_id": project_id,
     }
@@ -800,7 +797,7 @@ def test_cache_gets_synchronized(
     assert 200 == response.status_code
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
 
-    remote.pull()
+    remote_repo_checkout.pull()
 
     with client_database_injection_manager(client):
         datasets = client.datasets.values()

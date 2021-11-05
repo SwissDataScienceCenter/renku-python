@@ -36,8 +36,8 @@ def test_move(runner, client):
     src2 = Path("src2") / "sub" / "src2.txt"
     src2.parent.mkdir(parents=True, exist_ok=True)
     src2.touch()
-    client.repo.git.add("--all")
-    client.repo.index.commit("Add some files")
+    client.repository.add(all=True)
+    client.repository.commit("Add some files")
 
     result = runner.invoke(cli, ["mv", "-v", "src1", "src2", "dst/sub"])
 
@@ -90,8 +90,8 @@ def test_move_protected_paths(runner, client, path):
 def test_move_existing_destination(runner, client):
     """Test move to existing destination."""
     (client.path / "source").write_text("123")
-    client.repo.git.add(all=True)
-    client.repo.index.commit("source file")
+    client.repository.add(all=True)
+    client.repository.commit("source file")
 
     result = runner.invoke(cli, ["mv", "source", "README.md"])
 
@@ -176,14 +176,14 @@ def test_move_in_the_same_dataset(runner, client_with_datasets, args, load_datas
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not client_with_datasets.repo.is_dirty()
+    assert not client_with_datasets.repository.is_dirty(untracked_files=True)
 
 
 def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets, load_dataset_with_injection):
     """Test move to a file in dataset will update file's metadata."""
     (client_with_datasets.path / "source").write_text("new-content")
-    client_with_datasets.repo.git.add(all=True)
-    client_with_datasets.repo.index.commit("source file")
+    client_with_datasets.repository.add(all=True)
+    client_with_datasets.repository.commit("source file")
 
     dst = os.path.join("data", "dataset-2", "file1")
 
@@ -207,7 +207,7 @@ def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets,
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not client_with_datasets.repo.is_dirty()
+    assert not client_with_datasets.repository.is_dirty(untracked_files=True)
 
 
 @pytest.mark.parametrize(
@@ -242,7 +242,7 @@ def test_move_external_files(
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
 
     assert 0 == result.exit_code, result.output
-    assert not client.repo.is_dirty()
+    assert not client.repository.is_dirty(untracked_files=True)
 
 
 def test_move_between_datasets(
@@ -272,7 +272,7 @@ def test_move_between_datasets(
         assert path.exists()
         assert dataset.find_file(path)
 
-    tracked = set(client.repo.git.lfs("ls-files", "--name-only").split("\n"))
+    tracked = set(client.repository.run_git_command("lfs", "ls-files", "--name-only").split("\n"))
     assert {"data/dataset-3/directory_tree/file1", "data/dataset-3/directory_tree/dir1/file2"} == tracked
 
     # Some more moves and dataset operations
@@ -294,8 +294,8 @@ def test_move_between_datasets(
         f.entity.path for f in load_dataset_with_injection("dataset-3", client).files
     }
 
-    tracked = set(client.repo.git.lfs("ls-files", "--name-only").split("\n"))
+    tracked = set(client.repository.run_git_command("lfs", "ls-files", "--name-only").split("\n"))
     assert {"data/dataset-1/file2", "data/dataset-2/file1", "data/dataset-3/large-file"} == tracked
 
     assert 0 == runner.invoke(cli, ["doctor"], catch_exceptions=False).exit_code
-    assert not client.repo.is_dirty()
+    assert not client.repository.is_dirty(untracked_files=True)

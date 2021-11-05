@@ -57,8 +57,10 @@ import click
 def clone(no_pull_data, url, path):
     """Clone a Renku repository."""
     from renku.core.commands.clone import project_clone_command
-    from renku.core.commands.echo import GitProgress
+    from renku.core.utils.git import get_git_progress_instance
 
     click.echo(f"Cloning {url} ...")
-    project_clone_command().build().execute(url=url, path=path, skip_smudge=no_pull_data, progress=GitProgress())
+    project_clone_command().build().execute(
+        url=url, path=path, skip_smudge=no_pull_data, progress=get_git_progress_instance()
+    )
     click.secho("OK", fg="green")

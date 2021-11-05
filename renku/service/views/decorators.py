@@ -21,13 +21,13 @@ import re
 from functools import wraps
 
 from flask import jsonify, request
-from git import GitCommandError, GitError
 from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
 from redis import RedisError
 from sentry_sdk import capture_exception, set_context
 from werkzeug.exceptions import HTTPException
 
+from renku.core import errors
 from renku.core.errors import (
     DockerfileUpdateError,
     MigrationError,
@@ -233,7 +233,7 @@ def handle_git_except(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
-        except GitCommandError as e:
+        except errors.GitCommandError as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
@@ -293,7 +293,7 @@ def handle_base_except(f):
             error_message = f"Failed to contact external service. Received response {e.code} ({e.description})."
             return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
 
-        except GitError as e:
+        except errors.GitError as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
