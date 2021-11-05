@@ -44,8 +44,8 @@ Working with Plans
 Listing Plans
 *************
 
-.. image:: _static/asciicasts/list_plans.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/list_plans.delay.gif
+   :width: 850
    :alt: List Plans
 
 .. code-block:: console
@@ -65,8 +65,8 @@ combination of values from ``id``, ``name``, ``keywords`` and ``description``.
 Showing Plan Details
 ********************
 
-.. image:: _static/asciicasts/show_plan.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/show_plan.delay.gif
+   :width: 850
    :alt: Show Plan
 
 You can see the details of a plan by using ``renku workflow show``:
@@ -95,8 +95,8 @@ inputs, outputs and parameters.
 Executing Plans
 ***************
 
-.. image:: _static/asciicasts/execute_plan.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/execute_plan.delay.gif
+   :width: 850
    :alt: Execute Plans
 
 Plans can be executed using ``renku workflow execute``. They can be run as-is
@@ -171,8 +171,8 @@ You can export into a file directly with ``-o <path>``.
 
 Composing Plans into larger workflows
 *************************************
-.. image:: _static/asciicasts/compose_plan.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/compose_plan.delay.gif
+   :width: 850
    :alt: Composing Plans
 
 For more complex workflows consisting of several steps, you can use the
@@ -215,12 +215,12 @@ of workflows and properties, and relative references specifying the
 position within a workflow.
 
 An absolute expression in the example above could be ``step1.my_dataset``
-to refer to the input, output or argument named ``my_dataset` on the step
+to refer to the input, output or argument named ``my_dataset`` on the step
 ``step1``. A relative expression could be ``@step2.@output1`` to refer
 to the first output of the second step of the composed workflow.
 
 Valid relative expressions are ``@input<n>``, ``@output<n>`` and ``@param<n>``
-for the n'th input, output or argument of a step, respectively. For referring
+for the nth input, output or argument of a step, respectively. For referring
 to steps inside a composed workflow, you can use ``@step<n>``. For referencing
 a mapping on a composed workflow, you can use ``@mapping<n>``. Of course, the
 names of the objects for all these cases also work.
@@ -274,7 +274,7 @@ using ``--map-inputs``, ``--map-outputs`` or ``--map-params``, respectively.
 On execution, renku will automatically detect links between steps, if an input
 of one step uses the same path as an output of another step, and execute
 them in the correct order. Since this depends on what values are passed
-at runtime, you might want to enforce a certain order of steps by explicitely
+at runtime, you might want to enforce a certain order of steps by explicitly
 mapping outputs to inputs.
 
 You can do that using the ``--link <source>=<sink>`` parameters, e.g.
@@ -284,7 +284,7 @@ path as ``step1.@output1``, irrespective of which values are passed at
 execution time.
 
 This way, you can ensure that the steps in your workflow are always executed
-in the correct order and that the dependencies between steps are modelled
+in the correct order and that the dependencies between steps are modeled
 correctly.
 
 Renku can also add links for you automatically based on the default values
@@ -309,8 +309,8 @@ order of precedence (lower precedence first):
 Editing Plans
 *************
 
-.. image:: _static/asciicasts/edit_plan.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/edit_plan.delay.gif
+   :width: 850
    :alt: Editing Plans
 
 Plans can be edited in some limited fashion, but we do not allow structural
@@ -364,14 +364,14 @@ Refer to the documentation of the :ref:`cli-log` command for more details.
 Visualizing Executions
 **********************
 
-.. image:: _static/asciicasts/visualize_runs.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/visualize_runs.delay.gif
+   :width: 850
    :alt: Visualizing Runs
 
 You can visualize past Runs made with renku using the ``renku workflow
 visualize`` command.
 This will show a directed graph of executions and how they are connected. This
-way you can see exactly how a file was generated and what steps it involded.
+way you can see exactly how a file was generated and what steps it involved.
 It also supports an interactive mode that lets you explore the graph in a more
 detailed way.
 
@@ -496,8 +496,6 @@ from typing import TYPE_CHECKING
 
 import click
 from lazy_object_proxy import Proxy
-from rich.console import Console
-from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
@@ -526,11 +524,13 @@ def _available_workflow_providers():
 
 def _print_plan(plan: "PlanViewModel"):
     """Print a plan to stdout."""
+    from renku.core.utils.os import print_markdown
+
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(plan.name, bold=True))
 
     if plan.description:
-        Console().print(Markdown(plan.description))
+        print_markdown(plan.description)
 
     click.echo(click.style("Command: ", bold=True, fg="magenta") + click.style(plan.full_command, bold=True))
     click.echo(click.style("Success Codes: ", bold=True, fg="magenta") + click.style(plan.success_codes, bold=True))
@@ -608,11 +608,13 @@ def _print_plan(plan: "PlanViewModel"):
 
 def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
     """Print a CompositePlan to stdout."""
+    from renku.core.utils.os import print_markdown
+
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(composite_plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(composite_plan.name, bold=True))
 
     if composite_plan.description:
-        Console().print(Markdown(composite_plan.description))
+        print_markdown(composite_plan.description)
 
     click.echo(click.style("Steps: ", bold=True, fg="magenta"))
     for step in composite_plan.steps:

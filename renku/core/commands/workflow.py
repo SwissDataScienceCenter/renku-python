@@ -26,8 +26,6 @@ from functools import reduce
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from git import Actor
-
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
 from renku.core.commands.view_model.activity_graph import ActivityGraphViewModel
@@ -43,15 +41,14 @@ from renku.core.management.workflow.activity import create_activity_graph, get_a
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.management.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
+from renku.core.metadata.repository import Actor
 from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.plugins.provider import execute
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import local_now
-from renku.core.utils.git import add_to_git
 from renku.core.utils.os import are_paths_related, get_relative_paths
-from renku.version import __version__, version_url
 
 
 def _ref(name):
@@ -450,6 +447,8 @@ def execute_workflow(
     config=None,
 ):
     """Execute a Run with/without subprocesses."""
+    from renku.version import __version__, version_url
+
     client = client_dispatcher.current_client
 
     # NOTE: Pull inputs from Git LFS or other storage backends
@@ -467,13 +466,13 @@ def execute_workflow(
 
     ended_at_time = local_now()
 
-    add_to_git(client.repo.git, *modified_outputs)
+    client.repository.add(*modified_outputs)
 
-    if client.repo.is_dirty():
+    if client.repository.is_dirty():
         postfix = "s" if len(modified_outputs) > 1 else ""
         commit_msg = f"renku {command_name}: committing {len(modified_outputs)} modified file{postfix}"
-        committer = Actor(f"renku {__version__}", version_url)
-        client.repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
+        committer = Actor(name=f"renku {__version__}", email=version_url)
+        client.repository.commit(commit_msg, committer=committer, no_verify=True)
 
     activities = []
 

@@ -22,11 +22,11 @@ import subprocess
 import time
 from pathlib import Path
 
-import git
 import pytest
 from click.testing import CliRunner
 
 from renku.cli import cli
+from renku.core.metadata.repository import Repository
 from tests.utils import format_result_exception, write_and_commit_file
 
 
@@ -90,7 +90,7 @@ def test_rerun_with_special_paths(project, renku_cli, source, output):
 @pytest.mark.parametrize("source, content", [("input1", "input1 new-input2 old"), ("input2", "input1 old-input2 new")])
 def test_rerun_with_from(project, renku_cli, source, content):
     """Test file recreation with specified inputs."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     cwd = Path(project)
     input1 = cwd / "input1"
     input2 = cwd / "input2"
@@ -114,13 +114,13 @@ def test_rerun_with_from(project, renku_cli, source, content):
     write_and_commit_file(repo, input1, "input1 new-")
     write_and_commit_file(repo, input2, "input2 new")
 
-    commit_sha_before = repo.head.object.hexsha
+    commit_sha_before = repo.head.commit.hexsha
 
     assert 0 == renku_cli("rerun", "--from", source, output).exit_code
 
     assert content == output.read_text()
 
-    commit_sha_after = repo.head.object.hexsha
+    commit_sha_after = repo.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
 
 
@@ -177,7 +177,7 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
 
 def test_rerun_with_no_execution(project, runner):
     """Test rerun when no workflow is executed."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     input = os.path.join(project, "data", "input.txt")
     write_and_commit_file(repo, input, "content")
 
@@ -203,9 +203,9 @@ def test_output_directory(runner, project, run, no_lfs_size_limit):
     invalid_destination.mkdir(parents=True)
     (invalid_destination / "non_empty").touch()
 
-    repo = git.Repo(project)
-    repo.git.add("--all")
-    repo.index.commit("Created source directory", skip_hooks=True)
+    repo = Repository(project)
+    repo.add(all=True)
+    repo.commit("Created source directory", no_verify=True)
 
     cmd = ["run", "cp", "-LRf", str(source), str(destination)]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
@@ -240,7 +240,7 @@ def test_output_directory(runner, project, run, no_lfs_size_limit):
 
 def test_rerun_overridden_output(project, renku_cli, runner):
     """Test a path where final output is overridden won't be rerun."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     a = os.path.join(project, "a")
     b = os.path.join(project, "b")
     c = os.path.join(project, "c")
@@ -263,7 +263,7 @@ def test_rerun_overridden_output(project, renku_cli, runner):
 
 def test_rerun_overridden_outputs_partially(project, renku_cli, runner):
     """Test a path where one of the final output is overridden won't be rerun."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     a = os.path.join(project, "a")
     b = os.path.join(project, "b")
     c = os.path.join(project, "c")
@@ -295,7 +295,7 @@ def test_rerun_overridden_outputs_partially(project, renku_cli, runner):
 
 def test_rerun_multiple_paths_common_output(project, renku_cli, runner):
     """Test when multiple paths generate the same output only the most recent path will be rerun."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     a = os.path.join(project, "a")
     b = os.path.join(project, "b")
     c = os.path.join(project, "c")

@@ -19,9 +19,8 @@
 
 import os
 
-from git import Repo
-
 from renku.cli import cli
+from renku.core.metadata.repository import Repository
 from tests.utils import format_result_exception, write_and_commit_file
 
 
@@ -30,7 +29,7 @@ def test_status(runner, project, subdirectory):
     source = os.path.join(project, "source.txt")
     output = os.path.join(project, "data", "output.txt")
 
-    repo = Repo(project)
+    repo = Repository(project)
 
     write_and_commit_file(repo, source, "content")
 
@@ -55,7 +54,7 @@ def test_status_multiple_steps(runner, project):
     intermediate = os.path.join(os.getcwd(), "intermediate.txt")
     output = os.path.join(os.getcwd(), "data", "output.txt")
 
-    repo = Repo(project)
+    repo = Repository(project)
 
     write_and_commit_file(repo, source, "content")
 
@@ -74,7 +73,7 @@ def test_workflow_without_outputs(runner, project):
     """Test workflow without outputs."""
     source = os.path.join(os.getcwd(), "source.txt")
 
-    repo = Repo(project)
+    repo = Repository(project)
 
     write_and_commit_file(repo, source, "content")
 
@@ -98,7 +97,7 @@ def test_status_with_paths(runner, project):
     source2 = os.path.join(os.getcwd(), "source2.txt")
     output2 = os.path.join(os.getcwd(), "data", "output2.txt")
 
-    repo = Repo(project)
+    repo = Repository(project)
 
     write_and_commit_file(repo, source1, "content")
     write_and_commit_file(repo, source2, "content")
@@ -146,7 +145,7 @@ def test_status_with_path_all_generation(runner, project):
     output1 = os.path.join(project, "data", "output1.txt")
     output2 = os.path.join(project, "data", "output2.txt")
 
-    repo = Repo(project)
+    repo = Repository(project)
 
     write_and_commit_file(repo, source, "content")
 

@@ -20,8 +20,8 @@ r"""Recreate files created by the "run" command.
 Recreating files
 ~~~~~~~~~~~~~~~~
 
-.. image:: _static/asciicasts/rerun.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/rerun.delay.gif
+   :width: 850
    :alt: Rerun workflow
 
 Assume you have run a step 2 that uses a stochastic algorithm, so each run

@@ -58,6 +58,7 @@ from renku.core.management.migrations.utils import (
     read_project_version,
 )
 from renku.core.utils import communication
+from renku.core.utils.git import is_valid_git_repository
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -342,13 +343,16 @@ def _get_project_version(client_dispatcher: IClientDispatcher):
 
 
 @inject.autoparams()
-def is_renku_project(client_dispatcher: IClientDispatcher):
+def is_renku_project(client_dispatcher: IClientDispatcher) -> bool:
     """Check if repository is a renku project."""
     client = client_dispatcher.current_client
 
+    if not is_valid_git_repository(client.repository):
+        return False
+
     try:
         return client.project is not None
-    except (ValueError):  # Error in loading due to an older schema
+    except ValueError:  # NOTE: Error in loading due to an older schema
         return client.renku_path.joinpath(OLD_METADATA_PATH).exists()
 
 
