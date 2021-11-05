@@ -46,8 +46,8 @@ def test_run_many_args(client, run):
     output = "output.txt"
     for i in range(103):
         os.system("touch files/{}.txt".format(i))
-    client.repo.index.add(["files/"])
-    client.repo.index.commit("add many files")
+    client.repository.add("files/")
+    client.repository.commit("add many files")
 
     exit_code = run(args=("run", "ls", "files/"), stdout=output)
     assert 0 == exit_code
@@ -56,7 +56,7 @@ def test_run_many_args(client, run):
 @pytest.mark.serial
 @pytest.mark.shelled
 def test_run_clean(runner, project, run_shell):
-    """Test tracking of run command in clean repo."""
+    """Test tracking of run command in clean repository."""
     # Run a shell command with pipe.
     output = run_shell('renku run echo "a unique string" > my_output_file')
 

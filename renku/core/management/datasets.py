@@ -21,36 +21,28 @@ import concurrent.futures
 import fnmatch
 import imghdr
 import os
-import shlex
 import shutil
-import tempfile
 import time
+import urllib
 import uuid
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
-from subprocess import PIPE, SubprocessError
 from typing import Dict, List, Optional
-from urllib import error, parse
-from urllib.parse import ParseResult, unquote, urlparse
 from urllib.request import urlretrieve
 
 import attr
-import patoolib
-import requests
-from git import GitCommandError, GitError, Repo
 from wcmatch import glob
-from yagup import GitURL
 
 from renku.core import errors
-from renku.core.management.clone import clone
+from renku.core.management import RENKU_HOME
 from renku.core.management.command_builder.command import inject
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.dataset import get_dataset
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.metadata.immutable import DynamicProxy
+from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import (
     Dataset,
     DatasetFile,
@@ -63,14 +55,7 @@ from renku.core.models.provenance.agent import Person
 from renku.core.models.provenance.annotation import Annotation
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
-from renku.core.utils.git import (
-    add_to_git,
-    get_oauth_url,
-    get_object_hash,
-    get_renku_repo_url,
-    have_same_remote,
-    run_command,
-)
+from renku.core.utils.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.utils.urls import get_slug, remove_credentials
 
 
@@ -174,7 +159,7 @@ class DatasetsApiMixin(object):
             title = name
 
         if creators is None:
-            creators = [Person.from_git(self.repo)]
+            creators = [get_git_user(self.repository)]
 
         keywords = keywords or ()
 
@@ -246,7 +231,7 @@ class DatasetsApiMixin(object):
                 dataset.images.append(existing)
                 continue
             image_type = None
-            if urlparse(content_url).netloc:
+            if urllib.parse.urlparse(content_url).netloc:
                 # NOTE: absolute url
                 if not img.get("mirror_locally", False):
                     dataset.images.append(
@@ -262,7 +247,7 @@ class DatasetsApiMixin(object):
                 # NOTE: mirror the image locally
                 try:
                     path, _ = urlretrieve(content_url)
-                except error.URLError as e:
+                except urllib.error.URLError as e:
                     raise errors.DatasetImageError(f"Dataset image with url {content_url} couldn't be mirrored") from e
 
                 image_type = imghdr.what(path)
@@ -305,7 +290,7 @@ class DatasetsApiMixin(object):
 
         for prev in previous_images:
             # NOTE: Delete images if they were removed
-            if prev.content_url in new_urls or urlparse(prev.content_url).netloc:
+            if prev.content_url in new_urls or urllib.parse.urlparse(prev.content_url).netloc:
                 continue
 
             path = prev.content_url
@@ -316,7 +301,6 @@ class DatasetsApiMixin(object):
 
         return images_updated or dataset.images != previous_images
 
-    @inject.autoparams()
     def add_data_to_dataset(
         self,
         dataset,
@@ -330,7 +314,7 @@ class DatasetsApiMixin(object):
         extract=False,
         all_at_once=False,
         destination_names=None,
-        repository=None,
+        repository: Repository = None,
         clear_files_before=False,
     ):
         """Import the data into the data directory."""
@@ -353,7 +337,7 @@ class DatasetsApiMixin(object):
         else:
             for url in urls:
                 is_remote, is_git, url = _check_url(url)
-                if is_git and is_remote:  # Remote git repo
+                if is_git and is_remote:  # Remote repository
                     sources = sources or ()
                     new_files = self._add_from_git(
                         url=url, sources=sources, destination=destination, ref=ref, repository=repository
@@ -362,14 +346,14 @@ class DatasetsApiMixin(object):
                     if sources:
                         raise errors.UsageError('Cannot use "--source" with URLs or local files.')
 
-                    if not is_remote:  # Local path, might be git
+                    if not is_remote:  # Local path, might be a repository
                         if is_git:
                             communication.warn(
                                 "Adding data from local Git repository: "
                                 + "Use remote's Git URL instead to enable "
                                 + "lineage information and updates."
                             )
-                        u = parse.urlparse(url)
+                        u = urllib.parse.urlparse(url)
                         new_files = self._add_from_local(
                             dataset=dataset, path=u.path, external=external, destination=destination
                         )
@@ -455,14 +439,13 @@ class DatasetsApiMixin(object):
             self.track_paths_in_storage(*files_to_commit)
 
         # Force-add to include possible ignored files
-        add_to_git(self.repo.git, *files_to_commit, force=True)
-        self.repo.git.add(self.renku_pointers_path, force=True)
+        self.repository.add(*files_to_commit, self.renku_pointers_path, force=True)
 
-        staged_files = self.repo.index.diff("HEAD")
-        if staged_files:
-            msg = "renku dataset: committing {} newly added files".format(len(files_to_commit))
+        n_staged_changes = len(self.repository.staged_changes)
+        if n_staged_changes > 0:
+            msg = f"renku dataset: committing {n_staged_changes} newly added files"
             skip_hooks = not self.external_storage_requested
-            self.repo.index.commit(msg, skip_hooks=skip_hooks)
+            self.repository.commit(msg, no_verify=skip_hooks)
         else:
             communication.warn("No new file was added to project")
 
@@ -481,7 +464,7 @@ class DatasetsApiMixin(object):
             dataset.clear_files()
         dataset.add_or_update_files(dataset_files)
         datasets_provenance = DatasetsProvenance()
-        datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
+        datasets_provenance.add_or_update(dataset, creator=get_git_user(self.repository))
 
     def is_protected_path(self, path):
         """Checks if a path is a protected path."""
@@ -582,19 +565,23 @@ class DatasetsApiMixin(object):
 
     def _add_from_url(self, url, destination, extract, filename=None):
         """Process adding from url and return the location on disk."""
+        from renku.core.utils import requests
+
         url = self._provider_check(url)
 
         try:
             start = time.time() * 1e3
-            tmp_root, paths = self._download(url=url, filename=filename, extract=extract)
+
+            tmp_root, paths = requests.download_file(
+                base_directory=self.renku_path / self.CACHE, url=url, filename=filename, extract=extract
+            )
 
             exec_time = (time.time() * 1e3 - start) // 1e3
             # If execution time was less or equal to zero seconds,
             # block the thread a bit to avoid being rate limited.
             if exec_time == 0:
                 time.sleep(min(os.cpu_count() - 1, 4) or 1)
-
-        except (requests.exceptions.HTTPError, error.HTTPError) as e:  # pragma nocover
+        except errors.RequestError as e:  # pragma nocover
             raise errors.OperationError("Cannot download from {}".format(url)) from e
 
         paths = [(src, destination / src.relative_to(tmp_root)) for src in paths if not src.is_dir()]
@@ -608,23 +595,29 @@ class DatasetsApiMixin(object):
             for src, dst in paths
         ]
 
-    def _add_from_git(self, url, sources, destination, ref, repository=None):
+    def _add_from_git(self, url, sources, destination, ref, repository: Repository = None):
         """Process adding resources from another git repository."""
         from renku.core.management.client import LocalClient
 
-        u = parse.urlparse(url)
+        u = urllib.parse.urlparse(url)
 
         sources = self._resolve_paths(u.path, sources)
 
         if not repository:
-            repository, repo_path = self.prepare_git_repo(url, ref, depth=None)
-        else:
-            repo_path = Path(repository.working_dir)
+            repository = clone_repository(
+                url=url,
+                path=get_cache_directory_for_repository(client=self, url=url),
+                checkout_revision=ref,
+                depth=None,
+                clean=True,
+            )
+
+        repo_path = repository.path
 
         # Get all files from repo that match sources
         files = set()
         used_sources = set()
-        for file in repository.head.commit.tree.traverse():
+        for file in repository.head.commit.traverse():
             path = file.path
             result = self._get_src_and_dst(path, repo_path, sources, destination, used_sources)
 
@@ -640,18 +633,7 @@ class DatasetsApiMixin(object):
         results = []
         remote_client = LocalClient(repo_path)
 
-        # Pull files from LFS
-        paths = set()
-        for path, src, _ in files:
-            if src.is_dir():
-                continue
-            if src.is_symlink():
-                try:
-                    path = str(src.resolve().relative_to(repo_path))
-                except ValueError:  # External file
-                    pass
-            paths.add(path)
-        self._fetch_lfs_files(repo_path, paths)
+        remote_client.pull_paths_from_storage(*(src for _, src, _ in files))
 
         new_files = []
 
@@ -668,7 +650,7 @@ class DatasetsApiMixin(object):
                 else:
                     operation = (src, dst, "move")
 
-                checksum = get_object_hash(repo=remote_client.repo, revision="HEAD", path=path)
+                checksum = remote_client.repository.get_object_hash(revision="HEAD", path=path)
                 based_on = RemoteEntity(checksum=checksum, path=path, url=url)
 
                 results.append(
@@ -686,8 +668,8 @@ class DatasetsApiMixin(object):
     @staticmethod
     def _ensure_dropbox(url):
         """Ensure dropbox url is set for file download."""
-        if not isinstance(url, ParseResult):
-            url = parse.urlparse(url)
+        if not isinstance(url, urllib.parse.ParseResult):
+            url = urllib.parse.urlparse(url)
 
         query = url.query or ""
         if "dl=0" in url.query:
@@ -700,14 +682,15 @@ class DatasetsApiMixin(object):
 
     def _provider_check(self, url):
         """Check additional provider related operations."""
-        # NOTE: Check if the url is a redirect.
-        r = requests.head(url, allow_redirects=True)
-        url = parse.urlparse(r.url)
+        from renku.core.utils import requests
+
+        url = requests.get_redirect_url(url)
+        url = urllib.parse.urlparse(url)
 
         if "dropbox.com" in url.netloc:
             url = self._ensure_dropbox(url)
 
-        return parse.urlunparse(url)
+        return urllib.parse.urlunparse(url)
 
     def _resolve_paths(self, root_path, paths):
         """Check if paths are within a root path and resolve them."""
@@ -771,29 +754,6 @@ class DatasetsApiMixin(object):
 
         return path, src, dst
 
-    @staticmethod
-    def _fetch_lfs_files(repo_path, paths):
-        """Fetch and checkout paths that are tracked by Git LFS."""
-        repo_path = str(repo_path)
-
-        try:
-            paths = [shlex.quote(p) for p in paths]
-            status = run_command(
-                ["git", "lfs", "pull", "--include"],
-                *paths,
-                separator=",",
-                stderr=PIPE,
-                cwd=repo_path,
-                universal_newlines=True,
-            )
-            if status.returncode != 0:
-                message = "\n\t".join(status.stderr.split("\n"))
-                raise errors.GitError(f"Cannot pull LFS objects from server: {message}")
-        except KeyboardInterrupt:
-            raise
-        except SubprocessError as e:
-            raise errors.GitError(f"Cannot pull LFS objects from server: {e}")
-
     def move_files(self, files, to_dataset):
         """Move files and their metadata from one or more datasets to a target dataset."""
         datasets = [d.copy() for d in self.datasets.values()]
@@ -834,9 +794,9 @@ class DatasetsApiMixin(object):
 
         datasets_provenance = DatasetsProvenance()
         for dataset in modified_datasets.values():
-            datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
+            datasets_provenance.add_or_update(dataset, creator=get_git_user(self.repository))
         if to_dataset:
-            datasets_provenance.add_or_update(to_dataset, creator=Person.from_client(self))
+            datasets_provenance.add_or_update(to_dataset, creator=get_git_user(self.repository))
 
     def update_dataset_local_files(self, records: List[DynamicProxy], delete=False):
         """Update files metadata from the git history."""
@@ -856,7 +816,7 @@ class DatasetsApiMixin(object):
                     deleted_files.append(file)
                     continue
 
-                current_checksum = get_object_hash(repo=self.repo, revision="HEAD", path=file.entity.path)
+                current_checksum = self.repository.get_object_hash(revision="HEAD", path=file.entity.path)
                 if not current_checksum:
                     deleted_files.append(file)
                 elif current_checksum != file.entity.checksum:
@@ -891,7 +851,7 @@ class DatasetsApiMixin(object):
 
         datasets_provenance = DatasetsProvenance()
         for dataset in modified_datasets.values():
-            datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
+            datasets_provenance.add_or_update(dataset, creator=get_git_user(self.repository))
 
     def update_dataset_git_files(self, files: List[DynamicProxy], ref, delete=False):
         """Update files and dataset metadata according to their remotes.
@@ -919,24 +879,25 @@ class DatasetsApiMixin(object):
                 based_on = file.based_on
                 url = based_on.url
                 if url in visited_repos:
-                    repo, repo_path, remote_client = visited_repos[url]
+                    remote_repository, remote_client = visited_repos[url]
                 else:
-                    repo, repo_path = self.prepare_git_repo(url, ref)
-                    remote_client = LocalClient(repo_path)
-                    visited_repos[url] = repo, repo_path, remote_client
+                    remote_repository = clone_repository(
+                        url=url, path=get_cache_directory_for_repository(client=self, url=url), checkout_revision=ref
+                    )
+                    remote_client = LocalClient(remote_repository.path)
+                    visited_repos[url] = remote_repository, remote_client
 
-                checksum = get_object_hash(repo, based_on.path)
-
+                checksum = remote_repository.get_object_hash(path=based_on.path, revision="HEAD")
                 found = bool(checksum)
                 changed = found and based_on.checksum != checksum
 
-                src = Path(repo.working_dir) / based_on.path
+                src = remote_repository.path / based_on.path
                 dst = self.renku_path.parent / file.entity.path
 
                 if changed:
                     if src.exists():
                         # Fetch file if it is tracked by Git LFS
-                        self._fetch_lfs_files(repo_path, {based_on.path})
+                        remote_client.pull_paths_from_storage(remote_client.path / based_on.path)
                         if remote_client.is_external_file(src):
                             self.remove_file(dst)
                             self._create_external_file(src.resolve(), dst)
@@ -963,11 +924,11 @@ class DatasetsApiMixin(object):
 
         file_paths = {str(self.path / f.entity.path) for f in updated_files + deleted_files}
         # Force-add to include possible ignored files that are in datasets
-        add_to_git(self.repo.git, *file_paths, force=True)
+        self.repository.add(*file_paths, force=True)
         skip_hooks = not self.external_storage_requested
-        self.repo.index.commit(
-            "renku dataset: updated {} files and deleted {} files".format(len(updated_files), len(deleted_files)),
-            skip_hooks=skip_hooks,
+        self.repository.commit(
+            f"renku dataset: updated {len(updated_files)} files and deleted {len(deleted_files)} files",
+            no_verify=skip_hooks,
         )
 
         self._update_datasets_metadata(updated_files, deleted_files, delete)
@@ -989,9 +950,10 @@ class DatasetsApiMixin(object):
 
         if checksum is None:
             checksum = self._calculate_checksum(target)
+            assert checksum is not None, f"Cannot calculate checksum for '{target}'"
 
         while True:
-            filename = "{}-{}".format(uuid.uuid4(), checksum)
+            filename = f"{uuid.uuid4()}-{checksum}"
             path = self.renku_pointers_path / filename
             if not path.exists():
                 break
@@ -1005,9 +967,9 @@ class DatasetsApiMixin(object):
 
     def _calculate_checksum(self, filepath):
         try:
-            return self.repo.git.hash_object(str(filepath))
-        except GitCommandError:
-            return None
+            return self.repository.hash_object(filepath)
+        except errors.GitCommandError:
+            raise
 
     def update_external_files(self, records: List[DynamicProxy]):
         """Update files linked to external storage."""
@@ -1030,9 +992,9 @@ class DatasetsApiMixin(object):
         if not updated_files_paths:
             return
 
-        add_to_git(self.repo.git, *updated_files_paths, force=True)
-        self.repo.git.add(self.renku_pointers_path, force=True)
-        self.repo.index.commit("renku dataset: updated {} external files".format(len(updated_files_paths)))
+        self.repository.add(*updated_files_paths, force=True)
+        self.repository.add(self.renku_pointers_path, force=True)
+        self.repository.commit(f"renku dataset: updated {len(updated_files_paths)} external files")
 
         datasets_provenance = DatasetsProvenance()
 
@@ -1042,7 +1004,7 @@ class DatasetsApiMixin(object):
                     new_file = DatasetFile.from_path(client=self, path=file.entity.path, source=file.source)
                     dataset.add_or_update_files(new_file)
 
-            datasets_provenance.add_or_update(dataset, creator=Person.from_client(self))
+            datasets_provenance.add_or_update(dataset, creator=get_git_user(self.repository))
 
     def _update_pointer_file(self, pointer_file_path):
         """Update a pointer file."""
@@ -1106,148 +1068,12 @@ class DatasetsApiMixin(object):
         else:
             return True
 
-    def prepare_git_repo(self, url, ref=None, gitlab_token=None, renku_token=None, deployment_hostname=None, depth=1):
-        """Clone and cache a Git repo."""
-        if not url:
-            raise errors.GitError("Invalid URL.")
-
-        renku_branch = "renku-default-branch"
-
-        depth = depth if not ref else None
-        ref = ref or renku_branch
-        u = GitURL.parse(url)
-        path = u.path
-        if u.host == "localhost":
-            path = Path(path).resolve()
-            git_url = str(path)
-        elif "http" in u.scheme and gitlab_token:
-            git_url = get_oauth_url(url, gitlab_token)
-        elif "http" in u.scheme and renku_token:
-            git_url = get_renku_repo_url(url, deployment_hostname=deployment_hostname, access_token=renku_token)
-        else:
-            git_url = url
-
-        repo_name = os.path.splitext(os.path.basename(path))[0]
-        path = os.path.dirname(path).lstrip("/")
-        repo_path = self.renku_path / self.CACHE / u.host / path / repo_name
-
-        if repo_path.exists():
-            repo = Repo(str(repo_path))
-            if have_same_remote(repo.remotes.origin.url, git_url):
-                try:
-                    repo.git.checkout(".")
-                    repo.git.fetch(all=True)
-                    repo.git.checkout(ref)
-                    try:
-                        repo.git.pull()
-                    except GitError:
-                        # When ref is not a branch, an error is thrown
-                        pass
-                except GitError:
-                    # ignore the error and try re-cloning
-                    pass
-                else:
-                    return repo, repo_path
-
-            try:
-                shutil.rmtree(str(repo_path))
-            except PermissionError:
-                raise errors.InvalidFileOperation(f"Cannot delete files in {repo_path}: Permission denied")
-
-        repo, _ = clone(git_url, path=str(repo_path), install_githooks=False, depth=depth)
-
-        # Because the name of the default branch is not always 'master', we
-        # create an alias of the default branch when cloning the repo. It
-        # is used to refer to the default branch later.
-        renku_ref = "refs/heads/" + renku_branch
-        try:
-            repo.git.execute(["git", "symbolic-ref", renku_ref, repo.head.reference.path])
-        except GitCommandError as e:
-            raise errors.GitError(f"Cannot clone remote Git repo: {url}") from e
-
-        try:
-            repo.git.checkout(ref)
-        except GitCommandError:
-            raise errors.ParameterError(f"Cannot find reference '{ref}' in Git repository: {url}")
-
-        return repo, repo_path
-
-    def _download(self, url, filename, extract, chunk_size=16384):
-        def extract_dataset(filepath):
-            """Extract downloaded file."""
-            try:
-                tmp = tempfile.mkdtemp()
-                patoolib.extract_archive(str(filepath), outdir=tmp, verbosity=-1)
-            except patoolib.util.PatoolError:
-                return filepath.parent, [filepath]
-            else:
-                filepath.unlink()
-                return Path(tmp), [p for p in Path(tmp).rglob("*")]
-
-        tmp_root = self.renku_path / self.CACHE
-        tmp_root.mkdir(parents=True, exist_ok=True)
-        tmp = tempfile.mkdtemp(dir=tmp_root)
-
-        with requests.get(url, stream=True, allow_redirects=True) as request:
-            request.raise_for_status()
-
-            if not filename:
-                filename = _filename_from_headers(request)
-
-            if not filename:
-                u = parse.urlparse(url)
-                filename = Path(u.path).name
-                if not filename:
-                    raise errors.ParameterError(f"URL Cannot find a file to download from {url}")
-
-            download_to = Path(tmp) / filename
-            with open(str(download_to), "wb") as file_:
-                total_size = int(request.headers.get("content-length", 0))
-
-                communication.start_progress(name=filename, total=total_size)
-                try:
-                    for chunk in request.iter_content(chunk_size=chunk_size):
-                        if chunk:  # ignore keep-alive chunks
-                            file_.write(chunk)
-                            communication.update_progress(name=filename, amount=len(chunk))
-                finally:
-                    communication.finalize_progress(name=filename)
-        if extract:
-            return extract_dataset(download_to)
-
-        return download_to.parent, [download_to]
-
-
-def _filename_from_headers(request):
-    """Extract filename from content-disposition headers if available."""
-    content_disposition = request.headers.get("content-disposition", None)
-
-    if not content_disposition:
-        return None
-
-    entries = content_disposition.split(";")
-    name_entry = next((e.strip() for e in entries if e.strip().lower().startswith("filename*=")), None)
-
-    if name_entry:
-        name = name_entry.split("=", 1)[1].strip()
-        encoding, _, name = name.split("'")
-        return unquote(name, encoding, errors="strict")
-
-    name_entry = next((e.strip() for e in entries if e.strip().lower().startswith("filename=")), None)
-
-    if not name_entry:
-        return None
-
-    filename = name_entry.split("=", 1)[1].strip()
-
-    if filename.startswith('"'):
-        filename = filename[1:-1]
-    return filename
-
 
 def _check_url(url):
     """Check if a url is local/remote and if it contains a git repository."""
-    u = parse.urlparse(url)
+    from renku.core.utils import requests
+
+    u = urllib.parse.urlparse(url)
 
     if u.scheme not in DatasetsApiMixin.SUPPORTED_SCHEMES:
         raise errors.UrlSchemeNotSupported('Scheme "{}" not supported'.format(u.scheme))
@@ -1258,12 +1084,11 @@ def _check_url(url):
     if is_remote:
         is_git = u.path.endswith(".git")
         if not is_git:
-            # NOTE: Check if the url is a redirect.
-            url = requests.head(url, allow_redirects=True).url
-    else:
+            url = requests.get_redirect_url(url)
+    elif os.path.isdir(u.path) or os.path.isdir(os.path.realpath(u.path)):
         try:
-            Repo(u.path, search_parent_directories=True)
-        except GitError:
+            Repository(u.path, search_parent_directories=True)
+        except errors.GitError:
             pass
         else:
             is_git = True

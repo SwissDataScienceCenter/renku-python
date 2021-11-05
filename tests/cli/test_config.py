@@ -123,25 +123,25 @@ def test_config_remove_value_locally(client, runner, project, global_config_dir,
 
 def test_local_config_committed(client, runner, data_repository, global_config_dir):
     """Test local configuration update is committed only when it is changed."""
-    commit_sha_before = client.repo.head.object.hexsha
+    commit_sha_before = client.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["config", "set", "local-key", "value"])
     assert 0 == result.exit_code, format_result_exception(result)
-    commit_sha_after = client.repo.head.object.hexsha
+    commit_sha_after = client.repository.head.commit.hexsha
     assert commit_sha_after != commit_sha_before
 
     # Adding the same config should not create a new commit
-    commit_sha_before = client.repo.head.object.hexsha
+    commit_sha_before = client.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["config", "set", "local-key", "value"])
     assert 0 == result.exit_code, format_result_exception(result)
-    commit_sha_after = client.repo.head.object.hexsha
+    commit_sha_after = client.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
 
     # Adding a global config should not create a new commit
     result = runner.invoke(cli, ["config", "set", "global-key", "value", "--global"])
     assert 0 == result.exit_code, format_result_exception(result)
-    commit_sha_after = client.repo.head.object.hexsha
+    commit_sha_after = client.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
 
 

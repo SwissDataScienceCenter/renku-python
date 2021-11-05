@@ -36,7 +36,7 @@ def test_dataset_add(tmpdir, runner, client, subdirectory):
 
     assert 1 == result.exit_code
 
-    client.repo.git.clean("-dff")
+    client.repository.clean()
 
     # Use the --force ;)
     result = runner.invoke(cli, ["dataset", "add", "testing", "--force", ignored_file.strpath])

@@ -20,6 +20,10 @@ r"""Renku CLI commands for handling of datasets.
 Manipulating datasets
 ~~~~~~~~~~~~~~~~~~~~~
 
+.. image:: ../_static/asciicasts/dataset-create.delay.gif
+   :width: 850
+   :alt: Create a Dataset
+
 Creating an empty dataset inside a Renku project:
 
 .. code-block:: console
@@ -49,9 +53,13 @@ the dataset.
 |                   | be added to the dataset.                             |
 +-------------------+------------------------------------------------------+
 
-Editing a dataset's metadata
+Editing a dataset's metadata:
 
-Use ``edit`` subcommand to change metadata of a dataset. You can edit the same
+.. image:: ../_static/asciicasts/dataset-edit.delay.gif
+   :width: 850
+   :alt: Editing a Dataset
+
+Use the ``edit`` sub-command to change metadata of a dataset. You can edit the same
 set of metadata as the create command by passing the options described in the
 table above.
 
@@ -98,13 +106,17 @@ flag for it:
 
 Showing dataset details:
 
-. code-block:: console
+.. code-block:: console
 
     $ renku dataset show some-dataset
     Name: some-dataset
     Created: 2020-12-09 13:52:06.640778+00:00
     Creator(s): John Doe<john.doe@example.com> [SDSC]
     Keywords: Dataset, Data
+    Annotations:
+    [
+      {...}
+    ]
     Title: Some Dataset
     Description:
     Just some dataset
@@ -120,6 +132,9 @@ Deleting a dataset:
 Working with data
 ~~~~~~~~~~~~~~~~~
 
+.. image:: ../_static/asciicasts/dataset-add.delay.gif
+   :width: 850
+   :alt: Add data to a Dataset
 
 Adding data to the dataset:
 
@@ -294,6 +309,10 @@ knowing the dataset's ID.
 
 Importing data from an external provider:
 
+.. image:: ../_static/asciicasts/dataset-import.delay.gif
+   :width: 850
+   :alt: Import a Dataset
+
 .. code-block:: console
 
     $ renku dataset import 10.5281/zenodo.3352150
@@ -405,12 +424,8 @@ import json
 from pathlib import Path
 
 import click
-import requests
-from rich.console import Console
-from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core import errors
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
@@ -559,6 +574,7 @@ def edit(name, title, description, creators, metadata, keyword):
 def show(name):
     """Show metadata of a dataset."""
     from renku.core.commands.dataset import show_dataset
+    from renku.core.utils.os import print_markdown
 
     result = show_dataset().build().execute(name=name)
     ds = result.output
@@ -587,7 +603,7 @@ def show(name):
     click.echo(click.style("Title: ", bold=True, fg="magenta") + click.style(ds.get("title", ""), bold=True))
 
     click.echo(click.style("Description: ", bold=True, fg="magenta"))
-    Console().print(Markdown(ds.get("description", "") or ""))
+    print_markdown(ds.get("description", "") or "")
 
 
 @dataset.command()
@@ -767,6 +783,7 @@ def export_provider_options(*param_decls, **attrs):
 @export_provider_options()
 def export_(name, provider, publish, tag, **kwargs):
     """Export data to 3rd party provider."""
+    from renku.core import errors
     from renku.core.commands.dataset import export_dataset
 
     try:
@@ -774,7 +791,7 @@ def export_(name, provider, publish, tag, **kwargs):
         export_dataset().lock_dataset().with_communicator(communicator).build().execute(
             name=name, provider_name=provider, publish=publish, tag=tag, **kwargs
         )
-    except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, requests.HTTPError) as e:
+    except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, errors.RequestError) as e:
         raise click.BadParameter(e)
 
     click.secho("OK", fg="green")

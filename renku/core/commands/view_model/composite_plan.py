@@ -82,6 +82,7 @@ class CompositePlanViewModel:
         self.mappings = mappings
         self.links = links
         self.steps = steps
+        self.full_command = ""
 
     @classmethod
     def from_composite_plan(cls, plan: CompositePlan):

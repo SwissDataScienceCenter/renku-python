@@ -67,8 +67,8 @@ def client_with_datasets(client, directory_tree, client_database_injection_manag
 
             client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
 
-    client.repo.git.add("--all")
-    client.repo.index.commit("add files to datasets")
+    client.repository.add(all=True)
+    client.repository.commit("add files to datasets")
 
     yield client
 
