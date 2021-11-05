@@ -16,19 +16,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service jobs views."""
-from flask import Blueprint
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.errors import ProjectNotFound
 from renku.service.serializers.jobs import JobDetailsResponseRPC, JobListResponseRPC
 from renku.service.views import result_response
+from renku.service.views.api_versions import V1_0, VersionedBlueprint
 from renku.service.views.decorators import handle_common_except, requires_cache, requires_identity
 
 JOBS_BLUEPRINT_TAG = "jobs"
-jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
+jobs_blueprint = VersionedBlueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@jobs_blueprint.route("/jobs", methods=["GET"], provide_automatic_options=False)
+@jobs_blueprint.route("/jobs", methods=["GET"], provide_automatic_options=False, versions=[V1_0])
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -63,7 +63,7 @@ def list_jobs(user_data, cache):
     return result_response(JobListResponseRPC(), {"jobs": jobs})
 
 
-@jobs_blueprint.route("/jobs/<job_id>", methods=["GET"], provide_automatic_options=False)
+@jobs_blueprint.route("/jobs/<job_id>", methods=["GET"], provide_automatic_options=False, versions=[V1_0])
 @handle_common_except
 @requires_cache
 @requires_identity

@@ -41,14 +41,14 @@ def test_run_in_isolation(runner, project, client, run, subdirectory):
     ]
     cmd = ["python", "-S", "-c", 'import os, sys; sys.exit(1 if os.path.exists("lock") else 0)']
 
-    head = client.repo.head.commit.hexsha
+    head = client.repository.head.commit.hexsha
 
     with filelock.FileLock("lock"):
         assert 1 == run(args=prefix + cmd)
-        assert client.repo.head.commit.hexsha == head
+        assert client.repository.head.commit.hexsha == head
 
         assert 0 == run(prefix + ["--isolation"] + cmd)
-        assert client.repo.head.commit.hexsha != head
+        assert client.repository.head.commit.hexsha != head
 
 
 @pytest.mark.skip(reason="FIXME: Isolation requires merging the database metadata.")
@@ -79,7 +79,7 @@ def test_file_modification_during_run(
     ]
     cmd = ["python", os.path.relpath(script, os.getcwd())]
 
-    previous = client.repo.head.commit
+    previous = client.repository.head.commit
 
     with output.open("wb") as stdout:
         process = subprocess.Popen(prefix + cmd, stdin=subprocess.PIPE, stdout=stdout)
@@ -100,6 +100,12 @@ def test_file_modification_during_run(
     with output.open("r") as fp:
         assert "test" == fp.read().strip()
 
-    diff = previous.diff(client.repo.head.commit)
+    # TODO: Make sure that this test fails before fixing it
+    # NOTE: Calculate the diff between HEAD and previous commit; this is not the exact same diff but should be ok
+    diff = [
+        c
+        for commit in client.repository.iterate_commits(revision=f"{previous.hexsha}..HEAD")
+        for c in commit.get_changes()
+    ]
     modifications = [modification for modification in diff if modification.change_type == "M"]
     assert 0 == len(modifications), f"{[(f.a_path, f.change_type) for f in diff]}"

@@ -16,12 +16,12 @@
     limitations under the License.
 
 
-Internals
-=========
+Database
+========
 
-Internals of the ``renku-python`` library.
+Renku uses an internal database store in the ``.renku/metadata`` that uses a
+custom implementation of the ZODB object database, with a separate file per
+main entity.
 
-.. toctree::
-   models/index
-   management
-   plugins
+.. automodule:: renku.core.metadata.database
+   :members:

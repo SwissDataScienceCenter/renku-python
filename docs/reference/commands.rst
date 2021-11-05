@@ -41,12 +41,26 @@ Renku Command Line
 
 .. automodule:: renku.cli.config
 
+.. _cli-project:
+
+``renku project``
+-----------------
+
+.. automodule:: renku.cli.project
+
 .. _cli-datasets:
 
 ``renku dataset``
 -----------------
 
 .. automodule:: renku.cli.dataset
+
+.. _cli-graph:
+
+``renku graph``
+---------------
+
+.. automodule:: renku.cli.graph
 
 .. _cli-run:
 
@@ -57,10 +71,10 @@ Renku Command Line
 
 .. _cli-log:
 
-``renku graph``
+``renku log``
 ---------------
 
-.. automodule:: renku.cli.graph
+.. automodule:: renku.cli.log
 
 .. _cli-login:
 
@@ -125,7 +139,7 @@ Renku Command Line
 
 .. automodule:: renku.cli.storage
 
-.. _cli-image:
+.. _cli-doctor:
 
 
 ``renku doctor``
@@ -139,6 +153,13 @@ Renku Command Line
 -----------------
 
 .. automodule:: renku.cli.migrate
+
+.. _cli-service:
+
+``renku service``
+-----------------
+
+.. automodule:: renku.cli.service
 
 .. _cli-githooks:
 

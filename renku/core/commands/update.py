@@ -60,7 +60,7 @@ def _update(update_all, dry_run, client_dispatcher: IClientDispatcher, activity_
     paths = paths or []
     paths = get_relative_paths(base=client.path, paths=paths)
 
-    modified_activities, modified_paths = _get_modified_activities_and_paths(client.repo, activity_gateway)
+    modified_activities, modified_paths = _get_modified_activities_and_paths(client.repository, activity_gateway)
     activities = _get_downstream_activities(modified_activities, activity_gateway, paths)
 
     if len(activities) == 0:
@@ -106,10 +106,10 @@ def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_di
     return plan.invalidated_at is None
 
 
-def _get_modified_activities_and_paths(repo, activity_gateway) -> Tuple[Set[Activity], Set[str]]:
+def _get_modified_activities_and_paths(repository, activity_gateway) -> Tuple[Set[Activity], Set[str]]:
     """Return latest activities that one of their inputs is modified."""
     latest_activities = activity_gateway.get_latest_activity_per_plan().values()
-    modified, _ = get_modified_activities(activities=latest_activities, repo=repo)
+    modified, _ = get_modified_activities(activities=latest_activities, repository=repository)
 
     return {a for a, _ in modified if _is_activity_valid(a)}, {e.path for _, e in modified}
 

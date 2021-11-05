@@ -24,7 +24,6 @@ CLI_FIXTURE_LOCATIONS = [
     "tests.cli.fixtures.cli_old_projects",
     "tests.cli.fixtures.cli_projects",
     "tests.cli.fixtures.cli_providers",
-    "tests.cli.fixtures.cli_repository",
     "tests.cli.fixtures.cli_runner",
     "tests.cli.fixtures.cli_workflow",
 ]
@@ -32,6 +31,7 @@ CLI_FIXTURE_LOCATIONS = [
 CORE_FIXTURE_LOCATIONS = [
     "tests.core.fixtures.core_database",
     "tests.core.fixtures.core_datasets",
+    "tests.core.fixtures.core_models",
     "tests.core.fixtures.core_plugins",
     "tests.core.fixtures.core_projects",
     "tests.core.fixtures.core_serialization",

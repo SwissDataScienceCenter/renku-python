@@ -28,12 +28,12 @@ def test_activity_log(runner, project):
 
     result = runner.invoke(cli, ["log"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Workflow Execution  touch foo" in result.output
+    assert "Run     touch foo" in result.output
 
     result = runner.invoke(cli, ["run", "--name", "run2", "cp", "foo", "bar"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["log"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Workflow Execution  touch foo" in result.output
-    assert "Workflow Execution  cp foo bar" in result.output
+    assert "Run     touch foo" in result.output
+    assert "Run     cp foo bar" in result.output

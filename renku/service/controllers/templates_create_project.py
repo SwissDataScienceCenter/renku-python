@@ -18,11 +18,11 @@
 """Renku service template create project controller."""
 import shutil
 
-import git
 from marshmallow import EXCLUDE
 
 from renku.core.commands.init import create_from_template_local_command, read_template_manifest
 from renku.core.errors import RenkuException
+from renku.core.metadata.repository import Repository
 from renku.core.utils.contexts import click_context
 from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
@@ -117,8 +117,8 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         if self.template is None:
             raise RenkuException("invalid identifier for target repository")
 
-        repo = git.Repo(str(project.abs_path))
-        self.template_version = repo.head.commit.hexsha
+        repository = Repository(project.abs_path)
+        self.template_version = repository.head.commit.hexsha
 
         # Verify missing parameters
         template_parameters = self.template.get("variables", {})

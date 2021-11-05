@@ -118,7 +118,7 @@ def _run_command(
                 old_stderr = sys.stderr
                 sys.stderr = system_stderr
 
-        working_dir = client.repo.working_dir
+        working_dir = str(client.repository.path)
         factory = PlanFactory(
             command_line=command_line,
             explicit_inputs=explicit_inputs,

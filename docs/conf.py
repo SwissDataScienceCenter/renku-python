@@ -347,10 +347,3 @@ autoclass_content = "both"
 autodoc_mock_imports = ["persistent", "ZODB"]
 autodoc_typehints = "none"
 autodoc_typehints_description_target = "documented"
-
-
-# -- Custom Document processing ----------------------------------------------
-
-from gensidebar import generate_sidebar
-
-generate_sidebar(on_rtd, rtd_version, "renku-python")

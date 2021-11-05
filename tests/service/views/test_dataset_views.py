@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 from werkzeug.utils import secure_filename
 
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.os import normalize_to_ascii
 from renku.service.config import (
     GIT_ACCESS_DENIED_ERROR_CODE,
     INVALID_HEADERS_ERROR_CODE,
@@ -1537,6 +1537,7 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
 
 
 @pytest.mark.integration
+@pytest.mark.service
 @retry_failed
 def test_protected_branch(svc_protected_repo):
     """Test adding a file to protected branch."""

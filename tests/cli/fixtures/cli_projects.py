@@ -16,11 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku CLI fixtures for project management."""
+
 import shutil
 from pathlib import Path
 
 import pytest
-from git import Repo
+
+from renku.core.metadata.repository import Repository
 
 
 @pytest.fixture()
@@ -39,17 +41,17 @@ def sleep_after():
 def client_with_remote(client, tmpdir):
     """Return a client with a (local) remote set."""
     # create remote
-    path = str(tmpdir.mkdir("remote"))
-    Repo().init(path, bare=True)
+    path = tmpdir.mkdir("remote")
+    Repository.initialize(path, bare=True)
 
-    origin = client.repo.create_remote("origin", path)
-    client.repo.git.push("--set-upstream", "origin", "master")
+    client.repository.remotes.add(name="origin", url=path)
+    client.repository.push("origin", "master", set_upstream=True)
 
     yield client
 
-    client.repo.heads["master"].checkout()
-    client.repo.git.branch("--unset-upstream")
-    client.repo.delete_remote(origin)
+    client.repository.checkout("master")
+    client.repository.run_git_command("branch", "--unset-upstream")
+    client.repository.remotes.remove("origin")
     shutil.rmtree(path)
 
 
@@ -73,8 +75,8 @@ def client_with_lfs_warning(project):
     client = LocalClient(path=project)
     client.set_value("renku", "lfs_threshold", "0b")
 
-    client.repo.git.add(".renku/renku.ini")
-    client.repo.index.commit("update renku.ini")
+    client.repository.add(".renku/renku.ini")
+    client.repository.commit("update renku.ini")
 
     yield client
 
@@ -88,8 +90,10 @@ def subdirectory(project, request):
         path = Path(request.param) / ".gitkeep"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
-        Repo().git.add(str(path))
-        Repo().index.commit("Create subdirectory", skip_hooks=True)
+
+        repository = Repository()
+        repository.add(path)
+        repository.commit("Create subdirectory", no_verify=True)
 
     with chdir(request.param):
         yield Path(request.param).resolve()

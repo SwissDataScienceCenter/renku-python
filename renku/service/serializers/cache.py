@@ -23,9 +23,9 @@ from urllib.parse import urlparse
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load
 from werkzeug.utils import secure_filename
 
-from renku.core.errors import ConfigurationError
+from renku.core import errors
 from renku.core.models.git import GitURL
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.os import normalize_to_ascii
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.common import (
     ArchiveSchema,
@@ -125,7 +125,7 @@ class ProjectCloneContext(RepositoryCloneRequest):
             git_url = GitURL.parse(data["git_url"])
         except UnicodeError as e:
             raise ValidationError("`git_url` contains unsupported characters") from e
-        except ConfigurationError as e:
+        except errors.GitConfigurationError as e:
             raise ValidationError("Invalid `git_url`") from e
 
         if git_url.owner is None:

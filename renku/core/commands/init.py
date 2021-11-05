@@ -19,7 +19,6 @@
 
 import json
 import re
-import tempfile
 from collections import OrderedDict, namedtuple
 from pathlib import Path
 from tempfile import mkdtemp
@@ -27,20 +26,21 @@ from uuid import uuid4
 
 import attr
 import click
-import git
 import pkg_resources
 import yaml
 
 from renku.core import errors
 from renku.core.commands.git import set_git_home
+from renku.core.management import RENKU_HOME
 from renku.core.management.command_builder.command import Command, inject
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
+from renku.core.metadata.repository import Repository
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
+from renku.core.utils.git import clone_repository
 from renku.version import __version__, is_release
 
 TEMPLATE_MANIFEST = "manifest.yaml"
@@ -93,7 +93,8 @@ def create_template_sentence(templates, describe=False, instructions=False):
 
 def store_directory(value):
     """Store directory as a new Git home."""
-    Path(value).mkdir(parents=True, exist_ok=True)
+    value = Path(value)
+    value.mkdir(parents=True, exist_ok=True)
     set_git_home(value)
     return value
 
@@ -179,7 +180,7 @@ def verify_template_variables(template_data, metadata):
 
 @inject.autoparams()
 def get_existing_template_files(template_path, metadata, client_dispatcher: IClientDispatcher, force=False):
-    """Gets files in the template that already exists in the repo."""
+    """Gets files in the template that already exists in the repository."""
     client = client_dispatcher.current_client
 
     template_files = list(client.get_template_files(template_path, metadata))
@@ -197,20 +198,19 @@ def get_existing_template_files(template_path, metadata, client_dispatcher: ICli
 
 @inject.autoparams()
 def create_backup_branch(path, client_dispatcher: IClientDispatcher):
-    """Creates a backup branch of the repo."""
+    """Creates a backup branch of the repository."""
     client = client_dispatcher.current_client
 
     branch_name = None
     if not is_path_empty(path):
-
         try:
-            if client.repo.head.is_valid():
-                commit = client.repo.head.commit.commit
+            if client.repository.head.is_valid():
+                commit = client.repository.head.commit
                 hexsha = commit.hexsha[:7]
 
                 branch_name = f"pre_renku_init_{hexsha}"
 
-                for ref in client.repo.references:
+                for ref in client.repository.branches:
                     if branch_name == ref.name:
                         branch_name = f"pre_renku_init_{hexsha}_{uuid4().hex}"
                         break
@@ -223,8 +223,8 @@ def create_backup_branch(path, client_dispatcher: IClientDispatcher):
                     communication.warn("Saving current data in branch {0}".format(branch_name))
         except AttributeError:
             communication.echo("Warning! Overwriting non-empty folder.")
-        except git.exc.GitCommandError as e:
-            raise errors.GitError(e)
+        except errors.GitCommandError:
+            raise
 
     return branch_name
 
@@ -349,7 +349,7 @@ def _init(
         communication.echo(
             "Project initialized.\n"
             f"You can undo this command by running 'git reset --hard {branch_name}'\n"
-            f"You can see changes made by running 'git diff {branch_name} {client.repo.head.ref.name}'"
+            f"You can see changes made by running 'git diff {branch_name} {client.repository.head.reference.name}'"
         )
     else:
         communication.echo("Project initialized.")
@@ -368,39 +368,15 @@ def fetch_template_from_git(source, ref=None, tempdir=None):
     :param tempdir: temporary work directory path
     :return: tuple of (template folder, template version)
     """
-    if tempdir is None:
-        tempdir = Path(tempfile.mkdtemp())
-
-    try:
-        # clone the repo locally without checking out files
-        template_repo = git.Repo.clone_from(source, tempdir, no_checkout=True)
-    except git.exc.GitCommandError as e:
-        raise errors.GitError("Cannot clone repo from {0}".format(source)) from e
-
-    if ref:
-        try:
-            # fetch ref and set the HEAD
-            template_repo.remotes.origin.fetch()
-            try:
-                template_repo.head.reset(template_repo.commit(ref))
-            except git.exc.BadName:
-                ref = "origin/{0}".format(ref)
-                template_repo.head.reset(template_repo.commit(ref))
-            git_repo = git.Git(str(tempdir))
-        except (git.exc.GitCommandError, git.exc.BadName) as e:
-            raise errors.GitError("Cannot fetch and checkout reference {0}".format(ref)) from e
-    else:
-        template_repo.remotes.origin.fetch()
-        template_repo.head.reset(template_repo.commit())
-        git_repo = git.Git(str(tempdir))
+    template_repository = clone_repository(url=source, path=tempdir, checkout_revision=ref, install_lfs=False)
 
     # checkout the manifest
     try:
-        git_repo.checkout(TEMPLATE_MANIFEST)
-    except git.exc.GitCommandError as e:
-        raise errors.GitError("Cannot checkout manifest file {0}".format(TEMPLATE_MANIFEST)) from e
+        template_repository.checkout(TEMPLATE_MANIFEST)
+    except errors.GitCommandError as e:
+        raise errors.GitError(f"Cannot checkout manifest file {TEMPLATE_MANIFEST}") from e
 
-    return tempdir / TEMPLATE_MANIFEST, template_repo.head.commit.hexsha
+    return template_repository.path / TEMPLATE_MANIFEST, template_repository.head.commit.hexsha
 
 
 def fetch_template(template_source, template_ref):
@@ -473,6 +449,7 @@ def read_template_manifest(folder, checkout=False):
     :param folder: path where to find the template manifest file
     :param checkout: checkout the template folder from local repo
     """
+    folder = Path(folder)
     manifest_path = folder / TEMPLATE_MANIFEST
     try:
         manifest = yaml.safe_load(manifest_path.read_text())
@@ -481,7 +458,7 @@ def read_template_manifest(folder, checkout=False):
     validate_template_manifest(manifest)
 
     if checkout:
-        git_repo = git.Git(str(folder))
+        repository = Repository(folder)
         template_folders = [template["folder"] for template in manifest]
         template_icons = [template["icon"] for template in manifest if "icon" in template]
         if len(template_folders) < 1:
@@ -489,15 +466,15 @@ def read_template_manifest(folder, checkout=False):
         for template_folder in template_folders:
             template_path = folder / template_folder
             try:
-                git_repo.checkout(template_folder)
-            except git.exc.GitCommandError as e:
+                repository.checkout(template_folder)
+            except errors.GitCommandError as e:
                 raise errors.InvalidTemplateError('Cannot checkout the folder "{0}"'.format(template_folder)) from e
             validate_template(template_path)
 
         for template_icon in template_icons:
             try:
-                git_repo.checkout(template_icon)
-            except git.exc.GitCommandError as e:
+                repository.checkout(template_icon)
+            except errors.GitCommandError as e:
                 raise errors.InvalidTemplateError('Cannot checkout the icon "{0}"'.format(template_icon)) from e
 
     return manifest
@@ -524,6 +501,13 @@ def create_from_template(
 
     commit_only = [f"{RENKU_HOME}/"] + template_files
 
+    if data_dir:
+        data_path = client.path / data_dir
+        data_path.mkdir(parents=True, exist_ok=True)
+        keep = data_path / ".gitkeep"
+        keep.touch(exist_ok=True)
+        commit_only.append(keep)
+
     if "name" not in metadata:
         metadata["name"] = name
 
@@ -541,9 +525,6 @@ def create_from_template(
 
         if data_dir:
             client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
-            data_path = client.path / data_dir
-            data_path.mkdir(parents=True, exist_ok=True)
-            (data_path / ".gitkeep").touch(exist_ok=True)
 
 
 @inject.autoparams()
