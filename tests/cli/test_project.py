@@ -39,7 +39,7 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
     metadata_path = client.path / "metadata.json"
     metadata_path.write_text(json.dumps(metadata))
 
-    commit_sha_before = client.repo.head.object.hexsha
+    commit_sha_before = client.repository.head.commit.hexsha
 
     result = runner.invoke(
         cli, ["project", "edit", "-d", " new description ", "-c", creator, "--metadata", str(metadata_path)]
@@ -59,8 +59,8 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
     assert "Affiliation" == project.creator.affiliation
     assert metadata == project.annotations[0].body
 
-    assert client.repo.is_dirty()
-    commit_sha_after = client.repo.head.object.hexsha
+    assert client.repository.is_dirty(untracked_files=True)
+    commit_sha_after = client.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
 
 
@@ -68,13 +68,13 @@ def test_project_edit_no_change(runner, client):
     """Check project metadata editing does not commit when there is no change."""
     (client.path / "README.md").write_text("Make repo dirty.")
 
-    commit_sha_before = client.repo.head.object.hexsha
+    commit_sha_before = client.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["project", "edit"], catch_exceptions=False)
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Nothing to update." in result.output
 
-    commit_sha_after = client.repo.head.object.hexsha
+    commit_sha_after = client.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
-    assert client.repo.is_dirty()
+    assert client.repository.is_dirty(untracked_files=True)

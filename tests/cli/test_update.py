@@ -21,27 +21,25 @@ import os
 import time
 from pathlib import Path
 
-import git
-
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.metadata.gateway.activity_gateway import ActivityGateway
+from renku.core.metadata.repository import Repository
 from renku.core.models.workflow.plan import Plan
 from tests.utils import format_result_exception, write_and_commit_file
 
 
 def test_update(runner, client, renku_cli, client_database_injection_manager):
     """Test output is updated when source changes."""
-    repo = client.repo
     source = os.path.join(client.path, "source.txt")
     output = os.path.join(client.path, "output.txt")
 
-    write_and_commit_file(repo, source, "content")
+    write_and_commit_file(client.repository, source, "content")
 
     exit_code, previous_activity = renku_cli("run", "head", "-1", source, stdout=output)
     assert 0 == exit_code
 
-    write_and_commit_file(repo, source, "changed content")
+    write_and_commit_file(client.repository, source, "changed content")
 
     exit_code, activity = renku_cli("update", "--all")
 
@@ -65,19 +63,18 @@ def test_update(runner, client, renku_cli, client_database_injection_manager):
 
 def test_update_multiple_steps(runner, client, renku_cli, client_database_injection_manager):
     """Test update in a multi-step workflow."""
-    repo = client.repo
     source = os.path.join(client.path, "source.txt")
     intermediate = os.path.join(client.path, "intermediate.txt")
     output = os.path.join(client.path, "output.txt")
 
-    write_and_commit_file(repo, source, "content")
+    write_and_commit_file(client.repository, source, "content")
 
     exit_code, activity1 = renku_cli("run", "cp", source, intermediate)
     assert 0 == exit_code
     exit_code, activity2 = renku_cli("run", "cp", intermediate, output)
     assert 0 == exit_code
 
-    write_and_commit_file(repo, source, "changed content")
+    write_and_commit_file(client.repository, source, "changed content")
 
     exit_code, activities = renku_cli("update", "--all")
 
@@ -104,7 +101,7 @@ def test_update_multiple_steps(runner, client, renku_cli, client_database_inject
 
 def test_update_multiple_steps_with_path(runner, project, renku_cli):
     """Test update in a multi-step workflow when a path is specified."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     source = os.path.join(project, "source.txt")
     intermediate = os.path.join(project, "intermediate.txt")
     output = os.path.join(project, "output.txt")
@@ -136,7 +133,7 @@ def test_update_multiple_steps_with_path(runner, project, renku_cli):
 
 def test_update_with_directory_paths(project, renku_cli):
     """Test update when a directory path is specified."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     data = os.path.join(project, "data", "dataset", "my-data")
     Path(data).mkdir(parents=True, exist_ok=True)
     source = os.path.join(project, "source.txt")
@@ -159,7 +156,7 @@ def test_update_with_directory_paths(project, renku_cli):
 
 def test_multiple_updates(runner, project, renku_cli):
     """Test multiple updates of the same source."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     source = os.path.join(project, "source.txt")
     intermediate = os.path.join(project, "intermediate.txt")
     output = os.path.join(project, "output.txt")
@@ -197,7 +194,7 @@ def test_multiple_updates(runner, project, renku_cli):
 
 def test_update_workflow_without_outputs(runner, project, run):
     """Test workflow without outputs."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     source = os.path.join(project, "source.txt")
 
     write_and_commit_file(repo, source, "content")
@@ -218,7 +215,7 @@ def test_update_workflow_without_outputs(runner, project, run):
 
 def test_update_siblings(project, run, no_lfs_warning):
     """Test all generations of an activity are updated together."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     parent = os.path.join(project, "parent.txt")
     brother = os.path.join(project, "brother.txt")
     sister = os.path.join(project, "sister.txt")
@@ -240,8 +237,8 @@ def test_update_siblings(project, run, no_lfs_warning):
         assert "changed content" == sibling.read_text()
 
     # Siblings kept together even when one is removed.
-    repo.index.remove([brother], working_tree=True)
-    repo.index.commit("Brother removed")
+    repo.remove(brother)
+    repo.commit("Brother removed")
     assert not os.path.exists(brother)
 
     write_and_commit_file(repo, parent, "more content")
@@ -255,7 +252,7 @@ def test_update_siblings(project, run, no_lfs_warning):
 
 def test_update_siblings_in_output_directory(project, run):
     """Files in output directory are linked or removed after update."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     source = os.path.join(project, "source.txt")
     output = Path(os.path.join(project, "output"))  # a directory
 
@@ -292,11 +289,11 @@ def test_update_siblings_in_output_directory(project, run):
 
 def test_update_relative_path_for_directory_input(client, run, renku_cli):
     """Test having a directory input generates relative path in CWL."""
-    write_and_commit_file(client.repo, client.path / DATA_DIR / "file1", "file1")
+    write_and_commit_file(client.repository, client.path / DATA_DIR / "file1", "file1")
 
     assert 0 == run(args=["run", "ls", DATA_DIR], stdout="ls.data")
 
-    write_and_commit_file(client.repo, client.path / DATA_DIR / "file2", "file2")
+    write_and_commit_file(client.repository, client.path / DATA_DIR / "file2", "file2")
 
     exit_code, activity = renku_cli("update", "--all")
 
@@ -308,7 +305,7 @@ def test_update_relative_path_for_directory_input(client, run, renku_cli):
 
 def test_update_no_args(runner, project, no_lfs_warning):
     """Test calling update with no args raises ParameterError."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     source = os.path.join(project, "source.txt")
     output = os.path.join(project, "output.txt")
 
@@ -330,7 +327,7 @@ def test_update_no_args(runner, project, no_lfs_warning):
 
 def test_update_with_no_execution(project, runner):
     """Test update when no workflow is executed."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     input = os.path.join(project, "data", "input.txt")
     write_and_commit_file(repo, input, "content")
 
@@ -341,7 +338,7 @@ def test_update_with_no_execution(project, runner):
 
 def test_update_overridden_output(project, renku_cli, runner):
     """Test a path where final output is overridden will be updated partially."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     a = os.path.join(project, "a")
     b = os.path.join(project, "b")
     c = os.path.join(project, "c")
@@ -366,7 +363,7 @@ def test_update_overridden_output(project, renku_cli, runner):
 
 def test_update_overridden_outputs_partially(project, renku_cli, runner):
     """Test a path where one of the final output is overridden will be updated completely but in proper order."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     a = os.path.join(project, "a")
     b = os.path.join(project, "b")
     c = os.path.join(project, "c")
@@ -393,7 +390,7 @@ def test_update_overridden_outputs_partially(project, renku_cli, runner):
 
 def test_update_multiple_paths_common_output(project, renku_cli, runner):
     """Test multiple paths that generate the same output will be updated except the last overridden step."""
-    repo = git.Repo(project)
+    repo = Repository(project)
     a = os.path.join(project, "a")
     b = os.path.join(project, "b")
     c = os.path.join(project, "c")

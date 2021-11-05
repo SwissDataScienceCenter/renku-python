@@ -16,12 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project remote abstraction tests."""
+
 import pytest
 from marshmallow import ValidationError
 
 import renku
 from renku.core.commands.migrate import migrations_check
 from renku.service.controllers.utils.remote_project import RemoteProject
+from tests.utils import retry_failed
 
 
 def test_project_metadata_remote():
@@ -81,6 +83,9 @@ def test_project_metadata_remote_err():
         RemoteProject(user_data, request_data)
 
 
+@pytest.mark.integration
+@pytest.mark.service
+@retry_failed
 def test_remote_project_context():
     """Check remote project context manager."""
     user_data = {

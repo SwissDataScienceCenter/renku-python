@@ -17,27 +17,34 @@
 # limitations under the License.
 """Utility functions for managing the underling Git repository."""
 
+from pathlib import Path
+
 import click
+
+from renku.core import errors
 
 GIT_KEY = "renku.git"
 GIT_ISOLATION = "renku.worktree"
 
 
-def set_git_home(value):
+def set_git_home(value: Path):
     """Set Git path."""
     ctx = click.get_current_context()
     ctx.meta[GIT_KEY] = value
 
 
-def get_git_home(path="."):
+def get_git_home(path=".") -> Path:
     """Get Git path from the current context."""
+    from renku.core.metadata.repository import Repository
+
     ctx = click.get_current_context(silent=True)
     if ctx and GIT_KEY in ctx.meta:
         return ctx.meta[GIT_KEY]
 
-    from git import Repo
-
-    return Repo(path, search_parent_directories=True).working_dir
+    try:
+        return Repository(path, search_parent_directories=True).path
+    except errors.GitError:
+        raise ValueError(f"Cannot find a git repository at '{path}'")
 
 
 def set_git_isolation(value):
@@ -53,13 +60,3 @@ def get_git_isolation():
     ctx = click.get_current_context(silent=True)
     if ctx and GIT_ISOLATION in ctx.meta:
         return ctx.meta[GIT_ISOLATION]
-
-
-def _safe_issue_checkout(repo, issue=None):
-    """Safely checkout branch for the issue."""
-    branch_name = str(issue) if issue else "master"
-    if branch_name not in repo.heads:
-        branch = repo.create_head(branch_name)
-    else:
-        branch = repo.heads[branch_name]
-    branch.checkout()
