@@ -40,7 +40,7 @@ When using ``renku`` as a hosted service the Sentry integration can be enabled
 to help developers iterate faster by showing them where bugs happen, how often,
 and who is affected.
 
-1. Install Sentry-SDK with ``python -m pip install sentry-sdk``;
+1. Install ``Sentry-SDK`` with ``python -m pip install sentry-sdk``;
 2. Set environment variable
    ``SENTRY_DSN=https://<key>@sentry.<domain>/<project>``.
 
@@ -147,13 +147,10 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
         with configure_scope() as scope:
             with capture_internal_exceptions():
-                from git import Repo
-
                 from renku.core.commands.git import get_git_home
-                from renku.core.models.provenance.agent import Person
+                from renku.core.metadata.repository import Repository
 
-                repo = Repo(get_git_home())
-                user = Person.from_git(repo)
+                user = Repository(get_git_home()).get_user()
 
                 scope.user = {"name": user.name, "email": user.email}
 

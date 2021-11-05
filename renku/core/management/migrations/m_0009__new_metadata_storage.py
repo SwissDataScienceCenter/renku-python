@@ -26,11 +26,9 @@ from pathlib import Path, PurePosixPath
 from typing import List, Optional, Union
 from urllib.parse import urlparse
 
-from git import NULL_TREE, Commit, GitCommandError
-
 import renku.core.management.migrate
 from renku.core import errors
-from renku.core.management import LocalClient
+from renku.core.management.client import LocalClient
 from renku.core.management.command_builder import inject
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.interface.activity_gateway import IActivityGateway
@@ -47,6 +45,7 @@ from renku.core.management.migrations.utils import (
     unset_temporary_datasets_path,
 )
 from renku.core.management.migrations.utils.conversion import convert_dataset
+from renku.core.metadata.repository import Commit
 from renku.core.models.entity import Collection, Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.project import Project
@@ -56,8 +55,6 @@ from renku.core.models.provenance.parameter import ParameterValue
 from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils import communication
-from renku.core.utils.git import get_object_hash
-from renku.core.utils.scm import git_unicode_unescape
 
 NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 
@@ -81,18 +78,14 @@ def migrate(migration_context):
 
 
 def _commit_previous_changes(client):
-    client.repo.git.add(str(client.renku_path))
-
-    staged_files = client.repo.index.diff("HEAD")
-    if staged_files:
+    if client.repository.is_dirty():
         project_path = client.renku_path.joinpath(OLD_METADATA_PATH)
         project = old_schema.Project.from_yaml(project_path, client)
         project.version = "8"
         project.to_yaml(client.renku_path.joinpath(project_path))
 
-        client.repo.git.add(str(client.renku_path))
-
-        client.repo.index.commit("renku migrate: committing structural changes", skip_hooks=True)
+        client.repository.add(client.renku_path)
+        client.repository.commit("renku migrate: committing structural changes", no_verify=True)
         return True
 
     return False
@@ -178,8 +171,8 @@ def generate_new_metadata(
     datasets_provenance = DatasetsProvenance()
 
     commits = list(
-        client.repo.iter_commits(
-            paths=[f"{client.renku_path}/workflow/*.yaml", ".renku/datasets/*/*.yml"], reverse=True
+        client.repository.iterate_commits(
+            f"{client.renku_path}/workflow/*.yaml", ".renku/datasets/*/*.yml", reverse=True
         )
     )
     n_commits = len(commits)
@@ -240,6 +233,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=argument.name,
             position=argument.position,
             prefix=argument.prefix,
+            postfix=PurePosixPath(argument._id).name,
         )
 
     def convert_input(input: old_schema.CommandInput) -> CommandInput:
@@ -258,6 +252,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=input.name,
             position=input.position,
             prefix=input.prefix,
+            postfix=PurePosixPath(input._id).name,
         )
 
     def convert_output(output: old_schema.CommandOutput) -> CommandOutput:
@@ -277,6 +272,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=output.name,
             position=output.position,
             prefix=output.prefix,
+            postfix=PurePosixPath(output._id).name,
         )
 
     plan = Plan(
@@ -319,12 +315,11 @@ def _get_process_runs(workflow_run: old_schema.WorkflowRun) -> List[old_schema.P
 
 def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, commit: Commit, remove: bool):
 
-    for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.renku_path}/workflow/*.yaml"):
-        # Ignore deleted files (they appear as ADDED in this backwards diff)
-        if file_.change_type == "A":
+    for file in commit.get_changes(paths=f"{client.renku_path}/workflow/*.yaml"):
+        if file.deleted:
             continue
 
-        path: str = git_unicode_unescape(file_.a_path)
+        path: str = file.a_path
 
         if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
             continue
@@ -347,7 +342,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
 
         if remove:
             try:
-                os.remove(file_.a_path)
+                os.remove(file.a_path)
             except FileNotFoundError:
                 pass
 
@@ -446,7 +441,7 @@ def _convert_used_entity(entity: old_schema.Entity, revision: str, activity_id: 
     """
     assert isinstance(entity, old_schema.Entity)
 
-    checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
+    checksum = client.repository.get_object_hash(revision=revision, path=entity.path)
     if not checksum:
         communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
         checksum = NON_EXISTING_ENTITY_CHECKSUM
@@ -476,13 +471,14 @@ def _convert_generated_entity(entity: old_schema.Entity, revision: str, activity
     assert isinstance(entity, old_schema.Entity)
 
     try:
-        entity_commit = client.find_previous_commit(paths=entity.path, revision=revision)
-    except KeyError:
+        entity_commit = client.repository.get_previous_commit(path=entity.path, revision=revision)
+    except errors.GitCommitNotFoundError:
         return None
+
     if entity_commit.hexsha != revision:
         return None
 
-    checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
+    checksum = client.repository.get_object_hash(revision=revision, path=entity.path)
     if not checksum:
         communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
         checksum = NON_EXISTING_ENTITY_CHECKSUM
@@ -510,12 +506,12 @@ def _convert_invalidated_entity(entity: old_schema.Entity, client) -> Optional[E
     assert not isinstance(entity, old_schema.Collection), f"Collection passed as invalidated: {entity._id}"
 
     commit_sha = _extract_commit_sha(entity_id=entity._id)
-    commit = client.find_previous_commit(revision=commit_sha, paths=entity.path)
+    commit = client.repository.get_previous_commit(revision=commit_sha, paths=entity.path)
     revision = commit.hexsha
-    checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
+    checksum = client.repository.get_object_hash(revision=revision, path=entity.path)
     if not checksum:
         # Entity was deleted at revision; get the one before it to have object_id
-        checksum = get_object_hash(repo=client.repo, revision=f"{revision}~", path=entity.path)
+        checksum = client.repository.get_object_hash(revision=f"{revision}~", path=entity.path)
         if not checksum:
             communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
             checksum = NON_EXISTING_ENTITY_CHECKSUM
@@ -582,10 +578,10 @@ def _old_agent_to_new_agent(
 
 
 def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: DatasetsProvenance, is_last_commit):
-    files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
-    paths = [git_unicode_unescape(f.a_path) for f in files_diff]
-    paths = [p for p in paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
-    deleted_paths = [git_unicode_unescape(f.a_path) for f in files_diff if f.change_type == "A"]
+    changes = commit.get_changes(paths=".renku/datasets/*/*.yml")
+    changed_paths = [c.a_path for c in changes]
+    paths = [p for p in changed_paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
+    deleted_paths = [c.a_path for c in changes if c.deleted]
 
     datasets, deleted_datasets = _fetch_datasets(
         client=client, revision=commit.hexsha, paths=paths, deleted_paths=deleted_paths
@@ -619,8 +615,8 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
     def read_project_version():
         """Read project version at revision."""
         try:
-            project_file_content = client.repo.git.show(f"{revision}:.renku/metadata.yml")
-        except GitCommandError:  # Project metadata file does not exist
+            project_file_content = client.repository.get_content(path=".renku/metadata.yml", revision=revision)
+        except errors.GitCommandError:  # Project metadata file does not exist
             return 1
 
         try:
@@ -651,13 +647,13 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
         for path in paths:
             rev = revision
             if path in deleted_paths:
-                rev = client.find_previous_commit(path, revision=f"{revision}~")
+                rev = client.repository.get_previous_commit(path, revision=f"{revision}~")
             identifier = get_dataset_identifier(path)
             if not identifier:
                 continue
             new_path = datasets_path / identifier / "metadata.yml"
             new_path.parent.mkdir(parents=True, exist_ok=True)
-            content = client.repo.git.show(f"{rev}:{path}")
+            content = client.repository.get_content(path=path, revision=str(rev))
             new_path.write_text(content)
             if path in deleted_paths:
                 deleted.append(new_path)
@@ -709,22 +705,22 @@ class _DatasetMigrationContext:
 
     def exists(self, path) -> bool:
         try:
-            self.client.repo.git.cat_file("-e", f"{self.revision}:{str(path)}")
-        except GitCommandError:
+            self.client.repository.run_git_command("cat-file", "-e", f"{self.revision}:{path}")
+        except errors.GitCommandError:
             return False
         else:
             return True
 
     def is_dir(self, path) -> bool:
         try:
-            result = self.client.repo.git.cat_file("-t", f"{self.revision}:{str(path)}")
-        except GitCommandError:
+            result = self.client.repository.run_git_command("cat-file", "-t", f"{self.revision}:{path}")
+        except errors.GitCommandError:
             return False
         else:
             return "tree" in result
 
-    def find_previous_commit(self, path):
-        return self.client.find_previous_commit(path, revision=self.revision)
+    def get_previous_commit(self, path):
+        return self.client.repository.get_previous_commit(path, revision=self.revision)
 
 
 def _remove_dataset_metadata_files(client: LocalClient):

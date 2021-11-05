@@ -24,7 +24,8 @@ import urllib
 import warnings
 
 import pytest
-import requests
+
+from renku.core import errors
 
 
 @pytest.fixture
@@ -35,8 +36,8 @@ def zenodo_sandbox(client):
     access_token = os.getenv("ZENODO_ACCESS_TOKEN", "")
     client.set_value("zenodo", "access_token", access_token)
 
-    client.repo.git.add(".renku/renku.ini")
-    client.repo.index.commit("update renku.ini")
+    client.repository.add(".renku/renku.ini")
+    client.repository.commit("update renku.ini")
 
 
 @pytest.fixture
@@ -44,14 +45,14 @@ def olos_sandbox(client):
     """Configure environment to use Zenodo sandbox environment."""
     access_token = os.getenv("OLOS_ACCESS_TOKEN", "")
     client.set_value("olos", "access_token", access_token)
-    client.repo.git.add(".renku/renku.ini")
-    client.repo.index.commit("update renku.ini")
+    client.repository.add(".renku/renku.ini")
+    client.repository.commit("update renku.ini")
 
 
 @pytest.fixture(scope="module")
 def dataverse_demo_cleanup(request):
     """Delete all Dataverse datasets at the end of the test session."""
-    from renku.core.utils.requests import retry
+    from renku.core.utils import requests
 
     server_url = "https://demo.dataverse.org"
     access_token = os.getenv("DATAVERSE_ACCESS_TOKEN", "")
@@ -60,9 +61,8 @@ def dataverse_demo_cleanup(request):
     def remove_datasets():
         url = f"{server_url}/api/v1/dataverses/sdsc-test-dataverse/contents"
         try:
-            with retry() as session:
-                response = session.get(url=url, headers=headers)
-        except (ConnectionError, requests.exceptions.RequestException):
+            response = requests.get(url=url, headers=headers)
+        except errors.RequestError:
             warnings.warn("Cannot clean up Dataverse datasets")
             return
 
@@ -77,9 +77,8 @@ def dataverse_demo_cleanup(request):
             if id is not None:
                 url = f"https://demo.dataverse.org/api/v1/datasets/{id}"
                 try:
-                    with retry() as session:
-                        session.delete(url=url, headers=headers)
-                except (ConnectionError, requests.exceptions.RequestException):
+                    requests.delete(url=url, headers=headers)
+                except errors.RequestError:
                     pass
 
     request.addfinalizer(remove_datasets)
@@ -92,8 +91,8 @@ def dataverse_demo(client, dataverse_demo_cleanup):
     client.set_value("dataverse", "access_token", access_token)
     client.set_value("dataverse", "server_url", "https://demo.dataverse.org")
 
-    client.repo.git.add(".renku/renku.ini")
-    client.repo.index.commit("renku.ini")
+    client.repository.add(".renku/renku.ini")
+    client.repository.commit("renku.ini")
 
 
 @pytest.fixture

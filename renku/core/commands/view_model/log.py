@@ -19,10 +19,12 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from renku.core.commands.format.tabulate import tabulate
-from renku.core.models.provenance.activity import Activity
+
+if TYPE_CHECKING:
+    from renku.core.models.provenance.activity import Activity
 
 
 def tabular(data, columns):
@@ -41,7 +43,7 @@ def json(data, columns):
 class LogType(str, Enum):
     """Enum of different types of Log entries."""
 
-    ACTIVITY = "Workflow Execution"
+    ACTIVITY = "Run"
     DATASET = "Dataset"
 
 
@@ -64,7 +66,7 @@ class LogViewModel:
         }
 
     @classmethod
-    def from_activity(cls, activity: Activity):
+    def from_activity(cls, activity: "Activity"):
         """Create a log entry from an activity."""
         return cls(
             date=activity.ended_at_time,

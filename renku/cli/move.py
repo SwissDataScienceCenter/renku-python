@@ -40,7 +40,6 @@ belong to one or more datasets then they will be removed from their metadata.
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.move import move_command
 
 
 @click.command(name="mv")
@@ -51,6 +50,8 @@ from renku.core.commands.move import move_command
 @click.option("--to-dataset", type=str, default=None, nargs=1, help="A target dataset to move files to.")
 def move(sources, destination, force, verbose, to_dataset):
     """Move files and check repository for potential problems."""
+    from renku.core.commands.move import move_command
+
     communicator = ClickCallback()
     move_command().with_communicator(communicator).build().execute(
         sources=sources, destination=destination, force=force, verbose=verbose, to_dataset=to_dataset

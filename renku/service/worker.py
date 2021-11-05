@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     if not queues:
         raise ConfigurationError(
-            "Worker queues not specified. " "Please, set RENKU_SVC_WORKER_QUEUES environment variable."
+            "Worker queues not specified. Please, set RENKU_SVC_WORKER_QUEUES environment variable."
         )
 
     start_worker([queue_name.strip() for queue_name in queues.strip().split(",")])

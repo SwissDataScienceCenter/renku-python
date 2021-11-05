@@ -28,9 +28,14 @@ class VersionCtrl(ServiceCtrl):
 
     RESPONSE_SERIALIZER = VersionResponseRPC()
 
-    def to_response(self):
+    def to_response(self, minimum_version, maximum_version):
         """Serialize to service version response."""
         return result_response(
             VersionCtrl.RESPONSE_SERIALIZER,
-            {"latest_version": __version__, "supported_project_version": SUPPORTED_PROJECT_VERSION},
+            {
+                "latest_version": __version__,
+                "supported_project_version": SUPPORTED_PROJECT_VERSION,
+                "minimum_api_version": minimum_version.name,
+                "maximum_api_version": maximum_version.name,
+            },
         )

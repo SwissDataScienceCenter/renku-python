@@ -53,4 +53,8 @@ class PlanGateway(IPlanGateway):
         """Add a plan to the database."""
         database = self.database_dispatcher.current_database
         database["plans"].add(plan)
+
+        if plan.derived_from:
+            derived_from = self.get_by_id(plan.derived_from)
+            database["plans-by-name"].pop(derived_from.name, None)
         database["plans-by-name"].add(plan)

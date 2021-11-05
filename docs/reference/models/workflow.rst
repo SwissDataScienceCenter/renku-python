@@ -65,6 +65,14 @@ Used to create ``Plan`` objects based on command line arguments
 .. automodule:: renku.core.management.workflow.plan_factory
    :members:
 
+Renku Provenance Logic
+----------------------
+
+Use for building a direct acyclic graph of past executions.
+
+.. automodule:: renku.core.management.workflow.activity
+   :members:
+
 
 
 Renku Workflow Conversion

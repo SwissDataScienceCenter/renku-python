@@ -25,7 +25,7 @@ import pytest
 @pytest.fixture
 def local_client():
     """Add a Renku local client."""
-    from renku.core.management import LocalClient
+    from renku.core.management.client import LocalClient
 
     with tempfile.TemporaryDirectory() as tempdir:
         yield LocalClient(path=tempdir)

@@ -21,13 +21,13 @@ import os
 import re
 import unicodedata
 import urllib
+from typing import List
 from urllib.parse import ParseResult
-
-from yagup import GitURL
 
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.utils.git import get_remote, parse_git_url
 
 
 def url_to_string(url):
@@ -65,6 +65,11 @@ def get_host(client):
     return os.environ.get("RENKU_DOMAIN") or host
 
 
+def get_path(url: str) -> str:
+    """Return path part of a url."""
+    return urllib.parse.urlparse(url).path
+
+
 @inject.autoparams()
 def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher, use_remote=False):
     """Return a parsed url.
@@ -78,10 +83,10 @@ def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher
         if not endpoint:
             if not use_remote:
                 return
-            remote_url = get_remote(client.repo)
-            if not remote_url:
+            remote = get_remote(client.repository)
+            if not remote or not remote.url:
                 return
-            endpoint = f"https://{GitURL.parse(remote_url).host}/"
+            endpoint = f"https://{parse_git_url(remote.url).host}/"
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"
@@ -93,24 +98,18 @@ def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher
     return parsed_endpoint._replace(scheme="https", path="/", params="", query="", fragment="")
 
 
-def get_remote(repo):
-    """Return remote name and url of repo or its active branch."""
-    if repo and repo.remotes:
-        if len(repo.remotes) == 1:
-            return repo.remotes[0].name, repo.remotes[0].url
-        elif repo.active_branch.tracking_branch():
-            name = repo.active_branch.tracking_branch().remote_name
-            return name, repo.remotes[name].url
-
-    return None, None
-
-
-def get_slug(name):
+def get_slug(name, invalid_chars: List[chr] = None):
     """Create a slug from name."""
+    invalid_chars = invalid_chars or []
     lower_case = name.lower()
     no_space = re.sub(r"\s+", "_", lower_case)
     normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
-    no_invalid_characters = re.sub(r"[^a-zA-Z0-9._-]", "_", normalized)
+
+    valid_chars_pattern = [r"\w", ".", "_", "-"]
+    if len(invalid_chars) > 0:
+        valid_chars_pattern = [ch for ch in valid_chars_pattern if ch not in invalid_chars]
+
+    no_invalid_characters = re.sub(f'[^{"".join(valid_chars_pattern)}]', "_", normalized)
     no_duplicates = re.sub(r"([._-])[._-]+", r"\1", no_invalid_characters)
     valid_start = re.sub(r"^[._-]", "", no_duplicates)
     valid_end = re.sub(r"[._-]$", "", valid_start)

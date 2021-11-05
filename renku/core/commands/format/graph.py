@@ -22,8 +22,6 @@ import functools
 import click
 
 from renku.core.errors import OperationError, SHACLValidationError
-from renku.core.models.provenance.activity import Activity
-from renku.core.utils.shacl import validate_graph
 
 
 def ascii(graph, strict=False):
@@ -309,6 +307,7 @@ def _rdf2dot_reduced(g, stream):
 
 def makefile(graph, strict=False):
     """Format graph as Makefile."""
+    from renku.core.models.provenance.activity import Activity
 
     if strict:
         raise SHACLValidationError("--strict not supported for makefile")
@@ -326,6 +325,8 @@ def makefile(graph, strict=False):
 
 def jsonld(graph, strict=False, to_stdout=True):
     """Format graph as JSON-LD file."""
+    from renku.core.utils.shacl import validate_graph
+
     ld = _jsonld(graph, "flatten")
 
     if strict:
@@ -343,6 +344,8 @@ def jsonld(graph, strict=False, to_stdout=True):
 
 def nt(graph, strict=False):
     """Format graph as n-tuples."""
+    from renku.core.utils.shacl import validate_graph
+
     nt = _conjunctive_graph(graph).serialize(format="nt")
     if strict:
         r, _, t = validate_graph(nt, format="nt")
@@ -355,6 +358,8 @@ def nt(graph, strict=False):
 
 def rdf(graph, strict=False):
     """Output the graph as RDF."""
+    from renku.core.utils.shacl import validate_graph
+
     xml = _conjunctive_graph(graph).serialize(format="application/rdf+xml")
     if strict:
         r, _, t = validate_graph(xml, format="xml")

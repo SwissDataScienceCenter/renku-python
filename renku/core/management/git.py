@@ -24,17 +24,14 @@ import sys
 import tempfile
 import time
 import uuid
-from collections import defaultdict
 from contextlib import contextmanager
-from itertools import zip_longest
 from pathlib import Path
 
 import attr
-import git
 
 from renku.core import errors
-from renku.core.utils.git import split_paths
-from renku.core.utils.scm import git_unicode_unescape, shorten_message
+from renku.core.utils.os import get_absolute_path
+from renku.core.utils.scm import shorten_message
 from renku.core.utils.urls import remove_credentials
 
 COMMIT_DIFF_STRATEGY = "DIFF"
@@ -50,16 +47,14 @@ def prepare_commit(
     diff_before = set()
 
     if commit_only == COMMIT_DIFF_STRATEGY:
-        staged = {git_unicode_unescape(item.a_path) for item in client.repo.index.diff(None)}
-
-        modified = {git_unicode_unescape(item.a_path) for item in client.repo.index.diff("HEAD")}
-
-        if staged or modified:
-            client.repo.git.reset()
+        if len(client.repository.staged_changes) > 0 or len(client.repository.unstaged_changes) > 0:
+            client.repository.reset()
 
         # Exclude files created by pipes.
         diff_before = {
-            file_ for file_ in client.repo.untracked_files if STARTED_AT - int(Path(file_).stat().st_ctime * 1e3) >= 1e3
+            file
+            for file in client.repository.untracked_files
+            if STARTED_AT - int(Path(file).stat().st_ctime * 1e3) >= 1e3
         }
 
     if isinstance(commit_only, list) and not skip_dirty_checks:
@@ -80,27 +75,24 @@ def finalize_commit(
     abbreviate_message=True,
 ):
     """Commit modified/added paths."""
-    from git import Actor
-
+    from renku.core.metadata.repository import Actor
     from renku.version import __version__, version_url
 
-    committer = Actor("renku {0}".format(__version__), version_url)
+    committer = Actor(name=f"renku {__version__}", email=version_url)
 
-    change_types = {git_unicode_unescape(item.a_path): item.change_type for item in client.repo.index.diff(None)}
+    change_types = {item.a_path: item.change_type for item in client.repository.unstaged_changes}
 
     if commit_only == COMMIT_DIFF_STRATEGY:
         # Get diff generated in command.
         staged_after = set(change_types.keys())
 
-        modified_after_change_types = {
-            git_unicode_unescape(item.a_path): item.change_type for item in client.repo.index.diff("HEAD")
-        }
+        modified_after_change_types = {item.a_path: item.change_type for item in client.repository.staged_changes}
 
         modified_after = set(modified_after_change_types.keys())
 
         change_types.update(modified_after_change_types)
 
-        diff_after = set(client.repo.untracked_files).union(staged_after).union(modified_after)
+        diff_after = set(client.repository.untracked_files).union(staged_after).union(modified_after)
 
         # Remove files not touched in command.
         commit_only = list(diff_after - diff_before)
@@ -109,16 +101,15 @@ def finalize_commit(
         for path_ in commit_only:
             p = client.path / path_
             if p.exists() or change_types.get(str(path_)) == "D":
-                client.repo.git.add(path_)
+                client.repository.add(path_)
 
     if not commit_only:
-        client.repo.git.add("--all")
+        client.repository.add(all=True)
 
-    diffs = []
     try:
-        diffs = [git_unicode_unescape(d.a_path) for d in client.repo.index.diff("HEAD")]
-    except git.exc.BadName:
-        pass
+        diffs = [d.a_path for d in client.repository.staged_changes]
+    except errors.GitError:
+        diffs = []
 
     if not commit_empty and not diffs:
         if raise_if_empty:
@@ -137,7 +128,7 @@ def finalize_commit(
         commit_message = shorten_message(commit_message)
 
     # Ignore pre-commit hooks since we have already done everything.
-    client.repo.index.commit(commit_message, committer=committer, skip_hooks=True)
+    client.repository.commit(commit_message, committer=committer, no_verify=True)
 
 
 def prepare_worktree(
@@ -147,8 +138,7 @@ def prepare_worktree(
     commit=None,
 ):
     """Set up a Git worktree to provide isolation."""
-    from git import NULL_TREE
-
+    from renku.core.metadata.repository import NULL_TREE
     from renku.core.utils.contexts import Isolation
 
     path = path or tempfile.mkdtemp()
@@ -158,18 +148,18 @@ def prepare_worktree(
 
     if commit is NULL_TREE:
         args = ["add", "--detach", path]
-        original_client.repo.git.worktree(*args)
+        original_client.repository.run_git_command("worktree", *args)
         client = attr.evolve(original_client, path=path)
-        client.repo.git.checkout("--orphan", branch_name)
-        client.repo.git.rm("-rf", "*")
+        client.repository.run_git_command("checkout", "--orphan", branch_name)
+        client.repository.remove("*", recursive=True, force=True)
     else:
         args = ["add", "-b", branch_name, path]
         if commit:
-            args.append(commit)
-        original_client.repo.git.worktree(*args)
+            args.append(commit.hexsha)
+        original_client.repository.run_git_command("worktree", *args)
         client = attr.evolve(original_client, path=path)
 
-    client.repo.config_reader = original_client.repo.config_reader
+    client.repository.get_configuration = original_client.repository.get_configuration
 
     # Keep current directory relative to repository root.
     relative = Path(os.path.relpath(Path(".").resolve(), original_client.path))
@@ -187,7 +177,7 @@ def prepare_worktree(
 
         mapped_std[name] = stream_path
 
-    _clean_streams(original_client.repo, original_mapped_std)
+    _clean_streams(original_client.repository, original_mapped_std)
 
     new_cwd = Path(path) / relative
     new_cwd.mkdir(parents=True, exist_ok=True)
@@ -201,8 +191,6 @@ def finalize_worktree(
     client, isolation, path, branch_name, delete, new_branch, merge_args=("--ff-only",), exception=None
 ):
     """Cleanup and merge a previously created Git worktree."""
-    from git import GitCommandError
-
     exc_info = (None, None, None)
 
     if exception:
@@ -211,16 +199,16 @@ def finalize_worktree(
     isolation.__exit__(*exc_info)
 
     try:
-        client.repo.git.merge(branch_name, *merge_args)
-    except GitCommandError:
-        raise errors.FailedMerge(client.repo, branch_name, merge_args)
+        client.repository.run_git_command("merge", branch_name, *merge_args)
+    except errors.GitCommandError:
+        raise errors.FailedMerge(client.repository, branch_name, merge_args)
 
     if delete:
-        client.repo.git.worktree("remove", path)
+        client.repository.run_git_command("worktree", "remove", path)
 
         if new_branch:
             # delete the created temporary branch
-            client.repo.git.branch("-d", branch_name)
+            client.repository.branches.remove(branch_name)
     if client.external_storage_requested:
         client.checkout_paths_from_storage()
 
@@ -254,20 +242,21 @@ def get_mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
     return dict(stream_inos(lookup_paths)) if standard_inos else {}
 
 
-def _clean_streams(repo, mapped_streams):
+def _clean_streams(repository, mapped_streams):
     """Clean mapped standard streams."""
     for stream_name in ("stdout", "stderr"):
         stream = mapped_streams.get(stream_name)
         if not stream:
             continue
 
-        path = os.path.relpath(stream, start=repo.working_dir)
-        if (path, 0) not in repo.index.entries:
-            os.remove(stream)
+        absolute_path = get_absolute_path(stream, repository.path)
+        path = os.path.relpath(absolute_path, start=repository.path)
+        if path not in repository.files:
+            os.remove(absolute_path)
         else:
-            blob = repo.index.entries[(path, 0)].to_blob(repo)
-            with open(path, "wb") as fp:
-                fp.write(blob.data_stream.read())
+            with open(path, "wb") as output_file:
+                checksum = repository.get_object_hash(path=absolute_path, revision="HEAD")
+                repository.copy_content_to_file(path=absolute_path, checksum=checksum, output_file=output_file)
 
 
 def _expand_directories(paths):
@@ -291,71 +280,43 @@ def _expand_directories(paths):
 class GitCore:
     """Wrap Git client."""
 
-    repo = attr.ib(init=False)
-    """Store an instance of the Git repository."""
+    repository = attr.ib(init=False, default=None)
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
-        from git import InvalidGitRepositoryError, Repo
+        from renku.core.metadata.repository import Repository
 
         #: Create an instance of a Git repository for the given path.
         try:
-            self.repo = Repo(str(self.path))
-        except InvalidGitRepositoryError:
-            self.repo = None
+            self.repository = Repository(self.path)
+        except errors.GitError:
+            self.repository = None
 
     @property
     def modified_paths(self):
         """Return paths of modified files."""
-        return [item.b_path for item in self.repo.index.diff(None) if item.b_path]
+        return [item.b_path for item in self.repository.unstaged_changes if item.b_path]
 
     @property
     def dirty_paths(self):
         """Get paths of dirty files in the repository."""
-        repo_path = self.repo.working_dir
-        staged_files = (
-            [git_unicode_unescape(d.a_path) for d in self.repo.index.diff("HEAD")] if self.repo.head.is_valid() else []
-        )
-        return {os.path.join(repo_path, p) for p in self.repo.untracked_files + self.modified_paths + staged_files}
+        repo_path = self.repository.path
+        staged_files = [d.a_path for d in self.repository.staged_changes] if self.repository.head.is_valid() else []
+        return {
+            os.path.join(repo_path, p) for p in self.repository.untracked_files + self.modified_paths + staged_files
+        }
 
     @property
     def candidate_paths(self):
         """Return all paths in the index and untracked files."""
-        repo_path = self.repo.working_dir
         return [
-            os.path.join(repo_path, path)
-            for path in itertools.chain((x[0] for x in self.repo.index.entries), self.repo.untracked_files)
+            os.path.join(self.repository.path, path)
+            for path in itertools.chain(self.repository.files, self.repository.untracked_files)
         ]
 
     def find_ignored_paths(self, *paths):
         """Return ignored paths matching ``.gitignore`` file."""
-        from git.exc import GitCommandError
-
-        ignored = []
-        for batch in split_paths(*paths):
-            try:
-                ignored.extend(self.repo.git.check_ignore(*batch).split(os.linesep))
-            except GitCommandError:
-                pass
-
-        return ignored
-
-    def find_attr(self, *paths):
-        """Return map with path and its attributes."""
-        from git.exc import GitCommandError
-
-        attrs = defaultdict(dict)
-
-        for batch in split_paths(*paths):
-            try:
-                data = self.repo.git.check_attr("-z", "-a", "--", *batch)
-                for file, name, value in zip_longest(*[iter(data.strip("\0").split("\0"))] * 3):
-                    if file:
-                        attrs[file][name] = value
-            except GitCommandError:
-                pass
-
-        return attrs
+        return self.repository.get_ignored_paths(*paths)
 
     def remove_unmodified(self, paths, autocommit=True):
         """Remove unmodified paths and return their names."""
@@ -364,16 +325,16 @@ class GitCore:
         # Keep only unchanged files in the output paths.
         tracked_paths = {
             diff.b_path
-            for diff in self.repo.index.diff(None)
+            for diff in self.repository.unstaged_changes
             if diff.change_type in {"A", "R", "M", "T"} and diff.b_path in tested_paths
         }
         unchanged_paths = tested_paths - tracked_paths
 
         # Fix tracking of unchanged files by removing them first.
         if autocommit and unchanged_paths:
-            self.repo.index.remove(unchanged_paths, cached=True, r=True, ignore_unmatch=True)
-            self.repo.index.commit("renku: automatic removal of unchanged files")
-            self.repo.index.add(unchanged_paths)
+            self.repository.remove(*unchanged_paths, index=True, recursive=True, not_exists_ok=True)
+            self.repository.commit("renku: automatic removal of unchanged files")
+            self.repository.add(*unchanged_paths)
 
         return unchanged_paths
 
@@ -384,46 +345,41 @@ class GitCore:
 
         if ignore_std_streams:
             if dirty_paths - set(mapped_streams.values()):
-                _clean_streams(self.repo, mapped_streams)
-                raise errors.DirtyRepository(self.repo)
+                _clean_streams(self.repository, mapped_streams)
+                raise errors.DirtyRepository(self.repository)
 
-        elif self.repo.is_dirty(untracked_files=True):
-            _clean_streams(self.repo, mapped_streams)
-            raise errors.DirtyRepository(self.repo)
+        elif self.repository.is_dirty():
+            _clean_streams(self.repository, mapped_streams)
+            raise errors.DirtyRepository(self.repository)
 
     def ensure_untracked(self, path):
         """Ensure that path is not part of git untracked files."""
-        untracked = self.repo.untracked_files
+        untracked = self.repository.untracked_files
 
         for file_path in untracked:
             is_parent = (self.path / file_path).parent == (self.path / path)
             is_equal = path == file_path
 
             if is_parent or is_equal:
-                raise errors.DirtyRenkuDirectory(self.repo)
+                raise errors.DirtyRenkuDirectory(self.repository)
 
     def ensure_unstaged(self, path):
         """Ensure that path is not part of git staged files."""
-        try:
-            staged = self.repo.index.diff("HEAD")
+        staged = self.repository.staged_changes
 
-            for file_path in staged:
-                unescaped_path = git_unicode_unescape(file_path.a_path)
-                is_parent = str(unescaped_path).startswith(path)
-                is_equal = path == unescaped_path
+        for file_path in staged:
+            is_parent = str(file_path.a_path).startswith(path)
+            is_equal = path == file_path.a_path
 
-                if is_parent or is_equal:
-                    raise errors.DirtyRenkuDirectory(self.repo)
-
-        except git.exc.BadName:
-            pass
+            if is_parent or is_equal:
+                raise errors.DirtyRenkuDirectory(self.repository)
 
     def setup_credential_helper(self):
         """Setup git credential helper to ``cache`` if not set already."""
-        credential_helper = self.repo.config_reader().get_value("credential", "helper", "")
+        credential_helper = self.repository.get_configuration().get_value("credential", "helper", "")
 
         if not credential_helper:
-            with self.repo.config_writer() as w:
+            with self.repository.get_configuration(writable=True) as w:
                 w.set_value("credential", "helper", "cache")
 
     @contextmanager
@@ -455,9 +411,9 @@ class GitCore:
     @contextmanager
     def worktree(self, path=None, branch_name=None, commit=None, merge_args=("--ff-only",)):
         """Create new worktree."""
-        from git import NULL_TREE
+        from renku.core.metadata.repository import NULL_TREE
 
-        delete = path is None
+        delete = branch_name is None
         new_branch = commit is not NULL_TREE
 
         new_client, isolation, path, branch_name = prepare_worktree(self, path, branch_name, commit)

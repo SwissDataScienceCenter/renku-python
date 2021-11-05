@@ -61,7 +61,7 @@ def _run_command(
     client = client_dispatcher.current_client
 
     if name:
-        valid_name = get_slug(name)
+        valid_name = get_slug(name, invalid_chars=["."])
         if name != valid_name:
             raise errors.ParameterError(f"Invalid name: '{name}' (Hint: '{valid_name}' is valid).")
 
@@ -118,7 +118,7 @@ def _run_command(
                 old_stderr = sys.stderr
                 sys.stderr = system_stderr
 
-        working_dir = client.repo.working_dir
+        working_dir = str(client.repository.path)
         factory = PlanFactory(
             command_line=command_line,
             explicit_inputs=explicit_inputs,
