@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Converter for workflows to cwl."""
+"""Converter for workflows to CWL."""
 
 import os
 import re
@@ -86,11 +86,11 @@ def _recurse_subprocesses(run, index):
 
 
 class CWLConverter(object):
-    """Converts a ``Run`` to cwl file(s)."""
+    """Converts a ``Run`` to CWL file(s)."""
 
     @staticmethod
     def convert(run, basedir, path=None):
-        """Convert the workflow to one ore more .cwl files."""
+        """Convert the workflow to one or more CWL files."""
         filename = None
         if path:
             if os.path.isdir(path):
@@ -438,7 +438,7 @@ class CWLConverter(object):
 
 
 class CWLExporter(IWorkflowConverter):
-    """Converts a ``CompositePlan`` or a ``Plan`` to cwl format."""
+    """Converts a ``CompositePlan`` or a ``Plan`` to CWL format."""
 
     @hookimpl
     def workflow_format(self):
@@ -449,7 +449,7 @@ class CWLExporter(IWorkflowConverter):
     def workflow_convert(
         self, workflow: Union[CompositePlan, Plan], basedir: Path, output: Optional[Path], output_format: Optional[str]
     ):
-        """Converts the specified workflow to cwl format."""
+        """Converts the specified workflow to CWL format."""
         filename = None
         if output:
             if output.is_dir():
@@ -479,7 +479,7 @@ class CWLExporter(IWorkflowConverter):
     def _convert_composite(
         workflow: CompositePlan, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
     ):
-        """Converts a composite plan to a cwl file."""
+        """Converts a composite plan to a CWL file."""
         inputs = {}
         arguments = {}
         outputs = {}
@@ -578,7 +578,7 @@ class CWLExporter(IWorkflowConverter):
     def _convert_step(
         workflow: Plan, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
     ):
-        """Converts a single workflow step to a cwl file."""
+        """Converts a single workflow step to a CWL file."""
         stdin, stdout, stderr = None, None, None
 
         inputs = list(workflow.inputs)

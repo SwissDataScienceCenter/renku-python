@@ -70,36 +70,36 @@ Available configuration values
 
 The following values are available for the ``renku config`` command:
 
-+----------------------------+-------------------------------------+-----------+
-| Name                       | Description                         | Default   |
-+============================+=====================================+===========+
-| show_lfs_message           | Whether to show messages about      | ``True``  |
-|                            | files being added to git LFS or not |           |
-+----------------------------+-------------------------------------+-----------+
-| lfs_threshold              | Threshold file size below which     | ``100kb`` |
-|                            | files are not added to git LFS      |           |
-+----------------------------+-------------------------------------+-----------+
-| zenodo.access_token        | Access token for Zenodo API         | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| dataverse.access_token     | Access token for Dataverse API      | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| dataverse.server_url       | URL for the Dataverse API server    | ``None``  |
-|                            | to use                              |           |
-+----------------------------+-------------------------------------+-----------+
-| interactive.default_url    | URL for interactive environments    | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| interactive.cpu_request    | CPU quota for environments          | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| interactive.mem_request    | Memory quota for environments       | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| interactive.gpu_request    | GPU quota for environments          | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| interactive.lfs_auto_fetch | Whether to automatically fetch lfs  | ``None``  |
-|                            | files on environments startup       |           |
-+----------------------------+-------------------------------------+-----------+
-| interactive.image          | Pinned Docker image for             | ``None``  |
-|                            | environments                        |           |
-+----------------------------+-------------------------------------+-----------+
++--------------------------------+-------------------------------------+-----------+
+| Name                           | Description                         | Default   |
++================================+=====================================+===========+
+| ``show_lfs_message``           | Whether to show messages about      | ``True``  |
+|                                | files being added to git LFS or not |           |
++--------------------------------+-------------------------------------+-----------+
+| ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
+|                                | files are not added to git LFS      |           |
++--------------------------------+-------------------------------------+-----------+
+| ``zenodo.access_token``        | Access token for Zenodo API         | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``dataverse.access_token``     | Access token for Dataverse API      | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``dataverse.server_url``       | URL for the Dataverse API server    | ``None``  |
+|                                | to use                              |           |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.default_url``    | URL for interactive environments    | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.cpu_request``    | CPU quota for environments          | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.mem_request``    | Memory quota for environments       | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.gpu_request``    | GPU quota for environments          | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.lfs_auto_fetch`` | Whether to automatically fetch lfs  | ``None``  |
+|                                | files on environments startup       |           |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.image``          | Pinned Docker image for             | ``None``  |
+|                                | environments                        |           |
++--------------------------------+-------------------------------------+-----------+
 """
 import click
 

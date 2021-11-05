@@ -20,14 +20,14 @@ import base64
 import json
 from copy import deepcopy
 from io import BytesIO
-from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import sleep
 
 import pytest
 
 from renku.core.commands.init import fetch_template_from_git, read_template_manifest
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.metadata.repository import Repository
+from renku.core.utils.os import normalize_to_ascii
 from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
 from tests.utils import retry_failed
 
@@ -71,9 +71,8 @@ def test_compare_manifests(svc_client_with_templates):
     assert response.json["result"]["templates"]
 
     with TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        manifest_file, _ = fetch_template_from_git(template_params["url"], template_params["ref"], temp_path)
-        manifest = read_template_manifest(temp_path)
+        manifest_file, _ = fetch_template_from_git(template_params["url"], template_params["ref"], temp_dir)
+        manifest = read_template_manifest(temp_dir)
 
         assert manifest_file and manifest_file.exists()
         assert manifest
@@ -95,8 +94,6 @@ def test_compare_manifests(svc_client_with_templates):
 @retry_failed
 def test_create_project_from_template(svc_client_templates_creation):
     """Check reading manifest template."""
-    from git import Repo
-
     from renku.service.serializers.headers import RenkuHeaders
     from renku.service.utils import CACHE_PROJECTS_PATH
 
@@ -108,7 +105,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=anonymous_headers)
 
     assert response
-    assert response.json["error"]
+    assert response.json.get("error") is not None, response.json
     assert "Cannot push changes" in response.json["error"]["reason"]
 
     # NOTE:  fail: missing parameters
@@ -127,7 +124,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
     assert response
-    assert {"result"} == set(response.json.keys())
+    assert {"result"} == set(response.json.keys()), response.json["error"]
     stripped_name = normalize_to_ascii(payload["project_name"])
     assert stripped_name == response.json["result"]["slug"]
     expected_url = "{0}/{1}/{2}".format(payload["project_repository"], payload["project_namespace"], stripped_name)
@@ -142,8 +139,7 @@ def test_create_project_from_template(svc_client_templates_creation):
         / payload["project_namespace"]
         / stripped_name
     )
-    repo = Repo(project_path)
-    reader = repo.config_reader()
+    reader = Repository(project_path).get_configuration()
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 

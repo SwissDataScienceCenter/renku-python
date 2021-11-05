@@ -24,16 +24,17 @@ import stat
 from pathlib import Path
 
 import pytest
-from git import Repo
 
 from renku.core import errors
 from renku.core.commands.dataset import add_to_dataset, create_dataset, file_unlink, list_datasets, list_files
 from renku.core.errors import ParameterError
 from renku.core.management.datasets import DatasetsProvenance
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.agent import Person
 from renku.core.utils.contexts import chdir
+from renku.core.utils.git import get_git_user
 from renku.core.utils.urls import get_slug
 from tests.utils import assert_dataset_is_mutated, load_dataset, raises
 
@@ -152,8 +153,8 @@ def test_create_dataset_custom_message(project):
         "ds1", title="", description="", creators=[]
     )
 
-    last_commit = Repo(".").head.commit
-    assert "my dataset" == last_commit.message
+    last_commit = Repository(".").head.commit
+    assert "my dataset\n" == last_commit.message
 
 
 def test_list_datasets_default(project):
@@ -206,14 +207,14 @@ def test_mutate(client):
 
     dataset.mutate()
 
-    mutator = Person.from_git(client.repo)
+    mutator = get_git_user(client.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
 @pytest.mark.xfail
 def test_mutator_is_added_once(client):
     """Test mutator of a dataset is added only once to its creators list."""
-    mutator = Person.from_git(client.repo)
+    mutator = get_git_user(client.repository)
 
     dataset = Dataset(
         name="my-dataset",

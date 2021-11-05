@@ -21,11 +21,12 @@ from collections import OrderedDict
 from operator import attrgetter
 
 from renku.core import errors
-from renku.core.models.tabulate import tabulate as tabulate_
 
 
 def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort=True, reverse=False):
     """Format collection with a tabular output."""
+    from renku.core.models.tabulate import tabulate as tabulate_
+
     if not columns:
         raise errors.ParameterError("Columns cannot be empty.")
 

@@ -21,15 +21,17 @@ import json
 import shutil
 import uuid
 from copy import deepcopy
+from typing import Generator
 
 import pytest
-from git import GitCommandError, Repo
 
+from renku.core import errors
+from renku.core.metadata.repository import Repository
 from tests.utils import format_result_exception, modified_environ
 
 
 @contextlib.contextmanager
-def _mock_cache_sync(repo):
+def _mock_cache_sync(repository: Repository):
     """Mocks the resetting of the cache since other fixtures perform migrations on the cache without pushing.
 
     We don't want to undo that temporary migration with an actual cache sync, as it would break tests with
@@ -37,11 +39,11 @@ def _mock_cache_sync(repo):
     """
     from renku.service.controllers.api import mixins
 
-    current_head = repo.head.ref
+    current_reference = repository.head.reference if repository.head.is_valid() else repository.head.commit
 
     def _mocked_repo_reset(self, project):
         """Mock repo reset to work with mocked renku save."""
-        repo.git.reset("--hard", current_head)
+        repository.reset(current_reference, hard=True)
 
     reset_repo_function = mixins.RenkuOperationMixin.reset_local_repo
     mixins.RenkuOperationMixin.reset_local_repo = _mocked_repo_reset
@@ -70,24 +72,22 @@ def integration_repo_path(headers, project_id, url_components):
 
 
 @contextlib.contextmanager
-def integration_repo(headers, project_id, url_components):
+def integration_repo(headers, project_id, url_components) -> Generator[Repository, None, None]:
     """With integration repo helper."""
-    from git import Repo
-
     from renku.core.utils.contexts import chdir
 
     repo_path = integration_repo_path(headers, project_id, url_components)
     with chdir(repo_path):
-        repo = Repo(repo_path)
-        repo.heads.master.checkout()
+        repository = Repository(repo_path)
+        repository.checkout("master")
 
-        yield repo
+        yield repository
 
         if integration_repo_path(headers, project_id, url_components).exists():
-            repo.git.reset("--hard")
-            repo.heads.master.checkout()
-            repo.git.reset("--hard")
-            repo.git.clean("-xdf")
+            repository.reset(hard=True)
+            repository.checkout("master")
+            repository.reset(hard=True)
+            repository.clean()
 
 
 @pytest.fixture()
@@ -111,10 +111,10 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_re
 
     # Teardown step: Delete all branches except master (if needed).
     if integration_repo_path(identity_headers, project_id, url_components).exists():
-        with integration_repo(identity_headers, project_id, url_components) as repo:
+        with integration_repo(identity_headers, project_id, url_components) as repository:
             try:
-                repo.remote().push(refspec=(":{0}".format(repo.active_branch.name)))
-            except GitCommandError:
+                repository.push(remote="origin", refspec=f":{repository.active_branch.name}")
+            except errors.GitCommandError:
                 pass
 
 
@@ -123,20 +123,20 @@ def svc_client_setup(integration_lifecycle):
     """Service client setup."""
     svc_client, headers, project_id, url_components = integration_lifecycle
 
-    with integration_repo(headers, project_id, url_components) as repo:
-        repo.git.checkout("master")
+    with integration_repo(headers, project_id, url_components) as repository:
+        repository.checkout("master")
 
         new_branch = uuid.uuid4().hex
-        current = repo.create_head(new_branch)
-        current.checkout()
+        current = repository.branches.add(new_branch)
+        repository.checkout(current)
 
-        with _mock_cache_sync(repo):
-            yield svc_client, deepcopy(headers), project_id, url_components, repo
+        with _mock_cache_sync(repository):
+            yield svc_client, deepcopy(headers), project_id, url_components, repository
 
         if integration_repo_path(headers, project_id, url_components).exists():
             # NOTE: Some tests delete the repo
-            repo.git.checkout("master")
-            repo.git.branch("-D", current)
+            repository.checkout("master")
+            repository.branches.remove(current, force=True)
 
 
 @pytest.fixture
@@ -200,7 +200,6 @@ def svc_protected_old_repo(svc_synced_client, it_protected_repo_url):
 def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, real_sync):
     """Client with a local remote to test pushes."""
     from click.testing import CliRunner
-    from git.config import GitConfigParser, get_config_path
     from marshmallow import pre_load
 
     from renku.cli import cli
@@ -228,20 +227,19 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     cache.ProjectCloneContext.set_owner_name = pre_load(_mock_owner)
 
     remote_repo_path = tmp_path / "remote_repo"
-    remote_repo_path.mkdir()
 
-    remote_repo = Repo.init(remote_repo_path, bare=True)
+    remote_repo = Repository.initialize(remote_repo_path, bare=True)
     remote_repo_checkout_path = tmp_path / "remote_repo_checkout"
     remote_repo_checkout_path.mkdir()
 
-    remote_repo_checkout = remote_repo.clone(str(remote_repo_checkout_path))
+    remote_repo_checkout = Repository.clone_from(url=remote_repo_path, path=remote_repo_checkout_path)
 
     home = tmp_path / "user_home"
     home.mkdir()
 
     with modified_environ(HOME=str(home), XDG_CONFIG_HOME=str(home)):
         try:
-            with GitConfigParser(get_config_path("global"), read_only=False) as global_config:
+            with remote_repo_checkout.get_configuration(scope="global", writable=True) as global_config:
                 global_config.set_value("user", "name", "Renku @ SDSC")
                 global_config.set_value("user", "email", "renku@datascience.ch")
 
@@ -254,9 +252,8 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
                 )
                 assert 0 == result.exit_code, format_result_exception(result)
 
-                remote_name = remote_repo_checkout.active_branch.tracking_branch().remote_name
-                remote = remote_repo_checkout.remotes[remote_name]
-                result = remote.push()
+                remote = remote_repo_checkout.active_branch.remote_branch.remote
+                remote_repo_checkout.push(remote=remote)
         finally:
             try:
                 shutil.rmtree(home)

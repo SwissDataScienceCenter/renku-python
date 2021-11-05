@@ -188,14 +188,11 @@ was not installed previously.
 
 """
 
-import configparser
 import json
 import os
 from pathlib import Path
-from tempfile import mkdtemp
 
 import click
-from git import Repo
 
 from renku.core import errors
 from renku.core.commands.options import option_external_storage_requested
@@ -245,19 +242,6 @@ def resolve_data_directory(data_dir, path):
         raise errors.ParameterError(f"Cannot use {data_dir} as data directory.")
 
     return data_dir
-
-
-def check_git_user_config():
-    """Check that git user information is configured."""
-    dummy_git_folder = mkdtemp()
-    repo = Repo.init(dummy_git_folder)
-    git_config = repo.config_reader()
-    try:
-        git_config.get_value("user", "name", None)
-        git_config.get_value("user", "email", None)
-        return True
-    except (configparser.NoOptionError, configparser.NoSectionError):
-        return False
 
 
 @click.command()
@@ -323,17 +307,11 @@ def init(
     """Initialize a project in PATH. Default is the current path."""
     from renku.cli.utils.callback import ClickCallback
     from renku.core.commands.init import init_command
+    from renku.core.utils.git import check_global_git_user_is_configured
 
     data_dir = resolve_data_directory(data_dir, path)
 
-    if not check_git_user_config():
-        raise errors.ConfigurationError(
-            "The user name and email are not configured. "
-            'Please use the "git config" command to configure them.\n\n'
-            '\tgit config --global --add user.name "John Doe"\n'
-            "\tgit config --global --add user.email "
-            '"john.doe@example.com"\n'
-        )
+    check_global_git_user_is_configured()
 
     if template_ref and not template_source:
         raise errors.ParameterError("Can't use '--template-ref' without specifying '--template-source'")

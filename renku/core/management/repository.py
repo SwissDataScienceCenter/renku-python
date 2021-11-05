@@ -19,28 +19,24 @@
 
 import hashlib
 import json
-import os
 import shutil
-import subprocess
 from contextlib import contextmanager
-from subprocess import check_output
 
 import attr
 import filelock
 from jinja2 import Template
-from werkzeug.utils import cached_property
 
+from renku.core import errors
 from renku.core.compat import Path
+from renku.core.management import RENKU_HOME
 from renku.core.management.command_builder import inject
-from renku.core.management.config import RENKU_HOME
+from renku.core.management.git import GitCore
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.project import Project
 from renku.core.utils import communication
 from renku.core.utils.git import default_path
-
-from .git import GitCore
 
 DEFAULT_DATA_DIR = "data"
 
@@ -91,7 +87,7 @@ class RepositoryApiMixin(GitCore):
     """Directory for metadata storage."""
 
     DOCKERFILE = "Dockerfile"
-    """Name of the Dockerfile in the repo."""
+    """Name of the Dockerfile in the repository."""
 
     TEMPLATE_CHECKSUMS = "template_checksums.json"
 
@@ -125,17 +121,15 @@ class RepositoryApiMixin(GitCore):
         data_dir = self.get_value("renku", self.DATA_DIR_CONFIG_KEY, config_filter=ConfigFilter.LOCAL_ONLY)
         self.data_dir = data_dir or self.data_dir
 
-        self._subclients = {}
-
         self._project = None
 
         super().__attrs_post_init__()
 
         # initialize submodules
-        if self.repo:
+        if self.repository:
             try:
-                check_output(["git", "submodule", "update", "--init", "--recursive"], cwd=str(self.path))
-            except subprocess.CalledProcessError:
+                self.repository.run_git_command("submodule", "update", "--init", "--recursive", cwd=str(self.path))
+            except errors.GitCommandError:
                 pass
 
     @property
@@ -189,21 +183,22 @@ class RepositoryApiMixin(GitCore):
 
         host = owner = name = None
         try:
-            remote_branch = self.repo.head.reference.tracking_branch()
+            remote_branch = self.repository.active_branch.remote_branch
             if remote_branch is not None:
-                remote_name = remote_branch.remote_name
-        except TypeError:
+                remote_name = remote_branch.remote.name
+        except (AttributeError, errors.GitError):
+            # NOTE: AttributeError is raised if there is a None value
             pass
 
         try:
-            url = GitURL.parse(self.repo.remotes[remote_name].url)
+            url = GitURL.parse(self.repository.remotes[remote_name].url)
 
             # Remove gitlab. unless running on gitlab.com.
             hostname_parts = url.hostname.split(".")
             if len(hostname_parts) > 2 and hostname_parts[0] == "gitlab":
                 hostname_parts = hostname_parts[1:]
             url = attr.evolve(url, hostname=".".join(hostname_parts))
-        except IndexError:
+        except errors.GitRemoteNotFoundError:
             url = None
 
         if url:
@@ -220,80 +215,28 @@ class RepositoryApiMixin(GitCore):
         """Return if project is set for the client."""
         return self._project is not None
 
-    def find_previous_commit(self, paths, revision="HEAD", return_first=False, full=False):
-        """Return a previous commit for a given path starting from ``revision``.
-
-        :param revision: revision to start from, defaults to ``HEAD``
-        :param return_first: show the first commit in the history
-        :param full: return full history
-        :raises KeyError: if path is not present in the given commit
-        """
-        kwargs = {}
-
-        if full:
-            kwargs["full_history"] = True
-
-        if return_first:
-            file_commits = list(self.repo.iter_commits(revision, paths=paths, **kwargs))
-        else:
-            file_commits = list(self.repo.iter_commits(revision, paths=paths, max_count=1, **kwargs))
-
-        if not file_commits:
-            raise KeyError("Could not find a file {0} in range {1}".format(paths, revision))
-
-        return file_commits[-1 if return_first else 0]
-
-    @cached_property
-    def submodules(self):
-        """Return list of submodules it belongs to."""
-        if self.parent:
-            client, submodule = self.parent
-            return client.submodules + [submodule.name]
-        return []
-
-    def subclients(self, parent_commit):
-        """Return mapping from submodule to client."""
-        if parent_commit in self._subclients:
-            return self._subclients[parent_commit]
-
-        try:
-            from git import Submodule
-
-            submodules = [submodule for submodule in Submodule.iter_items(self.repo, parent_commit=parent_commit)]
-        except (RuntimeError, ValueError):
-            # There are no submodules associated with the given commit.
-            submodules = []
-
-        subclients = {}
-        for submodule in submodules:
-            subpath = (self.path / submodule.path).resolve()
-            is_renku = subpath / Path(self.renku_home)
-
-            if subpath.exists() and is_renku.exists():
-                subclients[submodule] = self.__class__(path=subpath, parent=(self, submodule))
-
-        return subclients
-
-    def resolve_in_submodules(self, commit, path):
+    def get_in_submodules(self, commit, path):
         """Resolve filename in submodules."""
+        from renku.core.management.client import LocalClient
+
         original_path = self.path / path
         in_vendor = str(path).startswith(".renku/vendors")
 
         if original_path.is_symlink() or in_vendor:
-            original_path = Path(os.path.realpath(os.path.abspath(str(original_path))))
+            resolved_path = original_path.resolve()
 
-            for submodule, subclient in self.subclients(commit).items():
-                if (Path(submodule.path) / Path(".git")).exists():
+            for submodule in self.repository.submodules:
+                if not (submodule.path / ".git").exists():
+                    continue
 
-                    try:
-                        subpath = original_path.relative_to(subclient.path)
-                        return (
-                            subclient,
-                            subclient.find_previous_commit(subpath, revision=submodule.hexsha),
-                            subpath,
-                        )
-                    except ValueError:
-                        pass
+                try:
+                    path_within_submodule = resolved_path.relative_to(submodule.path)
+                    commit = submodule.get_previous_commit(path=path_within_submodule, revision=commit.hexsha)
+                    subclient = LocalClient(submodule.path)
+                except (ValueError, errors.GitCommitNotFoundError):
+                    pass
+                else:
+                    return subclient, commit, path_within_submodule
 
         return self, commit, path
 
@@ -331,26 +274,18 @@ class RepositoryApiMixin(GitCore):
 
     def init_repository(self, force=False, user=None, initial_branch=None):
         """Initialize an empty Renku repository."""
-        from git import Repo
-
-        from renku.core.models.provenance.agent import Person
+        from renku.core.metadata.repository import Repository
 
         # initialize repo and set user data
-        kwargs = {}
-
-        if initial_branch:
-            kwargs["initial-branch"] = initial_branch
-
         path = self.path.absolute()
-        self.repo = Repo.init(str(path), **kwargs)
+        self.repository = Repository.initialize(path=path, branch=initial_branch)
         if user:
-            config_writer = self.repo.config_writer()
-            for key, value in user.items():
-                config_writer.set_value("user", key, value)
-            config_writer.release()
+            with self.repository.get_configuration(writable=True) as config_writer:
+                for key, value in user.items():
+                    config_writer.set_value("user", key, value)
 
-        # verify if author information is available
-        Person.from_git(self.repo)
+        # verify if git user information is available
+        _ = self.repository.get_user()
 
     def get_template_files(self, template_path, metadata):
         """Gets paths in a rendered renku template."""

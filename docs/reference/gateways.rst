@@ -15,57 +15,26 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Provenance
-==========
 
-.. py:module:: renku.core.models.provenance
+Gateways
+========
 
-Extract provenance information from the repository.
+Renku uses several gateways to abstract away dependencies on external systems
+such as the database or git.
 
-
-Activities
+Interfaces
 ----------
 
-.. py:module:: renku.core.models.provenance.activity
+Interfaces that the Gateways implement.
 
-.. autoclass:: Activity
+.. automodule:: renku.core.management.interface
    :members:
-   :inherited-members:
 
+Implementations
+---------------
 
-Entities
---------
+Implementation of Gateway interfaces.
 
-.. py:module:: renku.core.models.entity
-
-.. autoclass:: Entity
+.. automodule:: renku.core.metadata.gateway
    :members:
-   :inherited-members:
 
-.. autoclass:: Collection
-   :members:
-   :inherited-members:
-
-
-Agents
-------
-
-.. py:module:: renku.core.models.provenance.agent
-
-.. autoclass:: Person
-   :members:
-   :inherited-members:
-
-.. autoclass:: SoftwareAgent
-   :members:
-   :inherited-members:
-
-
-Annotations
------------
-
-.. py:module:: renku.core.models.provenance.annotation
-
-.. autoclass:: Annotation
-   :members:
-   :inherited-members:

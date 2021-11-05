@@ -211,7 +211,11 @@ class Plan(AbstractPlan):
 
     def find_parameter(self, parameter: CommandParameterBase) -> bool:
         """Find if a parameter exists on this plan."""
-        return parameter in self.inputs + self.outputs + self.parameters
+        return any(parameter.id == p.id for p in self.inputs + self.outputs + self.parameters)
+
+    def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
+        """Get a parameter on this plan by id."""
+        return next((p for p in self.inputs + self.outputs + self.parameters if parameter_id == p.id), None)
 
     def find_parameter_workflow(self, parameter: CommandParameterBase) -> "Plan":
         """Return the workflow a parameter belongs to."""
@@ -326,8 +330,8 @@ class PlanDetailsJson(marshmallow.Schema):
     """Serialize a plan to a response object."""
 
     name = marshmallow.fields.String(required=True)
+    full_command = marshmallow.fields.String(data_key="command")
     derived_from = marshmallow.fields.String()
-    title = marshmallow.fields.String()
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     id = marshmallow.fields.String()

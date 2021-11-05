@@ -67,4 +67,5 @@ WORKFLOW_COLUMNS = {
     "name": ("name", None),
     "keywords": ("keywords_csv", "keywords"),
     "description": ("short_description", "description"),
+    "command": ("full_command", "command"),
 }

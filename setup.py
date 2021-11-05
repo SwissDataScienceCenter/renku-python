@@ -48,17 +48,16 @@ class DownloadTemplates(Command):
 
         with TemporaryDirectory() as tempdir:
             # download and extract template data
-            temppath = Path(tempdir)
             print("downloading Renku templates...")
-            fetch_template_from_git(URL, REFERENCE, temppath)
-            read_template_manifest(temppath, checkout=True)
+            fetch_template_from_git(URL, REFERENCE, tempdir)
+            read_template_manifest(tempdir, checkout=True)
 
             # copy templates
             current_path = Path.cwd()
             template_path = current_path / "renku" / "templates"
             if template_path.exists():
                 shutil.rmtree(str(template_path))
-            shutil.copytree(str(temppath), str(template_path), ignore=shutil.ignore_patterns(".git"))
+            shutil.copytree(tempdir, str(template_path), ignore=shutil.ignore_patterns(".git"))
 
 
 class bdist_egg(_bdist_egg):
@@ -188,7 +187,7 @@ install_requires = [
     "pyjwt==2.1.0",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<20.1.0",
-    "pyshacl==0.17.0.post1",
+    "pyshacl==0.17.2",
     "python-dateutil>=2.6.1,<2.8.3",
     "python-editor==1.0.4",
     "PyYAML>=5.4,<=5.4.1",
