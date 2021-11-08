@@ -26,7 +26,6 @@ import sys
 from pathlib import Path
 from time import time
 
-import git
 import pytest
 from click.testing import CliRunner
 
@@ -34,6 +33,7 @@ from renku import __version__
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
+from renku.core.metadata.repository import Repository
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils.contexts import chdir
 from tests.utils import format_result_exception, retry_failed
@@ -117,13 +117,13 @@ def test_exit_code(cmd, exit_code, runner, project):
 
 def test_streams(runner, project, capsys, no_lfs_warning):
     """Test redirection of std streams."""
-    repo = git.Repo(".")
+    repository = Repository(".")
 
     with open("source.txt", "w") as source:
         source.write("first,second,third")
 
-    repo.git.add("--all")
-    repo.index.commit("Added source.txt")
+    repository.add(all=True)
+    repository.commit("Added source.txt")
 
     workflow_name = "run1"
     with capsys.disabled():
@@ -167,8 +167,8 @@ def test_streams(runner, project, capsys, no_lfs_warning):
     with open("source.txt", "w") as source:
         source.write("first,second,third,fourth")
 
-    repo.git.add("--all")
-    repo.index.commit("Changed source.txt")
+    repository.add(all=True)
+    repository.commit("Changed source.txt")
 
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
@@ -196,11 +196,11 @@ def test_streams_cleanup(runner, project, run):
     assert 1 == result.exit_code
 
     # File from the Git index should be restored.
-    repo = git.Repo(project)
+    repository = Repository(project)
     with stdout.open("w") as fp:
         fp.write("1")
 
-    repo.index.add(["result.txt"])
+    repository.add("result.txt")
 
     with stdout.open("r") as fp:
         assert fp.read() == "1"
@@ -241,9 +241,9 @@ def test_show_inputs(tmpdir_factory, project, runner, run, template):
     with woop.open("w") as fp:
         fp.write("woop")
 
-    second_repo = git.Repo(str(second_project))
-    second_repo.git.add("--all")
-    second_repo.index.commit("Added woop file")
+    second_repository = Repository(second_project)
+    second_repository.add(all=True)
+    second_repository.commit("Added woop file")
 
     assert 0 == run(args=("dataset", "create", "foo"))
     assert 0 == run(args=("dataset", "add", "foo", str(woop)))
@@ -440,8 +440,8 @@ def test_status_consistency(client, project):
     with open("somedirectory/woop", "w") as fp:
         fp.write("woop")
 
-    client.repo.index.add(["somedirectory/woop"])
-    client.repo.index.commit("add woop")
+    client.repository.add("somedirectory/woop")
+    client.repository.commit("add woop")
 
     result = runner.invoke(cli, ["run", "cp", "somedirectory/woop", "somedirectory/meeh"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -449,8 +449,8 @@ def test_status_consistency(client, project):
     with open("somedirectory/woop", "w") as fp:
         fp.write("weep")
 
-    client.repo.index.add(["somedirectory/woop"])
-    client.repo.index.commit("fix woop")
+    client.repository.add("somedirectory/woop")
+    client.repository.commit("fix woop")
 
     base_result = runner.invoke(cli, ["status"])
     os.chdir("somedirectory")
@@ -512,7 +512,7 @@ def test_modified_output(runner, project, run):
     data.mkdir(parents=True)
     output = data / "result.txt"
 
-    repo = git.Repo(project)
+    repository = Repository(project)
     cmd = ["run", "cp", "-r", str(source), str(output)]
 
     def update_source(data):
@@ -520,8 +520,8 @@ def test_modified_output(runner, project, run):
         with source.open("w") as fp:
             fp.write(data)
 
-        repo.git.add("--all")
-        repo.index.commit("Updated source.txt")
+        repository.add(all=True)
+        repository.commit("Updated source.txt")
 
     update_source("1")
 
@@ -569,14 +569,14 @@ def test_outputs(runner, project):
 
 def test_deleted_input(runner, project, capsys):
     """Test deleted input."""
-    repo = git.Repo(project)
+    repository = Repository(project)
     cwd = Path(project)
     input_ = cwd / "input.txt"
     with input_.open("w") as f:
         f.write("first")
 
-    repo.git.add("--all")
-    repo.index.commit("Created input.txt")
+    repository.add(all=True)
+    repository.commit("Created input.txt")
 
     cmd = ["run", "mv", input_.name, "input.mv"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
@@ -588,7 +588,7 @@ def test_deleted_input(runner, project, capsys):
 @pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_input_directory(runner, project, run, no_lfs_warning):
     """Test detection of input directory."""
-    repo = git.Repo(project)
+    repository = Repository(project)
     cwd = Path(project)
     output = cwd / "output.txt"
     inputs = cwd / "inputs"
@@ -596,8 +596,8 @@ def test_input_directory(runner, project, run, no_lfs_warning):
 
     gitkeep = inputs / ".gitkeep"
     gitkeep.touch()
-    repo.git.add("--all")
-    repo.index.commit("Empty inputs directory")
+    repository.add(all=True)
+    repository.commit("Empty inputs directory")
 
     assert 0 == run(args=("run", "ls", str(inputs)), stdout=output)
     with output.open("r") as fp:
@@ -605,8 +605,8 @@ def test_input_directory(runner, project, run, no_lfs_warning):
 
     (inputs / "first").touch()
 
-    repo.git.add("--all")
-    repo.index.commit("Created inputs")
+    repository.add(all=True)
+    repository.commit("Created inputs")
 
     assert 0 == run(args=("update", output.name))
 
@@ -614,8 +614,8 @@ def test_input_directory(runner, project, run, no_lfs_warning):
         assert "first\n" == fp.read()
 
     (inputs / "second").touch()
-    repo.git.add("--all")
-    repo.index.commit("Added second input")
+    repository.add(all=True)
+    repository.commit("Added second input")
 
     assert 0 == run(args=("update", output.name))
     with output.open("r") as fp:

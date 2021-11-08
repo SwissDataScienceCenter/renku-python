@@ -190,7 +190,7 @@ Once all the requirements are installed, you can install Renku normally by runni
     $ pipx ensurepath
 
 After this, Renku is ready to use. You can access your Windows in the various mount points in
-``/mnt/`` and you can execute Windows executables (e.g. \*.exe) as usual directly from the
+``/mnt/`` and you can execute Windows executables (e.g. ``\*.exe``) as usual directly from the
 WSL (so ``renku run myexecutable.exe`` will work as expected).
 
 .. _docker-before-reference:

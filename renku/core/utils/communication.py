@@ -20,8 +20,6 @@
 from functools import wraps
 from threading import RLock
 
-from werkzeug.local import Local
-
 
 class CommunicationCallback:
     """Base communication callback class."""
@@ -190,7 +188,7 @@ class _CommunicationManger(CommunicationCallback):
         self._enabled = True
 
 
-_thread_local = Local()
+_thread_local = None
 
 
 def ensure_manager(f):
@@ -198,6 +196,13 @@ def ensure_manager(f):
 
     @wraps(f)
     def wrapper(*args, **kwargs):
+        global _thread_local
+
+        if _thread_local is None:
+            from werkzeug.local import Local
+
+            _thread_local = Local()
+
         if getattr(_thread_local, "communication_manager", None) is None:
             _thread_local.communication_manager = _CommunicationManger()
 

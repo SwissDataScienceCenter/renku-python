@@ -24,16 +24,18 @@ from pathlib import Path
 
 import pytest
 
+from renku.core.utils.os import normalize_to_ascii
+
 
 @pytest.fixture
 def real_sync():
     """Enable remote sync."""
     import importlib
 
-    from renku.core.commands import save
+    from renku.core.utils import git
 
-    # NOTE: Use this fixture only in serial tests. save.repo_sync is mocked; reloading the save module to undo the mock.
-    importlib.reload(save)
+    # NOTE: Use this fixture only in serial tests: git.push_changes is mocked; reloading the git module to undo the mock
+    importlib.reload(git)
 
 
 @pytest.fixture()
@@ -203,8 +205,7 @@ def svc_client_with_templates(svc_client, mock_redis, identity_headers, template
 @pytest.fixture
 def svc_client_templates_creation(svc_client_with_templates):
     """Setup and teardown steps for templates tests."""
-    from renku.core.utils.requests import retry
-    from renku.core.utils.scm import normalize_to_ascii
+    from renku.core.utils import requests
 
     svc_client, authentication_headers, template = svc_client_with_templates
     parameters = []
@@ -235,8 +236,7 @@ def svc_client_templates_creation(svc_client_with_templates):
         project_slug_encoded = urllib.parse.quote(project_slug, safe="")
         project_delete_url = "{0}/api/v4/projects/{1}".format(payload["project_repository"], project_slug_encoded)
 
-        with retry() as session:
-            session.delete(url=project_delete_url, headers=authentication_headers)
+        requests.delete(url=project_delete_url, headers=authentication_headers)
 
         return True
 

@@ -24,7 +24,7 @@ def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from _pytest.monkeypatch import MonkeyPatch
 
-    from renku.core.commands import save
+    from renku.core.utils import git
     from renku.service.cache.base import BaseCache
     from renku.service.cache.models.file import File
     from renku.service.cache.models.job import Job
@@ -32,9 +32,9 @@ def mock_redis():
     from renku.service.cache.models.user import User
     from renku.service.jobs.queues import WorkerQueues
 
-    def repo_sync_mock(p, remote=None):
+    def push_changes_mock(*_, **__):
         """Mock for repository remote sync."""
-        return None, "origin"
+        return "origin"
 
     monkey_patch = MonkeyPatch()
     with monkey_patch.context() as m:
@@ -54,7 +54,7 @@ def mock_redis():
         m.setattr(File, "__database__", fake_model_db)
         m.setattr(Project, "__database__", fake_model_db)
 
-        save.repo_sync = repo_sync_mock
+        git.push_changes = push_changes_mock
 
         yield
 
