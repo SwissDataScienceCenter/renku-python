@@ -812,6 +812,16 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
             },
             3,
         ),
+        (
+            'sh -c \'head -n "$0" "$1" | tail -n "$2" > "$3"\' 1 Dockerfile 1 output',
+            {
+                "input-3@tag1": ["environment.yml", "requirements.txt"],
+                "parameter-2@tag2": ["3", "4", "5"],
+                "parameter-4@tag2": ["1", "2", "3"],
+                "output-5": "output_{iter_index}",
+            },
+            6,
+        ),
     ],
 )
 def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provider, num_iterations):
