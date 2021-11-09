@@ -26,7 +26,7 @@ from pathlib import Path
 import pexpect
 import pyte
 import pytest
-from cwl_utils import parser_v1_2 as cwlgen
+from cwl_utils.parser import cwl_v1_2 as cwlgen
 
 from renku.cli import cli
 from renku.core.metadata.database import Database
