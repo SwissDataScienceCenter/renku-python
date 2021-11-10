@@ -475,7 +475,7 @@ class RepositoryCache:
 
         def find_from_client(path, revision):
             try:
-                return self.client.repository.get_previous_commit(paths=path, revision=revision, full_history=True)
+                return self.client.repository.get_previous_commit(path=path, revision=revision, full_history=True)
             except errors.GitCommitNotFoundError:
                 communication.warn(f"Cannot find previous commit for {path} from {str(revision)}")
                 return revision
