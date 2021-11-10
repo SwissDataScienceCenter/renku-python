@@ -19,6 +19,7 @@
 
 
 import itertools
+import re
 import uuid
 from collections import defaultdict
 from datetime import datetime
@@ -577,3 +578,230 @@ def _visualize_graph(
 def visualize_graph_command():
     """Execute the graph visualization command."""
     return Command().command(_visualize_graph).require_migration().with_database(write=False)
+
+
+def _extract_iterate_parameters(values: Dict[str, Any], index_pattern: re.Pattern, tag_separator: str = "@"):
+    """Recursively extracts the iteration paramaters from the workflow values given by the user."""
+    iter_params = {"indexed": {}, "params": {}, "tagged": {}}
+    params = {}
+    for param_name, param_value in values.items():
+        if isinstance(param_value, str) and index_pattern.search(param_value):
+            iter_params["indexed"][param_name] = param_value
+            params[param_name] = param_value
+        elif isinstance(param_value, list):
+            if len(param_value) == 1:
+                communication.warn(
+                    f"The parameter '{param_name}' has only one element '{param_value}', "
+                    "changing it to be a fixed parameter!"
+                )
+                params[param_name] = param_value[0]
+                continue
+
+            if tag_separator in param_name:
+                name, tag = param_name.split(tag_separator, maxsplit=1)
+                if tag in iter_params["tagged"]:
+                    iter_params["tagged"][tag][name] = param_value
+                else:
+                    iter_params["tagged"][tag] = {name: param_value}
+
+                params[name] = param_value
+            else:
+                iter_params["params"][param_name] = param_value
+                params[param_name] = param_value
+        elif isinstance(param_value, dict):
+            inner_iter_params, inner_params = _extract_iterate_parameters(param_value, index_pattern, tag_separator)
+            iter_params["params"].update([(f"{param_name}.{ik}", iv) for ik, iv in inner_iter_params["params"].items()])
+            iter_params["indexed"].update(
+                [(f"{param_name}.{ik}", iv) for ik, iv in inner_iter_params["indexed"].items()]
+            )
+            for tag, param in inner_iter_params["tagged"].items():
+                if tag in iter_params["tagged"]:
+                    iter_params["tagged"][tag].update([(f"{param_name}.{ik}", iv) for ik, iv in param.items()])
+                else:
+                    iter_params["tagged"][tag] = dict([(f"{param_name}.{ik}", iv) for ik, iv in param.items()])
+            params[param_name] = inner_params
+        else:
+            params[param_name] = param_value
+    return iter_params, params
+
+
+def _validate_iterate_parameters(
+    workflow: AbstractPlan, workflow_params: Dict[str, Any], iter_params: Dict[str, Any], mapping_path: str
+) -> Dict[str, Any]:
+    """Validates the user provided iteration parameters."""
+    import copy
+
+    rv = ValueResolver.get(copy.deepcopy(workflow), workflow_params)
+    rv.apply()
+
+    mp_paths = [mp.split(".") for mp in rv.missing_parameters]
+    for collection in [iter_params["indexed"], iter_params["params"], *iter_params["tagged"].values()]:
+        remove_keys = []
+        for p in collection.keys():
+            parameter_path = p.split(".")
+            if any(parameter_path[: len(mp)] == mp for mp in mp_paths):
+                remove_keys.append(p)
+
+        for rk in remove_keys:
+            collection.pop(rk)
+
+    # validate tagged
+    empty_tags = []
+    for k, tagged_params in iter_params["tagged"].items():
+        if len(tagged_params) == 0:
+            empty_tags.append(k)
+        else:
+            tagged_params_values = list(tagged_params.values())
+            tag_size = len(tagged_params_values[0])
+            for p in tagged_params_values[1:]:
+                num_params = len(p)
+                if tag_size != num_params:
+                    communication.error(
+                        f"'{k}' tagged parameters '{tagged_params}' has different number of possible values!"
+                    )
+                    return None
+
+    for et in empty_tags:
+        iter_params["tagged"].pop(et)
+
+    if (len(iter_params["indexed"]) == 0) and (len(iter_params["params"]) == 0) and (len(iter_params["tagged"]) == 0):
+        raise errors.UsageError(
+            "Please check the provided mappings as none of the "
+            f"parameters are present in the '{workflow.name}' workflow"
+        )
+
+    if rv.missing_parameters:
+        communication.confirm(
+            f'Could not resolve the following parameters in "{workflow.name}" workflow: '
+            f'{", ".join(rv.missing_parameters)}. Resume the execution?',
+            abort=True,
+        )
+
+    return iter_params
+
+
+def _build_iterations(
+    workflow: AbstractPlan, workflow_params: Dict[str, Any], iter_params: Dict[str, Any], index_pattern: re.Pattern
+) -> List[AbstractPlan]:
+    """Instantiate the workflows for each iteration."""
+    import copy
+
+    from deepmerge import always_merger
+
+    plans = []
+    execute_plan = []
+
+    columns = list(iter_params["params"].keys())
+    tagged_values = []
+    for tag in iter_params["tagged"].values():
+        columns.extend(tag.keys())
+        tagged_values.append(zip(*tag.values()))
+
+    def _flatten(values):
+        for i in values:
+            if isinstance(i, (list, tuple)):
+                for k in i:
+                    yield k
+            else:
+                yield i
+
+    for i, values in enumerate(itertools.product(*iter_params["params"].values(), *tagged_values)):
+        plan_params = copy.deepcopy(workflow_params)
+        iteration_values = {}
+        for k, v in iter_params["indexed"].items():
+            value = index_pattern.sub(str(i), v)
+            set_param = reduce(lambda x, y: {y: x}, reversed(k.split(".")), value)
+            plan_params = always_merger.merge(plan_params, set_param)
+            iteration_values[k] = value
+
+        for param_key, param_value in zip(columns, _flatten(values)):
+            set_param = reduce(lambda x, y: {y: x}, reversed(param_key.split(".")), param_value)
+            plan_params = always_merger.merge(plan_params, set_param)
+            iteration_values[param_key] = param_value
+
+        execute_plan.append(iteration_values)
+        rv = ValueResolver.get(copy.deepcopy(workflow), plan_params)
+        plans.append(rv.apply())
+
+    return plans, execute_plan
+
+
+def _iterate_workflow(
+    name_or_id: str,
+    mapping_path: str,
+    mappings: List[str],
+    dry_run: bool,
+    provider: str,
+    config: Optional[str],
+):
+    import ast
+
+    from deepmerge import always_merger
+
+    from renku.core.models.tabulate import tabulate
+
+    TAG_SEPARATOR = "@"
+
+    if mapping_path is None and len(mappings) == 0:
+        raise errors.UsageError("No mapping has been given for the iteration!")
+
+    workflow = _find_workflow(name_or_id)
+    TAG_SEPARATOR = "@"
+    index_pattern = re.compile(r"{iter_index}")
+
+    iter_params = {"indexed": {}, "params": {}, "tagged": {}}
+    workflow_params = {}
+    if mapping_path:
+        mapping = _safe_read_yaml(mapping_path)
+        iter_params, workflow_params = _extract_iterate_parameters(mapping, index_pattern, tag_separator=TAG_SEPARATOR)
+
+    for m in mappings:
+        param_name, param_value = m.split("=", maxsplit=1)
+        if index_pattern.search(param_value):
+            iter_params["indexed"][param_name] = param_value
+        else:
+            try:
+                param_value = ast.literal_eval(param_value)
+            except Exception:
+                raise errors.ParameterError(
+                    f"The value of '{param_name}' parameter is neither a list nor templated variable!"
+                )
+
+            if len(param_value) == 1:
+                communication.warn(
+                    f"The parameter '{param_name}' has only one element '{param_value}', "
+                    "changing it to be a fixed parameter!"
+                )
+                workflow_params[param_name] = param_value[0]
+                continue
+
+            if TAG_SEPARATOR in param_name:
+                name, tag = param_name.split(TAG_SEPARATOR, maxsplit=1)
+                if tag in iter_params["tagged"]:
+                    iter_params["tagged"][tag][name] = param_value
+                else:
+                    iter_params["tagged"][tag] = {name: param_value}
+
+                param_name = name
+            else:
+                iter_params["params"][param_name] = param_value
+
+        set_param = reduce(lambda x, y: {y: x}, reversed(param_name.split(".")), param_value)
+        workflow_params = always_merger.merge(workflow_params, set_param)
+
+    iter_params = _validate_iterate_parameters(workflow, workflow_params, iter_params, mapping_path)
+    if iter_params is None:
+        return
+
+    plans, execute_plan = _build_iterations(workflow, workflow_params, iter_params, index_pattern)
+
+    communication.echo(f"\n\n{tabulate(execute_plan, execute_plan[0].keys())}")
+    if not dry_run:
+        execute_workflow(plans=plans, command_name="iterate", provider=provider, config=config)
+
+
+def iterate_workflow_command():
+    """Command that executes several workflows given a set of variables."""
+    return (
+        Command().command(_iterate_workflow).require_migration().require_clean().with_database(write=True).with_commit()
+    )
