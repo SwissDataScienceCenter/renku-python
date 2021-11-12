@@ -113,6 +113,8 @@ class PlanFactory:
 
         self.add_inputs_and_parameters(*detected_arguments)
 
+        self.existing_directories = {}
+
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
         if self.is_existing_path(self.command_line[0]):
@@ -396,6 +398,15 @@ class PlanFactory:
         if self.no_output_detection and Path(default_value).resolve() not in self.explicit_outputs:
             return
 
+        create_folder = False
+        path = Path(default_value)
+        full_path = Path(self._path_relative_to_root(default_value)).resolve()
+
+        if (full_path.is_dir() and str(path) in self.existing_directories) or (
+            not full_path.is_dir() and str(path.parent) in self.existing_directories
+        ):
+            create_folder = True
+
         mapped_stream = self.get_stream_mapping_for_value(default_value)
 
         if mapped_stream and position is None:
@@ -417,6 +428,7 @@ class PlanFactory:
                 mapped_to=mapped_stream,
                 encoding_format=encoding_format,
                 postfix=postfix,
+                create_folder=create_folder,
             )
         )
 
