@@ -511,7 +511,7 @@ def _convert_invalidated_entity(entity: old_schema.Entity, client) -> Optional[E
     assert not isinstance(entity, old_schema.Collection), f"Collection passed as invalidated: {entity._id}"
 
     commit_sha = _extract_commit_sha(entity_id=entity._id)
-    commit = client.repository.get_previous_commit(revision=commit_sha, paths=entity.path)
+    commit = client.repository.get_previous_commit(revision=commit_sha, path=entity.path)
     revision = commit.hexsha
     checksum = client.repository.get_object_hash(revision=revision, path=entity.path)
     if not checksum:

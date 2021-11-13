@@ -286,12 +286,16 @@ class BaseRepository:
 
         return attributes
 
-    def get_previous_commit(self, path: Union[Path, str], revision: Union["Commit", str] = None) -> Optional["Commit"]:
+    def get_previous_commit(
+        self, path: Union[Path, str], revision: Union["Commit", str] = None, full_history: bool = False
+    ) -> Optional["Commit"]:
         """Return a previous commit for a given path starting from ``revision``."""
         revision = revision or "HEAD"
         assert isinstance(revision, (Commit, str)), f"'revision' must be Commit/str not '{type(revision)}'"
 
-        commit = _find_previous_commit_helper(repository=self, path=path, revision=str(revision))
+        commit = _find_previous_commit_helper(
+            repository=self, path=path, revision=str(revision), full_history=full_history
+        )
         if not commit:
             raise errors.GitCommitNotFoundError(f"Cannot find previous commit for '{path}' from '{revision}'")
         return commit

@@ -1122,6 +1122,13 @@
             },
             {
                "nodeKind": "sh:Literal",
+               "path": "schema:encodingFormat",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
