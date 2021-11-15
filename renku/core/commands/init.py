@@ -36,6 +36,7 @@ from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.management.migrations.utils import OLD_METADATA_PATH
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
 from renku.core.metadata.repository import Repository
 from renku.core.models.tabulate import tabulate
@@ -325,6 +326,14 @@ def _init(
     # Initialize an empty database
     database_gateway = inject.instance(IDatabaseGateway)
     database_gateway.initialize()
+
+    # add metadata.yml for backwards compatibility
+    metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
+    with open(metadata_path, "w") as f:
+        f.write(
+            "# Dummy file kept for backwards compatibility, does not contain actual version\n"
+            "'http://schema.org/schemaVersion': '9'"
+        )
 
     # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")

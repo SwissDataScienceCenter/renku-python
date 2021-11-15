@@ -73,8 +73,13 @@ def migrate(migration_context):
         migration_type=migration_context.options.type,
     )
     _remove_dataset_metadata_files(client)
+
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
-    metadata_path.unlink()
+    with open(metadata_path, "w") as f:
+        f.write(
+            "# Dummy file kept for backwards compatibility, does not contain actual version\n"
+            "'http://schema.org/schemaVersion': '9'"
+        )
 
 
 def _commit_previous_changes(client):
