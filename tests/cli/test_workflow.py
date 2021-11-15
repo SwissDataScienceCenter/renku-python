@@ -19,6 +19,7 @@
 
 import itertools
 import os
+import re
 import tempfile
 import uuid
 from pathlib import Path
@@ -785,3 +786,85 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
     assert output[1] is None
 
     assert "xyz\n" == Path("output4").read_text()
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+@pytest.mark.parametrize(
+    "workflow, parameters, num_iterations",
+    [
+        ('echo "a" > output', {}, 0),
+        ('echo "a" > output', {"parameter-1": ["b", "c", "d"], "output-2": "output_{iter_index}"}, 3),
+        (
+            "head -n 1 Dockerfile > output",
+            {
+                "input-2": ["environment.yml", "Dockerfile", "requirements.txt"],
+                "n-1": ["3", "4"],
+                "output-3": "output_{iter_index}",
+            },
+            6,
+        ),
+        (
+            "head -n 1 Dockerfile > output",
+            {
+                "input-2@tag1": ["environment.yml", "Dockerfile", "requirements.txt"],
+                "n-1@tag1": ["3", "4", "5"],
+                "output-3": "output_{iter_index}",
+            },
+            3,
+        ),
+        (
+            'sh -c \'head -n "$0" "$1" | tail -n "$2" > "$3"\' 1 Dockerfile 1 output',
+            {
+                "input-3@tag1": ["environment.yml", "requirements.txt"],
+                "parameter-2@tag2": ["3", "4", "5"],
+                "parameter-4@tag2": ["1", "2", "3"],
+                "output-5": "output_{iter_index}",
+            },
+            6,
+        ),
+    ],
+)
+def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provider, num_iterations):
+    """Test renku workflow iterate."""
+
+    workflow_name = "foobar"
+
+    # Run a shell command with pipe.
+    output = run_shell(f"renku run --name {workflow_name} -- {workflow}")
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    iteration_cmd = ["renku", "workflow", "iterate", "-p", provider, workflow_name]
+    outputs = []
+    index_re = re.compile(r"{iter_index}")
+
+    for k, v in filter(lambda x: x[0].startswith("output"), parameters.items()):
+        if isinstance(v, str) and index_re.search(v):
+            outputs += [index_re.sub(str(i), v) for i in range(num_iterations)]
+        else:
+            outputs.extend(v)
+
+    fd, values_path = tempfile.mkstemp()
+    os.close(fd)
+    write_yaml(values_path, parameters)
+    iteration_cmd += ["--mapping", values_path]
+
+    output = run_shell(" ".join(iteration_cmd))
+
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Check for error keyword in stdout
+    assert b"error" not in output[0]
+
+    if len(parameters) == 0:
+        # no effective mapping was suppiled
+        # this should result in an error
+        assert b"Error: Please check the provided mappings" in output[0]
+        return
+
+    # check whether parameters setting was effective
+    for o in outputs:
+        assert Path(o).resolve().exists()

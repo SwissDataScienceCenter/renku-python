@@ -20,7 +20,7 @@
 import os
 import re
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 from renku.core import errors
 
@@ -31,15 +31,27 @@ def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
     return os.path.relpath(absolute_path, os.getcwd())
 
 
+def get_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Optional[Path]:
+    """Return a relative path to the base if path is within base without resolving symlinks."""
+    try:
+        absolute_path = get_absolute_path(path=path, base=base)
+        return Path(absolute_path).relative_to(base)
+    except ValueError:
+        return
+
+
+def is_subpath(path: Union[Path, str], base: Union[Path, str]) -> bool:
+    """Return True if path is within base."""
+    return get_relative_path(path, base) is not None
+
+
 def get_relative_paths(base: Union[Path, str], paths: List[Union[Path, str]]) -> List[str]:
     """Return a list of paths relative to a base path."""
     relative_paths = []
 
     for path in paths:
-        try:
-            absolute_path = get_absolute_path(os.path.join(base, path))
-            relative_path = Path(absolute_path).relative_to(base)
-        except ValueError:
+        relative_path = get_relative_path(path=path, base=base)
+        if relative_path is None:
             raise errors.ParameterError(f"Path '{path}' is not within base path '{base}'")
 
         relative_paths.append(str(relative_path))
@@ -47,17 +59,17 @@ def get_relative_paths(base: Union[Path, str], paths: List[Union[Path, str]]) ->
     return relative_paths
 
 
-def are_paths_related(a, b):
+def are_paths_related(a, b) -> bool:
     """Return True if paths are equal or one is the parent of the other."""
     common_path = os.path.commonpath((a, b))
     absolute_common_path = os.path.abspath(common_path)
     return absolute_common_path == os.path.abspath(a) or absolute_common_path == os.path.abspath(b)
 
 
-def get_absolute_path(path: Union[Path, str], cwd: Union[Path, str] = None) -> str:
+def get_absolute_path(path: Union[Path, str], base: Union[Path, str] = None) -> str:
     """Return absolute normalized path without resolving symlinks."""
-    if cwd is not None:
-        path = os.path.join(cwd, path)
+    if base is not None:
+        path = os.path.join(base, path)
 
     # NOTE: Do not use os.path.realpath or Path.resolve() because they resolve symlinks
     return os.path.abspath(path)
