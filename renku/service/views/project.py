@@ -16,17 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project view."""
-from flask import Blueprint, request
+from flask import request
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.project_edit import ProjectEditCtrl
+from renku.service.views.api_versions import V1_0, VersionedBlueprint
 from renku.service.views.decorators import accepts_json, handle_common_except, requires_cache, requires_identity
 
 PROJECT_BLUEPRINT_TAG = "project"
-project_blueprint = Blueprint(PROJECT_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
+project_blueprint = VersionedBlueprint(PROJECT_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@project_blueprint.route("/project.edit", methods=["POST"], provide_automatic_options=False)
+@project_blueprint.route("/project.edit", methods=["POST"], provide_automatic_options=False, versions=[V1_0])
 @handle_common_except
 @accepts_json
 @requires_cache

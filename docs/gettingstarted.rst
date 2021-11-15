@@ -40,7 +40,7 @@ Run an analysis:
 
 .. code-block:: console
 
-   $ renku run wc < data/my-dataset/README.rst > wc_readme
+   $ renku run --name my-run --  wc < data/my-dataset/README.rst > wc_readme
 
 Trace the data provenance:
 

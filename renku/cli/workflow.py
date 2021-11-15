@@ -17,72 +17,212 @@
 # limitations under the License.
 """Manage the set of CWL files created by ``renku`` commands.
 
-Manipulating workflows
-~~~~~~~~~~~~~~~~~~~~~~
+Runs and Plans
+~~~~~~~~~~~~~~
 
-Listing workflows:
+Renku records two different kinds of metadata when a workflow is executed,
+``Run`` and ``Plan``.
+Plans describe a recipe for a command, they function as a template that
+can be used directly or combined with other workflow templates to create more
+complex recipes.
+These Plans can be run in various ways, on creation with ``renku run`,`
+doing a ``renku rerun`` or ``renku update`` or manually using ``renku workflow
+execute``.
+
+Each time a ``Plan`` is run, we track that instance of it as a ``Run``.
+Runs track workflow execution through time. They track which Plan was
+run, at what time, with which specific values. This gives an insight into what
+were the steps taken in a repository, how they were taken and what results they
+produced.
+
+The ``renku workflow`` group of commands contains most of the commands used
+to interact with Plans and Runs
+
+Working with Plans
+~~~~~~~~~~~~~~~~~~
+
+Listing Plans
+*************
+
+.. image:: ../_static/asciicasts/list_plans.delay.gif
+   :width: 850
+   :alt: List Plans
 
 .. code-block:: console
 
     $ renku workflow ls
-    26be2e8d66f74130a087642768f2cef0_rerun.yaml:
-    199c4b9d462f4b27a4513e5e55f76eb2_cat.yaml:
-    9bea2eccf9624de387d9b06e61eec0b6_rerun.yaml:
-    b681b4e229764ceda161f6551370af12_update.yaml:
-    25d0805243e3468d92a3786df782a2c4_rerun.yaml:
+    ID                                       NAME
+    ---------------------------------------  ---------------
+    /plans/11a3702184394b93ac422df760e40999  cp-B-C-ca4da
+    /plans/96642cac86d9435e8abce2384f8618b9  cat-A-C-fa017
+    /plans/96c70626575c41c5a13853b070eaaaf5  my-other-run
+    /plans/9a0961844fcc46e1816fde00f57e24a8  my-run
 
-Each ``*.yaml`` file corresponds to a renku run/update/rerun execution.
+Each entry corresponds to a recorded Plan/workflow template. You can also
+show additional columns using the ``--columns`` parameter, which takes any
+combination of values from ``id``, ``name``, ``keywords`` and ``description``.
 
-Exporting workflows:
+Showing Plan Details
+********************
 
-You can export the workflow to create a file as Common Workflow Language
-by using:
+.. image:: ../_static/asciicasts/show_plan.delay.gif
+   :width: 850
+   :alt: Show Plan
+
+You can see the details of a plan by using ``renku workflow show``:
 
 .. code-block:: console
 
-    $ renku workflow set-name create output_file
+    $ renku workflow show my-run
+    Id: /plans/9a0961844fcc46e1816fde00f57e24a8
+    Name: run1
+    Command: cp A B
+    Success Codes:
+    Inputs:
+            - input-1:
+                    Default Value: A
+                    Position: 1
+    Outputs:
+            - output-2:
+                    Default Value: B
+                    Position: 2
+
+This shows the unique Id of the Plan, its name, the full command of the Plan
+if it was run without any modifications (more on that later), which exit codes
+should be considered successful executions (defaults to ``0``) as well as its
+inputs, outputs and parameters.
+
+Executing Plans
+***************
+
+.. image:: ../_static/asciicasts/execute_plan.delay.gif
+   :width: 850
+   :alt: Execute Plans
+
+Plans can be executed using ``renku workflow execute``. They can be run as-is
+or their parameters can be modified as needed. Renku has a plugin architecture
+to allow execution using various execution backends.
+
+.. code-block:: console
+
+    $ renku workflow execute --provider cwltool --set input-1=file.txt my-run
+
+Parameters can be set using the ``--set`` keyword or by specifying them in a
+values YAML file and passing that using ``--values``. Provider specific
+settings can be passed as file using the ``--config`` parameter.
+
+Iterate Plans
+*************
+
+.. image:: ../_static/asciicasts/iterate_plan.gif
+   :width: 850
+   :alt: Iterate Plans
+
+For executing a Plan with different parameterization ``renku workflow iterate``
+could be used. This sub-command is basically conducting a 'grid search'-like
+execution of a Plan, with parameter-sets provided by the user.
+
+.. code-block:: console
+
+    $ renku workflow iterate --map parameter-1=[1,2,3] \
+            --map parameter-2=[10,20] my-run
+
+The set of possible values for a parameter can be given by ``--map`` command
+line argument or by specifying them in a values YAML file and passing that
+using ``--mapping``.
+
+By default ``renku workflow iterate`` will execute all the combination of the
+given parameters' list of possible values. Sometimes it is desired that instead
+of all the combination of possible values, a specific tuple of values are
+executed. This could be done by marking the parameters that should be bound
+together with the ``@tag`` suffix in their names.
+
+.. code-block:: console
+
+    $ renku workflow iterate --map parameter-1@tag1=[1,2,3] \
+            --map parameter-1@tag1=[10,5,30] my-run
+
+This will result in only three distinct execution of the ``my-run`` Plan,
+with the following parameter combinations: ``[(1,10), (2,5), (3,30)]``. It is
+important to note that parameters that have the same tag, should have the same
+number of possible values, i.e. the values list should have the same length.
+
+There's a special template variable for parameter values ``{iter_index}``, which
+can be used to mark each iteration's index in a value of a parameter. The template
+variable is going to be substituted with the iteration index (0, 1, 2, ...).
+
+.. code-block:: console
+
+    $ renku workflow iterate --map parameter-1=[10,20,30] \
+            --map output=output_{iter_index}.txt my-run
+
+This would execute ``my-run`` three times, where ``parameter-1`` values would be
+``10``, `20`` and ``30`` and the producing output files ``output_0.txt``,
+``output_1.txt`` and ``output_2.txt`` files in this order.
+
+Exporting Plans
+***************
+
+You can export a Plan to a number of different workflow languages, such as CWL
+(Common Workflow Language) by using ``renku workflow export``:
+
+.. code-block:: console
+
+    $ renku workflow export --format cwl my-run
     baseCommand:
-    - cat
+    - cp
     class: CommandLineTool
     cwlVersion: v1.0
-    id: 22943eca-fa4c-4f3b-a92d-f6ac7badc0d2
+    id: 63e3a2a8-5b40-49b2-a2f4-eecc37bc76b0
     inputs:
+    - default: B
+    id: _plans_9a0961844fcc46e1816fde00f57e24a8_outputs_2_arg
+    inputBinding:
+        position: 2
+    type: string
     - default:
         class: File
-        path: /home/user/project/intermediate
-    id: inputs_1
+        location: file:///home/user/my-project/A
+    id: _plans_9a0961844fcc46e1816fde00f57e24a8_inputs_1
     inputBinding:
         position: 1
     type: File
     - default:
-        class: File
-        path: /home/user/project/intermediate2
-    id: inputs_2
-    inputBinding:
-        position: 2
-    type: File
+        class: Directory
+        location: file:///home/user/my-project/.renku
+    id: input_renku_metadata
+    type: Directory
+    - default:
+        class: Directory
+        location: file:///home/user/my-project/.git
+    id: input_git_directory
+    type: Directory
     outputs:
-    - id: output_stdout
-    streamable: false
-    type: stdout
+    - id: _plans_9a0961844fcc46e1816fde00f57e24a8_outputs_2
+    outputBinding:
+        glob: $(inputs._plans_9a0961844fcc46e1816fde00f57e24a8_outputs_2_arg)
+    type: File
     requirements:
     InitialWorkDirRequirement:
         listing:
-        - entry: $(inputs.inputs_1)
-        entryname: intermediate
+        - entry: $(inputs._plans_9a0961844fcc46e1816fde00f57e24a8_inputs_1)
+        entryname: A
         writable: false
-        - entry: $(inputs.inputs_2)
-        entryname: intermediate2
+        - entry: $(inputs.input_renku_metadata)
+        entryname: .renku
         writable: false
-    stdout: output_file
+        - entry: $(inputs.input_git_directory)
+        entryname: .git
+        writable: false
 
-You can use ``--revision`` to specify the revision of the output file to
-generate the workflow for. You can also export to a file directly with
-``-o <path>``.
+You can export into a file directly with ``-o <path>``.
 
 
-Composing workflows into larger workflows
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Composing Plans into larger workflows
+*************************************
+.. image:: ../_static/asciicasts/compose_plan.delay.gif
+   :width: 850
+   :alt: Composing Plans
 
 For more complex workflows consisting of several steps, you can use the
 ``renku workflow compose`` command. This creates a new workflow that has
@@ -92,18 +232,18 @@ The basic usage is:
 
 .. code-block:: console
 
-   $ renku run --name step1 -- cp input intermediate
+   $ renku run --name step1-- cp input intermediate
    $ renku run --name step2 -- cp intermediate output
    $ renku workflow compose my-composed-workflow step1 step2
 
-This would create a new workflow ``my-composed-workflow`` that consists
-of ``step1`` and ``step2`` as steps. This new workflow is just
+This would create a new workflow called ``my-composed-workflow`` that
+consists of ``step1`` and ``step2`` as steps. This new workflow is just
 like any other workflow in renku in that it can be executed, exported
 or composed with other workflows.
 
-Workflows can also be composed based on past activities and their
+Workflows can also be composed based on past Runs and their
 inputs/outputs, using the ``--from`` and ``--to`` parameters. This finds
-chains of activities from inputs to outputs and then adds them to the
+chains of Runs from inputs to outputs and then adds them to the
 composed plan, applying mappings (see below) where appropriate to make
 sure the correct values for execution are used in the composite. This
 also means that all the parameters in the used plans are exposed on the
@@ -124,12 +264,12 @@ of workflows and properties, and relative references specifying the
 position within a workflow.
 
 An absolute expression in the example above could be ``step1.my_dataset``
-to refer to the input, output or argument named ``my_dataset` on the step
+to refer to the input, output or argument named ``my_dataset`` on the step
 ``step1``. A relative expression could be ``@step2.@output1`` to refer
 to the first output of the second step of the composed workflow.
 
 Valid relative expressions are ``@input<n>``, ``@output<n>`` and ``@param<n>``
-for the n'th input, output or argument of a step, respectively. For referring
+for the nth input, output or argument of a step, respectively. For referring
 to steps inside a composed workflow, you can use ``@step<n>``. For referencing
 a mapping on a composed workflow, you can use ``@mapping<n>``. Of course, the
 names of the objects for all these cases also work.
@@ -137,7 +277,8 @@ names of the objects for all these cases also work.
 The expressions can also be combined using ``,`` if a mapping should point
 to more than one parameter of a child step.
 
-You can mix absolute and relative reference in the same expression, as you see fit.
+You can mix absolute and relative reference in the same expression, as you see
+fit.
 
 A full example of this would be:
 
@@ -170,8 +311,6 @@ at execution time).
 You can add a description to the mappings to make them more human-readable
 by using the ``--describe-param``/``-p`` parameter, as shown here:
 
-
-
 .. code-block:: console
 
    $ renku workflow compose --map input_file=step1.@input2 \
@@ -184,7 +323,7 @@ using ``--map-inputs``, ``--map-outputs`` or ``--map-params``, respectively.
 On execution, renku will automatically detect links between steps, if an input
 of one step uses the same path as an output of another step, and execute
 them in the correct order. Since this depends on what values are passed
-at runtime, you might want to enforce a certain order of steps by explicitely
+at runtime, you might want to enforce a certain order of steps by explicitly
 mapping outputs to inputs.
 
 You can do that using the ``--link <source>=<sink>`` parameters, e.g.
@@ -194,7 +333,7 @@ path as ``step1.@output1``, irrespective of which values are passed at
 execution time.
 
 This way, you can ensure that the steps in your workflow are always executed
-in the correct order and that the dependencies between steps are modelled
+in the correct order and that the dependencies between steps are modeled
 correctly.
 
 Renku can also add links for you automatically based on the default values
@@ -216,32 +355,72 @@ order of precedence (lower precedence first):
 - Value passed to the input/output/parameter
 - Value propagated to an input from the source of a workflow link
 
-Input and output files
-~~~~~~~~~~~~~~~~~~~~~~
+Editing Plans
+*************
 
-You can list input and output files generated in the repository by running
-``renku workflow inputs`` and ``renku workflow outputs`` commands. Alternatively,
-you can check if all paths specified as arguments are input or output files
-respectively.
+.. image:: ../_static/asciicasts/edit_plan.delay.gif
+   :width: 850
+   :alt: Editing Plans
+
+Plans can be edited in some limited fashion, but we do not allow structural
+changes, as that might cause issues with the reproducibility and provenance of
+the project. If you want to do structural changes (e.g. adding/removing
+parameters), we recommend you record a new plan instead.
+
+You can change the name and description of Plans and of their parameters, as
+well as changing default values of the parameters using the ``renku workflow
+edit`` command:
 
 .. code-block:: console
 
-   $ renku run wc < source.txt > result.wc
-   $ renku workflow inputs
-   source.txt
-   $ renku workflow outputs
-   result.wc
-   $ renku workflow outputs source.txt
-   $ echo $?  # last command finished with an error code
-   1
+   $ renku workflow edit my-run --name new-run --description "my description"
+     --rename-param input-1=my-input --set my-input=other-file.txt
+     --describe-param my-input="My input parameter" my-run
+
+This would rename the Plan ``my-run`` to ``new-run``, change its description,
+rename its parameter ``input-1`` to ``my-input`` and set the default of this
+parameter to ``other-file.txt`` and set its description.
+
+Removing Plans
+**************
+
+Sometimes you might want to discard a recorded Plan or reuse its name with a
+new Plan. In these cases, you can delete the old plan using ``renku workflow
+remove <plan name>``. Once a Plan is removed, it doesn't show up in most renku
+workflow commands.
+``renku update`` ignores deleted Plans, but ``renku rerun`` will still rerun
+them if needed, to ensure reproducibility.
+
+Working with Runs
+~~~~~~~~~~~~~~~~~
+
+Listing Runs
+************
+
+To get a view of what commands have been execute in the project, you can use
+the ``renku log --workflows`` command:
+
+.. code-block:: console
+
+    $ renku log --workflows
+    DATE                 TYPE  DESCRIPTION
+    -------------------  ----  -------------
+    2021-09-21 15:46:02  Run   cp A C
+    2021-09-21 10:52:51  Run   cp A B
+
+Refer to the documentation of the :ref:`cli-log` command for more details.
 
 Visualizing Executions
-----------------------
+**********************
 
-You can visualize past executions made with renku using the ``renku workflow
+.. image:: ../_static/asciicasts/visualize_runs.delay.gif
+   :width: 850
+   :alt: Visualizing Runs
+
+You can visualize past Runs made with renku using the ``renku workflow
 visualize`` command.
 This will show a directed graph of executions and how they are connected. This
-way you can see exactly how a file was generated and what steps it involded.
+way you can see exactly how a file was generated and what steps it involved.
 It also supports an interactive mode that lets you explore the graph in a more
 detailed way.
 
@@ -335,6 +514,26 @@ by pressing the <Enter> key.
 
 Use ``renku workflow visualize -h`` to see all available options.
 
+
+Input and output files
+~~~~~~~~~~~~~~~~~~~~~~
+
+You can list input and output files generated in the repository by running
+``renku workflow inputs`` and ``renku workflow outputs`` commands. Alternatively,
+you can check if all paths specified as arguments are input or output files
+respectively.
+
+.. code-block:: console
+
+   $ renku run wc < source.txt > result.wc
+   $ renku workflow inputs
+   source.txt
+   $ renku workflow outputs
+   result.wc
+   $ renku workflow outputs source.txt
+   $ echo $?  # last command finished with an error code
+   1
+
 """
 
 import os
@@ -346,8 +545,6 @@ from typing import TYPE_CHECKING
 
 import click
 from lazy_object_proxy import Proxy
-from rich.console import Console
-from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
@@ -376,11 +573,13 @@ def _available_workflow_providers():
 
 def _print_plan(plan: "PlanViewModel"):
     """Print a plan to stdout."""
+    from renku.core.utils.os import print_markdown
+
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(plan.name, bold=True))
 
     if plan.description:
-        Console().print(Markdown(plan.description))
+        print_markdown(plan.description)
 
     click.echo(click.style("Command: ", bold=True, fg="magenta") + click.style(plan.full_command, bold=True))
     click.echo(click.style("Success Codes: ", bold=True, fg="magenta") + click.style(plan.success_codes, bold=True))
@@ -458,11 +657,13 @@ def _print_plan(plan: "PlanViewModel"):
 
 def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
     """Print a CompositePlan to stdout."""
+    from renku.core.utils.os import print_markdown
+
     click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(composite_plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(composite_plan.name, bold=True))
 
     if composite_plan.description:
-        Console().print(Markdown(composite_plan.description))
+        print_markdown(composite_plan.description)
 
     click.echo(click.style("Steps: ", bold=True, fg="magenta"))
     for step in composite_plan.steps:
@@ -483,7 +684,7 @@ def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
             )
             click.echo(click.style("\tMaps to: ", bold=True, fg="magenta"))
             for maps_to in mapping.maps_to:
-                click.style(maps_to, bold=True)
+                click.echo(click.style(f"\t\t{maps_to}", bold=True))
 
     if composite_plan.links:
         click.echo(click.style("Links: ", bold=True, fg="magenta"))
@@ -849,9 +1050,9 @@ def execute(
     help="Comma-separated list of column to display: {}.".format(", ".join(ACTIVITY_GRAPH_COLUMNS.keys())),
     show_default=True,
 )
-@click.option("-x", "--exclude-files", is_flag=True, help="Hide file nodes, only show activities.")
+@click.option("-x", "--exclude-files", is_flag=True, help="Hide file nodes, only show Runs.")
 @click.option("-a", "--ascii", is_flag=True, help="Only use Ascii characters for formatting.")
-@click.option("-i", "--interactive", is_flag=True, help="Interactively explore activity graph.")
+@click.option("-i", "--interactive", is_flag=True, help="Interactively explore run graph.")
 @click.option("--no-color", is_flag=True, help="Don't colorize output.")
 @click.option("--pager", is_flag=True, help="Force use pager (less) for output.")
 @click.option("--no-pager", is_flag=True, help="Don't use pager (less) for output.")
@@ -908,3 +1109,58 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
         text_output, navigation_data, result.output.vertical_space, use_color=not no_color
     )
     viewer.run()
+
+
+@workflow.command()
+@click.option(
+    "mapping_path",
+    "--mapping",
+    metavar="<file>",
+    type=click.Path(exists=True, dir_okay=False),
+    help="YAML file containing parameter mappings to be used.",
+)
+@click.option(
+    "--dry-run",
+    "-n",
+    is_flag=True,
+    default=False,
+    help="Print the generated plans with their parameters instead of executing.",
+    show_default=True,
+)
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    default="cwltool",
+    show_default=True,
+    type=click.Choice(Proxy(_available_workflow_providers), case_sensitive=False),
+    help="The workflow engine to use.",
+)
+@click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
+@click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
+@click.argument("name_or_id", required=True)
+def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
+    """Execute a workflow by iterating through a range of provided parameters."""
+    from renku.core.commands.view_model.plan import PlanViewModel
+    from renku.core.commands.workflow import iterate_workflow_command, show_workflow_command
+
+    if len(mappings) == 0 and mapping_path is None:
+        raise errors.UsageError("No mapping has been given for the iteration!")
+
+    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+
+    if plan:
+        if isinstance(plan, PlanViewModel):
+            _print_plan(plan)
+        else:
+            _print_composite_plan(plan)
+
+    communicator = ClickCallback()
+    iterate_workflow_command().with_communicator(communicator).build().execute(
+        name_or_id=name_or_id,
+        mapping_path=mapping_path,
+        mappings=mappings,
+        dry_run=dry_run,
+        provider=provider,
+        config=config,
+    )

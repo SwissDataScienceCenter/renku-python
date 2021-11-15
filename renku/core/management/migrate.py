@@ -58,6 +58,7 @@ from renku.core.management.migrations.utils import (
     read_project_version,
 )
 from renku.core.utils import communication
+from renku.core.utils.git import is_valid_git_repository
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -72,12 +73,12 @@ def check_for_migration():
 
 def is_migration_required():
     """Check if project requires migration."""
-    return is_renku_project() and _get_project_version() < SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and get_project_version() < SUPPORTED_PROJECT_VERSION
 
 
 def is_project_unsupported():
     """Check if this version of Renku cannot work with the project."""
-    return is_renku_project() and _get_project_version() > SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and get_project_version() > SUPPORTED_PROJECT_VERSION
 
 
 def is_template_update_possible():
@@ -129,7 +130,7 @@ def migrate(
 
     if not skip_docker_update:
         try:
-            docker_updated = _update_dockerfile()
+            docker_updated, _, _ = _update_dockerfile()
         except DockerfileUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -138,7 +139,7 @@ def migrate(
     if skip_migrations:
         return False, template_updated, docker_updated
 
-    project_version = project_version or _get_project_version()
+    project_version = project_version or get_project_version()
     n_migrations_executed = 0
 
     migration_options = MigrationOptions(strict=strict, type=migration_type)
@@ -191,13 +192,13 @@ def _update_template(client_dispatcher: IClientDispatcher, project_gateway: IPro
         template_version = pkg_resources.parse_version(template_version)
         current_version = pkg_resources.parse_version(project.template_version)
         if template_version <= current_version:
-            return False, project.template_version, current_version
+            return False, str(project.template_version), str(current_version)
     else:
         if template_version == project.template_version:
-            return False, project.template_version, template_version
+            return False, str(project.template_version), str(template_version)
 
     if check_only:
-        return True, project.template_version, template_version
+        return True, str(project.template_version), str(template_version)
 
     communication.echo("Updating project from template...")
 
@@ -297,7 +298,7 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
     client = client_dispatcher.current_client
 
     if not client.docker_path.exists():
-        return False
+        return False, None, None
 
     communication.echo("Updating dockerfile...")
 
@@ -308,7 +309,7 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
     m = re.search(r"^ARG RENKU_VERSION=(\d+\.\d+\.\d+)$", dockercontent, flags=re.MULTILINE)
     if not m:
         if check_only:
-            return False
+            return False, None, None
         raise DockerfileUpdateError(
             "Couldn't update renku-python version in Dockerfile, as it doesn't contain an 'ARG RENKU_VERSION=...' line."
         )
@@ -316,10 +317,10 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
     docker_version = pkg_resources.parse_version(m.group(1))
 
     if docker_version >= current_version:
-        return False
+        return True, False, str(docker_version)
 
     if check_only:
-        return True
+        return True, True, str(docker_version)
 
     dockercontent = re.sub(
         r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockercontent, flags=re.MULTILINE
@@ -330,11 +331,12 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
 
     communication.echo("Updated dockerfile.")
 
-    return True
+    return True, False, str(current_version)
 
 
 @inject.autoparams()
-def _get_project_version(client_dispatcher: IClientDispatcher):
+def get_project_version(client_dispatcher: IClientDispatcher):
+    """Get the metadata version the renku project is on."""
     try:
         return int(read_project_version(client_dispatcher.current_client))
     except ValueError:
@@ -342,13 +344,16 @@ def _get_project_version(client_dispatcher: IClientDispatcher):
 
 
 @inject.autoparams()
-def is_renku_project(client_dispatcher: IClientDispatcher):
+def is_renku_project(client_dispatcher: IClientDispatcher) -> bool:
     """Check if repository is a renku project."""
     client = client_dispatcher.current_client
 
+    if not is_valid_git_repository(client.repository):
+        return False
+
     try:
         return client.project is not None
-    except (ValueError):  # Error in loading due to an older schema
+    except ValueError:  # NOTE: Error in loading due to an older schema
         return client.renku_path.joinpath(OLD_METADATA_PATH).exists()
 
 

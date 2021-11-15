@@ -24,18 +24,18 @@ import time
 from contextlib import contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, List, Optional, Set, Tuple, Union
 
 import click
 import yaml
-from git import Actor
 
 from renku.core import errors
+from renku.core.management import RENKU_HOME
 from renku.core.management.command_builder.command import inject
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.types import PATH_OBJECTS, Directory, File
+from renku.core.metadata.repository import Actor
 from renku.core.models.datastructures import DirectoryTree
 from renku.core.models.workflow.parameter import (
     DIRECTORY_MIME_TYPE,
@@ -45,8 +45,9 @@ from renku.core.models.workflow.parameter import (
     MappedIOStream,
 )
 from renku.core.models.workflow.plan import Plan
-from renku.core.utils.git import add_to_git
-from renku.core.utils.scm import git_unicode_unescape, safe_path
+from renku.core.utils.git import is_path_safe
+from renku.core.utils.metadata import is_external_file
+from renku.core.utils.os import get_relative_path
 from renku.version import __version__, version_url
 
 STARTED_AT = int(time.time() * 1000)
@@ -111,12 +112,17 @@ class PlanFactory:
         self.parameters = []
         self.inputs = []
         self.outputs = []
+        self.annotations = []
+        self.existing_directories = set()
 
         self.add_inputs_and_parameters(*detected_arguments)
 
+        self.existing_directories = {}
+
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
-        if self.is_existing_path(self.command_line[0]):
+        existing_subpath = self._resolve_existing_subpath(self.command_line[0])
+        if existing_subpath is not None:
             return [], list(self.command_line)
 
         cmd = [self.command_line[0]]
@@ -126,29 +132,32 @@ class PlanFactory:
             # only guess subcommand for more arguments
             return cmd, args
 
-        while args and re.match(self._RE_SUBCOMMAND, args[0]) and not self.is_existing_path(args[0]):
+        while args and re.match(self._RE_SUBCOMMAND, args[0]) and not self._resolve_existing_subpath(args[0]):
             cmd.append(args.pop(0))
 
         return cmd, args
 
-    def is_existing_path(self, candidate, ignore=None):
-        """Return a path instance if it exists in current directory."""
-        if ignore and candidate in ignore:
-            return
+    @staticmethod
+    def _is_ignored_path(candidate: Union[Path, str], ignored_list: Set[str] = None) -> bool:
+        """Return True if the path is in ignored list."""
+        return ignored_list and str(candidate) in ignored_list
 
+    def _resolve_existing_subpath(self, candidate) -> Optional[Path]:
+        """Return a path instance if it exists in the project's directory."""
         candidate = Path(candidate)
 
         if not candidate.is_absolute():
             candidate = self.directory / candidate
 
         if candidate.exists() or candidate.is_symlink():
-            try:
-                path = candidate.resolve()
-                path.relative_to(self.directory)
-            except ValueError:  # An external file
-                return Path(os.path.abspath(candidate))
-            else:
+            path = candidate.resolve()
+
+            # NOTE: If relative_path is None then it's is either an external file or an absolute path (e.g. /bin/bash)
+            relative_path = get_relative_path(path=path, base=self.working_dir)
+            if relative_path is not None:
                 return path
+            elif is_external_file(path=candidate, client_path=self.working_dir):
+                return Path(os.path.abspath(candidate))
 
     def add_inputs_and_parameters(self, *arguments):
         """Yield command input parameters."""
@@ -275,7 +284,7 @@ class PlanFactory:
             parameter_candidates[str(input_path)] = parameter
 
         for path in candidates:
-            candidate = self.is_existing_path(self.working_dir / path)
+            candidate = self._resolve_existing_subpath(self.working_dir / path)
 
             if candidate is None:
                 raise errors.UsageError('Path "{0}" does not exist.'.format(path))
@@ -291,7 +300,8 @@ class PlanFactory:
 
                 self.add_command_output_from_parameter(param)
             else:
-                self.add_command_output(default_value=glob)
+                encoding_format = [DIRECTORY_MIME_TYPE] if candidate.is_dir() else self._get_mimetype(candidate)
+                self.add_command_output(default_value=glob, encoding_format=encoding_format)
 
     def _check_potential_output_directory(
         self, input_path: Path, candidates: Set[str], tree: DirectoryTree
@@ -324,24 +334,20 @@ class PlanFactory:
 
         return candidates
 
-    def _get_mimetype(self, file: Path) -> List[str]:
+    @staticmethod
+    def _get_mimetype(file: Path) -> List[str]:
         """Return the MIME-TYPE of the given file."""
         # TODO: specify the actual mime-type of the file
         return ["application/octet-stream"]
 
-    def guess_type(self, value: str, ignore_filenames: Set[str] = None) -> Tuple[Any, str]:
+    def guess_type(self, value: Union[Path, str], ignore_filenames: Set[str] = None) -> Tuple[Any, str]:
         """Return new value and CWL parameter type."""
-        candidate = self.is_existing_path(value, ignore=ignore_filenames)
-        if candidate:
-            try:
+        if not self._is_ignored_path(value, ignore_filenames):
+            candidate = self._resolve_existing_subpath(value)
+            if candidate:
                 if candidate.is_dir():
                     return Directory(path=candidate), "Directory"
                 return File(path=candidate, mime_type=self._get_mimetype(candidate)), "File"
-            except ValueError:
-                # The candidate points to a file outside the working
-                # directory
-                # TODO suggest that the file should be imported to the repo
-                pass
 
         return value, "string"
 
@@ -396,6 +402,15 @@ class PlanFactory:
         if self.no_output_detection and Path(default_value).resolve() not in self.explicit_outputs:
             return
 
+        create_folder = False
+        path = Path(default_value)
+        full_path = Path(self._path_relative_to_root(default_value)).resolve()
+
+        if (full_path.is_dir() and str(path) in self.existing_directories) or (
+            not full_path.is_dir() and str(path.parent) in self.existing_directories
+        ):
+            create_folder = True
+
         mapped_stream = self.get_stream_mapping_for_value(default_value)
 
         if mapped_stream and position is None:
@@ -417,6 +432,7 @@ class PlanFactory:
                 mapped_to=mapped_stream,
                 encoding_format=encoding_format,
                 postfix=postfix,
+                create_folder=create_folder,
             )
         )
 
@@ -483,7 +499,7 @@ class PlanFactory:
 
             input_paths.append(explicit_input)
 
-            if self.is_existing_path(explicit_input) is None:
+            if self._resolve_existing_subpath(explicit_input) is None:
                 raise errors.UsageError(
                     "The input file or directory does not exist."
                     "\n\n\t" + click.style(str(explicit_input), fg="yellow") + "\n\n"
@@ -505,7 +521,7 @@ class PlanFactory:
         client = client_dispatcher.current_client
         client.check_external_storage()
 
-        repo = client.repo
+        repository = client.repository
 
         # Remove indirect files list if any
         delete_indirect_files_list(self.working_dir)
@@ -518,7 +534,7 @@ class PlanFactory:
 
         yield self
 
-        if repo:
+        if repository:
             # Include indirect inputs and outputs before further processing
             self.add_indirect_inputs()
             self.add_indirect_outputs()
@@ -541,15 +557,15 @@ class PlanFactory:
             if not self.no_output_detection:
                 # Calculate possible output paths.
                 # Capture newly created files through redirects.
-                candidates |= {file_ for file_ in repo.untracked_files}
+                candidates |= {file_ for file_ in repository.untracked_files}
 
                 # Capture modified files through redirects.
-                candidates |= {git_unicode_unescape(o.a_path) for o in repo.index.diff(None) if not o.deleted_file}
+                candidates |= {o.a_path for o in repository.unstaged_changes if not o.deleted}
 
             # Include explicit outputs
             candidates |= {str(path.relative_to(self.working_dir)) for path in self.explicit_outputs}
 
-            candidates = {path for path in candidates if safe_path(path)}
+            candidates = {path for path in candidates if is_path_safe(path)}
 
             self.add_outputs(candidates)
 
@@ -565,30 +581,28 @@ class PlanFactory:
                     output_paths.append(output.default_value)
 
             if unmodified:
-                raise errors.UnmodifiedOutputs(repo, unmodified)
+                raise errors.UnmodifiedOutputs(repository, unmodified)
 
             if not no_output and not output_paths:
-                raise errors.OutputsNotFound(repo, inputs.values())
+                raise errors.OutputsNotFound(repository, inputs.values())
 
             if client.check_external_storage():
                 client.track_paths_in_storage(*output_paths)
 
-            add_to_git(repo.git, *output_paths)
+            client.repository.add(*output_paths)
 
-            if repo.is_dirty():
+            if repository.is_dirty():
                 commit_msg = f"renku run: committing {len(output_paths)} newly added files"
 
-                committer = Actor("renku {0}".format(__version__), version_url)
+                committer = Actor(name=f"renku {__version__}", email=version_url)
 
-                repo.index.commit(commit_msg, committer=committer, skip_hooks=True)
-
-                self._had_changes = True
+                repository.commit(commit_msg, committer=committer, no_verify=True)
 
         results = pm.hook.cmdline_tool_annotations(tool=self)
         self.annotations = [a for r in results for a in r]
 
     def _path_relative_to_root(self, path) -> str:
-        """Make a potentially relative path in a subdirectory relative to the root of the repo."""
+        """Make a potentially relative path in a subdirectory relative to the root of the repository."""
         return str((self.directory / path).resolve().relative_to(self.working_dir))
 
     def _include_indirect_parameters(self):

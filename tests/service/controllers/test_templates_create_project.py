@@ -19,7 +19,7 @@
 import pytest
 from marshmallow import ValidationError
 
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.os import normalize_to_ascii
 from renku.version import is_release
 
 
@@ -127,7 +127,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         ("my_repo", "my-repo"),
         ("my_______repo", "my-repo"),
         ("-.my___repo.", "my-repo"),
-        (".my___-...repo..", "my-repo"),
+        (".my___-...repository..", "my-repository"),
         ("-.-my-repo.", "my-repo"),
     ],
 )

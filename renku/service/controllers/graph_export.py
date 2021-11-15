@@ -23,7 +23,6 @@ from sentry_sdk import capture_exception
 from renku.core.commands.graph import export_graph_command
 from renku.core.commands.migrate import migrations_check
 from renku.core.errors import RenkuException
-from renku.core.utils.requests import retry
 from renku.service.config import PROJECT_CLONE_NO_DEPTH
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
@@ -56,7 +55,7 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
         """Renku operation for the controller."""
         result = migrations_check().build().execute().output
 
-        if not result[1]:
+        if not result["project_supported"]:
             raise RenkuException("project not supported")
 
         callback_payload = {
@@ -91,6 +90,8 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def report_recoverable(self, payload, exception, callback_url):
         """Report to callback URL recoverable state."""
+        from renku.core.utils import requests
+
         capture_exception(exception)
 
         if not callback_url:
@@ -99,11 +100,12 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
         payload["failure"] = {"type": "RECOVERABLE_FAILURE", "message": str(exception)}
 
         data = GraphExportCallbackError().load(payload)
-        with retry() as session:
-            session.post(callback_url, data=data)
+        requests.post(callback_url, data=data)
 
     def report_unrecoverable(self, payload, exception, callback_url):
         """Report to callback URL unrecoverable state."""
+        from renku.core.utils import requests
+
         capture_exception(exception)
 
         if not callback_url:
@@ -112,17 +114,17 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
         payload["failure"] = {"type": "UNRECOVERABLE_FAILURE", "message": str(exception)}
 
         data = GraphExportCallbackError().load(payload)
-        with retry() as session:
-            session.post(callback_url, data=data)
+        requests.post(callback_url, data=data)
 
     def report_success(self, request_payload, graph_payload, callback_url):
         """Report to callback URL success state."""
+        from renku.core.utils import requests
+
         data = GraphExportCallbackSuccess().load({**request_payload, **graph_payload})
 
         if not callback_url:
             return data
 
-        with retry() as session:
-            session.post(callback_url, data=data)
+        requests.post(callback_url, data=data)
 
         return data

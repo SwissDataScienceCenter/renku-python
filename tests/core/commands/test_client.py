@@ -29,7 +29,7 @@ def test_local_client(tmpdir):
     client = LocalClient(str(tmpdir.mkdir("project")))
 
     assert client.path
-    assert client.repo is None
+    assert client.repository is None
 
 
 @pytest.mark.parametrize(

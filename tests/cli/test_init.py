@@ -22,7 +22,6 @@ import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 
-import git
 import pytest
 
 from renku.cli import cli
@@ -30,6 +29,7 @@ from renku.cli.init import parse_parameters
 from renku.core import errors
 from renku.core.commands.init import create_template_sentence
 from renku.core.metadata.database import Database
+from renku.core.metadata.repository import Repository
 from tests.utils import format_result_exception, raises
 
 
@@ -166,7 +166,7 @@ def test_init_initial_branch(isolated_runner, project_init):
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
     assert (new_project / ".renku" / "metadata").exists()
-    assert git.Repo(str(new_project)).active_branch.name == data["main_branch"]
+    assert Repository(new_project).active_branch.name == data["main_branch"]
 
 
 @pytest.mark.parametrize(
@@ -195,8 +195,8 @@ def test_init_with_git_remote(isolated_runner, project_init, remote):
     # create the project
     new_project = Path(data["test_project"])
     new_project.mkdir()
-    repo = git.Repo.init(new_project)
-    repo.create_remote("origin", remote[0])
+    repository = Repository.initialize(new_project)
+    repository.remotes.add("origin", remote[0])
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
@@ -286,13 +286,13 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
 
 
 def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
-    """Run init --force in directory containing another repo."""
+    """Run init --force in directory containing another repository."""
     data, commands = project_init
 
     new_project = Path(data["test_project"])
     import shutil
 
-    shutil.copytree(str(data_repository.working_dir), str(new_project))
+    shutil.copytree(str(data_repository.path), str(new_project))
     assert new_project.exists()
 
     # try to create in a dirty folder
@@ -503,8 +503,6 @@ def test_init_with_custom_metadata(isolated_runner, project_init, template):
 @pytest.mark.parametrize("data_dir", ["dir", "nested/dir/s"])
 def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_init):
     """Test initializing with data directory."""
-    from git import Repo
-
     data, commands = project_init
 
     new_project = Path(data["test_project"])
@@ -513,7 +511,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 
     assert (new_project / data_dir).exists()
     assert (new_project / data_dir / ".gitkeep").exists()
-    assert not Repo(new_project).is_dirty()
+    assert not Repository(new_project).is_dirty(untracked_files=True)
 
     os.chdir(new_project.resolve())
     result = isolated_runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)])
@@ -591,3 +589,8 @@ def test_init_with_description(isolated_runner, template):
 
     readme_content = (Path("new project") / "README.md").read_text()
     assert "my project description" in readme_content
+
+    os.chdir("new project")
+    result = isolated_runner.invoke(cli, ["graph", "export", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "my project description" in result.output

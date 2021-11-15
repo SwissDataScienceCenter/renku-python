@@ -58,7 +58,7 @@ def test_fetch_template_from_git(template):
         with TemporaryDirectory() as tempdir:
             with raises(parameters["error"]):
                 manifest_file, _ = fetch_template_from_git(parameters["url"], parameters["ref"], Path(tempdir))
-                assert Path(tempdir) / TEMPLATE_MANIFEST == manifest_file
+                assert (Path(tempdir) / TEMPLATE_MANIFEST).resolve() == manifest_file
                 assert manifest_file.exists()
 
 

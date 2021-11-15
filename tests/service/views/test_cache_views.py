@@ -23,8 +23,8 @@ import uuid
 
 import jwt
 import pytest
-from git import Repo
 
+from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
@@ -653,19 +653,19 @@ def test_check_migrations_local(svc_client_setup):
     """Check if migrations are required for a local project."""
     svc_client, headers, project_id, _, _ = svc_client_setup
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/1.0/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
 
-    assert response.json["result"]["migration_required"]
-    assert not response.json["result"]["template_update_possible"]
-    assert not response.json["result"]["docker_update_possible"]
+    assert response.json["result"]["core_compatibility_status"]["migration_required"]
+    assert not response.json["result"]["template_status"]["newer_template_available"]
+    assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
     assert response.json["result"]["project_supported"]
-    assert response.json["result"]["project_version"]
-    assert response.json["result"]["latest_version"]
-    assert "template_source" in response.json["result"]
-    assert "template_ref" in response.json["result"]
-    assert "template_id" in response.json["result"]
-    assert "automated_template_update" in response.json["result"]
+    assert response.json["result"]["project_renku_version"]
+    assert response.json["result"]["core_renku_version"]
+    assert "template_source" in response.json["result"]["template_status"]
+    assert "template_ref" in response.json["result"]["template_status"]
+    assert "template_id" in response.json["result"]["template_status"]
+    assert "automated_template_update" in response.json["result"]["template_status"]
 
 
 @pytest.mark.service
@@ -673,17 +673,17 @@ def test_check_migrations_local(svc_client_setup):
 def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_url):
     """Check if migrations are required for a remote project."""
     response = svc_client.get(
-        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+        "/1.0/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
     )
 
     assert 200 == response.status_code
 
-    assert response.json["result"]["migration_required"]
-    assert not response.json["result"]["template_update_possible"]
-    assert not response.json["result"]["docker_update_possible"]
+    assert response.json["result"]["core_compatibility_status"]["migration_required"]
+    assert not response.json["result"]["template_status"]["newer_template_available"]
+    assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
     assert response.json["result"]["project_supported"]
-    assert response.json["result"]["project_version"]
-    assert response.json["result"]["latest_version"]
+    assert response.json["result"]["project_renku_version"]
+    assert response.json["result"]["core_renku_version"]
 
 
 @pytest.mark.service
@@ -692,12 +692,13 @@ def test_check_no_migrations(svc_client_with_repo):
     """Check if migrations are not required."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/1.0/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
     assert 200 == response.status_code
-    assert not response.json["result"]["migration_required"]
-    assert not response.json["result"]["template_update_possible"]
-    assert not response.json["result"]["docker_update_possible"]
+
+    assert not response.json["result"]["core_compatibility_status"]["migration_required"]
+    assert not response.json["result"]["template_status"]["newer_template_available"]
+    assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
     assert response.json["result"]["project_supported"]
 
 
@@ -710,9 +711,9 @@ def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
     svc_client, headers, project_id, cache, user = svc_protected_old_repo
 
     project = cache.get_project(user, project_id)
-    repo = Repo(path=project.abs_path)
-    commit_sha_before = repo.head.object.hexsha
-    active_branch_before = repo.active_branch.name
+    repository = Repository(path=project.abs_path)
+    commit_sha_before = repository.head.commit.hexsha
+    active_branch_before = repository.active_branch.name
 
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
@@ -721,10 +722,10 @@ def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
     assert response.json["result"]["was_migrated"]
 
     project = cache.get_project(user, project_id)
-    repo = Repo(path=project.abs_path)
+    repository = Repository(path=project.abs_path)
 
-    assert commit_sha_before == repo.head.object.hexsha
-    assert active_branch_before == repo.active_branch.name
+    assert commit_sha_before == repository.head.commit.hexsha
+    assert active_branch_before == repository.active_branch.name
 
 
 @pytest.mark.service
@@ -735,9 +736,9 @@ def test_migrating_protected_branch(svc_protected_old_repo):
     """Check migrating on a protected branch does not change cache state."""
     svc_client, headers, project_id, _, _ = svc_protected_old_repo
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/1.0/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
-    assert response.json["result"]["migration_required"]
+    assert response.json["result"]["core_compatibility_status"]["migration_required"]
 
     response = svc_client.post(
         "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
@@ -749,9 +750,9 @@ def test_migrating_protected_branch(svc_protected_old_repo):
         m.startswith("Successfully applied") and m.endswith("migrations.") for m in response.json["result"]["messages"]
     )
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/1.0/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
-    assert response.json["result"]["migration_required"]
+    assert response.json["result"]["core_compatibility_status"]["migration_required"]
 
 
 @pytest.mark.service
@@ -761,23 +762,20 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 def test_cache_gets_synchronized(
     local_remote_repository, directory_tree, quick_cache_synchronization, client_database_injection_manager
 ):
-    """Test that the cache stays synchronized with the remote repo."""
+    """Test that the cache stays synchronized with the remote repository."""
     from renku.core.management.client import LocalClient
     from renku.core.models.provenance.agent import Person
 
     svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
 
-    remote_name = remote_repo_checkout.active_branch.tracking_branch().remote_name
-    remote = remote_repo_checkout.remotes[remote_name]
-
-    client = LocalClient(remote_repo_checkout.working_dir)
+    client = LocalClient(remote_repo_checkout.path)
 
     with client_database_injection_manager(client):
         with client.commit(commit_message="Create dataset"):
             with client.with_dataset(name="my_dataset", create=True, commit_database=True) as dataset:
                 dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
-    remote.push()
+    remote_repo_checkout.push()
     params = {
         "project_id": project_id,
     }
@@ -800,7 +798,7 @@ def test_cache_gets_synchronized(
     assert 200 == response.status_code
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
 
-    remote.pull()
+    remote_repo_checkout.pull()
 
     with client_database_injection_manager(client):
         datasets = client.datasets.values()
