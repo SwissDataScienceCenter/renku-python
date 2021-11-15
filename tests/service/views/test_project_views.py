@@ -50,7 +50,7 @@ def test_edit_project_view(svc_client_with_repo):
             "https://schema.org/property2": "test",
         },
     }
-    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+    response = svc_client.post("/1.0/project.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -74,7 +74,7 @@ def test_edit_project_view(svc_client_with_repo):
 def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed edit."""
     response = svc_client.post(
-        "/project.edit",
+        "/1.0/project.edit",
         data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True)),
         headers=identity_headers,
     )

@@ -121,42 +121,10 @@ def migrate(check, skip_template_update, skip_docker_update, strict):
 @click.command(hidden=True)
 def migrationscheck():
     """Check status of the project and current renku-python version."""
-    from renku.core.commands.migrate import migrations_check, migrations_versions
+    from renku.core.commands.migrate import migrations_check
 
-    latest_version, project_version = migrations_versions().build().execute().output
-    (
-        migration_required,
-        project_supported,
-        template_update_possible,
-        current_template_version,
-        latest_template_version,
-        template_source,
-        template_ref,
-        template_id,
-        automated_update,
-        docker_update_possible,
-    ) = (
-        migrations_check().lock_project().build().execute().output
-    )
-
-    click.echo(
-        json.dumps(
-            {
-                "latest_version": latest_version,
-                "project_version": project_version,
-                "migration_required": migration_required,
-                "project_supported": project_supported,
-                "template_update_possible": template_update_possible,
-                "current_template_version": str(current_template_version),
-                "latest_template_version": str(latest_template_version),
-                "template_source": template_source,
-                "template_ref": template_ref,
-                "template_id": template_id,
-                "automated_update": automated_update,
-                "docker_update_possible": docker_update_possible,
-            }
-        )
-    )
+    result = migrations_check().lock_project().build().execute().output
+    click.echo(json.dumps(result))
 
 
 @click.command(hidden=True)

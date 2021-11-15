@@ -20,14 +20,6 @@
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.management.migrate import (
-    is_docker_update_possible,
-    is_migration_required,
-    is_project_unsupported,
-    is_renku_project,
-    is_template_update_possible,
-    migrate,
-)
 
 SUPPORTED_RENKU_PROJECT = 1
 MIGRATION_REQUIRED = 2
@@ -45,33 +37,21 @@ def migrations_check():
 
 @inject.autoparams()
 def _migrations_check(client_dispatcher: IClientDispatcher):
+    """Check migration status of project."""
+    from renku.core.management.migrate import is_project_unsupported
+
     client = client_dispatcher.current_client
 
-    template_update_possible, current_version, new_version = is_template_update_possible()
+    core_version, latest_version = _migrations_versions()
 
-    try:
-        template_source = client.project.template_source
-        template_ref = client.project.template_ref
-        template_id = client.project.template_id
-        automated_update = bool(client.project.automated_update)
-    except ValueError:
-        template_source = None
-        template_ref = None
-        template_id = None
-        automated_update = False
-
-    return (
-        is_migration_required(),
-        not is_project_unsupported(),
-        template_update_possible,
-        current_version,
-        new_version,
-        template_source,
-        template_ref,
-        template_id,
-        automated_update,
-        is_docker_update_possible(),
-    )
+    return {
+        "project_supported": not is_project_unsupported(),
+        "core_renku_version": core_version,
+        "project_renku_version": latest_version,
+        "core_compatibility_status": _metadata_migration_check(client),
+        "dockerfile_renku_status": _dockerfile_migration_check(client),
+        "template_status": _template_migration_check(client),
+    }
 
 
 def migrations_versions():
@@ -97,6 +77,75 @@ def _migrations_versions(client_dispatcher: IClientDispatcher):
     return __version__, latest_agent
 
 
+def template_migration_check():
+    """Return a command for a template migrations check."""
+    return Command().command(_template_migration_check)
+
+
+def _template_migration_check(client):
+    """Return template migration status."""
+    from renku.core.management.migrate import is_template_update_possible
+
+    newer_template_available, current_version, new_version = is_template_update_possible()
+
+    try:
+        template_source = client.project.template_source
+        template_ref = client.project.template_ref
+        template_id = client.project.template_id
+        automated_update = bool(client.project.automated_update)
+    except ValueError:
+        template_source = None
+        template_ref = None
+        template_id = None
+        automated_update = False
+
+    return {
+        "automated_template_update": automated_update,
+        "newer_template_available": newer_template_available,
+        "project_template_version": current_version,
+        "latest_template_version": new_version,
+        "template_source": template_source,
+        "template_ref": template_ref,
+        "template_id": template_id,
+    }
+
+
+def dockerfile_migration_check():
+    """Return a command for a Dockerfile migrations check."""
+    return Command().command(_dockerfile_migration_check)
+
+
+def _dockerfile_migration_check(client):
+    """Return Dockerfile migration status."""
+    from renku import __version__
+    from renku.core.management.migrate import is_docker_update_possible
+
+    automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = is_docker_update_possible()
+
+    return {
+        "automated_dockerfile_update": automated_dockerfile_update,
+        "newer_renku_available": newer_renku_available,
+        "dockerfile_renku_version": dockerfile_renku_version,
+        "latest_renku_version": __version__,
+    }
+
+
+def metadata_migration_check():
+    """Return a command for a metadata migrations check."""
+    return Command().command(_metadata_migration_check)
+
+
+def _metadata_migration_check(client):
+    """Return metadata migration status."""
+    from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_project_version, is_migration_required
+
+    return {
+        "migration_required": is_migration_required(),
+        "project_metadata_version": get_project_version(),
+        "current_metadata_version": SUPPORTED_PROJECT_VERSION,
+    }
+
+
 def migrate_project():
     """Return a command to migrate all project's entities."""
     return Command().command(_migrate_project).lock_project().require_clean().with_database(write=True)
@@ -110,6 +159,8 @@ def _migrate_project(
     strict=False,
 ):
     """Migrate all project's entities."""
+    from renku.core.management.migrate import migrate
+
     return migrate(
         force_template_update=force_template_update,
         skip_template_update=skip_template_update,
@@ -126,6 +177,14 @@ def check_project():
 
 @inject.autoparams()
 def _check_project(client_dispatcher: IClientDispatcher):
+    from renku.core.management.migrate import (
+        is_docker_update_possible,
+        is_migration_required,
+        is_project_unsupported,
+        is_renku_project,
+        is_template_update_possible,
+    )
+
     client = client_dispatcher.current_client
 
     if not is_renku_project():
@@ -140,11 +199,11 @@ def _check_project(client_dispatcher: IClientDispatcher):
 
     status = 0
 
-    if is_template_update_possible():
+    if is_template_update_possible()[0]:
         status |= TEMPLATE_UPDATE_POSSIBLE
     if client.project.automated_update:
         status |= AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
-    if is_docker_update_possible():
+    if is_docker_update_possible()[0]:
         status |= DOCKERFILE_UPDATE_POSSIBLE
 
     if is_migration_required():
