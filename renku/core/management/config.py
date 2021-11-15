@@ -57,7 +57,7 @@ class ConfigManagerMixin:
         """Renku global (user's) config path."""
         config = Path(self.global_config_dir)
         if not config.exists():
-            config.mkdir()
+            config.mkdir(parents=True)
 
         return str(config / Path(self.CONFIG_NAME))
 

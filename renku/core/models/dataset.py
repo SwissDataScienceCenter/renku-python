@@ -38,6 +38,7 @@ from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAge
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
 from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.utils.git import get_entity_from_revision
+from renku.core.utils.metadata import is_external_file
 from renku.core.utils.urls import get_path, get_slug
 
 
@@ -248,7 +249,8 @@ class DatasetFile(Slots):
         if not entity:
             return
 
-        return cls(entity=entity, is_external=client.is_external_file(path), source=source, based_on=based_on)
+        is_external = is_external_file(path=path, client_path=client.path)
+        return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
 
     @staticmethod
     def generate_id():
