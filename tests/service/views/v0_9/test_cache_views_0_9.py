@@ -26,7 +26,7 @@ def test_check_migrations_local_0_9(svc_client_setup):
     """Check if migrations are required for a local project."""
     svc_client, headers, project_id, _, _ = svc_client_setup
 
-    response = svc_client.get("/v0.9/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/0.9/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
 
     assert response.json["result"]["migration_required"]
@@ -46,7 +46,7 @@ def test_check_migrations_local_0_9(svc_client_setup):
 def test_check_migrations_remote_0_9(svc_client, identity_headers, it_remote_repo_url):
     """Check if migrations are required for a remote project."""
     response = svc_client.get(
-        "/v0.9/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+        "/0.9/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
     )
 
     assert 200 == response.status_code
@@ -65,7 +65,7 @@ def test_check_no_migrations_0_9(svc_client_with_repo):
     """Check if migrations are not required."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    response = svc_client.get("/v0.9/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/0.9/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
     assert 200 == response.status_code
     assert not response.json["result"]["migration_required"]

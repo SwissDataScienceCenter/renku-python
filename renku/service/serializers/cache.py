@@ -248,7 +248,7 @@ class DockerfileStatusResponse(Schema):
     """Response schema outlining dockerfile status for migrations check."""
 
     newer_renku_available = fields.Boolean(
-        description="Whether the version of Renku un this service is newer than the one in the Dockerfile."
+        description="Whether the version of Renku in this service is newer than the one in the Dockerfile."
     )
     automated_dockerfile_update = fields.Boolean(
         description="Whether or not the Dockerfile supports automated Renku version updates."
@@ -261,7 +261,7 @@ class TemplateStatusResponse(Schema):
     """Response schema outlining template status for migrations check."""
 
     automated_template_update = fields.Boolean(
-        description="Whether or not the project template explicitely supports automated updates."
+        description="Whether or not the project template explicitly supports automated updates."
     )
     newer_template_available = fields.Boolean(
         description=(

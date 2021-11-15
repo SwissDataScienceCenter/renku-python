@@ -20,16 +20,6 @@
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.management.migrate import (
-    SUPPORTED_PROJECT_VERSION,
-    _get_project_version,
-    is_docker_update_possible,
-    is_migration_required,
-    is_project_unsupported,
-    is_renku_project,
-    is_template_update_possible,
-    migrate,
-)
 
 SUPPORTED_RENKU_PROJECT = 1
 MIGRATION_REQUIRED = 2
@@ -48,6 +38,7 @@ def migrations_check():
 @inject.autoparams()
 def _migrations_check(client_dispatcher: IClientDispatcher):
     """Check migration status of project."""
+    from renku.core.management.migrate import is_project_unsupported
 
     client = client_dispatcher.current_client
 
@@ -65,7 +56,7 @@ def _migrations_check(client_dispatcher: IClientDispatcher):
 
 def migrations_versions():
     """Return a command to get source and destination migration versions."""
-    return Command().command(_migrations_versions).lock_project()
+    return Command().command(_migrations_versions).lock_project().with_database()
 
 
 @inject.autoparams()
@@ -93,6 +84,8 @@ def template_migration_check():
 
 def _template_migration_check(client):
     """Return template migration status."""
+    from renku.core.management.migrate import is_template_update_possible
+
     newer_template_available, current_version, new_version = is_template_update_possible()
 
     try:
@@ -125,6 +118,7 @@ def dockerfile_migration_check():
 def _dockerfile_migration_check(client):
     """Return Dockerfile migration status."""
     from renku import __version__
+    from renku.core.management.migrate import is_docker_update_possible
 
     automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = is_docker_update_possible()
 
@@ -143,10 +137,11 @@ def metadata_migration_check():
 
 def _metadata_migration_check(client):
     """Return metadata migration status."""
+    from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_project_version, is_migration_required
 
     return {
         "migration_required": is_migration_required(),
-        "project_metadata_version": _get_project_version(),
+        "project_metadata_version": get_project_version(),
         "current_metadata_version": SUPPORTED_PROJECT_VERSION,
     }
 
@@ -164,6 +159,8 @@ def _migrate_project(
     strict=False,
 ):
     """Migrate all project's entities."""
+    from renku.core.management.migrate import migrate
+
     return migrate(
         force_template_update=force_template_update,
         skip_template_update=skip_template_update,
@@ -180,6 +177,14 @@ def check_project():
 
 @inject.autoparams()
 def _check_project(client_dispatcher: IClientDispatcher):
+    from renku.core.management.migrate import (
+        is_docker_update_possible,
+        is_migration_required,
+        is_project_unsupported,
+        is_renku_project,
+        is_template_update_possible,
+    )
+
     client = client_dispatcher.current_client
 
     if not is_renku_project():

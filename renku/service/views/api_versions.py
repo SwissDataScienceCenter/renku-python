@@ -55,8 +55,8 @@ class VersionedBlueprint(Blueprint):
             )
 
 
-V0_9 = ApiVersion("v0.9", is_base_version=True)
-V1_0 = ApiVersion("v1.0")
+V0_9 = ApiVersion("0.9", is_base_version=True)
+V1_0 = ApiVersion("1.0")
 
 MINIMUM_VERSION = V0_9
 MAXIMUM_VERSION = V1_0

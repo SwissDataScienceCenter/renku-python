@@ -73,12 +73,12 @@ def check_for_migration():
 
 def is_migration_required():
     """Check if project requires migration."""
-    return is_renku_project() and _get_project_version() < SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and get_project_version() < SUPPORTED_PROJECT_VERSION
 
 
 def is_project_unsupported():
     """Check if this version of Renku cannot work with the project."""
-    return is_renku_project() and _get_project_version() > SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and get_project_version() > SUPPORTED_PROJECT_VERSION
 
 
 def is_template_update_possible():
@@ -139,7 +139,7 @@ def migrate(
     if skip_migrations:
         return False, template_updated, docker_updated
 
-    project_version = project_version or _get_project_version()
+    project_version = project_version or get_project_version()
     n_migrations_executed = 0
 
     migration_options = MigrationOptions(strict=strict, type=migration_type)
@@ -335,7 +335,8 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
 
 
 @inject.autoparams()
-def _get_project_version(client_dispatcher: IClientDispatcher):
+def get_project_version(client_dispatcher: IClientDispatcher):
+    """Get the metadata version the renku project is on."""
     try:
         return int(read_project_version(client_dispatcher.current_client))
     except ValueError:
