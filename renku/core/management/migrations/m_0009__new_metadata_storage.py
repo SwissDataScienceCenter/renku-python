@@ -102,7 +102,7 @@ def maybe_migrate_project_to_database(client, project_gateway: IProjectGateway):
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
 
     if metadata_path.exists():
-        old_project = old_schema.Project.from_yaml(metadata_path)
+        old_project = old_schema.Project.from_yaml(metadata_path, client=client)
 
         id_path = urlparse(old_project._id).path
         id_path = id_path.replace("/projects/", "")
