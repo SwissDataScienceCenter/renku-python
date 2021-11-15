@@ -16,17 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku graph endpoints."""
-from flask import Blueprint, request
+from flask import request
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.graph_build import GraphBuildCtrl
+from renku.service.views.api_versions import V0_9, VersionedBlueprint
 from renku.service.views.decorators import accepts_json, handle_common_except, optional_identity
 
 GRAPH_BLUEPRINT_TAG = "graph"
-graph_blueprint = Blueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
+graph_blueprint = VersionedBlueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@graph_blueprint.route("/graph.build", methods=["POST"], provide_automatic_options=False)
+@graph_blueprint.route("/graph.build", methods=["POST"], provide_automatic_options=False, versions=[V0_9])
 @handle_common_except
 @accepts_json
 @optional_identity

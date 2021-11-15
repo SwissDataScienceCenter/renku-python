@@ -78,4 +78,4 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(MigrationsCheckCtrl.RESPONSE_SERIALIZER, self.execute_op())
+        return result_response(self.RESPONSE_SERIALIZER, self.execute_op())

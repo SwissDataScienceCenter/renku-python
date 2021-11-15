@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache views."""
-from flask import Blueprint, request
+from flask import request
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.cache_files_upload import UploadFilesCtrl
@@ -25,6 +25,7 @@ from renku.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
 from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
+from renku.service.views.api_versions import V0_9, VersionedBlueprint
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
@@ -34,10 +35,10 @@ from renku.service.views.decorators import (
 )
 
 CACHE_BLUEPRINT_TAG = "cache"
-cache_blueprint = Blueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
+cache_blueprint = VersionedBlueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@cache_blueprint.route("/cache.files_list", methods=["GET"], provide_automatic_options=False)
+@cache_blueprint.route("/cache.files_list", methods=["GET"], provide_automatic_options=False, versions=[V0_9])
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -60,7 +61,7 @@ def list_uploaded_files_view(user_data, cache):
     return ListUploadedFilesCtrl(cache, user_data).to_response()
 
 
-@cache_blueprint.route("/cache.files_upload", methods=["POST"], provide_automatic_options=False)
+@cache_blueprint.route("/cache.files_upload", methods=["POST"], provide_automatic_options=False, versions=[V0_9])
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -95,7 +96,7 @@ def upload_file_view(user_data, cache):
     return UploadFilesCtrl(cache, user_data, request).to_response()
 
 
-@cache_blueprint.route("/cache.project_clone", methods=["POST"], provide_automatic_options=False)
+@cache_blueprint.route("/cache.project_clone", methods=["POST"], provide_automatic_options=False, versions=[V0_9])
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -124,7 +125,7 @@ def project_clone_view(user_data, cache):
     return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@cache_blueprint.route("/cache.project_list", methods=["GET"], provide_automatic_options=False)
+@cache_blueprint.route("/cache.project_list", methods=["GET"], provide_automatic_options=False, versions=[V0_9])
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -147,7 +148,7 @@ def list_projects_view(user_data, cache):
     return ListProjectsCtrl(cache, user_data).to_response()
 
 
-@cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False)
+@cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False, versions=[V0_9])
 @handle_common_except
 @handle_migration_except
 @accepts_json
@@ -176,7 +177,7 @@ def migrate_project_view(user_data, cache):
     return MigrateProjectCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@cache_blueprint.route("/cache.migrations_check", methods=["GET"], provide_automatic_options=False)
+@cache_blueprint.route("/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=[V0_9])
 @handle_common_except
 @requires_cache
 @requires_identity

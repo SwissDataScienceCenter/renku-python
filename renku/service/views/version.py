@@ -14,17 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service version view."""
-from flask import Blueprint
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.version import VersionCtrl
+from renku.service.views.api_versions import MAXIMUM_VERSION, MINIMUM_VERSION, V0_9, VersionedBlueprint
 from renku.service.views.decorators import handle_validation_except
 
 VERSION_BLUEPRINT_TAG = "version"
-version_blueprint = Blueprint("version", __name__, url_prefix=SERVICE_PREFIX)
+version_blueprint = VersionedBlueprint("version", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@version_blueprint.route("/version", methods=["GET"], provide_automatic_options=False)
+@version_blueprint.route("/version", methods=["GET"], provide_automatic_options=False, versions=[V0_9])
 @handle_validation_except
 def version():
     """
@@ -42,4 +42,4 @@ def version():
       tags:
         - version
     """
-    return VersionCtrl().to_response()
+    return VersionCtrl().to_response(MINIMUM_VERSION, MAXIMUM_VERSION)
