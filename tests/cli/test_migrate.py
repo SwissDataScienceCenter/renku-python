@@ -61,18 +61,32 @@ def test_migration_check(isolated_runner, project):
     assert 0 == result.exit_code, format_result_exception(result)
     output = json.loads(result.output)
     assert output.keys() == {
-        "latest_version",
-        "project_version",
-        "migration_required",
         "project_supported",
-        "template_update_possible",
-        "current_template_version",
-        "latest_template_version",
+        "core_renku_version",
+        "project_renku_version",
+        "core_compatibility_status",
+        "dockerfile_renku_status",
+        "template_status",
+    }
+    assert output["core_compatibility_status"].keys() == {
+        "project_metadata_version",
+        "current_metadata_version",
+        "migration_required",
+    }
+    assert output["dockerfile_renku_status"].keys() == {
+        "newer_renku_available",
+        "automated_dockerfile_update",
+        "latest_renku_version",
+        "dockerfile_renku_version",
+    }
+    assert output["template_status"].keys() == {
+        "automated_template_update",
+        "newer_template_available",
         "template_source",
+        "project_template_version",
+        "latest_template_version",
         "template_ref",
         "template_id",
-        "automated_update",
-        "docker_update_possible",
     }
 
 
