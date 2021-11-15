@@ -21,6 +21,7 @@ from typing import List, Optional
 
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.parameter import ParameterLink, ParameterMapping
+from renku.core.models.workflow.plan import AbstractPlan
 
 
 class ParameterMappingViewModel:
@@ -51,9 +52,20 @@ class ParameterLinkViewModel:
         self.sinks = sinks
 
     @classmethod
-    def from_link(cls, link: ParameterLink):
+    def from_link(cls, link: ParameterLink, plan: AbstractPlan):
         """Create view model from ``ParameterLink``."""
-        return cls(source=link.source.name, sinks=[s.name for s in link.sinks])
+        source_path = plan.get_parameter_path(link.source)
+        source_path.append(link.source)
+        source_path = ".".join(p.name for p in source_path[1:])
+
+        sinks = []
+
+        for sink in link.sinks:
+            sink_path = plan.get_parameter_path(sink)
+            sink_path.append(sink)
+            sink_path = ".".join(p.name for p in sink_path[1:])
+            sinks.append(sink_path)
+        return cls(source=source_path, sinks=sinks)
 
 
 class StepViewModel:
@@ -92,6 +104,6 @@ class CompositePlanViewModel:
             name=plan.name,
             description=plan.description,
             mappings=[ParameterMappingViewModel.from_mapping(mapping) for mapping in plan.mappings],
-            links=[ParameterLinkViewModel.from_link(link) for link in plan.links],
+            links=[ParameterLinkViewModel.from_link(link, plan) for link in plan.links],
             steps=[StepViewModel(id=s.id, name=s.name) for s in plan.plans],
         )

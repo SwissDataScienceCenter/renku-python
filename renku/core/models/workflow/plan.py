@@ -213,6 +213,13 @@ class Plan(AbstractPlan):
         """Find if a parameter exists on this plan."""
         return any(parameter.id == p.id for p in self.inputs + self.outputs + self.parameters)
 
+    def get_parameter_path(self, parameter: CommandParameterBase):
+        """Get the path to a parameter inside this plan."""
+        if self.find_parameter(parameter):
+            return [self]
+
+        return None
+
     def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
         """Get a parameter on this plan by id."""
         return next((p for p in self.inputs + self.outputs + self.parameters if parameter_id == p.id), None)
