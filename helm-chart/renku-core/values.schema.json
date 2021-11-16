@@ -200,7 +200,6 @@
         "logLevel",
         "gitLFSSkipSmudge",
         "jwtTokenSecret",
-        "image",
         "service",
         "ingress",
         "metrics",
