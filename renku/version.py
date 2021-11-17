@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2017-%d - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,7 +15,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Version information for Renku."""
 
-[flake8]
-max-line-length = 120
-ignore = E121, E126, E203, E226, E231, W503, W504
+import re
+
+try:
+    from importlib.metadata import distribution
+except ImportError:
+    from importlib_metadata import distribution
+
+__version__ = "0.0.0"
+
+
+def is_release():
+    """Check if current version is a release semver."""
+    if re.match(r"\d+.\d+.\d+$", __version__):
+        return True
+    return False
+
+
+def _get_distribution_url():
+    try:
+        d = distribution("renku")
+        return d.metadata["Home-page"]
+    except Exception:
+        return "N/A"
+
+
+version_url = "{}/tree/{}".format(_get_distribution_url(), "v" + __version__)

@@ -45,7 +45,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install coveralls setuptools wheel
+        python -m pip install coveralls wheel
         python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -68,9 +68,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install coveralls setuptools wheel
+        python -m pip install coveralls poetry wheel
         python -m pip install .[all]
-        python setup.py --version
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test docs
@@ -92,10 +91,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine
-        python -m pip install .[all]
+        pip install poetry wheel twine
+        poetry install -E all
     - name: Build Package
-      run: python setup.py sdist bdist_wheel
+      run: poetry build
     - name: test with twine
       run: twine check dist/*
 
@@ -121,9 +120,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install coveralls setuptools wheel
+        python -m pip install coveralls poetry wheel
         python -m pip install .[nodocs]
-        python setup.py --version
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
@@ -162,9 +160,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install coveralls setuptools wheel
+        python -m pip install coveralls poetry wheel
         python -m pip install .[nodocs]
-        python setup.py --version
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
@@ -208,9 +205,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls setuptools wheel
+          python -m pip install coveralls poetry wheel
           python -m pip install .[nodocs]
-          python setup.py --version
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -254,9 +250,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls setuptools wheel
+          python -m pip install coveralls poetry wheel
           python -m pip install .[nodocs]
-          python setup.py --version
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -295,7 +290,7 @@ jobs:
         curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
         brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
-        python -m pip install setuptools wheel twine
+        python -m pip install wheel twine
         python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -328,7 +323,7 @@ jobs:
         curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
         brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
-        python -m pip install setuptools wheel twine
+        python -m pip install wheel twine
         python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -367,7 +362,7 @@ jobs:
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
-          python -m pip install setuptools wheel twine
+          python -m pip install wheel twine
           python -m pip install .[all]
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
@@ -406,7 +401,7 @@ jobs:
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
-          python -m pip install setuptools wheel twine
+          python -m pip install wheel twine
           python -m pip install .[all]
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
@@ -439,7 +434,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install coveralls setuptools wheel
+        python -m pip install coveralls wheel
         python -m pip install .[nodocs]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -494,7 +489,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install coveralls setuptools wheel
+        python -m pip install coveralls wheel
         python -m pip install .[nodocs]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -550,7 +545,7 @@ jobs:
         curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
         brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
-        python -m pip install setuptools wheel
+        python -m pip install wheel
         python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -590,7 +585,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine
+        pip install poetry wheel twine
         python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -601,7 +596,7 @@ jobs:
         export GIT_TAG=$(renku --version)
         git tag $GIT_TAG
     - name: Build Package
-      run: python setup.py sdist bdist_wheel
+      run: poetry build
     - name: Publish a Python distribution to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
