@@ -88,7 +88,7 @@ readme = open("README.rst").read()
 history = open("CHANGES.rst").read()
 
 tests_require = [
-    "black==21.9b0",
+    "black==21.11b0",
     "check-manifest>=0.37,<0.48",
     "coverage>=4.5.3,<6.2",
     "cwl-utils>=0.12",
