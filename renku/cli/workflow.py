@@ -118,7 +118,7 @@ Iterate Plans
    :width: 850
    :alt: Iterate Plans
 
-For executing a Plan with different parameterization ``renku workflow iterate``
+For executing a Plan with different parametrization ``renku workflow iterate``
 could be used. This sub-command is basically conducting a 'grid search'-like
 execution of a Plan, with parameter-sets provided by the user.
 
