@@ -109,7 +109,7 @@ tests_require = [
     "pytest-xdist>=1.34.0,<2.5.0",
     "pytest>=4.0.0,<6.2.6",
     "pyte>=0.8.0<0.9.0",
-    "responses>=0.7.0,<0.14.1",
+    "responses>=0.7.0,<0.16.1",
 ]
 
 
