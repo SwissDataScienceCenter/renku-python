@@ -51,7 +51,7 @@ def test_save_with_remote(runner, project, client_with_remote, tmpdir_factory):
         fp.write("tracked file")
 
     result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], catch_exceptions=False)
-
+    breakpoint()
     assert 0 == result.exit_code
     assert "tracked" in result.output
     assert "save changes" in client_with_remote.repo.head.commit.message
