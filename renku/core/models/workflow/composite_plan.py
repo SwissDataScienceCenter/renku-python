@@ -211,6 +211,18 @@ class CompositePlan(AbstractPlan):
 
         return False
 
+    def get_parameter_path(self, parameter: CommandParameterBase):
+        """Get the path to a parameter inside this plan."""
+        if parameter in self.mappings:
+            return [self]
+
+        for plan in self.plans:
+            path = plan.get_parameter_path(parameter)
+            if path:
+                return [self] + path
+
+        return None
+
     def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
         """Get a parameter on this plan by id."""
         mapping = next((p for p in self.mappings if parameter_id == p.id), None)

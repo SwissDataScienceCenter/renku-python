@@ -146,14 +146,14 @@ renku workflow execute [<options>] <name or uuid>
 
 ```
 
-#### renku workflow loop
+#### renku workflow iterate
 
 Has similar semantics to `renku workflow execute`, but allows doing multiple executions in a single go with variable inputs/outputs/parameters.
 
 Syntax example:
 
 ```
-renku workflow loop <workflow name> --mapping <mapping>
+renku workflow iterate <workflow name> --mapping <mapping>
 ```
 
 Where mapping is a list of mappings for input parameters/files that gets iterated over. This can contain values that are the same for all executions and then a list of parameters that vary.
@@ -163,7 +163,7 @@ Otherwise supports the same flags as `renku workflow execute`
 ##### Detailed Parameter Description
 
 ```
-renku workflow loop [<options>] <name or uuid>
+renku workflow iterate [<options>] <name or uuid>
 
 <name or uuid>              The name of a workflow or its id
 
@@ -172,10 +172,10 @@ renku workflow loop [<options>] <name or uuid>
 
 -c|--config                    YAML file containing config for the provider
 
--s|--set <parameter>=[<value> | <value>,<values...>]   Set <value> or value range for a <parameter>
+-m|--map <parameter>=[<value> | <value>,<values...>]   Set <value> or value range for a <parameter>
                                                     to be used in execution
 
---values <file>             YAML file containing parameter mappings to be used (See
+--mapping <file>            YAML file containing parameter mappings to be used (See
                             `Input/Output/Argument Mappings`)
 
 ```
@@ -318,19 +318,16 @@ myworkflow:
 
 At the top level, it specifies the parameter values of the workflow (run or grouped run) to be executed. It can also contain values for steps contained in a grouped run, by specifying the name of the step and setting parameters for that step. In case of the grouped run mapping its values to child steps, setting values for child steps directly overwrites those values for the step and all its (potential) children.
 
-For `renku workflow loop` the values file looks like:
+For `renku workflow iterate` the values file looks like:
 
 ```
 learning_rate: 0.9
 dataset_input: dataset.csv
-chart_output: mychart.{loop_index}.png
-looped_parameters:
-    - alpha: 0.1
-      beta: 0.7
-    - alpha: 0.2
-      beta: 0.6
-    - alpha: 0.5
-      beta: 0.2
+chart_output: mychart.{iter_index}.png
+alpha: [0.1, 0.2, 0.5]
+beta: [0.7, 0.6]
+gamma@tag1: [1.0, 2.0, 3.0]
+delta@tag1: [10.0, 20.0, 30.0]
 myworkflow:
     lr: 0.8
     lookuptable: lookup.xml
@@ -338,7 +335,24 @@ myworkflow:
         language: en
 ```
 
-Where the workflow is run for each entry in `looped_parameters` and the templated variable `{loop}` is substituted for the loop index (1, 2, 3, ...).
+where the the paramaters with list values are considered as the iteration parameters and the templated variable `{iter_index}` is substituted with the iteration index (0, 1, 2, ...).
+There are two distinct type of paramaters:
+ 1. The parameter's value is a simple list, `alpha` and `beta` in the above example. These list values are simply the possible values of the given parameter. The iterate command will generate the cartesian product of these possible values and will be used in each iteration. Hence, the length of the list of possible values is not constrained, i.e. it can contain arbitrary amount of values.
+ 2. Tagged iteration parameters, `gamma` and `delta` in the above example. A parameter can be tagged in the values file by adding the `@<TAG>` suffix to the parameter's name. Parameters of the same tag shall have the same number of possible values. This is because these values are going to be iterated over as a tuple, in the provided order. For example in case of `gamma` and `delta` the `renku workflow iterate` command would simply result in three iterations: `[(1.0, 10.0), (2.0, 20.0), (3.0, 30.0)]`
+
+One can mix these two types of parameters.
+
+Based on the this, the first six iterations using the values file above will result in the following workflow parametrization and execution:
+```
+chart_output      alpha    beta    gamma    delta
+--------------  -------  ------  -------  -------
+mychart.0.png       0.1     0.7        1       10
+mychart.1.png       0.1     0.7        2       20
+mychart.2.png       0.1     0.7        3       30
+mychart.3.png       0.1     0.6        1       10
+mychart.4.png       0.1     0.6        2       20
+mychart.5.png       0.1     0.6        3       30
+```
 
 On the commandline, values can be specified with `--set learning_rate=0.9 --set myworkflow.lr=0.8`.
 
@@ -346,7 +360,7 @@ On the commandline, values can be specified with `--set learning_rate=0.9 --set 
 
 Parameter values can contain one of several templated values or glob patterns:
 
-- `{loop_index}`: Loop index in the case of a `renku workflow loop` call.
+- `{iter_index}`: Iteration index in the case of a `renku workflow iterate` call.
 - `{%m-%d-%Y_%H-%M-%S}`: Current date/time (Following python date formatting).
 - `a*b?`: Glob/`fnmatch` patterns for paths.
 
@@ -466,7 +480,7 @@ Outputs:
 $ echo "
 static:
   epochs: 200
-  output_file: result.{loop_index}.json
+  output_file: result.{iter_index}.json
 variable:
 - lr:0.1
   batch-size: 32
@@ -477,7 +491,7 @@ variable:
 - lr:1.0
   batch-size: 1024
 " > mapping.yaml
-$ renku workflow loop --provider cwl --mapping mapping.yaml train_model
+$ renku workflow iterate --provider cwl --mapping mapping.yaml train_model
 Preparing environment....
 Executing workflows
 Run 1...
@@ -559,7 +573,7 @@ The following outputs were produced:
             data.2021-02-24.csv
 ```
 #### Workflow execution with extensive parameter search
-See detailed user story to `renku workflow loop` [here](https://github.com/SwissDataScienceCenter/renku-python/edit/rfc-001-workflow-ux/design/001-new-workflow-commands/user-story-workflow-execution-with-extensive-parameter-space.md)
+See detailed user story to `renku workflow iterate` [here](https://github.com/SwissDataScienceCenter/renku-python/edit/rfc-001-workflow-ux/design/001-new-workflow-commands/user-story-workflow-execution-with-extensive-parameter-space.md)
 
 ## Drawbacks
 
