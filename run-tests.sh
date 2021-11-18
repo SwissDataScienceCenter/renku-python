@@ -39,7 +39,7 @@ check_styles(){
     pydocstyle renku tests conftest.py docs
     black --check --diff renku tests conftest.py
     isort -c --df .
-    flake8 renku tests conftest.py build.py
+    flakehell lint renku/ tests/ build.py conftest.py
     find . -path ./.eggs -prune -o -iname \*.sh -print0 | xargs -0 shellcheck
 }
 
