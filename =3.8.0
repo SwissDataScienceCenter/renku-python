@@ -1,7 +1,0 @@
-Requirement already satisfied: flake8 in /home/zenon/.pyenv/versions/3.7.8/envs/renku-python/lib/python3.7/site-packages (4.0.1)
-Requirement already satisfied: importlib-metadata<4.3 in /home/zenon/.pyenv/versions/3.7.8/envs/renku-python/lib/python3.7/site-packages (from flake8) (4.2.0)
-Requirement already satisfied: pycodestyle<2.9.0,>=2.8.0 in /home/zenon/.pyenv/versions/3.7.8/envs/renku-python/lib/python3.7/site-packages (from flake8) (2.8.0)
-Requirement already satisfied: mccabe<0.7.0,>=0.6.0 in /home/zenon/.pyenv/versions/3.7.8/envs/renku-python/lib/python3.7/site-packages (from flake8) (0.6.1)
-Requirement already satisfied: pyflakes<2.5.0,>=2.4.0 in /home/zenon/.pyenv/versions/3.7.8/envs/renku-python/lib/python3.7/site-packages (from flake8) (2.4.0)
-Requirement already satisfied: typing-extensions>=3.6.4 in /home/zenon/.pyenv/versions/3.7.8/envs/renku-python/lib/python3.7/site-packages (from importlib-metadata<4.3->flake8) (3.10.0.2)
-Requirement already satisfied: zipp>=0.5 in /home/zenon/.pyenv/versions/3.7.8/envs/renku-python/lib/python3.7/site-packages (from importlib-metadata<4.3->flake8) (3.6.0)
