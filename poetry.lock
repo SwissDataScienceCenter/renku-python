@@ -600,7 +600,7 @@ name = "entrypoints"
 version = "0.3"
 description = "Discover and load entry points from installed packages."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=2.7"
 
 [[package]]
@@ -666,7 +666,7 @@ name = "flake8"
 version = "3.9.2"
 description = "the modular source code checker: pep8 pyflakes and co"
 category = "main"
-optional = false
+optional = true
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 
 [package.dependencies]
@@ -680,7 +680,7 @@ name = "flakehell"
 version = "0.9.0"
 description = "Flake8 wrapper to make it nice and configurable"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.5"
 
 [package.dependencies]
@@ -985,7 +985,7 @@ name = "mccabe"
 version = "0.6.1"
 description = "McCabe checker, plugin for flake8"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [[package]]
@@ -1284,7 +1284,7 @@ name = "pycodestyle"
 version = "2.7.0"
 description = "Python style guide checker"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
@@ -1333,7 +1333,7 @@ name = "pyflakes"
 version = "2.3.1"
 description = "passive checker of Python programs"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
@@ -2092,7 +2092,7 @@ name = "toml"
 version = "0.10.2"
 description = "Python Library for Tom's Obvious, Minimal Language"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
@@ -2401,16 +2401,15 @@ python-versions = "*"
 test = ["zope.testrunner"]
 
 [extras]
-all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "cwl-utils", "docker-compose", "fakeredis", "flaky", "flask", "freezegun", "gunicorn", "isort", "jinja2", "marshmallow", "pexpect", "pillow", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "walrus"]
-docs = ["jinja2", "renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
-nodocs = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "cwl-utils", "docker-compose", "fakeredis", "flaky", "flask", "freezegun", "gunicorn", "isort", "marshmallow", "pexpect", "pillow", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "responses", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
+all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "cwl-utils", "docker-compose", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "jinja2", "marshmallow", "pexpect", "pillow", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "walrus"]
+docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
 service = ["apispec", "apispec-webframeworks", "circus", "docker-compose", "flask", "gunicorn", "marshmallow", "pillow", "ptvsd", "python-dotenv", "redis", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
-tests = ["black", "check-manifest", "coverage", "cwl-utils", "fakeredis", "flaky", "freezegun", "isort", "pexpect", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-timeout", "pytest-xdist", "responses"]
+tests = ["black", "check-manifest", "coverage", "cwl-utils", "fakeredis", "flakehell", "flaky", "freezegun", "isort", "pexpect", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-timeout", "pytest-xdist", "responses"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "864fe6ccd77eb0ed695a39db9dd59074e0c557d427ffd984c2f27a82c323b368"
+content-hash = "d98a236aa083ba4f039d024f18bd543b5094f04629b2b545e44c23c398d8faca"
 
 [metadata.files]
 alabaster = [

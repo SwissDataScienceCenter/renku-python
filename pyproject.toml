@@ -89,7 +89,7 @@ humanize = "<3.12.0,>=2.5.0"
 importlib-metadata = { version = "<4.9.0,>=4.8.1", python = "<3.8.0" }
 inject = "<4.4.0,>=4.3.0"
 isort = { version = "<5.10.0,>=5.3.2", optional = true }
-jinja2 = { version = "<3.0.2,>=2.10.3,>=2.11.3", optional = true }
+jinja2 = { version = "<3.0.2,>=2.10.3,>=2.11.3" }
 marshmallow = { version = "==3.13.0", optional = true }
 ndg-httpsclient = "==0.5.1"
 networkx = "<2.7,>=2.6.0"
@@ -185,7 +185,7 @@ tests = [
     "pytest-xdist",
     "responses",
 ]
-docs = ["jinja2", "renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
+docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
 all = [
     "apispec",
     "apispec-webframeworks",
@@ -227,45 +227,6 @@ all = [
     "sentry-sdk",
     "sphinxcontrib-spelling",
     "sphinx-rtd-theme",
-    "walrus",
-]
-nodocs = [
-    "apispec",
-    "apispec-webframeworks",
-    "black",
-    "check-manifest",
-    "circus",
-    "coverage",
-    "cwl-utils",
-    "docker-compose",
-    "fakeredis",
-    "flakehell",
-    "flaky",
-    "flask",
-    "freezegun",
-    "gunicorn",
-    "isort",
-    "marshmallow",
-    "pexpect",
-    "pillow",
-    "ptvsd",
-    "pydocstyle",
-    "pyte",
-    "pytest",
-    "pytest-black",
-    "pytest-cache",
-    "pytest-cov",
-    "pytest-flake8",
-    "pytest-mock",
-    "pytest-pep8",
-    "pytest-timeout",
-    "pytest-xdist",
-    "python-dotenv",
-    "redis",
-    "responses",
-    "rq",
-    "rq-scheduler",
-    "sentry-sdk",
     "walrus",
 ]
 
