@@ -41,6 +41,7 @@ check_styles(){
     isort -c --df .
     flakehell lint renku/ tests/ build.py conftest.py
     find . -path ./.eggs -prune -o -iname \*.sh -print0 | xargs -0 shellcheck
+    poetry lock --no-update && git diff --exit-code -- poetry.lock > /dev/null || echo "Poetry lock file out of date! Run 'poetry lock'"
 }
 
 build_docs(){
