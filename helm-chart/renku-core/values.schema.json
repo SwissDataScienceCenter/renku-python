@@ -69,35 +69,12 @@
         "type": "string",
         "minLength": 32
       },
-      "image": {
-        "description": "Docker image settings",
-        "properties": {
-            "repository": {
-                "type": "string"
-            },
-            "tag": {
-                "type": "string"
-            },
-            "pullPolicy": {
-                "type": "string"
-            }
-        },
-        "type": "object"
-      },
       "imagePullSecrets": {
         "description": "Secrets necessary for pulling the image",
         "type": "array",
         "items": {
             "type": "object"
         }
-      },
-      "nameOverride": {
-        "description": "Override for the chart name",
-        "type": "string"
-      },
-      "fullnameOverride": {
-        "description": "Override for the chart fullname",
-        "type": "string"
       },
       "service": {
           "description": "Kubernetes service definition",
@@ -185,6 +162,50 @@
               }
           },
           "type": "object"
+      },
+      "versions": {
+          "description": "List of different service deployments",
+          "type": "array",
+          "items": {
+              "type": "object",
+              "properties": {
+                  "name": {
+                      "type": "string"
+                  },
+                  "prefix": {
+                      "description": "Prefix for deployment's API route",
+                      "type": "string"
+                  },
+                  "nameOverride": {
+                      "description": "Override for the chart name",
+                      "type": "string"
+                  },
+                  "fullnameOverride": {
+                      "description": "Override for the chart fullname",
+                      "type": "string"
+                  },
+                  "image": {
+                      "description": "Docker image settings",
+                      "properties": {
+                          "repository": {
+                              "type": "string"
+                          },
+                          "tag": {
+                              "type": "string"
+                          },
+                          "pullPolicy": {
+                              "type": "string"
+                          }
+                      },
+                      "type": "object"
+                  }
+              },
+              "required": [
+                  "name",
+                  "prefix",
+                  "image"
+              ]
+          }
       }
     },
     "required": [
@@ -204,7 +225,8 @@
         "ingress",
         "metrics",
         "redis",
-        "sentry"
+        "sentry",
+        "versions"
     ],
     "title": "Values",
     "type": "object"

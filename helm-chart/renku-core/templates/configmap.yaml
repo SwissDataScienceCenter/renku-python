@@ -12,13 +12,11 @@ data:
     }
 
     http {
-      upstream v8 {
-        server {{ include "renku-core.fullname" . }}-v8;
+      {{- range $version := .Values.versions }}
+      upstream {{ $version.name }} {
+        server {{ include "renku-core.fullname" $ }}-{{ $version.name }};
       }
-
-      upstream v9 {
-        server {{ include "renku-core.fullname" . }}-v9;
-      }
+      {{ end }}
 
       server {
         listen 80;
@@ -34,17 +32,13 @@ data:
           try_files /usr/share/nginx/html/deployments.json =404;
         }
 
-        location /renku/8 {
-          rewrite /renku/8/(.*) /renku/$1  break;
+        {{- range $version := .Values.versions }}
+        location /renku/{{ $version.prefix }} {
+          rewrite /renku/{{ $version.prefix }}/(.*) /renku/$1  break;
           proxy_set_header Host $host;
-          proxy_pass http://v8;
+          proxy_pass http://{{ $version.name }};
         }
-
-        location /renku/9 {
-          rewrite /renku/9/(.*) /renku/$1  break;
-          proxy_set_header Host $host;
-          proxy_pass http://v9;
-        }
+        {{- end }}
 
         location /renku {
           proxy_set_header Host $host;
@@ -54,6 +48,8 @@ data:
     }
   deployments.json: |
     {
-      "9": "{{ include "renku-core.fullname" . }}",
-      "8": "{{ include "renku-core.fullname" . }}-v8"
+      {{- range $index, $version := .Values.versions }}
+      {{- if ne $index 0 }},{{ end }}
+      "{{ $version.prefix }}": "{{ include "renku-core.fullname" $ }}-{{ $version.name }}"
+      {{- end }}
     }

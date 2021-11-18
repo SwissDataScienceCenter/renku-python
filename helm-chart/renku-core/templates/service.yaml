@@ -19,19 +19,3 @@ spec:
     app.kubernetes.io/instance: {{ $.Release.Name }}
     app.kubernetes.io/deploymentVersion: {{ $version.name }}
 {{ end }}
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: {{ include "renku-core.fullname" . }}
-  labels:
-{{ include "renku-core.labels" $ | indent 4 }}
-spec:
-  type: ClusterIP
-  selector:
-    app.kubernetes.io/name: {{ include "renku-core.fullname" $ }}-nginx
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
-    name: nginx
