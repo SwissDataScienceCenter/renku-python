@@ -11,7 +11,8 @@ FROM base as builder
 COPY pyproject.toml build.py poetry.lock README.rst CHANGES.rst /code/renku/
 WORKDIR /code/renku
 RUN poetry export --without-hashes -f requirements.txt --output /tmp/requirements.txt && \
-    pip install -r /tmp/requirements.txt
+    pip install -r /tmp/requirements.txt && \
+    pip install poetry-dynamic-versioning
 
 COPY .git /code/renku/.git
 COPY renku /code/renku/renku
@@ -20,6 +21,8 @@ COPY renku /code/renku/renku
 # renku-python is installed in the image. This is the default for chartpress builds.
 ARG CLEAN_INSTALL
 RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi
+# manually update version.py
+RUN poetry-dynamic-versioning
 
 RUN pip wheel --wheel-dir /wheels . && \
     pip install --no-index --no-warn-script-location --force --root=/pythonroot/ /wheels/*.whl && \
