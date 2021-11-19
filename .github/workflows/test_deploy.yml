@@ -291,7 +291,9 @@ jobs:
     - name: Install dependencies
       run: |
         brew update || true
-        brew install git-lfs shellcheck node || brew link --overwrite node
+        brew unlink git-lfs || true
+        curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+        brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel twine
         python -m pip install -e .[all]
@@ -322,7 +324,9 @@ jobs:
     - name: Install dependencies
       run: |
         brew update || true
-        brew install git-lfs shellcheck node || brew link --overwrite node
+        brew unlink git-lfs || true
+        curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+        brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel twine
         python -m pip install -e .[all]
@@ -359,7 +363,9 @@ jobs:
       - name: Install dependencies
         run: |
           brew update || true
-          brew install git-lfs shellcheck node || brew link --overwrite node
+          brew unlink git-lfs || true
+          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+          brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install setuptools wheel twine
           python -m pip install -e .[all]
@@ -396,7 +402,9 @@ jobs:
       - name: Install dependencies
         run: |
           brew update || true
-          brew install git-lfs shellcheck node || brew link --overwrite node
+          brew unlink git-lfs || true
+          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+          brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install setuptools wheel twine
           python -m pip install -e .[all]
@@ -483,7 +491,9 @@ jobs:
     - name: Install dependencies
       run: |
         brew update || true
-        brew install git-lfs shellcheck node || brew link --overwrite node
+        brew unlink git-lfs || true
+        curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+        brew install shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel
         python -m pip install -e .[all]

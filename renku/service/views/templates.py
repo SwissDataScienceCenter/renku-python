@@ -16,18 +16,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service templates view."""
-from flask import Blueprint, request
+from flask import request
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
+from renku.service.views.api_versions import V0_9, VersionedBlueprint
 from renku.service.views.decorators import accepts_json, handle_common_except, requires_cache, requires_identity
 
 TEMPLATES_BLUEPRINT_TAG = "templates"
-templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
+templates_blueprint = VersionedBlueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@templates_blueprint.route("/templates.read_manifest", methods=["GET"], provide_automatic_options=False)
+@templates_blueprint.route(
+    "/templates.read_manifest", methods=["GET"], provide_automatic_options=False, versions=[V0_9]
+)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -65,7 +68,9 @@ def read_manifest_from_template(user_data, cache):
     return TemplatesReadManifestCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@templates_blueprint.route("/templates.create_project", methods=["POST"], provide_automatic_options=False)
+@templates_blueprint.route(
+    "/templates.create_project", methods=["POST"], provide_automatic_options=False, versions=[V0_9]
+)
 @handle_common_except
 @accepts_json
 @requires_cache

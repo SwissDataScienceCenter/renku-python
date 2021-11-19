@@ -42,7 +42,7 @@ def test_graph_build_view(svc_client_cache, authentication_headers_raw, it_remot
         "callback_url": "https://webhook.site",
     }
 
-    response = svc_client.post("/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
+    response = svc_client.post("/0.9/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
 
     assert response
     assert_rpc_response(response)
@@ -62,7 +62,7 @@ def test_graph_build_no_callback(svc_client_cache, authentication_headers_raw, i
     svc_client, _, cache = svc_client_cache
     payload = {"git_url": it_remote_repo_url, "revision": "HEAD"}
 
-    response = svc_client.post("/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
+    response = svc_client.post("/0.9/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
 
     assert response
     assert {
@@ -79,6 +79,6 @@ def test_graph_build_no_revision(svc_client_cache, authentication_headers_raw, i
 
     payload = {"git_url": it_remote_repo_url, "callback_url": "http://localhost:8080"}
 
-    response = svc_client.post("/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
+    response = svc_client.post("/0.9/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
     assert response
     assert_rpc_response(response)

@@ -479,15 +479,25 @@ def test_renku_dataset_import_missing_lfs_objects(runner, project):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "provider,params,output",
+    "provider,params,output,input",
     [
-        ("zenodo", [], "zenodo.org/deposit"),
-        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
-        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+        ("zenodo", [], "zenodo.org/deposit", None),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:", "1"),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
     ],
 )
 def test_dataset_export_upload_file(
-    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params, output
+    runner,
+    project,
+    tmpdir,
+    client,
+    zenodo_sandbox,
+    dataverse_demo,
+    olos_sandbox,
+    provider,
+    params,
+    output,
+    input,
 ):
     """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -511,7 +521,9 @@ def test_dataset_export_upload_file(
     data_repo.git.add(update=True)
     data_repo.index.commit("metadata updated")
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params)
+    result = runner.invoke(
+        cli, ["dataset", "export", "my-dataset", provider] + params, input=input, catch_exceptions=False
+    )
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
@@ -521,15 +533,25 @@ def test_dataset_export_upload_file(
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "provider,params,output",
+    "provider,params,output,input",
     [
-        ("zenodo", [], "zenodo.org/deposit"),
-        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
-        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+        ("zenodo", [], "zenodo.org/deposit", None),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:", "1"),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
     ],
 )
 def test_dataset_export_upload_tag(
-    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params, output
+    runner,
+    project,
+    tmpdir,
+    client,
+    zenodo_sandbox,
+    dataverse_demo,
+    olos_sandbox,
+    provider,
+    params,
+    output,
+    input,
 ):
     """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -568,19 +590,19 @@ def test_dataset_export_upload_tag(
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "2.0"])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "2.0"] + params)
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "2.0"] + params, input=input)
 
     assert 0 == result.exit_code
     assert "Exported to:" in result.output
     assert output in result.output
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "1.0"] + params)
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "1.0"] + params, input=input)
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="1")  # HEAD
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input=f"0\n{input}")  # HEAD
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
@@ -590,15 +612,25 @@ def test_dataset_export_upload_tag(
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "provider,params,output",
+    "provider,params,output,input",
     [
-        ("zenodo", [], "zenodo.org/deposit"),
-        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
-        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+        ("zenodo", [], "zenodo.org/deposit", None),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:", "1"),
+        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
     ],
 )
 def test_dataset_export_upload_multiple(
-    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params, output
+    runner,
+    project,
+    tmpdir,
+    client,
+    zenodo_sandbox,
+    dataverse_demo,
+    olos_sandbox,
+    provider,
+    params,
+    output,
+    input,
 ):
     """Test successful uploading of a files to Zenodo deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -625,7 +657,7 @@ def test_dataset_export_upload_multiple(
     data_repo.git.add(update=True)
     data_repo.index.commit("metadata updated")
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params)
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input=input)
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output

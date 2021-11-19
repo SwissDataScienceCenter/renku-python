@@ -38,7 +38,7 @@ def test_serve_api_spec(svc_client):
         "Content-Type": "application/json",
         "accept": "application/json",
     }
-    response = svc_client.get("/spec.json", headers=headers)
+    response = svc_client.get("spec.json", headers=headers)
 
     assert 0 != len(response.json.keys())
     assert 200 == response.status_code
@@ -47,7 +47,7 @@ def test_serve_api_spec(svc_client):
 @pytest.mark.service
 def test_list_upload_files_all(svc_client, identity_headers):
     """Check list uploaded files view."""
-    response = svc_client.get("/cache.files_list", headers=identity_headers)
+    response = svc_client.get("/0.9/cache.files_list", headers=identity_headers)
 
     assert {"result"} == set(response.json.keys())
 
@@ -62,7 +62,7 @@ def test_list_upload_files_all_no_auth(svc_client):
         "Content-Type": "application/json",
         "accept": "application/json",
     }
-    response = svc_client.get("/cache.files_list", headers=headers)
+    response = svc_client.get("/0.9/cache.files_list", headers=headers)
 
     assert 200 == response.status_code
 
@@ -164,7 +164,9 @@ def test_file_upload_same_file(svc_client, identity_headers):
 @pytest.mark.service
 def test_file_upload_no_auth(svc_client):
     """Check failed file upload."""
-    response = svc_client.post("/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt")))
+    response = svc_client.post(
+        "/0.9/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"))
+    )
 
     assert response
     assert 200 == response.status_code
@@ -214,7 +216,7 @@ def test_file_upload_with_users(svc_client, identity_headers):
     assert response
     assert {"result"} == set(response.json.keys())
 
-    response = svc_client.get("/cache.files_list", headers=headers_user1)
+    response = svc_client.get("/0.9/cache.files_list", headers=headers_user1)
 
     assert response
 
@@ -243,7 +245,7 @@ def test_clone_projects_no_auth(svc_client, identity_headers, it_remote_repo_url
     err_message = "user identification is incorrect or missing"
     assert err_message == response.json["error"]["reason"]
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/0.9/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
     assert response
     assert {"result"} == set(response.json.keys())
 
@@ -257,7 +259,7 @@ def test_clone_projects_with_auth(svc_client, identity_headers, it_remote_repo_u
         "git_url": it_remote_repo_url,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/0.9/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
@@ -275,31 +277,31 @@ def test_clone_projects_multiple(svc_client, identity_headers, it_remote_repo_ur
         "git_url": it_remote_repo_url,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/0.9/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
     assert response
 
     assert {"result"} == set(response.json.keys())
     project_ids.append(response.json["result"])
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/0.9/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
     project_ids.append(response.json["result"])
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/0.9/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
     project_ids.append(response.json["result"])
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/0.9/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
     last_pid = response.json["result"]["project_id"]
 
-    response = svc_client.get("/cache.project_list", headers=identity_headers)
+    response = svc_client.get("/0.9/cache.project_list", headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
@@ -320,7 +322,7 @@ def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote
         "git_url": it_remote_repo_url,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/0.9/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
     assert response
     assert {"result"} == set(response.json.keys())
 
@@ -335,7 +337,7 @@ def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote
     assert {"error"} == set(response.json.keys())
     assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
 
-    response = svc_client.get("/cache.project_list", headers=identity_headers)
+    response = svc_client.get("/0.9/cache.project_list", headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
@@ -355,7 +357,7 @@ def test_clone_projects_invalid_headers(svc_client, identity_headers, it_remote_
         "git_url": it_remote_repo_url,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/0.9/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
     assert response
 
     assert {"result"} == set(response.json.keys())
@@ -368,7 +370,7 @@ def test_clone_projects_invalid_headers(svc_client, identity_headers, it_remote_
     assert {"error"} == set(response.json.keys())
     assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
 
-    response = svc_client.get("/cache.project_list", headers=identity_headers)
+    response = svc_client.get("/0.9/cache.project_list", headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
@@ -449,7 +451,7 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
         assert not file_["is_archive"]
         assert not file_["unpack_archive"]
 
-    response = svc_client.get("/cache.files_list", headers=headers)
+    response = svc_client.get("/0.9/cache.files_list", headers=headers)
 
     assert response
     assert 200 == response.status_code
@@ -515,7 +517,7 @@ def test_upload_gz_unpack_archive(datapack_gz, svc_client_with_repo):
         assert not file_["is_archive"]
         assert not file_["unpack_archive"]
 
-    response = svc_client.get("/cache.files_list", headers=headers)
+    response = svc_client.get("/0.9/cache.files_list", headers=headers)
 
     assert response
     assert 200 == response.status_code
@@ -635,7 +637,7 @@ def test_check_migrations_local(svc_client_setup):
     """Check if migrations are required for a local project."""
     svc_client, headers, project_id, _, _ = svc_client_setup
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/0.9/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
 
     assert response.json["result"]["migration_required"]
@@ -674,7 +676,7 @@ def test_check_no_migrations(svc_client_with_repo):
     """Check if migrations are not required."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/0.9/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
     assert 200 == response.status_code
     assert not response.json["result"]["migration_required"]
@@ -717,7 +719,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
     """Check migrating on a protected branch does not change cache state."""
     svc_client, headers, project_id, _, _ = svc_protected_old_repo
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/0.9/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
     assert response.json["result"]["migration_required"]
 
@@ -731,7 +733,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
         m.startswith("Successfully applied") and m.endswith("migrations.") for m in response.json["result"]["messages"]
     )
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/0.9/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
     assert response.json["result"]["migration_required"]
 
@@ -761,7 +763,7 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
         "project_id": project_id,
     }
 
-    response = svc_client.get("/datasets.list", query_string=params, headers=identity_headers)
+    response = svc_client.get("/0.9/datasets.list", query_string=params, headers=identity_headers)
     assert response
     assert 200 == response.status_code
 
@@ -773,7 +775,7 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
         "name": uuid.uuid4().hex,
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/0.9/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert 200 == response.status_code
