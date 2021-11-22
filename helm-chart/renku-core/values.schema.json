@@ -164,9 +164,10 @@
           "type": "object"
       },
       "versions": {
-          "description": "List of different service deployments",
-          "type": "array",
-          "items": {
+          "description": "A map of different service deployments",
+          "type": "object",
+          "required": ["latest"],
+          "additionalProperties": {
               "type": "object",
               "properties": {
                   "name": {

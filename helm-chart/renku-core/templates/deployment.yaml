@@ -48,13 +48,13 @@ spec:
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
           securityContext:
-            {{- if $.Values.debug }}
             runAsUser: 1000
+            {{- if $.Values.debug }}
+            runAsGroup: 2000
+            {{ else }}
+            runAsGroup: 1000
             {{- end }}
             allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
           {{- if $.Values.debug }}
           args: ["api", "--debug"]
           {{ else }}
@@ -69,6 +69,8 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
+            - name: WALRUS_NAMESPACE
+              value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ $.Values.cacheDirectory }}
             - name: PROJECT_CLONE_DEPTH_DEFAULT
@@ -131,6 +133,8 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
+            - name: WALRUS_NAMESPACE
+              value: {{ $version.name }}
             - name: RENKU_JWT_TOKEN_SECRET
               value: {{ $.Values.jwtTokenSecret }}
             - name: CACHE_DIR
@@ -170,6 +174,8 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
+            - name: WALRUS_NAMESPACE
+              value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ $.Values.cacheDirectory }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
@@ -207,6 +213,8 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
+            - name: WALRUS_NAMESPACE
+              value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ $.Values.cacheDirectory | quote }}
             - name: RENKU_SVC_CLEANUP_INTERVAL

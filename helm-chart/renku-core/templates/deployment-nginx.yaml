@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: nginx:alpine
+          image: bitnami/nginx:1.21.4
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -27,14 +27,14 @@ spec:
                 - chown
                 - setgid
                 - setuid
-            runAsNonRoot: false
+            runAsNonRoot: true
           ports:
           - containerPort: 8080
           volumeMounts:
             - name: nginx-volume
               readOnly: true
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
+              mountPath: /opt/bitnami/nginx/conf/server_blocks/nginx-server-blocks.conf
+              subPath: nginx-server-blocks.conf
             - name: nginx-volume
               readOnly: true
               mountPath: /usr/share/nginx/html/versions.json

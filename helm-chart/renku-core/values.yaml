@@ -95,9 +95,9 @@ sentry:
 debug: false
 
 # versions is the list of different deployment that support different metadata versions.
-# NOTE: Always put the ``latest`` version as the first element
 versions:
-  - name: v9
+  latest:
+    name: v9
     prefix: "9"
     nameOverride: ""
     fullnameOverride: ""
@@ -105,7 +105,8 @@ versions:
       repository: renku/renku-core
       tag: "v1.0.0-rc1"
       pullPolicy: IfNotPresent
-  - name: v8
+  v8:
+    name: v8
     prefix: "8"
     nameOverride: ""
     fullnameOverride: ""

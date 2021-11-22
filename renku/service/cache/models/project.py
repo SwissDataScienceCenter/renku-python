@@ -34,6 +34,7 @@ class Project(Model):
     """User project object."""
 
     __database__ = BaseCache.model_db
+    __namespace__ = BaseCache.namespace
 
     created_at = DateTimeField()
     last_fetched_at = DateTimeField()
