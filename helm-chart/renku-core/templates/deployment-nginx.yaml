@@ -18,8 +18,18 @@ spec:
         - name: nginx
           image: nginx:alpine
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - chown
+                - setgid
+                - setuid
+            runAsNonRoot: false
           ports:
-          - containerPort: 80
+          - containerPort: 8080
           volumeMounts:
             - name: nginx-volume
               readOnly: true
@@ -27,8 +37,8 @@ spec:
               subPath: nginx.conf
             - name: nginx-volume
               readOnly: true
-              mountPath: /usr/share/nginx/html/deployments.json
-              subPath: deployments.json
+              mountPath: /usr/share/nginx/html/versions.json
+              subPath: versions.json
       volumes:
         - name: nginx-volume
           configMap:

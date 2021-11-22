@@ -47,13 +47,19 @@ spec:
         - name: {{ $.Chart.Name }}
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
-          {{ if $.Values.debug }}
-          args: ["api", "--debug"]
           securityContext:
+            {{- if $.Values.debug }}
             runAsUser: 1000
+            {{- end }}
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          {{- if $.Values.debug }}
+          args: ["api", "--debug"]
           {{ else }}
           args: ["api"]
-          {{ end }}
+          {{- end }}
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list $ "redis" "redis.fullname") }}-master

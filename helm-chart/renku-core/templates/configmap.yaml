@@ -19,17 +19,17 @@ data:
       {{ end }}
 
       server {
-        listen 80;
+        listen 8080;
 
         server_name {{ include "renku-core.fullname" . }};
 
         sendfile on;
         tcp_nopush on;
 
-        location /renku/deployments {
+        location /renku/versions {
           root /;
           add_header Content-Type application/json;
-          try_files /usr/share/nginx/html/deployments.json =404;
+          try_files /usr/share/nginx/html/versions.json =404;
         }
 
         {{- range $version := .Values.versions }}
@@ -42,11 +42,13 @@ data:
 
         location /renku {
           proxy_set_header Host $host;
-          proxy_pass http://v9;
+          {{- with (first .Values.versions) }}
+          proxy_pass http://{{ .name }};
+          {{- end }}
         }
       }
     }
-  deployments.json: |
+  versions.json: |
     {
       {{- range $index, $version := .Values.versions }}
       {{- if ne $index 0 }},{{ end }}
