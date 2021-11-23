@@ -184,11 +184,17 @@ def is_allowed_command(ctx):
 @click.pass_context
 def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
+    from renku.core.management import RENKU_HOME
     from renku.core.management.client import LocalClient
-    from renku.core.management.config import RENKU_HOME
+    from renku.core.management.migrations.utils import OLD_METADATA_PATH
+    from renku.core.management.repository import RepositoryApiMixin
+    from renku.core.metadata.database import Database
 
     renku_path = Path(path) / RENKU_HOME
-    if not renku_path.exists() and not is_allowed_command(ctx):
+    old_metadata = renku_path / OLD_METADATA_PATH
+    new_metadata = renku_path / RepositoryApiMixin.DATABASE_PATH / Database.ROOT_OID
+
+    if not old_metadata.exists() and not new_metadata.exists() and not is_allowed_command(ctx):
         raise UsageError(
             (
                 "`{0}` is not a renku repository.\n"

@@ -47,6 +47,7 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
+    "sphinxcontrib.spelling",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -95,7 +96,7 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["_build"]
+exclude_patterns = ["_build", "CHANGES.rst"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -347,10 +348,3 @@ autoclass_content = "both"
 autodoc_mock_imports = ["persistent", "ZODB"]
 autodoc_typehints = "none"
 autodoc_typehints_description_target = "documented"
-
-
-# -- Custom Document processing ----------------------------------------------
-
-from gensidebar import generate_sidebar
-
-generate_sidebar(on_rtd, rtd_version, "renku-python")

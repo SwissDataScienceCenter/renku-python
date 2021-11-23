@@ -23,9 +23,8 @@
 
    installation
    gettingstarted
-   commands
+   reference/index
    api
-   internals
    changes
    license
 

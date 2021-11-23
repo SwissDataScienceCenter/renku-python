@@ -20,7 +20,6 @@
 
 import os.path
 import re
-from datetime import datetime
 from itertools import islice
 
 from renku.core.management.command_builder import inject
@@ -45,14 +44,14 @@ def _rollback_command(client_dispatcher: IClientDispatcher, database_dispatcher:
     """Perform a rollback of the repo."""
     current_client = client_dispatcher.current_client
 
-    commits = current_client.repo.iter_commits(paths=current_client.renku_path)
+    commits = current_client.repository.iterate_commits(current_client.renku_path)
 
     checkpoint = _prompt_for_checkpoint(commits)
 
     if not checkpoint:
         return
 
-    diff = checkpoint[1].diff("HEAD")
+    diff = checkpoint[1].get_changes(commit="HEAD")
 
     confirmation_message, has_changes = _get_confirmation_message(diff, current_client)
 
@@ -62,7 +61,7 @@ def _rollback_command(client_dispatcher: IClientDispatcher, database_dispatcher:
 
     communication.confirm(confirmation_message, abort=True)
 
-    current_client.repo.head.reset(checkpoint[1], index=True, working_tree=True)
+    current_client.repository.reset(checkpoint[1], hard=True)
 
 
 def _get_confirmation_message(diff, client):
@@ -278,8 +277,7 @@ def _checkpoint_iterator(commits):
 
         transaction_id = match.group(0)
         entry = (
-            f"{datetime.utcfromtimestamp(commit.authored_date):%Y-%m-%d %H:%M:%S} "
-            f"\t{commit.hexsha[:7]}\t{commit_message.splitlines()[0]}",
+            f"{commit.authored_datetime:%Y-%m-%d %H:%M:%S} " f"\t{commit.hexsha[:7]}\t{commit_message.splitlines()[0]}",
             commit,
             transaction_id,
         )

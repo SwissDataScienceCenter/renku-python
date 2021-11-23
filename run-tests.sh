@@ -46,6 +46,7 @@ check_styles(){
 
 build_docs(){
     sphinx-build -qnNW docs docs/_build/html
+    sphinx-build -nNW -b spelling -d docs/_build/doctrees docs docs/_build/spelling
     pytest -v -m "not integration and not publish" -o testpaths="docs conftest.py" --ignore=docs/conf.py
 }
 

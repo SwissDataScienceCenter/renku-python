@@ -37,8 +37,9 @@ from renku.core.models.entity import CollectionSchema, Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
 from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
-from renku.core.utils.git import get_path
-from renku.core.utils.urls import get_slug
+from renku.core.utils.git import get_entity_from_revision
+from renku.core.utils.metadata import is_external_file
+from renku.core.utils.urls import get_path, get_slug
 
 
 def is_dataset_name_valid(name):
@@ -181,7 +182,7 @@ class ImageObject(Slots):
 
 
 class RemoteEntity(Slots):
-    """Reference to an Entity in a remote repo."""
+    """Reference to an Entity in a remote repository."""
 
     __slots__ = ("checksum", "id", "path", "url")
 
@@ -244,11 +245,12 @@ class DatasetFile(Slots):
         cls, client, path: Union[str, Path], source=None, based_on: RemoteEntity = None
     ) -> Optional["DatasetFile"]:
         """Return an instance from a path."""
-        entity = Entity.from_revision(client=client, path=path)
+        entity = get_entity_from_revision(repository=client.repository, path=path)
         if not entity:
             return
 
-        return cls(entity=entity, is_external=client.is_external_file(path), source=source, based_on=based_on)
+        is_external = is_external_file(path=path, client_path=client.path)
+        return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
 
     @staticmethod
     def generate_id():

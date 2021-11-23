@@ -24,15 +24,12 @@ from urllib import parse as urlparse
 from uuid import UUID, uuid4
 
 import attr
-import requests
 
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
-from renku.core.utils.git import get_content
-from renku.core.utils.requests import retry
 
 
 @attr.s
@@ -119,7 +116,7 @@ class OLOSExporter(ExporterApi):
                     path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
                 except ValueError:
                     path = Path(file.entity.path)
-                filepath = get_content(repo=client.repo, path=file.entity.path, checksum=file.entity.checksum)
+                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
                 deposition.upload_file(full_path=filepath, path_in_dataset=path)
                 communication.update_progress(progress_text, amount=1)
         finally:
@@ -242,20 +239,22 @@ class _OLOSDeposition:
         url_parts = url_parts._replace(path=api_path, query=query_params)
         return urllib.parse.urlunparse(url_parts)
 
-    def _get(self, url, json=None, data=None, files=None):
+    def _get(self, url):
+        from renku.core.utils import requests
+
         headers = {"Authorization": f"Bearer {self.access_token}"}
         try:
-            with retry() as session:
-                return session.get(url=url, json=json, data=data, files=files, headers=headers)
-        except requests.exceptions.RequestException as e:
-            raise errors.ExportError("Cannot GET to remote server.") from e
+            return requests.get(url=url, headers=headers)
+        except errors.RequestError as e:
+            raise errors.ExportError("Cannot GET from remote server.") from e
 
     def _post(self, url, json=None, data=None, files=None):
+        from renku.core.utils import requests
+
         headers = {"Authorization": f"Bearer {self.access_token}"}
         try:
-            with retry() as session:
-                return session.post(url=url, json=json, data=data, files=files, headers=headers)
-        except requests.exceptions.RequestException as e:
+            return requests.post(url=url, json=json, data=data, files=files, headers=headers)
+        except errors.RequestError as e:
             raise errors.ExportError("Cannot POST to remote server.") from e
 
     @staticmethod

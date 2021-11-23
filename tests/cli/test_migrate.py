@@ -18,6 +18,7 @@
 """Test ``migrate`` command."""
 import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,7 @@ from renku.cli import cli
 from renku.core.management.client import LocalClient
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
+from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import RemoteEntity
 from tests.utils import format_result_exception
 
@@ -35,7 +37,7 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not old_project.is_dirty()
+    assert not old_project.is_dirty(untracked_files=True)
 
 
 @pytest.mark.migration
@@ -43,9 +45,9 @@ def test_migrate_project(isolated_runner, old_project, client_database_injection
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not old_project.is_dirty()
+    assert not old_project.is_dirty(untracked_files=True)
 
-    client = LocalClient(path=old_project.working_dir)
+    client = LocalClient(path=old_project.path)
     with client_database_injection_manager(client):
         assert client.project
         assert client.project.name
@@ -59,18 +61,32 @@ def test_migration_check(isolated_runner, project):
     assert 0 == result.exit_code, format_result_exception(result)
     output = json.loads(result.output)
     assert output.keys() == {
-        "latest_version",
-        "project_version",
-        "migration_required",
         "project_supported",
-        "template_update_possible",
-        "current_template_version",
-        "latest_template_version",
+        "core_renku_version",
+        "project_renku_version",
+        "core_compatibility_status",
+        "dockerfile_renku_status",
+        "template_status",
+    }
+    assert output["core_compatibility_status"].keys() == {
+        "project_metadata_version",
+        "current_metadata_version",
+        "migration_required",
+    }
+    assert output["dockerfile_renku_status"].keys() == {
+        "newer_renku_available",
+        "automated_dockerfile_update",
+        "latest_renku_version",
+        "dockerfile_renku_version",
+    }
+    assert output["template_status"].keys() == {
+        "automated_template_update",
+        "newer_template_available",
         "template_source",
+        "project_template_version",
+        "latest_template_version",
         "template_ref",
         "template_id",
-        "automated_update",
-        "docker_update_possible",
     }
 
 
@@ -80,7 +96,7 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    client = LocalClient(path=old_project.working_dir)
+    client = LocalClient(path=old_project.path)
     with client_database_injection_manager(client):
         assert client.datasets
 
@@ -98,7 +114,7 @@ def test_correct_relative_path(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    client = LocalClient(path=old_project.working_dir)
+    client = LocalClient(path=old_project.path)
 
     with client_database_injection_manager(client):
         datasets_provenance = DatasetsProvenance()
@@ -110,18 +126,18 @@ def test_correct_relative_path(isolated_runner, old_project, client_database_inj
 def test_remove_committed_lock_file(isolated_runner, old_project):
     """Check that renku lock file has been successfully removed from git."""
     repo = old_project
-    repo_path = Path(old_project.working_dir)
+    repo_path = Path(old_project.path)
     with open(str(repo_path / ".renku.lock"), "w") as f:
         f.write("lock")
 
-    repo.index.add([".renku.lock"])
-    repo.index.commit("locked")
+    repo.add(".renku.lock", force=True)
+    repo.commit("locked")
 
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert not (repo_path / ".renku.lock").exists()
-    assert not repo.is_dirty()
+    assert not repo.is_dirty(untracked_files=True)
 
     ignored = (repo_path / ".gitignore").read_text()
     assert ".renku.lock" in ignored
@@ -267,16 +283,15 @@ def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_proj
 
 @pytest.mark.migration
 def test_migrate_non_renku_repository(isolated_runner):
-    """Test migration prints proper message when run on non-renku repo."""
-    from git import Repo
-
-    Repo.init(".")
+    """Test migration prints proper message when run on non-renku repository."""
+    Repository.initialize(".")
     os.mkdir(".renku")
+    sys.argv = ["migrate", "--strict"]
 
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "Error: Not a renku project." in result.output
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "is not a renku repository." in result.output
 
 
 @pytest.mark.migration
@@ -299,16 +314,15 @@ def test_migrate_check_on_unsupported_project(isolated_runner, unsupported_proje
 
 @pytest.mark.migration
 def test_migrate_check_on_non_renku_repository(isolated_runner):
-    """Test migration check on non-renku repo."""
-    from git import Repo
-
-    Repo.init(".")
+    """Test migration check on non-renku repository."""
+    Repository.initialize(".")
     os.mkdir(".renku")
+    sys.argv = ["migrate", "--strict"]
 
     result = isolated_runner.invoke(cli, ["migrate", "--check"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "Error: Not a renku project." in result.output
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "is not a renku repository." in result.output
 
 
 @pytest.mark.migration

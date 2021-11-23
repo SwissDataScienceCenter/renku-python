@@ -93,7 +93,7 @@ class Persistent(persistent.Persistent):
     _v_immutable = False
 
     def reassign_oid(self):
-        """Reassign oid (after assigning a new identifier for example)."""
+        """Reassign ``oid`` (after assigning a new identifier for example)."""
         if self._p_jar is not None:
             self._p_jar.remove_from_cache(self)
 
@@ -119,8 +119,8 @@ class Persistent(persistent.Persistent):
 class Database:
     """The Metadata Object Database.
 
-    This class is equivalent to a persistent.DataManager and implements persistent.interfaces.IPersistentDataManager
-    interface.
+    This class is equivalent to a ``persistent.DataManager`` and implements
+    the ``persistent.interfaces.IPersistentDataManager`` interface.
     """
 
     ROOT_OID = "root"
@@ -146,7 +146,7 @@ class Database:
 
     @staticmethod
     def generate_oid(object: persistent.Persistent) -> OID_TYPE:
-        """Generate oid for a persistent.Persistent object based on its id."""
+        """Generate an ``oid`` for a ``persistent.Persistent`` object based on its id."""
         oid = getattr(object, "_p_oid")
         if oid:
             assert isinstance(oid, OID_TYPE)
@@ -160,12 +160,12 @@ class Database:
 
     @staticmethod
     def hash_id(id: str) -> OID_TYPE:
-        """Return oid from id."""
+        """Return ``oid`` from id."""
         return hashlib.sha3_256(id.encode("utf-8")).hexdigest()
 
     @staticmethod
     def new_oid():
-        """Generate a random oid."""
+        """Generate a random ``oid``."""
         return f"{uuid4().hex}{uuid4().hex}"
 
     @staticmethod
@@ -245,7 +245,7 @@ class Database:
         self._objects_to_commit[object._p_oid] = object
 
     def get(self, oid: OID_TYPE) -> persistent.Persistent:
-        """Get the object by oid."""
+        """Get the object by ``oid``."""
         if oid != Database.ROOT_OID and oid in self._root:  # NOTE: Avoid looping if getting "root"
             return self._root[oid]
         object = self.get_cached(oid)
@@ -344,13 +344,13 @@ class Database:
         assert object._p_oid is not None
 
     def oldstate(self, object, tid):
-        """See persistent.interfaces.IPersistentDataManager::oldstate."""
+        """See ``persistent.interfaces.IPersistentDataManager::oldstate``."""
         raise NotImplementedError
 
 
 @implementer(IPickleCache)
 class Cache:
-    """Database Cache."""
+    """Database ``Cache``."""
 
     def __init__(self):
         self._entries = {}
@@ -389,12 +389,12 @@ class Cache:
         return self._entries.pop(oid) if default is MARKER else self._entries.pop(oid, default)
 
     def get(self, oid, default=None):
-        """See IPickleCache."""
+        """See ``IPickleCache``."""
         assert isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
         return self._entries.get(oid, default)
 
     def new_ghost(self, oid, object):
-        """See IPickleCache."""
+        """See ``IPickleCache``."""
         assert object._p_oid is None, f"Object already has an oid: {object}"
         assert object._p_jar is not None, f"Object does not have a jar: {object}"
         assert oid not in self._entries, f"Duplicate oid: {oid}"
@@ -413,10 +413,10 @@ class Index(persistent.Persistent):
         """
         Create an index where keys are extracted using `attribute` from an object or a key.
 
-        @param name: Index's name
-        @param object_type: Type of objects that the index points to
-        @param attribute: Name of an attribute to be used to automatically generate a key (e.g. `entity.path`)
-        @param key_type: Type of keys. If not None then a key must be provided when updating the index
+        :param name: Index's name
+        :param object_type: Type of objects that the index points to
+        :param attribute: Name of an attribute to be used to automatically generate a key (e.g. `entity.path`)
+        :param key_type: Type of keys. If not None then a key must be provided when updating the index
         """
         assert name == name.lower(), f"Index name must be all lowercase: '{name}'."
 

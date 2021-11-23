@@ -35,6 +35,7 @@ from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAge
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
 from renku.core.models.provenance.parameter import ParameterValue, ParameterValueSchema
 from renku.core.models.workflow.plan import Plan, PlanSchema
+from renku.core.utils.git import get_entity_from_revision, get_git_user
 from renku.version import __version__, version_url
 
 NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
@@ -134,7 +135,6 @@ class Activity(Persistent):
         update_commits=False,
     ):
         """Convert a ``Plan`` to a ``Activity``."""
-        from renku.core.models.provenance.agent import SoftwareAgent
         from renku.core.plugins.pluginmanager import get_plugin_manager
 
         client = client_dispatcher.current_client
@@ -155,7 +155,7 @@ class Activity(Persistent):
             if input_path in usages:
                 continue
 
-            entity = Entity.from_revision(client, path=input_path)
+            entity = get_entity_from_revision(repository=client.repository, path=input_path)
 
             dependency = Usage(entity=entity, id=Usage.generate_id(activity_id))
 
@@ -171,7 +171,7 @@ class Activity(Persistent):
             if output_path in generations:
                 continue
 
-            entity = Entity.from_revision(client, path=output_path)
+            entity = get_entity_from_revision(repository=client.repository, path=output_path)
 
             generation = Generation(entity=entity, id=Usage.generate_id(activity_id))
 
@@ -185,7 +185,7 @@ class Activity(Persistent):
             )
 
         agent = SoftwareAgent(id=version_url, name=f"renku {__version__}")
-        person = Person.from_client(client)
+        person = get_git_user(client.repository)
         association = Association(agent=agent, id=Association.generate_id(activity_id), plan=plan)
 
         activity = cls(

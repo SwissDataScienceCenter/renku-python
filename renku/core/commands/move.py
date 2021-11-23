@@ -20,14 +20,11 @@
 import os
 from pathlib import Path
 
-import git
-
 from renku.core import errors
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
-from renku.core.utils.git import add_to_git
 
 
 def move_command():
@@ -74,8 +71,8 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
             absolute_destination.mkdir(parents=True, exist_ok=True)
 
     try:
-        client.repo.git.mv([str(src) for src in sources] + [str(destination)], force=force)
-    except git.GitError as e:
+        client.repository.move(*sources, destination=destination, force=force)
+    except errors.GitCommandError as e:
         raise errors.OperationError(f"Git operation failed: {e}")
 
     # Handle symlinks
@@ -92,7 +89,7 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
     client.track_paths_in_storage(*[dst for dst in files.values() if not dst.is_dir()])
 
     # NOTE: Force-add to include possible ignored files
-    add_to_git(client.repo.git, *files.values(), force=True)
+    client.repository.add(*files.values(), force=True)
 
     client.move_files(files=files, to_dataset=to_dataset)
 
@@ -164,7 +161,7 @@ def _warn_about_git_filters(files, client_dispatcher: IClientDispatcher):
     src_attrs = []
     dst_attrs = []
 
-    for path, attrs in client.find_attr(*files).items():
+    for path, attrs in client.repository.get_attributes(*files).items():
         src = Path(path)
         dst = files[src].relative_to(client.path)
         src = src.relative_to(client.path)

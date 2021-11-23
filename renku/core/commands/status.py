@@ -20,8 +20,6 @@
 from collections import defaultdict
 from typing import Set, Tuple
 
-from git import Repo
-
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.activity_gateway import IActivityGateway
@@ -55,7 +53,7 @@ def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivit
     paths = paths or []
     paths = get_relative_paths(base=client.path, paths=paths)
 
-    modified, deleted = _get_modified_paths(activity_gateway=activity_gateway, repo=client.repo)
+    modified, deleted = _get_modified_paths(activity_gateway=activity_gateway, repository=client.repository)
 
     if not modified and not deleted:
         return None, None, None, None
@@ -87,9 +85,9 @@ def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivit
     return stale_outputs, stale_activities, modified_inputs, deleted
 
 
-def _get_modified_paths(activity_gateway, repo: Repo) -> Tuple[Set[Tuple[Activity, Entity]], Set[str]]:
+def _get_modified_paths(activity_gateway, repository) -> Tuple[Set[Tuple[Activity, Entity]], Set[str]]:
     """Get modified and deleted usages/inputs of a list of activities."""
     latest_activities = activity_gateway.get_latest_activity_per_plan().values()
-    modified, deleted = get_modified_activities(activities=latest_activities, repo=repo)
+    modified, deleted = get_modified_activities(activities=latest_activities, repository=repository)
 
     return modified, {e.path for _, e in deleted}
