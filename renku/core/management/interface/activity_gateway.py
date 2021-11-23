@@ -19,10 +19,9 @@
 
 from abc import ABC
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 
-from renku.core.models.provenance.activity import Activity, ActivityCollection, Usage
-from renku.core.models.workflow.plan import AbstractPlan
+from renku.core.models.provenance.activity import Activity, ActivityCollection
 
 
 class IActivityGateway(ABC):
@@ -30,14 +29,6 @@ class IActivityGateway(ABC):
 
     def get_latest_activities(self) -> List[Activity]:
         """Get the latest activites by their usages and generations."""
-        raise NotImplementedError
-
-    def get_latest_activity_per_plan(self):
-        """Get latest activity for each plan."""
-        raise NotImplementedError
-
-    def get_plans_and_usages_for_latest_activities(self) -> Dict[AbstractPlan, List[Usage]]:
-        """Get all usages associated with a plan by its latest activity."""
         raise NotImplementedError
 
     def get_all_usage_paths(self) -> List[str]:

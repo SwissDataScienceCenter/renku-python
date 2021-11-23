@@ -19,7 +19,7 @@
 
 from itertools import chain
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 
 from persistent.list import PersistentList
 
@@ -28,8 +28,8 @@ from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.metadata.gateway.database_gateway import ActivityDownstreamRelation
-from renku.core.models.provenance.activity import Activity, ActivityCollection, Usage
-from renku.core.models.workflow.plan import AbstractPlan, Plan
+from renku.core.models.provenance.activity import Activity, ActivityCollection
+from renku.core.models.workflow.plan import Plan
 from renku.core.utils.os import are_paths_related
 
 
@@ -44,18 +44,6 @@ class ActivityGateway(IActivityGateway):
         activities_with_generations = database["latest-activity-by-generations"].values()
         activities_without_generations = database["activities-without-generation"].values()
         return chain(activities_with_generations, activities_without_generations)
-
-    def get_latest_activity_per_plan(self) -> Dict[AbstractPlan, Activity]:
-        """Get latest activity for each plan."""
-        plan_activities = self.database_dispatcher.current_database["latest-activity-by-plan"].values()
-
-        return {a.association.plan: a for a in plan_activities}
-
-    def get_plans_and_usages_for_latest_activities(self) -> Dict[AbstractPlan, List[Usage]]:
-        """Get all usages associated with a plan by its latest activity."""
-        plan_activities = self.database_dispatcher.current_database["latest-activity-by-plan"].values()
-
-        return {a.association.plan: a.usages for a in plan_activities}
 
     def get_all_usage_paths(self) -> List[str]:
         """Return all usage paths."""
@@ -127,12 +115,6 @@ class ActivityGateway(IActivityGateway):
     def add(self, activity: Activity):
         """Add an ``Activity`` to storage."""
 
-        def update_latest_activity_by_plan(plan):
-            existing_activity = database["latest-activity-by-plan"].get(plan.id)
-
-            if not existing_activity or existing_activity.ended_at_time < activity.ended_at_time:
-                database["latest-activity-by-plan"].add(activity, key=plan.id, verify=False)
-
         database = self.database_dispatcher.current_database
 
         database["activities"].add(activity)
@@ -157,7 +139,7 @@ class ActivityGateway(IActivityGateway):
                     upstreams.update(activities)
 
         for generation in activity.generations:
-            generations.append(g.entity.path)
+            generations.append(generation.entity.path)
 
             if generation.entity.path not in by_generation:
                 by_generation[generation.entity.path] = PersistentList()
@@ -195,8 +177,6 @@ class ActivityGateway(IActivityGateway):
 
         plan_gateway = inject.instance(IPlanGateway)
         plan_gateway.add(activity.association.plan)
-
-        update_latest_activity_by_plan(activity.association.plan)
 
     def add_activity_collection(self, activity_collection: ActivityCollection):
         """Add an ``ActivityCollection`` to storage."""
