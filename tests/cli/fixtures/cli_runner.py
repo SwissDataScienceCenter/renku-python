@@ -38,7 +38,7 @@ def renku_cli(client, run, client_database_injection_manager):
     def renku_cli_(*args, **kwargs) -> Tuple[int, Union[None, Activity, List[Activity]]]:
         @inject.autoparams()
         def _get_activities(activity_gateway: IActivityGateway):
-            return {a.id: a for a in activity_gateway.get_latest_activities()}
+            return {a.id: a for a in activity_gateway.get_all_activities()}
 
         with client_database_injection_manager(client):
             activities_before = _get_activities()

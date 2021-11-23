@@ -27,10 +27,6 @@ from renku.core.models.provenance.activity import Activity, ActivityCollection
 class IActivityGateway(ABC):
     """Interface for the ActivityGateway."""
 
-    def get_latest_activities(self) -> List[Activity]:
-        """Get the latest activites by their usages and generations."""
-        raise NotImplementedError
-
     def get_all_usage_paths(self) -> List[str]:
         """Return all usage paths."""
         raise NotImplementedError

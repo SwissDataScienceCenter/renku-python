@@ -17,64 +17,10 @@
 # limitations under the License.
 """Test activity database gateways."""
 
-from datetime import datetime, timedelta
 
 from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-from renku.core.models.provenance.activity import Activity, Association
 from renku.core.models.workflow.plan import Plan
 from tests.utils import create_dummy_activity
-
-
-def test_activity_gateway_get_latest_activity(dummy_database_injection_manager):
-    """Test getting latest activity for a plan."""
-
-    plan = Plan(id=Plan.generate_id(), name="plan")
-    plan2 = Plan(id=Plan.generate_id(), name="plan2")
-
-    activity1_id = Activity.generate_id()
-    activity1 = Activity(
-        id=activity1_id,
-        ended_at_time=datetime.utcnow() - timedelta(hours=1),
-        association=Association(id=Association.generate_id(activity1_id), plan=plan),
-    )
-
-    activity2_id = Activity.generate_id()
-    activity2 = Activity(
-        id=activity2_id,
-        ended_at_time=datetime.utcnow(),
-        association=Association(id=Association.generate_id(activity2_id), plan=plan),
-    )
-
-    activity3_id = Activity.generate_id()
-    activity3 = Activity(
-        id=activity3_id,
-        ended_at_time=datetime.utcnow(),
-        association=Association(id=Association.generate_id(activity3_id), plan=plan2),
-    )
-
-    with dummy_database_injection_manager(None):
-        activity_gateway = ActivityGateway()
-
-        activity_gateway.add(activity1)
-
-        latest_activities = activity_gateway.get_latest_activities()
-        assert len(latest_activities) == 1
-        assert {activity1_id} == {a.id for a in latest_activities.values()}
-        assert {plan.id} == {p.id for p in latest_activities.keys()}
-
-        activity_gateway.add(activity3)
-
-        latest_activities = activity_gateway.get_latest_activities()
-        assert len(latest_activities) == 2
-        assert {activity1_id, activity3_id} == {a.id for a in latest_activities.values()}
-        assert {plan.id, plan2.id} == {p.id for p in latest_activities.keys()}
-
-        activity_gateway.add(activity2)
-
-        latest_activities = activity_gateway.get_latest_activities()
-        assert len(latest_activities) == 2
-        assert {activity2_id, activity3_id} == {a.id for a in latest_activities.values()}
-        assert {plan.id, plan2.id} == {p.id for p in latest_activities.keys()}
 
 
 def test_activity_gateway_downstream_activities(dummy_database_injection_manager):

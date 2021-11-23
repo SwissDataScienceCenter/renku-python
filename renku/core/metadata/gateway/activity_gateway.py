@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku activity database gateway implementation."""
 
-from itertools import chain
 from pathlib import Path
 from typing import List, Optional, Set, Tuple, Union
 
@@ -37,13 +36,6 @@ class ActivityGateway(IActivityGateway):
     """Gateway for activity database operations."""
 
     database_dispatcher = inject.attr(IDatabaseDispatcher)
-
-    def get_latest_activities(self) -> List[Activity]:
-        """Get the latest activites by their usages and generations."""
-        database = self.database_dispatcher.current_database
-        activities_with_generations = database["latest-activity-by-generations"].values()
-        activities_without_generations = database["activities-without-generation"].values()
-        return chain(activities_with_generations, activities_without_generations)
 
     def get_all_usage_paths(self) -> List[str]:
         """Return all usage paths."""
@@ -123,11 +115,7 @@ class ActivityGateway(IActivityGateway):
         downstreams = set()
 
         by_usage = database["activities-by-usage"]
-        latest_by_generations = database["latest-activity-by-generations"]
-        activities_without_generations = database["activities-without-generation"]
         by_generation = database["activities-by-generation"]
-
-        generations = []
 
         for usage in activity.usages:
             if usage.entity.path not in by_usage:
@@ -139,8 +127,6 @@ class ActivityGateway(IActivityGateway):
                     upstreams.update(activities)
 
         for generation in activity.generations:
-            generations.append(generation.entity.path)
-
             if generation.entity.path not in by_generation:
                 by_generation[generation.entity.path] = PersistentList()
             by_generation[generation.entity.path].append(activity)
@@ -148,22 +134,6 @@ class ActivityGateway(IActivityGateway):
             for path, activities in by_usage.items():
                 if are_paths_related(path, generation.entity.path):
                     downstreams.update(activities)
-
-        if generations:
-            latest_by_generations[frozenset(generations)] = activity
-        else:
-            # activity has no outputs
-            usages = set(u.entity.path for u in activity.usages)
-            existing_activities = [
-                a for a in activities_without_generations.values() if a.association.plan == activity.association.plan
-            ]
-            existing_activities = [a for a in existing_activities if set(u.entity.path for u in a.usages) == usages]
-
-            if existing_activities:
-                for a in existing_activities:
-                    activities_without_generations.pop(a.id)
-
-            activities_without_generations.add(activity)
 
         if upstreams:
             for s in upstreams:

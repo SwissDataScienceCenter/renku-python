@@ -90,10 +90,7 @@ def load_downstream_relations(token, catalog, cache, database_dispatcher: IDatab
 def initialize_database(database):
     """Initialize an empty database with all required metadata."""
     database.add_index(name="activities", object_type=Activity, attribute="id")
-    database.add_index(name="activities-without-generation", object_type=Activity, attribute="id")
-    database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
     database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
-    database.add_root_object(name="latest-activity-by-generations", obj=BTrees.OOBTree.OOBTree())
     database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
 
     database.add_index(name="activity-collections", object_type=ActivityCollection, attribute="id")
