@@ -214,6 +214,13 @@
                "sh:class": {
                   "@id": "prov:Activity"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:keywords",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       },
