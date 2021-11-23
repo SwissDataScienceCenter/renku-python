@@ -28,6 +28,10 @@ from renku.core.models.workflow.plan import AbstractPlan
 class IActivityGateway(ABC):
     """Interface for the ActivityGateway."""
 
+    def get_latest_activities(self) -> List[Activity]:
+        """Get the latest activites by their usages and generations."""
+        raise NotImplementedError
+
     def get_latest_activity_per_plan(self):
         """Get latest activity for each plan."""
         raise NotImplementedError

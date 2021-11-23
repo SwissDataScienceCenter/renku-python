@@ -87,7 +87,7 @@ def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivit
 
 def _get_modified_paths(activity_gateway, repository) -> Tuple[Set[Tuple[Activity, Entity]], Set[str]]:
     """Get modified and deleted usages/inputs of a list of activities."""
-    latest_activities = activity_gateway.get_latest_activity_per_plan().values()
+    latest_activities = activity_gateway.get_latest_activities()
     modified, deleted = get_modified_activities(activities=latest_activities, repository=repository)
 
     return modified, {e.path for _, e in deleted}

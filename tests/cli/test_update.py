@@ -199,7 +199,9 @@ def test_update_workflow_without_outputs(runner, project, run):
 
     write_and_commit_file(repo, source, "content")
 
-    assert 0 == runner.invoke(cli, ["run", "cat", "--no-output", source]).exit_code
+    result = runner.invoke(cli, ["run", "cat", "--no-output", source])
+
+    assert 0 == result.exit_code, format_result_exception(result)
 
     write_and_commit_file(repo, source, "changes")
 
