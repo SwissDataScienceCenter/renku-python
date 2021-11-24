@@ -113,7 +113,6 @@ def _get_modified_activities_and_paths(repository, activity_gateway) -> Tuple[Se
     for activity in all_activities:
         add_activity_if_recent(activity, relevant_activities)
     modified, _ = get_modified_activities(activities=list(relevant_activities), repository=repository)
-
     return {a for a, _ in modified if _is_activity_valid(a)}, {e.path for _, e in modified}
 
 

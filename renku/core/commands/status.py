@@ -88,6 +88,7 @@ def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivit
 def _get_modified_paths(activity_gateway, repository) -> Tuple[Set[Tuple[Activity, Entity]], Set[str]]:
     """Get modified and deleted usages/inputs of a list of activities."""
     all_activities = activity_gateway.get_all_activities()
+
     relevant_activities = set()
     for activity in all_activities:
         add_activity_if_recent(activity, relevant_activities)

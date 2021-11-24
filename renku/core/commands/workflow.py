@@ -480,7 +480,8 @@ def execute_workflow(
     for plan in plans:
         # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
         original_plan = plan_gateway.get_by_id(plan.id)
-        activity = Activity.from_plan(plan=original_plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
+        activity = Activity.from_plan(plan=plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
+        activity.association.plan = original_plan
         activity_gateway.add(activity)
         activities.append(activity)
 
