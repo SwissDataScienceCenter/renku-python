@@ -26,7 +26,7 @@ from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Activity
-from renku.core.utils.metadata import get_modified_activities
+from renku.core.utils.metadata import add_activity_if_recent, get_modified_activities
 from renku.core.utils.os import get_relative_path_to_cwd, get_relative_paths
 
 
@@ -87,7 +87,11 @@ def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivit
 
 def _get_modified_paths(activity_gateway, repository) -> Tuple[Set[Tuple[Activity, Entity]], Set[str]]:
     """Get modified and deleted usages/inputs of a list of activities."""
-    latest_activities = activity_gateway.get_latest_activity_per_plan().values()
-    modified, deleted = get_modified_activities(activities=latest_activities, repository=repository)
+    all_activities = activity_gateway.get_all_activities()
+
+    relevant_activities = set()
+    for activity in all_activities:
+        add_activity_if_recent(activity, relevant_activities)
+    modified, deleted = get_modified_activities(activities=list(relevant_activities), repository=repository)
 
     return modified, {e.path for _, e in deleted}
