@@ -41,6 +41,8 @@ OID_TYPE = str
 TYPE_TYPE = "type"
 FUNCTION_TYPE = "function"
 REFERENCE_TYPE = "reference"
+SET_TYPE = "set"
+FROZEN_SET_TYPE = "frozenset"
 MARKER = object()
 
 """NOTE: These are used as _p_serial to mark if an object was read from storage or is new"""
@@ -619,6 +621,16 @@ class ObjectWriter:
             return object
         elif isinstance(object, list):
             return [self._serialize_helper(value) for value in object]
+        elif isinstance(object, set):
+            return {
+                "@renku_data_type": SET_TYPE,
+                "@renku_data_value": [self._serialize_helper(value) for value in object],
+            }
+        elif isinstance(object, frozenset):
+            return {
+                "@renku_data_type": FROZEN_SET_TYPE,
+                "@renku_data_value": [self._serialize_helper(value) for value in object],
+            }
         elif isinstance(object, dict):
             result = dict()
             items = sorted(object.items(), key=lambda x: x[0])
@@ -747,6 +759,10 @@ class ObjectReader:
             elif object_type == REFERENCE_TYPE:
                 # NOTE: we had a circular reference, we return the (not yet finalized) class here
                 return self._deserialization_cache[data["@renku_data_value"]]
+            elif object_type == SET_TYPE:
+                return set([self._deserialize_helper(value) for value in data["@renku_data_value"]])
+            elif object_type == FROZEN_SET_TYPE:
+                return frozenset([self._deserialize_helper(value) for value in data["@renku_data_value"]])
 
             cls = self._get_class(object_type)
 
