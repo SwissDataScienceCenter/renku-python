@@ -433,7 +433,8 @@ def test_update_multiple_paths_common_output(project, renku_cli, runner):
     assert "r4" in result.output
 
 
-def test_update_with_execute(runner, client, renku_cli, client_database_injection_manager):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_with_execute(runner, client, renku_cli, client_database_injection_manager, provider):
     """Test output is updated when source changes."""
     source1 = Path("source.txt")
     output1 = Path("output.txt")
@@ -451,7 +452,7 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
     assert (
         0
         == renku_cli(
-            "workflow", "execute", "--set", f"input-2={source2}", "--set", f"output-3={output2}", "test"
+            "workflow", "execute", "-p", provider, "--set", f"input-2={source2}", "--set", f"output-3={output2}", "test"
         ).exit_code
     )
 
@@ -466,7 +467,7 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    assert 0 == renku_cli("update", "--all").exit_code
+    assert 0 == renku_cli("update", "-p", provider, "--all").exit_code
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
@@ -479,7 +480,7 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    assert 0 == renku_cli("update", "--all").exit_code
+    assert 0 == renku_cli("update", "-p", provider, "--all").exit_code
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
