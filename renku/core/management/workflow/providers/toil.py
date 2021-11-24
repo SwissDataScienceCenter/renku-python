@@ -26,7 +26,7 @@ import uuid
 from abc import abstractmethod
 from pathlib import Path
 from subprocess import call
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 import networkx as nx
 from toil.common import Toil
@@ -120,7 +120,7 @@ class AbstractToilJob(Job):
         if return_code not in (self._workflow.success_codes or {0}):
             raise errors.InvalidSuccessCode(return_code, success_codes=self._workflow.success_codes)
 
-        return _upload_files(self._workflow.outputs, storage, Path.cwd())
+        return _upload_files(storage.writeGlobalFile, self._workflow.outputs, Path.cwd())
 
 
 class SubprocessToilJob(AbstractToilJob):
@@ -138,7 +138,9 @@ class SubprocessToilJob(AbstractToilJob):
         )
 
 
-def _upload_files(params: List[CommandParameterBase], storage: AbstractFileStore, basedir: Path) -> Dict[str, FileID]:
+def _upload_files(
+    import_function: Callable[[str], FileID], params: List[CommandParameterBase], basedir: Path
+) -> Dict[str, FileID]:
     file_locations = dict()
     for p in params:
         location = basedir / p.actual_value
@@ -148,21 +150,27 @@ def _upload_files(params: List[CommandParameterBase], storage: AbstractFileStore
         if location.is_dir():
             directory_content = dict()
             for f in location.rglob("*"):
-                directory_content[str(f.relative_to(basedir))] = storage.writeGlobalFile(str(f))
+                directory_content[str(f.relative_to(basedir))] = import_function(str(f))
             file_locations[p.actual_value] = directory_content
         else:
-            file_id = storage.writeGlobalFile(str(location))
-            file_locations[p.actual_value] = file_id
-        storage.logToMaster(f"Storing '{p.actual_value}' as '{file_locations[p.actual_value]}'", level=logging.DEBUG)
+            file_locations[p.actual_value] = import_function(str(location))
+
     return file_locations
+
+
+def importFileWrapper(storage: AbstractFileStore, file_path: str) -> FileID:
+    """Wrap importFile accept file:// URIs."""
+    file_uri = file_path if ":/" in file_path else f"file://{file_path}"
+    return storage.importFile(file_uri)
 
 
 def process_children(parent: Job, children: List[Plan], dag: nx.DiGraph, basedir: Path, storage: AbstractFileStore):
     """Recursively process children of a workflow."""
 
     outputs = list()
+    import_function = functools.partial(importFileWrapper, storage)
     for child in children:
-        file_metadata = _upload_files(child.inputs, storage, basedir)
+        file_metadata = _upload_files(import_function, child.inputs, basedir)
         childJob = SubprocessToilJob(child, file_metadata, parent_promise=parent.rv())
         outputs.append(parent.addFollowOn(childJob).rv())
         outputs += process_children(childJob, nx.neighbors(dag, child), dag, basedir, storage)
@@ -174,8 +182,9 @@ def initialize_jobs(job, children, basedir, dag):
 
     job.fileStore.logToMaster("executing renku DAG")
     outputs = list()
+    import_function = functools.partial(importFileWrapper, job.fileStore)
     for workflow in children:
-        file_metadata = _upload_files(workflow.inputs, job.fileStore, basedir)
+        file_metadata = _upload_files(import_function, workflow.inputs, basedir)
         childJob = SubprocessToilJob(workflow, file_metadata)
         outputs.append(job.addChild(childJob).rv())
         outputs += process_children(childJob, nx.neighbors(dag, workflow), dag, basedir, job.fileStore)
@@ -200,10 +209,6 @@ class ToilProvider(IWorkflowProvider):
         options = Job.Runner.getDefaultOptions(str(tmpdir / uuid.uuid4().hex))
         options.logLevel = "ERROR"
         options.clean = "always"
-        # TODO: unforunately ATM this has to be set even for local runner
-        # switching from writeGlobalFile to import_file might fix the
-        # underlying problem.
-        options.disableCaching = 1
 
         if config:
             [setattr(options, k, v) for k, v in config.items()]
