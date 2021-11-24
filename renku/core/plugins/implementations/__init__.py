@@ -18,7 +18,7 @@
 """Renku plugin implementations."""
 
 from renku.core.management.workflow.converters.cwl import CWLExporter
-from renku.core.management.workflow.providers.cwltool_provider import CWLToolProvider
+from renku.core.management.workflow.providers.cwltool import CWLToolProvider
 
 __all__ = []
 
