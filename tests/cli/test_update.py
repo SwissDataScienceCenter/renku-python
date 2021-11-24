@@ -199,7 +199,9 @@ def test_update_workflow_without_outputs(runner, project, run):
 
     write_and_commit_file(repo, source, "content")
 
-    assert 0 == runner.invoke(cli, ["run", "cat", "--no-output", source]).exit_code
+    result = runner.invoke(cli, ["run", "cat", "--no-output", source])
+
+    assert 0 == result.exit_code, format_result_exception(result)
 
     write_and_commit_file(repo, source, "changes")
 
@@ -415,3 +417,58 @@ def test_update_multiple_paths_common_output(project, renku_cli, runner):
     assert "r2" not in result.output
     assert "r3" in result.output
     assert "r4" in result.output
+
+
+def test_update_with_execute(runner, client, renku_cli, client_database_injection_manager):
+    """Test output is updated when source changes."""
+    source1 = Path("source.txt")
+    output1 = Path("output.txt")
+    source2 = Path("source2.txt")
+    output2 = Path("output2.txt")
+    script = Path("cp.sh")
+
+    write_and_commit_file(client.repository, source1, "content_a")
+    write_and_commit_file(client.repository, source2, "content_b")
+    write_and_commit_file(client.repository, script, "cp $1 $2")
+
+    result = runner.invoke(cli, ["run", "--name", "test", "bash", str(script), str(source1), str(output1)])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert (
+        0
+        == renku_cli(
+            "workflow", "execute", "--set", f"input-2={source2}", "--set", f"output-3={output2}", "test"
+        ).exit_code
+    )
+
+    assert "content_a" == (client.path / output1).read_text()
+    assert "content_b" == (client.path / output2).read_text()
+
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    write_and_commit_file(client.repository, script, "cp $1 $2\necho 'modified' >> $2")
+
+    result = runner.invoke(cli, ["status"])
+    assert 1 == result.exit_code
+
+    assert 0 == renku_cli("update", "--all").exit_code
+
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code
+
+    assert "content_amodified\n" == (client.path / output1).read_text()
+    assert "content_bmodified\n" == (client.path / output2).read_text()
+
+    write_and_commit_file(client.repository, script, "cp $1 $2\necho 'even more modified' >> $2")
+
+    result = runner.invoke(cli, ["status"])
+    assert 1 == result.exit_code
+
+    assert 0 == renku_cli("update", "--all").exit_code
+
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code
+
+    assert "content_aeven more modified\n" == (client.path / output1).read_text()
+    assert "content_beven more modified\n" == (client.path / output2).read_text()
