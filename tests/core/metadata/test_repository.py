@@ -198,3 +198,32 @@ def test_hash_deleted_objects(git_repository):
 
     with pytest.raises(errors.GitCommandError):
         Repository.hash_object("B")
+
+
+def test_hash_directories(git_repository):
+    """Test hashing tree objects."""
+    (git_repository.path / "X").mkdir()
+    (git_repository.path / "X" / "A").write_text("modified")
+
+    assert git_repository.get_object_hash("X", revision="HEAD") is None
+    assert git_repository.get_object_hash("X") is None
+
+    with pytest.raises(errors.GitCommandError):
+        Repository.hash_object("X")
+
+    # NOTE: When staging a directory then the hash can be calculated
+    git_repository.add("X")
+
+    directory_hash = git_repository.get_object_hash("X", revision="HEAD")
+
+    assert directory_hash is not None
+    assert directory_hash == git_repository.get_object_hash("X")
+
+    # NOTE: Hash of the committed directory is the same as the staged hash
+    git_repository.commit("Committed X")
+
+    assert directory_hash == git_repository.get_object_hash("X", revision="HEAD")
+    assert directory_hash == git_repository.get_object_hash("X")
+
+    with pytest.raises(errors.GitCommandError):
+        Repository.hash_object("X")
