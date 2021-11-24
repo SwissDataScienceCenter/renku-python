@@ -201,6 +201,8 @@ class ToilProvider(IWorkflowProvider):
         options.logLevel = "ERROR"
         options.clean = "always"
         # TODO: unforunately ATM this has to be set even for local runner
+        # switching from writeGlobalFile to import_file might fix the
+        # underlying problem.
         options.disableCaching = 1
 
         if config:
@@ -214,9 +216,7 @@ class ToilProvider(IWorkflowProvider):
 
                 job_outputs = toil.start(rootJob)
 
-                # TODO: it's incorrect the number when the item's value is a dictionary,
-                # in other words when moving a directory
-                num_outputs = functools.reduce(lambda a, b: a + len(b), job_outputs, 0)
+                num_outputs = functools.reduce(lambda a, b: a + len(b.values()), job_outputs, 0)
                 with progressbar(length=num_outputs, label="Moving outputs") as bar:
                     for collection in job_outputs:
                         for name, fid in collection.items():

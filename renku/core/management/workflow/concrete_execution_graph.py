@@ -24,6 +24,7 @@ from typing import Dict, List, Union
 import networkx as nx
 from networkx.algorithms.cycles import simple_cycles
 
+from renku.core.errors import ParameterError
 from renku.core.models.workflow import composite_plan, parameter, plan
 
 
@@ -120,8 +121,7 @@ class ExecutionGraph:
                 if wf:
                     break
             else:
-                # FIXME: raise proper exception!
-                raise Exception()
+                raise ParameterError(f"'{param.name}' is not part of any workflows.")
 
             if isinstance(param, parameter.CommandOutput):
                 edge = (wf, param)

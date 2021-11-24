@@ -546,8 +546,8 @@ from typing import TYPE_CHECKING
 import click
 from lazy_object_proxy import Proxy
 
-from renku.cli.utils.plugins import available_workflow_providers, supported_formats
 from renku.cli.utils.callback import ClickCallback
+from renku.cli.utils.plugins import available_workflow_providers, supported_formats
 from renku.core import errors
 from renku.core.commands.echo import ERROR
 from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
