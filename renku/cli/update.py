@@ -125,7 +125,6 @@ from lazy_object_proxy import Proxy
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.plugins import available_workflow_providers
 from renku.core import errors
-from renku.core.plugins.provider import available_workflow_providers
 
 
 @click.command()

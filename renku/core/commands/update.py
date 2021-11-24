@@ -81,8 +81,6 @@ def _update(
         return activities, modified_paths
 
     graph = ExecutionGraph([a.plan_with_values for a in activities], virtual_links=True)
-    # FIXME: drop
-    provider = "toil"
     execute_workflow(dag=graph.workflow_graph, command_name="update", provider=provider, config=config)
 
 

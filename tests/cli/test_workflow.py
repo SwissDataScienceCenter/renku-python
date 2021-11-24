@@ -491,9 +491,7 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
     assert {"output"} == set(result.output.strip().split("\n"))
 
 
-# FIXME: switch back as soon as cwltools DAG export works
-# @pytest.mark.parametrize("provider", available_workflow_providers())
-@pytest.mark.parametrize("provider", ["toil"])
+@pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize("yaml", [False, True])
 @pytest.mark.parametrize(
     "workflows, parameters",
@@ -790,9 +788,7 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
     assert "xyz\n" == Path("output4").read_text()
 
 
-# FIXME
-# @pytest.mark.parametrize("provider", available_workflow_providers())
-@pytest.mark.parametrize("provider", ["toil"])
+@pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize(
     "workflow, parameters, num_iterations",
     [

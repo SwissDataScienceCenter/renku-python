@@ -546,8 +546,8 @@ from typing import TYPE_CHECKING
 import click
 from lazy_object_proxy import Proxy
 
+from renku.cli.utils.plugins import available_workflow_providers, supported_formats
 from renku.cli.utils.callback import ClickCallback
-import renku.cli.utils.plugins
 from renku.core import errors
 from renku.core.commands.echo import ERROR
 from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
@@ -881,7 +881,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 @click.option(
     "--format",
     default="cwl",
-    type=click.Choice(Proxy(renku.cli.utils.plugins.supported_formats), case_sensitive=False),
+    type=click.Choice(Proxy(supported_formats), case_sensitive=False),
     show_default=True,
     help="Workflow language format.",
 )
@@ -970,7 +970,7 @@ def outputs(ctx, paths):
     "--provider",
     default="cwltool",
     show_default=True,
-    type=click.Choice(Proxy(renku.cli.utils.plugins.available_workflow_providers), case_sensitive=False),
+    type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
 )
 @click.option(
@@ -1122,7 +1122,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
     "--provider",
     default="cwltool",
     show_default=True,
-    type=click.Choice(Proxy(renku.cli.utils.plugins.available_workflow_providers), case_sensitive=False),
+    type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
 )
 @click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")

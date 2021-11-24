@@ -45,6 +45,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import unquote
+from uuid import uuid4
 
 import cwltool.factory
 import networkx as nx
@@ -52,6 +53,7 @@ from cwltool.context import LoadingContext, RuntimeContext
 
 from renku.core.commands.echo import progressbar
 from renku.core.errors import WorkflowExecuteError
+from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.provider import IWorkflowProvider
 from renku.core.plugins import hookimpl
 from renku.core.plugins.workflow import workflow_converter
@@ -68,29 +70,39 @@ class CWLToolProvider(IWorkflowProvider):
     @hookimpl
     def workflow_execute(self, dag: nx.DiGraph, basedir: Path, config: Dict[str, Any]):
         """Executes a given workflow using cwltool."""
+        # run cwl with cwltool
+        argv = sys.argv
+        sys.argv = ["cwltool"]
+
+        runtime_args = {"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True}
+        loading_args = {"relax_path_checks": True}
+        if config:
+            # update both RuntimeContext and LoadingContext parameters with user supplied values
+            # context.ContextBase takes care that only available parameters are set in a given class
+            runtime_args.update(config)
+            loading_args.update(config)
+
+        # Keep all environment variables.
+        runtime_context = RuntimeContext(kwargs=runtime_args)
+        loading_context = LoadingContext(kwargs=loading_args)
+
+        factory = cwltool.factory.Factory(loading_context=loading_context, runtime_context=runtime_context)
+
+        output_paths = []
+
+        workflows = list(dag.nodes)
+        if len(workflows) > 1:
+            workflow = CompositePlan(
+                id=CompositePlan.generate_id(), plans=workflows, name=f"plan-collection-{uuid4().hex}"
+            )
+        else:
+            workflow = workflows[0]
+
         with tempfile.NamedTemporaryFile() as f:
             # export Plan to cwl
             converter = workflow_converter("cwl")
-            return []
-            # converter(workflow=workflow, basedir=basedir, output=Path(f.name), output_format=None)
+            converter(workflow=workflow, basedir=basedir, output=Path(f.name), output_format=None)
 
-            # run cwl with cwltool
-            argv = sys.argv
-            sys.argv = ["cwltool"]
-
-            runtime_args = {"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True}
-            loading_args = {"relax_path_checks": True}
-            if config:
-                # update both RuntimeContext and LoadingContext parameters with user supplied values
-                # context.ContextBase takes care that only available parameters are set in a given class
-                runtime_args.update(config)
-                loading_args.update(config)
-
-            # Keep all environment variables.
-            runtime_context = RuntimeContext(kwargs=runtime_args)
-            loading_context = LoadingContext(kwargs=loading_args)
-
-            factory = cwltool.factory.Factory(loading_context=loading_context, runtime_context=runtime_context)
             process = factory.make(os.path.relpath(str(f.name)))
 
             try:
@@ -116,7 +128,6 @@ class CWLToolProvider(IWorkflowProvider):
                 if not any(location.startswith(d) for d in locations if location != d)
             }
 
-            output_paths = []
             with progressbar(locations, label="Moving outputs") as bar:
                 for location in bar:
                     for output_dir in output_dirs:
@@ -130,4 +141,4 @@ class CWLToolProvider(IWorkflowProvider):
                             shutil.move(location, str(destination))
                             continue
 
-            return output_paths
+        return output_paths

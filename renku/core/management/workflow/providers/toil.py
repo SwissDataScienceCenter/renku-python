@@ -157,7 +157,7 @@ def _upload_files(params: List[CommandParameterBase], storage: AbstractFileStore
     return file_locations
 
 
-def process_children(parent: Job, children: [Plan], dag: nx.DiGraph, basedir: Path, storage: AbstractFileStore):
+def process_children(parent: Job, children: List[Plan], dag: nx.DiGraph, basedir: Path, storage: AbstractFileStore):
     """Recursively process children of a workflow."""
 
     outputs = list()

@@ -73,6 +73,4 @@ def _rerun(
         return activities, set(sources)
 
     graph = ExecutionGraph([a.plan_with_values for a in activities], virtual_links=True)
-    # FIXME: drop
-    provider = "toil"
     execute_workflow(dag=graph.workflow_graph, command_name="rerun", provider=provider, config=config)

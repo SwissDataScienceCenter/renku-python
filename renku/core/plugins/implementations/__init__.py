@@ -23,7 +23,7 @@ from renku.core.management.workflow.providers.cwltool_provider import CWLToolPro
 __all__ = []
 
 workflow_exporters = [CWLExporter]
-workflow_providers = []
+workflow_providers = [CWLToolProvider]
 
 try:
     from renku.core.management.workflow.providers.toil import ToilProvider
