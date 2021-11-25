@@ -438,6 +438,19 @@ class BaseRepository:
                 # NOTE: If object does not exist anymore, hash-object doesn't work, fall back to rev-parse
                 revision = "HEAD"
 
+        def get_staged_directory_hash() -> Optional[str]:
+            if not os.path.isdir(absolute_path):
+                return
+
+            stashed_revision = self.run_git_command("stash", "create")
+            if not stashed_revision:
+                return
+
+            try:
+                return self.run_git_command("rev-parse", f"{stashed_revision}:{relative_path}")
+            except errors.GitCommandError:
+                return
+
         def get_object_hash_from_submodules() -> Optional[str]:
             for submodule in self.submodules:
                 try:
@@ -452,8 +465,13 @@ class BaseRepository:
         try:
             return self.run_git_command("rev-parse", f"{revision}:{relative_path}")
         except errors.GitCommandError:
-            # NOTE: The file can be in a submodule or it was not there when the command ran but was there when workflows
-            # were migrated (this can happen only for Usage); the project might be broken too.
+            # NOTE: The file can be in a submodule or it can be a directory which is staged but not committed yet.
+            # It's also possible that the file was not there when the command ran but was there when workflows were
+            # migrated (this can happen only for Usage); the project might be broken too.
+            staged_directory_hash = get_staged_directory_hash()
+            if staged_directory_hash:
+                return staged_directory_hash
+
             return get_object_hash_from_submodules()
 
     def get_user(self) -> "Actor":
