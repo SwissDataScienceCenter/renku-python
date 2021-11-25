@@ -248,6 +248,7 @@ def resolve_data_directory(data_dir, path):
 @click.argument("path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True))
 @click.option("-n", "--name", callback=validate_name, help="Provide a custom project name.")
 @click.option("--description", help="Provide a description for the project.")
+@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
 @click.option(
     "--data-dir",
     default=None,
@@ -292,6 +293,7 @@ def init(
     path,
     name,
     description,
+    keyword,
     template_id,
     template_index,
     template_source,
@@ -327,6 +329,7 @@ def init(
         path=path,
         name=name,
         description=description,
+        keywords=keyword,
         template_id=template_id,
         template_index=template_index,
         template_source=template_source,

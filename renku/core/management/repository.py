@@ -260,6 +260,7 @@ class RepositoryApiMixin(GitCore):
         read_only=False,
         name=None,
         description=None,
+        keywords=None,
         custom_metadata=None,
     ):
         """Yield an editable metadata object."""
@@ -268,7 +269,7 @@ class RepositoryApiMixin(GitCore):
             project = project_gateway.get_project()
         except ValueError:
             project = Project.from_client(
-                name=name, description=description, custom_metadata=custom_metadata, client=self
+                name=name, description=description, keywords=keywords, custom_metadata=custom_metadata, client=self
             )
 
         yield project

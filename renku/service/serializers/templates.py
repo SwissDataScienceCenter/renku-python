@@ -61,6 +61,7 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     project_repository = fields.String(required=True)
     project_slug = fields.String(required=True)
     project_description = fields.String(missing=None)
+    project_keywords = fields.List(fields.String(), missing=None)
     project_custom_metadata = fields.Dict(missing=None)
 
     new_project_url = fields.String(required=True)
