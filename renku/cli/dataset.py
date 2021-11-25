@@ -474,7 +474,7 @@ def list_dataset(format, columns):
     type=click.Path(exists=True, dir_okay=False),
     help="Custom metadata to be associated with the dataset.",
 )
-@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
+@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
 def create(name, title, description, creators, metadata, keyword):
     """Create an empty dataset in the current repo."""
     from renku.core.commands.dataset import create_dataset
