@@ -226,15 +226,12 @@ def get_entity_from_revision(repository: "Repository", path: Union[Path, str], r
 
             member_path = member.relative_to(repository.path)
 
-            try:
-                assert all(member_path != m.path for m in members)
+            assert all(member_path != m.path for m in members)
 
-                entity = get_entity_from_revision(repository, member_path, revision)
-                # NOTE: If a path is not found at a revision we assume that it didn't exist at that revision
-                if entity:
-                    members.append(entity)
-            except KeyError:
-                pass
+            entity = get_entity_from_revision(repository, member_path, revision)
+            # NOTE: If a path is not found at a revision we assume that it didn't exist at that revision
+            if entity:
+                members.append(entity)
 
         return members
 
@@ -244,12 +241,11 @@ def get_entity_from_revision(repository: "Repository", path: Union[Path, str], r
     if cached_entry:
         return cached_entry
 
-    # TODO: What checksum we get at "HEAD" if object is staged but not committed
+    # NOTE: For untracked directory the hash is None; make sure to stage them first before calling this function.
     checksum = repository.get_object_hash(revision=revision, path=path)
     # NOTE: If object was not found at a revision it's either removed or exists in a different revision; keep the
     # entity and use revision as checksum
     checksum = checksum or revision or "HEAD"
-    # TODO: What would be checksum for a directory if it's not committed yet.
     id = Entity.generate_id(checksum=checksum, path=path)
 
     absolute_path = repository.path / path

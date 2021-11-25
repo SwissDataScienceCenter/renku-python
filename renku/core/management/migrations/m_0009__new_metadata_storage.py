@@ -183,7 +183,7 @@ def generate_new_metadata(
     n_commits = len(commits)
 
     for n, commit in enumerate(commits, start=1):
-        communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\n")
+        communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\r")
 
         # NOTE: Treat the last commit differently if it was done by this migration
         is_last_commit = committed and n == n_commits
