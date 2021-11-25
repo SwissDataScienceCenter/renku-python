@@ -807,6 +807,9 @@ class DatasetsApiMixin(object):
 
         try:
             communication.start_progress(progress_text, len(records))
+            check_paths = []
+            records_to_check = []
+
             for file in records:
                 communication.update_progress(progress_text, 1)
 
@@ -817,7 +820,13 @@ class DatasetsApiMixin(object):
                     deleted_files.append(file)
                     continue
 
-                current_checksum = self.repository.get_object_hash(revision="HEAD", path=file.entity.path)
+                check_paths.append(file.entity.path)
+                records_to_check.append(file)
+
+            checksums = self.repository.get_object_hashes(check_paths)
+
+            for file in records_to_check:
+                current_checksum = checksums.get(file.entity.path)
                 if not current_checksum:
                     deleted_files.append(file)
                 elif current_checksum != file.entity.checksum:
@@ -968,7 +977,7 @@ class DatasetsApiMixin(object):
 
     def _calculate_checksum(self, filepath):
         try:
-            return self.repository.hash_object(filepath)
+            return self.repository.hash_objects([filepath])[0]
         except errors.GitCommandError:
             raise
 

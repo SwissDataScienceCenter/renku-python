@@ -24,6 +24,7 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from datetime import datetime
+from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
 from typing import Any, BinaryIO, Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
@@ -97,6 +98,7 @@ class BaseRepository:
         return RemoteManager(self._repository)
 
     @property
+    @lru_cache()
     def submodules(self) -> "SubmoduleManager":
         """Return a list of submodules."""
         return SubmoduleManager(self._repository)
@@ -423,6 +425,65 @@ class BaseRepository:
 
         raise errors.ExportError(f"File not found in the repository: '{revision}/{checksum}:{path}'")
 
+    def get_object_hashes(self, paths: List[Union[Path, str]], revision: str = None) -> Dict[str, str]:
+        """Return git hash of an object in a Repo or its submodule.
+
+        NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
+        """
+        absolute_paths = set(get_absolute_path(path, self.path) for path in paths)
+
+        hashes = {}
+        # NOTE: If revision is not specified, we use hash-object to hash the (possibly) modified object
+        if not revision:
+            staged_files = [d.a_path for d in self.staged_changes] if self.head.is_valid() else []
+            modified_files = [item.b_path for item in self.unstaged_changes if item.b_path]
+            dirty_files = {os.path.join(self.path, p) for p in self.untracked_files + modified_files + staged_files}
+            dirty_files = {p for p in dirty_files if p in absolute_paths and not os.path.isdir(p)}
+            clean_files = {p for p in absolute_paths if p not in dirty_files}
+            dirty_files = list(dirty_files)
+
+            dirty_files_hashes = Repository.hash_objects(dirty_files)
+            hashes.update(zip(dirty_files, dirty_files_hashes))
+
+            if not clean_files:
+                return hashes
+            revision = "HEAD"
+            absolute_paths = clean_files
+
+        submodule_paths = defaultdict(list)
+        main_repo_paths = []
+
+        if self.submodules:
+            for absolute_path in absolute_paths:
+                for submodule in self.submodules:
+                    try:
+                        Path(absolute_path).relative_to(submodule.path)
+                        submodule_paths[submodule].append(absolute_path)
+                    except ValueError:
+                        main_repo_paths.append(os.path.relpath(absolute_path, start=self.path))
+        else:
+            main_repo_paths = map(lambda p: os.path.relpath(p, start=self.path), absolute_paths)
+
+        if main_repo_paths:
+            main_repo_paths = Repository.list_paths_in_revision(
+                main_repo_paths, revision=revision, working_dir=self.path
+            )
+
+            for batch in split_paths(*main_repo_paths):
+                main_repo_hashes = self.run_git_command(
+                    "rev-parse", *[f"{revision}:{relative_path}" for relative_path in batch]
+                )
+                hashes.update(zip(batch, main_repo_hashes.splitlines()))
+
+        if not submodule_paths:
+            return hashes
+
+        for submodule, submodule_paths in submodule_paths.items():
+            submodule_hashes = submodule.get_object_hashes(paths=submodule_paths, revision="HEAD")
+            hashes.update(submodule_hashes)
+
+        return hashes
+
     def get_object_hash(self, path: Union[Path, str], revision: str = None) -> Optional[str]:
         """Return git hash of an object in a Repo or its submodule.
 
@@ -433,7 +494,7 @@ class BaseRepository:
         # NOTE: If revision is not specified, we use hash-object to hash the (possibly) modified object
         if not revision:
             try:
-                return Repository.hash_object(absolute_path)
+                return Repository.hash_objects([absolute_path])[0]
             except errors.GitCommandError:
                 # NOTE: If object does not exist anymore, hash-object doesn't work, fall back to rev-parse
                 revision = "HEAD"
@@ -518,10 +579,69 @@ class BaseRepository:
         return Configuration(repository=None, writable=writable)
 
     @staticmethod
-    def hash_object(path: Union[Path, str]) -> str:
+    def list_paths_in_revision(
+        paths: List[Union[Path, str]] = None, revision: str = "HEAD", working_dir="."
+    ) -> List[str]:
+        """List all paths that exist in a revision.
+
+        Warning: ls-tree is sensitive to the current working directory, make sure to set working_dir to repo root.
+        """
+        dirs = []
+        files = []
+
+        for path in paths:
+            if os.path.isdir(path):
+                dirs.append(path)
+            else:
+                files.append(path)
+
+        if dirs or files:
+            result = []
+            try:
+                if files:
+                    for batch in split_paths(*files):
+                        existing_paths = git.Git(working_dir=working_dir).ls_tree(*batch, r=revision, name_only=True)
+                        result.extend(existing_paths.splitlines())
+
+                if dirs:
+                    for batch in split_paths(*dirs):
+                        existing_paths = git.Git(working_dir=working_dir).ls_tree(
+                            *batch, d=True, r=revision, name_only=True
+                        )
+                        result.extend(existing_paths.splitlines())
+
+                return result
+            except git.GitCommandError as e:
+                raise errors.GitCommandError(
+                    message=f"Git command failed: {str(e)}",
+                    command=e.command,
+                    stdout=e.stdout,
+                    stderr=e.stderr,
+                    status=e.status,
+                ) from e
+        else:
+            try:
+                existing_files = git.Git().ls_tree(r=revision, name_only=True).splitlines()
+                existing_dirs = git.Git().ls_tree(r=revision, name_only=True, d=True).splitlines()
+                return existing_dirs + existing_files
+            except git.GitCommandError as e:
+                raise errors.GitCommandError(
+                    message=f"Git command failed: {str(e)}",
+                    command=e.command,
+                    stdout=e.stdout,
+                    stderr=e.stderr,
+                    status=e.status,
+                ) from e
+
+    @staticmethod
+    def hash_objects(paths: List[Union[Path, str]]) -> List[str]:
         """Create a git hash for a path. The path doesn't need to be in a repository."""
+        hashes = []
         try:
-            return git.Git().hash_object(path)
+            for batch in split_paths(*paths):
+                calculated_hashes = git.Git().hash_object(*batch)
+                hashes.extend(calculated_hashes.splitlines())
+            return hashes
         except git.GitCommandError as e:
             raise errors.GitCommandError(
                 message=f"Git command failed: {str(e)}",

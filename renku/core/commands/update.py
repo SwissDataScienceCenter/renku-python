@@ -31,7 +31,7 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.activity import sort_activities
 from renku.core.models.provenance.activity import Activity
-from renku.core.utils.metadata import add_activity_if_recent, get_modified_activities
+from renku.core.utils.metadata import add_activity_if_recent, filter_overridden_activities, get_modified_activities
 from renku.core.utils.os import get_relative_paths
 
 
@@ -109,9 +109,7 @@ def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_di
 def _get_modified_activities_and_paths(repository, activity_gateway) -> Tuple[Set[Activity], Set[str]]:
     """Return latest activities that one of their inputs is modified."""
     all_activities = activity_gateway.get_all_activities()
-    relevant_activities = set()
-    for activity in all_activities:
-        add_activity_if_recent(activity, relevant_activities)
+    relevant_activities = filter_overridden_activities(all_activities)
     modified, _ = get_modified_activities(activities=list(relevant_activities), repository=repository)
     return {a for a, _ in modified if _is_activity_valid(a)}, {e.path for _, e in modified}
 
