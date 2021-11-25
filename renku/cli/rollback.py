@@ -69,8 +69,6 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 
-CHECKPOINTS_PER_PAGE = 10
-
 
 @click.command()
 @click.pass_context
