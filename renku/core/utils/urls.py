@@ -98,10 +98,10 @@ def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher
     return parsed_endpoint._replace(scheme="https", path="/", params="", query="", fragment="")
 
 
-def get_slug(name, invalid_chars: List[chr] = None):
+def get_slug(name, invalid_chars: List[chr] = None, lowercase: bool = True):
     """Create a slug from name."""
     invalid_chars = invalid_chars or []
-    lower_case = name.lower()
+    lower_case = name.lower() if lowercase else name
     no_space = re.sub(r"\s+", "_", lower_case)
     normalized = unicodedata.normalize("NFKD", no_space).encode("ascii", "ignore").decode("utf-8")
 

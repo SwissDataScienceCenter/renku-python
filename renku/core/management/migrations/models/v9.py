@@ -166,7 +166,7 @@ class Project:
         if not self.creator and self.client:
             if self.client.database_path.exists():
                 self.creator = Person.from_commit(
-                    self.client.repository.get_previous_commit(self.client.database_path, return_first=True)
+                    self.client.repository.get_previous_commit(self.client.database_path, first=True)
                 )
             else:
                 # this assumes the project is being newly created
@@ -294,7 +294,7 @@ class Entity(CommitMixin):
         if path != "." and path_.is_dir():
             entity = Collection(client=client, commit=commit, path=path, members=[], parent=parent)
 
-            files_in_commit = [c.a_path for c in commit.get_changes() if not c.deleted]
+            files_in_commit = [c.b_path for c in commit.get_changes() if not c.deleted]
 
             # update members with commits
             for member in path_.iterdir():
@@ -1558,7 +1558,7 @@ class Dataset(Entity, CreatorMixin):
         """Validate name."""
         # name might have been escaped and have '%' in it
         if value and not is_dataset_name_valid(value):
-            raise errors.ParameterError('Invalid "name": {}'.format(value))
+            raise errors.ParameterError(f"Invalid name: `{value}`")
 
     @property
     def short_id(self):

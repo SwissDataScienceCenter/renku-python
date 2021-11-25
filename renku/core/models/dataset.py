@@ -44,7 +44,7 @@ from renku.core.utils.urls import get_path, get_slug
 
 def is_dataset_name_valid(name):
     """Check if name is a valid slug."""
-    return name and name == get_slug(name)
+    return name and name == get_slug(name, lowercase=False)
 
 
 def generate_default_name(dataset_title, dataset_version=None):
