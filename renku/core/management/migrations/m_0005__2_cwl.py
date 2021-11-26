@@ -100,7 +100,7 @@ def _migrate_old_workflows(client, strict):
             if client.repository.is_dirty():
                 commit_msg = "renku migrate: committing migrated workflow"
                 committer = Actor(name=f"renku {__version__}", email=version_url)
-                client.repository.commit(commit_msg, committer=committer, no_verify=True)
+                client.repository.commit(commit_msg + client.transaction_id, committer=committer, no_verify=True)
         except Exception:
             if strict:
                 raise

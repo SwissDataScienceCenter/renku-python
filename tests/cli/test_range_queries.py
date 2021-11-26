@@ -35,13 +35,13 @@ def test_limit_log(runner, project, run, subdirectory):
     assert 0 == run(args=("run", "wc", "-c"), stdin=data, stdout=output)
     assert output.exists()
 
-    cmd = ["graph", "export", "--revision", "HEAD^^.."]
+    cmd = ["graph", "export", "--revision", "HEAD^.."]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "unique input string" not in result.output
     assert output.name in result.output
 
-    cmd = ["graph", "export", "--revision", "HEAD^^"]
+    cmd = ["graph", "export", "--revision", "HEAD^"]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "unique input string" in result.output

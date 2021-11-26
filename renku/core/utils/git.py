@@ -212,11 +212,9 @@ def is_path_safe(path: Union[Path, str]) -> bool:
     return True
 
 
-def get_entity_from_revision(repository: "Repository", path: Union[Path, str], revision: str = "HEAD") -> "Entity":
+def get_entity_from_revision(repository: "Repository", path: Union[Path, str], revision: str = None) -> "Entity":
     """Return an Entity instance from given path and revision."""
     from renku.core.models.entity import Collection, Entity
-
-    assert isinstance(revision, str), f"Invalid revision: {revision}"
 
     def get_directory_members(absolute_path: Path) -> List[Entity]:
         """Return first-level files/directories in a directory."""
@@ -247,7 +245,7 @@ def get_entity_from_revision(repository: "Repository", path: Union[Path, str], r
     checksum = repository.get_object_hash(revision=revision, path=path)
     # NOTE: If object was not found at a revision it's either removed or exists in a different revision; keep the
     # entity and use revision as checksum
-    checksum = checksum or revision
+    checksum = checksum or revision or "HEAD"
     id = Entity.generate_id(checksum=checksum, path=path)
 
     absolute_path = repository.path / path
