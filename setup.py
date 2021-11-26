@@ -137,7 +137,7 @@ extras_require = {
         "Jinja2>=2.11.3,<3.0.2",
         "renku-sphinx-theme>=0.2.0",
         "sphinx-rtd-theme>=0.5.0,<1.1",
-        "sphinxcontrib-spelling==7.*"
+        "sphinxcontrib-spelling==7.*",
     ],
     "runner": ["cwlref-runner==1.0"],
     "notebook": [],

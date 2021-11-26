@@ -316,7 +316,7 @@ class Entity(CommitMixin):
                             client, member_path, commit, parent=entity, find_previous=find_previous, **kwargs
                         )
                     )
-                except KeyError:
+                except errors.GitCommitNotFoundError:
                     pass
 
         else:

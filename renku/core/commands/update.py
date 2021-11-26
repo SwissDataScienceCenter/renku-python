@@ -108,9 +108,11 @@ def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_di
 
 def _get_modified_activities_and_paths(repository, activity_gateway) -> Tuple[Set[Activity], Set[str]]:
     """Return latest activities that one of their inputs is modified."""
-    latest_activities = activity_gateway.get_latest_activity_per_plan().values()
-    modified, _ = get_modified_activities(activities=latest_activities, repository=repository)
-
+    all_activities = activity_gateway.get_all_activities()
+    relevant_activities = set()
+    for activity in all_activities:
+        add_activity_if_recent(activity, relevant_activities)
+    modified, _ = get_modified_activities(activities=list(relevant_activities), repository=repository)
     return {a for a, _ in modified if _is_activity_valid(a)}, {e.path for _, e in modified}
 
 

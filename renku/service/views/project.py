@@ -20,11 +20,40 @@ from flask import request
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.project_edit import ProjectEditCtrl
+from renku.service.controllers.project_show import ProjectShowCtrl
 from renku.service.views.api_versions import V1_0, VersionedBlueprint
 from renku.service.views.decorators import accepts_json, handle_common_except, requires_cache, requires_identity
 
 PROJECT_BLUEPRINT_TAG = "project"
 project_blueprint = VersionedBlueprint(PROJECT_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
+
+
+@project_blueprint.route("/project.show", methods=["POST"], provide_automatic_options=False, versions=[V1_0])
+@handle_common_except
+@accepts_json
+@requires_cache
+@requires_identity
+def show_project_view(user_data, cache):
+    """
+    Show project metadata view.
+
+    ---
+    post:
+      description: Show project metadata.
+      requestBody:
+        content:
+          application/json:
+            schema: ProjectShowRequest
+      responses:
+        200:
+          description: Metadata of the project.
+          content:
+            application/json:
+              schema: ProjectShowResponseRPC
+      tags:
+        - project
+    """
+    return ProjectShowCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @project_blueprint.route("/project.edit", methods=["POST"], provide_automatic_options=False, versions=[V1_0])
