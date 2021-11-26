@@ -2,17 +2,17 @@ FROM python:3.7-slim as base
 
 RUN apt-get update && \
     apt-get install -y git && \
-    pip install --no-cache --upgrade pip requirements-builder
+    pip install --no-cache --upgrade pip poetry
 
 FROM base as builder
 
 # The python install is done in two steps to avoid re-installing all dependencies every
 # time the code changes
-COPY setup.py README.rst CHANGES.rst /code/renku/
-COPY renku/version.py.tmpl /code/renku/renku/version.py.tmpl
+COPY pyproject.toml build.py poetry.lock README.rst CHANGES.rst /code/renku/
 WORKDIR /code/renku
-RUN requirements-builder --level=pypi setup.py > /tmp/requirements.txt && \
-    pip install -r /tmp/requirements.txt
+RUN poetry export --without-hashes -f requirements.txt --output /tmp/requirements.txt && \
+    pip install -r /tmp/requirements.txt && \
+    pip install poetry-dynamic-versioning
 
 COPY .git /code/renku/.git
 COPY renku /code/renku/renku
@@ -21,6 +21,8 @@ COPY renku /code/renku/renku
 # renku-python is installed in the image. This is the default for chartpress builds.
 ARG CLEAN_INSTALL
 RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi
+# manually update version.py
+RUN poetry-dynamic-versioning
 
 RUN pip wheel --wheel-dir /wheels . && \
     pip install --no-index --no-warn-script-location --force --root=/pythonroot/ /wheels/*.whl && \
