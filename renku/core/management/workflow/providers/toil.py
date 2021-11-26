@@ -101,7 +101,7 @@ class AbstractToilJob(Job):
 
         arguments = itertools.chain(self._workflow.inputs, self._workflow.outputs, self._workflow.parameters)
 
-        arguments = filter(lambda x: x.position and (not hasattr(x, "mapped_to") or x.mapped_to is None), arguments)
+        arguments = filter(lambda x: x.position and not getattr(x, "mapped_to", None), arguments)
         arguments = sorted(arguments, key=lambda x: x.position)
 
         for a in arguments:
