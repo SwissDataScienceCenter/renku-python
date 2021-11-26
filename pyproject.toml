@@ -226,6 +226,7 @@ all = [
     "sentry-sdk",
     "sphinxcontrib-spelling",
     "sphinx-rtd-theme",
+    "toil",
     "walrus",
 ]
 
