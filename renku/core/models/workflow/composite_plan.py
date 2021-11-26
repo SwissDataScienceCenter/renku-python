@@ -37,6 +37,7 @@ from renku.core.models.workflow.parameter import (
     ParameterMappingSchema,
 )
 from renku.core.models.workflow.plan import MAX_GENERATED_NAME_LENGTH, AbstractPlan, Plan, PlanSchema
+from renku.core.utils.datetime8601 import local_now
 
 
 class CompositePlan(AbstractPlan):
@@ -48,6 +49,7 @@ class CompositePlan(AbstractPlan):
         derived_from: str = None,
         description: str = None,
         id: str,
+        date_created: datetime = None,
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         links: List[ParameterLink] = None,
@@ -60,6 +62,7 @@ class CompositePlan(AbstractPlan):
             derived_from=derived_from,
             description=description,
             id=id,
+            date_created=date_created,
             invalidated_at=invalidated_at,
             keywords=keywords,
             name=name,
@@ -211,6 +214,18 @@ class CompositePlan(AbstractPlan):
 
         return False
 
+    def get_parameter_path(self, parameter: CommandParameterBase):
+        """Get the path to a parameter inside this plan."""
+        if parameter in self.mappings:
+            return [self]
+
+        for plan in self.plans:
+            path = plan.get_parameter_path(parameter)
+            if path:
+                return [self] + path
+
+        return None
+
     def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
         """Get a parameter on this plan by id."""
         mapping = next((p for p in self.mappings if parameter_id == p.id), None)
@@ -351,6 +366,7 @@ class CompositePlan(AbstractPlan):
         derived = CompositePlan(
             description=self.description,
             id=self.id,
+            date_created=local_now(),
             invalidated_at=self.invalidated_at,
             name=self.name,
             derived_from=self.derived_from,
@@ -375,7 +391,8 @@ class CompositePlanSchema(JsonLDSchema):
     description = fields.String(schema.description, missing=None)
     id = fields.Id()
     mappings = Nested(renku.hasMappings, [ParameterMappingSchema], many=True, missing=None)
-    invalidated_at = fields.DateTime(prov.invalidatedAtTime, add_value_types=True)
+    date_created = fields.DateTime(schema.dateCreated, format="iso")
+    invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
     keywords = fields.List(schema.keywords, fields.String(), missing=None)
     name = fields.String(schema.name, missing=None)
     derived_from = fields.String(prov.wasDerivedFrom, missing=None)

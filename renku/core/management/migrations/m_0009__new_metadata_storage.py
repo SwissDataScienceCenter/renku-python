@@ -73,8 +73,13 @@ def migrate(migration_context):
         migration_type=migration_context.options.type,
     )
     _remove_dataset_metadata_files(client)
+
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
-    metadata_path.unlink()
+    with open(metadata_path, "w") as f:
+        f.write(
+            "# Dummy file kept for backwards compatibility, does not contain actual version\n"
+            "'http://schema.org/schemaVersion': '9'"
+        )
 
 
 def _commit_previous_changes(client):
@@ -85,7 +90,7 @@ def _commit_previous_changes(client):
         project.to_yaml(client.renku_path.joinpath(project_path))
 
         client.repository.add(client.renku_path)
-        client.repository.commit("renku migrate: committing structural changes", no_verify=True)
+        client.repository.commit("renku migrate: committing structural changes" + client.transaction_id, no_verify=True)
         return True
 
     return False
@@ -97,7 +102,7 @@ def maybe_migrate_project_to_database(client, project_gateway: IProjectGateway):
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
 
     if metadata_path.exists():
-        old_project = old_schema.Project.from_yaml(metadata_path)
+        old_project = old_schema.Project.from_yaml(metadata_path, client=client)
 
         id_path = urlparse(old_project._id).path
         id_path = id_path.replace("/projects/", "")
@@ -178,7 +183,7 @@ def generate_new_metadata(
     n_commits = len(commits)
 
     for n, commit in enumerate(commits, start=1):
-        communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\n")
+        communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\r")
 
         # NOTE: Treat the last commit differently if it was done by this migration
         is_last_commit = committed and n == n_commits

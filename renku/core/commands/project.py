@@ -17,17 +17,24 @@
 # limitations under the License.
 """Project management."""
 
+from renku.core.commands.view_model.project import ProjectViewModel
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.repository import DATABASE_METADATA_PATH
 from renku.core.utils.metadata import construct_creator
 
 
 @inject.autoparams()
-def _edit_project(description, creator, custom_metadata, project_gateway: IProjectGateway):
+def _edit_project(description, creator, keywords, custom_metadata, project_gateway: IProjectGateway):
     """Edit dataset metadata."""
-    possible_updates = {"creator": creator, "description": description, "custom_metadata": custom_metadata}
+    possible_updates = {
+        "creator": creator,
+        "description": description,
+        "keywords": keywords,
+        "custom_metadata": custom_metadata,
+    }
 
     creator, no_email_warnings = construct_creator(creator, ignore_email=True)
 
@@ -35,7 +42,9 @@ def _edit_project(description, creator, custom_metadata, project_gateway: IProje
 
     if updated:
         project = project_gateway.get_project()
-        project.update_metadata(creator=creator, description=description, custom_metadata=custom_metadata)
+        project.update_metadata(
+            creator=creator, description=description, keywords=keywords, custom_metadata=custom_metadata
+        )
         project_gateway.update_project(project)
 
     return updated, no_email_warnings
@@ -45,3 +54,14 @@ def edit_project_command():
     """Command for editing project metadata."""
     command = Command().command(_edit_project).lock_project().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATABASE_METADATA_PATH)
+
+
+@inject.autoparams()
+def _show_project(client_dispatcher: IClientDispatcher):
+    """Show project metadata."""
+    return ProjectViewModel.from_project(client_dispatcher.current_client.project)
+
+
+def show_project_command():
+    """Command for showing project metadata."""
+    return Command().command(_show_project).lock_project().with_database().require_migration()

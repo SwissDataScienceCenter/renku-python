@@ -36,7 +36,7 @@ def test_version(svc_client):
     assert MINIMUM_VERSION.name == data["minimum_api_version"]
     assert MAXIMUM_VERSION.name == data["maximum_api_version"]
 
-    response = svc_client.get("/v1.0/version")
+    response = svc_client.get("/0.9/version")
     assert "result" in response.json
     data = response.json["result"]
 
@@ -48,7 +48,7 @@ def test_version(svc_client):
     assert MINIMUM_VERSION.name == data["minimum_api_version"]
     assert MAXIMUM_VERSION.name == data["maximum_api_version"]
 
-    response = svc_client.get("/v1.1/version")
+    response = svc_client.get("/1.0/version")
     assert "result" in response.json
     data = response.json["result"]
 

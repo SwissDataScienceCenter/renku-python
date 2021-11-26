@@ -262,7 +262,7 @@ class CommitMixin:
                 self._project = self.client.project
             except ValueError:
                 metadata_path = self.client.renku_path.joinpath(OLD_METADATA_PATH)
-                self._project = Project.from_yaml(metadata_path)
+                self._project = Project.from_yaml(metadata_path, client=self.client)
 
         if not self._id:
             self._id = self.default_id()
@@ -316,7 +316,7 @@ class Entity(CommitMixin):
                             client, member_path, commit, parent=entity, find_previous=find_previous, **kwargs
                         )
                     )
-                except KeyError:
+                except errors.GitCommitNotFoundError:
                     pass
 
         else:

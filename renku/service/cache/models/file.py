@@ -30,6 +30,7 @@ class File(Model):
     """User file object."""
 
     __database__ = BaseCache.model_db
+    __namespace__ = BaseCache.namespace
 
     created_at = DateTimeField()
 

@@ -17,14 +17,14 @@
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.version import VersionCtrl
-from renku.service.views.api_versions import MAXIMUM_VERSION, MINIMUM_VERSION, V1_0, V1_1, VersionedBlueprint
+from renku.service.views.api_versions import MAXIMUM_VERSION, MINIMUM_VERSION, V0_9, V1_0, VersionedBlueprint
 from renku.service.views.decorators import handle_validation_except
 
 VERSION_BLUEPRINT_TAG = "version"
 version_blueprint = VersionedBlueprint("version", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@version_blueprint.route("/version", methods=["GET"], provide_automatic_options=False, versions=[V1_0, V1_1])
+@version_blueprint.route("/version", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0])
 @handle_validation_except
 def version():
     """

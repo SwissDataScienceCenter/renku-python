@@ -29,14 +29,14 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable
-from renku.core.metadata.repository import Commit
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
 from renku.core.models.entity import Collection, CollectionSchema, Entity, EntitySchema
 from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent, SoftwareAgentSchema
 from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
 from renku.core.models.provenance.parameter import ParameterValue, ParameterValueSchema
 from renku.core.models.workflow.plan import Plan, PlanSchema
-from renku.core.utils.git import get_committer_agent, get_entity_from_revision, get_git_user
+from renku.core.utils.git import get_entity_from_revision, get_git_user
+from renku.version import __version__, version_url
 
 NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 
@@ -132,16 +132,12 @@ class Activity(Persistent):
         started_at_time: datetime,
         ended_at_time: datetime,
         annotations: List[Annotation] = None,
-        commit: Commit = None,
         update_commits=False,
     ):
         """Convert a ``Plan`` to a ``Activity``."""
         from renku.core.plugins.pluginmanager import get_plugin_manager
 
         client = client_dispatcher.current_client
-
-        if not commit:
-            commit = client.repository.head.commit
 
         usages = {}
         generations = {}
@@ -159,7 +155,7 @@ class Activity(Persistent):
             if input_path in usages:
                 continue
 
-            entity = get_entity_from_revision(repository=client.repository, path=input_path, revision=commit.hexsha)
+            entity = get_entity_from_revision(repository=client.repository, path=input_path)
 
             dependency = Usage(entity=entity, id=Usage.generate_id(activity_id))
 
@@ -175,7 +171,7 @@ class Activity(Persistent):
             if output_path in generations:
                 continue
 
-            entity = get_entity_from_revision(repository=client.repository, path=output_path, revision=commit.hexsha)
+            entity = get_entity_from_revision(repository=client.repository, path=output_path)
 
             generation = Generation(entity=entity, id=Usage.generate_id(activity_id))
 
@@ -188,7 +184,7 @@ class Activity(Persistent):
                 ParameterValue(id=ParameterValue.generate_id(activity_id), parameter_id=parameter.id, value=value)
             )
 
-        agent = get_committer_agent(commit)
+        agent = SoftwareAgent(id=version_url, name=f"renku {__version__}")
         person = get_git_user(client.repository)
         association = Association(agent=agent, id=Association.generate_id(activity_id), plan=plan)
 

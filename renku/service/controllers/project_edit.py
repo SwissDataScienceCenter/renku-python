@@ -54,6 +54,7 @@ class ProjectEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 description=self.ctx.get("description"),
                 creator=self.ctx.get("creator"),
                 custom_metadata=self.ctx.get("custom_metadata"),
+                keywords=self.ctx.get("keywords"),
             )
         )
 

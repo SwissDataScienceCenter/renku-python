@@ -16,14 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helpers functions for metadata management/parsing."""
-
+import os
 from collections.abc import Iterable
-from typing import List, Set, Tuple, Union
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
 
 from renku.core import errors
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Activity
-from renku.core.models.provenance.agent import Person
+from renku.core.utils.os import is_subpath
+
+if TYPE_CHECKING:
+    from renku.core.models.entity import Entity
+    from renku.core.models.provenance.activity import Activity
+    from renku.core.models.provenance.agent import Person
 
 
 def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
@@ -46,8 +50,10 @@ def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
     return people, no_email_warnings
 
 
-def construct_creator(creator: Union[dict, str], ignore_email):
+def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional["Person"], Optional[Union[dict, str]]]:
     """Parse input and return an instance of Person."""
+    from renku.core.models.provenance.agent import Person
+
     if not creator:
         return None, None
 
@@ -75,16 +81,18 @@ def construct_creator(creator: Union[dict, str], ignore_email):
 
 
 def get_modified_activities(
-    activities: List[Activity], repository
-) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    activities: List["Activity"], repository
+) -> Tuple[Set[Tuple["Activity", "Entity"]], Set[Tuple["Activity", "Entity"]]]:
     """Get lists of activities that have modified/deleted usage entities."""
     modified = set()
     deleted = set()
 
+    checksum_cache = {}
+
     for activity in activities:
         for usage in activity.usages:
             entity = usage.entity
-            current_checksum = repository.get_object_hash(path=entity.path)
+            current_checksum = checksum_cache.setdefault(entity.path, repository.get_object_hash(path=entity.path))
             if current_checksum is None:
                 deleted.add((activity, entity))
             elif current_checksum != entity.checksum:
@@ -93,7 +101,7 @@ def get_modified_activities(
     return modified, deleted
 
 
-def add_activity_if_recent(activity: Activity, activities: Set[Activity]):
+def add_activity_if_recent(activity: "Activity", activities: Set["Activity"]):
     """Add ``activity`` to ``activities`` if it's not in the set or is the latest executed instance."""
     if activity in activities:
         return
@@ -107,3 +115,16 @@ def add_activity_if_recent(activity: Activity, activities: Set[Activity]):
 
     # NOTE: No similar activity was found
     activities.add(activity)
+
+
+def is_external_file(path: Union[Path, str], client_path: Path):
+    """Checks if a path is an external file."""
+    from renku.core.management import RENKU_HOME
+    from renku.core.management.datasets import DatasetsApiMixin
+
+    path = client_path / path
+    if not path.is_symlink() or not is_subpath(path=path, base=client_path):
+        return False
+
+    pointer = os.readlink(path)
+    return str(os.path.join(RENKU_HOME, DatasetsApiMixin.POINTERS)) in pointer

@@ -21,6 +21,7 @@ import hashlib
 import json
 import shutil
 from contextlib import contextmanager
+from uuid import uuid4
 
 import attr
 import filelock
@@ -123,6 +124,8 @@ class RepositoryApiMixin(GitCore):
 
         self._project = None
 
+        self._transaction_id = None
+
         super().__attrs_post_init__()
 
         # initialize submodules
@@ -170,6 +173,14 @@ class RepositoryApiMixin(GitCore):
             self._project = project_gateway.get_project()
 
         return self._project
+
+    @property
+    def transaction_id(self):
+        """Get a transaction id for the current client to be used for grouping git commits."""
+        if not self._transaction_id:
+            self._transaction_id = uuid4().hex
+
+        return f"\n\nrenku-transaction: {self._transaction_id}"
 
     @property
     def remote(self, remote_name="origin"):
@@ -249,6 +260,7 @@ class RepositoryApiMixin(GitCore):
         read_only=False,
         name=None,
         description=None,
+        keywords=None,
         custom_metadata=None,
     ):
         """Yield an editable metadata object."""
@@ -257,7 +269,7 @@ class RepositoryApiMixin(GitCore):
             project = project_gateway.get_project()
         except ValueError:
             project = Project.from_client(
-                name=name, description=description, custom_metadata=custom_metadata, client=self
+                name=name, description=description, keywords=keywords, custom_metadata=custom_metadata, client=self
             )
 
         yield project

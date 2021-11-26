@@ -42,7 +42,6 @@ from renku.core.management.workflow.activity import create_activity_graph, get_a
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.management.workflow.plan_factory import delete_indirect_files_list
 from renku.core.management.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
-from renku.core.metadata.repository import Actor
 from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.plan import AbstractPlan, Plan
@@ -448,8 +447,6 @@ def execute_workflow(
     config=None,
 ):
     """Execute a Run with/without subprocesses."""
-    from renku.version import __version__, version_url
-
     client = client_dispatcher.current_client
 
     # NOTE: Pull inputs from Git LFS or other storage backends
@@ -463,24 +460,17 @@ def execute_workflow(
 
     # NOTE: Create a ``CompositePlan`` because ``workflow_covert`` expects it
     workflow = CompositePlan(id=CompositePlan.generate_id(), plans=plans, name=f"plan-collection-{uuid.uuid4().hex}")
-    modified_outputs = execute(workflow=workflow, basedir=client.path, provider=provider, config=config)
+    execute(workflow=workflow, basedir=client.path, provider=provider, config=config)
 
     ended_at_time = local_now()
-
-    client.repository.add(*modified_outputs)
-
-    if client.repository.is_dirty():
-        postfix = "s" if len(modified_outputs) > 1 else ""
-        commit_msg = f"renku {command_name}: committing {len(modified_outputs)} modified file{postfix}"
-        committer = Actor(name=f"renku {__version__}", email=version_url)
-        client.repository.commit(commit_msg, committer=committer, no_verify=True)
 
     activities = []
 
     for plan in plans:
         # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
         original_plan = plan_gateway.get_by_id(plan.id)
-        activity = Activity.from_plan(plan=original_plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
+        activity = Activity.from_plan(plan=plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
+        activity.association.plan = original_plan
         activity_gateway.add(activity)
         activities.append(activity)
 

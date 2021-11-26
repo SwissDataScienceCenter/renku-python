@@ -36,6 +36,8 @@ from renku.core.utils.os import normalize_to_ascii
 class Project(persistent.Persistent):
     """Represent a project."""
 
+    keywords = None
+
     def __init__(
         self,
         *,
@@ -54,6 +56,7 @@ class Project(persistent.Persistent):
         template_source: str = None,
         template_version: str = None,
         version: str = None,
+        keywords: List[str] = None,
     ):
         from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 
@@ -79,6 +82,7 @@ class Project(persistent.Persistent):
         self.template_source: str = template_source
         self.template_version: str = template_version
         self.version: str = version
+        self.keywords: List[str] = keywords or []
 
     @classmethod
     def from_client(
@@ -86,6 +90,7 @@ class Project(persistent.Persistent):
         client,
         name: str = None,
         description: str = None,
+        keywords: List[str] = None,
         custom_metadata: Dict = None,
         creator: Person = None,
     ) -> "Project":
@@ -101,7 +106,9 @@ class Project(persistent.Persistent):
             raise ValueError("Project Creator not set")
 
         id = cls.generate_id(namespace=namespace, name=name)
-        return cls(creator=creator, id=id, name=name, description=description, annotations=annotations)
+        return cls(
+            creator=creator, id=id, name=name, description=description, keywords=keywords, annotations=annotations
+        )
 
     @staticmethod
     def get_namespace_and_name(*, client=None, name: str = None, creator: Person = None):
@@ -134,7 +141,7 @@ class Project(persistent.Persistent):
 
     def update_metadata(self, custom_metadata=None, **kwargs):
         """Updates metadata."""
-        editable_attributes = ["creator", "description"]
+        editable_attributes = ["creator", "description", "keywords"]
         for name, value in kwargs.items():
             if name not in editable_attributes:
                 raise errors.ParameterError(f"Cannot edit field: '{name}'")
@@ -174,3 +181,4 @@ class ProjectSchema(JsonLDSchema):
     template_source = fields.String(renku.templateSource, missing=None)
     template_version = fields.String(renku.templateVersion, missing=None)
     version = StringList(schema.schemaVersion, missing="1")
+    keywords = fields.List(schema.keywords, fields.String(), missing=None)

@@ -56,6 +56,7 @@ from renku.core.models.provenance.annotation import Annotation
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.git import clone_repository, get_cache_directory_for_repository, get_git_user
+from renku.core.utils.metadata import is_external_file
 from renku.core.utils.urls import get_slug, remove_credentials
 
 
@@ -442,11 +443,7 @@ class DatasetsApiMixin(object):
         self.repository.add(*files_to_commit, self.renku_pointers_path, force=True)
 
         n_staged_changes = len(self.repository.staged_changes)
-        if n_staged_changes > 0:
-            msg = f"renku dataset: committing {n_staged_changes} newly added files"
-            skip_hooks = not self.external_storage_requested
-            self.repository.commit(msg, no_verify=skip_hooks)
-        else:
+        if n_staged_changes == 0:
             communication.warn("No new file was added to project")
 
         if not files:
@@ -507,7 +504,7 @@ class DatasetsApiMixin(object):
         else:
             # Check if file is in the project and return it
             path_in_repo = None
-            if self.is_external_file(src):
+            if is_external_file(path=src, client_path=self.path):
                 path_in_repo = path
             else:
                 try:
@@ -645,7 +642,7 @@ class DatasetsApiMixin(object):
 
                 new_files.append(path_in_dst_repo)
 
-                if remote_client.is_external_file(src):
+                if is_external_file(path=src, client_path=remote_client.path):
                     operation = (src.resolve(), dst, "symlink")
                 else:
                     operation = (src, dst, "move")
@@ -898,7 +895,7 @@ class DatasetsApiMixin(object):
                     if src.exists():
                         # Fetch file if it is tracked by Git LFS
                         remote_client.pull_paths_from_storage(remote_client.path / based_on.path)
-                        if remote_client.is_external_file(src):
+                        if is_external_file(path=src, client_path=remote_client.path):
                             self.remove_file(dst)
                             self._create_external_file(src.resolve(), dst)
                         else:
@@ -925,11 +922,6 @@ class DatasetsApiMixin(object):
         file_paths = {str(self.path / f.entity.path) for f in updated_files + deleted_files}
         # Force-add to include possible ignored files that are in datasets
         self.repository.add(*file_paths, force=True)
-        skip_hooks = not self.external_storage_requested
-        self.repository.commit(
-            f"renku dataset: updated {len(updated_files)} files and deleted {len(deleted_files)} files",
-            no_verify=skip_hooks,
-        )
 
         self._update_datasets_metadata(updated_files, deleted_files, delete)
 
@@ -994,7 +986,6 @@ class DatasetsApiMixin(object):
 
         self.repository.add(*updated_files_paths, force=True)
         self.repository.add(self.renku_pointers_path, force=True)
-        self.repository.commit(f"renku dataset: updated {len(updated_files_paths)} external files")
 
         datasets_provenance = DatasetsProvenance()
 
@@ -1042,31 +1033,12 @@ class DatasetsApiMixin(object):
         except FileNotFoundError:
             pass
 
-    def is_external_file(self, path):
-        """Checks if a path within repo is an external file."""
-        path = self.path / path
-        if not Path(path).is_symlink() or not self._is_path_within_repo(path):
-            return False
-        pointer = os.readlink(path)
-        return f"{self.renku_home}/{self.POINTERS}" in pointer
-
     def has_external_files(self):
         """Return True if project has external files."""
         for dataset in self.datasets.values():
             for file_ in dataset.files:
                 if file_.is_external:
                     return True
-
-    def _is_path_within_repo(self, path):
-        if not os.path.isabs(path):
-            path = os.path.abspath(path)
-        path = Path(path)
-        try:
-            path.relative_to(self.path)
-        except ValueError:
-            return False
-        else:
-            return True
 
 
 def _check_url(url):

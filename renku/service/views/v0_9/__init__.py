@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,9 +15,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# TODO: Add development versions of some important dependencies here to get a
-#       warning when there are breaking upstream changes, e.g.:
-#
-#     -e git+git://github.com/mitsuhiko/werkzeug.git#egg=Werkzeug
-#     -e git+git://github.com/mitsuhiko/jinja2.git#egg=Jinja2
+"""Renku service v0.9 views."""
