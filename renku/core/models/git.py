@@ -143,16 +143,12 @@ class GitURL(object):
     @property
     def instance_url(self):
         """Get the url of the git instance."""
-        url = f"{self.protocol}://{self.hostname}"
+        url = urlparse(self.href)
 
-        path = self.pathname.replace(f"{self.owner}/{self.name}", "")
+        path = self.pathname.split(self.owner, 1)[0]
+        url._replace(path=path)
 
-        if self.port:
-            url = f"{url}:{self.port}/{path}"
-        else:
-            url = f"{url}/{path}"
-
-        return url
+        return url.geturl()
 
     @property
     def image(self):

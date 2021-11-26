@@ -46,24 +46,22 @@ class GitlabAPIProvider(IGitAPIProvider):
         if not ref:
             ref = "HEAD"
 
+        target_folder = Path(target_folder)
+
         git_data = GitURL.parse(remote)
         gl = gitlab.Gitlab(git_data.instance_url, private_token=token)
         project = gl.projects.get(f"{git_data.owner}/{git_data.name}")
 
         result_paths = []
 
+        target_folder.mkdir(exist_ok=True)
+
         for path in paths:
             full_path = target_folder / path
-            tmp_file = tempfile.NamedTemporaryFile(delete=False)
-            tmp_filename = None
 
             try:
-                project.files.raw(file_path=path, ref=ref, streamed=True, action=tmp_file.write)
-                tmp_filename = tmp_file.name
-                tmp_file.close()
-
-                full_path.parents[0].mkdir(parents=True, exist_ok=True)
-                shutil.copy2(tmp_filename, full_path)
+                with open(full_path, "w") as f:
+                    project.files.raw(file_path=path, ref=ref, streamed=True, action=f.write)
 
                 result_paths.append(full_path)
             except gitlab.GitlabGetError:
@@ -71,6 +69,3 @@ class GitlabAPIProvider(IGitAPIProvider):
                     raise errors.NotFound(path)
 
                 continue
-            finally:
-                if tmp_filename:
-                    os.remove(tmp_filename)
