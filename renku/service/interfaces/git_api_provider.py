@@ -32,7 +32,6 @@ class IGitAPIProvider(ABC):
         remote: str,
         token: str,
         ref: Optional[str] = None,
-        fail_on_missing: Optional[bool] = False,
     ):
         """Download files through a remote Git API."""
         raise NotImplementedError()

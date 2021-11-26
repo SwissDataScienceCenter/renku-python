@@ -22,8 +22,8 @@ from typing import List, Optional, Union
 
 import gitlab
 
-from renku.core import errors
 from renku.core.models.git import GitURL
+from renku.core.utils.os import delete_file
 from renku.service.interfaces.git_api_provider import IGitAPIProvider
 
 
@@ -37,7 +37,6 @@ class GitlabAPIProvider(IGitAPIProvider):
         remote: str,
         token: str,
         ref: Optional[str] = None,
-        fail_on_missing: Optional[bool] = False,
     ):
         """Download files through a remote Git API."""
         if not ref:
@@ -62,7 +61,5 @@ class GitlabAPIProvider(IGitAPIProvider):
 
                 result_paths.append(full_path)
             except gitlab.GitlabGetError:
-                if fail_on_missing:
-                    raise errors.NotFound(path)
-
+                delete_file(full_path)
                 continue
