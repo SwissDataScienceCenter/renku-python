@@ -87,10 +87,12 @@ def get_modified_activities(
     modified = set()
     deleted = set()
 
+    checksum_cache = {}
+
     for activity in activities:
         for usage in activity.usages:
             entity = usage.entity
-            current_checksum = repository.get_object_hash(path=entity.path)
+            current_checksum = checksum_cache.setdefault(entity.path, repository.get_object_hash(path=entity.path))
             if current_checksum is None:
                 deleted.add((activity, entity))
             elif current_checksum != entity.checksum:

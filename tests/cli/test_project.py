@@ -25,6 +25,17 @@ from renku.core.models.provenance.agent import Person
 from tests.utils import format_result_exception
 
 
+def test_project_show(runner, client, subdirectory, client_database_injection_manager):
+    """Check showing project metadata."""
+    result = runner.invoke(cli, ["project", "show"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Id:" in result.output
+    assert "Name:" in result.output
+    assert "Creator:" in result.output
+    assert "Renku Version:" in result.output
+
+
 def test_project_edit(runner, client, subdirectory, client_database_injection_manager):
     """Check project metadata editing."""
     (client.path / "README.md").write_text("Make repo dirty.")
@@ -42,11 +53,25 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
     commit_sha_before = client.repository.head.commit.hexsha
 
     result = runner.invoke(
-        cli, ["project", "edit", "-d", " new description ", "-c", creator, "--metadata", str(metadata_path)]
+        cli,
+        [
+            "project",
+            "edit",
+            "-d",
+            " new description ",
+            "-c",
+            creator,
+            "--metadata",
+            str(metadata_path),
+            "-k",
+            "keyword1",
+            "-k",
+            "keyword2",
+        ],
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Successfully updated: creator, description, custom_metadata." in result.output
+    assert "Successfully updated: creator, description, keywords, custom_metadata." in result.output
     assert "Warning: No email or wrong format for: Forename Surname" in result.output
 
     with client_database_injection_manager(client):
@@ -58,10 +83,20 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
     assert "Forename Surname" == project.creator.name
     assert "Affiliation" == project.creator.affiliation
     assert metadata == project.annotations[0].body
+    assert {"keyword1", "keyword2"} == set(project.keywords)
 
     assert client.repository.is_dirty(untracked_files=True)
     commit_sha_after = client.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
+
+    result = runner.invoke(cli, ["project", "show"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Id:" in result.output
+    assert "Name:" in result.output
+    assert "Creator:" in result.output
+    assert "Renku Version:" in result.output
+    assert "Keywords:" in result.output
 
 
 def test_project_edit_no_change(runner, client):

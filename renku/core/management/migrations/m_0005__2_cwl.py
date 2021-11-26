@@ -19,6 +19,7 @@
 
 import glob
 import os
+import traceback
 import uuid
 from collections import defaultdict
 from functools import cmp_to_key
@@ -58,10 +59,10 @@ def migrate(migration_context):
     """Migration function."""
     if MigrationType.WORKFLOWS not in migration_context.options.type:
         return
-    _migrate_old_workflows(migration_context.client)
+    _migrate_old_workflows(client=migration_context.client, strict=migration_context.options.strict)
 
 
-def _migrate_old_workflows(client):
+def _migrate_old_workflows(client, strict):
     """Migrates old cwl workflows to new jsonld format."""
 
     def sort_cwl_commits(e1, e2):
@@ -86,17 +87,25 @@ def _migrate_old_workflows(client):
         communication.echo(f"Processing commit {n}/{len(cwl_paths)}", end="\r")
 
         cwl_file, commit = element
-        if not Path(cwl_file).exists():
-            continue
-        path = _migrate_cwl(client, cwl_file, commit)
-        os.remove(cwl_file)
 
-        client.repository.add(cwl_file, path)
+        try:
+            if not Path(cwl_file).exists():
+                continue
 
-        if client.repository.is_dirty():
-            commit_msg = "renku migrate: committing migrated workflow"
-            committer = Actor(name=f"renku {__version__}", email=version_url)
-            client.repository.commit(commit_msg, committer=committer, no_verify=True)
+            path = _migrate_cwl(client, cwl_file, commit)
+            os.remove(cwl_file)
+
+            client.repository.add(cwl_file, path)
+
+            if client.repository.is_dirty():
+                commit_msg = "renku migrate: committing migrated workflow"
+                committer = Actor(name=f"renku {__version__}", email=version_url)
+                client.repository.commit(commit_msg + client.transaction_id, committer=committer, no_verify=True)
+        except Exception:
+            if strict:
+                raise
+            communication.echo("")
+            communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
 
 
 def _migrate_cwl(client, path, commit):

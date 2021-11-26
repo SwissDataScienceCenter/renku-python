@@ -90,7 +90,7 @@ def _commit_previous_changes(client):
         project.to_yaml(client.renku_path.joinpath(project_path))
 
         client.repository.add(client.renku_path)
-        client.repository.commit("renku migrate: committing structural changes", no_verify=True)
+        client.repository.commit("renku migrate: committing structural changes" + client.transaction_id, no_verify=True)
         return True
 
     return False
@@ -183,7 +183,7 @@ def generate_new_metadata(
     n_commits = len(commits)
 
     for n, commit in enumerate(commits, start=1):
-        communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\n")
+        communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\r")
 
         # NOTE: Treat the last commit differently if it was done by this migration
         is_last_commit = committed and n == n_commits

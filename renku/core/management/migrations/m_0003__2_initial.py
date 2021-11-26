@@ -114,7 +114,7 @@ def _migrate_datasets_pre_v0_3(client):
         project.to_yaml(project_path)
 
         client.repository.add(all=True)
-        client.repository.commit("renku migrate: committing structural changes")
+        client.repository.commit("renku migrate: committing structural changes" + client.transaction_id)
 
 
 def _migrate_broken_dataset_paths(client):

@@ -35,7 +35,6 @@ from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.workflow.types import PATH_OBJECTS, Directory, File
-from renku.core.metadata.repository import Actor
 from renku.core.models.datastructures import DirectoryTree
 from renku.core.models.workflow.parameter import (
     DIRECTORY_MIME_TYPE,
@@ -48,7 +47,6 @@ from renku.core.models.workflow.plan import Plan
 from renku.core.utils.git import is_path_safe
 from renku.core.utils.metadata import is_external_file
 from renku.core.utils.os import get_relative_path
-from renku.version import __version__, version_url
 
 STARTED_AT = int(time.time() * 1000)
 
@@ -590,13 +588,6 @@ class PlanFactory:
                 client.track_paths_in_storage(*output_paths)
 
             client.repository.add(*output_paths)
-
-            if repository.is_dirty():
-                commit_msg = f"renku run: committing {len(output_paths)} newly added files"
-
-                committer = Actor(name=f"renku {__version__}", email=version_url)
-
-                repository.commit(commit_msg, committer=committer, no_verify=True)
 
         results = pm.hook.cmdline_tool_annotations(tool=self)
         self.annotations = [a for r in results for a in r]

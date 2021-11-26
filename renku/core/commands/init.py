@@ -345,6 +345,7 @@ def _init(
     path,
     name,
     description,
+    keywords,
     template_id,
     template_index,
     template_source,
@@ -460,6 +461,7 @@ def _init(
                 force=force,
                 data_dir=data_dir,
                 description=description,
+                keywords=keywords,
             )
         except FileExistsError as e:
             raise errors.InvalidFileOperation(e)
@@ -618,6 +620,7 @@ def create_from_template(
     user=None,
     commit_message=None,
     description=None,
+    keywords=None,
 ):
     """Initialize a new project from a template."""
 
@@ -637,7 +640,9 @@ def create_from_template(
         metadata["__name__"] = name
 
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
-        with client.with_metadata(name=name, description=description, custom_metadata=custom_metadata) as project:
+        with client.with_metadata(
+            name=name, description=description, custom_metadata=custom_metadata, keywords=keywords
+        ) as project:
             project.template_source = metadata["__template_source__"]
             project.template_ref = metadata["__template_ref__"]
             project.template_id = metadata["__template_id__"]
@@ -670,6 +675,7 @@ def _create_from_template_local(
     initial_branch=None,
     commit_message=None,
     description=None,
+    keywords=None,
 ):
     """Initialize a new project from a template."""
 
@@ -696,6 +702,7 @@ def _create_from_template_local(
         user=user,
         commit_message=commit_message,
         description=description,
+        keywords=keywords,
     )
 
 

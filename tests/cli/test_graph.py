@@ -26,7 +26,7 @@ from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from tests.utils import format_result_exception, modified_environ
 
 
-@pytest.mark.parametrize("revision", [None, "HEAD", "HEAD^^", "HEAD^^..HEAD"])
+@pytest.mark.parametrize("revision", [None, "HEAD", "HEAD^", "HEAD^..HEAD"])
 @pytest.mark.parametrize("format", ["json-ld", "rdf", "nt"])
 def test_graph_export_validation(runner, client, directory_tree, run, revision, format):
     """Test graph validation when exporting."""

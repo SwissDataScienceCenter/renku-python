@@ -85,6 +85,7 @@ from renku.cli.move import move
 from renku.cli.project import project
 from renku.cli.remove import remove
 from renku.cli.rerun import rerun
+from renku.cli.rollback import rollback
 from renku.cli.run import run
 from renku.cli.save import save
 from renku.cli.service import service
@@ -233,6 +234,7 @@ cli.add_command(move)
 cli.add_command(project)
 cli.add_command(remove)
 cli.add_command(rerun)
+cli.add_command(rollback)
 cli.add_command(run)
 cli.add_command(save)
 cli.add_command(status)
