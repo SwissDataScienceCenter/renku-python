@@ -17,9 +17,6 @@
 # limitations under the License.
 """Git APi provider interface."""
 
-import os
-import shutil
-import tempfile
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -54,10 +51,10 @@ class GitlabAPIProvider(IGitAPIProvider):
 
         result_paths = []
 
-        target_folder.mkdir(exist_ok=True)
-
         for path in paths:
             full_path = target_folder / path
+
+            full_path.parent.mkdir(parents=True, exist_ok=True)
 
             try:
                 with open(full_path, "w") as f:
