@@ -443,11 +443,7 @@ class DatasetsApiMixin(object):
         self.repository.add(*files_to_commit, self.renku_pointers_path, force=True)
 
         n_staged_changes = len(self.repository.staged_changes)
-        if n_staged_changes > 0:
-            msg = f"renku dataset: committing {n_staged_changes} newly added files"
-            skip_hooks = not self.external_storage_requested
-            self.repository.commit(msg, no_verify=skip_hooks)
-        else:
+        if n_staged_changes == 0:
             communication.warn("No new file was added to project")
 
         if not files:
@@ -926,11 +922,6 @@ class DatasetsApiMixin(object):
         file_paths = {str(self.path / f.entity.path) for f in updated_files + deleted_files}
         # Force-add to include possible ignored files that are in datasets
         self.repository.add(*file_paths, force=True)
-        skip_hooks = not self.external_storage_requested
-        self.repository.commit(
-            f"renku dataset: updated {len(updated_files)} files and deleted {len(deleted_files)} files",
-            no_verify=skip_hooks,
-        )
 
         self._update_datasets_metadata(updated_files, deleted_files, delete)
 
@@ -995,7 +986,6 @@ class DatasetsApiMixin(object):
 
         self.repository.add(*updated_files_paths, force=True)
         self.repository.add(self.renku_pointers_path, force=True)
-        self.repository.commit(f"renku dataset: updated {len(updated_files_paths)} external files")
 
         datasets_provenance = DatasetsProvenance()
 

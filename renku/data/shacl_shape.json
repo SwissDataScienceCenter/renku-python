@@ -903,6 +903,15 @@
                "datatype": {
                   "@id": "xsd:integer"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:dateCreated",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },
