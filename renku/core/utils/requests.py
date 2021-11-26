@@ -98,7 +98,11 @@ def _request(verb: str, url: str, *, allow_redirects=True, data=None, files=None
 
 def get_redirect_url(url) -> str:
     """Return redirect URL if any; otherwise, return the original URL."""
-    return head(url, allow_redirects=True).url
+    try:
+        return head(url, allow_redirects=True).url
+    except errors.RequestError:
+        # NOTE: HEAD request failed, try with original url
+        return url
 
 
 def check_response(response):
@@ -202,7 +206,7 @@ def get_filename_from_headers(response):
 
 
 @contextmanager
-def _retry(total_requests=10, backoff_factor=1, statuses=(500, 502, 503, 504, 429)):
+def _retry(total_requests=5, backoff_factor=0.2, statuses=(500, 502, 503, 504, 429)):
     """Default HTTP session for requests."""
     _session = requests.Session()
 

@@ -925,12 +925,19 @@ class Commit:
         """Return all objects in the commit's tree."""
         return {o.path: Object.from_object(o) for o in self._commit.tree.traverse()}
 
-    def get_changes(self, paths: Union[Path, str, List[Union[Path, str]], None] = None) -> List[Diff]:
+    def get_changes(
+        self, paths: Union[Path, str, List[Union[Path, str]], None] = None, commit: Union[str, "Commit"] = None
+    ) -> List[Diff]:
         """Return list of changes in a commit.
 
         NOTE: This function can be implemented with ``git diff-tree``.
         """
-        if len(self._commit.parents) == 0:
+        if commit:
+            if isinstance(commit, Commit):
+                commit = commit.hexsha
+
+            diff = self._commit.diff(commit, paths=paths, ignore_submodules=True)
+        elif len(self._commit.parents) == 0:
             diff = self._commit.diff(git.NULL_TREE, paths=paths, ignore_submodules=True)
         elif len(self._commit.parents) == 1:
             # NOTE: Diff is reverse so we get the diff of the parent to the child

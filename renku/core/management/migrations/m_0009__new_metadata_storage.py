@@ -90,7 +90,7 @@ def _commit_previous_changes(client):
         project.to_yaml(client.renku_path.joinpath(project_path))
 
         client.repository.add(client.renku_path)
-        client.repository.commit("renku migrate: committing structural changes", no_verify=True)
+        client.repository.commit("renku migrate: committing structural changes" + client.transaction_id, no_verify=True)
         return True
 
     return False
