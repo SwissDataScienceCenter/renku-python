@@ -90,7 +90,6 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
 
     # NOTE: Force-add to include possible ignored files
     client.repository.add(*files.values(), force=True)
-    client.repository.commit(f"renku mv: committing {len(files)} moved files")
 
     client.move_files(files=files, to_dataset=to_dataset)
 

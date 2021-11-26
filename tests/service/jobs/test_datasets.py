@@ -85,7 +85,7 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
 
     new_commit = Repository(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
-    assert f"{commit_message}\n" == new_commit.message
+    assert commit_message.splitlines()[0] == new_commit.message.splitlines()[0]
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
 
@@ -133,7 +133,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
 
     new_commit = Repository(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
-    assert f"{commit_message}\n" == new_commit.message
+    assert commit_message.splitlines()[0] == new_commit.message.splitlines()[0]
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
     assert response
@@ -290,7 +290,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     new_commit = Repository(dest).head.commit
 
     assert old_commit.hexsha != new_commit.hexsha
-    assert f"{commit_message}\n" == new_commit.message
+    assert commit_message.splitlines()[0] == new_commit.message.splitlines()[0]
 
 
 @pytest.mark.service
