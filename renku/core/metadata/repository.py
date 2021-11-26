@@ -286,12 +286,16 @@ class BaseRepository:
 
         return attributes
 
-    def get_previous_commit(self, path: Union[Path, str], revision: Union["Commit", str] = None) -> Optional["Commit"]:
+    def get_previous_commit(
+        self, path: Union[Path, str], revision: Union["Commit", str] = None, full_history: bool = False
+    ) -> Optional["Commit"]:
         """Return a previous commit for a given path starting from ``revision``."""
         revision = revision or "HEAD"
         assert isinstance(revision, (Commit, str)), f"'revision' must be Commit/str not '{type(revision)}'"
 
-        commit = _find_previous_commit_helper(repository=self, path=path, revision=str(revision))
+        commit = _find_previous_commit_helper(
+            repository=self, path=path, revision=str(revision), full_history=full_history
+        )
         if not commit:
             raise errors.GitCommitNotFoundError(f"Cannot find previous commit for '{path}' from '{revision}'")
         return commit
@@ -434,6 +438,19 @@ class BaseRepository:
                 # NOTE: If object does not exist anymore, hash-object doesn't work, fall back to rev-parse
                 revision = "HEAD"
 
+        def get_staged_directory_hash() -> Optional[str]:
+            if not os.path.isdir(absolute_path):
+                return
+
+            stashed_revision = self.run_git_command("stash", "create")
+            if not stashed_revision:
+                return
+
+            try:
+                return self.run_git_command("rev-parse", f"{stashed_revision}:{relative_path}")
+            except errors.GitCommandError:
+                return
+
         def get_object_hash_from_submodules() -> Optional[str]:
             for submodule in self.submodules:
                 try:
@@ -448,8 +465,13 @@ class BaseRepository:
         try:
             return self.run_git_command("rev-parse", f"{revision}:{relative_path}")
         except errors.GitCommandError:
-            # NOTE: The file can be in a submodule or it was not there when the command ran but was there when workflows
-            # were migrated (this can happen only for Usage); the project might be broken too.
+            # NOTE: The file can be in a submodule or it can be a directory which is staged but not committed yet.
+            # It's also possible that the file was not there when the command ran but was there when workflows were
+            # migrated (this can happen only for Usage); the project might be broken too.
+            staged_directory_hash = get_staged_directory_hash()
+            if staged_directory_hash:
+                return staged_directory_hash
+
             return get_object_hash_from_submodules()
 
     def get_user(self) -> "Actor":
@@ -783,12 +805,19 @@ class Commit:
         """Return all objects in the commit's tree."""
         return {o.path: Object.from_object(o) for o in self._commit.tree.traverse()}
 
-    def get_changes(self, paths: Union[Path, str, List[Union[Path, str]], None] = None) -> List[Diff]:
+    def get_changes(
+        self, paths: Union[Path, str, List[Union[Path, str]], None] = None, commit: Union[str, "Commit"] = None
+    ) -> List[Diff]:
         """Return list of changes in a commit.
 
         NOTE: This function can be implemented with ``git diff-tree``.
         """
-        if len(self._commit.parents) == 0:
+        if commit:
+            if isinstance(commit, Commit):
+                commit = commit.hexsha
+
+            diff = self._commit.diff(commit, paths=paths, ignore_submodules=True)
+        elif len(self._commit.parents) == 0:
             diff = self._commit.diff(git.NULL_TREE, paths=paths, ignore_submodules=True)
         elif len(self._commit.parents) == 1:
             # NOTE: Diff is reverse so we get the diff of the parent to the child

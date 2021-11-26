@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service project serializers."""
 from marshmallow import fields
+from marshmallow.schema import Schema
 
 from renku.core.models.dataset import DatasetCreatorsJson as DatasetCreators
 from renku.service.serializers.common import (
@@ -29,19 +30,48 @@ from renku.service.serializers.common import (
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
+class ProjectShowRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
+    """Project show metadata request."""
+
+
+class ProjectShowResponse(Schema):
+    """Response schema for project show."""
+
+    id = fields.String(description="The ID of this project")
+    name = fields.String(description="The name of the project")
+    description = fields.String(default=None, description="The optional description of the project")
+    created = fields.DateTime(description="The date this project was created at.")
+    creator = fields.Nested(DatasetCreators, description="The creator of this project")
+    agent = fields.String(description="The renku version last used on this project")
+    custom_metadata = fields.Dict(
+        default=None, attribute="annotations", description="Custom JSON-LD metadata of the project"
+    )
+    template_info = fields.String(description="The template that was used in the creation of this project")
+    keywords = fields.List(
+        fields.String(), default=None, Missing=None, description="They keywords associated with this project"
+    )
+
+
+class ProjectShowResponseRPC(RenkuSyncSchema):
+    """RPC schema for project show."""
+
+    result = fields.Nested(ProjectShowResponse)
+
+
 class ProjectEditRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
     """Project edit metadata request."""
 
-    description = fields.String(default=None)
-    creator = fields.Nested(DatasetCreators)
-    custom_metadata = fields.Dict(default=None)
+    description = fields.String(default=None, description="New description for the project")
+    creator = fields.Nested(DatasetCreators, description="New creator for the project")
+    custom_metadata = fields.Dict(default=None, description="Custom JSON-LD metadata")
+    keywords = fields.List(fields.String(), default=None, Missing=None, description="Keyword(s) for the project")
 
 
 class ProjectEditResponse(RenkuSyncSchema):
     """Project edit metadata response."""
 
-    edited = fields.Dict(required=True)
-    warning = fields.String()
+    edited = fields.Dict(required=True, description="Key:value paris of edited metadata")
+    warning = fields.String(description="Warnings raised when editing metadata")
 
 
 class ProjectEditResponseRPC(JsonRPCResponse):

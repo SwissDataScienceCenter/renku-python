@@ -214,6 +214,13 @@
                "sh:class": {
                   "@id": "prov:Activity"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:keywords",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       },
@@ -896,6 +903,15 @@
                "datatype": {
                   "@id": "xsd:integer"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:dateCreated",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },
@@ -1119,6 +1135,13 @@
                   "@id": "xsd:string"
                },
                "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:encodingFormat",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             },
             {
                "nodeKind": "sh:Literal",

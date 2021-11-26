@@ -31,6 +31,7 @@ class Job(Model):
     """Job cache model."""
 
     __database__ = BaseCache.model_db
+    __namespace__ = BaseCache.namespace
 
     created_at = DateTimeField()
     updated_at = DateTimeField()

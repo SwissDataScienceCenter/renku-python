@@ -32,7 +32,7 @@ Bug Fixes
 Bug Fixes
 ~~~~~~~~~
 
--  **core:** Update to rdflib 6 and remove rdflib-jsonld which was not installable with setuptools>58.0.2
+-  **core:** Update to rdflib 6 and remove rdflib-jsonld which was not installable with ``setuptools>58.0.2``
 
 `0.16.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.15.1...v0.16.0>`__ (2021-07-08)
 ----------------------------------------------------------------------------------------------------------
@@ -40,7 +40,7 @@ Bug Fixes
 Bug Fixes
 ~~~~~~~~~
 
--  **cli:** Fix Git LFS autocommit hook not committing new pointer files
+-  **cli:** Fix Git LFS auto-commit hook not committing new pointer files
    (`#2139 <https://github.com/SwissDataScienceCenter/renku-python/issues/2139>`__)
    (`dca5aa4 <https://github.com/SwissDataScienceCenter/renku-python/commit/dca5aa4b2baa22bbfd708de814a557b644015a77>`__)
 -  **cli:** prevent –template-ref from being set without –template-source in renku init
@@ -56,7 +56,7 @@ Bug Fixes
 -  **core:** fix CWL to work with filenames with spaces
    (`#2187 <https://github.com/SwissDataScienceCenter/renku-python/issues/2187>`__)
    (`634f2b3 <https://github.com/SwissDataScienceCenter/renku-python/commit/634f2b3e6709885639685ac9b989f46456dd8cdf>`__),
--  **core:** fix zenodo dataset import for datasets with schema:image set
+-  **core:** fix Zenodo dataset import for datasets with schema:image set
    (`#2142 <https://github.com/SwissDataScienceCenter/renku-python/issues/2142>`__)
    (`06d4969 <https://github.com/SwissDataScienceCenter/renku-python/commit/06d4969cc703eaf9ea884df61e51aba9e48b6e85>`__)
 -  **core:** fix duplicate project version in flattened JSON-LD
@@ -137,7 +137,7 @@ Features
 -  **core:** add default value to all Run parameters
    (`#2057 <https://github.com/SwissDataScienceCenter/renku-python/issues/2057>`__)
    (`3a0321d <https://github.com/SwissDataScienceCenter/renku-python/commit/3a0321d3443c8226abbc534b2ddee0f4f54aa4c0>`__)
--  **core:** adds node-js detection for rerun/update
+-  **core:** adds ``node-js`` detection for rerun/update
    (`#2002 <https://github.com/SwissDataScienceCenter/renku-python/issues/2002>`__)
    (`8b9e801 <https://github.com/SwissDataScienceCenter/renku-python/commit/8b9e801718413763d17fbbc4c22212a0f8263013>`__)
 -  **core:** add renku login command to authenticate with a renku
@@ -157,7 +157,7 @@ Features
 -  **workflow:** add workflow naming metadata
    (`#2033 <https://github.com/SwissDataScienceCenter/renku-python/issues/2033>`__)
    (`5612199 <https://github.com/SwissDataScienceCenter/renku-python/commit/5612199e5ade9d7a6ea2937f87be8adb7b8de19a>`__)
--  **service:** add delayed write operations, ie. porcelain and better cache management
+-  **service:** add delayed write operations, i.e. porcelain and better cache management
    (`#1957 <https://github.com/SwissDataScienceCenter/renku-python/issues/1957>`__)
    (`a05b615 <https://github.com/SwissDataScienceCenter/renku-python/commit/a05b6158a79a7ee85828487ae2194746c3409d46>`__)
 
@@ -188,7 +188,7 @@ Features
 -  **cli:** support template and docker migration
    (`#2019 <https://github.com/SwissDataScienceCenter/renku-python/issues/2019>`__)
    (`ed87770 <https://github.com/SwissDataScienceCenter/renku-python/commit/ed87770eb79c346892a68d0a3b614c5cd597775d>`__)
--  **dataset:** support moving files between datasets with renku mv
+-  **dataset:** support moving files between datasets with renku ``mv``
    (`#1993 <https://github.com/SwissDataScienceCenter/renku-python/issues/1993>`__)
    (`a715b70 <https://github.com/SwissDataScienceCenter/renku-python/commit/a715b709b3b63667963a7726629edb2670f7a13e>`__)
 
@@ -221,7 +221,7 @@ Features
 -  **dataset:** dataset import enhancements
    (`#1970 <https://github.com/SwissDataScienceCenter/renku-python/issues/1970>`__)
    (`b3df7b8 <https://github.com/SwissDataScienceCenter/renku-python/commit/b3df7b838ad676176d5da50599a5c6e55622b28f>`__)
--  **service:** renku service up/down/ps/restart/logs commands
+-  **service:** renku service ``up``/``down``/``ps``/``restart``/``logs`` commands
    (`#1899 <https://github.com/SwissDataScienceCenter/renku-python/issues/1899>`__)
    (`d9e49ae <https://github.com/SwissDataScienceCenter/renku-python/commit/d9e49aee19ce89efacf516b1d6426124c38f6a7b>`__)
 -  **service:** add support for storing remote dataset images in the repo
@@ -351,7 +351,7 @@ Bug Fixes
 -  **core:** adds pre-commit hook message for unsupported projects
    (`#1730 <https://github.com/SwissDataScienceCenter/renku-python/issues/1730>`__)
    (`7f1731d <https://github.com/SwissDataScienceCenter/renku-python/commit/7f1731de7661ee05178fce54606079941fe67dc8>`__)
--  **service:** removes chdir calls in service
+-  **service:** removes ``chdir`` calls in service
    (`#1767 <https://github.com/SwissDataScienceCenter/renku-python/issues/1767>`__)
    (`4da22cb <https://github.com/SwissDataScienceCenter/renku-python/commit/4da22cb8b88621df5087640c8aca68e48a56a0e1>`__)
 
@@ -456,7 +456,7 @@ Bug Fixes
 -  **dataset:** remove blank nodes
    (`#1602 <https://github.com/SwissDataScienceCenter/renku-python/issues/1602>`__)
    (`478f08c <https://github.com/SwissDataScienceCenter/renku-python/commit/478f08c4388f65a4369c7f5119897ee060cece26>`__)
--  **dataset:** set isBasedOn for renku datasets
+-  **dataset:** set ``isBasedOn`` for renku datasets
    (`#1617 <https://github.com/SwissDataScienceCenter/renku-python/issues/1617>`__)
    (`3aee6b8 <https://github.com/SwissDataScienceCenter/renku-python/commit/3aee6b84c673ee5005a642168556c10e5ea4bd4f>`__)
 -  **dataset:** update local files metadata when overwriting
@@ -465,7 +465,7 @@ Bug Fixes
 -  **dataset:** various migration issues
    (`#1620 <https://github.com/SwissDataScienceCenter/renku-python/issues/1620>`__)
    (`f24c2e4 <https://github.com/SwissDataScienceCenter/renku-python/commit/f24c2e4003d6bd2b53fb19e3494cce3651957921>`__)
--  **service:** correctely set job timeout
+-  **service:** correctly set job timeout
    (`#1677 <https://github.com/SwissDataScienceCenter/renku-python/issues/1677>`__)
    (`25f0eb6 <https://github.com/SwissDataScienceCenter/renku-python/commit/25f0eb65e31ed60f09825972f8172338fbf302bf>`__)
 -  **service:** dataset rm endpoint supports new core API
@@ -484,7 +484,7 @@ Features
 -  **cli:** add click plugin support
    (`#1604 <https://github.com/SwissDataScienceCenter/renku-python/issues/1604>`__)
    (`47b007f <https://github.com/SwissDataScienceCenter/renku-python/commit/47b007ff782432d75b0a9fd71476581ddc2d62dc>`__)
--  **cli:** adds consistent behaviour for cli commands
+-  **cli:** adds consistent behavior for cli commands
    (`#1523 <https://github.com/SwissDataScienceCenter/renku-python/issues/1523>`__)
    (`20b7248 <https://github.com/SwissDataScienceCenter/renku-python/commit/20b7248be39093a616c237e7c71700eda1271bc3>`__)
 -  **cli:** show lfs status of dataset files
@@ -499,7 +499,7 @@ Features
 -  **dataset:** list dataset description
    (`#1588 <https://github.com/SwissDataScienceCenter/renku-python/issues/1588>`__)
    (`7e13857 <https://github.com/SwissDataScienceCenter/renku-python/commit/7e1385796336741afef2044183bf853cdaab31d3>`__)
--  **service:** adds template and dockerfile migration to migration
+-  **service:** adds template and Dockerfile migration to migration
    endpoint
    (`#1509 <https://github.com/SwissDataScienceCenter/renku-python/issues/1509>`__)
    (`ea01795 <https://github.com/SwissDataScienceCenter/renku-python/commit/ea017959de835e2a6882b932c480113f87d33502>`__)
@@ -573,10 +573,10 @@ Bug Fixes
 Bug Fixes
 ~~~~~~~~~
 
--  **cli:** fixes libxslt dependency in docker image
+-  **cli:** fixes ``libxslt`` dependency in docker image
    (`#1534 <https://github.com/SwissDataScienceCenter/renku-python/issues/1534>`__)
    (`491bae7 <https://github.com/SwissDataScienceCenter/renku-python/commit/491bae764db72f91f3c444bd7105017e50e370cd>`__)
--  **core:** fixes ‘doi:…’ import
+-  **core:** fixes ``doi:…`` import
    (`#1536 <https://github.com/SwissDataScienceCenter/renku-python/issues/1536>`__)
    (`f653c79 <https://github.com/SwissDataScienceCenter/renku-python/commit/f653c7912ee03ca24e2043063a5b269d938b3c31>`__)
 -  **core:** fixes duplicate ‘renku:Run’ ids on repeat execution of migrations
@@ -618,7 +618,7 @@ Features
 Bug Fixes
 ~~~~~~~~~
 
--  fixes shacl for DatasetFile when used inside a qualifiedGeneration
+-  fixes shacl for DatasetFile when used inside a ``qualifiedGeneration``
    (`#1477 <https://github.com/SwissDataScienceCenter/renku-python/issues/1477>`__)
    (`99dd4a4 <https://github.com/SwissDataScienceCenter/renku-python/commit/99dd4a49704a36e330ea0d5ee7e0fcc7db31f7ad>`__)
 
@@ -628,7 +628,7 @@ Bug Fixes
 Bug Fixes
 ~~~~~~~~~
 
--  **cli:** disable version check in githook calls
+-  **cli:** disable version check in git hook calls
    (`#1300 <https://github.com/SwissDataScienceCenter/renku-python/issues/1300>`__)
    (`5132db3 <https://github.com/SwissDataScienceCenter/renku-python/commit/5132db3813dd0bd87f289dbf286ea73149478aeb>`__)
 -  **core:** fix paths in migration of workflows
@@ -679,7 +679,7 @@ Features
 -  **core:** migration check in core
    (`#1320 <https://github.com/SwissDataScienceCenter/renku-python/issues/1320>`__)
    (`4bc52f4 <https://github.com/SwissDataScienceCenter/renku-python/commit/4bc52f430b0def821df7cb3dc498af46ee9c4448>`__)
--  **core:** Move workflow serialisation over to calamus
+-  **core:** Move workflow serialization over to calamus
    (`#1386 <https://github.com/SwissDataScienceCenter/renku-python/issues/1386>`__)
    (`f0fbc49 <https://github.com/SwissDataScienceCenter/renku-python/commit/f0fbc4979955de04ac5c565e471a52019eb6cd48>`__)
 -  **core:** save and load workflow as jsonld
@@ -739,7 +739,7 @@ Bug Fixes
 Bug Fixes
 ~~~~~~~~~
 
--  **dataset:** update default behaviour and messaging on dataset unlink
+-  **dataset:** update default behavior and messaging on dataset unlink
    (`#1275 <https://github.com/SwissDataScienceCenter/renku-python/issues/1275>`__)
    (`98d6728 <https://github.com/SwissDataScienceCenter/renku-python/commit/98d67284668f3f1c0d37aba52dc6a5557e8fc806>`__)
 -  **dataset:** correct url in different domain
@@ -773,7 +773,7 @@ Features
 -  **service:** protected branches support
    (`#1222 <https://github.com/SwissDataScienceCenter/renku-python/issues/1222>`__)
    (`8405ce5 <https://github.com/SwissDataScienceCenter/renku-python/commit/8405ce5ad1d3aa3f10c583aff2e7ca283db5033e>`__)
--  **dataset:** doi variations for import
+-  **dataset:** DOI variations for import
    (`#1216 <https://github.com/SwissDataScienceCenter/renku-python/issues/1216>`__)
    (`0f329dd <https://github.com/SwissDataScienceCenter/renku-python/commit/0f329dd1796d61838bef89f66ff1bb88af243059>`__)
 -  **dataset:** keywords in metadata
@@ -853,7 +853,7 @@ Features
 -  renku init options refactor
    (`#1127 <https://github.com/SwissDataScienceCenter/renku-python/issues/1127>`__)
    (`78b208b <https://github.com/SwissDataScienceCenter/renku-python/commit/78b208bf9800a0c4caf85b4eed20bf5656561e37>`__)
--  **datasets:** add files from dropbox
+-  **datasets:** add files from Dropbox
    (`#1135 <https://github.com/SwissDataScienceCenter/renku-python/issues/1135>`__)
    (`bf5f2db <https://github.com/SwissDataScienceCenter/renku-python/commit/bf5f2db34479ed574af9fd57a893884abddb6f41>`__)
 
@@ -881,7 +881,7 @@ will insist on migrating a project immediately if the metadata is found to be ou
 Bug Fixes
 ~~~~~~~~~
 
--  **cli:** consistenly show correct contexts
+-  **cli:** consistently show correct contexts
    (`#1096 <https://github.com/SwissDataScienceCenter/renku-python/issues/1096>`__)
    (`b333f0f <https://github.com/SwissDataScienceCenter/renku-python/commit/b333f0f27fdaeec1ce3ba7a145739055429419d9>`__)
 -  **dataset:** –no-external-storage flag not working
@@ -1023,7 +1023,7 @@ Bug Fixes
 -  Fixes renku update workflow failure handling and renku status error handling
    (`#888 <https://github.com/SwissDataScienceCenter/renku-python/issues/888>`__)
    (`3879124 <https://github.com/SwissDataScienceCenter/renku-python/commit/3879124a40fb17acc2cb46069598a63ae32b0075>`__)
--  Fixes sameAs property to follow schema.org spec
+-  Fixes ``sameAs`` property to follow schema.org spec
    (`#944 <https://github.com/SwissDataScienceCenter/renku-python/issues/944>`__)
    (`291380e <https://github.com/SwissDataScienceCenter/renku-python/commit/291380e16046484d789fbf6485cebe04ed6a61e2>`__)
 -  handle missing renku directory
@@ -1032,7 +1032,7 @@ Bug Fixes
 -  resolves symlinks when pulling LFS
    (`#981 <https://github.com/SwissDataScienceCenter/renku-python/issues/981>`__)
    (`68bd8f5 <https://github.com/SwissDataScienceCenter/renku-python/commit/68bd8f5f5a60413529f9a5eeccfb7734b1cf8d32>`__)
--  serializes all zenodo metadata
+-  serializes all Zenodo metadata
    (`#941 <https://github.com/SwissDataScienceCenter/renku-python/issues/941>`__)
    (`787978a <https://github.com/SwissDataScienceCenter/renku-python/commit/787978ad787dc5682392545df0ac0024cf17837d>`__)
 -  Fixes various bugs in dataset import
@@ -1153,7 +1153,7 @@ Bug Fixes
 Bug Fixes
 ~~~~~~~~~
 
--  add .renku/tmp to default .gitignore (`#728`_) (`6212148`_)
+-  add ``.renku/tmp`` to default .gitignore (`#728`_) (`6212148`_)
 -  dataset import causes renku exception due to duplicate LocalClient
    (`#724`_) (`89411b0`_)
 -  delete new dataset ref if file add fails (`#729`_) (`2dea711`_)
@@ -1163,7 +1163,7 @@ Bug Fixes
 -  integration tests for `#681`_ (`#747`_) (`b08435d`_)
 -  use commit author for project creator (`#715`_) (`1a40ebe`_), closes
    `#713`_
--  zenodo dataset import error (`f1d623a`_)
+-  Zenodo dataset import error (`f1d623a`_)
 
 Features
 ~~~~~~~~
@@ -1218,13 +1218,13 @@ Bug Fixes
 -  cleanup needed for integration tests on py35
    (`#653 <https://github.com/SwissDataScienceCenter/renku-python/issues/653>`__)
    (`fdd7215 <https://github.com/SwissDataScienceCenter/renku-python/commit/fdd7215>`__)
--  fixed serialization of datetime to iso format
+-  fixed serialization of datetime to ISO format
    (`#629 <https://github.com/SwissDataScienceCenter/renku-python/issues/629>`__)
    (`693d59d <https://github.com/SwissDataScienceCenter/renku-python/commit/693d59d>`__)
 -  fixes broken integration test
    (`#649 <https://github.com/SwissDataScienceCenter/renku-python/issues/649>`__)
    (`04eba66 <https://github.com/SwissDataScienceCenter/renku-python/commit/04eba66>`__)
--  hide image, pull, runner, show, workon and deactivate commands
+-  hide ``image``, ``pull``, ``runner``, ``show``, ``workon`` and ``deactivate`` commands
    (`#672 <https://github.com/SwissDataScienceCenter/renku-python/issues/672>`__)
    (`a3e9998 <https://github.com/SwissDataScienceCenter/renku-python/commit/a3e9998>`__)
 -  integration tests fixed
@@ -1233,10 +1233,10 @@ Bug Fixes
 -  migration of old datasets
    (`#639 <https://github.com/SwissDataScienceCenter/renku-python/issues/639>`__)
    (`4d4d7d2 <https://github.com/SwissDataScienceCenter/renku-python/commit/4d4d7d2>`__)
--  migration timezones
+-  migration time zones
    (`#683 <https://github.com/SwissDataScienceCenter/renku-python/issues/683>`__)
    (`58c2de4 <https://github.com/SwissDataScienceCenter/renku-python/commit/58c2de4>`__)
--  Removes unneccesary call to git lfs with no paths
+-  Removes unnecessary call to git lfs with no paths
    (`#658 <https://github.com/SwissDataScienceCenter/renku-python/issues/658>`__)
    (`e32d48b <https://github.com/SwissDataScienceCenter/renku-python/commit/e32d48b>`__)
 -  renku home directory overwrite in tests
@@ -1245,7 +1245,7 @@ Bug Fixes
 -  upload metadata before actual files
    (`#652 <https://github.com/SwissDataScienceCenter/renku-python/issues/652>`__)
    (`95ed468 <https://github.com/SwissDataScienceCenter/renku-python/commit/95ed468>`__)
--  use latest_html for version check
+-  use ``latest_html`` for version check
    (`#647 <https://github.com/SwissDataScienceCenter/renku-python/issues/647>`__)
    (`c6b0309 <https://github.com/SwissDataScienceCenter/renku-python/commit/c6b0309>`__),
    closes
@@ -1253,7 +1253,7 @@ Bug Fixes
 -  user-related metadata
    (`#655 <https://github.com/SwissDataScienceCenter/renku-python/issues/655>`__)
    (`44183e6 <https://github.com/SwissDataScienceCenter/renku-python/commit/44183e6>`__)
--  zenodo export failing with relative paths
+-  Zenodo export failing with relative paths
    (`d40967c <https://github.com/SwissDataScienceCenter/renku-python/commit/d40967c>`__)
 
 Features
@@ -1317,7 +1317,7 @@ Bug Fixes
 -  added check for overwriting datasets
    (`#541 <https://github.com/SwissDataScienceCenter/renku-python/issues/541>`__)
    (`8c697fb <https://github.com/SwissDataScienceCenter/renku-python/commit/8c697fb>`__)
--  escape whitespaces in notebook name
+-  escape whitespace in notebook name
    (`#584 <https://github.com/SwissDataScienceCenter/renku-python/issues/584>`__)
    (`0542fcc <https://github.com/SwissDataScienceCenter/renku-python/commit/0542fcc>`__)
 -  modify json-ld for datasets
@@ -1326,7 +1326,7 @@ Bug Fixes
    closes
    `#525 <https://github.com/SwissDataScienceCenter/renku-python/issues/525>`__
    `#526 <https://github.com/SwissDataScienceCenter/renku-python/issues/526>`__
--  refactored tests and docs to align with updated pydoctstyle
+-  refactored tests and docs to align with updated ``pydocstyle``
    (`#586 <https://github.com/SwissDataScienceCenter/renku-python/issues/586>`__)
    (`6f981c8 <https://github.com/SwissDataScienceCenter/renku-python/commit/6f981c8>`__)
 -  **cli:** add check of missing references
@@ -1365,7 +1365,7 @@ Features
 -  add dataset metadata to the KG
    (`#558 <https://github.com/SwissDataScienceCenter/renku-python/issues/558>`__)
    (`fb443d7 <https://github.com/SwissDataScienceCenter/renku-python/commit/fb443d7>`__)
--  **datasets:** export dataset to zenodo
+-  **datasets:** export dataset to Zenodo
    (`#529 <https://github.com/SwissDataScienceCenter/renku-python/issues/529>`__)
    (`fc6fd4f <https://github.com/SwissDataScienceCenter/renku-python/commit/fc6fd4f>`__)
 -  added support for working on dirty repo
@@ -1373,13 +1373,13 @@ Features
 -  **datasets:** edit dataset metadata
    (`#549 <https://github.com/SwissDataScienceCenter/renku-python/issues/549>`__)
    (`db39083 <https://github.com/SwissDataScienceCenter/renku-python/commit/db39083>`__)
--  integrate metadata from zenodo
+-  integrate metadata from Zenodo
    (`#545 <https://github.com/SwissDataScienceCenter/renku-python/issues/545>`__)
    (`4273d2a <https://github.com/SwissDataScienceCenter/renku-python/commit/4273d2a>`__)
 -  **config:** added global config manager
    (`#533 <https://github.com/SwissDataScienceCenter/renku-python/issues/533>`__)
    (`938f820 <https://github.com/SwissDataScienceCenter/renku-python/commit/938f820>`__)
--  **datasets:** import data from zenodo
+-  **datasets:** import data from Zenodo
    (`#509 <https://github.com/SwissDataScienceCenter/renku-python/issues/509>`__)
    (`52b2769 <https://github.com/SwissDataScienceCenter/renku-python/commit/52b2769>`__)
 
@@ -1428,7 +1428,7 @@ Features
    (`c755d7b <https://github.com/SwissDataScienceCenter/renku-python/commit/c755d7b>`__),
    closes
    `#426 <https://github.com/SwissDataScienceCenter/renku-python/issues/426>`__
--  generate Makefile with log –format Makefile
+-  generate ``Makefile`` with ``log –format Makefile``
    (`1e440ce <https://github.com/SwissDataScienceCenter/renku-python/commit/1e440ce>`__)
 
 ``v0.4.0``

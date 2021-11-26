@@ -2,17 +2,17 @@ FROM python:3.7-slim as base
 
 RUN apt-get update && \
     apt-get install -y git && \
-    pip install --no-cache --upgrade pip requirements-builder
+    pip install --no-cache --upgrade pip poetry
 
 FROM base as builder
 
 # The python install is done in two steps to avoid re-installing all dependencies every
 # time the code changes
-COPY setup.py README.rst CHANGES.rst /code/renku/
-COPY renku/version.py.tmpl /code/renku/renku/version.py.tmpl
+COPY pyproject.toml build.py poetry.lock README.rst CHANGES.rst /code/renku/
 WORKDIR /code/renku
-RUN requirements-builder -e service --level=pypi setup.py > /tmp/requirements.txt && \
-    pip install -r /tmp/requirements.txt
+RUN poetry export --without-hashes -f requirements.txt --output /tmp/requirements.txt && \
+    pip install -r /tmp/requirements.txt && \
+    pip install poetry-dynamic-versioning
 
 COPY .git /code/renku/.git
 COPY renku /code/renku/renku
@@ -21,6 +21,8 @@ COPY renku /code/renku/renku
 # renku-python is installed in the image. This is the default for chartpress builds.
 ARG CLEAN_INSTALL
 RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi
+# manually update version.py
+RUN poetry-dynamic-versioning
 
 RUN pip wheel --wheel-dir /wheels .[service] && \
     pip install --no-index --no-warn-script-location --force --root=/pythonroot/ /wheels/*.whl && \
@@ -28,7 +30,8 @@ RUN pip wheel --wheel-dir /wheels .[service] && \
 
 FROM base
 
-RUN addgroup -gid 1000 shuhitsu && \
+RUN addgroup -gid 2000 debug && \
+    addgroup -gid 1000 shuhitsu && \
     useradd -m -u 1000 -g shuhitsu shuhitsu && \
     mkdir /svc && chown shuhitsu:shuhitsu /svc
 
@@ -38,8 +41,8 @@ RUN apt-get install -y git-lfs && \
 COPY --from=builder /pythonroot/ /
 COPY --from=builder /code/renku /code/renku
 
-# make shuhitsu own the code directory
-RUN chown -R shuhitsu:shuhitsu /code/renku && chmod -R 775 /code/renku
+# Only allow 'debug' group to modify the code
+RUN chown -R root:debug /code/renku && chmod -R 775 /code/renku
 
 # shuhitsu (執筆): The "secretary" of the renga, as it were, who is responsible for
 # writing down renga verses and for the proceedings of the renga.

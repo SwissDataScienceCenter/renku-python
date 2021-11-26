@@ -128,7 +128,7 @@ def finalize_commit(
         commit_message = shorten_message(commit_message)
 
     # Ignore pre-commit hooks since we have already done everything.
-    client.repository.commit(commit_message, committer=committer, no_verify=True)
+    client.repository.commit(commit_message + client.transaction_id, committer=committer, no_verify=True)
 
 
 def prepare_worktree(
@@ -325,16 +325,10 @@ class GitCore:
         # Keep only unchanged files in the output paths.
         tracked_paths = {
             diff.b_path
-            for diff in self.repository.unstaged_changes
+            for diff in self.repo.index.diff(None)
             if diff.change_type in {"A", "R", "M", "T"} and diff.b_path in tested_paths
         }
         unchanged_paths = tested_paths - tracked_paths
-
-        # Fix tracking of unchanged files by removing them first.
-        if autocommit and unchanged_paths:
-            self.repository.remove(*unchanged_paths, index=True, recursive=True, not_exists_ok=True)
-            self.repository.commit("renku: automatic removal of unchanged files")
-            self.repository.add(*unchanged_paths)
 
         return unchanged_paths
 

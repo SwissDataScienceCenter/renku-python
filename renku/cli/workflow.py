@@ -111,6 +111,55 @@ Parameters can be set using the ``--set`` keyword or by specifying them in a
 values YAML file and passing that using ``--values``. Provider specific
 settings can be passed as file using the ``--config`` parameter.
 
+Iterate Plans
+*************
+
+.. image:: ../_static/asciicasts/iterate_plan.gif
+   :width: 850
+   :alt: Iterate Plans
+
+For executing a Plan with different parametrization ``renku workflow iterate``
+could be used. This sub-command is basically conducting a 'grid search'-like
+execution of a Plan, with parameter-sets provided by the user.
+
+.. code-block:: console
+
+    $ renku workflow iterate --map parameter-1=[1,2,3] \
+            --map parameter-2=[10,20] my-run
+
+The set of possible values for a parameter can be given by ``--map`` command
+line argument or by specifying them in a values YAML file and passing that
+using ``--mapping``.
+
+By default ``renku workflow iterate`` will execute all the combination of the
+given parameters' list of possible values. Sometimes it is desired that instead
+of all the combination of possible values, a specific tuple of values are
+executed. This could be done by marking the parameters that should be bound
+together with the ``@tag`` suffix in their names.
+
+.. code-block:: console
+
+    $ renku workflow iterate --map parameter-1@tag1=[1,2,3] \
+            --map parameter-1@tag1=[10,5,30] my-run
+
+This will result in only three distinct execution of the ``my-run`` Plan,
+with the following parameter combinations: ``[(1,10), (2,5), (3,30)]``. It is
+important to note that parameters that have the same tag, should have the same
+number of possible values, i.e. the values list should have the same length.
+
+There's a special template variable for parameter values ``{iter_index}``, which
+can be used to mark each iteration's index in a value of a parameter. The template
+variable is going to be substituted with the iteration index (0, 1, 2, ...).
+
+.. code-block:: console
+
+    $ renku workflow iterate --map parameter-1=[10,20,30] \
+            --map output=output_{iter_index}.txt my-run
+
+This would execute ``my-run`` three times, where ``parameter-1`` values would be
+``10``, `20`` and ``30`` and the producing output files ``output_0.txt``,
+``output_1.txt`` and ``output_2.txt`` files in this order.
+
 Exporting Plans
 ***************
 
@@ -1060,3 +1109,58 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
         text_output, navigation_data, result.output.vertical_space, use_color=not no_color
     )
     viewer.run()
+
+
+@workflow.command()
+@click.option(
+    "mapping_path",
+    "--mapping",
+    metavar="<file>",
+    type=click.Path(exists=True, dir_okay=False),
+    help="YAML file containing parameter mappings to be used.",
+)
+@click.option(
+    "--dry-run",
+    "-n",
+    is_flag=True,
+    default=False,
+    help="Print the generated plans with their parameters instead of executing.",
+    show_default=True,
+)
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    default="cwltool",
+    show_default=True,
+    type=click.Choice(Proxy(_available_workflow_providers), case_sensitive=False),
+    help="The workflow engine to use.",
+)
+@click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
+@click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
+@click.argument("name_or_id", required=True)
+def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
+    """Execute a workflow by iterating through a range of provided parameters."""
+    from renku.core.commands.view_model.plan import PlanViewModel
+    from renku.core.commands.workflow import iterate_workflow_command, show_workflow_command
+
+    if len(mappings) == 0 and mapping_path is None:
+        raise errors.UsageError("No mapping has been given for the iteration!")
+
+    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+
+    if plan:
+        if isinstance(plan, PlanViewModel):
+            _print_plan(plan)
+        else:
+            _print_composite_plan(plan)
+
+    communicator = ClickCallback()
+    iterate_workflow_command().with_communicator(communicator).build().execute(
+        name_or_id=name_or_id,
+        mapping_path=mapping_path,
+        mappings=mappings,
+        dry_run=dry_run,
+        provider=provider,
+        config=config,
+    )

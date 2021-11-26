@@ -35,6 +35,34 @@ def assert_rpc_response(response, with_key="result"):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
+def test_show_project_view(svc_client_with_repo):
+    """Test show project metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    show_payload = {
+        "project_id": project_id,
+    }
+    response = svc_client.post("/1.0/project.show", data=json.dumps(show_payload), headers=headers)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {
+        "id",
+        "name",
+        "description",
+        "created",
+        "creator",
+        "agent",
+        "custom_metadata",
+        "template_info",
+        "keywords",
+    } == set(response.json["result"])
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
 def test_edit_project_view(svc_client_with_repo):
     """Test editing project metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -50,7 +78,7 @@ def test_edit_project_view(svc_client_with_repo):
             "https://schema.org/property2": "test",
         },
     }
-    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+    response = svc_client.post("/1.0/project.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -74,7 +102,7 @@ def test_edit_project_view(svc_client_with_repo):
 def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed edit."""
     response = svc_client.post(
-        "/project.edit",
+        "/1.0/project.edit",
         data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True)),
         headers=identity_headers,
     )
