@@ -166,8 +166,8 @@ def test_hash_objects(git_repository, path):
 
     assert committed_object_hash == git_repository.get_object_hash(path, revision="HEAD")
     assert committed_object_hash == git_repository.get_object_hash(git_repository.path / path, revision="HEAD")
-    assert committed_object_hash == Repository.hash_objects([path])[0]
-    assert committed_object_hash == Repository.hash_objects([git_repository.path / path])[0]
+    assert committed_object_hash == Repository.hash_object(path)
+    assert committed_object_hash == Repository.hash_object(git_repository.path / path)
 
 
 def test_hash_modified_objects(git_repository):
@@ -181,14 +181,14 @@ def test_hash_modified_objects(git_repository):
     # current object's hash if revision is None
     assert committed_object_hash == git_repository.get_object_hash("A", revision="HEAD")
     assert modified_object_hash == git_repository.get_object_hash("A", revision=None)
-    assert modified_object_hash == Repository.hash_objects(["A"])[0]
+    assert modified_object_hash == Repository.hash_object("A")
 
     # NOTE: Returned results are the same if object is staged
     git_repository.add("A")
 
     assert committed_object_hash == git_repository.get_object_hash("A", revision="HEAD")
     assert modified_object_hash == git_repository.get_object_hash("A")
-    assert modified_object_hash == Repository.hash_objects(["A"])[0]
+    assert modified_object_hash == Repository.hash_object("A")
 
 
 def test_hash_deleted_objects(git_repository):
@@ -197,7 +197,7 @@ def test_hash_deleted_objects(git_repository):
     assert git_repository.get_object_hash("B") is None
 
     with pytest.raises(errors.GitCommandError):
-        Repository.hash_objects(["B"])[0]
+        Repository.hash_object("B")
 
 
 def test_hash_directories(git_repository):
@@ -209,7 +209,7 @@ def test_hash_directories(git_repository):
     assert git_repository.get_object_hash("X") is None
 
     with pytest.raises(errors.GitCommandError):
-        Repository.hash_objects(["X"])[0]
+        Repository.hash_object("X")
 
     # NOTE: When staging a directory then the hash can be calculated
     git_repository.add("X")
@@ -226,4 +226,4 @@ def test_hash_directories(git_repository):
     assert directory_hash == git_repository.get_object_hash("X")
 
     with pytest.raises(errors.GitCommandError):
-        Repository.hash_objects(["X"])[0]
+        Repository.hash_object("X")

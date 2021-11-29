@@ -114,20 +114,18 @@ def filter_overridden_activities(activities: List["Activity"]) -> List["Activity
     for activity in activities[::-1]:
         outputs = frozenset(g.entity.path for g in activity.generations)
 
-        subset_of = []
-        superset_of = []
+        subset_of = set()
+        superset_of = set()
 
         for k, a in relevant_activities.items():
             if outputs.issubset(k):
-                subset_of.append((k, a))
+                subset_of.add((k, a))
             elif outputs.issuperset(k):
-                superset_of.append((k, a))
+                superset_of.add((k, a))
 
         if not subset_of and not superset_of:
             relevant_activities[outputs] = activity
             continue
-
-        subset_of = [(k, a) for k, a in relevant_activities.items() if outputs.issubset(k) or outputs.issuperset(k)]
 
         if subset_of and any(activity.ended_at_time < s.ended_at_time for _, s in subset_of):
             # activity is a subset of another, newer activity, ignore it
@@ -136,11 +134,12 @@ def filter_overridden_activities(activities: List["Activity"]) -> List["Activity
         older_subsets = [k for k, s in superset_of if activity.ended_at_time > s.ended_at_time]
 
         for older_subset in older_subsets:
+            # remove other activities that this activity is a superset of
             del relevant_activities[older_subset]
 
         relevant_activities[outputs] = activity
 
-    return relevant_activities.values()
+    return list(relevant_activities.values())
 
 
 def add_activity_if_recent(activity: "Activity", activities: Set["Activity"]):
