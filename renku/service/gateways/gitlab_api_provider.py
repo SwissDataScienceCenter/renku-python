@@ -56,7 +56,7 @@ class GitlabAPIProvider(IGitAPIProvider):
             full_path.parent.mkdir(parents=True, exist_ok=True)
 
             try:
-                with open(full_path, "w") as f:
+                with open(full_path, "wb") as f:
                     project.files.raw(file_path=path, ref=ref, streamed=True, action=f.write)
 
                 result_paths.append(full_path)

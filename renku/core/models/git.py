@@ -146,7 +146,7 @@ class GitURL(object):
         url = urlparse(self.href)
 
         path = self.pathname.split(self.owner, 1)[0]
-        url._replace(path=path)
+        url = url._replace(path=path)
 
         return url.geturl()
 
