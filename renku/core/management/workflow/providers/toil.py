@@ -19,7 +19,6 @@
 
 import functools
 import itertools
-import logging
 import os
 import shutil
 import uuid
@@ -32,7 +31,7 @@ import networkx as nx
 from toil.common import Toil
 from toil.fileStores import FileID
 from toil.fileStores.abstractFileStore import AbstractFileStore
-from toil.job import Job
+from toil.job import Job, Promise
 from toil.leader import FailedJobsException
 
 from renku.core import errors
@@ -49,29 +48,39 @@ from renku.core.plugins import hookimpl
 class AbstractToilJob(Job):
     """Toil job implementation for a renku ``Plan``."""
 
-    def __init__(
-        self, workflow: Plan, input_files: Dict[str, FileID], parent_promise: Dict[str, FileID] = {}, *args, **kwargs
-    ):
+    def __init__(self, workflow: Plan, *args, **kwargs):
         super(AbstractToilJob, self).__init__(unitName=workflow.name, displayName=workflow.name, *args, **kwargs)
-        self._workflow = workflow
-        self._input_files: Dict[str, FileID] = input_files
-        self._parent_promise = parent_promise
+        self.workflow = workflow
+        self._input_files: Dict[str, FileID] = {}
+        self._parents_promise = []
 
     @abstractmethod
     def _execute(self, command_line: List[str], mapped_std: Dict[str, str]) -> int:
         """Executes a given command line."""
         raise NotImplementedError
 
+    def set_input_files(self, input_files: Dict[str, Any]):
+        """Set the location of inputs that are available in the original project."""
+        self._input_files = input_files
+
+    def add_input_promise(self, promise: Promise):
+        """Adds a given job's output promise.
+
+        The promise of a job contains its output locations in the global storage.
+        """
+        self._parents_promise.append(promise)
+
     def run(self, storage):
         """Executing of a renku ``Plan``."""
         mapped_std = dict()
-        for i in self._workflow.inputs:
+        parent_inputs = dict()
+        for p in self._parents_promise:
+            parent_inputs |= p
+
+        for i in self.workflow.inputs:
             file_metadata = (
-                self._parent_promise[i.actual_value]
-                if i.actual_value in self._parent_promise
-                else self._input_files[i.actual_value]
+                parent_inputs[i.actual_value] if i.actual_value in parent_inputs else self._input_files[i.actual_value]
             )
-            storage.logToMaster(f"trying to download something for {i.actual_value} from {file_metadata}")
             input_path = Path(i.actual_value)
             if isinstance(file_metadata, dict):
                 input_path.mkdir(exist_ok=True)
@@ -85,7 +94,7 @@ class AbstractToilJob(Job):
             if i.mapped_to:
                 mapped_std[i.mapped_to.stream_type] = i.actual_value
 
-        for o in self._workflow.outputs:
+        for o in self.workflow.outputs:
             output_path = Path(o.actual_value)
             if len(output_path.parts) > 1:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -96,10 +105,10 @@ class AbstractToilJob(Job):
         # construct cmd
         cmd = []
 
-        if self._workflow.command:
-            cmd.extend(self._workflow.command.split(" "))
+        if self.workflow.command:
+            cmd.extend(self.workflow.command.split(" "))
 
-        arguments = itertools.chain(self._workflow.inputs, self._workflow.outputs, self._workflow.parameters)
+        arguments = itertools.chain(self.workflow.inputs, self.workflow.outputs, self.workflow.parameters)
 
         arguments = filter(lambda x: x.position and not getattr(x, "mapped_to", None), arguments)
         arguments = sorted(arguments, key=lambda x: x.position)
@@ -114,20 +123,19 @@ class AbstractToilJob(Job):
                 else:
                     v = f"{a.prefix}{v}"
             cmd.append(v)
-        storage.logToMaster(f"running {self._workflow.name} with command {cmd}", level=logging.DEBUG)
 
         return_code = self._execute(cmd, mapped_std)
-        if return_code not in (self._workflow.success_codes or {0}):
-            raise errors.InvalidSuccessCode(return_code, success_codes=self._workflow.success_codes)
+        if return_code not in (self.workflow.success_codes or {0}):
+            raise errors.InvalidSuccessCode(return_code, success_codes=self.workflow.success_codes)
 
-        return _upload_files(storage.writeGlobalFile, self._workflow.outputs, Path.cwd())
+        return _upload_files(storage.writeGlobalFile, self.workflow.outputs, Path.cwd())
 
 
 class SubprocessToilJob(AbstractToilJob):
     """A toil job that uses subprocess.call to execute a renku ``Plan``."""
 
-    def __init__(self, workflow: Plan, input_files: Dict[str, FileID], *args, **kwargs):
-        super(SubprocessToilJob, self).__init__(workflow, input_files, *args, **kwargs)
+    def __init__(self, workflow: Plan, *args, **kwargs):
+        super(SubprocessToilJob, self).__init__(workflow, *args, **kwargs)
 
     def _execute(self, command_line: List[str], mapped_std: Dict[str, str]) -> int:
         """Executes a given command line."""
@@ -164,30 +172,35 @@ def importFileWrapper(storage: AbstractFileStore, file_path: str) -> FileID:
     return storage.importFile(file_uri)
 
 
-def process_children(parent: Job, children: List[Plan], dag: nx.DiGraph, basedir: Path, storage: AbstractFileStore):
+def process_children(parent: Job, dag: nx.DiGraph, jobs: Dict[str, Job], basedir: Path, storage: AbstractFileStore):
     """Recursively process children of a workflow."""
 
     outputs = list()
     import_function = functools.partial(importFileWrapper, storage)
-    for child in children:
+    for child in nx.neighbors(dag, parent.workflow):
+        child_job = jobs[id(child)]
         file_metadata = _upload_files(import_function, child.inputs, basedir)
-        childJob = SubprocessToilJob(child, file_metadata, parent_promise=parent.rv())
-        outputs.append(parent.addFollowOn(childJob).rv())
-        outputs += process_children(childJob, nx.neighbors(dag, child), dag, basedir, storage)
+        child_job.set_input_files(file_metadata)
+        child_job.add_input_promise(parent.rv())
+        outputs.append(parent.addFollowOn(child_job).rv())
+        outputs += process_children(child_job, dag, jobs, basedir, storage)
     return outputs
 
 
-def initialize_jobs(job, children, basedir, dag):
+def initialize_jobs(job, basedir, dag):
     """Creates the Toil execution plan for the given workflow DAG."""
 
     job.fileStore.logToMaster("executing renku DAG")
     outputs = list()
+    jobs = {id(n): SubprocessToilJob(n) for n in dag.nodes}
     import_function = functools.partial(importFileWrapper, job.fileStore)
+    children = next(nx.topological_generations(dag))
     for workflow in children:
+        child_job = jobs[id(workflow)]
         file_metadata = _upload_files(import_function, workflow.inputs, basedir)
-        childJob = SubprocessToilJob(workflow, file_metadata)
-        outputs.append(job.addChild(childJob).rv())
-        outputs += process_children(childJob, nx.neighbors(dag, workflow), dag, basedir, job.fileStore)
+        child_job.set_input_files(file_metadata)
+        outputs.append(job.addChild(child_job).rv())
+        outputs += process_children(child_job, dag, jobs, basedir, job.fileStore)
 
     return outputs
 
@@ -216,12 +229,10 @@ class ToilProvider(IWorkflowProvider):
         outputs = list()
         try:
             with Toil(options) as toil:
-                start_wfs = next(nx.topological_generations(dag))
-                rootJob = Job.wrapJobFn(initialize_jobs, start_wfs, basedir, dag)
-
+                rootJob = Job.wrapJobFn(initialize_jobs, basedir, dag)
                 job_outputs = toil.start(rootJob)
 
-                num_outputs = functools.reduce(lambda a, b: a + len(b.values()), job_outputs, 0)
+                num_outputs = sum(map(lambda x: len(x.values()), job_outputs))
                 with progressbar(length=num_outputs, label="Moving outputs") as bar:
                     for collection in job_outputs:
                         for name, fid in collection.items():
