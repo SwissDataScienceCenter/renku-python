@@ -24,9 +24,10 @@ from collections import defaultdict
 from datetime import datetime
 from functools import reduce
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-import networkx as nx
+if TYPE_CHECKING:
+    from networkx import DiGraph
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
@@ -437,10 +438,10 @@ def workflow_outputs_command():
     return Command().command(_workflow_outputs).require_migration().with_database(write=False)
 
 
-@inject.autoparams()
+@inject.params(client_dispatcher=IClientDispatcher, activity_gateway=IActivityGateway, plan_gateway=IPlanGateway)
 def execute_workflow(
-    dag: nx.DiGraph,
-    command_name,
+    dag: "DiGraph",
+    command_name: str,
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
