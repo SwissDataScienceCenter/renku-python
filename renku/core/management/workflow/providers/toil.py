@@ -75,7 +75,7 @@ class AbstractToilJob(Job):
         mapped_std = dict()
         parent_inputs = dict()
         for p in self._parents_promise:
-            parent_inputs |= p
+            parent_inputs.update(p)
 
         for i in self.workflow.inputs:
             file_metadata = (
@@ -249,7 +249,7 @@ class ToilProvider(IWorkflowProvider):
                                 toil.exportFile(fid, str((basedir / name).absolute()))
                                 outputs.append(name)
                             bar.update(1)
-        except FailedJobsException:
-            raise WorkflowExecuteError()
+        except FailedJobsException as e:
+            raise WorkflowExecuteError(e.msg)
 
         return outputs
