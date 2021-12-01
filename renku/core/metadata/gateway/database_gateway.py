@@ -19,7 +19,6 @@
 
 from pathlib import Path
 from typing import Generator
-from uuid import uuid4
 
 import BTrees
 from persistent import Persistent
@@ -52,7 +51,7 @@ class ActivityDownstreamRelation:
         self.downstream = downstream
         self.upstream = upstream
 
-        self.id = uuid4().hex
+        self.id = f"{upstream.id}:{downstream.id}"
 
 
 def dump_activity(activity: Activity, catalog, cache) -> str:
