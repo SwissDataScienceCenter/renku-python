@@ -25,6 +25,7 @@ from renku.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
 from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
+from renku.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.service.views.api_versions import V0_9, V1_0, VersionedBlueprint
 from renku.service.views.decorators import (
     accepts_json,
@@ -201,7 +202,7 @@ def migration_check_project_view(user_data, cache):
       tags:
         - cache
     """
-    return MigrationsCheckCtrl(cache, user_data, dict(request.args)).to_response()
+    return MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider()).to_response()
 
 
 cache_blueprint = add_v0_9_specific_endpoints(cache_blueprint)

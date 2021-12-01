@@ -59,7 +59,6 @@ from renku.core.management.migrations.utils import (
 )
 from renku.core.management.workflow.plan_factory import RENKU_TMP
 from renku.core.utils import communication
-from renku.core.utils.git import is_valid_git_repository
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -360,9 +359,6 @@ def get_project_version(client_dispatcher: IClientDispatcher):
 def is_renku_project(client_dispatcher: IClientDispatcher) -> bool:
     """Check if repository is a renku project."""
     client = client_dispatcher.current_client
-
-    if not is_valid_git_repository(client.repository):
-        return False
 
     try:
         return client.project is not None

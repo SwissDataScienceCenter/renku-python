@@ -141,6 +141,16 @@ class GitURL(object):
             raise errors.GitConfigurationError(f"`{href}` is not a valid Git remote")
 
     @property
+    def instance_url(self):
+        """Get the url of the git instance."""
+        url = urlparse(self.href)
+
+        path = self.pathname.split(self.owner, 1)[0]
+        url = url._replace(path=path)
+
+        return url.geturl()
+
+    @property
     def image(self):
         """Return image name."""
         img = self.hostname
