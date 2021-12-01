@@ -32,6 +32,7 @@ from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.metadata.database import RenkuOOBTree
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.plan import AbstractPlan
@@ -90,12 +91,12 @@ def load_downstream_relations(token, catalog, cache, database_dispatcher: IDatab
 def initialize_database(database):
     """Initialize an empty database with all required metadata."""
     database.add_index(name="activities", object_type=Activity, attribute="id")
-    database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
-    database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
+    database.add_root_object(name="activities-by-usage", obj=RenkuOOBTree())
+    database.add_root_object(name="activities-by-generation", obj=RenkuOOBTree())
 
     database.add_index(name="activity-collections", object_type=ActivityCollection, attribute="id")
 
-    database.add_root_object(name="_downstream_relations", obj=BTrees.OOBTree.OOBTree())
+    database.add_root_object(name="_downstream_relations", obj=RenkuOOBTree())
 
     activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
     activity_catalog.addValueIndex(
