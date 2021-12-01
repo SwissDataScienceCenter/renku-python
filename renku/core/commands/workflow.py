@@ -20,12 +20,14 @@
 
 import itertools
 import re
-import uuid
 from collections import defaultdict
 from datetime import datetime
 from functools import reduce
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from networkx import DiGraph
 
 from renku.core import errors
 from renku.core.commands.format.workflow import WORKFLOW_FORMATS
@@ -233,7 +235,7 @@ def _compose_workflow(
 
     if links:
         plan.set_links_from_strings(links)
-        graph = ExecutionGraph(plan)
+        graph = ExecutionGraph([plan])
         cycles = graph.cycles
         if cycles:
             cycles = [map(lambda x: x.name, cycle) for cycle in cycles]
@@ -256,7 +258,7 @@ def _compose_workflow(
         rv = CompositePlanValueResolver(plan, None)
         plan = rv.apply()
 
-        graph = ExecutionGraph(plan, virtual_links=True)
+        graph = ExecutionGraph([plan], virtual_links=True)
 
         cycles = graph.cycles
         if cycles:
@@ -436,10 +438,10 @@ def workflow_outputs_command():
     return Command().command(_workflow_outputs).require_migration().with_database(write=False)
 
 
-@inject.autoparams()
+@inject.params(client_dispatcher=IClientDispatcher, activity_gateway=IActivityGateway, plan_gateway=IPlanGateway)
 def execute_workflow(
-    plans: List[Plan],
-    command_name,
+    dag: "DiGraph",
+    command_name: str,
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
@@ -451,22 +453,20 @@ def execute_workflow(
 
     # NOTE: Pull inputs from Git LFS or other storage backends
     if client.check_external_storage():
-        inputs = [i.actual_value for p in plans for i in p.inputs]
+        inputs = [i.actual_value for p in dag.nodes for i in p.inputs]
         client.pull_paths_from_storage(*inputs)
 
     delete_indirect_files_list(client.path)
 
     started_at_time = local_now()
 
-    # NOTE: Create a ``CompositePlan`` because ``workflow_covert`` expects it
-    workflow = CompositePlan(id=CompositePlan.generate_id(), plans=plans, name=f"plan-collection-{uuid.uuid4().hex}")
-    execute(workflow=workflow, basedir=client.path, provider=provider, config=config)
+    execute(dag=dag, basedir=client.path, provider=provider, config=config)
 
     ended_at_time = local_now()
 
     activities = []
 
-    for plan in plans:
+    for plan in dag.nodes:
         # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
         original_plan = plan_gateway.get_by_id(plan.id)
         activity = Activity.from_plan(plan=plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
@@ -515,15 +515,8 @@ def _execute_workflow(
     if config:
         config = _safe_read_yaml(config)
 
-    if isinstance(workflow, CompositePlan):
-        import networkx as nx
-
-        graph = ExecutionGraph(workflow=workflow, virtual_links=True)
-        plans = list(nx.topological_sort(graph.workflow_graph))
-    else:
-        plans = [workflow]
-
-    execute_workflow(plans=plans, command_name="execute", provider=provider, config=config)
+    graph = ExecutionGraph([workflow], virtual_links=True)
+    execute_workflow(dag=graph.workflow_graph, command_name="execute", provider=provider, config=config)
 
 
 def execute_workflow_command():
@@ -787,7 +780,8 @@ def _iterate_workflow(
 
     communication.echo(f"\n\n{tabulate(execute_plan, execute_plan[0].keys())}")
     if not dry_run:
-        execute_workflow(plans=plans, command_name="iterate", provider=provider, config=config)
+        graph = ExecutionGraph(workflows=plans, virtual_links=True)
+        execute_workflow(dag=graph.workflow_graph, command_name="iterate", provider=provider, config=config)
 
 
 def iterate_workflow_command():

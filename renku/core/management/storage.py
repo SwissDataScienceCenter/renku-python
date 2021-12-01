@@ -516,7 +516,7 @@ class StorageApiMixin(RepositoryApiMixin):
             processed = set()
 
             for diff in old_commit.get_changes():
-                path_obj = Path(diff.a_path)
+                path_obj = Path(diff.b_path)
 
                 # NOTE: Get git object hash mapping for files and parent folders
                 while path_obj != repo_root:

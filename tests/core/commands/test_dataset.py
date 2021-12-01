@@ -31,7 +31,7 @@ from renku.core.errors import ParameterError
 from renku.core.management.datasets import DatasetsProvenance
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.metadata.repository import Repository
-from renku.core.models.dataset import Dataset
+from renku.core.models.dataset import Dataset, is_dataset_name_valid
 from renku.core.models.provenance.agent import Person
 from renku.core.utils.contexts import chdir
 from renku.core.utils.git import get_git_user
@@ -260,3 +260,9 @@ def test_mutate_is_done_once():
 def test_dataset_name_slug(name, slug):
     """Test slug generation from name."""
     assert slug == get_slug(name)
+
+
+def test_uppercase_dataset_name_is_valid():
+    """Test dataset name can have uppercase characters."""
+    assert is_dataset_name_valid("UPPER-CASE")
+    assert is_dataset_name_valid("Pascal-Case")
