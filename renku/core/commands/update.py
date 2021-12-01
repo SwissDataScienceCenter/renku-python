@@ -19,7 +19,7 @@
 
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 from renku.core import errors
 from renku.core.commands.workflow import execute_workflow
@@ -30,6 +30,7 @@ from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.activity import sort_activities
+from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.models.provenance.activity import Activity
 from renku.core.utils.metadata import add_activity_if_recent, get_modified_activities
 from renku.core.utils.os import get_relative_paths
@@ -49,7 +50,15 @@ def update_command():
 
 
 @inject.autoparams()
-def _update(update_all, dry_run, client_dispatcher: IClientDispatcher, activity_gateway: IActivityGateway, paths=None):
+def _update(
+    update_all,
+    dry_run,
+    client_dispatcher: IClientDispatcher,
+    activity_gateway: IActivityGateway,
+    provider: str,
+    config: Optional[str],
+    paths=None,
+):
     if not paths and not update_all and not dry_run:
         raise ParameterError("Either PATHS, --all/-a, or --dry-run/-n should be specified.")
     if paths and update_all:
@@ -71,9 +80,8 @@ def _update(update_all, dry_run, client_dispatcher: IClientDispatcher, activity_
     if dry_run:
         return activities, modified_paths
 
-    plans = [a.plan_with_values for a in activities]
-
-    execute_workflow(plans=plans, command_name="update")
+    graph = ExecutionGraph([a.plan_with_values for a in activities], virtual_links=True)
+    execute_workflow(dag=graph.workflow_graph, command_name="update", provider=provider, config=config)
 
 
 @inject.autoparams()

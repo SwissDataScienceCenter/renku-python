@@ -24,14 +24,17 @@ from typing import Dict, List, Union
 import networkx as nx
 from networkx.algorithms.cycles import simple_cycles
 
+from renku.core.errors import ParameterError
 from renku.core.models.workflow import composite_plan, parameter, plan
 
 
 class ExecutionGraph:
     """Represents an execution graph for one or more workflow steps."""
 
-    def __init__(self, workflow: Union["plan.Plan", "composite_plan.CompositePlan"], virtual_links: bool = False):
-        self.workflow: Union["plan.Plan", "composite_plan.CompositePlan"] = workflow
+    def __init__(
+        self, workflows: List[Union["plan.Plan", "composite_plan.CompositePlan"]], virtual_links: bool = False
+    ):
+        self.workflows: List[Union["plan.Plan", "composite_plan.CompositePlan"]] = workflows
         self.virtual_links = []
 
         self.calculate_concrete_execution_graph(virtual_links=virtual_links)
@@ -46,7 +49,7 @@ class ExecutionGraph:
         self.graph = nx.DiGraph()
         self.virtual_links = []
 
-        workflow_stack = [self.workflow]
+        workflow_stack = self.workflows.copy()
 
         inputs = defaultdict(list)
         outputs = defaultdict(list)
@@ -113,7 +116,12 @@ class ExecutionGraph:
             sinks = [sink]
 
         for param in sources + sinks:
-            wf = self.workflow.find_parameter_workflow(param)
+            for workflow in self.workflows:
+                wf = workflow.find_parameter_workflow(param)
+                if wf:
+                    break
+            else:
+                raise ParameterError(f"'{param.name}' is not part of any workflows.")
 
             if isinstance(param, parameter.CommandOutput):
                 edge = (wf, param)
