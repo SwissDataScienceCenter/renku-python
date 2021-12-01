@@ -150,7 +150,7 @@ class DatasetsApiMixin(object):
             raise errors.ParameterError("Dataset name must be provided.")
 
         if not is_dataset_name_valid(name):
-            valid_name = get_slug(name)
+            valid_name = get_slug(name, lowercase=False)
             raise errors.ParameterError(f'Dataset name "{name}" is not valid (Hint: "{valid_name}" is valid).')
 
         if self.get_dataset(name=name):

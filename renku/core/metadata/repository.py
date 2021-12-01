@@ -111,14 +111,7 @@ class BaseRepository:
         """
         try:
             diff = self._repository.index.diff("HEAD", ignore_submodules=True)
-            return [
-                Diff(
-                    a_path=git_unicode_unescape(d.a_path),
-                    b_path=git_unicode_unescape(d.b_path),
-                    change_type=d.change_type,
-                )
-                for d in diff
-            ]
+            return [Diff.from_diff(d) for d in diff]
         except (git.BadName, git.BadObject, git.GitError) as e:
             raise errors.GitError("Cannot get staged changes") from e
 
@@ -127,14 +120,7 @@ class BaseRepository:
         """Return a list of changes that are not staged."""
         try:
             diff = self._repository.index.diff(None, ignore_submodules=True)
-            return [
-                Diff(
-                    a_path=git_unicode_unescape(d.a_path),
-                    b_path=git_unicode_unescape(d.b_path),
-                    change_type=d.change_type,
-                )
-                for d in diff
-            ]
+            return [Diff.from_diff(d) for d in diff]
         except (git.BadName, git.BadObject, git.GitError) as e:
             raise errors.GitError("Cannot get modified changes") from e
 
@@ -289,14 +275,24 @@ class BaseRepository:
         return attributes
 
     def get_previous_commit(
-        self, path: Union[Path, str], revision: Union["Commit", str] = None, full_history: bool = False
+        self,
+        path: Union[Path, str],
+        revision: Union["Commit", str] = None,
+        first: bool = False,
+        full_history: bool = True,
+        submodule: bool = False,
     ) -> Optional["Commit"]:
         """Return a previous commit for a given path starting from ``revision``."""
         revision = revision or "HEAD"
         assert isinstance(revision, (Commit, str)), f"'revision' must be Commit/str not '{type(revision)}'"
 
         commit = _find_previous_commit_helper(
-            repository=self, path=path, revision=str(revision), full_history=full_history
+            repository=self,
+            path=path,
+            revision=str(revision),
+            first=first,
+            full_history=full_history,
+            submodules=submodule,
         )
         if not commit:
             raise errors.GitCommitNotFoundError(f"Cannot find previous commit for '{path}' from '{revision}'")
@@ -511,7 +507,7 @@ class BaseRepository:
 
         return hashes
 
-    def get_object_hash(self, path: Union[Path, str], revision: str = None) -> Optional[str]:
+    def get_object_hash(self, path: Union[Path, str], revision: Union["Commit", str] = None) -> Optional[str]:
         """Return git hash of an object in a Repo or its submodule.
 
         NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
@@ -859,6 +855,7 @@ class Actor(NamedTuple):
 class Diff(NamedTuple):
     """A single diff object between two trees."""
 
+    # NOTE: In case a rename, a_path and b_path have different values. Make sure to use the correct one.
     a_path: str
     b_path: str
     """
@@ -870,6 +867,18 @@ class Diff(NamedTuple):
         T = Changed in the type
     """
     change_type: str
+
+    @classmethod
+    def from_diff(cls, diff: git.Diff):
+        """Create an instance from a git object."""
+        a_path = git_unicode_unescape(diff.a_path)
+        b_path = git_unicode_unescape(diff.b_path)
+
+        # NOTE: Make sure a_path or b_path are the same in case of addition or deletion
+        a_path = a_path or b_path
+        b_path = b_path or a_path
+
+        return cls(a_path=a_path, b_path=b_path, change_type=diff.change_type)
 
     @property
     def deleted(self) -> bool:
@@ -970,12 +979,7 @@ class Commit:
             # NOTE: A merge commit, so there is no clear diff
             return []
 
-        return [
-            Diff(
-                a_path=git_unicode_unescape(d.a_path), b_path=git_unicode_unescape(d.b_path), change_type=d.change_type
-            )
-            for d in diff
-        ]
+        return [Diff.from_diff(d) for d in diff]
 
     def traverse(self) -> Generator[Object, None, None]:
         """Traverse over all objects that are present in this commit."""
@@ -1324,7 +1328,7 @@ def _find_previous_commit_helper(
     repository: BaseRepository,
     path: Union[Path, str],
     revision: str = None,
-    first=False,
+    first: bool = False,
     full_history: bool = False,
     submodules: bool = False,
 ) -> Optional[Commit]:
@@ -1352,6 +1356,7 @@ def _find_previous_commit_helper(
                     revision=revision,
                     first=first,
                     full_history=full_history,
+                    submodules=submodules,
                 )
                 if commit:
                     return commit

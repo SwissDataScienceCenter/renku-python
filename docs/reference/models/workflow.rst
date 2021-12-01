@@ -89,6 +89,6 @@ CWL
 .. automodule:: renku.core.management.workflow.converters.cwl
    :no-members:
 
-.. autoclass:: CWLConverter
+.. autoclass:: CWLExporter
    :members:
    :inherited-members:
