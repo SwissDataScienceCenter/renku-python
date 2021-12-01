@@ -258,11 +258,12 @@ Deploying locally
 -----------------
 
 To test the service functionality you can deploy it quickly and easily using
-``docker-compose up``. Make sure to make a copy of the ``renku/service/.env-example``
-file and configure it to your needs. The setup here is to expose the service behind
-a traefik reverse proxy to mimic an actual production deployment. You can access
-the proxied endpoints at ``http://localhost/api``. The service itself is exposed
-on port 8080 so its endpoints are available directly under ``http://localhost:8080``.
+``docker-compose up`` [docker-compose](https://pypi.org/project/docker-compose/).
+Make sure to make a copy of the ``renku/service/.env-example`` file and configure it
+to your needs. The setup here is to expose the service behind a traefik reverse proxy
+to mimic an actual production deployment. You can access the proxied endpoints at
+``http://localhost/api``. The service itself is exposed on port 8080 so its endpoints
+are available directly under ``http://localhost:8080``.
 
 
 API Documentation

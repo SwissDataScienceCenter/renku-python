@@ -401,10 +401,12 @@ class CommitProcessingError(RenkuException):
 class WorkflowExecuteError(RenkuException):
     """Raises when a workflow execution fails."""
 
-    def __init__(self):
+    def __init__(self, fail_reason=None):
         """Build a custom message."""
 
         msg = "Unable to finish executing workflow"
+        if fail_reason:
+            msg += f": {fail_reason}"
         super(WorkflowExecuteError, self).__init__(msg)
 
 
