@@ -454,7 +454,7 @@ class RepositoryCache:
                 if file.deleted:
                     continue
 
-                path = file.a_path
+                path = file.b_path
                 cache[path].append(commit)
 
                 if path.startswith(f"{client.renku_home}/workflow/") and path.endswith(".cwl"):

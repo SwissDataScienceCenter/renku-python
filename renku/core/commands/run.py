@@ -61,7 +61,7 @@ def _run_command(
     client = client_dispatcher.current_client
 
     if name:
-        valid_name = get_slug(name, invalid_chars=["."])
+        valid_name = get_slug(name, invalid_chars=["."], lowercase=False)
         if name != valid_name:
             raise errors.ParameterError(f"Invalid name: '{name}' (Hint: '{valid_name}' is valid).")
 

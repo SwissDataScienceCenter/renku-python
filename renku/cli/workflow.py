@@ -547,6 +547,7 @@ import click
 from lazy_object_proxy import Proxy
 
 from renku.cli.utils.callback import ClickCallback
+from renku.cli.utils.plugins import available_workflow_providers, supported_formats
 from renku.core import errors
 from renku.core.commands.echo import ERROR
 from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
@@ -555,20 +556,6 @@ from renku.core.commands.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 if TYPE_CHECKING:
     from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
     from renku.core.commands.view_model.plan import PlanViewModel
-
-
-def _supported_formats():
-    """Deferred import as plugins are slow."""
-    from renku.core.plugins.workflow import supported_formats
-
-    return supported_formats()
-
-
-def _available_workflow_providers():
-    """Deferred import as plugins are slow."""
-    from renku.core.plugins.provider import available_workflow_providers
-
-    return available_workflow_providers()
 
 
 def _print_plan(plan: "PlanViewModel"):
@@ -894,7 +881,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 @click.option(
     "--format",
     default="cwl",
-    type=click.Choice(Proxy(_supported_formats), case_sensitive=False),
+    type=click.Choice(Proxy(supported_formats), case_sensitive=False),
     show_default=True,
     help="Workflow language format.",
 )
@@ -983,10 +970,12 @@ def outputs(ctx, paths):
     "--provider",
     default="cwltool",
     show_default=True,
-    type=click.Choice(Proxy(_available_workflow_providers), case_sensitive=False),
+    type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
 )
-@click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
+@click.option(
+    "config", "-c", "--config", metavar="<config file>", help="YAML file containing configuration for the provider."
+)
 @click.option(
     "set_params",
     "-s",
@@ -1133,7 +1122,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
     "--provider",
     default="cwltool",
     show_default=True,
-    type=click.Choice(Proxy(_available_workflow_providers), case_sensitive=False),
+    type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
 )
 @click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")

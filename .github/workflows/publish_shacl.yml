@@ -25,7 +25,7 @@ jobs:
         python -m pip install .[all]
     - name: Publish shape
       run: |
-        git clone https://${{secrets.SHACL_ACCESS_TOKEN}}@github.com/SwissDataScienceCenter/renku-ontology.git shacl_publish
+        git clone https://${{secrets.RENKUBOT_GITHUB_TOKEN}}@github.com/SwissDataScienceCenter/renku-ontology.git shacl_publish
         cd shacl_publish
         mkdir $(renku --version)
         cp ../renku/data/shacl_shape.json ./$(renku --version)/
