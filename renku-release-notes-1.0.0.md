@@ -6,6 +6,16 @@ This release contains a ton of changes, with a complete overhaul of workflow com
 
 We also reworked our metadata storage, leading to a big improvement in both performance and storage requirements when working with the commandline interface in projects.
 
+## Table of Contents
+
+- [New Workflows](#new-workflows)
+  - [Runs and Plans](#runs-and-plans)
+  - [Working with New Workflows](#working-with-new-workflows)
+  - [Plugin Support](#plugin-support)
+- [New Metadata Storage / Performance Improvements](#new-metadata-storage--performance-improvements)
+- [Improved Backwards Compatibility](#improved-backwards-compatibility)
+- [Thanks](#thanks)
+
 ## New Workflows
 
 With 1.0.0, we completely overhauled how workflows work, improving on existing functionality and introducing new commands to create a full-blown workflow system, with all the features needed to support reusable, composable and modifiable workflows.
