@@ -8,13 +8,13 @@ We also reworked our metadata storage, leading to a big improvement in both perf
 
 ## Table of Contents
 
-* [New Workflows](#new-workflows)
-    + [Runs and Plans](#runs-and-plans)
-    + [Working with New Workflows](#working-with-new-workflows)
-    + [Plugin Support](#plugin-support)
-  * [New Metadata Storage / Performance Improvements](#new-metadata-storage--performance-improvements)
-  * [Improved Backwards Compatibility](#improved-backwards-compatibility)
-  * [Thanks](#thanks)
+- [New Workflows](#new-workflows)
+  - [Runs and Plans](#runs-and-plans)
+  - [Working with New Workflows](#working-with-new-workflows)
+  - [Plugin Support](#plugin-support)
+- [New Metadata Storage / Performance Improvements](#new-metadata-storage--performance-improvements)
+- [Improved Backwards Compatibility](#improved-backwards-compatibility)
+- [Thanks](#thanks)
 
 ## New Workflows
 
