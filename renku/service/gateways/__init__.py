@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,19 +15,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku plugin implementations."""
-
-from renku.core.management.workflow.converters.cwl import CWLExporter
-from renku.core.management.workflow.providers.cwltool import CWLToolProvider
-
-__all__ = []
-
-workflow_exporters = [CWLExporter]
-workflow_providers = [CWLToolProvider]
-
-try:
-    from renku.core.management.workflow.providers.toil import ToilProvider
-
-    workflow_providers.append(ToilProvider)
-except ImportError:
-    pass
+"""Renku service adapters/gateways."""

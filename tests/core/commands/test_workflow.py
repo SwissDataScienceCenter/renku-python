@@ -432,7 +432,7 @@ def test_composite_plan_links(composite_plan, links, raises, cycles):
             grouped.set_links_from_strings(links)
     else:
         grouped.set_links_from_strings(links)
-        found_cycles = ExecutionGraph(grouped).cycles
+        found_cycles = ExecutionGraph([grouped]).cycles
         assert bool(found_cycles) == cycles, found_cycles
 
 
@@ -493,7 +493,7 @@ def test_composite_plan_auto_links(composite_plan, mappings, defaults, links, ra
     grouped = rv.apply()
     assert len(rv.missing_parameters) == 0
 
-    graph = ExecutionGraph(grouped, virtual_links=True)
+    graph = ExecutionGraph([grouped], virtual_links=True)
 
     assert bool(graph.virtual_links) == links
     assert bool(graph.cycles) == cycles
