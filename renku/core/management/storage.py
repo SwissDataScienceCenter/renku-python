@@ -85,7 +85,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _CMD_STORAGE_MIGRATE_IMPORT = ["git", "lfs", "migrate", "import"]
 
-    _CMD_STORAGE_MIGRATE_INFO = ["git", "lfs", "migrate", "info", "--top", "42000"]
+    _CMD_STORAGE_MIGRATE_INFO = ["git", "lfs", "migrate", "info", "--pointers", "ignore", "--top", "42000"]
 
     _CMD_STORAGE_LIST = ["git", "lfs", "ls-files", "-n"]
 
