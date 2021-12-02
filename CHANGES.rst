@@ -24,6 +24,12 @@ Changes
 
 Overview
 ~~~~~~~~
+
+For a detailed overview of everything that has changed in this big release, check the
+`in-depth release notes <https://github.com/SwissDataScienceCenter/renku-python/blob/1.0.0-release-notes/renku-release-notes-1.0.0.md>`__
+
+Main Changes:
+
 - Introduce a new metadata storage backend, not storing metadata scattered across commits, greatly improving performance
 - New workflow backend with many new workflow commands:
 
