@@ -57,8 +57,8 @@ from renku.core.management.migrations.utils import (
     is_using_temporary_datasets_path,
     read_project_version,
 )
+from renku.core.management.workflow.plan_factory import RENKU_TMP
 from renku.core.utils import communication
-from renku.core.utils.git import is_valid_git_repository
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -158,14 +158,26 @@ def migrate(
             except (Exception, BaseException) as e:
                 raise MigrationError("Couldn't execute migration") from e
             n_migrations_executed += 1
-    if n_migrations_executed > 0 and not is_using_temporary_datasets_path():
-        client._project = None  # NOTE: force reloading of project metadata
-        client.project.version = str(version)
-        project_gateway.update_project(client.project)
+    if not is_using_temporary_datasets_path():
+        if n_migrations_executed > 0:
+            client._project = None  # NOTE: force reloading of project metadata
+            client.project.version = str(version)
+            project_gateway.update_project(client.project)
 
-        communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
+            communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
+
+        _remove_untracked_renku_files(renku_path=client.renku_path)
 
     return n_migrations_executed != 0, template_updated, docker_updated
+
+
+def _remove_untracked_renku_files(renku_path):
+    from renku.core.management.datasets import DatasetsApiMixin
+
+    untracked_paths = [RENKU_TMP, DatasetsApiMixin.CACHE, "vendors"]
+    for path in untracked_paths:
+        path = renku_path / path
+        shutil.rmtree(path, ignore_errors=True)
 
 
 @inject.autoparams()
@@ -347,9 +359,6 @@ def get_project_version(client_dispatcher: IClientDispatcher):
 def is_renku_project(client_dispatcher: IClientDispatcher) -> bool:
     """Check if repository is a renku project."""
     client = client_dispatcher.current_client
-
-    if not is_valid_git_repository(client.repository):
-        return False
 
     try:
         return client.project is not None

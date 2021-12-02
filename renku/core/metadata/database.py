@@ -18,8 +18,8 @@
 """Custom database for store Persistent objects."""
 
 import datetime
-import gzip
 import hashlib
+import io
 import json
 from pathlib import Path
 from types import BuiltinFunctionType, FunctionType
@@ -27,7 +27,9 @@ from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
 import persistent
-from BTrees.OOBTree import OOBTree
+import zstandard as zstd
+from BTrees.Length import Length
+from BTrees.OOBTree import BTree, OOBucket, OOSet, OOTreeSet
 from persistent import GHOST, UPTODATE
 from persistent.interfaces import IPickleCache
 from ZODB.utils import z64
@@ -36,6 +38,7 @@ from zope.interface.interface import InterfaceClass
 
 from renku.core import errors
 from renku.core.metadata.immutable import Immutable
+from renku.core.models.project import Project
 
 OID_TYPE = str
 TYPE_TYPE = "type"
@@ -83,6 +86,13 @@ def get_attribute(object, name: Union[List[str], str]):
         object = getattr(object, component)
 
     return object
+
+
+class RenkuOOBTree(BTree):
+    """Customize ``BTrees.OOBTree.BTree`` implementation."""
+
+    max_leaf_size = 1000
+    max_internal_size = 2000
 
 
 class Persistent(persistent.Persistent):
@@ -136,7 +146,7 @@ class Database:
         self._objects_to_commit: Dict[OID_TYPE, persistent.Persistent] = {}
         self._reader: ObjectReader = ObjectReader(database=self)
         self._writer: ObjectWriter = ObjectWriter(database=self)
-        self._root: Optional[OOBTree] = None
+        self._root: Optional[RenkuOOBTree] = None
 
         self._initialize_root()
 
@@ -191,7 +201,7 @@ class Database:
             try:
                 self._root = self.get(Database.ROOT_OID)
             except errors.ObjectNotFoundError:
-                self._root = OOBTree()
+                self._root = RenkuOOBTree()
                 self._root._p_oid = Database.ROOT_OID
                 self.register(self._root)
 
@@ -318,8 +328,7 @@ class Database:
 
     def _store_object(self, object: persistent.Persistent):
         data = self._writer.serialize(object)
-        # TODO: Set compress based on the object type in the final version
-        compress = False  # if isinstance(object, (OOBTree, OOBucket, Project, Index)) else True
+        compress = False if isinstance(object, (RenkuOOBTree, OOBucket, Project, Index)) else True
         self._storage.store(filename=self._get_filename_from_oid(object._p_oid), data=data, compress=compress)
 
         self._cache[object._p_oid] = object
@@ -429,7 +438,7 @@ class Index(persistent.Persistent):
         self._object_type = object_type
         self._key_type = key_type
         self._attribute: Optional[str] = attribute
-        self._entries: OOBTree = OOBTree()
+        self._entries: RenkuOOBTree = RenkuOOBTree()
         self._entries._p_oid = name
 
     def __len__(self):
@@ -546,6 +555,8 @@ class Storage:
 
     def __init__(self, path: Union[Path, str]):
         self.path = Path(path)
+        self.zstd_compressor = zstd.ZstdCompressor()
+        self.zstd_decompressor = zstd.ZstdDecompressor()
 
     def store(self, filename: str, data: Union[Dict, List], compress=False):
         """Store object."""
@@ -559,10 +570,13 @@ class Storage:
             path = self.path / filename
             self.path.mkdir(parents=True, exist_ok=True)
 
-        open_func = gzip.open if compress else open
-
-        with open_func(path, "wt") as file:
-            json.dump(data, file, ensure_ascii=False, sort_keys=True, indent=2)
+        if compress:
+            with open(path, "wb") as f, self.zstd_compressor.stream_writer(f) as compressor:
+                with io.TextIOWrapper(compressor) as out:
+                    json.dump(data, out, ensure_ascii=False)
+        else:
+            with open(path, "wt") as f:
+                json.dump(data, f, ensure_ascii=False, sort_keys=True, indent=2)
 
     def load(self, filename: str):
         """Load data for object with object id oid."""
@@ -577,13 +591,14 @@ class Storage:
         if not path.exists():
             raise errors.ObjectNotFoundError(filename)
 
-        try:
-            with gzip.open(path) as file:
+        with open(path, "rb") as file:
+            header = int.from_bytes(file.read(4), "little")
+            file.seek(0)
+            if header == zstd.MAGIC_NUMBER:
+                with self.zstd_decompressor.stream_reader(file) as zfile:
+                    data = json.load(zfile)
+            else:
                 data = json.load(file)
-        except OSError:  # Not a gzip file
-            with open(path) as file:
-                data = json.load(file)
-
         return data
 
 
@@ -642,6 +657,10 @@ class ObjectWriter:
             state = object.__getstate__()
             state = self._serialize_helper(state)
             return {"@renku_data_type": get_type_name(object), "@renku_oid": object._p_oid, **state}
+        elif isinstance(object, (OOTreeSet, Length, OOSet)):
+            state = object.__getstate__()
+            state = self._serialize_helper(state)
+            return {"@renku_data_type": get_type_name(object), "@renku_data_value": state}
         elif isinstance(object, persistent.Persistent):
             if not object._p_oid:
                 object._p_oid = Database.generate_oid(object)

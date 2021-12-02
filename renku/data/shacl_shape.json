@@ -401,6 +401,12 @@
                }
             },
             {
+               "path": "schema:image",
+               "sh:class": {
+                  "@id": "schema:ImageObject"
+               }
+            },
+            {
                "nodeKind": "sh:Literal",
                "path": "schema:keywords",
                "datatype": {
@@ -501,6 +507,35 @@
                      "nodeKind": "sh:IRI"
                   }
                ],
+               "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:ImageObjectShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "schema:ImageObject",
+         "property": [
+            {
+               "path": "schema:contentUrl",
+               "nodeKind": "sh:Literal",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "path": "schema:position",
+               "nodeKind": "sh:Literal",
+               "datatype": {
+                  "@id": "xsd:integer"
+               },
                "maxCount": 1
             }
          ]
@@ -770,9 +805,18 @@
             },
             {
                "path": "prov:agent",
-               "sh:class": {
-                  "@id": "prov:SoftwareAgent"
-               },
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "prov:SoftwareAgent"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "schema:Person"
+                     }
+                  }
+               ],
                "minCount": 1,
                "maxCount": 1
             }
