@@ -22,7 +22,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
-REFERENCE = "0.1.23"
+REFERENCE = "0.2.1"
 
 
 def build() -> None:
