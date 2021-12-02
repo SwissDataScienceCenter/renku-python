@@ -39,7 +39,7 @@ Overview
   - ``renku workflow outputs``
 
 - New JSON-LD export  method ``renku graph export``
-- ``renku run`` now allows setting a name (using ``--name``), which is higly encouraged, and additional parameters, creating a new workflow template
+- ``renku run`` now allows setting a name (using ``--name``), which is highly encouraged, and additional parameters, creating a new workflow template
 - ``renku rerun``, ``renku status`` and ``renku update`` have been rewritten to work with the new workflow format
 
 Features
@@ -120,7 +120,7 @@ Features
 -  **core:** finalize move to new metadata
    (`#2239 <https://github.com/SwissDataScienceCenter/renku-python/issues/2239>`__)
    (`3a5d0ba <https://github.com/SwissDataScienceCenter/renku-python/commit/3a5d0ba58ce4e820b914650bc8a8bbbed7665ff9>`__)
--  **core:** fix autocommit LFS files in pre-commit hook
+-  **core:** fix auto-commit LFS files in pre-commit hook
    (`#2245 <https://github.com/SwissDataScienceCenter/renku-python/issues/2245>`__)
    (`78fad89 <https://github.com/SwissDataScienceCenter/renku-python/commit/78fad8967660bb973d72e2d544dcd7978b4ea260>`__)
 -  **core:** Implement workflow list/edit/export commands
@@ -179,7 +179,7 @@ Bug Fixes
 -  **cli:** change renku update to respect deleted plans/files
    (`#2398 <https://github.com/SwissDataScienceCenter/renku-python/issues/2398>`__)
    (`f26edd3 <https://github.com/SwissDataScienceCenter/renku-python/commit/f26edd3ae19103ad1d12f508546abd61c6a61732>`__)
--  **cli:** fix graph export of derivedFrom datasets
+-  **cli:** fix graph export of ``derivedFrom`` datasets
    (`#2396 <https://github.com/SwissDataScienceCenter/renku-python/issues/2396>`__)
    (`bf05fc7 <https://github.com/SwissDataScienceCenter/renku-python/commit/bf05fc7ac2e08957e611b7d6e35cefe24dc51a74>`__)
 -  **cli:** fix output of CompositePlan mappings and small bug in graph
@@ -190,7 +190,7 @@ Bug Fixes
    outside repo
    (`#2448 <https://github.com/SwissDataScienceCenter/renku-python/issues/2448>`__)
    (`7b52461 <https://github.com/SwissDataScienceCenter/renku-python/commit/7b524618999288200db9987809fb31ed2d40e65e>`__)
--  **cli:** fixes importlib.metadata usage in Python 3.8
+-  **cli:** fixes ``importlib.metadata`` usage in Python 3.8
    (`#2421 <https://github.com/SwissDataScienceCenter/renku-python/issues/2421>`__)
    (`13259ac <https://github.com/SwissDataScienceCenter/renku-python/commit/13259acc069225a8eec55d3c5bf17b3bab4816ef>`__)
 -  **cli:** improve imports to optimize performance
@@ -231,7 +231,7 @@ Bug Fixes
    (`#2436 <https://github.com/SwissDataScienceCenter/renku-python/issues/2436>`__)
    (`4bb0f08 <https://github.com/SwissDataScienceCenter/renku-python/commit/4bb0f088f809a7200360a5663b6102a6faf71cd0>`__)
 -  **core:** fixes tests and duplicate objects in database, adds
-   asciinema recordings to docs
+   ``asciinema`` recordings to docs
    (`#2427 <https://github.com/SwissDataScienceCenter/renku-python/issues/2427>`__)
    (`bdce519 <https://github.com/SwissDataScienceCenter/renku-python/commit/bdce519c76ed946b9233a52939b3c0c596dd2a7a>`__)
 -  **core:** improve renku status performance
@@ -246,7 +246,7 @@ Bug Fixes
 -  **core:** make status and update consider all relevant activities
    (`#2479 <https://github.com/SwissDataScienceCenter/renku-python/issues/2479>`__)
    (`c7e2d66 <https://github.com/SwissDataScienceCenter/renku-python/commit/c7e2d66e86ea5e7cb0086a088487b7087b4f501b>`__)
--  **core:** parse key when overriding params in workflow execute
+-  **core:** parse key when overriding parameters in workflow execute
    (`#2362 <https://github.com/SwissDataScienceCenter/renku-python/issues/2362>`__)
    (`16267bf <https://github.com/SwissDataScienceCenter/renku-python/commit/16267bf68fcf8758835b286cf4270bd050856f41>`__)
 -  **core:** prevent catalog from creating tons of separate files
@@ -285,9 +285,6 @@ Bug Fixes
 -  **service:** fix git config getting included in service images
    (`#2382 <https://github.com/SwissDataScienceCenter/renku-python/issues/2382>`__)
    (`0d2167b <https://github.com/SwissDataScienceCenter/renku-python/commit/0d2167bf5bb9c1eedc1acc6ef2741cc523cf4eec>`__)
--  **service:** get rid of Andreas
-   (`#2428 <https://github.com/SwissDataScienceCenter/renku-python/issues/2428>`__)
-   (`728343d <https://github.com/SwissDataScienceCenter/renku-python/commit/728343d64956f2441ad5ec2b203125d2fa14bc74>`__)
 -  **service:** handle uploaded images in datasets.edit
    (`#2243 <https://github.com/SwissDataScienceCenter/renku-python/issues/2243>`__)
    (`48adb54 <https://github.com/SwissDataScienceCenter/renku-python/commit/48adb548b86e6ac43d530f3d0e43dc1a05aa2b00>`__)
