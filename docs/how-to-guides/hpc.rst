@@ -5,6 +5,8 @@ Running Renku on HPC
 
 Renku CLI supports various backends for executing workflows. Currently, there
 are two different providers are implemented, namely ``cwltool`` and ``toil``.
+:ref:`provider` documents gives a more detailed description of how to implement
+your own workflow provider.
 
 The default all workflows are executed by the ``cwltool`` provider, that basically
 exports the workflow to CWL and then uses `cwltool <https://github.com/common-workflow-language/cwltool>`_

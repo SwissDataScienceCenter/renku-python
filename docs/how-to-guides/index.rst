@@ -12,3 +12,4 @@ aimed at active users of Renku CLI and target specific use-cases or common issue
 
 
    hpc
+   provider
