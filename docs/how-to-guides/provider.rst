@@ -33,7 +33,7 @@ A simple example of a ``MyProvider`` workflow executor plugin:
 
             @hookimpl
             def workflow_execute(self, dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any]):
-                """Executing the ``Plans`."""
+                """Executing the ``Plans``."""
                 generated_outputs: List[str] = []
 
                 # traversing the dag that contains the ``Plans``
@@ -44,6 +44,12 @@ A simple example of a ``MyProvider`` workflow executor plugin:
 
 The execution of the workflow(s) shall be defined in ``workflow_execute`` function, where
 
-  - ``dag`` is a Directed Acyclic Graph of ``Plans`` to be executed,
+  - ``dag`` is a Directed Acyclic Graph of :py:class:`Plans<renku.core.models.workflow.plan>` to be executed represented with a `networkx.DiGraph <https://networkx.org/documentation/stable/reference/classes/digraph.html>`_,
   - ``basedir`` is the absolute path to the project,
   - ``config`` dictionary contains the provider related optional configuration parameters.
+
+The ``workflow_provider`` function shall return a tuple of ``(object, str)``,  where object
+should be the plugin object, i.e. ``self`` and the string is a unique identifier of the
+provider plugin. This unique string will be the string that the user can provide to the
+``--provider`` command line argument to select this plugin for executing the desired
+workflows.
