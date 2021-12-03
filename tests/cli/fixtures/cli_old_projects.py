@@ -78,13 +78,13 @@ def old_workflow_project(request, tmp_path):
         }
 
 
-@pytest.fixture
-def old_dataset_project(tmp_path):
+@pytest.fixture(params=["old-datasets-v0.9.1.git"])
+def old_dataset_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
     from renku.core.management.client import LocalClient
     from renku.core.utils.contexts import chdir
 
-    name = "old-datasets-v0.9.1.git"
+    name = request.param
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
@@ -125,17 +125,3 @@ def unsupported_project(client, client_database_injection_manager):
     client.repository.commit("update renku.ini", no_verify=True)
 
     yield client
-
-
-@pytest.fixture
-def old_client_before_database(tmp_path):
-    """A renku project from last version without Database."""
-    from renku.core.management.client import LocalClient
-    from renku.core.utils.contexts import chdir
-
-    name = "old-datasets-v0.16.0.git"
-    base_path = tmp_path / name
-    repository = clone_compressed_repository(base_path=base_path, name=name)
-
-    with chdir(repository.path):
-        yield LocalClient(path=repository.path)

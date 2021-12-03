@@ -103,6 +103,7 @@ def migrate(
     max_version=None,
     strict=False,
     migration_type=MigrationType.ALL,
+    preserve_identifiers=False,
 ):
     """Apply all migration files to the project."""
     client = client_dispatcher.current_client
@@ -142,7 +143,7 @@ def migrate(
     project_version = project_version or get_project_version()
     n_migrations_executed = 0
 
-    migration_options = MigrationOptions(strict=strict, type=migration_type)
+    migration_options = MigrationOptions(strict=strict, type=migration_type, preserve_identifiers=preserve_identifiers)
     migration_context = MigrationContext(client=client, options=migration_options)
 
     version = 1
