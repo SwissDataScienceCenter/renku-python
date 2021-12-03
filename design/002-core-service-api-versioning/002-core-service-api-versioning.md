@@ -24,7 +24,7 @@ Because of this, it makes more sense to deploy new and old versions of the core 
 
 `/cache.migrations_check` only actually needs `.renku/metadata.yml`, `.renku/metadata/root`, and `.renku/metadata/project` checked out to work, plus optionally `Dockerfile` to return dockerfile info.
 
-We need to clone at least `.renku/metadata/project` in a project to know the metadata version, so that files has to be accessed no matter what. Since this is the case, we might as well clone all 4 of the files mentioned above and do a full `cache.migrations_check` to figure out the metadata version, bypassing the cache. Otherwise, we'd have multiple endpoints serving essentially the same information. We can selectively clone to a temp directory using the `git archive` approach mentioned on https://stackoverflow.com/a/64776113/212971.
+We need to clone at least `.renku/metadata/project` in a project to know the metadata version, so that files has to be accessed no matter what. Since this is the case, we might as well clone all 4 of the files mentioned above and do a full `cache.migrations_check` to figure out the metadata version, bypassing the cache. Otherwise, we'd have multiple endpoints serving essentially the same information. We can selectively clone to a temp directory using the gitlab api.
 
 `cache.migrations_check` would be changed to:
 
