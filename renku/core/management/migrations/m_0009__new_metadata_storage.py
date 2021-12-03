@@ -53,7 +53,13 @@ from renku.core.models.project import Project
 from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
 from renku.core.models.provenance.agent import Person, SoftwareAgent
 from renku.core.models.provenance.parameter import ParameterValue
-from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
+from renku.core.models.workflow.parameter import (
+    DIRECTORY_MIME_TYPE,
+    CommandInput,
+    CommandOutput,
+    CommandParameter,
+    MappedIOStream,
+)
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils import communication
 
@@ -226,6 +232,9 @@ def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
 
     plan_id = Plan.generate_id(uuid=uuid)
 
+    def get_mime_type(entity: Union[old_schema.Entity, old_schema.Collection]) -> List[str]:
+        return [DIRECTORY_MIME_TYPE] if isinstance(entity, old_schema.Collection) else ["application/octet-stream"]
+
     def convert_argument(argument: old_schema.CommandArgument) -> CommandParameter:
         """Convert an old CommandArgument to a new CommandParameter."""
         assert isinstance(argument, old_schema.CommandArgument)
@@ -256,6 +265,7 @@ def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
             name=input.name,
             position=input.position,
             prefix=input.prefix,
+            encoding_format=get_mime_type(input.consumes),
             postfix=PurePosixPath(input._id).name,
         )
 
@@ -276,6 +286,7 @@ def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
             name=output.name,
             position=output.position,
             prefix=output.prefix,
+            encoding_format=get_mime_type(output.produces),
             postfix=PurePosixPath(output._id).name,
         )
 
