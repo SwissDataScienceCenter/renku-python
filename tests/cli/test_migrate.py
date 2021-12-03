@@ -24,9 +24,11 @@ from pathlib import Path
 import pytest
 
 from renku.cli import cli
+from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
+from renku.core.management.workflow.plan_factory import RENKU_TMP
 from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import RemoteEntity
 from tests.utils import format_result_exception
@@ -164,6 +166,11 @@ def test_migrations_runs(isolated_runner, old_project):
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "No migrations required." in result.output
+
+    tmp_path = os.path.join(RENKU_HOME, RENKU_TMP)
+    paths = [c.b_path for c in old_project.head.commit.get_changes() if tmp_path in c.b_path]
+
+    assert 0 == len(paths), ", ".join(paths)
 
 
 @pytest.mark.migration

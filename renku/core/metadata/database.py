@@ -28,7 +28,8 @@ from uuid import uuid4
 
 import persistent
 import zstandard as zstd
-from BTrees.OOBTree import BTree, OOBucket
+from BTrees.Length import Length
+from BTrees.OOBTree import BTree, OOBucket, OOSet, OOTreeSet
 from persistent import GHOST, UPTODATE
 from persistent.interfaces import IPickleCache
 from ZODB.utils import z64
@@ -656,6 +657,10 @@ class ObjectWriter:
             state = object.__getstate__()
             state = self._serialize_helper(state)
             return {"@renku_data_type": get_type_name(object), "@renku_oid": object._p_oid, **state}
+        elif isinstance(object, (OOTreeSet, Length, OOSet)):
+            state = object.__getstate__()
+            state = self._serialize_helper(state)
+            return {"@renku_data_type": get_type_name(object), "@renku_data_value": state}
         elif isinstance(object, persistent.Persistent):
             if not object._p_oid:
                 object._p_oid = Database.generate_oid(object)
