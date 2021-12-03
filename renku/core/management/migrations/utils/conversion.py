@@ -153,6 +153,20 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
 
         return Url(url_id=Dataset.generate_id(identifier=Path(path).name))
 
+    def convert_license(license):
+        if not license:
+            return license
+        elif isinstance(license, (Url, str)):
+            return license
+        elif isinstance(license, dict) and len(license) == 1:
+            return list(license.values())[0]
+        elif isinstance(license, dict) and "@id" in license:
+            return license["@id"]
+        elif isinstance(license, list) and len(license) == 1:
+            return license[0]
+
+        return str(license)
+
     tags = [_convert_dataset_tag(tag) for tag in (dataset.tags or [])]
 
     return (
@@ -169,7 +183,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             images=[_convert_image_object(image) for image in (dataset.images or [])],
             in_language=_convert_language(dataset.in_language),
             keywords=dataset.keywords,
-            license=dataset.license,
+            license=convert_license(dataset.license),
             name=dataset.name,
             project_id=client.project.id,
             initial_identifier=_convert_dataset_identifier(dataset.initial_identifier),
