@@ -36,8 +36,8 @@ import re
 import shutil
 from pathlib import Path
 
-import pkg_resources
 from jinja2 import Template
+from packaging.version import Version
 
 from renku.core.errors import (
     DockerfileUpdateError,
@@ -59,6 +59,11 @@ from renku.core.management.migrations.utils import (
 )
 from renku.core.management.workflow.plan_factory import RENKU_TMP
 from renku.core.utils import communication
+
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -201,8 +206,8 @@ def _update_template(client_dispatcher: IClientDispatcher, project_gateway: IPro
     )
 
     if template_source == "renku":
-        template_version = pkg_resources.parse_version(template_version)
-        current_version = pkg_resources.parse_version(project.template_version)
+        template_version = Version(template_version)
+        current_version = Version(project.template_version)
         if template_version <= current_version:
             return False, str(project.template_version), str(current_version)
     else:
@@ -317,7 +322,7 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
     with open(client.docker_path, "r") as f:
         dockercontent = f.read()
 
-    current_version = pkg_resources.parse_version(__version__)
+    current_version = Version(__version__)
     m = re.search(r"^ARG RENKU_VERSION=(\d+\.\d+\.\d+)$", dockercontent, flags=re.MULTILINE)
     if not m:
         if check_only:
@@ -326,7 +331,7 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
             "Couldn't update renku-python version in Dockerfile, as it doesn't contain an 'ARG RENKU_VERSION=...' line."
         )
 
-    docker_version = pkg_resources.parse_version(m.group(1))
+    docker_version = Version(m.group(1))
 
     if docker_version >= current_version:
         return True, False, str(docker_version)
@@ -369,14 +374,14 @@ def is_renku_project(client_dispatcher: IClientDispatcher) -> bool:
 def get_migrations():
     """Return a sorted list of versions and migration modules."""
     migrations = []
-    for file_ in pkg_resources.resource_listdir("renku.core.management", "migrations"):
-        match = re.search(r"m_([0-9]{4})__[a-zA-Z0-9_-]*.py", file_)
+    for entry in importlib_resources.files("renku.core.management.migrations").iterdir():
+        match = re.search(r"m_([0-9]{4})__[a-zA-Z0-9_-]*.py", entry.name)
 
         if match is None:  # migration files match m_0000__[name].py format
             continue
 
         version = int(match.groups()[0])
-        path = "renku.core.management.migrations.{}".format(Path(file_).stem)
+        path = "renku.core.management.migrations.{}".format(Path(entry.name).stem)
         migrations.append((version, path))
 
     migrations = sorted(migrations, key=lambda v: v[1].lower())

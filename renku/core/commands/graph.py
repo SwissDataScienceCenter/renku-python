@@ -20,8 +20,6 @@
 import json
 from typing import Dict, List, Set, Union
 
-from pkg_resources import resource_filename
-
 from renku.core import errors
 from renku.core.commands.format.graph import GRAPH_FORMATS
 from renku.core.management.command_builder.command import Command, inject
@@ -38,6 +36,11 @@ from renku.core.models.workflow.composite_plan import CompositePlan, CompositePl
 from renku.core.models.workflow.plan import Plan, PlanSchema
 from renku.core.utils.shacl import validate_graph
 from renku.core.utils.urls import get_host
+
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 
 def export_graph_command():
@@ -193,8 +196,9 @@ def get_activity_plan_ids(activity: Activity) -> Set[str]:
 
 
 def _validate_graph(rdf_graph, format):
-    shacl_path = resource_filename("renku", "data/shacl_shape.json")
-    r, _, t = validate_graph(rdf_graph, shacl_path=shacl_path, format=format)
+    ref = importlib_resources.files("renku.data") / "shacl_shape.json"
+    with importlib_resources.as_file(ref) as shacl_path:
+        r, _, t = validate_graph(rdf_graph, shacl_path=shacl_path, format=format)
 
     if not r:
         raise errors.SHACLValidationError(f"{t}\nCouldn't export: Invalid Knowledge Graph data")

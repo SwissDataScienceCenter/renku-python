@@ -20,7 +20,10 @@ import os
 import tempfile
 from pathlib import Path
 
-import pkg_resources
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 # TODO: #2100 the git access error should have its own error code
 GIT_ACCESS_DENIED_ERROR_CODE = -32000
@@ -73,5 +76,7 @@ API_SPEC_URL = SERVICE_PREFIX.lstrip("/") + "/spec.json"
 # URL for fetching the OIDC configuration
 OIDC_URL = os.getenv("OIDC_URL", "/auth/realms/Renku/.well-known/openid-configuration")
 
-LOGGER_CONFIG_FILE = Path(pkg_resources.resource_filename("renku", "service/logging.yaml"))
+ref = importlib_resources.files("renku.service") / "logging.yaml"
+with importlib_resources.as_file(ref) as path:
+    LOGGER_CONFIG_FILE = path
 MESSAGE_PREFIX = os.environ.get("RENKU_DOMAIN", "service") + ":"

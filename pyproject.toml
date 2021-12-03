@@ -20,7 +20,7 @@
 
 [tool.poetry]
 name = "renku"
-version = "0.0.0" # placeholder, see poetry-dynamic-versioning
+version = "1.0.0.dev3+g2833b272" # placeholder, see poetry-dynamic-versioning
 description = "Python SDK and CLI for the Renku platform."
 license = "Apache License 2.0"
 keywords = ["Renku", "CLI"]
@@ -86,6 +86,7 @@ grandalf = "==0.7"
 gunicorn = { optional = true, version = "*" }
 humanize = "<3.12.0,>=2.5.0"
 importlib-metadata = { version = "<4.9.0,>=4.8.1", python = "<3.8.0" }
+importlib-resources = { version = "<5.5.0,>=5.4.0", python = "<3.9.0" }
 inject = "<4.4.0,>=4.3.0"
 isort = { version = "<5.10.0,>=5.3.2", optional = true }
 jinja2 = { version = "<3.0.2,>=2.10.3,>=2.11.3" }
@@ -93,6 +94,7 @@ marshmallow = { version = "==3.13.0", optional = true }
 ndg-httpsclient = "==0.5.1"
 networkx = "<2.7,>=2.6.0"
 numpy = "<1.21.0,>=1.20.0"
+packaging = "<22.0,>=21.3"
 pathspec = "<1.0.0,>=0.8.0"
 patool = "==1.12"
 pexpect = { version = "<4.9.0,>=4.8.0", optional = true }
