@@ -86,7 +86,7 @@ def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher
             remote = get_remote(client.repository)
             if not remote or not remote.url:
                 return
-            endpoint = f"https://{parse_git_url(remote.url).host}/"
+            endpoint = f"https://{parse_git_url(remote.url).hostname}/"
 
     if not endpoint.startswith("http"):
         endpoint = f"https://{endpoint}"

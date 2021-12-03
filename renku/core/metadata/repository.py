@@ -696,6 +696,7 @@ class Repository(BaseRepository):
         progress: Optional[Callable] = None,
         no_checkout: bool = False,
         env: dict = None,
+        clone_options: List[str] = None,
     ) -> "Repository":
         """Clone a remote repository and create an instance."""
         try:
@@ -708,6 +709,7 @@ class Repository(BaseRepository):
                 progress=progress,
                 no_checkout=no_checkout,
                 env=env,
+                multi_options=clone_options,
             )
         except git.GitCommandError as e:
             raise errors.GitCommandError(

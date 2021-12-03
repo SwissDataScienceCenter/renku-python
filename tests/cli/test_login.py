@@ -215,7 +215,7 @@ def test_repeated_git_login(runner, client_with_remote, mock_login):
     result = runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT], input=USER_CODE)
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Backup remove 'renku-backup-origin' already exists. Ignoring '--git' flag." in result.output
+    assert "Backup remote 'renku-backup-origin' already exists. Ignoring '--git' flag." in result.output
     assert "Error: Cannot create backup remote 'renku-backup-origin' for" not in result.output
     assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repository.remotes}
     assert remote_url == client_with_remote.repository.remotes["renku-backup-origin"].url

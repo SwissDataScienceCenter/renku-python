@@ -61,6 +61,6 @@ def clone(no_pull_data, url, path):
 
     click.echo(f"Cloning {url} ...")
     project_clone_command().build().execute(
-        url=url, path=path, skip_smudge=no_pull_data, progress=get_git_progress_instance()
+        url=url, path=path, skip_smudge=no_pull_data, progress=get_git_progress_instance(), use_renku_credentials=True
     )
     click.secho("OK", fg="green")

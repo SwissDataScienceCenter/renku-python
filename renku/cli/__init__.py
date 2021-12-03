@@ -119,7 +119,7 @@ def get_entry_points(name: str):
 #: Monkeypatch Click application.
 click_completion.init()
 
-WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service"]
+WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service", "token"]
 
 
 def _uuid_representer(dumper, data):
