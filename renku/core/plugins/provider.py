@@ -17,12 +17,14 @@
 # limitations under the License.
 """Plugin hooks for renku run customization."""
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+
+if TYPE_CHECKING:
+    import networkx as nx
 
 import pluggy
 
 from renku.core import errors
-from renku.core.models.workflow.plan import AbstractPlan
 from renku.core.models.workflow.provider import IWorkflowProvider
 
 hookspec = pluggy.HookspecMarker("renku")
@@ -38,7 +40,7 @@ def workflow_provider() -> Tuple[IWorkflowProvider, str]:
 
 
 @hookspec(firstresult=True)
-def workflow_execute(workflow: AbstractPlan, basedir: Path, config: Dict[str, Any]):
+def workflow_execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any]):
     """Plugin Hook for ``workflow execute`` call.
 
     Can be used to execute renku workflows with different workflow executors.
@@ -58,7 +60,7 @@ def available_workflow_providers() -> List[str]:
     return [p[1] for p in providers]
 
 
-def execute(workflow: AbstractPlan, basedir: Path, config: Dict[str, Any], provider: str = "cwltool") -> List[str]:
+def execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any], provider: str = "cwltool") -> List[str]:
     """Executes a given workflow using the selected provider.
 
     :param workflow: Workflow to be executed.
@@ -78,4 +80,4 @@ def execute(workflow: AbstractPlan, basedir: Path, config: Dict[str, Any], provi
     providers.remove(provider)
     executor = pm.subset_hook_caller("workflow_execute", list(map(lambda x: x[0], providers)))
 
-    return executor(workflow=workflow, basedir=basedir, config=config)
+    return executor(dag=dag, basedir=basedir, config=config)

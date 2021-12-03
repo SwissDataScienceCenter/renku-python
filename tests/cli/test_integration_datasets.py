@@ -1390,7 +1390,7 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
 @retry_failed
 def test_files_are_tracked_in_lfs(runner, client, no_lfs_size_limit):
     """Test files added from a Git repo are tacked in Git LFS."""
-    filename = "requirements-devel.txt"
+    filename = "poetry.lock"
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)

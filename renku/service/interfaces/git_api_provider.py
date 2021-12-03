@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,19 +15,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku plugin implementations."""
+"""Git APi provider interface."""
 
-from renku.core.management.workflow.converters.cwl import CWLExporter
-from renku.core.management.workflow.providers.cwltool import CWLToolProvider
+from abc import ABC
+from pathlib import Path
+from typing import List, Optional, Union
 
-__all__ = []
 
-workflow_exporters = [CWLExporter]
-workflow_providers = [CWLToolProvider]
+class IGitAPIProvider(ABC):
+    """Interface a Git API Provider."""
 
-try:
-    from renku.core.management.workflow.providers.toil import ToilProvider
-
-    workflow_providers.append(ToilProvider)
-except ImportError:
-    pass
+    def download_files_from_api(
+        self,
+        paths: List[Union[Path, str]],
+        target_folder: Union[Path, str],
+        remote: str,
+        token: str,
+        ref: Optional[str] = None,
+    ):
+        """Download files through a remote Git API."""
+        raise NotImplementedError()

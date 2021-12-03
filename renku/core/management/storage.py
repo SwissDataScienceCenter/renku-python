@@ -450,15 +450,26 @@ class StorageApiMixin(RepositoryApiMixin):
 
         includes, excludes, above = self.get_lfs_migrate_filters()
 
+        ignore_pointers = ["--pointers", "ignore"]
+
         command = self._CMD_STORAGE_MIGRATE_INFO + ref + above + includes + excludes
 
         try:
-            lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True)
+            lfs_output = run(
+                command + ignore_pointers, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True
+            )
         except (KeyboardInterrupt, OSError) as e:
             raise errors.GitError(f"Couldn't run 'git lfs migrate info':\n{e}")
 
         if lfs_output.returncode != 0:
-            raise errors.GitLFSError(f"Error executing 'git lfs migrate info: \n {lfs_output.stdout}")
+            # NOTE: try running without --pointers (old versions of git lfs)
+            try:
+                lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True)
+            except (KeyboardInterrupt, OSError) as e:
+                raise errors.GitError(f"Couldn't run 'git lfs migrate info':\n{e}")
+
+            if lfs_output.returncode != 0:
+                raise errors.GitLFSError(f"Error executing 'git lfs migrate info: \n {lfs_output.stdout}")
 
         groups = []
         files_re = re.compile(r"(.*\s+[\d.]+\s+\S+).*")
@@ -516,7 +527,7 @@ class StorageApiMixin(RepositoryApiMixin):
             processed = set()
 
             for diff in old_commit.get_changes():
-                path_obj = Path(diff.a_path)
+                path_obj = Path(diff.b_path)
 
                 # NOTE: Get git object hash mapping for files and parent folders
                 while path_obj != repo_root:

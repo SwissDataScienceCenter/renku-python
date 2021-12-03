@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,19 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku plugin implementations."""
+"""Utility functions for plugins."""
 
-from renku.core.management.workflow.converters.cwl import CWLExporter
-from renku.core.management.workflow.providers.cwltool import CWLToolProvider
 
-__all__ = []
+def supported_formats():
+    """Deferred import as plugins are slow."""
+    from renku.core.plugins.workflow import supported_formats
 
-workflow_exporters = [CWLExporter]
-workflow_providers = [CWLToolProvider]
+    return supported_formats()
 
-try:
-    from renku.core.management.workflow.providers.toil import ToilProvider
 
-    workflow_providers.append(ToilProvider)
-except ImportError:
-    pass
+def available_workflow_providers():
+    """Deferred import as plugins are slow."""
+    from renku.core.plugins.provider import available_workflow_providers
+
+    return available_workflow_providers()

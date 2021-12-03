@@ -21,15 +21,19 @@ import os
 import time
 from pathlib import Path
 
+import pytest
+
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.metadata.gateway.activity_gateway import ActivityGateway
 from renku.core.metadata.repository import Repository
 from renku.core.models.workflow.plan import Plan
+from renku.core.plugins.provider import available_workflow_providers
 from tests.utils import format_result_exception, write_and_commit_file
 
 
-def test_update(runner, client, renku_cli, client_database_injection_manager):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update(runner, client, renku_cli, client_database_injection_manager, provider):
     """Test output is updated when source changes."""
     source = os.path.join(client.path, "source.txt")
     output = os.path.join(client.path, "output.txt")
@@ -41,7 +45,7 @@ def test_update(runner, client, renku_cli, client_database_injection_manager):
 
     write_and_commit_file(client.repository, source, "changed content")
 
-    exit_code, activity = renku_cli("update", "--all")
+    exit_code, activity = renku_cli("update", "-p", provider, "--all")
 
     assert 0 == exit_code
     plan = activity.association.plan
@@ -61,7 +65,8 @@ def test_update(runner, client, renku_cli, client_database_injection_manager):
         assert [] == activity_collections
 
 
-def test_update_multiple_steps(runner, client, renku_cli, client_database_injection_manager):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_multiple_steps(runner, client, renku_cli, client_database_injection_manager, provider):
     """Test update in a multi-step workflow."""
     source = os.path.join(client.path, "source.txt")
     intermediate = os.path.join(client.path, "intermediate.txt")
@@ -76,7 +81,7 @@ def test_update_multiple_steps(runner, client, renku_cli, client_database_inject
 
     write_and_commit_file(client.repository, source, "changed content")
 
-    exit_code, activities = renku_cli("update", "--all")
+    exit_code, activities = renku_cli("update", "-p", provider, "--all")
 
     assert 0 == exit_code
     plans = [a.association.plan for a in activities]
@@ -99,7 +104,8 @@ def test_update_multiple_steps(runner, client, renku_cli, client_database_inject
         assert {a.id for a in activities} == {a.id for a in activity_collections[0].activities}
 
 
-def test_update_multiple_steps_with_path(runner, project, renku_cli):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_multiple_steps_with_path(runner, project, renku_cli, provider):
     """Test update in a multi-step workflow when a path is specified."""
     repo = Repository(project)
     source = os.path.join(project, "source.txt")
@@ -115,7 +121,7 @@ def test_update_multiple_steps_with_path(runner, project, renku_cli):
 
     write_and_commit_file(repo, source, "changed content")
 
-    exit_code, activity = renku_cli("update", intermediate)
+    exit_code, activity = renku_cli("update", "-p", provider, intermediate)
 
     assert 0 == exit_code
     plan = activity.association.plan
@@ -131,7 +137,8 @@ def test_update_multiple_steps_with_path(runner, project, renku_cli):
     assert "source.txt" not in result.output
 
 
-def test_update_with_directory_paths(project, renku_cli):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_with_directory_paths(project, renku_cli, provider):
     """Test update when a directory path is specified."""
     repo = Repository(project)
     data = os.path.join(project, "data", "dataset", "my-data")
@@ -146,7 +153,7 @@ def test_update_with_directory_paths(project, renku_cli):
 
     write_and_commit_file(repo, source, "changed content")
 
-    exit_code, activity = renku_cli("update", data)
+    exit_code, activity = renku_cli("update", "-p", provider, data)
 
     assert 0 == exit_code
     assert "changed content" == Path(output).read_text()
@@ -154,7 +161,8 @@ def test_update_with_directory_paths(project, renku_cli):
     assert previous_activity.association.plan.id == plan.id
 
 
-def test_multiple_updates(runner, project, renku_cli):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_multiple_updates(runner, project, renku_cli, provider):
     """Test multiple updates of the same source."""
     repo = Repository(project)
     source = os.path.join(project, "source.txt")
@@ -170,13 +178,13 @@ def test_multiple_updates(runner, project, renku_cli):
 
     write_and_commit_file(repo, source, "changed content")
 
-    exit_code, _ = renku_cli("update", "--all")
+    exit_code, _ = renku_cli("update", "-p", provider, "--all")
     assert 0 == exit_code
     assert "changed content" == Path(intermediate).read_text()
 
     write_and_commit_file(repo, source, "more changed content")
 
-    exit_code, activities = renku_cli("update", "--all")
+    exit_code, activities = renku_cli("update", "-p", provider, "--all")
 
     assert 0 == exit_code
     plans = [a.association.plan for a in activities]
@@ -192,7 +200,8 @@ def test_multiple_updates(runner, project, renku_cli):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_update_workflow_without_outputs(runner, project, run):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_workflow_without_outputs(runner, project, run, provider):
     """Test workflow without outputs."""
     repo = Repository(project)
     source = os.path.join(project, "source.txt")
@@ -207,7 +216,7 @@ def test_update_workflow_without_outputs(runner, project, run):
 
     assert 1 == runner.invoke(cli, ["status"]).exit_code
 
-    assert 0 == run(args=["update", "--all"])
+    assert 0 == run(args=["update", "-p", provider, "--all"])
 
     result = runner.invoke(cli, ["status"])
 
@@ -215,7 +224,8 @@ def test_update_workflow_without_outputs(runner, project, run):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_update_siblings(project, run, no_lfs_warning):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_siblings(project, run, no_lfs_warning, provider):
     """Test all generations of an activity are updated together."""
     repo = Repository(project)
     parent = os.path.join(project, "parent.txt")
@@ -233,7 +243,7 @@ def test_update_siblings(project, run, no_lfs_warning):
 
     write_and_commit_file(repo, parent, "changed content")
 
-    assert 0 == run(args=["update", brother])
+    assert 0 == run(args=["update", "-p", provider, brother])
 
     for sibling in siblings:
         assert "changed content" == sibling.read_text()
@@ -246,13 +256,14 @@ def test_update_siblings(project, run, no_lfs_warning):
     write_and_commit_file(repo, parent, "more content")
 
     # Update should create the missing sibling
-    assert 0 == run(args=["update", "--all"])
+    assert 0 == run(args=["update", "-p", provider, "--all"])
 
     for sibling in siblings:
         assert "more content" == sibling.read_text()
 
 
-def test_update_siblings_in_output_directory(project, run):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_siblings_in_output_directory(project, run, provider):
     """Files in output directory are linked or removed after update."""
     repo = Repository(project)
     source = os.path.join(project, "source.txt")
@@ -284,12 +295,13 @@ def test_update_siblings_in_output_directory(project, run):
     files = [("third", "3"), ("fourth", "4")]
     write_source()
 
-    assert 0 == run(args=["update", "output"])
+    assert 0 == run(args=["update", "-p", provider, "output"])
 
     check_files()
 
 
-def test_update_relative_path_for_directory_input(client, run, renku_cli):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_relative_path_for_directory_input(client, run, renku_cli, provider):
     """Test having a directory input generates relative path in CWL."""
     write_and_commit_file(client.repository, client.path / DATA_DIR / "file1", "file1")
 
@@ -297,7 +309,7 @@ def test_update_relative_path_for_directory_input(client, run, renku_cli):
 
     write_and_commit_file(client.repository, client.path / DATA_DIR / "file2", "file2")
 
-    exit_code, activity = renku_cli("update", "--all")
+    exit_code, activity = renku_cli("update", "-p", provider, "--all")
 
     assert 0 == exit_code
     plan = activity.association.plan
@@ -305,7 +317,8 @@ def test_update_relative_path_for_directory_input(client, run, renku_cli):
     assert "data" == plan.inputs[0].default_value
 
 
-def test_update_no_args(runner, project, no_lfs_warning):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_no_args(runner, project, no_lfs_warning, provider):
     """Test calling update with no args raises ParameterError."""
     repo = Repository(project)
     source = os.path.join(project, "source.txt")
@@ -319,7 +332,7 @@ def test_update_no_args(runner, project, no_lfs_warning):
 
     before_commit = repo.head.commit
 
-    result = runner.invoke(cli, ["update"])
+    result = runner.invoke(cli, ["update", "-p", provider])
 
     assert 2 == result.exit_code
     assert "Either PATHS, --all/-a, or --dry-run/-n should be specified." in result.output
@@ -327,13 +340,14 @@ def test_update_no_args(runner, project, no_lfs_warning):
     assert before_commit == repo.head.commit
 
 
-def test_update_with_no_execution(project, runner):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_with_no_execution(project, runner, provider):
     """Test update when no workflow is executed."""
     repo = Repository(project)
     input = os.path.join(project, "data", "input.txt")
     write_and_commit_file(repo, input, "content")
 
-    result = runner.invoke(cli, ["update", input], catch_exceptions=False)
+    result = runner.invoke(cli, ["update", "-p", provider, input], catch_exceptions=False)
 
     assert 1 == result.exit_code
 
@@ -419,7 +433,8 @@ def test_update_multiple_paths_common_output(project, renku_cli, runner):
     assert "r4" in result.output
 
 
-def test_update_with_execute(runner, client, renku_cli, client_database_injection_manager):
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_update_with_execute(runner, client, renku_cli, client_database_injection_manager, provider):
     """Test output is updated when source changes."""
     source1 = Path("source.txt")
     output1 = Path("output.txt")
@@ -437,7 +452,7 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
     assert (
         0
         == renku_cli(
-            "workflow", "execute", "--set", f"input-2={source2}", "--set", f"output-3={output2}", "test"
+            "workflow", "execute", "-p", provider, "--set", f"input-2={source2}", "--set", f"output-3={output2}", "test"
         ).exit_code
     )
 
@@ -452,7 +467,7 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    assert 0 == renku_cli("update", "--all").exit_code
+    assert 0 == renku_cli("update", "-p", provider, "--all").exit_code
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
@@ -465,7 +480,7 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    assert 0 == renku_cli("update", "--all").exit_code
+    assert 0 == renku_cli("update", "-p", provider, "--all").exit_code
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
