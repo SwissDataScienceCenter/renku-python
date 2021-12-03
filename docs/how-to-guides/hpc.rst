@@ -8,19 +8,19 @@ are two different providers are implemented, namely ``cwltool`` and ``toil``.
 :ref:`provider` documents gives a more detailed description of how to implement
 your own workflow provider.
 
-The default all workflows are executed by the ``cwltool`` provider, that basically
+By default all workflows are executed by the ``cwltool`` provider, that
 exports the workflow to CWL and then uses `cwltool <https://github.com/common-workflow-language/cwltool>`_
 to execute the given CWL.
 
-The workflow backend can be changed by using the ``-p/--provider <PROVIDER>`` and
+The workflow backend can be changed by using the ``-p/--provider <PROVIDER>`` 
 command line option. A backend's default configuration can be overridden by
-providing the  ``-c/--config <config.yaml>`` a command line parameter.
-The following ``renku`` commands support the above mentioned, workflow provider
+providing the  ``-c/--config <config.yaml>`` command line parameter.
+The following ``renku`` commands support the above mentioned workflow provider
 related command line options:
 
  - :ref:`cli-rerun`,
  - :ref:`cli-update`,
- - :ref:`cli-workflow` execute and iterate.
+ - :ref:`cli-workflow` ``execute`` and ``iterate``.
 
 For example, to execute a previously created ``my_plan`` workflow with ``toil``, one
 simply would run the following command:
@@ -41,7 +41,7 @@ which is in widespread use at government laboratories, universities and companie
 wide and performs workload management for over half of the top 10 systems in the TOP500.
 
 As ``toil`` supports Slurm, one can easily execute the previously created renku
-workflows on Slurm, just need to provide a simple configuration file to the provider
+workflows on Slurm. One just needs to provide a simple configuration file to the provider
 (``--config``)::
 
   batchSystem: slurm
