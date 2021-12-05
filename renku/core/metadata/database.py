@@ -521,9 +521,9 @@ class Index(persistent.Persistent):
             return
         return self._entries.pop(key) if default is MARKER else self._entries.pop(key, default)
 
-    def keys(self):
+    def keys(self, min=None, max=None, excludemin=False, excludemax=False):
         """Return an iterator of keys."""
-        return self._entries.keys()
+        return self._entries.keys(min=min, max=max, excludemin=excludemin, excludemax=excludemax)
 
     def values(self):
         """Return an iterator of values."""
