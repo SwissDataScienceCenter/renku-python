@@ -164,9 +164,10 @@ class Project:
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         if not self.creator and self.client:
-            if self.client.database_path.exists():
+            old_metadata_path = self.client.renku_path.joinpath(OLD_METADATA_PATH)
+            if old_metadata_path.exists():
                 self.creator = Person.from_commit(
-                    self.client.repository.get_previous_commit(self.client.database_path, first=True)
+                    self.client.repository.get_previous_commit(old_metadata_path, first=True)
                 )
             else:
                 # this assumes the project is being newly created
