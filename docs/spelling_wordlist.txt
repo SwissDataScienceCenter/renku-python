@@ -180,6 +180,7 @@ runtime
 runtimes
 scala
 shacl
+Slurm
 SPARQL
 spawner
 SQLAlchemy

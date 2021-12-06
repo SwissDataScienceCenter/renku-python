@@ -50,6 +50,7 @@ class MigrationOptions(NamedTuple):
     """Migration options."""
 
     strict: bool
+    preserve_identifiers: bool
     type: MigrationType = MigrationType.ALL
 
 
