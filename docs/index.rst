@@ -23,6 +23,7 @@
 
    Installation <installation>
    Getting Started <gettingstarted>
+   How-to Guides <how-to-guides/index>
    Reference <reference/index>
 
 .. raw:: html
