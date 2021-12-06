@@ -39,7 +39,7 @@ class DatasetsProvenance:
         """Return an iterator of datasets."""
         return self.dataset_gateway.get_all_datasets()
 
-    def get_by_id(self, id: str, immutable=False) -> Optional[Dataset]:
+    def get_by_id(self, id: str, immutable: bool = False) -> Optional[Dataset]:
         """Return a dataset by its id."""
         try:
             dataset = self.dataset_gateway.get_by_id(id)
@@ -47,12 +47,12 @@ class DatasetsProvenance:
             pass
         else:
             assert isinstance(dataset, Dataset)
-            if dataset.immutable and immutable:
+            if not dataset.immutable or immutable:
                 return dataset
 
             return dataset.copy()
 
-    def get_by_name(self, name: str, immutable=False) -> Optional[Dataset]:
+    def get_by_name(self, name: str, immutable: bool = False) -> Optional[Dataset]:
         """Return a dataset by its name."""
         dataset = self.dataset_gateway.get_by_name(name)
         if not dataset:
@@ -126,27 +126,37 @@ class DatasetsProvenance:
         tags: List[DatasetTag] = None,
         remove=False,
         replace=False,
+        preserve_identifiers: bool = False,
     ):
         """Add, update, remove, or replace a dataset in migration."""
         assert isinstance(dataset, Dataset)
         assert not (remove and replace), "Cannot remove and replace"
 
+        def update_dataset(existing, new) -> Dataset:
+            """Update existing dataset with the new dataset metadata."""
+            existing.update_metadata_from(new, exclude=["derived_from", "same_as"])
+            existing.dataset_files = new.dataset_files
+            return existing
+
         # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
-        current_dataset = self.get_by_name(dataset.name, immutable=replace)
+        current_dataset = self.get_by_name(dataset.name, immutable=True)
 
         new_identifier = self._create_dataset_identifier(commit_sha, dataset.identifier)
+        dataset_with_same_id = self.get_by_id(dataset.id, immutable=True)
 
-        if current_dataset:
+        if dataset_with_same_id and preserve_identifiers:
+            dataset.update_files_from(dataset_with_same_id, date=date)
+
+            dataset = update_dataset(existing=dataset_with_same_id, new=dataset)
+        elif current_dataset:
             dataset.update_files_from(current_dataset, date=date)
 
             if replace:
                 # NOTE: Copy metadata to the current dataset
-                current_dataset.update_metadata_from(dataset)
-                current_dataset.dataset_files = dataset.dataset_files
-                dataset = current_dataset
+                dataset = update_dataset(existing=current_dataset, new=dataset)
             else:
-                # NOTE: Always mutate a dataset to make sure an old identifier is not reused
-                dataset.derive_from(current_dataset, creator=None, identifier=new_identifier)
+                identifier = new_identifier if dataset_with_same_id else dataset.identifier
+                dataset.derive_from(current_dataset, creator=None, identifier=identifier)
         else:
             if remove:
                 # TODO: Should we raise here when migrating
@@ -157,8 +167,7 @@ class DatasetsProvenance:
             ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
 
             # NOTE: This happens in migrations of broken projects
-            current_dataset = self.get_by_id(dataset.id)
-            if current_dataset:
+            if dataset_with_same_id:
                 dataset.replace_identifier(new_identifier)
 
         if remove:
