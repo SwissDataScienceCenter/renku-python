@@ -21,7 +21,6 @@ import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import pkg_resources
 import pytest
 
 from renku.core import errors
@@ -36,7 +35,14 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import migrate
 from tests.utils import raises
 
-template_local = Path(pkg_resources.resource_filename("renku", "templates"))
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
+
+ref = importlib_resources.files("renku") / "templates"
+with importlib_resources.as_file(ref) as path:
+    template_local = path
 
 
 @pytest.mark.integration

@@ -19,11 +19,14 @@
 
 from io import StringIO
 
-import pkg_resources
-
 from renku.core.commands.echo import WARNING
 from renku.core.management.githooks import HOOKS
 from renku.core.utils.git import get_hook_path
+
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 
 def check_git_hooks_installed(client):
@@ -67,4 +70,4 @@ def _extract_renku_hook(file_):
 
 
 def _read_resource(hook):
-    return pkg_resources.resource_string("renku.data", "{hook}.sh".format(hook=hook)).decode("utf-8")
+    return importlib_resources.files("renku.data").joinpath(f"{hook}.sh").read_bytes().decode("utf-8")
