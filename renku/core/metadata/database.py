@@ -19,6 +19,7 @@
 
 import datetime
 import hashlib
+import importlib
 import io
 import json
 from pathlib import Path
@@ -53,6 +54,13 @@ NEW = z64  # NOTE: Do not change this value since this is the default when a Per
 PERSISTED = b"1" * 8
 
 
+def _is_module_allowed(module_name: str, type_name: str):
+    """Checks whether it is allowed to import from the given module for security purposes."""
+
+    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
+        raise TypeError(f"Objects of type '{type_name}' are not allowed")
+
+
 def get_type_name(object) -> Optional[str]:
     """Return fully-qualified object's type name."""
     if object is None:
@@ -70,8 +78,7 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
     components = type_name.split(".")
     module_name = components[0]
 
-    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
-        raise TypeError(f"Objects of type '{type_name}' are not allowed")
+    _is_module_allowed(module_name, type_name)
 
     module = __import__(module_name)
 
@@ -80,9 +87,26 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
 
 def get_attribute(object, name: Union[List[str], str]):
     """Return an attribute of an object."""
+    import sys
+
     components = name.split(".") if isinstance(name, str) else name
 
+    def _module_name(o):
+        return o.__module__ if hasattr(o, "__module__") else o.__name__
+
+    module_name = _module_name(object)
+    root_module_name = module_name.split(".")[0]
+
     for component in components:
+        module_name = _module_name(object)
+        if not hasattr(object, component) and f"{module_name}.{component}" not in sys.modules:
+            try:
+                _is_module_allowed(root_module_name, object.__name__)
+                object = importlib.import_module(f".{component}", package=module_name)
+                continue
+            except ModuleNotFoundError:
+                pass
+
         object = getattr(object, component)
 
     return object
@@ -126,6 +150,10 @@ class Persistent(persistent.Persistent):
             raise RuntimeError(f"Cannot modify immutable object {self}.{key}")
 
         super().__setattr__(key, value)
+
+    @property
+    def __name__(self):
+        return self.__class__.__name__
 
 
 class Database:

@@ -99,6 +99,10 @@ class Immutable(Slots):
 
         object.__setattr__(self, name, value)
 
+    @property
+    def __name__(self):
+        return self.__class__.__name__
+
 
 class DynamicProxy:
     """A proxy class to allow adding dynamic fields to slots/immutable classes."""
