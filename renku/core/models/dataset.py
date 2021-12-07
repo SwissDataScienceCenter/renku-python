@@ -513,7 +513,7 @@ class Dataset(Persistent):
 
         self.dataset_files = files
 
-    def update_metadata_from(self, other: "Dataset"):
+    def update_metadata_from(self, other: "Dataset", exclude=None):
         """Update metadata from another dataset."""
         editable_fields = [
             "creators",
@@ -531,6 +531,8 @@ class Dataset(Persistent):
         ]
         for name in editable_fields:
             value = getattr(other, name)
+            if exclude and name in exclude:
+                continue
             setattr(self, name, value)
 
         if self.date_published is not None:

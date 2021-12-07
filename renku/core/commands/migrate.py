@@ -157,6 +157,7 @@ def _migrate_project(
     skip_docker_update=False,
     skip_migrations=False,
     strict=False,
+    preserve_identifiers=False,
 ):
     """Migrate all project's entities."""
     from renku.core.management.migrate import migrate
@@ -167,6 +168,7 @@ def _migrate_project(
         skip_docker_update=skip_docker_update,
         skip_migrations=skip_migrations,
         strict=strict,
+        preserve_identifiers=preserve_identifiers,
     )
 
 
