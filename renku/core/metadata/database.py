@@ -19,6 +19,7 @@
 
 import datetime
 import hashlib
+import importlib
 import io
 import json
 from pathlib import Path
@@ -101,7 +102,8 @@ def get_attribute(object, name: Union[List[str], str]):
         if not hasattr(object, component) and f"{module_name}.{component}" not in sys.modules:
             try:
                 _is_module_allowed(root_module_name, object.__name__)
-                __import__(f"{module_name}.{component}")
+                object = importlib.import_module(f".{component}", package=module_name)
+                continue
             except ModuleNotFoundError:
                 pass
 
