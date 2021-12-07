@@ -79,7 +79,7 @@ from renku.cli.githooks import githooks as githooks_command
 from renku.cli.graph import graph
 from renku.cli.init import init as init_command
 from renku.cli.log import log
-from renku.cli.login import login, logout, token
+from renku.cli.login import credentials, login, logout
 from renku.cli.migrate import check_immutable_template_files, migrate, migrationscheck
 from renku.cli.move import move
 from renku.cli.project import project
@@ -119,7 +119,7 @@ def get_entry_points(name: str):
 #: Monkeypatch Click application.
 click_completion.init()
 
-WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service", "token"]
+WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service", "credentials"]
 
 
 def _uuid_representer(dumper, data):
@@ -239,7 +239,7 @@ cli.add_command(run)
 cli.add_command(save)
 cli.add_command(status)
 cli.add_command(storage)
-cli.add_command(token)
+cli.add_command(credentials)
 cli.add_command(update)
 cli.add_command(workflow)
 cli.add_command(service)

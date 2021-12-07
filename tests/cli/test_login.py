@@ -38,7 +38,7 @@ def test_login(runner, client_with_remote, mock_login, client_database_injection
     with client_database_injection_manager(client_with_remote):
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
         credential = client_with_remote.repository.get_configuration().get_value("credential", "helper")
-        assert f"!renku token --hostname {ENDPOINT}" == credential
+        assert f"!renku credentials --hostname {ENDPOINT}" == credential
         assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repository.remotes}
         assert remote_url == client_with_remote.repository.remotes["renku-backup-origin"].url
         assert client_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
@@ -186,12 +186,21 @@ def test_login_git_abort(runner, client_with_remote):
 
 
 def test_login_non_git(runner, client, directory_tree):
-    """Test login from a non-git directory."""
+    """Test login inside a non-git directory."""
     with chdir(directory_tree):
         result = runner.invoke(cli, ["login", "--git", ENDPOINT])
 
     assert 2 == result.exit_code
     assert "Cannot use '--git' flag outside a project" in result.output
+
+
+def test_logout_non_git(runner, client, directory_tree):
+    """Test logout inside a non-git directory."""
+    with chdir(directory_tree):
+        result = runner.invoke(cli, ["logout"])
+
+    assert 0 == result.exit_code
+    assert "Successfully logged out." in result.output
 
 
 def test_login_git_no_unique_remote(runner, client_with_remote):
@@ -245,7 +254,7 @@ def test_token(runner, client_with_remote, mock_login):
     """Test get credential when valid credential exist."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
-    result = runner.invoke(cli, ["token", "--hostname", ENDPOINT, "get"])
+    result = runner.invoke(cli, ["credentials", "--hostname", ENDPOINT, "get"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "username=renku\n" in result.output
@@ -256,7 +265,7 @@ def test_token_non_existing_hostname(runner, client_with_remote, mock_login):
     """Test get credential for a different hostname."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
-    result = runner.invoke(cli, ["token", "--hostname", "non-existing", "get"])
+    result = runner.invoke(cli, ["credentials", "--hostname", "non-existing", "get"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "username=renku\n" in result.output
@@ -267,7 +276,7 @@ def test_token_no_credential(runner, client_with_remote, mock_login):
     """Test get credential when valid credential doesn't exist."""
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
-    result = runner.invoke(cli, ["token", "--hostname", ENDPOINT, "get"])
+    result = runner.invoke(cli, ["credentials", "--hostname", ENDPOINT, "get"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "username=renku\n" in result.output
@@ -278,7 +287,7 @@ def test_token_invalid_command(runner, client_with_remote, mock_login, client_da
     """Test call credential helper with a command other than 'get'."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT], input=USER_CODE).exit_code
 
-    result = runner.invoke(cli, ["token", "--hostname", ENDPOINT, "non-get-command"])
+    result = runner.invoke(cli, ["credentials", "--hostname", ENDPOINT, "non-get-command"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "" == result.output

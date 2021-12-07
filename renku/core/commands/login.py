@@ -134,7 +134,7 @@ def _store_token(netloc, access_token, client_dispatcher: IClientDispatcher):
 
 def _set_git_credential_helper(repository: "Repository", hostname):
     with repository.get_configuration(writable=True) as config:
-        config.set_value("credential", "helper", f"!renku token --hostname {hostname}")
+        config.set_value("credential", "helper", f"!renku credentials --hostname {hostname}")
 
 
 def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote_url: str, hostname: str):
@@ -214,13 +214,13 @@ def _restore_git_remote(client):
             communication.error(f"Cannot delete backup remote '{backup_remote}'")
 
 
-def token_command():
+def credentials_command():
     """Return a command as git credential helper."""
-    return Command().command(_token)
+    return Command().command(_credentials)
 
 
 @inject.autoparams()
-def _token(command, hostname, client_dispatcher: IClientDispatcher):
+def _credentials(command, hostname, client_dispatcher: IClientDispatcher):
     if command != "get":
         return
 

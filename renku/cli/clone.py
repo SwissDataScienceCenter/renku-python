@@ -45,6 +45,10 @@ need the LFS data, pass ``--no-pull-data`` option to skip this step.
         $ git remote remove origin
         $ git remote add origin <new-repository-url>
         $ git push --mirror origin
+
+To clone private repositories with an HTTPS address, you first need to log into
+a Renku deployment using the :ref:`cli-login` command. ``renku clone`` will use
+the stored credentials when available.
 """
 
 import click

@@ -429,7 +429,7 @@ def clone_renku_repository(
     elif parsed_url.scheme in ["http", "https"] and gitlab_token:
         git_url = get_oauth_url(url, gitlab_token)
     elif parsed_url.scheme in ["http", "https"] and use_renku_credentials:
-        clone_options = [f"--config credential.helper='!renku token --hostname {parsed_url.hostname}'"]
+        clone_options = [f"--config credential.helper='!renku credentials --hostname {parsed_url.hostname}'"]
         deployment_hostname = deployment_hostname or parsed_url.hostname
         git_url = get_renku_repo_url(url, deployment_hostname=deployment_hostname, access_token=None)
         create_backup = True
