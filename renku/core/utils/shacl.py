@@ -17,8 +17,12 @@
 # limitations under the License.
 """JSON-LD SHACL validations."""
 
-from pkg_resources import resource_string
 from pyshacl import validate
+
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 
 def validate_graph(graph, shacl_path=None, format="nquads"):
@@ -30,7 +34,7 @@ def validate_graph(graph, shacl_path=None, format="nquads"):
         with open(shacl_path, "r", encoding="utf-8") as f:
             shacl = f.read()
     else:
-        shacl = resource_string("renku", "data/shacl_shape.json")
+        shacl = importlib_resources.files("renku.data").joinpath("shacl_shape.json").read_bytes()
 
     return validate(
         graph,

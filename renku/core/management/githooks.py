@@ -20,11 +20,14 @@
 import stat
 from pathlib import Path
 
-import pkg_resources
-
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils.git import get_hook_path
+
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 HOOKS = ("pre-commit",)
 
@@ -43,8 +46,8 @@ def install(force, repository):
 
         # Make sure the hooks directory exists.
         hook_path.parent.mkdir(parents=True, exist_ok=True)
-
-        Path(hook_path).write_bytes(pkg_resources.resource_string("renku.data", "{hook}.sh".format(hook=hook)))
+        hook_data = importlib_resources.files("renku.data").joinpath(f"{hook}.sh").read_bytes()
+        Path(hook_path).write_bytes(hook_data)
         hook_path.chmod(hook_path.stat().st_mode | stat.S_IEXEC)
 
     return warning_messages

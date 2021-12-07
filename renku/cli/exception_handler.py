@@ -70,11 +70,14 @@ HAS_SENTRY = None
 SENTRY_DSN = os.getenv("SENTRY_DSN")
 
 if SENTRY_DSN:
-    import pkg_resources
+    try:
+        from importlib.metadata import PackageNotFoundError, distribution
+    except ImportError:
+        from importlib_metadata import PackageNotFoundError, distribution
 
     try:
-        pkg_resources.get_distribution("sentry-sdk")
-    except pkg_resources.DistributionNotFound:
+        distribution("sentry-sdk")
+    except PackageNotFoundError:
         HAS_SENTRY = False
     else:
         HAS_SENTRY = True
