@@ -16,12 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent an execution of a Plan."""
+
 from datetime import datetime
 from itertools import chain
 from typing import List, Union
 from uuid import uuid4
 
-from marshmallow import EXCLUDE
 from werkzeug.utils import cached_property
 
 from renku.core.management.command_builder import inject
@@ -29,12 +29,11 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
-from renku.core.models.entity import Collection, CollectionSchema, Entity, EntitySchema
-from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent, SoftwareAgentSchema
-from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
-from renku.core.models.provenance.parameter import ParameterValue, ParameterValueSchema
-from renku.core.models.workflow.plan import Plan, PlanSchema
+from renku.core.models.entity import Collection, Entity
+from renku.core.models.provenance.agent import Person, SoftwareAgent
+from renku.core.models.provenance.annotation import Annotation
+from renku.core.models.provenance.parameter import ParameterValue
+from renku.core.models.workflow.plan import Plan
 from renku.core.utils.git import get_entity_from_revision, get_git_user
 from renku.version import __version__, version_url
 
@@ -257,77 +256,3 @@ class ActivityCollection(Persistent):
     def generate_id() -> str:
         """Generate an identifier for an activity."""
         return f"/activity-collection/{uuid4().hex}"
-
-
-class AssociationSchema(JsonLDSchema):
-    """Association schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = prov.Association
-        model = Association
-        unknown = EXCLUDE
-
-    agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
-    id = fields.Id()
-    plan = Nested(prov.hadPlan, PlanSchema)
-
-
-class UsageSchema(JsonLDSchema):
-    """Usage schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = prov.Usage
-        model = Usage
-        unknown = EXCLUDE
-
-    id = fields.Id()
-    # TODO: DatasetSchema, DatasetFileSchema
-    entity = Nested(prov.entity, [EntitySchema, CollectionSchema])
-
-
-class GenerationSchema(JsonLDSchema):
-    """Generation schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = prov.Generation
-        model = Generation
-        unknown = EXCLUDE
-
-    id = fields.Id()
-    # TODO: DatasetSchema, DatasetFileSchema
-    entity = Nested(prov.qualifiedGeneration, [EntitySchema, CollectionSchema], reverse=True)
-
-
-class ActivitySchema(JsonLDSchema):
-    """Activity schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = prov.Activity
-        model = Activity
-        unknown = EXCLUDE
-
-    agents = Nested(prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True)
-    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
-    association = Nested(prov.qualifiedAssociation, AssociationSchema)
-    ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
-    generations = Nested(prov.activity, GenerationSchema, reverse=True, many=True, missing=None)
-    id = fields.Id()
-    invalidations = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, missing=None)
-    parameters = Nested(
-        renku.parameter,
-        ParameterValueSchema,
-        many=True,
-        missing=None,
-    )
-    path = fields.String(prov.atLocation)
-    project_id = fields.IRI(renku.hasActivity, reverse=True)
-    started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
-    usages = Nested(prov.qualifiedUsage, UsageSchema, many=True)

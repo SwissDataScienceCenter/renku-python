@@ -19,6 +19,7 @@
 
 from collections import OrderedDict
 
+from renku.core.commands.schema.dataset import DatasetTagSchema
 from renku.core.models.tabulate import tabulate
 
 
@@ -51,7 +52,7 @@ def jsonld(tags):
     """
     from renku.core.models.json import dumps
 
-    data = [tag.to_jsonld() for tag in tags]
+    data = [DatasetTagSchema().dump(tag) for tag in tags]
     return dumps(data, indent=2)
 
 

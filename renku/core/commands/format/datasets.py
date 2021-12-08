@@ -19,6 +19,7 @@
 import textwrap
 
 from renku.core.commands.format.tabulate import tabulate
+from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.models.json import dumps
 
@@ -42,7 +43,7 @@ def _create_dataset_short_description(datasets):
 
 def jsonld(datasets, **kwargs):
     """Format datasets as JSON-LD."""
-    data = [dataset.to_jsonld() for dataset in datasets]
+    data = [dump_dataset_as_jsonld(dataset) for dataset in datasets]
     return dumps(data, indent=2)
 
 

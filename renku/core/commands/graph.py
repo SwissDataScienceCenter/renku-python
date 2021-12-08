@@ -22,6 +22,11 @@ from typing import Dict, List, Set, Union
 
 from renku.core import errors
 from renku.core.commands.format.graph import GRAPH_FORMATS
+from renku.core.commands.schema.activity import Activity, ActivitySchema
+from renku.core.commands.schema.composite_plan import CompositePlan, CompositePlanSchema
+from renku.core.commands.schema.dataset import Dataset, DatasetSchema, DatasetTag, DatasetTagSchema
+from renku.core.commands.schema.plan import Plan, PlanSchema
+from renku.core.commands.schema.project import Project, ProjectSchema
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
@@ -29,11 +34,6 @@ from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.models.dataset import Dataset, DatasetSchema, DatasetTag, DatasetTagSchema
-from renku.core.models.project import Project, ProjectSchema
-from renku.core.models.provenance.activity import Activity, ActivitySchema
-from renku.core.models.workflow.composite_plan import CompositePlan, CompositePlanSchema
-from renku.core.models.workflow.plan import Plan, PlanSchema
 from renku.core.utils.shacl import validate_graph
 from renku.core.utils.urls import get_host
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,25 +15,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Represent an annotation for a workflow."""
-
-import copy
-from uuid import uuid4
-
-
-class Annotation:
-    """Represents a custom annotation for a research object."""
-
-    def __init__(self, *, id: str, body=None, source=None):
-        self.id = id
-        self.body = body
-        self.source = source
-
-    def copy(self):
-        """Return a copy of this annotation."""
-        return copy.copy(self)
-
-    @staticmethod
-    def generate_id():
-        """Generate an id for an annotation."""
-        return f"/annotations/{uuid4().hex}"
+"""JSON-LD schemas for core models."""

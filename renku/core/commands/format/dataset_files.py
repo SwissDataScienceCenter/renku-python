@@ -21,6 +21,7 @@ import re
 from subprocess import PIPE, SubprocessError, run
 
 from renku.core.commands.format.tabulate import tabulate
+from renku.core.commands.schema.dataset import DatasetFileSchema
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
@@ -114,7 +115,7 @@ def jsonld(records, **kwargs):
     """
     from renku.core.models.json import dumps
 
-    data = [record.to_jsonld() for record in records]
+    data = [DatasetFileSchema(flattened=True).dump(record) for record in records]
     return dumps(data, indent=2)
 
 

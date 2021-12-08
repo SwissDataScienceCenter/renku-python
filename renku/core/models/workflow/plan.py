@@ -30,16 +30,7 @@ from werkzeug.utils import secure_filename
 
 from renku.core import errors
 from renku.core.metadata.database import Persistent
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
-from renku.core.models.workflow.parameter import (
-    CommandInput,
-    CommandInputSchema,
-    CommandOutput,
-    CommandOutputSchema,
-    CommandParameter,
-    CommandParameterBase,
-    CommandParameterSchema,
-)
+from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter, CommandParameterBase
 from renku.core.utils.datetime8601 import local_now
 
 MAX_GENERATED_NAME_LENGTH = 25
@@ -313,31 +304,6 @@ class Plan(AbstractPlan):
         Required where a plan is used several times in a workflow but we need to set different values on them.
         """
         return copy.deepcopy(self)
-
-
-class PlanSchema(JsonLDSchema):
-    """Plan schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork]
-        model = Plan
-        unknown = marshmallow.EXCLUDE
-
-    command = fields.String(renku.command, missing=None)
-    description = fields.String(schema.description, missing=None)
-    id = fields.Id()
-    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
-    date_created = fields.DateTime(schema.dateCreated, format="iso")
-    invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    name = fields.String(schema.name, missing=None)
-    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
-    project_id = fields.IRI(renku.hasPlan, reverse=True)
-    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
-    parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
-    success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
 
 
 class PlanDetailsJson(marshmallow.Schema):

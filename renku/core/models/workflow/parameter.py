@@ -23,10 +23,7 @@ from pathlib import PurePosixPath
 from typing import Any, List, Optional
 from uuid import uuid4
 
-from marshmallow import EXCLUDE
-
 from renku.core.errors import ParameterError
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.utils.urls import get_slug
 
 RANDOM_ID_LENGTH = 4
@@ -392,108 +389,3 @@ class ParameterLink:
         """Generate an id for parameters."""
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/links/dda5fcbf-0098-4917-be46-dc12f5f7b675
         return f"{plan_id}/links/{uuid4()}"
-
-
-class MappedIOStreamSchema(JsonLDSchema):
-    """MappedIOStream schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = renku.IOStream
-        model = MappedIOStream
-        unknown = EXCLUDE
-
-    id = fields.Id()
-    stream_type = fields.String(renku.streamType)
-
-
-class CommandParameterBaseSchema(JsonLDSchema):
-    """CommandParameterBase schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.CommandParameterBase, schema.Property]
-        model = CommandParameterBase
-        unknown = EXCLUDE
-
-    default_value = fields.Raw(schema.defaultValue, missing=None)
-    description = fields.String(schema.description, missing=None)
-    id = fields.Id()
-    name = fields.String(schema.name, missing=None)
-    position = fields.Integer(renku.position, missing=None)
-    prefix = fields.String(renku.prefix, missing=None)
-    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
-
-
-class CommandParameterSchema(CommandParameterBaseSchema):
-    """CommandParameter schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.CommandParameter]
-        model = CommandParameter
-        unknown = EXCLUDE
-
-
-class CommandInputSchema(CommandParameterBaseSchema):
-    """CommandInput schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.CommandInput]
-        model = CommandInput
-        unknown = EXCLUDE
-
-    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
-    encoding_format = fields.List(schema.encodingFormat, fields.String(), missing=None)
-
-
-class CommandOutputSchema(CommandParameterBaseSchema):
-    """CommandOutput schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.CommandOutput]
-        model = CommandOutput
-        unknown = EXCLUDE
-
-    create_folder = fields.Boolean(renku.createFolder, missing=False)
-    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
-    encoding_format = fields.List(schema.encodingFormat, fields.String(), missing=None)
-
-
-class ParameterMappingSchema(CommandParameterBaseSchema):
-    """ParameterMapping schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.ParameterMapping]
-        model = ParameterMapping
-        unknown = EXCLUDE
-
-    mapped_parameters = Nested(
-        renku.mapsTo,
-        ["ParameterMappingSchema", CommandInputSchema, CommandOutputSchema, CommandParameterSchema],
-        many=True,
-    )
-
-
-class ParameterLinkSchema(JsonLDSchema):
-    """ParameterLink schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.ParameterLink, schema.Property]
-        model = ParameterLink
-        unknown = EXCLUDE
-
-    id = fields.Id()
-    source = fields.Nested(renku.linkSource, [CommandOutputSchema])
-    sinks = fields.Nested(renku.linkSink, [CommandInputSchema, CommandParameterSchema], many=True)

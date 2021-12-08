@@ -35,19 +35,8 @@ from attr.validators import instance_of
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
-from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
-from renku.core.management.migrations.utils import (
-    OLD_METADATA_PATH,
-    generate_dataset_file_url,
-    generate_dataset_id,
-    generate_dataset_tag_id,
-    generate_url_id,
-    get_datasets_path,
-)
-from renku.core.metadata.repository import Commit
-from renku.core.models import jsonld as jsonld
-from renku.core.models import project as new_project
-from renku.core.models.calamus import (
+from renku.core.commands.schema.annotation import AnnotationSchema
+from renku.core.commands.schema.calamus import (
     DateTimeList,
     JsonLDSchema,
     Nested,
@@ -60,8 +49,19 @@ from renku.core.models.calamus import (
     renku,
     schema,
 )
+from renku.core.commands.schema.project import ProjectSchema as NewProjectSchema
+from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+from renku.core.management.migrations.utils import (
+    OLD_METADATA_PATH,
+    generate_dataset_file_url,
+    generate_dataset_id,
+    generate_dataset_tag_id,
+    generate_url_id,
+    get_datasets_path,
+)
+from renku.core.metadata.repository import Commit
+from renku.core.models import jsonld as jsonld
 from renku.core.models.dataset import generate_default_name, is_dataset_name_valid
-from renku.core.models.provenance.annotation import AnnotationSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import fix_datetime, parse_date
 from renku.core.utils.doi import extract_doi, is_doi
@@ -1898,7 +1898,7 @@ class OldCommitMixinSchema(JsonLDSchema):
     path = fields.String(prov.atLocation)
     _id = fields.Id(init_name="id")
     _label = fields.String(rdfs.label, init_name="label", missing=None)
-    _project = Nested(schema.isPartOf, [ProjectSchema, new_project.ProjectSchema], init_name="project", missing=None)
+    _project = Nested(schema.isPartOf, [ProjectSchema, NewProjectSchema], init_name="project", missing=None)
 
 
 class OldEntitySchema(OldCommitMixinSchema):

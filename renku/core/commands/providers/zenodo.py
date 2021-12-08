@@ -30,6 +30,7 @@ from tqdm import tqdm
 
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
+from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils.file_size import bytes_to_unit
 
@@ -235,8 +236,8 @@ class ZenodoRecordSerializer:
         from marshmallow import pre_load
 
         from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
+        from renku.core.commands.schema.agent import PersonSchema
         from renku.core.models.dataset import DatasetFile
-        from renku.core.models.provenance.agent import PersonSchema
 
         class _ZenodoDatasetSchema(ProviderDatasetSchema):
             """Schema for Dataverse datasets."""
@@ -448,7 +449,7 @@ class ZenodoExporter(ExporterApi):
 
     def dataset_to_request(self):
         """Prepare dataset metadata for request."""
-        jsonld = self.dataset.to_jsonld()
+        jsonld = dump_dataset_as_jsonld(self.dataset)
         jsonld["upload_type"] = "dataset"
         return jsonld
 
