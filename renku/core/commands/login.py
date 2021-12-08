@@ -22,17 +22,21 @@ import sys
 import urllib
 import uuid
 import webbrowser
+from typing import TYPE_CHECKING
 
 from renku.core import errors
 from renku.core.management.command_builder import Command, inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils import communication
-from renku.core.utils.git import get_remote, get_renku_repo_url
+from renku.core.utils.git import RENKU_BACKUP_PREFIX, create_backup_remote, get_remote, get_renku_repo_url
 from renku.core.utils.urls import parse_authentication_endpoint
 
+if TYPE_CHECKING:
+    from renku.core.metadata.repository import Repository
+
+
 CONFIG_SECTION = "http"
-RENKU_BACKUP_PREFIX = "renku-backup"
 
 
 def login_command():
@@ -83,8 +87,22 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
         _store_token(parsed_endpoint.netloc, access_token)
 
         if git_login:
-            _store_git_credential_helper(parsed_endpoint.netloc)
-            _swap_git_remote(parsed_endpoint, remote_name, remote_url)
+            _set_git_credential_helper(repository=client.repository, hostname=parsed_endpoint.netloc)
+            backup_remote_name, backup_exists, remote = create_backup_remote(
+                repository=client.repository, remote_name=remote_name, url=remote_url
+            )
+            if backup_exists:
+                communication.echo(f"Backup remote '{backup_remote_name}' already exists. Ignoring '--git' flag.")
+            elif not remote:
+                communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
+            else:
+                _set_renku_url_for_remote(
+                    repository=client.repository,
+                    remote_name=remote_name,
+                    remote_url=remote_url,
+                    hostname=parsed_endpoint.netloc,
+                )
+
     else:
         communication.error(
             f"Remote host did not return an access token: {parsed_endpoint.geturl()}, "
@@ -93,7 +111,6 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
         sys.exit(1)
 
 
-@inject.autoparams()
 def _parse_endpoint(endpoint):
     parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint)
     if not parsed_endpoint:
@@ -115,33 +132,19 @@ def _store_token(netloc, access_token, client_dispatcher: IClientDispatcher):
     os.chmod(client.global_config_path, 0o600)
 
 
-@inject.autoparams()
-def _store_git_credential_helper(netloc, client_dispatcher: IClientDispatcher):
-    with client_dispatcher.current_client.repository.get_configuration(writable=True) as config:
-        config.set_value("credential", "helper", f"!renku token --hostname {netloc}")
+def _set_git_credential_helper(repository: "Repository", hostname):
+    with repository.get_configuration(writable=True) as config:
+        config.set_value("credential", "helper", f"!renku credentials --hostname {hostname}")
 
 
-@inject.autoparams()
-def _swap_git_remote(parsed_endpoint, remote_name, remote_url, client_dispatcher: IClientDispatcher):
-    client = client_dispatcher.current_client
-    backup_remote_name = f"{RENKU_BACKUP_PREFIX}-{remote_name}"
-
-    if backup_remote_name in [r.name for r in client.repository.remotes]:
-        communication.echo(f"Backup remove '{backup_remote_name}' already exists. Ignoring '--git' flag.")
-        return
-
-    new_remote_url = get_renku_repo_url(remote_url, deployment_hostname=parsed_endpoint.netloc)
+def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote_url: str, hostname: str):
+    """Set renku repository URL for ``remote_name``."""
+    new_remote_url = get_renku_repo_url(remote_url, deployment_hostname=hostname)
 
     try:
-        client.repository.remotes.add(name=backup_remote_name, url=remote_url)
-    except errors.GitCommandError:
-        communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
-    else:
-        try:
-            client.repository.remotes[remote_name].set_url(url=new_remote_url)
-        except errors.GitCommandError as e:
-            client.repository.remotes.remove(backup_remote_name)
-            raise errors.GitError(f"Cannot change remote url for '{remote_name}' to {new_remote_url}") from e
+        repository.remotes[remote_name].set_url(url=new_remote_url)
+    except errors.GitCommandError as e:
+        raise errors.GitError(f"Cannot change remote url for '{remote_name}' to '{new_remote_url}'") from e
 
 
 @inject.autoparams()
@@ -174,24 +177,24 @@ def _logout(endpoint, client_dispatcher: IClientDispatcher):
     else:
         key = "*"
 
-    client_dispatcher.current_client.remove_value(section=CONFIG_SECTION, key=key, global_only=True)
-    _remove_git_credential_helper()
-    _restore_git_remote()
+    client = client_dispatcher.current_client
+    client.remove_value(section=CONFIG_SECTION, key=key, global_only=True)
+    _remove_git_credential_helper(client=client)
+    _restore_git_remote(client=client)
 
 
-@inject.autoparams()
-def _remove_git_credential_helper(client_dispatcher: IClientDispatcher):
-    with client_dispatcher.current_client.repository.get_configuration(writable=True) as config:
+def _remove_git_credential_helper(client):
+    if not client.repository:  # Outside a renku project
+        return
+
+    with client.repository.get_configuration(writable=True) as config:
         try:
             config.remove_value("credential", "helper")
         except errors.GitError:  # NOTE: If already logged out, an exception is raised
             pass
 
 
-@inject.autoparams()
-def _restore_git_remote(client_dispatcher: IClientDispatcher):
-    client = client_dispatcher.current_client
-
+def _restore_git_remote(client):
     if not client.repository:  # Outside a renku project
         return
 
@@ -211,13 +214,13 @@ def _restore_git_remote(client_dispatcher: IClientDispatcher):
             communication.error(f"Cannot delete backup remote '{backup_remote}'")
 
 
-def token_command():
+def credentials_command():
     """Return a command as git credential helper."""
-    return Command().command(_token)
+    return Command().command(_credentials)
 
 
 @inject.autoparams()
-def _token(command, hostname, client_dispatcher: IClientDispatcher):
+def _credentials(command, hostname, client_dispatcher: IClientDispatcher):
     if command != "get":
         return
 

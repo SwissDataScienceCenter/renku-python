@@ -325,6 +325,10 @@ class GitError(RenkuException):
     """Raised when a Git operation fails."""
 
 
+class InvalidGitURL(GitError):
+    """Raise when a Git URL is not valid."""
+
+
 class GitCommandError(GitError):
     """Raised when a Git command fails."""
 
