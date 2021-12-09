@@ -89,6 +89,7 @@ from renku.cli.rollback import rollback
 from renku.cli.run import run
 from renku.cli.save import save
 from renku.cli.service import service
+from renku.cli.session import session
 from renku.cli.status import status
 from renku.cli.storage import storage
 from renku.cli.update import update
@@ -233,3 +234,4 @@ cli.add_command(credentials)
 cli.add_command(update)
 cli.add_command(workflow)
 cli.add_command(service)
+cli.add_command(session)

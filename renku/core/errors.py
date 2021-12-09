@@ -551,3 +551,11 @@ class NothingToExecuteError(RenkuException):
 
 class TerminalSizeError(RenkuException):
     """Raised when terminal is too small for a command."""
+
+
+class DockerError(RenkuException):
+    """Raised when error has occured while executing docker command."""
+
+    def __init__(self, reason: str):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Docker failed: {reason}")
