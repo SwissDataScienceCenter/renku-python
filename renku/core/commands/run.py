@@ -146,9 +146,13 @@ def _run_command(
 
             started_at_time = local_now()
 
-            return_code = call(
-                factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()}
-            )
+            try:
+                return_code = call(
+                    factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()}
+                )
+            except FileNotFoundError:
+                command = " ".join(factory.base_command)
+                raise errors.ParameterError(f"Cannot execute command '{command}'")
 
             ended_at_time = local_now()
 
