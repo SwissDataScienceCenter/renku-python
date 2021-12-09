@@ -77,19 +77,23 @@ class AbstractToilJob(Job):
         for p in self._parents_promise:
             parent_inputs.update(p)
 
+        def _read_input(input: str, file_metadata):
+            input_path = Path(input)
+
+            if isinstance(file_metadata, dict):
+                input_path.mkdir(parents=True, exist_ok=True)
+                for path, file_id in file_metadata.items():
+                    _read_input(path, file_id)
+            elif not input_path.exists():
+                if len(input_path.parts) > 1:
+                    input_path.parent.mkdir(parents=True, exist_ok=True)
+                storage.readGlobalFile(file_metadata, userPath=input)
+
         for i in self.workflow.inputs:
             file_metadata = (
                 parent_inputs[i.actual_value] if i.actual_value in parent_inputs else self._input_files[i.actual_value]
             )
-            input_path = Path(i.actual_value)
-            if isinstance(file_metadata, dict):
-                input_path.mkdir(exist_ok=True)
-                for path, file_id in file_metadata.items():
-                    storage.readGlobalFile(file_id, userPath=path)
-            else:
-                if len(input_path.parts) > 1:
-                    input_path.parent.mkdir(parents=True, exist_ok=True)
-                storage.readGlobalFile(file_metadata, userPath=i.actual_value)
+            _read_input(i.actual_value, file_metadata)
 
             if i.mapped_to:
                 mapped_std[i.mapped_to.stream_type] = i.actual_value
@@ -146,6 +150,16 @@ class SubprocessToilJob(AbstractToilJob):
         )
 
 
+def _store_location(import_function: Callable[[str], FileID], basedir: Path, location: Path) -> Dict[str, Any]:
+    if location.is_dir():
+        directory_content = dict()
+        for f in location.rglob("*"):
+            directory_content[str(f.relative_to(basedir))] = _store_location(import_function, basedir, f)
+        return directory_content
+    else:
+        return import_function(str(location))
+
+
 def _upload_files(
     import_function: Callable[[str], FileID], params: List[CommandParameterBase], basedir: Path
 ) -> Dict[str, FileID]:
@@ -155,13 +169,7 @@ def _upload_files(
         if not location.exists():
             continue
 
-        if location.is_dir():
-            directory_content = dict()
-            for f in location.rglob("*"):
-                directory_content[str(f.relative_to(basedir))] = import_function(str(f))
-            file_locations[p.actual_value] = directory_content
-        else:
-            file_locations[p.actual_value] = import_function(str(location))
+        file_locations[p.actual_value] = _store_location(import_function, basedir, location)
 
     return file_locations
 
