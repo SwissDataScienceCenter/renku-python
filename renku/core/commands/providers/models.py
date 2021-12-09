@@ -17,7 +17,8 @@
 
 from marshmallow import EXCLUDE
 
-from renku.core.models.dataset import Dataset, DatasetSchema
+from renku.core.commands.schema.dataset import DatasetSchema
+from renku.core.models.dataset import Dataset
 
 
 class ProviderDataset(Dataset):
@@ -26,6 +27,15 @@ class ProviderDataset(Dataset):
     def __init__(self, **kwargs):
         kwargs.setdefault("initial_identifier", "invalid-initial-id")
         super().__init__(**kwargs)
+
+    @classmethod
+    def from_jsonld(cls, data, schema_class=None):
+        """Create an instance from JSON-LD data."""
+        assert isinstance(data, (dict, list)), f"Invalid data type: {data}"
+
+        schema_class = schema_class or DatasetSchema
+        self = schema_class(flattened=True).load(data)
+        return self
 
 
 class ProviderDatasetSchema(DatasetSchema):

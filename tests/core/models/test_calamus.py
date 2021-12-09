@@ -19,7 +19,7 @@
 
 import pytest
 
-from renku.core.models.calamus import JsonLDSchema, Uri, fields
+from renku.core.commands.schema.calamus import JsonLDSchema, Uri, fields
 
 
 @pytest.mark.parametrize("value", [{"field": "http://datascience.ch"}, "http://datascience.ch"])

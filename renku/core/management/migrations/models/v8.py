@@ -22,10 +22,10 @@ from pathlib import Path
 
 from marshmallow import EXCLUDE, pre_dump
 
+from renku.core.commands.schema.calamus import Uri, fields, prov, schema
 from renku.core.management.migrations.models.v9 import generate_file_id
 from renku.core.management.migrations.utils import OLD_METADATA_PATH, get_datasets_path
 from renku.core.models import jsonld
-from renku.core.models.calamus import Uri, fields, prov, schema
 
 from .v3 import CreatorMixinSchemaV3, DatasetTagSchemaV3, EntitySchemaV3, LanguageSchemaV3, PersonSchemaV3, UrlSchemaV3
 from .v7 import Base, DatasetFileSchemaV7

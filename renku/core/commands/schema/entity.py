@@ -15,25 +15,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Represent an annotation for a workflow."""
+"""Entities JSON-LD schemas."""
 
-import copy
-from uuid import uuid4
+from renku.core.commands.schema.calamus import JsonLDSchema, Nested, fields, prov, renku
+from renku.core.models.entity import Collection, Entity
 
 
-class Annotation:
-    """Represents a custom annotation for a research object."""
+class EntitySchema(JsonLDSchema):
+    """Entity Schema."""
 
-    def __init__(self, *, id: str, body=None, source=None):
-        self.id = id
-        self.body = body
-        self.source = source
+    class Meta:
+        """Meta class."""
 
-    def copy(self):
-        """Return a copy of this annotation."""
-        return copy.copy(self)
+        rdf_type = [prov.Entity]
+        model = Entity
 
-    @staticmethod
-    def generate_id():
-        """Generate an id for an annotation."""
-        return f"/annotations/{uuid4().hex}"
+    checksum = fields.String(renku.checksum, missing=None)
+    id = fields.Id()
+    path = fields.String(prov.atLocation)
+
+
+class CollectionSchema(EntitySchema):
+    """Entity Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = prov.Collection
+        model = Collection
+
+    members = Nested(prov.hadMember, [EntitySchema, "CollectionSchema"], many=True)
