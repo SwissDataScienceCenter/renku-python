@@ -199,3 +199,11 @@ def test_run_argument_parameters(runner, client, client_database_injection_manag
     result = runner.invoke(cli, ["graph", "export", "--format", "jsonld", "--strict"])
 
     assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_run_non_existing_command(runner, client):
+    """Test run with a non-existing command."""
+    result = runner.invoke(cli, ["run", "non-existing_command"])
+
+    assert 2 == result.exit_code
+    assert "Cannot execute command 'non-existing_command'" in result.output
