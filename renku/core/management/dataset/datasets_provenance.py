@@ -134,7 +134,7 @@ class DatasetsProvenance:
 
         def update_dataset(existing, new) -> Dataset:
             """Update existing dataset with the new dataset metadata."""
-            existing.update_metadata_from(new, exclude=["derived_from", "same_as"])
+            existing.update_metadata_from(new, exclude=["date_created", "derived_from", "same_as"])
             existing.dataset_files = new.dataset_files
             return existing
 
@@ -156,15 +156,17 @@ class DatasetsProvenance:
                 dataset = update_dataset(existing=current_dataset, new=dataset)
             else:
                 identifier = new_identifier if dataset_with_same_id else dataset.identifier
-                dataset.derive_from(current_dataset, creator=None, identifier=identifier)
+                date_created = date if dataset_with_same_id else dataset.date_created
+                dataset.derive_from(current_dataset, creator=None, identifier=identifier, date_created=date_created)
         else:
             if remove:
-                # TODO: Should we raise here when migrating
                 communication.warn(f"Deleting non-existing dataset '{dataset.name}'")
 
-            assert (
-                dataset.derived_from is None
-            ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
+            if dataset.derived_from:
+                communication.warn(
+                    f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
+                )
+                dataset.derived_from = None
 
             # NOTE: This happens in migrations of broken projects
             if dataset_with_same_id:

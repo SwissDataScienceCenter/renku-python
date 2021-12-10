@@ -433,7 +433,9 @@ class Dataset(Persistent):
         self._assign_new_identifier(identifier)
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
 
-    def derive_from(self, dataset: "Dataset", creator: Optional[Person], identifier: str = None):
+    def derive_from(
+        self, dataset: "Dataset", creator: Optional[Person], identifier: str = None, date_created: datetime = None
+    ):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"
 
@@ -442,7 +444,7 @@ class Dataset(Persistent):
         self.initial_identifier = dataset.initial_identifier
         self.derived_from = Url(url_id=dataset.id)
         self.same_as = None
-        self.date_created = local_now()
+        self.date_created = date_created or local_now()
         self.date_published = None
 
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
