@@ -1489,23 +1489,6 @@ def _convert_keyword(keywords):
 class Dataset(Entity, CreatorMixin):
     """Represent a dataset."""
 
-    SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
-
-    EDITABLE_FIELDS = [
-        "creators",
-        "date_created",
-        "date_published",
-        "description",
-        "files",
-        "images",
-        "in_language",
-        "keywords",
-        "license",
-        "title",
-        "url",
-        "version",
-    ]
-
     _id = attr.ib(default=None, kw_only=True)
     _label = attr.ib(default=None, kw_only=True)
 
@@ -1584,13 +1567,6 @@ class Dataset(Entity, CreatorMixin):
         return ",".join(tag.name for tag in self.tags)
 
     @property
-    def editable(self):
-        """Subset of attributes which user can edit."""
-        obj = self.as_jsonld()
-        data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
-        return data
-
-    @property
     def data_dir(self):
         """Directory where dataset files are stored."""
         if self.client:
@@ -1630,22 +1606,6 @@ class Dataset(Entity, CreatorMixin):
             if value and value != getattr(self, attribute):
                 self._modified = True
                 setattr(self, attribute, value)
-
-        return self
-
-    def update_metadata_from(self, other_dataset):
-        """Updates instance attributes with other dataset attributes.
-
-        :param other_dataset: `Dataset`
-        :return: self
-        """
-        for field_ in self.EDITABLE_FIELDS:
-            val = getattr(other_dataset, field_)
-            if val:
-                self._modified = True
-                setattr(self, field_, val)
-
-        self.same_as = other_dataset.same_as
 
         return self
 
