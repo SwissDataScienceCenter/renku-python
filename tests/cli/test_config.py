@@ -259,3 +259,16 @@ def test_config_write_concurrency(monkeypatch, runner, project, client, run):
 
         # NOTE: assess the value was actually written
         assert CONFIG_VALUE in get_value()
+
+
+@pytest.mark.parametrize("value", ["%value", "${value}"])
+def test_config_interpolation_is_disabled(client, runner, value):
+    """Test ConfigParser interpolation is disabled."""
+    result = runner.invoke(cli, ["config", "set", "key", value])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["config", "show", "key"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert f"{value}\n" == result.output

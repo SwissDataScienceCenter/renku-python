@@ -83,7 +83,8 @@ class ConfigManagerMixin:
         except ImportError:
             import importlib.resources as importlib_resources
 
-        config = configparser.ConfigParser()
+        # NOTE: Use RawConfigParser because ConfigParser does non-standard INI interpolation of some values
+        config = configparser.RawConfigParser()
         ref = importlib_resources.files("renku.data") / "defaults.ini"
         with importlib_resources.as_file(ref) as default_ini:
             config_files = [default_ini]
