@@ -11,16 +11,30 @@ detailed information about how to setup the tab completion for these shells, ple
 read the `shell completion <https://click.palletsprojects.com/en/8.0.x/shell-completion/>`_
 documentation of click.
 
-For example to activate tab completion for Zsh run the following command after installing
+To activate tab completion for your supported shell run the following command after installing
 Renku CLI:
 
-.. code-block:: console
+.. tabs::
+   .. tab:: bash
 
-   $ eval "$(_RENKU_COMPLETE=zsh_source renku)"
+        .. code-block:: console
 
+            $ eval "$(_RENKU_COMPLETE=bash_source renku)"
 
-After this not only sub-commands of `renku` will be auto-completed using tab, but for example
-in case of `renku workflow execute` the available ``Plans`` are going to be listed.
+   .. tab:: fish
+
+        .. code-block:: console
+
+            $ eval (env _RENKU_COMPLETE=fish_source renku)
+
+   .. tab:: zsh
+
+        .. code-block:: console
+
+            $ eval "$(_RENKU_COMPLETE=zsh_source renku)"
+
+After this not only sub-commands of ``renku`` will be auto-completed using tab, but for example
+in case of ``renku workflow execute`` the available ``Plans`` are going to be listed.
 
 .. code-block:: console
 

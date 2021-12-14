@@ -135,6 +135,7 @@ rq-scheduler = { version = "==0.11.0", optional = true }
 sentry-sdk = { version = "<1.4.4,>=0.7.4", extras = ["flask"], optional = true }
 sphinxcontrib-spelling = { version = "7.*", optional = true }
 sphinx-rtd-theme = { version = "<1.1,>=0.5.0", optional = true }
+sphinx-tabs = { version = "==3.2.0", optional = true }
 tabulate = "<0.8.10,>=0.7.7"
 toil = { version = "==5.5.0", optional = true }
 tqdm = "<4.62.4,>=4.48.1"
@@ -189,7 +190,7 @@ tests = [
     "responses",
 ]
 toil = ["toil"]
-docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
+docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
 all = [
     "apispec",
     "apispec-webframeworks",
@@ -230,6 +231,7 @@ all = [
     "sentry-sdk",
     "sphinxcontrib-spelling",
     "sphinx-rtd-theme",
+    "sphinx-tabs",
     "toil",
     "walrus",
 ]
