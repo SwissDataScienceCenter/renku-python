@@ -34,7 +34,6 @@ execute ``renku help``:
     Options:
       --version                       Print version number.
       --global-config-path            Print global application's config path.
-      --install-completion            Install completion for the current shell.
       --path <path>                   Location of a Renku repository.
                                       [default: (dynamic)]
       --external-storage / -S, --no-external-storage
@@ -66,7 +65,6 @@ import uuid
 from pathlib import Path
 
 import click
-import click_completion
 import yaml
 from click_plugins import with_plugins
 
@@ -94,7 +92,7 @@ from renku.cli.storage import storage
 from renku.cli.update import update
 from renku.cli.workflow import workflow
 from renku.core.commands.echo import WARNING
-from renku.core.commands.options import install_completion, option_external_storage_requested
+from renku.core.commands.options import option_external_storage_requested
 from renku.core.commands.version import check_version, print_version
 from renku.core.errors import UsageError
 from renku.core.utils.git import default_path
@@ -115,9 +113,6 @@ def get_entry_points(name: str):
         # Prior to Python 3.10, this returns a dict instead of the selection interface, which is slightly slower
         return all_entry_points.get(name, [])
 
-
-#: Monkeypatch Click application.
-click_completion.init()
 
 WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service", "credentials"]
 
@@ -159,14 +154,6 @@ def is_allowed_command(ctx):
     expose_value=False,
     is_eager=True,
     help=print_global_config_path.__doc__,
-)
-@click.option(
-    "--install-completion",
-    is_flag=True,
-    callback=install_completion,
-    expose_value=False,
-    is_eager=True,
-    help=install_completion.__doc__,
 )
 @click.option(
     "--path", show_default=True, metavar="<path>", default=default_path, help="Location of a Renku repository."
