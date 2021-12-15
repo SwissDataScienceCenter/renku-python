@@ -19,6 +19,7 @@
 import json
 import re
 
+import portalocker
 import pytest
 
 from tests.utils import retry_failed
@@ -110,3 +111,45 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     assert 200 == response.status_code
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
+
+
+@pytest.mark.integration
+@pytest.mark.service
+def test_get_lock_status_unlocked(svc_client_setup):
+    """Test getting lock status for an unlocked project."""
+    svc_client, headers, project_id, _, _ = svc_client_setup
+
+    response = svc_client.get("/1.0/project.lock_status", data=json.dumps({"project_id": project_id}), headers=headers)
+
+    assert 200 == response.status_code
+    assert response.json["result"]["locked"] is False
+
+
+@pytest.mark.integration
+@pytest.mark.service
+def test_get_lock_status_locked(svc_client_setup):
+    """Test getting lock status for a locked project."""
+    svc_client, headers, project_id, _, repository = svc_client_setup
+
+    def write_lock():
+        return portalocker.Lock(f"{repository.path}.lock", flags=portalocker.LOCK_EX, timeout=1)
+
+    with write_lock():
+        response = svc_client.get(
+            "/1.0/project.lock_status", data=json.dumps({"project_id": project_id}), headers=headers
+        )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["locked"] is True
+
+
+@pytest.mark.integration
+@pytest.mark.service
+def test_get_lock_status_for_project_not_in_cache(svc_client, identity_headers):
+    """Test getting lock status for an unlocked project which is not cached."""
+    response = svc_client.get(
+        "/1.0/project.lock_status", data=json.dumps({"project_id": "dummy"}), headers=identity_headers
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["locked"] is False

@@ -78,3 +78,19 @@ class ProjectEditResponseRPC(JsonRPCResponse):
     """RPC schema for a project edit."""
 
     result = fields.Nested(ProjectEditResponse)
+
+
+class ProjectLockStatusRequest(LocalRepositorySchema, RemoteRepositorySchema):
+    """Project lock status request."""
+
+
+class ProjectLockStatusResponse(RenkuSyncSchema):
+    """Project lock status response."""
+
+    locked = fields.Boolean(required=True, description="Whether or not a project is locked for writing")
+
+
+class ProjectLockStatusResponseRPC(JsonRPCResponse):
+    """RPC schema for project lock status."""
+
+    result = fields.Nested(ProjectLockStatusResponse)
