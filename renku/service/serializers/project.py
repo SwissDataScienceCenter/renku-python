@@ -24,6 +24,7 @@ from renku.service.serializers.common import (
     AsyncSchema,
     LocalRepositorySchema,
     MigrateSchema,
+    RemoteRepositoryBaseSchema,
     RemoteRepositorySchema,
     RenkuSyncSchema,
 )
@@ -80,11 +81,11 @@ class ProjectEditResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectEditResponse)
 
 
-class ProjectLockStatusRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class ProjectLockStatusRequest(LocalRepositorySchema, RemoteRepositoryBaseSchema):
     """Project lock status request."""
 
 
-class ProjectLockStatusResponse(RenkuSyncSchema):
+class ProjectLockStatusResponse(Schema):
     """Project lock status response."""
 
     locked = fields.Boolean(required=True, description="Whether or not a project is locked for writing")

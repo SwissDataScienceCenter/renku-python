@@ -122,6 +122,7 @@ def test_get_lock_status_unlocked(svc_client_setup):
     response = svc_client.get("/1.0/project.lock_status", data=json.dumps({"project_id": project_id}), headers=headers)
 
     assert 200 == response.status_code
+    assert {"locked"} == set(response.json["result"].keys())
     assert response.json["result"]["locked"] is False
 
 
@@ -131,15 +132,16 @@ def test_get_lock_status_locked(svc_client_setup):
     """Test getting lock status for a locked project."""
     svc_client, headers, project_id, _, repository = svc_client_setup
 
-    def write_lock():
-        return portalocker.Lock(f"{repository.path}.lock", flags=portalocker.LOCK_EX, timeout=1)
+    def mock_lock():
+        return portalocker.Lock(f"{repository.path}.lock", flags=portalocker.LOCK_EX, timeout=0)
 
-    with write_lock():
+    with mock_lock():
         response = svc_client.get(
             "/1.0/project.lock_status", data=json.dumps({"project_id": project_id}), headers=headers
         )
 
     assert 200 == response.status_code
+    assert {"locked"} == set(response.json["result"].keys())
     assert response.json["result"]["locked"] is True
 
 
@@ -152,4 +154,5 @@ def test_get_lock_status_for_project_not_in_cache(svc_client, identity_headers):
     )
 
     assert 200 == response.status_code
+    assert {"locked"} == set(response.json["result"].keys())
     assert response.json["result"]["locked"] is False
