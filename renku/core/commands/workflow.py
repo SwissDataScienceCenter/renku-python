@@ -116,7 +116,7 @@ def _remove_workflow(name, force, plan_gateway: IPlanGateway):
         communication.confirm(prompt_text, abort=True, warning=True)
 
     plan = plan or workflows[name]
-    plan._v_immutable = False
+    plan.unfreeze()
     plan.invalidated_at = datetime.utcnow()
     plan.freeze()
 
