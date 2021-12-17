@@ -374,6 +374,8 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
     """Convert a ProcessRun to a new Activity."""
     assert not isinstance(process_run, old_schema.WorkflowRun)
 
+    project_id = client.project.id
+
     run = process_run.association.plan
 
     if run.subprocesses:
@@ -385,7 +387,7 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
     for run in runs:
         activity_id = Activity.generate_id()
 
-        plan = _convert_run_to_plan(run, project_id=client.project.id)
+        plan = _convert_run_to_plan(run, project_id=project_id)
 
         agents = [_old_agent_to_new_agent(a) for a in process_run.agents or []]
         association_agent = _old_agent_to_new_agent(process_run.association.agent)
@@ -425,7 +427,7 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
                 id=activity_id,
                 invalidations=invalidations,
                 parameters=parameters,
-                # project=process_run._project,
+                project_id=project_id,
                 started_at_time=process_run.started_at_time,
                 usages=usages,
             )

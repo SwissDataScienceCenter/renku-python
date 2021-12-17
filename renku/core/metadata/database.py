@@ -145,6 +145,15 @@ class Persistent(persistent.Persistent):
         """Set immutable property."""
         self._v_immutable = True
 
+    def unfreeze(self):
+        """Allows modifying an immutable object.
+
+        Don't make an object mutable unless the intention is to drop the changes or modify the object in-place. Modified
+        objects will be updated in-place which results in a binary diff when persisted. Normally, we want to create a
+        mutable copy and persist it as a new object.
+        """
+        self._v_immutable = False
+
     def __setattr__(self, key, value):
         if self._v_immutable and key != "__weakref__" and not key.startswith("_p_") and not key.startswith("_v_"):
             raise RuntimeError(f"Cannot modify immutable object {self}.{key}")
