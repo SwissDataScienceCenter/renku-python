@@ -97,10 +97,9 @@ def get_project_lock_status(user_data, cache):
     ---
     get:
       description: Get project write-lock status.
-      requestBody:
-        content:
-          application/json:
-            schema: ProjectLockStatusRequest
+      parameters:
+        - in: query
+          schema: ProjectLockStatusRequest
       responses:
         200:
           description: Status of the project write-lock.
@@ -110,4 +109,4 @@ def get_project_lock_status(user_data, cache):
       tags:
         - project
     """
-    return ProjectLockStatusCtrl(cache, user_data, dict(request.json)).to_response()
+    return ProjectLockStatusCtrl(cache, user_data, dict(request.args)).to_response()

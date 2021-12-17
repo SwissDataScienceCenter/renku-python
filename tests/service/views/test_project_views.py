@@ -119,7 +119,7 @@ def test_get_lock_status_unlocked(svc_client_setup):
     """Test getting lock status for an unlocked project."""
     svc_client, headers, project_id, _, _ = svc_client_setup
 
-    response = svc_client.get("/1.0/project.lock_status", data=json.dumps({"project_id": project_id}), headers=headers)
+    response = svc_client.get("/1.0/project.lock_status", query_string={"project_id": project_id}, headers=headers)
 
     assert 200 == response.status_code
     assert {"locked"} == set(response.json["result"].keys())
@@ -136,9 +136,7 @@ def test_get_lock_status_locked(svc_client_setup):
         return portalocker.Lock(f"{repository.path}.lock", flags=portalocker.LOCK_EX, timeout=0)
 
     with mock_lock():
-        response = svc_client.get(
-            "/1.0/project.lock_status", data=json.dumps({"project_id": project_id}), headers=headers
-        )
+        response = svc_client.get("/1.0/project.lock_status", query_string={"project_id": project_id}, headers=headers)
 
     assert 200 == response.status_code
     assert {"locked"} == set(response.json["result"].keys())
@@ -147,11 +145,10 @@ def test_get_lock_status_locked(svc_client_setup):
 
 @pytest.mark.integration
 @pytest.mark.service
-def test_get_lock_status_for_project_not_in_cache(svc_client, identity_headers):
+@pytest.mark.parametrize("query_params", [{"project_id": "dummy"}, {"git_url": "https://example.com/repo.git"}])
+def test_get_lock_status_for_project_not_in_cache(svc_client, identity_headers, query_params):
     """Test getting lock status for an unlocked project which is not cached."""
-    response = svc_client.get(
-        "/1.0/project.lock_status", data=json.dumps({"project_id": "dummy"}), headers=identity_headers
-    )
+    response = svc_client.get("/1.0/project.lock_status", query_string=query_params, headers=identity_headers)
 
     assert 200 == response.status_code
     assert {"locked"} == set(response.json["result"].keys())
