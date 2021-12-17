@@ -153,7 +153,7 @@ def with_dataset(
 ):
     """Yield an editable metadata object for a dataset."""
     dataset = client.get_dataset(name=name, strict=True, immutable=True)
-    dataset._v_immutable = False
+    dataset.unfreeze()
 
     yield dataset
 
