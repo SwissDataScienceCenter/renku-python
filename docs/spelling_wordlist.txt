@@ -249,5 +249,5 @@ worktrees
 yaml
 yml
 Zenodo
-Zsh
+zsh
 連句
