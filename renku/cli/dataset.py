@@ -431,6 +431,16 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 
 
+def _complete_datasets(ctx, param, incomplete):
+    from renku.core.commands.dataset import search_datasets
+
+    try:
+        result = search_datasets().build().execute(name=incomplete)
+        return result.output
+    except Exception:
+        return []
+
+
 @click.group()
 def dataset():
     """Dataset commands."""
@@ -508,7 +518,7 @@ def create(name, title, description, creators, metadata, keyword):
 
 
 @dataset.command()
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
 @click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
 @click.option(
@@ -570,7 +580,7 @@ def edit(name, title, description, creators, metadata, keyword):
 
 
 @dataset.command("show")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 def show(name):
     """Show metadata of a dataset."""
     from renku.core.commands.dataset import show_dataset
@@ -607,8 +617,8 @@ def show(name):
 
 
 @dataset.command()
-@click.argument("name")
-@click.argument("urls", nargs=-1)
+@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("urls", type=click.Path(), nargs=-1)
 @click.option("-e", "--external", is_flag=True, help="Creates a link to external data.")
 @click.option("--force", is_flag=True, help="Allow adding otherwise ignored files.")
 @click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
@@ -640,7 +650,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 
 
 @dataset.command("ls-files")
-@click.argument("names", nargs=-1)
+@click.argument("names", nargs=-1, shell_complete=_complete_datasets)
 @click.option(
     "--creators",
     help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",
@@ -671,7 +681,7 @@ def ls_files(names, creators, include, exclude, format, columns):
 
 
 @dataset.command()
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.option("-I", "--include", multiple=True, help="Include files matching given pattern.")
 @click.option("-X", "--exclude", multiple=True, help="Exclude files matching given pattern.")
 @click.option("-y", "--yes", is_flag=True, help="Confirm unlinking of all files.")
@@ -695,7 +705,7 @@ def remove(name):
 
 
 @dataset.command("tag")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.argument("tag")
 @click.option("-d", "--description", default="", help="A description for this tag")
 @click.option("--force", is_flag=True, help="Allow overwriting existing tags.")
@@ -708,7 +718,7 @@ def tag(name, tag, description, force):
 
 
 @dataset.command("rm-tags")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.argument("tags", nargs=-1)
 def remove_tags(name, tags):
     """Remove tags from a dataset."""
@@ -719,7 +729,7 @@ def remove_tags(name, tags):
 
 
 @dataset.command("ls-tags")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.option("--format", type=click.Choice(DATASET_TAGS_FORMATS), default="tabular", help="Choose an output format.")
 def ls_tags(name, format):
     """List all tags of a dataset."""
@@ -776,7 +786,7 @@ def export_provider_options(*param_decls, **attrs):
 
 
 @dataset.command("export")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @export_provider_argument()
 @click.option("-p", "--publish", is_flag=True, help="Automatically publish exported dataset.")
 @click.option("-t", "--tag", help="Dataset tag to export")
@@ -817,7 +827,7 @@ def import_(uri, name, extract, yes):
 
 
 @dataset.command("update")
-@click.argument("names", nargs=-1)
+@click.argument("names", nargs=-1, shell_complete=_complete_datasets)
 @click.option(
     "--creators",
     help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",

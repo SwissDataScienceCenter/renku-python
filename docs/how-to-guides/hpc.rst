@@ -12,7 +12,7 @@ By default all workflows are executed by the ``cwltool`` provider, that
 exports the workflow to CWL and then uses `cwltool <https://github.com/common-workflow-language/cwltool>`_
 to execute the given CWL.
 
-The workflow backend can be changed by using the ``-p/--provider <PROVIDER>`` 
+The workflow backend can be changed by using the ``-p/--provider <PROVIDER>``
 command line option. A backend's default configuration can be overridden by
 providing the  ``-c/--config <config.yaml>`` command line parameter.
 The following ``renku`` commands support the above mentioned workflow provider
@@ -27,7 +27,7 @@ simply would run the following command:
 
 .. code-block:: console
 
-   $ renku execute -p toil my_plan
+   $ renku workflow execute -p toil my_plan
 
 Using ``toil`` as a workflow provider has the advantage that it supports running
 the workflows on various `high-performance computing <https://toil.readthedocs.io/en/latest/running/hpcEnvironments.html>`_
@@ -57,7 +57,7 @@ Taking the example above, the following command line will execute ``my_plan`` on
 
 .. code-block:: console
 
-   $ TOIL_SLURM_ARGS="-A my_account --export=ALL" renku execute -p toil -c provider.yaml my_plan
+   $ TOIL_SLURM_ARGS="-A my_account --export=ALL" renku workflow execute -p toil -c provider.yaml my_plan
 
 where
 
