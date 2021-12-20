@@ -81,3 +81,13 @@ where `myproject.pluginmodule:mycmd` points to a click command e.g.:
     @click.command()
     def mycmd():
         ...
+
+Workflow Provider Plugins
+-------------------------
+
+Additional workflow providers can be implemented by extending
+:class:`renku.core.models.workflow.provider.IWorkflowProvider`. See
+:ref:`implementing_a_provider` for more information.
+
+.. autoclass:: renku.core.models.workflow.provider.IWorkflowProvider
+    :members:
