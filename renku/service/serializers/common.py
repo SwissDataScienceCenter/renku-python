@@ -32,11 +32,10 @@ class LocalRepositorySchema(Schema):
     project_id = fields.String(description="Reference to access the project in the local cache.")
 
 
-class RemoteRepositorySchema(Schema):
+class RemoteRepositoryBaseSchema(Schema):
     """Schema for tracking a remote repository."""
 
     git_url = fields.String(description="Remote git repository url.")
-    branch = fields.String(description="Remote git branch.")
 
     @validates("git_url")
     def validate_git_url(self, value):
@@ -48,6 +47,12 @@ class RemoteRepositorySchema(Schema):
                 raise ValidationError("Invalid `git_url`") from e
 
         return value
+
+
+class RemoteRepositorySchema(RemoteRepositoryBaseSchema):
+    """Schema for tracking a remote repository and branch."""
+
+    branch = fields.String(description="Remote git branch.")
 
 
 class AsyncSchema(Schema):
