@@ -8,9 +8,8 @@ aimed at active users of Renku CLI and target specific use-cases or common issue
 
 
 .. toctree::
-   :maxdepth: 2
-
+   :maxdepth: 1
 
    hpc
-   provider
+   implementing_a_provider
    shell-integration
