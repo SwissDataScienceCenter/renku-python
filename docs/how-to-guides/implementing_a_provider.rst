@@ -1,12 +1,11 @@
-.. _provider:
+.. _implementing_a_provider:
 
 Implementing a workflow provider
 ================================
 
-In the previous section about :ref:`hpc`, we described how using different
-workflow providers can enable the user running renku workflows on HPC. In
-this short article we will discuss how to implement our own, custom workflow
-provider as a plugin for Renku CLI.
+In  :ref:`hpc`, we described how using different workflow providers can enable
+the user running renku workflows on HPC. Here we discuss how to implement a new,
+custom workflow provider as a plugin for Renku CLI.
 
 Renku provides the option to add a new workflow executor backend with the
 help of `pluggy <https://pluggy.readthedocs.io/en/latest/>`_ plugins.
