@@ -227,3 +227,15 @@ def test_hash_directories(git_repository):
 
     with pytest.raises(errors.GitCommandError):
         Repository.hash_object("X")
+
+
+def test_get_user_with_quotation_mark(git_repository):
+    """Test quotation marks wrapping user/email are ignored."""
+    config = git_repository.get_configuration(writable=True)
+    config.set_value("user", "name", """ ' Renku the Frog' """)
+    config.set_value("user", "email", """ "renku@renku.ch " """)
+
+    user = git_repository.get_user()
+
+    assert "Renku the Frog" == user.name
+    assert "renku@renku.ch" == user.email
