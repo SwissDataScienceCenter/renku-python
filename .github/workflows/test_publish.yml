@@ -4,6 +4,7 @@ on:
   push:
     branches:
     - master
+    - develop
     paths:
     - renku/core/commands/providers/*.py
 
