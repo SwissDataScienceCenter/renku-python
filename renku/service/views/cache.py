@@ -31,6 +31,7 @@ from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
     handle_migration_except,
+    optional_identity,
     requires_cache,
     requires_identity,
 )
@@ -182,7 +183,7 @@ def migrate_project_view(user_data, cache):
 @cache_blueprint.route("/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=[V1_0])
 @handle_common_except
 @requires_cache
-@requires_identity
+@optional_identity
 def migration_check_project_view(user_data, cache):
     """
     Retrieve migration information for a project.
