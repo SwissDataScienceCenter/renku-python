@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku common configurations."""
 import os
+from pathlib import Path
 
 import pytest
 
@@ -46,3 +47,18 @@ def global_config_dir(monkeypatch, tmpdir):
         m.setattr(ConfigManagerMixin, "global_config_dir", home_dir)
 
         yield m
+
+
+@pytest.fixture(scope="session")
+def vcr_config():
+    """Common configuration for all vcr tests."""
+    return {"filter_headers": ["authorization"], "ignore_localhost": True, "record_mode": "once"}
+
+
+@pytest.fixture(scope="module")
+def vcr_cassette_dir(request):
+    """Base directory to store cassettes for each test file (module)."""
+    relative_path = Path(request.node.fspath).relative_to(os.getcwd())
+    parts = Path(relative_path).parts
+    # cassettes/test-file-path-in-tests-directory/test-file-name-with-no-extension/
+    return os.path.join("cassettes", os.sep.join(parts[1:-1]), relative_path.stem)
