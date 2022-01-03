@@ -323,8 +323,8 @@ def test_init_remote(isolated_runner, project_init):
 
 
 @pytest.mark.integration
-def test_init_new_metadata(isolated_runner, project_init):
-    """Test project initialization from a remote template."""
+def test_init_new_metadata_defaults(isolated_runner, project_init):
+    """Test project initialization from a remote template with defaults."""
     data, commands = project_init
 
     # create the project using default values
@@ -342,7 +342,7 @@ def test_init_new_metadata(isolated_runner, project_init):
     result = isolated_runner.invoke(
         cli,
         commands["init_custom"] + template_source + description + number_val,
-        commands["confirm"],
+        "\n\n",
     )
     assert 0 == result.exit_code, result.output
     assert new_project.exists()
@@ -359,15 +359,25 @@ def test_init_new_metadata(isolated_runner, project_init):
     assert metadata["description"] == "some description"
     assert metadata["number_val"] == 70.12
 
-    shutil.rmtree(new_project)
+
+@pytest.mark.integration
+def test_init_new_metadata_wrong_number(isolated_runner, project_init):
+    """Test project initialization from a remote template."""
+    data, commands = project_init
+
+    git_url = urlparse(commands["init_custom_template"])
+    url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+    git_url = git_url._replace(netloc=url).geturl()
+    template_source = ["--template-source", str(git_url)]
+
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
 
     # create project using wrong number
     description = ["--parameter", "description=lalala"]
     number_val = ["--parameter", "number_val=abcd"]
     bool_val = ["--parameter", "bool_val=true"]
     enum_val = ["--parameter", "enum_var=yes"]
-
-    assert not new_project.exists()
     result = isolated_runner.invoke(
         cli, commands["init_custom"] + template_source + description + number_val + bool_val + enum_val, "42\n"
     )
@@ -387,7 +397,19 @@ def test_init_new_metadata(isolated_runner, project_init):
     assert metadata["description"] == "lalala"
     assert metadata["number_val"] == 42
 
-    shutil.rmtree(new_project)
+
+@pytest.mark.integration
+def test_init_new_metadata_wrong_bool(isolated_runner, project_init):
+    """Test project initialization from a remote template."""
+    data, commands = project_init
+
+    git_url = urlparse(commands["init_custom_template"])
+    url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+    git_url = git_url._replace(netloc=url).geturl()
+    template_source = ["--template-source", str(git_url)]
+
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
 
     # create project using wrong bool
     description = ["--parameter", "description=lalala"]
@@ -415,7 +437,19 @@ def test_init_new_metadata(isolated_runner, project_init):
     assert metadata["description"] == "lalala"
     assert metadata["number_val"] == 0.999999
 
-    shutil.rmtree(new_project)
+
+@pytest.mark.integration
+def test_init_new_metadata_wrong_enum(isolated_runner, project_init):
+    """Test project initialization from a remote template."""
+    data, commands = project_init
+
+    git_url = urlparse(commands["init_custom_template"])
+    url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+    git_url = git_url._replace(netloc=url).geturl()
+    template_source = ["--template-source", str(git_url)]
+
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
 
     # create project using wrong enum
     description = ["--parameter", "description=lalala"]

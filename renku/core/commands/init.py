@@ -265,17 +265,6 @@ def verify_template_variables(template_data, metadata):
             metadata[key] = prompt_for_value(key, template_variables[key])
 
     for key in template_variables_keys - input_parameters_keys:
-        if "default_value" in template_variables[key]:
-            default_value = template_variables[key]["default_value"]
-
-            if not validate_template_variable_value(key, template_variables[key], default_value)[0]:
-                raise errors.InvalidTemplateError(
-                    f"Default value {default_value} for template variable {key} does not match variable type."
-                )
-
-            metadata[key] = default_value
-            continue
-
         metadata[key] = prompt_for_value(key, template_variables[key])
 
     # ignore internal variables, i.e. __\w__
