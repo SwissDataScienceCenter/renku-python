@@ -19,6 +19,7 @@
 
 import datetime
 import hashlib
+import importlib
 import io
 import json
 from pathlib import Path
@@ -53,6 +54,13 @@ NEW = z64  # NOTE: Do not change this value since this is the default when a Per
 PERSISTED = b"1" * 8
 
 
+def _is_module_allowed(module_name: str, type_name: str):
+    """Checks whether it is allowed to import from the given module for security purposes."""
+
+    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
+        raise TypeError(f"Objects of type '{type_name}' are not allowed")
+
+
 def get_type_name(object) -> Optional[str]:
     """Return fully-qualified object's type name."""
     if object is None:
@@ -70,8 +78,7 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
     components = type_name.split(".")
     module_name = components[0]
 
-    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
-        raise TypeError(f"Objects of type '{type_name}' are not allowed")
+    _is_module_allowed(module_name, type_name)
 
     module = __import__(module_name)
 
@@ -80,9 +87,26 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
 
 def get_attribute(object, name: Union[List[str], str]):
     """Return an attribute of an object."""
+    import sys
+
     components = name.split(".") if isinstance(name, str) else name
 
+    def _module_name(o):
+        return o.__module__ if hasattr(o, "__module__") else o.__name__
+
+    module_name = _module_name(object)
+    root_module_name = module_name.split(".")[0]
+
     for component in components:
+        module_name = _module_name(object)
+        if not hasattr(object, component) and f"{module_name}.{component}" not in sys.modules:
+            try:
+                _is_module_allowed(root_module_name, object.__name__)
+                object = importlib.import_module(f".{component}", package=module_name)
+                continue
+            except ModuleNotFoundError:
+                pass
+
         object = getattr(object, component)
 
     return object
@@ -121,11 +145,24 @@ class Persistent(persistent.Persistent):
         """Set immutable property."""
         self._v_immutable = True
 
+    def unfreeze(self):
+        """Allows modifying an immutable object.
+
+        Don't make an object mutable unless the intention is to drop the changes or modify the object in-place. Modified
+        objects will be updated in-place which results in a binary diff when persisted. Normally, we want to create a
+        mutable copy and persist it as a new object.
+        """
+        self._v_immutable = False
+
     def __setattr__(self, key, value):
         if self._v_immutable and key != "__weakref__" and not key.startswith("_p_") and not key.startswith("_v_"):
             raise RuntimeError(f"Cannot modify immutable object {self}.{key}")
 
         super().__setattr__(key, value)
+
+    @property
+    def __name__(self):
+        return self.__class__.__name__
 
 
 class Database:
@@ -493,9 +530,9 @@ class Index(persistent.Persistent):
             return
         return self._entries.pop(key) if default is MARKER else self._entries.pop(key, default)
 
-    def keys(self):
+    def keys(self, min=None, max=None, excludemin=False, excludemax=False):
         """Return an iterator of keys."""
-        return self._entries.keys()
+        return self._entries.keys(min=min, max=max, excludemin=excludemin, excludemax=excludemax)
 
     def values(self):
         """Return an iterator of values."""

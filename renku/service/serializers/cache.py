@@ -125,7 +125,7 @@ class ProjectCloneContext(RepositoryCloneRequest):
             git_url = GitURL.parse(data["git_url"])
         except UnicodeError as e:
             raise ValidationError("`git_url` contains unsupported characters") from e
-        except errors.GitConfigurationError as e:
+        except errors.InvalidGitURL as e:
             raise ValidationError("Invalid `git_url`") from e
 
         if git_url.owner is None:

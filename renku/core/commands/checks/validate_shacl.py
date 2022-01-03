@@ -20,8 +20,9 @@ import pyld
 import yaml
 
 from renku.core.commands.echo import WARNING
+from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
+from renku.core.commands.schema.project import ProjectSchema
 from renku.core.models.jsonld import NoDatesSafeLoader
-from renku.core.models.project import ProjectSchema
 from renku.core.utils.shacl import validate_graph
 
 
@@ -75,7 +76,7 @@ def check_datasets_structure(client):
     problems = [f"{WARNING}Invalid structure of dataset metadata"]
 
     for dataset in client.datasets.values():
-        data = dataset.to_jsonld()
+        data = dump_dataset_as_jsonld(dataset)
         try:
             conform, graph, t = _check_shacl_structure(data)
         except (Exception, BaseException) as e:

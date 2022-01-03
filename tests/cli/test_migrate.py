@@ -425,7 +425,7 @@ def test_commit_hook_with_immutable_modified_files(runner, local_client, mocker,
 
 @pytest.mark.migration
 @pytest.mark.parametrize("name", ["mixed", "dataverse"])
-def test_migrate_and_preserve_dataset_ids(isolated_runner, old_dataset_project, load_dataset_with_injection, name):
+def test_migrate_can_preserve_dataset_ids(isolated_runner, old_dataset_project, load_dataset_with_injection, name):
     """Test migrate can preserve old datasets' ids."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -438,3 +438,40 @@ def test_migrate_and_preserve_dataset_ids(isolated_runner, old_dataset_project, 
     result = isolated_runner.invoke(cli, ["graph", "export", "--strict"])
 
     assert 0 == result.exit_code, format_result_exception(result)
+
+
+@pytest.mark.migration
+def test_migrate_preserves_creation_date_when_preserving_ids(
+    isolated_runner, old_dataset_project, load_dataset_with_injection
+):
+    """Test migrate doesn't change dataset's dateCreated when --preserve-identifiers is passed."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"]).exit_code
+
+    dataset = load_dataset_with_injection("mixed", old_dataset_project)
+
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_created.isoformat(" ")
+
+
+@pytest.mark.migration
+@pytest.mark.parametrize("old_dataset_project", ["old-datasets-v0.16.0.git"], indirect=True)
+def test_migrate_preserves_creation_date_for_mutated_datasets(
+    isolated_runner, old_dataset_project, load_dataset_with_injection
+):
+    """Test migration of datasets that were mutated keeps original dateCreated."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
+
+    dataset = load_dataset_with_injection("local", old_dataset_project)
+
+    assert "2021-07-23 14:34:58+00:00" == dataset.date_created.isoformat(" ")
+
+
+@pytest.mark.migration
+def test_migrate_sets_correct_creation_date_for_non_mutated_datasets(
+    isolated_runner, old_dataset_project, load_dataset_with_injection
+):
+    """Test migration of datasets that weren't mutated uses commit date as dateCreated."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
+
+    dataset = load_dataset_with_injection("mixed", old_dataset_project)
+
+    assert "2020-08-10 23:35:56+02:00" == dataset.date_created.isoformat(" ")

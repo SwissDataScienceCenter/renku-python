@@ -94,17 +94,21 @@ def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_
 
     def _template_update(immutable_files=None, docker=False, after_template_version="0.0.2"):
         """Fetches an updatable template with various options."""
-        import pkg_resources
-
         from renku.core.commands.init import create_from_template, read_template_manifest
 
-        template_local = Path(pkg_resources.resource_filename("renku", "templates"))
+        try:
+            import importlib_resources
+        except ImportError:
+            import importlib.resources as importlib_resources
 
         # NOTE: get template
         tempdir = tmpdir.mkdir("template")
         temppath = Path(tempdir) / "local"
 
-        shutil.copytree(str(template_local), str(temppath))
+        ref = importlib_resources.files("renku") / "templates"
+        with importlib_resources.as_file(ref) as template_local:
+            shutil.copytree(str(template_local), str(temppath))
+
         manifest = read_template_manifest(temppath)
         template_path = temppath / manifest[0]["folder"]
 

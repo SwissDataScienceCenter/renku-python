@@ -21,6 +21,17 @@ import os
 
 from marshmallow import EXCLUDE, post_load, pre_load
 
+from renku.core.commands.schema.calamus import (
+    DateTimeList,
+    JsonLDSchema,
+    StringList,
+    Uri,
+    fields,
+    prov,
+    rdfs,
+    renku,
+    schema,
+)
 from renku.core.management.migrations.models.v9 import Person as OldPerson
 from renku.core.management.migrations.models.v9 import generate_project_id, wfprov
 from renku.core.management.migrations.utils import (
@@ -30,7 +41,6 @@ from renku.core.management.migrations.utils import (
     get_datasets_path,
 )
 from renku.core.models import jsonld
-from renku.core.models.calamus import DateTimeList, JsonLDSchema, StringList, Uri, fields, prov, rdfs, renku, schema
 from renku.core.utils.urls import get_host
 
 

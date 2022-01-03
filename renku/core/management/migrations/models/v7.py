@@ -21,9 +21,9 @@ import os
 
 from marshmallow import EXCLUDE
 
+from renku.core.commands.schema.calamus import fields, prov, renku, schema
 from renku.core.management.migrations.utils import OLD_METADATA_PATH, get_datasets_path
 from renku.core.models import jsonld
-from renku.core.models.calamus import fields, prov, renku, schema
 
 from .v3 import Base, DatasetFileSchemaV3, DatasetSchemaV3, UrlSchemaV3
 

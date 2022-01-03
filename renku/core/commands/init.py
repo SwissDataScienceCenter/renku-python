@@ -26,7 +26,6 @@ from uuid import uuid4
 
 import attr
 import click
-import pkg_resources
 import yaml
 
 from renku.core import errors
@@ -43,6 +42,11 @@ from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
 from renku.core.utils.git import clone_repository
 from renku.version import __version__, is_release
+
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 TEMPLATE_MANIFEST = "manifest.yaml"
 
@@ -518,7 +522,9 @@ def fetch_template(template_source, template_ref):
         if template_ref and template_ref != "master":
             raise errors.ParameterError("Templates included in renku don't support specifying a template_ref")
 
-        template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
+        ref = importlib_resources.files("renku") / "templates"
+        with importlib_resources.as_file(ref) as folder:
+            template_folder = folder
         template_manifest = read_template_manifest(template_folder)
         template_source = "renku"
         template_version = str(__version__)

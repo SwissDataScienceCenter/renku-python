@@ -558,6 +558,16 @@ if TYPE_CHECKING:
     from renku.core.commands.view_model.plan import PlanViewModel
 
 
+def _complete_workflows(ctx, param, incomplete):
+    from renku.core.commands.workflow import search_workflows_command
+
+    try:
+        result = search_workflows_command().build().execute(name=incomplete)
+        return list(filter(lambda x: x.startswith(incomplete), result.output))
+    except Exception:
+        return []
+
+
 def _print_plan(plan: "PlanViewModel"):
     """Print a plan to stdout."""
     from renku.core.utils.os import print_markdown
@@ -708,7 +718,7 @@ def list_workflows(format, columns):
 
 
 @workflow.command()
-@click.argument("name_or_id", metavar="<name_or_id>")
+@click.argument("name_or_id", metavar="<name_or_id>", shell_complete=_complete_workflows)
 def show(name_or_id):
     """Show details for workflow <name_or_id>."""
     from renku.core.commands.view_model.plan import PlanViewModel
@@ -726,7 +736,7 @@ def show(name_or_id):
 
 
 @workflow.command()
-@click.argument("name", metavar="<name>")
+@click.argument("name", metavar="<name>", shell_complete=_complete_workflows)
 @click.option("--force", is_flag=True, help="Override the existence check.")
 def remove(name, force):
     """Remove a workflow named <name>."""
@@ -762,7 +772,7 @@ def remove(name, force):
     help="End a composite plan at this file as output.",
 )
 @click.argument("name", required=True)
-@click.argument("steps", nargs=-1, type=click.UNPROCESSED)
+@click.argument("steps", nargs=-1, type=click.UNPROCESSED, shell_complete=_complete_workflows)
 def compose(
     description,
     mappings,
@@ -819,7 +829,7 @@ def compose(
 
 
 @workflow.command()
-@click.argument("workflow_name", metavar="<name or uuid>")
+@click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
 @click.option("--name", metavar="<new name>", help="New name of the workflow")
 @click.option("--description", metavar="<new desc>", help="New description of the workflow")
 @click.option(
@@ -877,7 +887,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 
 
 @workflow.command()
-@click.argument("workflow_name", metavar="<name or uuid>")
+@click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
 @click.option(
     "--format",
     default="cwl",
@@ -990,7 +1000,7 @@ def outputs(ctx, paths):
     type=click.Path(exists=True, dir_okay=False),
     help="YAML file containing parameter mappings to be used.",
 )
-@click.argument("name_or_id", required=True)
+@click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def execute(
     provider,
     config,
@@ -1127,7 +1137,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 )
 @click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
 @click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
-@click.argument("name_or_id", required=True)
+@click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
     """Execute a workflow by iterating through a range of provided parameters."""
     from renku.core.commands.view_model.plan import PlanViewModel

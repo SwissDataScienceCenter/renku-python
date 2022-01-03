@@ -20,10 +20,13 @@
 import json
 from typing import Dict, List, Set, Union
 
-from pkg_resources import resource_filename
-
 from renku.core import errors
 from renku.core.commands.format.graph import GRAPH_FORMATS
+from renku.core.commands.schema.activity import ActivitySchema
+from renku.core.commands.schema.composite_plan import CompositePlanSchema
+from renku.core.commands.schema.dataset import DatasetSchema, DatasetTagSchema
+from renku.core.commands.schema.plan import PlanSchema
+from renku.core.commands.schema.project import ProjectSchema
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
@@ -31,13 +34,18 @@ from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.models.dataset import Dataset, DatasetSchema, DatasetTag, DatasetTagSchema
-from renku.core.models.project import Project, ProjectSchema
-from renku.core.models.provenance.activity import Activity, ActivitySchema
-from renku.core.models.workflow.composite_plan import CompositePlan, CompositePlanSchema
-from renku.core.models.workflow.plan import Plan, PlanSchema
+from renku.core.models.dataset import Dataset, DatasetTag
+from renku.core.models.project import Project
+from renku.core.models.provenance.activity import Activity
+from renku.core.models.workflow.composite_plan import CompositePlan
+from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.utils.shacl import validate_graph
 from renku.core.utils.urls import get_host
+
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 
 def export_graph_command():
@@ -92,7 +100,7 @@ def _get_graph_for_revision(
     revision_or_range: str,
     database_gateway: IDatabaseGateway,
     project_gateway: IProjectGateway,
-) -> Dict:
+) -> List[Dict]:
     """Get the graph for changes made in a specific revision."""
     all_objects = database_gateway.get_modified_objects_from_revision(revision_or_range=revision_or_range)
 
@@ -106,7 +114,7 @@ def _get_graph_for_revision(
 
     project = project_gateway.get_project()
 
-    return convert_entities_to_graph(changed_objects, project)
+    return _convert_entities_to_graph(changed_objects, project)
 
 
 @inject.autoparams()
@@ -115,10 +123,10 @@ def _get_graph_for_all_objects(
     dataset_gateway: IDatasetGateway,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
-) -> Dict:
+) -> List[Dict]:
     """Get JSON-LD graph for all entities."""
     project = project_gateway.get_project()
-    objects = activity_gateway.get_all_activities()
+    objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]] = activity_gateway.get_all_activities()
 
     processed_plans = set()
 
@@ -142,12 +150,12 @@ def _get_graph_for_all_objects(
             current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)
             objects.append(current_dataset)
 
-    return convert_entities_to_graph(objects, project)
+    return _convert_entities_to_graph(objects, project)
 
 
-def convert_entities_to_graph(
+def _convert_entities_to_graph(
     entities: List[Union[Project, Dataset, DatasetTag, Activity, Plan, CompositePlan]], project: Project
-) -> Dict:
+) -> List[Dict]:
     """Convert entities to JSON-LD graph."""
     graph = []
     schemas = {
@@ -160,10 +168,15 @@ def convert_entities_to_graph(
     }
 
     processed_plans = set()
+    project_id = project.id
 
     for entity in entities:
         if entity.id in processed_plans:
             continue
+        if isinstance(entity, (Dataset, Activity, AbstractPlan)):
+            # NOTE: Since the database is read-only, it's OK to modify objects; they won't be written back
+            entity.unfreeze()
+            entity.project_id = project_id
         schema = next(s for t, s in schemas.items() if isinstance(entity, t))
         graph.extend(schema(flattened=True).dump(entity))
 
@@ -193,8 +206,9 @@ def get_activity_plan_ids(activity: Activity) -> Set[str]:
 
 
 def _validate_graph(rdf_graph, format):
-    shacl_path = resource_filename("renku", "data/shacl_shape.json")
-    r, _, t = validate_graph(rdf_graph, shacl_path=shacl_path, format=format)
+    ref = importlib_resources.files("renku.data") / "shacl_shape.json"
+    with importlib_resources.as_file(ref) as shacl_path:
+        r, _, t = validate_graph(rdf_graph, shacl_path=shacl_path, format=format)
 
     if not r:
         raise errors.SHACLValidationError(f"{t}\nCouldn't export: Invalid Knowledge Graph data")

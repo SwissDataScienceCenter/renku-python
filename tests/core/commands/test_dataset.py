@@ -89,17 +89,10 @@ def test_data_add_recursive(directory_tree, client_with_injection):
         assert os.path.basename(os.path.dirname(dataset.files[0].entity.path)) == "dir1"
 
 
-@pytest.mark.parametrize(
-    "creators",
-    [
-        [Person(name="me", email="me@example.com")],
-        [Person.from_jsonld({"http://schema.org/name": "me", "http://schema.org/email": "me@example.com"})],
-    ],
-)
-def test_creator_parse(creators):
+def test_creator_parse():
     """Test that different options for specifying creators work."""
-    dataset = Dataset(name="dataset", creators=creators)
     creator = Person(name="me", email="me@example.com")
+    dataset = Dataset(name="dataset", creators=[creator])
     assert creator in dataset.creators
 
     # email check
@@ -121,30 +114,6 @@ def test_creators_with_same_email(client_with_injection, load_dataset_with_injec
 
     assert 2 == len(dataset.creators)
     assert {c.name for c in dataset.creators} == {"me", "me2"}
-
-
-def test_dataset_serialization(client_with_datasets, load_dataset_with_injection):
-    """Test dataset (de)serialization."""
-    dataset = load_dataset_with_injection("dataset-1", client_with_datasets)
-
-    def read_value(key):
-        return dataset_metadata.get(key)[0].get("@value")
-
-    flattened_metadata = dataset.to_jsonld()
-    dataset = Dataset.from_jsonld(flattened_metadata)
-
-    # assert that all attributes found in metadata are set in the instance
-    assert dataset.date_created
-    assert dataset.creators
-    assert dataset.identifier
-    assert dataset.title
-
-    dataset_metadata = [m for m in flattened_metadata if "@type" in m and "Dataset" in str(m["@type"])][0]
-
-    # check values
-    assert str(dataset.date_created.isoformat()) == read_value("http://schema.org/dateCreated")
-    assert dataset.identifier == read_value("http://schema.org/identifier")
-    assert dataset.title == read_value("http://schema.org/name")
 
 
 def test_create_dataset_custom_message(project):

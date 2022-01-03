@@ -21,9 +21,6 @@ from renku.core.commands.view_model.log import LogViewModel
 from renku.core.management.command_builder import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 
-CONFIG_SECTION = "http"
-RENKU_BACKUP_PREFIX = "renku-backup"
-
 
 def log_command():
     """Return a command for getting a log of renku commands."""

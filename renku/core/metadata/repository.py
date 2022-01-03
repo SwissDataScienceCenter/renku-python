@@ -589,6 +589,9 @@ class BaseRepository:
         if not email:  # pragma: no cover
             raise errors.GitMissingEmail
 
+        name = _sanitize_git_config_value(name)
+        email = _sanitize_git_config_value(email)
+
         return Actor(name=name, email=email)
 
     def get_configuration(self, writable=False, scope: str = None) -> "Configuration":
@@ -696,6 +699,7 @@ class Repository(BaseRepository):
         progress: Optional[Callable] = None,
         no_checkout: bool = False,
         env: dict = None,
+        clone_options: List[str] = None,
     ) -> "Repository":
         """Clone a remote repository and create an instance."""
         try:
@@ -708,6 +712,7 @@ class Repository(BaseRepository):
                 progress=progress,
                 no_checkout=no_checkout,
                 env=env,
+                multi_options=clone_options,
             )
         except git.GitCommandError as e:
             raise errors.GitCommandError(
@@ -1374,3 +1379,8 @@ def _find_previous_commit_helper(
 
     if submodules:
         return get_previous_commit_from_submodules()
+
+
+def _sanitize_git_config_value(value: str) -> str:
+    """Remove quotation marks and whitespaces surrounding a config value."""
+    return value.strip(" \n\t\"'")

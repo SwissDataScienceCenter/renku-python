@@ -74,6 +74,17 @@ def _safe_read_yaml(file: str) -> Dict[str, Any]:
 
 
 @inject.autoparams()
+def _search_workflows(name: str, plan_gateway: IPlanGateway) -> List[str]:
+    """Get all the workflows whose Plan.name are greater than or equal to the given name."""
+    return plan_gateway.list_by_name(starts_with=name)
+
+
+def search_workflows_command():
+    """Command to get all the workflows whose Plan.name are greater than or equal to the given name."""
+    return Command().command(_search_workflows).require_migration().with_database(write=False)
+
+
+@inject.autoparams()
 def _find_workflow(name_or_id: str, plan_gateway: IPlanGateway) -> AbstractPlan:
     workflow = plan_gateway.get_by_id(name_or_id) or plan_gateway.get_by_name(name_or_id)
 
@@ -116,7 +127,7 @@ def _remove_workflow(name, force, plan_gateway: IPlanGateway):
         communication.confirm(prompt_text, abort=True, warning=True)
 
     plan = plan or workflows[name]
-    plan._v_immutable = False
+    plan.unfreeze()
     plan.invalidated_at = datetime.utcnow()
     plan.freeze()
 

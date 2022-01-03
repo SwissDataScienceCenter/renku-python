@@ -52,6 +52,9 @@ def test_graph_export_validation(runner, client, directory_tree, run, revision, 
         assert "https://localhost" not in result.output
         assert "https://renkulab.io" in result.output
 
+    # Make sure that nothing has changed during export which is a read-only operation
+    assert not client.repository.is_dirty(untracked_files=True)
+
 
 @pytest.mark.serial
 @pytest.mark.shelled

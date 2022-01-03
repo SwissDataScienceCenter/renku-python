@@ -21,10 +21,7 @@ from itertools import chain
 from typing import Any
 from uuid import uuid4
 
-from marshmallow import EXCLUDE
-
 from renku.core import errors
-from renku.core.models.calamus import JsonLDSchema, fields, renku, schema
 from renku.core.models.workflow.plan import Plan
 
 
@@ -49,19 +46,3 @@ class ParameterValue:
                 return
 
         raise errors.ParameterError(f"Parameter {self.parameter_id} not found on plan {plan.id}.")
-
-
-class ParameterValueSchema(JsonLDSchema):
-    """ParameterValue schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.ParameterValue, schema.PropertyValue]
-        model = ParameterValue
-        unknown = EXCLUDE
-
-    id = fields.Id()
-
-    parameter = fields.IRI(schema.valueReference, attribute="parameter_id")
-    value = fields.Raw(schema.value)

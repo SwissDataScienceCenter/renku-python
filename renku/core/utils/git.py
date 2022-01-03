@@ -20,15 +20,15 @@
 import os
 import pathlib
 import shutil
-import tempfile
 import urllib
 from functools import reduce
 from pathlib import Path
 from subprocess import SubprocessError, run
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from renku.core import errors
+from renku.core.models.git import GitURL
 
 if TYPE_CHECKING:
     from renku.core.metadata.repository import Commit, Remote, Repository
@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
 
 CLI_GITLAB_ENDPOINT = "repos"
+RENKU_BACKUP_PREFIX = "renku-backup"
 
 
 # TODO: Make sure caching is thread-safe
@@ -101,17 +102,12 @@ def get_cache_directory_for_repository(client, url) -> Path:
     return client.renku_path / client.CACHE / get_full_repository_path(url)
 
 
-def parse_git_url(url: Optional[str]):
+def parse_git_url(url: Optional[str]) -> GitURL:
     """Return parsed git url."""
-    import yagup
-
     if not url:
-        raise errors.GitError("No URL provided.")
+        raise errors.InvalidGitURL("No URL provided.")
 
-    try:
-        return yagup.GitURL.parse(url)
-    except yagup.InvalidURL as e:
-        raise errors.GitError(f"Invalid URL: {url}.") from e
+    return GitURL.parse(url)
 
 
 def have_same_remote(url1, url2) -> bool:
@@ -120,7 +116,7 @@ def have_same_remote(url1, url2) -> bool:
         u1 = parse_git_url(url1)
         u2 = parse_git_url(url2)
 
-        return u1.host == u2.host and u1.path == u2.path
+        return u1.hostname == u2.hostname and u1.path == u2.path
     except (errors.GitError, AttributeError):
         return False
 
@@ -134,9 +130,25 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
     path = pathlib.posixpath.join(CLI_GITLAB_ENDPOINT, path)
 
     credentials = f"renku:{access_token}@" if access_token else ""
-    hostname = deployment_hostname or parsed_remote.host
+    hostname = deployment_hostname or parsed_remote.hostname
 
     return urllib.parse.urljoin(f"https://{credentials}{hostname}", path)
+
+
+def create_backup_remote(repository: "Repository", remote_name: str, url: str) -> Tuple[str, bool, Optional["Remote"]]:
+    """Create a backup for ``remote_name`` and sets its url to ``url``."""
+    backup_remote_name = f"{RENKU_BACKUP_PREFIX}-{remote_name}"
+
+    backup_exists = any(backup_remote_name == r.name for r in repository.remotes)
+    if backup_exists:
+        return backup_remote_name, True, None
+
+    try:
+        remote = repository.remotes.add(name=backup_remote_name, url=url)
+    except errors.GitCommandError:
+        return backup_remote_name, False, None
+    else:
+        return backup_remote_name, False, remote
 
 
 def get_full_repository_path(url: Optional[str]) -> str:
@@ -145,7 +157,7 @@ def get_full_repository_path(url: Optional[str]) -> str:
         return ""
 
     parsed_url = parse_git_url(url)
-    return pathlib.posixpath.join(parsed_url.host, parsed_url.path)
+    return pathlib.posixpath.join(parsed_url.hostname, parsed_url.path)
 
 
 def get_repository_name(url: str) -> str:
@@ -392,26 +404,58 @@ def clone_renku_repository(
     url: str,
     path: Union[Path, str],
     gitlab_token=None,
-    renku_token=None,
     deployment_hostname=None,
-    depth: Optional[int] = 1,
+    depth: Optional[int] = None,
+    install_githooks=False,
+    install_lfs=True,
+    skip_smudge=True,
+    recursive=True,
+    progress=None,
+    config: Optional[dict] = None,
+    raise_git_except=False,
+    checkout_revision=None,
+    use_renku_credentials: bool = False,
+    reuse_existing_repository: bool = False,
 ) -> "Repository":
     """Clone a Renku Repository."""
     parsed_url = parse_git_url(url)
 
-    if parsed_url.host == "localhost":
+    clone_options = None
+    create_backup = False
+
+    if parsed_url.hostname == "localhost":
         absolute_path = Path(parsed_url.path).resolve()
         git_url = str(absolute_path)
-    elif "http" in parsed_url.scheme and gitlab_token:
+    elif parsed_url.scheme in ["http", "https"] and gitlab_token:
         git_url = get_oauth_url(url, gitlab_token)
-    elif "http" in parsed_url.scheme and renku_token:
-        git_url = get_renku_repo_url(url, deployment_hostname=deployment_hostname, access_token=renku_token)
+    elif parsed_url.scheme in ["http", "https"] and use_renku_credentials:
+        clone_options = [f"--config credential.helper='!renku credentials --hostname {parsed_url.hostname}'"]
+        deployment_hostname = deployment_hostname or parsed_url.hostname
+        git_url = get_renku_repo_url(url, deployment_hostname=deployment_hostname, access_token=None)
+        create_backup = True
     else:
         git_url = url
 
-    path = path or tempfile.mkdtemp()
+    repository = clone_repository(
+        git_url,
+        path=path,
+        install_githooks=install_githooks,
+        depth=depth,
+        clean=reuse_existing_repository,
+        install_lfs=install_lfs,
+        skip_smudge=skip_smudge,
+        recursive=recursive,
+        progress=progress,
+        config=config,
+        raise_git_except=raise_git_except,
+        checkout_revision=checkout_revision,
+        clone_options=clone_options,
+    )
 
-    return clone_repository(git_url, path=path, install_githooks=False, depth=depth, clean=True)
+    if create_backup:
+        create_backup_remote(repository=repository, remote_name="origin", url=url)
+
+    return repository
 
 
 def clone_repository(
@@ -423,11 +467,12 @@ def clone_repository(
     recursive=True,
     depth=None,
     progress=None,
-    config=None,
+    config: Optional[dict] = None,
     raise_git_except=False,
     checkout_revision=None,
     no_checkout: bool = False,
     clean: bool = False,
+    clone_options: List[str] = None,
 ) -> "Repository":
     """Clone a Git repository and install Git hooks and LFS."""
     from renku.core.management.githooks import install
@@ -443,7 +488,7 @@ def clone_repository(
         if progress:
             lines = progress.other_lines + progress.error_lines
             error = "".join([f"\n\t{line}" for line in lines if line.strip()])
-            message += f" and error message:\n {error}"
+            message += f" - error message:\n {error}"
 
         raise errors.GitError(message)
 
@@ -486,7 +531,14 @@ def clone_repository(
             os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
 
         return Repository.clone_from(
-            url, path, branch=branch, recursive=recursive, depth=depth, no_checkout=no_checkout, progress=progress
+            url,
+            path,
+            branch=branch,
+            recursive=recursive,
+            depth=depth,
+            no_checkout=no_checkout,
+            progress=progress,
+            clone_options=clone_options,
         )
 
     assert config is None or isinstance(config, dict), f"Config should be a dict not '{type(config)}'"

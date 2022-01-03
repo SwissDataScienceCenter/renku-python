@@ -20,10 +20,6 @@
 import copy
 from uuid import uuid4
 
-from marshmallow import EXCLUDE
-
-from renku.core.models.calamus import JsonLDSchema, dcterms, fields, oa
-
 
 class Annotation:
     """Represents a custom annotation for a research object."""
@@ -41,18 +37,3 @@ class Annotation:
     def generate_id():
         """Generate an id for an annotation."""
         return f"/annotations/{uuid4().hex}"
-
-
-class AnnotationSchema(JsonLDSchema):
-    """Annotation schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = oa.Annotation
-        model = Annotation
-        unknown = EXCLUDE
-
-    id = fields.Id()
-    body = fields.RawJsonLD(oa.hasBody)
-    source = fields.Raw(dcterms.creator)

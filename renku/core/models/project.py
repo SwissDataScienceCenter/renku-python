@@ -21,13 +21,10 @@ from datetime import datetime
 from typing import Dict, List
 from urllib.parse import quote
 
-from marshmallow import EXCLUDE
-
 from renku.core import errors
 from renku.core.metadata.database import persistent
-from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, oa, prov, renku, schema
-from renku.core.models.provenance.agent import Person, PersonSchema
-from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
+from renku.core.models.provenance.agent import Person
+from renku.core.models.provenance.annotation import Annotation
 from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.utils.git import get_git_user
 from renku.core.utils.os import normalize_to_ascii
@@ -154,31 +151,3 @@ class Project(persistent.Persistent):
             existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
 
             self.annotations = existing_metadata
-
-
-class ProjectSchema(JsonLDSchema):
-    """Project Schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [schema.Project, prov.Location]
-        model = Project
-        unknown = EXCLUDE
-
-    agent_version = StringList(schema.agent, missing="pre-0.11.0")
-    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
-    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=False)
-    creator = Nested(schema.creator, PersonSchema, missing=None)
-    date_created = DateTimeList(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
-    description = fields.String(schema.description, missing=None)
-    id = fields.Id(missing=None)
-    immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
-    name = fields.String(schema.name, missing=None)
-    template_id = fields.String(renku.templateId, missing=None)
-    template_metadata = fields.String(renku.templateMetadata, missing=None)
-    template_ref = fields.String(renku.templateReference, missing=None)
-    template_source = fields.String(renku.templateSource, missing=None)
-    template_version = fields.String(renku.templateVersion, missing=None)
-    version = StringList(schema.schemaVersion, missing="1")
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)

@@ -78,10 +78,16 @@ class ConfigManagerMixin:
 
     def load_config(self, config_filter=ConfigFilter.ALL):
         """Loads local, global or both configuration object."""
-        from pkg_resources import resource_filename
+        try:
+            import importlib_resources
+        except ImportError:
+            import importlib.resources as importlib_resources
 
-        config = configparser.ConfigParser()
-        config_files = [resource_filename("renku", "data/defaults.ini")]
+        # NOTE: Use RawConfigParser because ConfigParser does non-standard INI interpolation of some values
+        config = configparser.RawConfigParser()
+        ref = importlib_resources.files("renku.data") / "defaults.ini"
+        with importlib_resources.as_file(ref) as default_ini:
+            config_files = [default_ini]
 
         if config_filter == ConfigFilter.LOCAL_ONLY:
             config_files += [self.local_config_path]

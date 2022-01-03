@@ -58,6 +58,17 @@ from renku.core.utils.metadata import construct_creators
 from renku.core.utils.urls import remove_credentials
 
 
+def _search_datasets(name: str) -> List[str]:
+    """Get all the datasets whose name starts with the given string."""
+    datasets_provenance = DatasetsProvenance()
+    return list(filter(lambda x: x.startswith(name), map(lambda x: x.name, datasets_provenance.datasets)))
+
+
+def search_datasets():
+    """Command to get all the datasets whose name starts with the given string."""
+    return Command().command(_search_datasets).require_migration().with_database()
+
+
 def _list_datasets(format=None, columns=None):
     """List all datasets."""
     datasets_provenance = DatasetsProvenance()
