@@ -17,6 +17,7 @@
 # limitations under the License.
 """Classes to represent inputs/outputs/parameters in a Plan."""
 
+import copy
 import urllib
 from abc import abstractmethod
 from pathlib import PurePosixPath
@@ -182,16 +183,9 @@ class CommandParameter(CommandParameterBase):
 
     def derive(self, plan_id: str) -> "CommandParameter":
         """Create a new ``CommandParameter`` that is derived from self."""
-        return CommandParameter(
-            default_value=self.default_value,
-            description=self.description,
-            id=CommandParameter.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix),
-            name=self.name,
-            position=self.position,
-            prefix=self.prefix,
-            derived_from=self.id,
-            postfix=self.postfix,
-        )
+        parameter = copy.copy(self)
+        parameter.id = CommandParameter.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix)
+        return parameter
 
 
 class CommandInput(CommandParameterBase):
@@ -239,18 +233,9 @@ class CommandInput(CommandParameterBase):
 
     def derive(self, plan_id: str) -> "CommandInput":
         """Create a new ``CommandInput`` that is derived from self."""
-        return CommandInput(
-            default_value=self.default_value,
-            description=self.description,
-            id=CommandInput.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix),
-            mapped_to=self.mapped_to,
-            name=self.name,
-            position=self.position,
-            prefix=self.prefix,
-            encoding_format=self.encoding_format,
-            derived_from=self.id,
-            postfix=self.postfix,
-        )
+        parameter = copy.copy(self)
+        parameter.id = CommandInput.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix)
+        return parameter
 
 
 class CommandOutput(CommandParameterBase):
@@ -303,18 +288,9 @@ class CommandOutput(CommandParameterBase):
 
     def derive(self, plan_id: str) -> "CommandOutput":
         """Create a new ``CommandOutput`` that is derived from self."""
-        return CommandOutput(
-            default_value=self.default_value,
-            description=self.description,
-            id=CommandOutput.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix),
-            mapped_to=self.mapped_to,
-            name=self.name,
-            position=self.position,
-            prefix=self.prefix,
-            encoding_format=self.encoding_format,
-            derived_from=self.id,
-            postfix=self.postfix,
-        )
+        parameter = copy.copy(self)
+        parameter.id = CommandOutput.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix)
+        return parameter
 
 
 class ParameterMapping(CommandParameterBase):
