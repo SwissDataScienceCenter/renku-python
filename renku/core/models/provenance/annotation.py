@@ -31,7 +31,7 @@ class Annotation:
 
     def copy(self):
         """Return a copy of this annotation."""
-        return copy.copy(self)
+        return copy.deepcopy(self)
 
     @staticmethod
     def generate_id():
