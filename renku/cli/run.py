@@ -59,6 +59,14 @@ Basic usage is:
    actually redirected. Renku specific messages such as errors get printed to
    the terminal as usual and don't get redirected.
 
+.. cheatsheet::
+   :group: Running
+   :command: $ renku run --name <name> <command> [--input <in_file>...] [--output <out_file>...]
+   :description: Execute a <command> with Renku tracking inputs and outputs. Input and output files
+                 are automatically detected from the command string. Creates a workflow template
+                 named <name>. With --input and/or --output: Manually specify input or output files to track.
+   :extended:
+
 Detecting input paths
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -127,6 +135,12 @@ those paths. Therefore:
 
    You can specify the ``--no-output`` option to force tracking of such
    an execution.
+
+.. cheatsheet::
+   :group: Running
+   :command: $ renku run --name <name> <command> --no-output
+   :description: Run a <command> that produces no output.
+   :extended:
 
 .. topic:: Specifying outputs explicitly (``--output``)
 
