@@ -73,6 +73,7 @@ from renku.cli.clone import clone
 from renku.cli.config import config
 from renku.cli.dataset import dataset
 from renku.cli.doctor import doctor
+from renku.cli.env import env
 from renku.cli.exception_handler import IssueFromTraceback
 from renku.cli.githooks import githooks as githooks_command
 from renku.cli.graph import graph
@@ -209,6 +210,7 @@ cli.add_command(clone)
 cli.add_command(config)
 cli.add_command(dataset)
 cli.add_command(doctor)
+cli.add_command(env)
 cli.add_command(githooks_command)
 cli.add_command(graph)
 cli.add_command(init_command)
