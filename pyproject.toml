@@ -59,7 +59,7 @@ black = { version = "==21.9b0", optional = true }
 calamus = "<0.4,>=0.3.13"
 check-manifest = { version = "<0.48,>=0.37", optional = true }
 circus = { version = "==0.17.1", optional = true }
-click = "<8.0.2,>=7.0"
+click = "<8.0.2,>=8.0"
 click-option-group = "<0.6.0,>=0.5.2"
 click-plugins = "==1.1.1"
 coverage = { version = "<6.2,>=4.5.3", optional = true }
