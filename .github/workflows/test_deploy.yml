@@ -373,11 +373,11 @@ jobs:
       - uses: actions/cache@master
         id: network-cache
         with:
-          path: tests/cassettes
-          key: network-cache-2-${{ needs.network-cache-key.outputs.key }}-${{ github.job }}
+          path: cassettes
+          key: network-cache-2-${{ needs.network-cache-key.outputs.key }}-${{ hashFiles('tests') }}-${{ github.job }}
       - name: TODO cache debug hit
         if: steps.network-cache.outputs.cache-hit == 'true'
-        run: echo "CACHE HIT `ls -R tests/cassettes`"
+        run: echo "CACHE HIT `ls -R cassettes`"
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -541,11 +541,11 @@ jobs:
       - uses: actions/cache@master
         id: network-cache
         with:
-          path: tests/cassettes
-          key: network-cache-2-${{ needs.network-cache-key.outputs.key }}-${{ github.job }}
+          path: cassettes
+          key: network-cache-2-${{ needs.network-cache-key.outputs.key }}-${{ hashFiles('tests') }}-${{ github.job }}
       - name: TODO cache debug hit
         if: steps.network-cache.outputs.cache-hit == 'true'
-        run: echo "CACHE HIT `ls -R tests/cassettes`"
+        run: echo "CACHE HIT `ls -R cassettes`"
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -597,11 +597,11 @@ jobs:
       - uses: actions/cache@master
         id: network-cache
         with:
-          path: tests/cassettes
-          key: network-cache-2-${{ needs.network-cache-key.outputs.key }}-${{ github.job }}
+          path: cassettes
+          key: network-cache-2-${{ needs.network-cache-key.outputs.key }}-${{ hashFiles('tests') }}-${{ github.job }}
       - name: TODO cache debug hit
         if: steps.network-cache.outputs.cache-hit == 'true'
-        run: echo "CACHE HIT `ls -R tests/cassettes`"
+        run: echo "CACHE HIT `ls -R cassettes`"
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -676,11 +676,11 @@ jobs:
       - uses: actions/cache@master
         id: network-cache
         with:
-          path: tests/cassettes
-          key: network-cache-2-${{ needs.network-cache-key.outputs.key }}-${{ github.job }}
+          path: cassettes
+          key: network-cache-2-${{ needs.network-cache-key.outputs.key }}-${{ hashFiles('tests') }}-${{ github.job }}
       - name: TODO cache debug hit
         if: steps.network-cache.outputs.cache-hit == 'true'
-        run: echo "CACHE HIT `ls -R tests/cassettes`"
+        run: echo "CACHE HIT `ls -R cassettes`"
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false

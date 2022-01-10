@@ -58,7 +58,7 @@ def vcr_config():
 @pytest.fixture(scope="module")
 def vcr_cassette_dir(request):
     """Base directory to store cassettes for each test file (module)."""
-    relative_path = Path(request.node.fspath).relative_to(os.getcwd())
+    relative_path = Path(request.node.fspath).relative_to(request.config.rootdir)
     parts = Path(relative_path).parts
     # cassettes/test-file-path-in-tests-directory/test-file-name-with-no-extension/
     return os.path.join("cassettes", os.sep.join(parts[1:-1]), relative_path.stem)
