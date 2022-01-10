@@ -153,15 +153,23 @@ jobs:
           cat <(md5sum cheatsheet.tex) <(md5sum sdsc_cheatsheet.cls) > ../cheatsheet_hash_new
           cd ../..
       - name: Publish cheatsheet if changed
-        if:  ${{ hashFiles('docs/cheatsheet_hash')}} != ${{hashFiles('docs/cheatsheet_hash_new') }}
+        id: publish
+        if:  ${{ hashFiles('docs/cheatsheet_hash') != hashFiles('docs/cheatsheet_hash_new') }}
         run: |
+          cat docs/cheatsheet_hash
+          cat docs/cheatsheet_hash_new
           cd docs
           rm cheatsheet_hash
           mv cheatsheet_hash_new cheatsheet_hash
           cp latex/cheatsheet.pdf _static/cheatsheet/
           git add cheatsheet_hash _static/cheatsheet/cheatsheet.pdf
           git commit -m "chore: Update cheatsheet"
-          git push
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        if: steps.publish.outcome != 'Skipped' && success()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
 
   test-distro:
     runs-on: ubuntu-latest
