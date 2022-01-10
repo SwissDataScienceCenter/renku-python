@@ -344,7 +344,7 @@ def test_workflow_export_command(runner, project):
 
     workflow = cwlgen.load_document("run1.cwl")
     assert workflow.baseCommand[0] == "touch"
-    assert len(workflow.inputs) == 3
+    assert len(workflow.inputs) == 2
     assert len(workflow.outputs) == 1
 
 
