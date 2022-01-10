@@ -72,12 +72,8 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
+        if "project_id" in self.context or "user_id" not in self.user_data:
+            # use regular flow using cache
+            return result_response(self.RESPONSE_SERIALIZER, self.execute_op())
 
-        return result_response(self.RESPONSE_SERIALIZER, self.execute_op())
-
-        # TODO: Enable this once the problem with anonymous access in gitlab provider is resolved
-        # if "project_id" in self.context:
-        #     # use regular flow using cache
-        #     return result_response(self.RESPONSE_SERIALIZER, self.execute_op())
-        #
-        # return result_response(self.RESPONSE_SERIALIZER, self._fast_op_without_cache())
+        return result_response(self.RESPONSE_SERIALIZER, self._fast_op_without_cache())

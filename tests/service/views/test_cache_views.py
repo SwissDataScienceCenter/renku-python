@@ -810,7 +810,7 @@ def test_cache_gets_synchronized(
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_migrations_remote_anonymous_0_9(svc_client, it_remote_public_repo_url):
+def test_check_migrations_remote_anonymous(svc_client, it_remote_public_repo_url):
     """Test anonymous users can check for migration of public projects."""
     response = svc_client.get(
         "/1.0/cache.migrations_check", query_string={"git_url": it_remote_public_repo_url}, headers={}
