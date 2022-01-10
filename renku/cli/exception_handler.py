@@ -68,6 +68,7 @@ _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=T
 
 HAS_SENTRY = None
 SENTRY_DSN = os.getenv("SENTRY_DSN")
+SENTRY_SAMPLERATE = float(os.getenv("SENTRY_SAMPLE_RATE", 0.2))
 
 if SENTRY_DSN:
     try:
@@ -118,7 +119,9 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         if HAS_SENTRY:
             import sentry_sdk
 
-            sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"))
+            sentry_sdk.init(
+                dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"), traces_sample_rate=SENTRY_SAMPLERATE
+            )
 
     def main(self, *args, **kwargs):
         """Catch all exceptions."""
