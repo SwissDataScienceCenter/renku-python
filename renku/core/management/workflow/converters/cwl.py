@@ -287,22 +287,6 @@ class CWLExporter(IWorkflowConverter):
             )
         )
 
-        # TODO: ".git" is not required once https://github.com/SwissDataScienceCenter/renku-python/issues/1043 is done
-        # because we won't need the git history to correctly load metadata. The following two statements can be removed.
-        workdir_req.listing.append(
-            cwlgen.InitialWorkDirRequirement.Dirent(
-                entry="$(inputs.input_git_directory)", entryname=".git", writable=False
-            )
-        )
-        tool_object.inputs.append(
-            cwlgen.CommandInputParameter(
-                "input_git_directory",
-                param_type="Directory",
-                input_binding=None,
-                default={"location": (basedir / ".git").resolve().as_uri(), "class": "Directory"},
-            )
-        )
-
         if workdir_req.listing:
             tool_object.requirements.append(workdir_req)
         if jsrequirement:
