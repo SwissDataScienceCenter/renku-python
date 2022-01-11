@@ -307,7 +307,6 @@ markers = [
     "migration: mark a test as a migration test.",
     "shelled: mark a test as a shelled test.",
     "serial: mark a test that can not be run in parallel",
-    "vcr: mark a test to record/replay network accesses."
 ]
 
 [tool.coverage.run]

@@ -52,7 +52,7 @@ def global_config_dir(monkeypatch, tmpdir):
 @pytest.fixture(scope="session")
 def vcr_config():
     """Common configuration for all vcr tests."""
-    return {"filter_headers": ["authorization"], "ignore_localhost": True, "record_mode": "once"}
+    return {"filter_headers": ["authorization"], "ignore_localhost": True, "record_mode": "new_episodes"}
 
 
 @pytest.fixture(scope="module")

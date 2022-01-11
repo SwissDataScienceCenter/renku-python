@@ -9,17 +9,8 @@ on:
     - renku/core/commands/providers/*.py
 
 jobs:
-  network-cache-key:
-    runs-on: ubuntu-latest
-    outputs:
-      key: ${{ steps.date-year-week.outputs.year-week }}
-    steps:
-      - id: date-year-week
-        run: echo "::set-output name=year-week::$(date '+%Y-%V')"
-
   test-linux-integration-publish:
     runs-on: ubuntu-latest
-    needs: [network-cache-key]
     strategy:
       max-parallel: 4
       matrix:
@@ -39,14 +30,6 @@ jobs:
         python -m pip install -e .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
-    - uses: actions/cache@master
-      id: network-cache
-      with:
-        path: tests/cassettes
-        key: network-cache-${{ needs.network-cache-key.outputs.key }}-${{ github.job }}
-    - name: TODO cache debug hit
-      if: steps.network-cache.outputs.cache-hit == 'true'
-      run: echo "CACHE HIT `ls -R tests/cassettes`"
     - name: Test with pytest
       env:
         DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
@@ -57,7 +40,6 @@ jobs:
 
   test-macos-integration-publish:
     runs-on: macos-latest
-    needs: [network-cache-key]
     strategy:
       max-parallel: 4
       matrix:
@@ -81,14 +63,6 @@ jobs:
         python -m pip install -e .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
-    - uses: actions/cache@master
-      id: network-cache
-      with:
-        path: tests/cassettes
-        key: network-cache-${{ needs.network-cache-key.outputs.key }}-${{ github.job }}
-    - name: TODO cache debug hit
-      if: steps.network-cache.outputs.cache-hit == 'true'
-      run: echo "CACHE HIT `ls -R tests/cassettes`"
     - name: Test with pytest
       env:
         DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
