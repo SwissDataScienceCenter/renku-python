@@ -33,6 +33,7 @@ from BTrees.Length import Length
 from BTrees.OOBTree import BTree, OOBucket, OOSet, OOTreeSet
 from persistent import GHOST, UPTODATE
 from persistent.interfaces import IPickleCache
+from zc.relation.catalog import Catalog
 from ZODB.utils import z64
 from zope.interface import implementer
 from zope.interface.interface import InterfaceClass
@@ -365,7 +366,7 @@ class Database:
 
     def _store_object(self, object: persistent.Persistent):
         data = self._writer.serialize(object)
-        compress = False if isinstance(object, (RenkuOOBTree, OOBucket, Project, Index)) else True
+        compress = False if isinstance(object, (Catalog, RenkuOOBTree, OOBucket, Project, Index)) else True
         self._storage.store(filename=self._get_filename_from_oid(object._p_oid), data=data, compress=compress)
 
         self._cache[object._p_oid] = object
