@@ -88,7 +88,7 @@ jinja2 = { version = "<3.0.2,>=2.10.3,>=2.11.3" }
 marshmallow = { version = "==3.13.0", optional = true }
 ndg-httpsclient = "==0.5.1"
 networkx = "<2.7,>=2.6.0"
-numpy = "<1.21.0,>=1.20.0"
+numpy = ">=1.20.0,<1.22.0"
 packaging = "<22.0,>=21.3"
 pathspec = "<1.0.0,>=0.8.0"
 patool = "==1.12"
