@@ -7,7 +7,8 @@ on:
     tags:
       - "v*.*.*"
 env:
-  CACHE_PREFIX: "v2"
+  DEPENDENCY_CACHE_PREFIX: "v2"
+  NETWORK_CACHE_PREFIX: "v1"
 jobs:
   set-matrix:
     runs-on: ubuntu-latest
@@ -26,6 +27,7 @@ jobs:
           else
               echo "::set-output name=matrix::{\"python-version\": [\"3.7\"]}"
           fi
+
   cleanup-runs:
     runs-on: ubuntu-latest
     steps:
@@ -33,6 +35,14 @@ jobs:
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
     if: "!startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, github.event.repository.default_branch)"
+
+  year-week:
+    runs-on: ubuntu-latest
+    outputs:
+      date: ${{ steps.year-week.outputs.date }}
+    steps:
+      - id: year-week
+        run: echo "::set-output name=date::$(date '+%Y-%V')"
 
   style-check:
     runs-on: ubuntu-latest
@@ -44,21 +54,21 @@ jobs:
         with:
           python-version: "3.8"
       - uses: actions/cache@master
-        id: cache
+        id: dependency-cache
         with:
           path: |
             ${{ env.pythonLocation }}
             renku/templates
-          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           make download-templates
           python -m pip install .[all]
       - name: Install renku into cache
-        if: steps.cache.outputs.cache-hit == 'true'
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
@@ -83,21 +93,21 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - uses: actions/cache@master
-        id: cache
+        id: dependency-cache
         with:
           path: |
             ${{ env.pythonLocation }}
             renku/templates
-          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           make download-templates
           python -m pip install .[all]
       - name: Install renku into cache
-        if: steps.cache.outputs.cache-hit == 'true'
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
@@ -183,21 +193,21 @@ jobs:
         with:
           python-version: "3.7"
       - uses: actions/cache@master
-        id: cache
+        id: dependency-cache
         with:
           path: |
             ${{ env.pythonLocation }}
             renku/templates
-          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           make download-templates
           pip install .[all]
       - name: Install renku into cache
-        if: steps.cache.outputs.cache-hit == 'true'
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: python -m pip install --no-deps .
       - name: Build Package
         env:
@@ -226,21 +236,21 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
       - uses: actions/cache@master
-        id: cache
+        id: dependency-cache
         with:
           path: |
             ${{ env.pythonLocation }}
             renku/templates
-          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           make download-templates
           python -m pip install .[all]
       - name: Install renku into cache
-        if: steps.cache.outputs.cache-hit == 'true'
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
@@ -281,21 +291,21 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
       - uses: actions/cache@master
-        id: cache
+        id: dependency-cache
         with:
           path: |
             ${{ env.pythonLocation }}
             renku/templates
-          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           make download-templates
           python -m pip install .[all]
       - name: Install renku into cache
-        if: steps.cache.outputs.cache-hit == 'true'
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
@@ -342,21 +352,21 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
       - uses: actions/cache@master
-        id: cache
+        id: dependency-cache
         with:
           path: |
             ${{ env.pythonLocation }}
             renku/templates
-          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           make download-templates
           python -m pip install .[all]
       - name: Install renku into cache
-        if: steps.cache.outputs.cache-hit == 'true'
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
@@ -403,21 +413,21 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
       - uses: actions/cache@master
-        id: cache
+        id: dependency-cache
         with:
           path: |
             ${{ env.pythonLocation }}
             renku/templates
-          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           make download-templates
           python -m pip install .[all]
       - name: Install renku into cache
-        if: steps.cache.outputs.cache-hit == 'true'
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
@@ -593,7 +603,7 @@ jobs:
 
   test-linux-integration:
     runs-on: ubuntu-latest
-    needs: [set-matrix]
+    needs: [set-matrix, year-week]
     strategy:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
@@ -611,26 +621,31 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
       - uses: actions/cache@master
-        id: cache
+        id: dependency-cache
         with:
           path: |
             ${{ env.pythonLocation }}
             renku/templates
-          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           make download-templates
           python -m pip install .[all]
       - name: Install renku into cache
-        if: steps.cache.outputs.cache-hit == 'true'
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
+      - uses: actions/cache@master
+        id: network-cache
+        with:
+          path: cassettes
+          key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -664,7 +679,7 @@ jobs:
 
   test-linux-integration-service:
     runs-on: ubuntu-latest
-    needs: [set-matrix]
+    needs: [set-matrix, year-week]
     strategy:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
@@ -682,26 +697,31 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
       - uses: actions/cache@master
-        id: cache
+        id: dependency-cache
         with:
           path: |
             ${{ env.pythonLocation }}
             renku/templates
-          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           make download-templates
           python -m pip install .[all]
       - name: Install renku into cache
-        if: steps.cache.outputs.cache-hit == 'true'
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
+      - uses: actions/cache@master
+        id: network-cache
+        with:
+          path: cassettes
+          key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
