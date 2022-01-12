@@ -1,0 +1,31 @@
+\documentclass[12pt]{sdsc_cheatsheet}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper, left=10mm, right=10mm,head=48mm,foot=1cm,bottom=2.5cm]{geometry}
+\usepackage[english]{babel}
+\usepackage{hyperref}
+\errorcontextlines=100
+
+\graphicspath{ {./} }
+
+\title{SDSC cheatsheet}
+\author{Ralf Grubenmann}
+\date{January 2022}
+
+\headersfooters{RENKU CHEATSHEET}
+
+\setlength\columnsep{20pt}
+
+\definefonts
+
+\definebackground{Background.pdf}
+
+\begin{document}
+
+\begin{multicols*}{2}
+[]
+
+<%= body %>
+
+\end{multicols*}
+
+\end{document}

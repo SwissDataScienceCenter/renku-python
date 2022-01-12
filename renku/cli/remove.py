@@ -20,6 +20,13 @@
 Removing a file that belongs to a dataset will update its metadata. It also
 will attempt to update tracking information for files stored in an external
 storage (using Git LFS).
+
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku rm <path>...
+   :description: Safely delete files from a project.
+   :extended:
+
 """
 
 import click
