@@ -31,6 +31,12 @@ Creating an empty dataset inside a Renku project:
     $ renku dataset create my-dataset
     Creating a dataset ... OK
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset create <dataset>
+   :description: Create a new dataset.
+   :extended:
+
 You can pass the following options to this command to set various metadata for
 the dataset.
 
@@ -77,6 +83,12 @@ Listing all datasets:
     --------  -------------  -------------  ---------
     0ad1cb9a  some-dataset   Some Dataset
     9436e36c  my-dataset     My Dataset
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset ls
+   :description: List all datasets in the project.
+   :extended:
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -129,6 +141,13 @@ Deleting a dataset:
     OK
 
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset rm <dataset>
+   :description: Remove a dataset.
+   :extended:
+
+
 Working with data
 ~~~~~~~~~~~~~~~~~
 
@@ -141,6 +160,13 @@ Adding data to the dataset:
 .. code-block:: console
 
     $ renku dataset add my-dataset http://data-url
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset add <dataset> <url>
+   :description: Add data from <url> to a dataset. <url> can be a local
+                 file path, an http(s) address or a Git git+http or git+ssh repository.
+   :extended:
 
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
@@ -206,6 +232,14 @@ will yield:
           new-subdir/
             datafile
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset add <dataset> --source <path>
+             [--destination <rel-path>] <git-url>
+   :description: Add only data in <path> from Git. With --destination:
+                 location the data is copied to.
+   :extended:
+
 To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
 reference in the remote Git repository.
@@ -237,6 +271,12 @@ updated to ensure consistency between the remote and local versions. Due to
 this limitation, the ``--include`` and ``--exclude`` flags are not compatible
 with those datasets. Modifying those datasets locally will prevent them from
 being updated.
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset update <dataset>
+   :description: Update files in a dataset based on their source.
+   :extended:
 
 The update command also checks for file changes in the project and updates
 datasets' metadata accordingly.
@@ -270,6 +310,13 @@ point in time. A tag can be added like this:
 
     $ renku dataset tag my-dataset 1.0 -d "Version 1.0 tag"
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset tag <dataset> <tag> [-d <desc>]
+   :description: Add a tag to the current version of the dataset, with
+                 description <desc>.
+   :extended:
+
 A list of all tags can be seen by running:
 
 .. code-block:: console
@@ -279,12 +326,24 @@ A list of all tags can be seen by running:
     -------------------  ------  ---------------  ----------  ----------------
     2020-09-19 17:29:13  1.0     Version 1.0 tag  my-dataset  6c19a8d31545b...
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset ls-tags <dataset>
+   :description: List all tags for a dataset.
+   :extended:
+
 
 A tag can be removed with:
 
 .. code-block:: console
 
     $ renku dataset rm-tags my-dataset 1.0
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset rm-tags <dataset> <tags...>
+   :description: Remove tags from a dataset.
+   :extended:
 
 
 Importing data from other Renku projects:
@@ -324,6 +383,13 @@ or ``doi:10.5281/zenodo.3352150``) and full URLs (e.g.
 ``http://zenodo.org/record/3352150``). A tag with the remote version of the
 dataset is automatically created.
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset import <uri>
+   :description: Import a dataset. <uri> can be a Renku, Zenodo or Dataverse
+                 URL or DOI.
+   :extended:
+
 Exporting data to an external provider:
 
 .. code-block:: console
@@ -335,6 +401,13 @@ allowing for publication later on. If the dataset has any tags set, you
 can chose if the repository `HEAD` version or one of the tags should be
 exported. The remote version will be set to the local tag that is being
 exported.
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset export <dataset> <provider>
+   :description: Export the dataset <dataset> to <provider>. Providers:
+                 Zenodo, Dataverse.
+   :extended:
 
 To export to a Dataverse provider you must pass Dataverse server's URL and
 the name of the parent dataverse where the dataset will be exported to.
@@ -361,6 +434,12 @@ Listing all files in the project associated with a dataset.
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1  *
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file2
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3  *
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset ls-files
+   :description: List all dataset files in project.
+   :extended:
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -397,6 +476,12 @@ Unlink a file from a dataset:
 
     $ renku dataset unlink my-dataset --include file1
     OK
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset unlink <dataset> [--include <path|pattern>]
+   :description: Remove files from a dataset.
+   :extended:
 
 Unlink all files within a directory from a dataset:
 

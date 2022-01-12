@@ -76,6 +76,14 @@ In this situation, you can do effectively three things:
 .. note:: If there were uncommitted changes then the command fails.
    Check :program:`git status` to see details.
 
+.. cheatsheet::
+   :group: Running
+   :command: $ renku update [--all] [<path>...]
+   :description: Update outdated output files created by renku run. With
+                 <path>'s: Only recreate these files. With --all: Update
+                 all outdated output files.
+   :extended:
+
 Pre-update checks
 ~~~~~~~~~~~~~~~~~
 

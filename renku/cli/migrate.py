@@ -38,6 +38,12 @@ by running
 
     $ renku migrate -c
 
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku migrate
+   :description: Migrate old metadata to the current Renku version.
+   :extended:
+
 """
 import json
 import os

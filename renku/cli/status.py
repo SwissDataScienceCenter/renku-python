@@ -40,6 +40,12 @@ outdated and need an update, instead of checking all inputs and outputs.
 The paths mentioned in the output are made relative to the current directory
 if you are working in a subdirectory (this is on purpose, to help
 cutting and pasting to other commands).
+
+.. cheatsheet::
+   :group: Running
+   :command: $ renku status
+   :description: The the status of generated output files in the project.
+   :extended:
 """
 
 import click

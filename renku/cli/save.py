@@ -32,6 +32,13 @@ If you have local modification to files, you can save them using
 .. warning:: The username and password for renku save are your gitlab
    user/password, not your renkulab login!
 
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku save [-m <message>]
+   :description: Save (commit) and push all local changes. with optional
+                 message.
+   :extended:
+
 You can additionally supply a message that describes the changes that you
 made by using the ``-m`` or ``--message`` parameter followed by your
 message.

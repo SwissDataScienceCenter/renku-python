@@ -87,6 +87,8 @@ spec:
               value: {{ $.Values.logLevel }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
+            - name: SENTRY_SAMPLE_RATE
+              value: {{ $.Values.sentry.sample_rate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             - name: DEBUG_MODE
@@ -151,6 +153,8 @@ spec:
               value: {{ $.Values.logLevel }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
+            - name: SENTRY_SAMPLE_RATE
+              value: {{ $.Values.sentry.sample_rate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
@@ -190,6 +194,8 @@ spec:
               value: {{ $.Values.logLevel }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
+            - name: SENTRY_SAMPLE_RATE
+              value: {{ $.Values.sentry.sample_rate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
@@ -221,6 +227,8 @@ spec:
               value: {{ $.Values.cleanupInterval | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
+            - name: SENTRY_SAMPLE_RATE
+              value: {{ $.Values.sentry.sample_rate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
       {{- with $.Values.nodeSelector }}
