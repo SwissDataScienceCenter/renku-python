@@ -58,6 +58,7 @@ Windows:
 
 If in doubt where to look for the configuration file, you can display its path
 by running ``renku --global-config-path``.
+
 """
 import os
 import sys
