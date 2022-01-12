@@ -43,6 +43,8 @@ and who is affected.
 1. Install ``Sentry-SDK`` with ``python -m pip install sentry-sdk``;
 2. Set environment variable
    ``SENTRY_DSN=https://<key>@sentry.<domain>/<project>``.
+3. Set the environment variable ``SENTRY_SAMPLE_RATE=0.2``. This would track
+   20% of all requests in Sentry performance monitoring. Set to 0 to disable.
 
 .. warning:: User information might be sent to help resolving the problem.
    If you are not using your own Sentry instance you should inform users
@@ -68,6 +70,7 @@ _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=T
 
 HAS_SENTRY = None
 SENTRY_DSN = os.getenv("SENTRY_DSN")
+SENTRY_SAMPLERATE = float(os.getenv("SENTRY_SAMPLE_RATE", 0.2))
 
 if SENTRY_DSN:
     try:
@@ -118,7 +121,9 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         if HAS_SENTRY:
             import sentry_sdk
 
-            sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"))
+            sentry_sdk.init(
+                dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"), traces_sample_rate=SENTRY_SAMPLERATE
+            )
 
     def main(self, *args, **kwargs):
         """Catch all exceptions."""
