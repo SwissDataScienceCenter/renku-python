@@ -61,11 +61,23 @@ def _get_argument_type(value):
     """Get the type of a command line argument."""
     type_ = "string"
 
-    try:
-        value = int(value)
+    if isinstance(value, float):
+        type_ = "float"
+    elif isinstance(value, int):
         type_ = "int"
-    except ValueError:
-        pass
+    else:
+        try:
+            casted_value = float(value)
+
+            if "." not in value:
+                type_ = "int"
+                casted_value = int(value)
+            else:
+                type_ = "float"
+
+            value = casted_value
+        except ValueError:
+            pass
 
     return value, type_
 
