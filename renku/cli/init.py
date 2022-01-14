@@ -311,12 +311,16 @@ def init(
     from renku.core.commands.init import init_command
     from renku.core.utils.git import check_global_git_user_is_configured
 
+    if template_ref and not template_source:
+        raise errors.ParameterError("Can't use '--template-ref' without specifying '--template-source'")
+    if describe:
+        raise errors.ParameterError("'-d/--describe' is deprecated: Use 'renku template show' instead.")
+    if list_templates:
+        raise errors.ParameterError("'-l/--list-templates' is deprecated: Use 'renku template ls' instead.")
+
     data_dir = resolve_data_directory(data_dir, path)
 
     check_global_git_user_is_configured()
-
-    if template_ref and not template_source:
-        raise errors.ParameterError("Can't use '--template-ref' without specifying '--template-source'")
 
     custom_metadata = None
     if metadata:
@@ -336,15 +340,10 @@ def init(
         template_ref=template_ref,
         metadata=parameters,
         custom_metadata=custom_metadata,
-        list_templates=list_templates,
         force=force,
-        describe=describe,
         data_dir=data_dir,
         initial_branch=initial_branch,
     )
-
-    if list_templates:
-        return
 
     # Install git hooks
     from .githooks import install

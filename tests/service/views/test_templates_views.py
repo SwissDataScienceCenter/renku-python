@@ -25,9 +25,9 @@ from time import sleep
 
 import pytest
 
-from renku.core.commands.init import fetch_template_from_git, read_template_manifest
 from renku.core.metadata.repository import Repository
 from renku.core.utils.os import normalize_to_ascii
+from renku.core.utils.templates import fetch_template_from_git, read_template_manifest
 from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
 from tests.utils import retry_failed
 

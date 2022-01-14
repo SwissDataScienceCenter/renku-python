@@ -24,15 +24,15 @@ from tempfile import TemporaryDirectory
 import pytest
 
 from renku.core import errors
-from renku.core.commands.init import (
+from renku.core.commands.init import create_from_template
+from renku.core.management.config import RENKU_HOME
+from renku.core.management.migrate import migrate
+from renku.core.utils.templates import (
     TEMPLATE_MANIFEST,
-    create_from_template,
     fetch_template_from_git,
     read_template_manifest,
     validate_template,
 )
-from renku.core.management.config import RENKU_HOME
-from renku.core.management.migrate import migrate
 from tests.utils import raises
 
 try:
@@ -362,7 +362,7 @@ def test_update_from_template_with_new_variable(
 
     # NOTE: Add new template variable
     manifest[0]["variables"]["__new_arbitrary_template_value__"] = None
-    fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
+    fetch_template = mocker.patch("renku.core.utils.templates.fetch_template")
     fetch_template.return_value = (manifest, manifest_path, "renku", "0.0.2")
 
     for p in template_files:

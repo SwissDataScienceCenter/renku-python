@@ -17,8 +17,6 @@
 # limitations under the License.
 """Client for handling a local repository."""
 
-import hashlib
-import json
 import shutil
 from contextlib import contextmanager
 from uuid import uuid4
@@ -38,11 +36,12 @@ from renku.core.models.enums import ConfigFilter
 from renku.core.models.project import Project
 from renku.core.utils import communication
 from renku.core.utils.git import default_path
+from renku.core.utils.os import hash_file
+from renku.core.utils.templates import TEMPLATE_KEEP_FILES, write_template_checksum
 
 DEFAULT_DATA_DIR = "data"
 
 INIT_APPEND_FILES = [".gitignore"]
-INIT_KEEP_FILES = ["readme.md", "readme.rst"]
 
 
 def path_converter(path):
@@ -336,7 +335,7 @@ class RepositoryApiMixin(GitCore):
                 if destination.exists() and str(templated_rel_path).lower() in INIT_APPEND_FILES:
                     communication.echo(f"Appending to file {templated_rel_path} ...")
                     destination.write_text(destination.read_text() + "\n" + rendered_content)
-                elif not destination.exists() or str(templated_rel_path).lower() not in INIT_KEEP_FILES:
+                elif not destination.exists() or str(templated_rel_path).lower() not in TEMPLATE_KEEP_FILES:
                     if destination.exists():
                         communication.echo(f"Overwriting file {templated_rel_path} ...")
                     else:
@@ -344,7 +343,7 @@ class RepositoryApiMixin(GitCore):
 
                     destination.write_text(rendered_content)
 
-                checksums[str(rel_path)] = self._content_hash(destination)
+                checksums[str(rel_path)] = hash_file(destination)
             except IsADirectoryError:
                 destination.mkdir(parents=True, exist_ok=True)
             except TypeError:
@@ -352,16 +351,7 @@ class RepositoryApiMixin(GitCore):
 
         self.template_checksums.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(self.template_checksums, "w") as checksum_file:
-            json.dump(checksums, checksum_file)
-
-    def _content_hash(self, path):
-        """Calculate the sha256 hash of a file."""
-        sha256_hash = hashlib.sha256()
-        with open(str(path), "rb") as f:
-            for byte_block in iter(lambda: f.read(4096), b""):
-                sha256_hash.update(byte_block)
-        return sha256_hash.hexdigest()
+        write_template_checksum(self, checksums)
 
 
 DATABASE_METADATA_PATH = [

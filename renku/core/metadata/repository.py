@@ -181,7 +181,8 @@ class BaseRepository:
         self.run_git_command("checkout", reference)
 
     def clean(self):
-        """Remove all untracked files."""
+        """Remove all untracked files and reset the repo."""
+        self.reset(hard=True)
         self.run_git_command("clean", "-xdff")
 
     def fetch(

@@ -17,12 +17,15 @@
 # limitations under the License.
 """OS utility functions."""
 
+import hashlib
 import os
 import re
 from pathlib import Path
 from typing import Generator, List, Optional, Union
 
 from renku.core import errors
+
+BLOCK_SIZE = 4096
 
 
 def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
@@ -124,3 +127,28 @@ def delete_file(path: Union[Path, str], ignore_errors: bool = True):
     except OSError:
         if not ignore_errors:
             raise
+
+
+def hash_file(path: Union[Path, str]) -> str:
+    """Calculate the sha256 hash of a file."""
+    sha256_hash = hashlib.sha256()
+
+    with open(path, "rb") as f:
+        for byte_block in iter(lambda: f.read(BLOCK_SIZE), b""):
+            sha256_hash.update(byte_block)
+
+    return sha256_hash.hexdigest()
+
+
+def hash_str(content: str):
+    """Calculate the sha256 hash of a string."""
+    sha256_hash = hashlib.sha256()
+
+    content_bytes = content.encode("utf-8")
+
+    blocks = (len(content_bytes) - 1) // BLOCK_SIZE + 1
+    for i in range(blocks):
+        byte_block = content_bytes[i * BLOCK_SIZE : (i + 1) * BLOCK_SIZE]
+        sha256_hash.update(byte_block)
+
+    return sha256_hash.hexdigest()

@@ -54,7 +54,7 @@ class StandardOutput(CommunicationCallback):
         with CommunicationCallback.lock:
             print(msg, file=sys.stderr)
 
-    def confirm(self, msg, abort=False, warning=False):
+    def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action."""
         return False
 
@@ -125,10 +125,10 @@ class ClickCallback(StandardOutput):
         """Return True if communicator provides a direct prompt to users."""
         return True
 
-    def confirm(self, msg, abort=False, warning=False):
+    def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action using a prompt."""
         prefix = self.WARNING if warning else ""
-        return click.confirm(prefix + msg, abort=abort)
+        return click.confirm(prefix + msg, abort=abort, default=default)
 
     def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt from the first callback that has a prompt."""

@@ -38,7 +38,7 @@ class CommunicationCallback:
     def error(self, msg):
         """Write an error message."""
 
-    def confirm(self, msg, abort=False, warning=False):
+    def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action."""
 
     def start_progress(self, name, total, **kwargs):
@@ -143,11 +143,11 @@ class _CommunicationManger(CommunicationCallback):
                 return True
 
     @lock_communication
-    def confirm(self, msg, abort=False, warning=False):
+    def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action."""
         for listener in self._listeners:
             if listener.has_prompt():
-                return listener.confirm(msg, abort, warning)
+                return listener.confirm(msg, abort, warning, default=default)
 
     @lock_communication
     def prompt(self, msg, type=None, default=None, **kwargs):
@@ -254,9 +254,9 @@ def has_prompt():
 
 
 @ensure_manager
-def confirm(msg, abort=False, warning=False):
+def confirm(msg, abort=False, warning=False, default=False):
     """Get confirmation for an action from all listeners."""
-    return _thread_local.communication_manager.confirm(msg, abort, warning)
+    return _thread_local.communication_manager.confirm(msg, abort, warning, default)
 
 
 @ensure_manager

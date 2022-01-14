@@ -21,7 +21,7 @@ from io import BytesIO
 
 from marshmallow import EXCLUDE
 
-from renku.core.commands.init import fetch_template
+from renku.core.utils.templates import fetch_template
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC

@@ -91,6 +91,7 @@ from renku.cli.save import save
 from renku.cli.service import service
 from renku.cli.status import status
 from renku.cli.storage import storage
+from renku.cli.template import template
 from renku.cli.update import update
 from renku.cli.workflow import workflow
 from renku.core.commands.echo import WARNING
@@ -206,8 +207,10 @@ def help(ctx):
 
 
 # Register subcommands:
+cli.add_command(check_immutable_template_files)
 cli.add_command(clone)
 cli.add_command(config)
+cli.add_command(credentials)
 cli.add_command(dataset)
 cli.add_command(doctor)
 cli.add_command(env)
@@ -219,7 +222,6 @@ cli.add_command(login)
 cli.add_command(logout)
 cli.add_command(migrate)
 cli.add_command(migrationscheck)
-cli.add_command(check_immutable_template_files)
 cli.add_command(move)
 cli.add_command(project)
 cli.add_command(remove)
@@ -227,9 +229,9 @@ cli.add_command(rerun)
 cli.add_command(rollback)
 cli.add_command(run)
 cli.add_command(save)
+cli.add_command(service)
 cli.add_command(status)
 cli.add_command(storage)
-cli.add_command(credentials)
+cli.add_command(template)
 cli.add_command(update)
 cli.add_command(workflow)
-cli.add_command(service)

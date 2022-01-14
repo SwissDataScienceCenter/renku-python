@@ -27,9 +27,9 @@ import pytest
 from renku.cli import cli
 from renku.cli.init import parse_parameters
 from renku.core import errors
-from renku.core.commands.init import create_template_sentence
 from renku.core.metadata.database import Database
 from renku.core.metadata.repository import Repository
+from renku.core.utils.templates import create_template_sentence
 from tests.utils import format_result_exception, raises
 
 

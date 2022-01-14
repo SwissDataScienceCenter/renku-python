@@ -20,10 +20,11 @@ import shutil
 
 from marshmallow import EXCLUDE
 
-from renku.core.commands.init import create_from_template_local_command, read_template_manifest
+from renku.core.commands.init import create_from_template_local_command
 from renku.core.errors import RenkuException
 from renku.core.metadata.repository import Repository
 from renku.core.utils.contexts import click_context
+from renku.core.utils.templates import read_template_manifest
 from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin

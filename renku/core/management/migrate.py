@@ -59,6 +59,7 @@ from renku.core.management.migrations.utils import (
 )
 from renku.core.management.workflow.plan_factory import RENKU_TMP
 from renku.core.utils import communication
+from renku.core.utils.os import hash_file
 
 try:
     import importlib_resources
@@ -189,7 +190,7 @@ def _remove_untracked_renku_files(renku_path):
 @inject.autoparams()
 def _update_template(client_dispatcher: IClientDispatcher, project_gateway: IProjectGateway, check_only=False):
     """Update local files from the remote template."""
-    from renku.core.commands.init import fetch_template
+    from renku.core.utils.templates import fetch_template
 
     client = client_dispatcher.current_client
 
@@ -277,7 +278,7 @@ def _update_template(client_dispatcher: IClientDispatcher, project_gateway: IPro
                 current_hash = None  # NOTE: None if user deleted file locally
 
                 if destination.exists():
-                    current_hash = client._content_hash(destination)
+                    current_hash = hash_file(destination)
 
                 local_changes = str(rel_path) not in checksums or current_hash != checksums[str(rel_path)]
                 remote_changes = str(rel_path) not in checksums or new_template_hash != checksums[str(rel_path)]

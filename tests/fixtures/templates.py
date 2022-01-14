@@ -94,7 +94,8 @@ def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_
 
     def _template_update(immutable_files=None, docker=False, after_template_version="0.0.2"):
         """Fetches an updatable template with various options."""
-        from renku.core.commands.init import create_from_template, read_template_manifest
+        from renku.core.commands.init import create_from_template
+        from renku.core.utils.templates import read_template_manifest
 
         try:
             import importlib_resources
@@ -148,7 +149,7 @@ def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_
             template_files.append(expected_file)
             assert expected_file.exists()
 
-        fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
+        fetch_template = mocker.patch("renku.core.utils.templates.fetch_template")
         fetch_template.return_value = (manifest, temppath, "renku", after_template_version)
 
         return {
