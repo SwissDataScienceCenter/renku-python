@@ -25,7 +25,6 @@ from renku.core.errors import RenkuException
 from renku.core.utils.contexts import click_context
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
-from renku.service.controllers.utils.remote_project import ANONYMOUS_SESSION
 from renku.service.interfaces.git_api_provider import IGitAPIProvider
 from renku.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.service.views import result_response
@@ -61,7 +60,7 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
                 tempdir,
                 remote=self.ctx["git_url"],
                 ref=self.request_data.get("ref", None),
-                token=self.user_data.get("token", ANONYMOUS_SESSION),
+                token=self.user_data.get("token", None),
             )
             with click_context(tempdir, "renku_op"):
                 return self.renku_op()
@@ -72,8 +71,11 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        if "project_id" in self.context or "user_id" not in self.user_data:
-            # use regular flow using cache
-            return result_response(self.RESPONSE_SERIALIZER, self.execute_op())
+        return result_response(self.RESPONSE_SERIALIZER, self.execute_op())
 
-        return result_response(self.RESPONSE_SERIALIZER, self._fast_op_without_cache())
+        # TODO: Enable this optimization. See https://github.com/SwissDataScienceCenter/renku-python/issues/2546
+        # if "project_id" in self.context:
+        #     # use regular flow using cache
+        #     return result_response(self.RESPONSE_SERIALIZER, self.execute_op())
+        #
+        # return result_response(self.RESPONSE_SERIALIZER, self._fast_op_without_cache())
