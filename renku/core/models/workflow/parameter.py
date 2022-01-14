@@ -107,10 +107,10 @@ class CommandParameterBase:
 
         if self.prefix:
             if self.prefix.endswith(" "):
-                return [self.prefix[:-1], value]
+                return [self.prefix[:-1], str(value)]
             return [f"{self.prefix}{value}"]
 
-        return [value]
+        return [str(value)]
 
     @property
     def actual_value(self):
