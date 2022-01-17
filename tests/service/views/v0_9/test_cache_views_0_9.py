@@ -72,3 +72,16 @@ def test_check_no_migrations_0_9(svc_client_with_repo):
     assert not response.json["result"]["template_update_possible"]
     assert not response.json["result"]["docker_update_possible"]
     assert response.json["result"]["project_supported"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_migrations_remote_anonymous_0_9(svc_client, it_remote_public_repo_url):
+    """Test anonymous users can check for migration of public projects."""
+    response = svc_client.get(
+        "/0.9/cache.migrations_check", query_string={"git_url": it_remote_public_repo_url}, headers={}
+    )
+
+    assert 200 == response.status_code
+
+    assert response.json["result"]["migration_required"] is True
