@@ -103,7 +103,6 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        breakpoint()
         op_result, remote_branch = self.execute_and_sync()
         if isinstance(op_result, Job):
             return result_response(MigrateProjectCtrl.JOB_RESPONSE_SERIALIZER, op_result)
