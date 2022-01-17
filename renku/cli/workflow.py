@@ -125,14 +125,14 @@ the YAML should follow the this structure:
 
 .. code-block:: yaml
 
-learning_rate: 0.9
-dataset_input: dataset.csv
-chart_output: mychart.png
-myworkflow:
-    lr: 0.8
-    lookuptable: lookup.xml
-    myotherworkflow:
-        language: en
+    learning_rate: 0.9
+    dataset_input: dataset.csv
+    chart_output: mychart.png
+    myworkflow:
+        lr: 0.8
+        lookuptable: lookup.xml
+        myotherworkflow:
+            language: en
 
 Provider specific settings can be passed as file using the ``--config`` parameter.
 
@@ -167,8 +167,8 @@ should be:
 
 .. code-block:: yaml
 
-parameter-1: [1,2,3]
-parameter-2: [10,20]
+    parameter-1: [1,2,3]
+    parameter-2: [10,20]
 
 .. cheatsheet::
    :group: Workflows
