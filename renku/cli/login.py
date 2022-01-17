@@ -94,9 +94,9 @@ def logout(endpoint):
 @click.command(hidden=True)
 @click.option("--hostname", default=None, hidden=True, help="Remote hostname.")
 @click.argument("command")
-def token(command, hostname):
-    """A git credential helper for returning renku token."""
-    from renku.core.commands.login import token_command
+def credentials(command, hostname):
+    """A git credential helper for returning renku user/token."""
+    from renku.core.commands.login import credentials_command
 
     communicator = ClickCallback()
-    token_command().with_communicator(communicator).build().execute(command=command, hostname=hostname)
+    credentials_command().with_communicator(communicator).build().execute(command=command, hostname=hostname)

@@ -34,6 +34,10 @@ class IPlanGateway(ABC):
         """Get a plan by name."""
         raise NotImplementedError
 
+    def list_by_name(self, starts_with: str, ends_with: str = None) -> List[str]:
+        """Search plans by name."""
+        raise NotImplementedError
+
     def get_newest_plans_by_names(self, with_invalidated: bool = False) -> Dict[str, AbstractPlan]:
         """Return a list of all newest plans with their names."""
         raise NotImplementedError

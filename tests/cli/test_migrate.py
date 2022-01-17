@@ -255,25 +255,45 @@ def test_comprehensive_dataset_migration(
 
 
 @pytest.mark.migration
-def test_migrate_renku_dataset_same_as(isolated_runner, old_client_before_database, load_dataset_with_injection):
+@pytest.mark.parametrize(
+    "old_dataset_project, name, same_as",
+    [
+        ("old-datasets-v0.9.1.git", "dataverse", "https://doi.org/10.7910/DVN/EV6KLF"),
+        ("old-datasets-v0.16.0.git", "renku-dataset", "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0"),
+    ],
+    indirect=["old_dataset_project"],
+)
+def test_migrate_renku_dataset_same_as(
+    isolated_runner, old_dataset_project, load_dataset_with_injection, name, same_as
+):
     """Test migration of imported renku datasets remove dashes from the same_as field."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset_with_injection("renku-dataset", old_client_before_database)
+    dataset = load_dataset_with_injection(name, old_dataset_project)
 
-    assert "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0" == dataset.same_as.value
+    assert same_as == dataset.same_as.value
 
 
 @pytest.mark.migration
-def test_migrate_renku_dataset_derived_from(isolated_runner, old_client_before_database, load_dataset_with_injection):
+@pytest.mark.parametrize(
+    "old_dataset_project, name, derived_from",
+    [
+        ("old-datasets-v0.9.1.git", "mixed", "/datasets/f77be1a1d3adfa99bc84f463ad134ced"),
+        ("old-datasets-v0.16.0.git", "local", "/datasets/535b6e1ddb85442a897b2b3c72aec0c6"),
+    ],
+    indirect=["old_dataset_project"],
+)
+def test_migrate_renku_dataset_derived_from(
+    isolated_runner, old_dataset_project, load_dataset_with_injection, name, derived_from
+):
     """Test migration of datasets remove dashes from the derived_from field."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset_with_injection("local", old_client_before_database)
+    dataset = load_dataset_with_injection(name, old_dataset_project)
 
-    assert "/datasets/535b6e1ddb85442a897b2b3c72aec0c6" == dataset.derived_from.url_id
+    assert derived_from == dataset.derived_from.url_id
 
 
 @pytest.mark.migration
@@ -401,3 +421,57 @@ def test_commit_hook_with_immutable_modified_files(runner, local_client, mocker,
         result = runner.invoke(cli, ["check-immutable-template-files", "README.md"])
         assert result.exit_code == 1
         assert "README.md" in result.output
+
+
+@pytest.mark.migration
+@pytest.mark.parametrize("name", ["mixed", "dataverse"])
+def test_migrate_can_preserve_dataset_ids(isolated_runner, old_dataset_project, load_dataset_with_injection, name):
+    """Test migrate can preserve old datasets' ids."""
+    result = isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = load_dataset_with_injection(name, old_dataset_project)
+
+    assert dataset.identifier == dataset.initial_identifier
+    assert dataset.derived_from is None
+
+    result = isolated_runner.invoke(cli, ["graph", "export", "--strict"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+@pytest.mark.migration
+def test_migrate_preserves_creation_date_when_preserving_ids(
+    isolated_runner, old_dataset_project, load_dataset_with_injection
+):
+    """Test migrate doesn't change dataset's dateCreated when --preserve-identifiers is passed."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"]).exit_code
+
+    dataset = load_dataset_with_injection("mixed", old_dataset_project)
+
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_created.isoformat(" ")
+
+
+@pytest.mark.migration
+@pytest.mark.parametrize("old_dataset_project", ["old-datasets-v0.16.0.git"], indirect=True)
+def test_migrate_preserves_creation_date_for_mutated_datasets(
+    isolated_runner, old_dataset_project, load_dataset_with_injection
+):
+    """Test migration of datasets that were mutated keeps original dateCreated."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
+
+    dataset = load_dataset_with_injection("local", old_dataset_project)
+
+    assert "2021-07-23 14:34:58+00:00" == dataset.date_created.isoformat(" ")
+
+
+@pytest.mark.migration
+def test_migrate_sets_correct_creation_date_for_non_mutated_datasets(
+    isolated_runner, old_dataset_project, load_dataset_with_injection
+):
+    """Test migration of datasets that weren't mutated uses commit date as dateCreated."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
+
+    dataset = load_dataset_with_injection("mixed", old_dataset_project)
+
+    assert "2020-08-10 23:35:56+02:00" == dataset.date_created.isoformat(" ")

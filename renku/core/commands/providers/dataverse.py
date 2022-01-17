@@ -315,8 +315,8 @@ class DataverseRecordSerializer:
         from marshmallow import pre_load
 
         from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
+        from renku.core.commands.schema.agent import PersonSchema
         from renku.core.models.dataset import DatasetFile
-        from renku.core.models.provenance.agent import PersonSchema
 
         class _DataverseDatasetSchema(ProviderDatasetSchema):
             """Schema for Dataverse datasets."""

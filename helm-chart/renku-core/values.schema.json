@@ -159,6 +159,10 @@
               "environment": {
                   "description": "Name of the sentry environment to post to",
                   "type": ["string", "null"]
+              },
+              "sample_rate": {
+                  "description": "Portion of requests to track in Sentry performance tracing",
+                  "type": ["number", "null"]
               }
           },
           "type": "object"

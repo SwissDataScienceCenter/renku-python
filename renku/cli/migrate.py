@@ -38,6 +38,12 @@ by running
 
     $ renku migrate -c
 
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku migrate
+   :description: Migrate old metadata to the current Renku version.
+   :extended:
+
 """
 import json
 import os
@@ -56,7 +62,13 @@ from renku.core.errors import MigrationRequired, ProjectNotSupported
     "-d", "--skip-docker-update", is_flag=True, hidden=True, help="Do not update Dockerfile to current renku version."
 )
 @click.option("-s", "--strict", is_flag=True, hidden=True, help="Abort migrations if an error is raised.")
-def migrate(check, skip_template_update, skip_docker_update, strict):
+@click.option(
+    "--preserve-identifiers",
+    is_flag=True,
+    hidden=True,
+    help="Keep original dataset identifier when KG migrates a project.",
+)
+def migrate(check, skip_template_update, skip_docker_update, strict, preserve_identifiers):
     """Check for migration and migrate to the latest Renku project version."""
     from renku.core.commands.migrate import (
         AUTOMATED_TEMPLATE_UPDATE_SUPPORTED,
@@ -107,7 +119,10 @@ def migrate(check, skip_template_update, skip_docker_update, strict):
 
     command = migrate_project().with_communicator(communicator).with_commit()
     result = command.build().execute(
-        skip_template_update=skip_template_update, skip_docker_update=skip_docker_update, strict=strict
+        skip_template_update=skip_template_update,
+        skip_docker_update=skip_docker_update,
+        strict=strict,
+        preserve_identifiers=preserve_identifiers,
     )
 
     result, _, _ = result.output

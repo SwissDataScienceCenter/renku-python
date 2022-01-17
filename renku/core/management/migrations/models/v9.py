@@ -35,19 +35,8 @@ from attr.validators import instance_of
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
-from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
-from renku.core.management.migrations.utils import (
-    OLD_METADATA_PATH,
-    generate_dataset_file_url,
-    generate_dataset_id,
-    generate_dataset_tag_id,
-    generate_url_id,
-    get_datasets_path,
-)
-from renku.core.metadata.repository import Commit
-from renku.core.models import jsonld as jsonld
-from renku.core.models import project as new_project
-from renku.core.models.calamus import (
+from renku.core.commands.schema.annotation import AnnotationSchema
+from renku.core.commands.schema.calamus import (
     DateTimeList,
     JsonLDSchema,
     Nested,
@@ -60,8 +49,19 @@ from renku.core.models.calamus import (
     renku,
     schema,
 )
+from renku.core.commands.schema.project import ProjectSchema as NewProjectSchema
+from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+from renku.core.management.migrations.utils import (
+    OLD_METADATA_PATH,
+    generate_dataset_file_url,
+    generate_dataset_id,
+    generate_dataset_tag_id,
+    generate_url_id,
+    get_datasets_path,
+)
+from renku.core.metadata.repository import Commit
+from renku.core.models import jsonld as jsonld
 from renku.core.models.dataset import generate_default_name, is_dataset_name_valid
-from renku.core.models.provenance.annotation import AnnotationSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import fix_datetime, parse_date
 from renku.core.utils.doi import extract_doi, is_doi
@@ -164,9 +164,10 @@ class Project:
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         if not self.creator and self.client:
-            if self.client.database_path.exists():
+            old_metadata_path = self.client.renku_path.joinpath(OLD_METADATA_PATH)
+            if old_metadata_path.exists():
                 self.creator = Person.from_commit(
-                    self.client.repository.get_previous_commit(self.client.database_path, first=True)
+                    self.client.repository.get_previous_commit(old_metadata_path, first=True)
                 )
             else:
                 # this assumes the project is being newly created
@@ -1488,23 +1489,6 @@ def _convert_keyword(keywords):
 class Dataset(Entity, CreatorMixin):
     """Represent a dataset."""
 
-    SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
-
-    EDITABLE_FIELDS = [
-        "creators",
-        "date_created",
-        "date_published",
-        "description",
-        "files",
-        "images",
-        "in_language",
-        "keywords",
-        "license",
-        "title",
-        "url",
-        "version",
-    ]
-
     _id = attr.ib(default=None, kw_only=True)
     _label = attr.ib(default=None, kw_only=True)
 
@@ -1583,13 +1567,6 @@ class Dataset(Entity, CreatorMixin):
         return ",".join(tag.name for tag in self.tags)
 
     @property
-    def editable(self):
-        """Subset of attributes which user can edit."""
-        obj = self.as_jsonld()
-        data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
-        return data
-
-    @property
     def data_dir(self):
         """Directory where dataset files are stored."""
         if self.client:
@@ -1629,22 +1606,6 @@ class Dataset(Entity, CreatorMixin):
             if value and value != getattr(self, attribute):
                 self._modified = True
                 setattr(self, attribute, value)
-
-        return self
-
-    def update_metadata_from(self, other_dataset):
-        """Updates instance attributes with other dataset attributes.
-
-        :param other_dataset: `Dataset`
-        :return: self
-        """
-        for field_ in self.EDITABLE_FIELDS:
-            val = getattr(other_dataset, field_)
-            if val:
-                self._modified = True
-                setattr(self, field_, val)
-
-        self.same_as = other_dataset.same_as
 
         return self
 
@@ -1897,7 +1858,7 @@ class OldCommitMixinSchema(JsonLDSchema):
     path = fields.String(prov.atLocation)
     _id = fields.Id(init_name="id")
     _label = fields.String(rdfs.label, init_name="label", missing=None)
-    _project = Nested(schema.isPartOf, [ProjectSchema, new_project.ProjectSchema], init_name="project", missing=None)
+    _project = Nested(schema.isPartOf, [ProjectSchema, NewProjectSchema], init_name="project", missing=None)
 
 
 class OldEntitySchema(OldCommitMixinSchema):

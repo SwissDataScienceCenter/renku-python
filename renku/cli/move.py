@@ -35,6 +35,12 @@ belong to one or more datasets then they will be removed from their metadata.
 
     $ renku mv data/src README data/dst --to-dataset target-dataset
 
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku mv <path>... <destination>
+   :description: Safely move files within a project.
+   :extended:
+
 """
 
 import click

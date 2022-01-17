@@ -41,7 +41,7 @@ def _create_workflow_short_description(workflows):
 
 def jsonld(workflows, **kwargs):
     """Format workflow as JSON-LD."""
-    from renku.core.models.workflow.plan import PlanSchema
+    from renku.core.commands.schema.plan import PlanSchema
 
     data = [PlanSchema().dump(workflow) for workflow in workflows]
     return dumps(data, indent=2)

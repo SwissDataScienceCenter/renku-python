@@ -18,6 +18,22 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.0...v1.0.1>`__ (2021-12-07)
+--------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix hash calculation when git returns too many paths
+   (`#2504 <https://github.com/SwissDataScienceCenter/renku-python/issues/2504>`__)
+   (`1788271 <https://github.com/SwissDataScienceCenter/renku-python/commit/178827196c0b7d489de36bd096b1b3722c4a5066>`__)
+-  **core:** fix project creator path in old project schema
+   (`#2514 <https://github.com/SwissDataScienceCenter/renku-python/issues/2514>`__)
+   (`d6cafa3 <https://github.com/SwissDataScienceCenter/renku-python/commit/d6cafa39cdcd5bbad522985203c201d1cfbb6890>`__)
+-  **core:** preserve dataset ids for KG migrations
+   (`#2510 <https://github.com/SwissDataScienceCenter/renku-python/issues/2510>`__)
+   (`4946f89 <https://github.com/SwissDataScienceCenter/renku-python/commit/4946f89c1e1110a94aa5a17f10ebe9220e3136ce>`__)
+
 
 ` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.2...v1.0.0>`__ (2021-12-02)
 ---------------------------------------------------------------------------------------------------

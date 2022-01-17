@@ -462,7 +462,7 @@ class BaseRepository:
         if not revision:
             uncommitted_hashes = _get_uncommitted_file_hashes(absolute_paths)
 
-            hashes.update({path_mapping[p]: h for p, h in uncommitted_hashes.items()})
+            hashes.update({path_mapping.get(p, p): h for p, h in uncommitted_hashes.items()})
 
             if len(hashes) == len(absolute_paths):
                 # NOTE: there were only uncommitted files
@@ -495,7 +495,7 @@ class BaseRepository:
         if main_repo_paths:
             # NOTE: Get hashes for paths in the main repository
             revision_hashes = _get_hashes_from_revision(main_repo_paths, revision, self)
-            hashes.update({path_mapping[get_absolute_path(p, self.path)]: h for p, h in revision_hashes.items()})
+            hashes.update({path_mapping.get(get_absolute_path(p, self.path), p): h for p, h in revision_hashes.items()})
 
         if not submodule_paths:
             return hashes
@@ -503,7 +503,9 @@ class BaseRepository:
         # NOTE: Get hashes for paths in submodules
         for submodule, submodule_paths in submodule_paths.items():
             submodule_hashes = submodule.get_object_hashes(paths=submodule_paths, revision="HEAD")
-            hashes.update({path_mapping[get_absolute_path(p, self.path)]: h for p, h in submodule_hashes.items()})
+            hashes.update(
+                {path_mapping.get(get_absolute_path(p, self.path), p): h for p, h in submodule_hashes.items()}
+            )
 
         return hashes
 
@@ -586,6 +588,9 @@ class BaseRepository:
             raise errors.GitMissingUsername
         if not email:  # pragma: no cover
             raise errors.GitMissingEmail
+
+        name = _sanitize_git_config_value(name)
+        email = _sanitize_git_config_value(email)
 
         return Actor(name=name, email=email)
 
@@ -694,6 +699,7 @@ class Repository(BaseRepository):
         progress: Optional[Callable] = None,
         no_checkout: bool = False,
         env: dict = None,
+        clone_options: List[str] = None,
     ) -> "Repository":
         """Clone a remote repository and create an instance."""
         try:
@@ -706,6 +712,7 @@ class Repository(BaseRepository):
                 progress=progress,
                 no_checkout=no_checkout,
                 env=env,
+                multi_options=clone_options,
             )
         except git.GitCommandError as e:
             raise errors.GitCommandError(
@@ -1372,3 +1379,8 @@ def _find_previous_commit_helper(
 
     if submodules:
         return get_previous_commit_from_submodules()
+
+
+def _sanitize_git_config_value(value: str) -> str:
+    """Remove quotation marks and whitespaces surrounding a config value."""
+    return value.strip(" \n\t\"'")

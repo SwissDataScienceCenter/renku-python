@@ -359,9 +359,10 @@ class _RenkuRecordSerializer:
                     url=url,
                     path=get_cache_directory_for_repository(client=client, url=url),
                     gitlab_token=self._gitlab_token,
-                    renku_token=self._renku_token,
                     deployment_hostname=parsed_uri.netloc,
                     depth=None,
+                    reuse_existing_repository=True,
+                    use_renku_credentials=True,
                 )
             except errors.GitError:
                 pass

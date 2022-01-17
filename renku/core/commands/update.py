@@ -109,7 +109,7 @@ def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_di
     derived = plan
     while derived:
         plan = derived
-        derived = next((p for p in all_plans if p.derived_from and p.derived_from.url_id == plan.id), None)
+        derived = next((p for p in all_plans if p.derived_from and p.derived_from == plan.id), None)
 
     return plan.invalidated_at is None
 

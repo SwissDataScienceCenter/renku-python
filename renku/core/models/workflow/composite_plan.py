@@ -17,26 +17,22 @@
 # limitations under the License.
 """Represent a group of run templates."""
 
+import copy
 from collections import defaultdict
 from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
-from marshmallow import EXCLUDE
-
 from renku.core import errors
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.workflow.parameter import (
     CommandInput,
     CommandOutput,
     CommandParameter,
     CommandParameterBase,
     ParameterLink,
-    ParameterLinkSchema,
     ParameterMapping,
-    ParameterMappingSchema,
 )
-from renku.core.models.workflow.plan import MAX_GENERATED_NAME_LENGTH, AbstractPlan, Plan, PlanSchema
+from renku.core.models.workflow.plan import MAX_GENERATED_NAME_LENGTH, AbstractPlan, Plan
 from renku.core.utils.datetime8601 import local_now
 
 
@@ -161,7 +157,7 @@ class CompositePlan(AbstractPlan):
                 else:
                     sink_params.append(resolved_sink)
 
-            for souce in sources:
+            for source in sources:
                 self.add_link(source, sink_params)
 
     def add_link(self, source: CommandParameterBase, sinks: List[CommandParameterBase]) -> None:
@@ -363,39 +359,11 @@ class CompositePlan(AbstractPlan):
 
     def derive(self) -> "CompositePlan":
         """Create a new ``CompositePlan`` that is derived from self."""
-        derived = CompositePlan(
-            description=self.description,
-            id=self.id,
-            date_created=local_now(),
-            invalidated_at=self.invalidated_at,
-            name=self.name,
-            derived_from=self.derived_from,
-            plans=self.plans.copy(),
-            mappings=self.mappings.copy(),
-            links=self.links.copy(),
-        )
+        derived = copy.copy(self)
+        derived.derived_from = self.id
+        derived.date_created = local_now()
+        derived.plans = self.plans.copy()
+        derived.mappings = self.mappings.copy()
+        derived.links = self.links.copy()
         derived.assign_new_id()
         return derived
-
-
-class CompositePlanSchema(JsonLDSchema):
-    """Plan schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork, renku.CompositePlan]
-        model = CompositePlan
-        unknown = EXCLUDE
-
-    description = fields.String(schema.description, missing=None)
-    id = fields.Id()
-    mappings = Nested(renku.hasMappings, [ParameterMappingSchema], many=True, missing=None)
-    date_created = fields.DateTime(schema.dateCreated, format="iso")
-    invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    name = fields.String(schema.name, missing=None)
-    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
-    project_id = fields.IRI(renku.hasPlan, reverse=True)
-    plans = Nested(renku.hasSubprocess, [PlanSchema, "CompositePlanSchema"], many=True)
-    links = Nested(renku.workflowLinks, [ParameterLinkSchema], many=True, missing=None)

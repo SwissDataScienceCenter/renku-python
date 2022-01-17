@@ -62,6 +62,12 @@ Each entry corresponds to a recorded Plan/workflow template. You can also
 show additional columns using the ``--columns`` parameter, which takes any
 combination of values from ``id``, ``name``, ``keywords`` and ``description``.
 
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow ls
+   :description: List Plans (workflow templates).
+   :extended:
+
 Showing Plan Details
 ********************
 
@@ -92,6 +98,12 @@ if it was run without any modifications (more on that later), which exit codes
 should be considered successful executions (defaults to ``0``) as well as its
 inputs, outputs and parameters.
 
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow show <name>
+   :description: Show details for Plan <name>.
+   :extended:
+
 Executing Plans
 ***************
 
@@ -110,6 +122,14 @@ to allow execution using various execution backends.
 Parameters can be set using the ``--set`` keyword or by specifying them in a
 values YAML file and passing that using ``--values``. Provider specific
 settings can be passed as file using the ``--config`` parameter.
+
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow execute --provider <provider> [--set
+             <param-name>=<value>...] <name>
+   :description: Execute a Plan using <provider> as a backend, overriding
+                 parameter <param-name>'s value.
+   :extended:
 
 Iterate Plans
 *************
@@ -130,6 +150,14 @@ execution of a Plan, with parameter-sets provided by the user.
 The set of possible values for a parameter can be given by ``--map`` command
 line argument or by specifying them in a values YAML file and passing that
 using ``--mapping``.
+
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow iterate [--map <param-name>=[value,value,...]]
+             <name>
+   :description: Repeatedly execute a Plan, taking values from the list
+                 specified with --map.
+   :extended:
 
 By default ``renku workflow iterate`` will execute all the combination of the
 given parameters' list of possible values. Sometimes it is desired that instead
@@ -217,6 +245,12 @@ You can export a Plan to a number of different workflow languages, such as CWL
 
 You can export into a file directly with ``-o <path>``.
 
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow export --format <format> <plan>
+   :description: Export a Plan in a given format (e.g. 'cwl').
+   :extended:
+
 
 Composing Plans into larger workflows
 *************************************
@@ -240,6 +274,12 @@ This would create a new workflow called ``my-composed-workflow`` that
 consists of ``step1`` and ``step2`` as steps. This new workflow is just
 like any other workflow in renku in that it can be executed, exported
 or composed with other workflows.
+
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow compose <composed-name> <plan> <plan>
+   :description: Create a new Plan composed of child Plans.
+   :extended:
 
 Workflows can also be composed based on past Runs and their
 inputs/outputs, using the ``--from`` and ``--to`` parameters. This finds
@@ -381,6 +421,12 @@ This would rename the Plan ``my-run`` to ``new-run``, change its description,
 rename its parameter ``input-1`` to ``my-input`` and set the default of this
 parameter to ``other-file.txt`` and set its description.
 
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow edit <plan>
+   :description: Create a new Plan composed of child Plans.
+   :extended:
+
 Removing Plans
 **************
 
@@ -390,6 +436,12 @@ remove <plan name>``. Once a Plan is removed, it doesn't show up in most renku
 workflow commands.
 ``renku update`` ignores deleted Plans, but ``renku rerun`` will still rerun
 them if needed, to ensure reproducibility.
+
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow delete <plan>
+   :description: Remove a Plan.
+   :extended:
 
 Working with Runs
 ~~~~~~~~~~~~~~~~~
@@ -514,6 +566,12 @@ by pressing the <Enter> key.
 
 Use ``renku workflow visualize -h`` to see all available options.
 
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow visualize [--interactive]
+   :description: Show linked workflows as a graph.
+   :extended:
+
 
 Input and output files
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -533,6 +591,12 @@ respectively.
    $ renku workflow outputs source.txt
    $ echo $?  # last command finished with an error code
    1
+
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow inputs|||$ renku workflow outputs
+   :description: Show input respectively output files used by workflows.
+   :extended:
 
 """
 
@@ -556,6 +620,16 @@ from renku.core.commands.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 if TYPE_CHECKING:
     from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
     from renku.core.commands.view_model.plan import PlanViewModel
+
+
+def _complete_workflows(ctx, param, incomplete):
+    from renku.core.commands.workflow import search_workflows_command
+
+    try:
+        result = search_workflows_command().build().execute(name=incomplete)
+        return list(filter(lambda x: x.startswith(incomplete), result.output))
+    except Exception:
+        return []
 
 
 def _print_plan(plan: "PlanViewModel"):
@@ -708,7 +782,7 @@ def list_workflows(format, columns):
 
 
 @workflow.command()
-@click.argument("name_or_id", metavar="<name_or_id>")
+@click.argument("name_or_id", metavar="<name_or_id>", shell_complete=_complete_workflows)
 def show(name_or_id):
     """Show details for workflow <name_or_id>."""
     from renku.core.commands.view_model.plan import PlanViewModel
@@ -726,7 +800,7 @@ def show(name_or_id):
 
 
 @workflow.command()
-@click.argument("name", metavar="<name>")
+@click.argument("name", metavar="<name>", shell_complete=_complete_workflows)
 @click.option("--force", is_flag=True, help="Override the existence check.")
 def remove(name, force):
     """Remove a workflow named <name>."""
@@ -762,7 +836,7 @@ def remove(name, force):
     help="End a composite plan at this file as output.",
 )
 @click.argument("name", required=True)
-@click.argument("steps", nargs=-1, type=click.UNPROCESSED)
+@click.argument("steps", nargs=-1, type=click.UNPROCESSED, shell_complete=_complete_workflows)
 def compose(
     description,
     mappings,
@@ -819,7 +893,7 @@ def compose(
 
 
 @workflow.command()
-@click.argument("workflow_name", metavar="<name or uuid>")
+@click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
 @click.option("--name", metavar="<new name>", help="New name of the workflow")
 @click.option("--description", metavar="<new desc>", help="New description of the workflow")
 @click.option(
@@ -877,7 +951,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 
 
 @workflow.command()
-@click.argument("workflow_name", metavar="<name or uuid>")
+@click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
 @click.option(
     "--format",
     default="cwl",
@@ -990,7 +1064,7 @@ def outputs(ctx, paths):
     type=click.Path(exists=True, dir_okay=False),
     help="YAML file containing parameter mappings to be used.",
 )
-@click.argument("name_or_id", required=True)
+@click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def execute(
     provider,
     config,
@@ -1127,7 +1201,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 )
 @click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
 @click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
-@click.argument("name_or_id", required=True)
+@click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
     """Execute a workflow by iterating through a range of provided parameters."""
     from renku.core.commands.view_model.plan import PlanViewModel

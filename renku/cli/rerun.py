@@ -50,6 +50,14 @@ using the ``--from`` parameter:
 Note that all other outputs of the executed workflow will be recreated as well.
 If the output didn't change, it will be removed from git and re-added to ensure
 that the re-execution is properly tracked.
+
+
+.. cheatsheet::
+   :group: Running
+   :command: $ renku rerun <path>
+   :description: Recreate the file(s) <path> by rerunning the commands that
+                 created them.
+   :extended:
 """
 
 import click

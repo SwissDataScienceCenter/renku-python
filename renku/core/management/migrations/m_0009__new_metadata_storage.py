@@ -53,7 +53,13 @@ from renku.core.models.project import Project
 from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
 from renku.core.models.provenance.agent import Person, SoftwareAgent
 from renku.core.models.provenance.parameter import ParameterValue
-from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
+from renku.core.models.workflow.parameter import (
+    DIRECTORY_MIME_TYPE,
+    CommandInput,
+    CommandOutput,
+    CommandParameter,
+    MappedIOStream,
+)
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils import communication
 
@@ -68,8 +74,11 @@ def migrate(migration_context):
     committed = _commit_previous_changes(client)
     # NOTE: Initialize submodules
     _ = client.repository.submodules
-    generate_new_metadata(
-        committed=committed, strict=migration_context.options.strict, migration_type=migration_context.options.type
+    _generate_new_metadata(
+        committed=committed,
+        strict=migration_context.options.strict,
+        migration_type=migration_context.options.type,
+        preserve_identifiers=migration_context.options.preserve_identifiers,
     )
     _remove_dataset_metadata_files(client)
 
@@ -150,7 +159,7 @@ def remove_graph_files(client):
 
 
 @inject.autoparams()
-def generate_new_metadata(
+def _generate_new_metadata(
     strict,
     migration_type: MigrationType,
     client_dispatcher: IClientDispatcher,
@@ -159,6 +168,7 @@ def generate_new_metadata(
     force=True,
     remove=True,
     committed=False,
+    preserve_identifiers=False,
 ):
     """Generate graph and dataset provenance metadata."""
     client = client_dispatcher.current_client
@@ -192,7 +202,11 @@ def generate_new_metadata(
             if MigrationType.WORKFLOWS in migration_type:
                 _process_workflows(activity_gateway=activity_gateway, commit=commit, remove=remove, client=client)
             _process_datasets(
-                client=client, commit=commit, datasets_provenance=datasets_provenance, is_last_commit=is_last_commit
+                client=client,
+                commit=commit,
+                datasets_provenance=datasets_provenance,
+                is_last_commit=is_last_commit,
+                preserve_identifiers=preserve_identifiers,
             )
         except errors.MigrationError:
             if strict:
@@ -226,6 +240,9 @@ def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
 
     plan_id = Plan.generate_id(uuid=uuid)
 
+    def get_mime_type(entity: Union[old_schema.Entity, old_schema.Collection]) -> List[str]:
+        return [DIRECTORY_MIME_TYPE] if isinstance(entity, old_schema.Collection) else ["application/octet-stream"]
+
     def convert_argument(argument: old_schema.CommandArgument) -> CommandParameter:
         """Convert an old CommandArgument to a new CommandParameter."""
         assert isinstance(argument, old_schema.CommandArgument)
@@ -256,6 +273,7 @@ def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
             name=input.name,
             position=input.position,
             prefix=input.prefix,
+            encoding_format=get_mime_type(input.consumes),
             postfix=PurePosixPath(input._id).name,
         )
 
@@ -276,6 +294,7 @@ def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
             name=output.name,
             position=output.position,
             prefix=output.prefix,
+            encoding_format=get_mime_type(output.produces),
             postfix=PurePosixPath(output._id).name,
         )
 
@@ -355,6 +374,8 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
     """Convert a ProcessRun to a new Activity."""
     assert not isinstance(process_run, old_schema.WorkflowRun)
 
+    project_id = client.project.id
+
     run = process_run.association.plan
 
     if run.subprocesses:
@@ -366,7 +387,7 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
     for run in runs:
         activity_id = Activity.generate_id()
 
-        plan = _convert_run_to_plan(run, project_id=client.project.id)
+        plan = _convert_run_to_plan(run, project_id=project_id)
 
         agents = [_old_agent_to_new_agent(a) for a in process_run.agents or []]
         association_agent = _old_agent_to_new_agent(process_run.association.agent)
@@ -406,7 +427,7 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
                 id=activity_id,
                 invalidations=invalidations,
                 parameters=parameters,
-                # project=process_run._project,
+                project_id=project_id,
                 started_at_time=process_run.started_at_time,
                 usages=usages,
             )
@@ -576,7 +597,9 @@ def _old_agent_to_new_agent(
     )
 
 
-def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: DatasetsProvenance, is_last_commit):
+def _process_datasets(
+    client: LocalClient, commit: Commit, datasets_provenance: DatasetsProvenance, is_last_commit, preserve_identifiers
+):
     changes = commit.get_changes(paths=".renku/datasets/*/*.yml")
     changed_paths = [c.b_path for c in changes if not c.deleted]
     paths = [p for p in changed_paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
@@ -593,13 +616,22 @@ def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: 
         dataset, tags = convert_dataset(dataset=dataset, client=client, revision=revision)
         if is_last_commit:
             datasets_provenance.update_during_migration(
-                dataset, commit_sha=revision, date=date, tags=tags, replace=True
+                dataset,
+                commit_sha=revision,
+                date=date,
+                tags=tags,
+                replace=True,
+                preserve_identifiers=preserve_identifiers,
             )
         else:
-            datasets_provenance.update_during_migration(dataset, commit_sha=revision, date=date, tags=tags)
+            datasets_provenance.update_during_migration(
+                dataset, commit_sha=revision, date=date, tags=tags, preserve_identifiers=preserve_identifiers
+            )
     for dataset in deleted_datasets:
         dataset, _ = convert_dataset(dataset=dataset, client=client, revision=revision)
-        datasets_provenance.update_during_migration(dataset, commit_sha=revision, date=date, remove=True)
+        datasets_provenance.update_during_migration(
+            dataset, commit_sha=revision, date=date, remove=True, preserve_identifiers=preserve_identifiers
+        )
 
 
 def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):

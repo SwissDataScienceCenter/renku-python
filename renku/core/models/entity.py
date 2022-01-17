@@ -23,7 +23,6 @@ from typing import List, Union
 from urllib.parse import quote
 
 from renku.core.metadata.immutable import Immutable
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku
 
 
 class Entity(Immutable):
@@ -66,29 +65,3 @@ class Collection(Entity):
     def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], members: List[Entity] = None):
         members = tuple(members) if members else ()
         super().__init__(checksum=checksum, id=id, path=path, members=members)
-
-
-class EntitySchema(JsonLDSchema):
-    """Entity Schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [prov.Entity]
-        model = Entity
-
-    checksum = fields.String(renku.checksum, missing=None)
-    id = fields.Id()
-    path = fields.String(prov.atLocation)
-
-
-class CollectionSchema(EntitySchema):
-    """Entity Schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = prov.Collection
-        model = Collection
-
-    members = Nested(prov.hadMember, [EntitySchema, "CollectionSchema"], many=True)

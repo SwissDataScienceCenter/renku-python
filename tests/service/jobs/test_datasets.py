@@ -44,6 +44,7 @@ from tests.utils import retry_failed
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
+@pytest.mark.vcr
 def test_dataset_url_import_job(url, svc_client_with_repo):
     """Test dataset import via url."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -98,6 +99,7 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
+@pytest.mark.vcr
 def test_dataset_import_job(doi, svc_client_with_repo):
     """Test dataset import via doi."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -153,6 +155,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
+@pytest.mark.vcr
 def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -202,6 +205,7 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
+@pytest.mark.vcr
 def test_dataset_import_twice_job(doi, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -258,6 +262,7 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
+@pytest.mark.vcr
 def test_dataset_add_remote_file(url, svc_client_with_repo):
     """Test dataset add a remote file."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -296,6 +301,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
+@pytest.mark.vcr
 def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Add a file to a new dataset on a remote repository."""
     from renku.service.serializers.datasets import DatasetAddRequest

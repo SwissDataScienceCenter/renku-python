@@ -31,6 +31,12 @@ Creating an empty dataset inside a Renku project:
     $ renku dataset create my-dataset
     Creating a dataset ... OK
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset create <dataset>
+   :description: Create a new dataset.
+   :extended:
+
 You can pass the following options to this command to set various metadata for
 the dataset.
 
@@ -77,6 +83,12 @@ Listing all datasets:
     --------  -------------  -------------  ---------
     0ad1cb9a  some-dataset   Some Dataset
     9436e36c  my-dataset     My Dataset
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset ls
+   :description: List all datasets in the project.
+   :extended:
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -129,6 +141,13 @@ Deleting a dataset:
     OK
 
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset rm <dataset>
+   :description: Remove a dataset.
+   :extended:
+
+
 Working with data
 ~~~~~~~~~~~~~~~~~
 
@@ -141,6 +160,13 @@ Adding data to the dataset:
 .. code-block:: console
 
     $ renku dataset add my-dataset http://data-url
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset add <dataset> <url>
+   :description: Add data from <url> to a dataset. <url> can be a local
+                 file path, an http(s) address or a Git git+http or git+ssh repository.
+   :extended:
 
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
@@ -206,6 +232,14 @@ will yield:
           new-subdir/
             datafile
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset add <dataset> --source <path>
+             [--destination <rel-path>] <git-url>
+   :description: Add only data in <path> from Git. With --destination:
+                 location the data is copied to.
+   :extended:
+
 To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
 reference in the remote Git repository.
@@ -237,6 +271,12 @@ updated to ensure consistency between the remote and local versions. Due to
 this limitation, the ``--include`` and ``--exclude`` flags are not compatible
 with those datasets. Modifying those datasets locally will prevent them from
 being updated.
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset update <dataset>
+   :description: Update files in a dataset based on their source.
+   :extended:
 
 The update command also checks for file changes in the project and updates
 datasets' metadata accordingly.
@@ -270,6 +310,13 @@ point in time. A tag can be added like this:
 
     $ renku dataset tag my-dataset 1.0 -d "Version 1.0 tag"
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset tag <dataset> <tag> [-d <desc>]
+   :description: Add a tag to the current version of the dataset, with
+                 description <desc>.
+   :extended:
+
 A list of all tags can be seen by running:
 
 .. code-block:: console
@@ -279,12 +326,24 @@ A list of all tags can be seen by running:
     -------------------  ------  ---------------  ----------  ----------------
     2020-09-19 17:29:13  1.0     Version 1.0 tag  my-dataset  6c19a8d31545b...
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset ls-tags <dataset>
+   :description: List all tags for a dataset.
+   :extended:
+
 
 A tag can be removed with:
 
 .. code-block:: console
 
     $ renku dataset rm-tags my-dataset 1.0
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset rm-tags <dataset> <tags...>
+   :description: Remove tags from a dataset.
+   :extended:
 
 
 Importing data from other Renku projects:
@@ -324,6 +383,13 @@ or ``doi:10.5281/zenodo.3352150``) and full URLs (e.g.
 ``http://zenodo.org/record/3352150``). A tag with the remote version of the
 dataset is automatically created.
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset import <uri>
+   :description: Import a dataset. <uri> can be a Renku, Zenodo or Dataverse
+                 URL or DOI.
+   :extended:
+
 Exporting data to an external provider:
 
 .. code-block:: console
@@ -335,6 +401,13 @@ allowing for publication later on. If the dataset has any tags set, you
 can chose if the repository `HEAD` version or one of the tags should be
 exported. The remote version will be set to the local tag that is being
 exported.
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset export <dataset> <provider>
+   :description: Export the dataset <dataset> to <provider>. Providers:
+                 Zenodo, Dataverse.
+   :extended:
 
 To export to a Dataverse provider you must pass Dataverse server's URL and
 the name of the parent dataverse where the dataset will be exported to.
@@ -361,6 +434,12 @@ Listing all files in the project associated with a dataset.
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1  *
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file2
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3  *
+
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset ls-files
+   :description: List all dataset files in project.
+   :extended:
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -398,6 +477,12 @@ Unlink a file from a dataset:
     $ renku dataset unlink my-dataset --include file1
     OK
 
+.. cheatsheet::
+   :group: Datasets
+   :command: $ renku dataset unlink <dataset> [--include <path|pattern>]
+   :description: Remove files from a dataset.
+   :extended:
+
 Unlink all files within a directory from a dataset:
 
 .. code-block:: console
@@ -429,6 +514,16 @@ from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
+
+
+def _complete_datasets(ctx, param, incomplete):
+    from renku.core.commands.dataset import search_datasets
+
+    try:
+        result = search_datasets().build().execute(name=incomplete)
+        return result.output
+    except Exception:
+        return []
 
 
 @click.group()
@@ -508,7 +603,7 @@ def create(name, title, description, creators, metadata, keyword):
 
 
 @dataset.command()
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
 @click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
 @click.option(
@@ -570,7 +665,7 @@ def edit(name, title, description, creators, metadata, keyword):
 
 
 @dataset.command("show")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 def show(name):
     """Show metadata of a dataset."""
     from renku.core.commands.dataset import show_dataset
@@ -607,8 +702,8 @@ def show(name):
 
 
 @dataset.command()
-@click.argument("name")
-@click.argument("urls", nargs=-1)
+@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("urls", type=click.Path(), nargs=-1)
 @click.option("-e", "--external", is_flag=True, help="Creates a link to external data.")
 @click.option("--force", is_flag=True, help="Allow adding otherwise ignored files.")
 @click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
@@ -640,7 +735,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 
 
 @dataset.command("ls-files")
-@click.argument("names", nargs=-1)
+@click.argument("names", nargs=-1, shell_complete=_complete_datasets)
 @click.option(
     "--creators",
     help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",
@@ -671,7 +766,7 @@ def ls_files(names, creators, include, exclude, format, columns):
 
 
 @dataset.command()
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.option("-I", "--include", multiple=True, help="Include files matching given pattern.")
 @click.option("-X", "--exclude", multiple=True, help="Exclude files matching given pattern.")
 @click.option("-y", "--yes", is_flag=True, help="Confirm unlinking of all files.")
@@ -695,7 +790,7 @@ def remove(name):
 
 
 @dataset.command("tag")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.argument("tag")
 @click.option("-d", "--description", default="", help="A description for this tag")
 @click.option("--force", is_flag=True, help="Allow overwriting existing tags.")
@@ -708,7 +803,7 @@ def tag(name, tag, description, force):
 
 
 @dataset.command("rm-tags")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.argument("tags", nargs=-1)
 def remove_tags(name, tags):
     """Remove tags from a dataset."""
@@ -719,7 +814,7 @@ def remove_tags(name, tags):
 
 
 @dataset.command("ls-tags")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @click.option("--format", type=click.Choice(DATASET_TAGS_FORMATS), default="tabular", help="Choose an output format.")
 def ls_tags(name, format):
     """List all tags of a dataset."""
@@ -776,7 +871,7 @@ def export_provider_options(*param_decls, **attrs):
 
 
 @dataset.command("export")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_datasets)
 @export_provider_argument()
 @click.option("-p", "--publish", is_flag=True, help="Automatically publish exported dataset.")
 @click.option("-t", "--tag", help="Dataset tag to export")
@@ -817,7 +912,7 @@ def import_(uri, name, extract, yes):
 
 
 @dataset.command("update")
-@click.argument("names", nargs=-1)
+@click.argument("names", nargs=-1, shell_complete=_complete_datasets)
 @click.option(
     "--creators",
     help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",

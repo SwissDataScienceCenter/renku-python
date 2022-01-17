@@ -180,6 +180,7 @@ runtime
 runtimes
 scala
 shacl
+Slurm
 SPARQL
 spawner
 SQLAlchemy
@@ -248,4 +249,5 @@ worktrees
 yaml
 yml
 Zenodo
+zsh
 連句
