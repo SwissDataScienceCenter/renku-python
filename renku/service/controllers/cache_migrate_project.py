@@ -99,23 +99,22 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
             self.commit_message,
         )
 
+        return messages, was_migrated, template_migrated, docker_migrated
+
+    def to_response(self):
+        """Execute controller flow and serialize to service response."""
+        op_result, remote_branch = self.execute_and_sync()
+        if isinstance(op_result, Job):
+            return result_response(MigrateProjectCtrl.JOB_RESPONSE_SERIALIZER, op_result)
+
+        messages, was_migrated, template_migrated, docker_migrated = op_result
+
         response = {
             "messages": messages,
             "was_migrated": was_migrated,
             "template_migrated": template_migrated,
             "docker_migrated": docker_migrated,
+            "remote_branch": remote_branch,
         }
 
-        if was_migrated or template_migrated or docker_migrated:
-            response["remote_branch"] = self.sync()
-
-        return response
-
-    def to_response(self):
-        """Execute controller flow and serialize to service response."""
-        result = self.execute_op()
-
-        if isinstance(result, Job):
-            return result_response(MigrateProjectCtrl.JOB_RESPONSE_SERIALIZER, result)
-
-        return result_response(MigrateProjectCtrl.RESPONSE_SERIALIZER, result)
+        return result_response(MigrateProjectCtrl.RESPONSE_SERIALIZER, response)
