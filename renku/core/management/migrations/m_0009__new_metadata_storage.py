@@ -22,6 +22,7 @@ import shutil
 import traceback
 import uuid
 from collections import defaultdict
+from hashlib import sha1
 from itertools import chain
 from pathlib import Path, PurePosixPath
 from typing import List, Optional, Union
@@ -372,6 +373,24 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
 
 def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: LocalClient) -> List[Activity]:
     """Convert a ProcessRun to a new Activity."""
+
+    def generate_activity_id(process_run_id: str, suffix: str = None) -> str:
+        # https://localhost/activities/commit/b092dca8866c940dd4ff119b7d76d163a1be6a65
+        # https://localhost/activities/commit/b092dca8866c940dd4ff119b7d76d163a1be6a65/steps/step_1
+        parts = process_run_id.rstrip("/").rsplit("/", maxsplit=3)
+
+        if parts[-2] == "steps":
+            parts = parts[-3:-1]
+        else:
+            parts = parts[-1]
+
+        original_id = "/".join(parts)
+
+        if suffix:
+            original_id += suffix
+
+        return sha1(original_id.encode("utf-8")).hexdigest()
+
     assert not isinstance(process_run, old_schema.WorkflowRun)
 
     project_id = client.project.id
@@ -384,8 +403,8 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
         runs = [run]
 
     activities = []
-    for run in runs:
-        activity_id = Activity.generate_id()
+    for i, run in enumerate(runs):
+        activity_id = generate_activity_id(process_run._id, suffix=str(i) if i else None)
 
         plan = _convert_run_to_plan(run, project_id=project_id)
 
