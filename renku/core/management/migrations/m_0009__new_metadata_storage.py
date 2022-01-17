@@ -380,9 +380,9 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
         parts = process_run_id.rstrip("/").rsplit("/", maxsplit=3)
 
         if parts[-2] == "steps":
-            parts = parts[-3:-1]
+            parts = parts[-3:]
         else:
-            parts = parts[-1]
+            parts = [parts[-1]]
 
         original_id = "/".join(parts)
 
