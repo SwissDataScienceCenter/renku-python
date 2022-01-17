@@ -319,3 +319,90 @@ def test_explicit_output_as_stdin(renku_cli):
     )
 
     assert 2 == exit_code
+
+
+def test_explicit_parameter(renku_cli):
+    """Test explicit parameters are inside the Renku repo"""
+    exit_code, activity = renku_cli("run", "--param", "test", "echo", "test", stdout="target.txt")
+
+    plan = activity.association.plan
+    assert 0 == exit_code
+
+    assert 0 == len(plan.inputs)
+    assert 1 == len(plan.outputs)
+    assert 1 == len(plan.parameters)
+
+    assert 1 == plan.parameters[0].position
+    assert "test" == str(plan.parameters[0].default_value)
+
+
+def test_explicit_parameter_is_listed(renku_cli):
+    """Test explicit parameters are can be set when not in the command"""
+    exit_code, activity = renku_cli("run", "--param", "test", "--no-output", "echo")
+
+    plan = activity.association.plan
+    assert 0 == exit_code
+
+    assert 0 == len(plan.inputs)
+    assert 0 == len(plan.outputs)
+    assert 1 == len(plan.parameters)
+
+    assert plan.parameters[0].position is None
+    assert "test" == str(plan.parameters[0].default_value)
+
+
+def test_explicit_parameter_with_same_output(renku_cli):
+    """Test explicit parameter can coexist with output of same name"""
+    exit_code, activity = renku_cli("run", "--param", "test", "echo", "test", stdout="test")
+
+    plan = activity.association.plan
+    assert 0 == exit_code
+
+    assert 0 == len(plan.inputs)
+    assert 1 == len(plan.outputs)
+    assert 1 == len(plan.parameters)
+
+    assert 2 == plan.outputs[0].position
+    assert "test" == str(plan.outputs[0].default_value)
+
+    assert 1 == plan.parameters[0].position
+    assert "test" == str(plan.parameters[0].default_value)
+
+
+def test_explicit_parameter_with_same_input(renku_cli, client):
+    """Test explicit parameter can coexist with output of same name"""
+    foo = Path(os.path.relpath(client.path / "foo", os.getcwd()))
+    foo.mkdir()
+    renku_cli("run", "touch", "test")
+    exit_code, activity = renku_cli("run", "--param", "test", "cat", "test", stdout="target")
+
+    plan = activity.association.plan
+    assert 0 == exit_code
+
+    assert 0 == len(plan.inputs)
+    assert 1 == len(plan.outputs)
+    assert 1 == len(plan.parameters)
+
+    assert 1 == plan.parameters[0].position
+    assert "test" == str(plan.parameters[0].default_value)
+
+
+def test_explicit_parameter_with_same_explicit_input(renku_cli, client):
+    """Test explicit parameter can coexist with output of same name"""
+    foo = Path(os.path.relpath(client.path / "foo", os.getcwd()))
+    foo.mkdir()
+    renku_cli("run", "touch", "test")
+    exit_code, activity = renku_cli("run", "--param", "test", "--input", "test", "cat", "test", stdout="target")
+
+    plan = activity.association.plan
+    assert 0 == exit_code
+
+    assert 1 == len(plan.inputs)
+    assert 1 == len(plan.outputs)
+    assert 1 == len(plan.parameters)
+
+    assert 1 == plan.parameters[0].position
+    assert "test" == str(plan.parameters[0].default_value)
+
+    assert plan.inputs[0].position is None
+    assert "test" == str(plan.inputs[0].default_value)

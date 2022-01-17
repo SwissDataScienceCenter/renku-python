@@ -63,6 +63,7 @@ class PlanFactory:
         command_line: str,
         explicit_inputs: List[str] = None,
         explicit_outputs: List[str] = None,
+        explicit_parameters: List[str] = None,
         directory: Optional[str] = None,
         working_dir: Optional[str] = None,
         no_input_detection: bool = False,
@@ -101,6 +102,7 @@ class PlanFactory:
 
         self.explicit_inputs = [Path(os.path.abspath(p)) for p in explicit_inputs] if explicit_inputs else []
         self.explicit_outputs = [Path(os.path.abspath(p)) for p in explicit_outputs] if explicit_outputs else []
+        self.explicit_parameters = explicit_parameters
 
         self.stdin = stdin
         self.stdout = stdout
@@ -268,6 +270,9 @@ class PlanFactory:
 
         for parameter in self.parameters:
             # NOTE: find parameters that might actually be outputs
+            if parameter.default_value in self.explicit_parameters:
+                continue
+
             try:
                 path = self.directory / str(parameter.default_value)
                 input_path = Path(os.path.abspath(path)).relative_to(self.working_dir)
@@ -340,7 +345,7 @@ class PlanFactory:
 
     def guess_type(self, value: Union[Path, str], ignore_filenames: Set[str] = None) -> Tuple[Any, str]:
         """Return new value and CWL parameter type."""
-        if not self._is_ignored_path(value, ignore_filenames):
+        if not self._is_ignored_path(value, ignore_filenames) and value not in self.explicit_parameters:
             candidate = self._resolve_existing_subpath(value)
             if candidate:
                 if candidate.is_dir():
@@ -512,6 +517,16 @@ class PlanFactory:
                 encoding_format=[DIRECTORY_MIME_TYPE] if type == "Directory" else default.mime_type,
             )
 
+    def add_explicit_parameters(self):
+        """Add explicit parameters."""
+        parameter_values = [parameter.default_value for parameter in self.parameters]
+
+        for explicit_parameter in self.explicit_parameters:
+            if explicit_parameter in parameter_values:
+                continue
+
+            self.add_command_parameter(explicit_parameter)
+
     @contextmanager
     @inject.autoparams()
     def watch(self, client_dispatcher: IClientDispatcher, no_output=False):
@@ -536,6 +551,7 @@ class PlanFactory:
             # Include indirect inputs and outputs before further processing
             self.add_indirect_inputs()
             self.add_indirect_outputs()
+            self.add_indirect_parameters()
 
             self._include_indirect_parameters()
 
@@ -622,6 +638,15 @@ class PlanFactory:
             # treat indirect outputs like explicit outputs
             path = Path(os.path.abspath(indirect_output))
             self.explicit_outputs.append(path)
+
+    def add_indirect_parameters(self):
+        """Read indirect parameters list and add them to explicit parameters."""
+        indirect_parameters_list = get_indirect_parameters_path(self.working_dir)
+
+        for indirect_parameter in self._read_files_list(indirect_parameters_list):
+            self.explicit_parameters.append(indirect_parameter)
+
+        self.add_explicit_parameters()
 
     def iter_input_files(self, basedir):
         """Yield tuples with input id and path."""
