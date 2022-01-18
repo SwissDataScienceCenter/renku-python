@@ -17,6 +17,7 @@
 # limitations under the License.
 """Represent a group of run templates."""
 
+import copy
 from collections import defaultdict
 from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple, Union
@@ -358,16 +359,11 @@ class CompositePlan(AbstractPlan):
 
     def derive(self) -> "CompositePlan":
         """Create a new ``CompositePlan`` that is derived from self."""
-        derived = CompositePlan(
-            description=self.description,
-            id=self.id,
-            date_created=local_now(),
-            invalidated_at=self.invalidated_at,
-            name=self.name,
-            derived_from=self.derived_from,
-            plans=self.plans.copy(),
-            mappings=self.mappings.copy(),
-            links=self.links.copy(),
-        )
+        derived = copy.copy(self)
+        derived.derived_from = self.id
+        derived.date_created = local_now()
+        derived.plans = self.plans.copy()
+        derived.mappings = self.mappings.copy()
+        derived.links = self.links.copy()
         derived.assign_new_id()
         return derived

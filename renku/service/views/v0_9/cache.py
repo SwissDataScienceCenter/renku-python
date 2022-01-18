@@ -22,12 +22,12 @@ from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.service.serializers.v0_9.cache import ProjectMigrationCheckResponseRPC_0_9
 from renku.service.views.api_versions import V0_9
-from renku.service.views.decorators import handle_common_except, requires_cache, requires_identity
+from renku.service.views.decorators import handle_common_except, optional_identity, requires_cache
 
 
 @handle_common_except
 @requires_cache
-@requires_identity
+@optional_identity
 def migration_check_project_view_0_9(user_data, cache):
     """
     Retrieve migration information for a project.

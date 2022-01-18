@@ -31,6 +31,12 @@ By default, configuration is stored locally in the project's directory. Use
 ``--global`` option to store configuration for all projects in your home
 directory.
 
+.. cheatsheet::
+   :group: Config
+   :command: $ renku config set <key> <value>
+   :description: Set entry <key> to <value> in renku config.
+   :extended:
+
 Remove values
 ~~~~~~~~~~~~~
 
@@ -42,6 +48,12 @@ To remove a specific key from configuration use:
 
 By default, only local configuration is searched for removal. Use ``--global``
 option to remove a global configuration value.
+
+.. cheatsheet::
+   :group: Config
+   :command: $ renku config remove <key>
+   :description: Unset entry <key> renku config.
+   :extended:
 
 Query values
 ~~~~~~~~~~~~
@@ -64,6 +76,12 @@ You can provide a KEY to display only its value:
 
     $ renku config show interactive.default_url
     default_url = /lab
+
+.. cheatsheet::
+   :group: Config
+   :command: $ renku config show [<key>]
+   :description: Show current configuration.
+   :extended:
 
 Available configuration values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -15,7 +15,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Check your system and repository for potential problems."""
+"""Check your system and repository for potential problems.
+
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku doctor
+   :description: Check your system and repository for potential problems.
+   :extended:
+"""
 import textwrap
 
 import click

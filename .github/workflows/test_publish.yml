@@ -4,11 +4,12 @@ on:
   push:
     branches:
     - master
+    - develop
     paths:
     - renku/core/commands/providers/*.py
 
 jobs:
-  test-linux-integration:
+  test-linux-integration-publish:
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 4
@@ -37,7 +38,7 @@ jobs:
         OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
       run: pytest -m publish -v
 
-  test-macos-integration:
+  test-macos-integration-publish:
     runs-on: macos-latest
     strategy:
       max-parallel: 4

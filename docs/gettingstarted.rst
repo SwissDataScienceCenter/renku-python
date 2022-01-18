@@ -22,12 +22,25 @@ Getting Started
 Interaction with the platform can take place via the command-line
 interface (CLI).
 
+.. cheatsheet::
+   :group: Getting Started
+   :command: $ pip install renku
+   :description: Install with pip
+   :extended:
+
 Start by creating for folder where you want to keep your Renku project:
 
 .. code-block:: console
 
    $ renku init my-renku-project
    $ cd my-renku-project
+
+.. cheatsheet::
+   :group: Getting Started
+   :command: $ renku init my-renku-project|||
+             $ cd my-renku-project
+   :description: Starting a Renku project.
+   :extended:
 
 Create a dataset and add data to it:
 

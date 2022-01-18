@@ -37,6 +37,12 @@ You can manually pull contents of file(s) you want with:
 
     $ renku storage pull file1 file2
 
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku storage pull <path>...
+   :description: Pull <path>'s from external storage (LFS).
+   :extended:
+
 Removing local content of files stored in git LFS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

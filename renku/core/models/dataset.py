@@ -396,28 +396,18 @@ class Dataset(Persistent):
 
     def copy(self) -> "Dataset":
         """Return a clone of this dataset."""
-        return Dataset(
-            annotations=[a.copy() for a in self.annotations],
-            creators=self.creators.copy(),
-            dataset_files=[f.copy() for f in self.dataset_files],
-            date_created=self.date_created,
-            date_published=self.date_published,
-            date_removed=self.date_removed,
-            derived_from=self.derived_from,
-            description=self.description,
-            id=self.id,
-            identifier=self.identifier,
-            images=list(self.images or []),
-            in_language=self.in_language,
-            initial_identifier=self.initial_identifier,
-            keywords=list(self.keywords or []),
-            license=self.license,
-            name=self.name,
-            project_id=self.project_id,
-            same_as=self.same_as,
-            title=self.title,
-            version=self.version,
-        )
+        try:
+            self.unfreeze()
+            dataset = copy.copy(self)
+        finally:
+            self.freeze()
+
+        dataset.annotations = [a.copy() for a in self.annotations]
+        dataset.creators = self.creators.copy()
+        dataset.dataset_files = [f.copy() for f in self.dataset_files]
+        dataset.images = list(dataset.images or [])
+        dataset.keywords = list(dataset.keywords or [])
+        return dataset
 
     def replace_identifier(self, identifier: str = None):
         """Replace dataset's identifier and update relevant fields.

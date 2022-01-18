@@ -97,6 +97,9 @@ class AbstractPlan(Persistent, ABC):
         new_uuid = uuid4().hex
         self.id = self.id.replace(current_uuid, new_uuid)
 
+        # NOTE: We also need to re-assign the _p_oid since identifier has changed
+        self.reassign_oid()
+
         return new_uuid
 
     def _extract_uuid(self) -> str:
@@ -240,20 +243,14 @@ class Plan(AbstractPlan):
 
     def derive(self) -> "Plan":
         """Create a new ``Plan`` that is derived from self."""
-        derived = Plan(
-            parameters=self.parameters.copy(),
-            command=self.command,
-            description=self.description,
-            id=self.id,
-            inputs=self.inputs.copy(),
-            date_created=local_now(),
-            invalidated_at=self.invalidated_at,
-            keywords=self.keywords.copy(),
-            name=self.name,
-            derived_from=self.id,
-            outputs=self.outputs.copy(),
-            success_codes=self.success_codes.copy(),
-        )
+        derived = copy.copy(self)
+        derived.derived_from = self.id
+        derived.date_created = local_now()
+        derived.parameters = self.parameters.copy()
+        derived.inputs = self.inputs.copy()
+        derived.keywords = self.keywords.copy()
+        derived.outputs = self.outputs.copy()
+        derived.success_codes = self.success_codes.copy()
         derived.assign_new_id()
         return derived
 
