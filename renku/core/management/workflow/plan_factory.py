@@ -718,7 +718,7 @@ def get_indirect_outputs_path(client_path):
 def get_indirect_parameters_path(client_path):
     """Return path to file that contains indirect parameters list."""
     parent = _get_indirect_parent_path(client_path)
-    return parent / "parameters.yml"
+    return parent / "parameters..yml"
 
 
 def _get_indirect_parent_path(client_path):
