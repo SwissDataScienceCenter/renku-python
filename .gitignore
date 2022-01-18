@@ -91,3 +91,6 @@ helm-chart/renku-core/charts
 renku/templates/
 temp/
 tmp/
+
+# pytest-recording cache
+cassettes

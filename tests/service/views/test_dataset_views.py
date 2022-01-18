@@ -1120,6 +1120,7 @@ def test_add_existing_file(svc_client_with_repo):
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
+@pytest.mark.vcr
 def test_cached_import_dataset_job(doi, svc_client_cache, project):
     """Test import a dataset."""
     client, headers, cache = svc_client_cache
@@ -1171,6 +1172,7 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
+@pytest.mark.vcr
 def test_remote_import_dataset_job(doi, svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed import of a dataset."""
     response = svc_client.post(

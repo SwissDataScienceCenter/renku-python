@@ -27,6 +27,12 @@ At the moment, it only shows workflow executions.
     -------------------  ----  -------------
     2021-09-21 15:46:02  Run   cp A C
     2021-09-21 10:52:51  Run   cp A B
+
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku log
+   :description: Show a history of renku actions.
+   :extended:
 """
 
 import click

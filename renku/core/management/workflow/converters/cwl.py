@@ -61,11 +61,23 @@ def _get_argument_type(value):
     """Get the type of a command line argument."""
     type_ = "string"
 
-    try:
-        value = int(value)
+    if isinstance(value, float):
+        type_ = "float"
+    elif isinstance(value, int):
         type_ = "int"
-    except ValueError:
-        pass
+    else:
+        try:
+            casted_value = float(value)
+
+            if "." not in value:
+                type_ = "int"
+                casted_value = int(value)
+            else:
+                type_ = "float"
+
+            value = casted_value
+        except ValueError:
+            pass
 
     return value, type_
 
@@ -284,22 +296,6 @@ class CWLExporter(IWorkflowConverter):
                 param_type="Directory",
                 input_binding=None,
                 default={"location": (basedir / ".renku").resolve().as_uri(), "class": "Directory"},
-            )
-        )
-
-        # TODO: ".git" is not required once https://github.com/SwissDataScienceCenter/renku-python/issues/1043 is done
-        # because we won't need the git history to correctly load metadata. The following two statements can be removed.
-        workdir_req.listing.append(
-            cwlgen.InitialWorkDirRequirement.Dirent(
-                entry="$(inputs.input_git_directory)", entryname=".git", writable=False
-            )
-        )
-        tool_object.inputs.append(
-            cwlgen.CommandInputParameter(
-                "input_git_directory",
-                param_type="Directory",
-                input_binding=None,
-                default={"location": (basedir / ".git").resolve().as_uri(), "class": "Directory"},
             )
         )
 

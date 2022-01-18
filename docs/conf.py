@@ -28,6 +28,7 @@ except ImportError:
     from importlib_metadata import version
 
 sys.path.insert(0, abspath(join(dirname(__file__))))
+sys.path.append(abspath("./_ext"))
 
 # -- General configuration ------------------------------------------------
 
@@ -48,6 +49,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinxcontrib.spelling",
     "sphinx_tabs.tabs",
+    "cheatsheet",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -96,7 +98,7 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["_build", "CHANGES.rst"]
+exclude_patterns = ["_build", "CHANGES.rst", "cheatsheet.rst"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
