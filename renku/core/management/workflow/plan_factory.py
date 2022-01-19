@@ -254,7 +254,7 @@ class PlanFactory:
             assert isinstance(default, File)
             self.add_command_input(default_value=str(default), encoding_format=default.mime_type, position=position)
 
-    def add_outputs(self, candidates: Set[Tuple[str, Optional[str]]]):
+    def add_outputs(self, candidates: Set[Tuple[Union[Path, str], Optional[str]]]):
         """Yield detected output and changed command input parameter."""
         # TODO what to do with duplicate paths & inputs with same defaults
         candidate_paths = list(map(lambda x: x[0], candidates))
