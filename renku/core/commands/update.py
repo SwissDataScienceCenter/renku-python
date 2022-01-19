@@ -38,15 +38,7 @@ from renku.core.utils.os import get_relative_paths
 
 def update_command():
     """Update existing files by rerunning their outdated workflow."""
-    return (
-        Command()
-        .command(_update)
-        .require_migration()
-        .require_clean()
-        .require_nodejs()
-        .with_database(write=True)
-        .with_commit()
-    )
+    return Command().command(_update).require_migration().require_clean().with_database(write=True).with_commit()
 
 
 @inject.autoparams()

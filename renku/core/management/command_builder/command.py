@@ -391,13 +391,6 @@ class Command:
         return RequireClean(self)
 
     @check_finalized
-    def require_nodejs(self) -> "Command":
-        """Ensure nodejs is installed."""
-        from renku.core.management.command_builder.nodejs import RequireNodeJs
-
-        return RequireNodeJs(self)
-
-    @check_finalized
     def with_communicator(self, communicator: CommunicationCallback) -> "Command":
         """Create a communicator."""
         from renku.core.management.command_builder.communication import Communicator
