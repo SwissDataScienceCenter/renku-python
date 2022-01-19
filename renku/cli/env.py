@@ -23,19 +23,19 @@ import click
 @click.command()
 @click.option("shell_completion", "--shell-completion", is_flag=True, help="Print shell completion command")
 def env(shell_completion):
-    """Print renku shell completion command for the shell used."""
+    """Renku environment commands."""
 
     if shell_completion:
-        import os
+        import shellingham
 
         from renku.core.errors import UsageError
 
-        shell = os.environ["SHELL"]
-        if shell.endswith("bash"):
+        shell = shellingham.detect_shell()[0]
+        if shell == "bash":
             click.echo("_RENKU_COMPLETE=bash_source renku")
-        elif shell.endswith("zsh"):
+        elif shell == "zsh":
             click.echo("_RENKU_COMPLETE=zsh_source renku")
-        elif shell.endswith("fish"):
+        elif shell == "fish":
             click.echo("env _RENKU_COMPLETE=fish_source renku")
         else:
             raise UsageError(f"The currently used shell '{shell}' is not supported for shell completion.")
