@@ -18,6 +18,60 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.1...v1.0.2>`__ (2022-01-18)
+--------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** disable interpolation when loading/storing renku config
+   (`#2527 <https://github.com/SwissDataScienceCenter/renku-python/issues/2527>`__)
+   (`4724b60 <https://github.com/SwissDataScienceCenter/renku-python/commit/4724b6024273e6b9f217e2d37303da662295d941>`__)
+-  **core:** fail gracefully when running non-existing commands
+   (`#2523 <https://github.com/SwissDataScienceCenter/renku-python/issues/2523>`__)
+   (`2879c55 <https://github.com/SwissDataScienceCenter/renku-python/commit/2879c55314bbee58c040a455fe1882136e404595>`__)
+-  **core:** fix cwl float type and derived from
+   (`#2570 <https://github.com/SwissDataScienceCenter/renku-python/issues/2570>`__)
+   (`19454ba <https://github.com/SwissDataScienceCenter/renku-python/commit/19454ba89f2eea15cc0051f48a0e60cf373d742d>`__)
+-  **core:** make activity ids deterministic in migration
+   (`#2581 <https://github.com/SwissDataScienceCenter/renku-python/issues/2581>`__)
+   (`7ed6102 <https://github.com/SwissDataScienceCenter/renku-python/commit/7ed6102496abb03329f6b19521232215e31a834a>`__)
+-  **core:** preserve ``dateCreated`` when migrating datasets
+   (`#2526 <https://github.com/SwissDataScienceCenter/renku-python/issues/2526>`__)
+   (`74c48f2 <https://github.com/SwissDataScienceCenter/renku-python/commit/74c48f2c93323dbd607e7539d1eeaa3419c89ace>`__)
+-  **core:** set project when exporting graph
+   (`#2534 <https://github.com/SwissDataScienceCenter/renku-python/issues/2534>`__)
+   (`de098a5 <https://github.com/SwissDataScienceCenter/renku-python/commit/de098a5326196c294cb45f1245c4e4f3f178ff93>`__)
+-  **service:** disable migration check optimization
+   (`#2541 <https://github.com/SwissDataScienceCenter/renku-python/issues/2541>`__)
+   (`f2f573f <https://github.com/SwissDataScienceCenter/renku-python/commit/f2f573f299b971c1914b711a3d39fc97a54c7987>`__)
+-  **service:** fix cache.migrate not locking the project
+   (`#2573 <https://github.com/SwissDataScienceCenter/renku-python/issues/2573>`__)
+   (`ed2bcd8 <https://github.com/SwissDataScienceCenter/renku-python/commit/ed2bcd8551f500e3a4a422a6906d0813317b1c77>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** add shell_complete implementation for workflows and
+   datasets
+   (`#2512 <https://github.com/SwissDataScienceCenter/renku-python/issues/2512>`__)
+   (`d6c1fe2 <https://github.com/SwissDataScienceCenter/renku-python/commit/d6c1fe2b61116c561665b2fddd0ce0315bfb95a2>`__)
+-  **core:** extended template variable functionality
+   (`#2120 <https://github.com/SwissDataScienceCenter/renku-python/issues/2120>`__)
+   (`0e13fc1 <https://github.com/SwissDataScienceCenter/renku-python/commit/0e13fc1b4db8b0fd323cc3d3fc0c865ed280fccc>`__)
+-  **core:** ignore quotation mark in git user/email config
+   (`#2537 <https://github.com/SwissDataScienceCenter/renku-python/issues/2537>`__)
+   (`e70481c <https://github.com/SwissDataScienceCenter/renku-python/commit/e70481cd386ceadd9e43e06d373c32e8f6c8669d>`__)
+-  **core:** renku clone with credentials
+   (`#2517 <https://github.com/SwissDataScienceCenter/renku-python/issues/2517>`__)
+   (`594d0ad <https://github.com/SwissDataScienceCenter/renku-python/commit/594d0ad0e6a52b2a98afedac9a20a20d50383f02>`__)
+-  **core:** support forward compatibility of datasets
+   (`#2554 <https://github.com/SwissDataScienceCenter/renku-python/issues/2554>`__)
+   (`c6a7013 <https://github.com/SwissDataScienceCenter/renku-python/commit/c6a7013e02b639bf1894d6b96e53b05a0058cb9e>`__)
+-  **service:** add project.lock_status endpoint
+   (`#2531 <https://github.com/SwissDataScienceCenter/renku-python/issues/2531>`__)
+   (`082e897 <https://github.com/SwissDataScienceCenter/renku-python/commit/082e897feac105e772f5672349f4f3535425d4ce>`__)
+
 ` <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.0...v1.0.1>`__ (2021-12-07)
 --------------------------------------------------------------------------------------------------
 
