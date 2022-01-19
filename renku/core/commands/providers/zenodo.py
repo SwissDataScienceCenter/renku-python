@@ -264,6 +264,7 @@ class ZenodoRecordSerializer:
 
                 # Delete existing isPartOf
                 data.pop("isPartOf", None)
+                data.pop("sameAs", None)
 
                 return data
 
