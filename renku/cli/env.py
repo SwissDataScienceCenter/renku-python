@@ -19,8 +19,6 @@
 
 import click
 
-from renku.core import errors
-
 
 @click.command()
 @click.option("shell_completion", "--shell-completion", is_flag=True, help="Print shell completion command")
@@ -30,6 +28,8 @@ def env(shell_completion):
     if shell_completion:
         import os
 
+        from renku.core.errors import UsageError
+
         shell = os.environ["SHELL"]
         if shell.endswith("bash"):
             click.echo("_RENKU_COMPLETE=bash_source renku")
@@ -38,4 +38,4 @@ def env(shell_completion):
         elif shell.endswith("fish"):
             click.echo("env _RENKU_COMPLETE=fish_source renku")
         else:
-            raise errors.UsageError(f"The currently used shell '{shell}' is not supported for shell completion.")
+            raise UsageError(f"The currently used shell '{shell}' is not supported for shell completion.")
