@@ -878,9 +878,6 @@ jobs:
         test-macos-cli,
         test-macos-core,
         test-macos-service,
-        test-linux-integration,
-        test-linux-integration-service,
-        test-macos-integration,
       ]
     if: startsWith(github.ref, 'refs/tags/')
     steps:

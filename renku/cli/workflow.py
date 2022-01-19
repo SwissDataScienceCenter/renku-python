@@ -120,8 +120,21 @@ to allow execution using various execution backends.
     $ renku workflow execute --provider cwltool --set input-1=file.txt my-run
 
 Parameters can be set using the ``--set`` keyword or by specifying them in a
-values YAML file and passing that using ``--values``. Provider specific
-settings can be passed as file using the ``--config`` parameter.
+values YAML file and passing that using ``--values``. In case of passing a file,
+the YAML should follow the this structure:
+
+.. code-block:: yaml
+
+    learning_rate: 0.9
+    dataset_input: dataset.csv
+    chart_output: mychart.png
+    myworkflow:
+        lr: 0.8
+        lookuptable: lookup.xml
+        myotherworkflow:
+            language: en
+
+Provider specific settings can be passed as file using the ``--config`` parameter.
 
 .. cheatsheet::
    :group: Workflows
@@ -149,7 +162,13 @@ execution of a Plan, with parameter-sets provided by the user.
 
 The set of possible values for a parameter can be given by ``--map`` command
 line argument or by specifying them in a values YAML file and passing that
-using ``--mapping``.
+using ``--mapping``. Content of the mapping file for the above example
+should be:
+
+.. code-block:: yaml
+
+    parameter-1: [1,2,3]
+    parameter-2: [10,20]
 
 .. cheatsheet::
    :group: Workflows
@@ -168,7 +187,7 @@ together with the ``@tag`` suffix in their names.
 .. code-block:: console
 
     $ renku workflow iterate --map parameter-1@tag1=[1,2,3] \
-            --map parameter-1@tag1=[10,5,30] my-run
+            --map parameter-2@tag1=[10,5,30] my-run
 
 This will result in only three distinct execution of the ``my-run`` Plan,
 with the following parameter combinations: ``[(1,10), (2,5), (3,30)]``. It is
