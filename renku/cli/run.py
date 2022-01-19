@@ -91,6 +91,8 @@ if:
    the arguments that are passed on the command line. Files or directories
    specified with this option will not be passed as input arguments to the
    script.
+   You can specify ``--input name=path`` or just `--input path``, the former
+   of which would also set the name of the input on the resulting Plan.
 
 .. topic:: Specifying auxiliary parameters (``--param``)
 
@@ -99,6 +101,8 @@ if:
    parameter as just a string even if it matches a file name in the project.
    This option is not a replacement for the arguments that are passed on the
    command line.
+   You can specify ``--param name=value`` or just `--param value``, the former
+   of which would also set the name of the parameter on the resulting Plan.
 
 .. topic:: Disabling input detection (``--no-input-detection``)
 
@@ -156,6 +160,8 @@ those paths. Therefore:
    ``--output`` option. These output must exist after the execution of the
    ``renku run`` command. However, they do not need to be modified by
    the command.
+   You can specify ``--output name=path`` or just `--output path``, the former
+   of which would also set the name of the output on the resulting Plan.
 
 .. topic:: Disabling output detection (``--no-output-detection``)
 

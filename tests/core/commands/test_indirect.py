@@ -66,7 +66,7 @@ def test_set_indirect_parameters_via_env_var(tmp_path, env_var, reset_environmen
 
     assert path.is_absolute()
 
-    expected_path = Path(".renku") / "tmp" / env_var / "parameters..yml"
+    expected_path = Path(".renku") / "tmp" / env_var / "parameters.yml"
 
     assert expected_path == path.relative_to(tmp_path)
 
