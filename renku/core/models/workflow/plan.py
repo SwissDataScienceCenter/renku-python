@@ -248,7 +248,7 @@ class Plan(AbstractPlan):
         derived.date_created = local_now()
         derived.parameters = self.parameters.copy()
         derived.inputs = self.inputs.copy()
-        derived.keywords = self.keywords.copy()
+        derived.keywords = copy.deepcopy(self.keywords)
         derived.outputs = self.outputs.copy()
         derived.success_codes = self.success_codes.copy()
         derived.assign_new_id()
