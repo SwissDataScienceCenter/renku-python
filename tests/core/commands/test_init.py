@@ -361,7 +361,7 @@ def test_update_from_template_with_new_variable(
     template_files = res["template_files"]
 
     # NOTE: Add new template variable
-    manifest[0]["variables"]["__new_arbitrary_template_value__"] = None
+    manifest[0]["variables"]["__new_arbitrary_template_value__"] = {"description": "new var"}
     fetch_template = mocker.patch("renku.core.utils.templates.fetch_template")
     fetch_template.return_value = (manifest, manifest_path, "renku", "0.0.2")
 

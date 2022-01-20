@@ -146,7 +146,7 @@ class Project:
 
     immutable_template_files = attr.ib(factory=list)
 
-    automated_update = attr.ib(converter=bool, default=False)
+    automated_update = attr.ib(converter=bool, default=True)
 
     client = attr.ib(default=None)
 
@@ -1834,7 +1834,7 @@ class ProjectSchema(JsonLDSchema):
     template_version = fields.String(renku.templateVersion, missing=None)
     template_metadata = fields.String(renku.templateMetadata, missing=None)
     immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
-    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=False)
+    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=True)
     creator = Nested(schema.creator, OldPersonSchema, missing=None)
     _id = fields.Id(init_name="id", missing=None)
 

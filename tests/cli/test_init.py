@@ -19,6 +19,7 @@
 import json
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -29,7 +30,7 @@ from renku.cli.init import parse_parameters
 from renku.core import errors
 from renku.core.metadata.database import Database
 from renku.core.metadata.repository import Repository
-from renku.core.utils.templates import create_template_sentence
+from renku.core.utils.templates import create_project_from_template, create_template_sentence
 from tests.utils import format_result_exception, raises
 
 
@@ -86,18 +87,6 @@ def test_template_selection_helpers():
 
     full_sentence = create_template_sentence(templates, describe=True, instructions=True)
     assert instructions in full_sentence
-
-
-def test_list_templates(isolated_runner, project_init, template):
-    """Test listing templates."""
-    data, commands = project_init
-
-    new_project = Path(data["test_project"])
-    assert not new_project.exists()
-    result = isolated_runner.invoke(cli, commands["init_test"] + commands["list"])
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert not new_project.exists()
-    assert template["id"] in result.output
 
 
 def test_init(isolated_runner, project_init):
@@ -322,6 +311,41 @@ def test_init_remote(isolated_runner, project_init):
     assert (new_project / ".renku" / "metadata").exists()
 
 
+def test_create_from_template(local_client):
+    """Test importing data from template."""
+    output_file = "metadata.yml"
+    local_client.init_repository()
+    with tempfile.TemporaryDirectory() as tempdir:
+        template_path = Path(tempdir)
+        fake_template_file = template_path / output_file
+        with fake_template_file.open("w") as dest:
+            dest.writelines(
+                [
+                    "name: {{ __name__ }}",
+                    "description: {{ description }}",
+                    "created: {{ date_created }}",
+                    "updated: {{ date_updated }}",
+                ]
+            )
+            metadata = {
+                "__name__": "name",
+                "description": "description",
+                "date_created": "now",
+                "date_updated": "now",
+                "__template_source__": "renku",
+                "__template_ref__": "master",
+                "__template_id__": "python-minimal",
+                "__namespace__": "",
+                "__repository__": "",
+                "__project_slug__": "",
+            }
+        create_project_from_template(client=local_client, template_path=template_path, template_metadata=metadata)
+        compiled_file = local_client.path / output_file
+        compiled_content = compiled_file.read_text()
+        expected_content = "name: name" "description: description" "created: now" "updated: now"
+        assert expected_content == compiled_content
+
+
 @pytest.mark.integration
 def test_init_new_metadata_defaults(isolated_runner, project_init):
     """Test project initialization from a remote template with defaults."""
@@ -382,7 +406,7 @@ def test_init_new_metadata_wrong_number(isolated_runner, project_init):
         cli, commands["init_custom"] + template_source + description + number_val + bool_val + enum_val, "42\n"
     )
     assert 0 == result.exit_code, result.output
-    assert "Info: Value 'abcd' is not of type number required by number_val" in result.output
+    assert "Info: Value 'abcd' is not of type number required by 'number_val'" in result.output
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
@@ -422,7 +446,7 @@ def test_init_new_metadata_wrong_bool(isolated_runner, project_init):
         cli, commands["init_custom"] + template_source + description + number_val + bool_val + enum_val, "0\n"
     )
     assert 0 == result.exit_code, result.output
-    assert "Info: Value 'yay' is not of type boolean required by bool_var" in result.output
+    assert "Info: Value 'yay' is not of type boolean required by 'bool_var'" in result.output
     assert new_project.exists()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()

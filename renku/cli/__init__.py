@@ -117,7 +117,7 @@ def get_entry_points(name: str):
         return all_entry_points.get(name, [])
 
 
-WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service", "credentials", "env"]
+WARNING_UNPROTECTED_COMMANDS = ["clone", "credentials", "env", "init", "help", "login", "logout", "service", "template"]
 
 
 def _uuid_representer(dumper, data):

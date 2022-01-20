@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helpers functions for metadata management/parsing."""
+
 import os
 from collections.abc import Iterable
 from pathlib import Path
@@ -169,3 +170,8 @@ def is_external_file(path: Union[Path, str], client_path: Path):
 
     pointer = os.readlink(path)
     return str(os.path.join(RENKU_HOME, DatasetsApiMixin.POINTERS)) in pointer
+
+
+def is_renku_project_with_repository(client) -> bool:
+    """Check if repository is a renku project and a git repository."""
+    return client and client.repository is not None

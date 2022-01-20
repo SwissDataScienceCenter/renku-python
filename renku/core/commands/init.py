@@ -30,11 +30,13 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.migrations.utils import OLD_METADATA_PATH
-from renku.core.management.repository import INIT_APPEND_FILES
 from renku.core.utils import communication
+from renku.core.utils.os import is_path_empty
 from renku.core.utils.templates import (
+    TEMPLATE_INIT_APPEND_FILES,
     TEMPLATE_KEEP_FILES,
-    get_existing_template_files,
+    create_project_from_template,
+    get_template_files,
     set_template_variables,
     update_project_metadata,
 )
@@ -49,15 +51,6 @@ def store_directory(value):
     value.mkdir(parents=True, exist_ok=True)
     set_git_home(value)
     return value
-
-
-def is_path_empty(path):
-    """Check if path contains files.
-
-    :ref path: target path
-    """
-    gen = Path(path).glob("**/*")
-    return not any(gen)
 
 
 @inject.autoparams()
@@ -157,10 +150,14 @@ def _init(
 
     template_path = template_folder / template_data["folder"]
 
-    existing = get_existing_template_files(template_path=template_path, metadata=metadata, force=force)
+    existing = [
+        p
+        for p in get_template_files(template_base=template_path, template_metadata=metadata)
+        if (client.path / p).exists()
+    ]
 
-    append = list(filter(lambda x: x.lower() in INIT_APPEND_FILES, existing))
-    existing = list(filter(lambda x: x.lower() not in INIT_APPEND_FILES + TEMPLATE_KEEP_FILES, existing))
+    append = list(filter(lambda x: x.lower() in TEMPLATE_INIT_APPEND_FILES, existing))
+    existing = list(filter(lambda x: x.lower() not in TEMPLATE_INIT_APPEND_FILES + TEMPLATE_KEEP_FILES, existing))
 
     if (existing or append) and not force:
         message = ""
@@ -203,7 +200,6 @@ def _init(
                 custom_metadata=custom_metadata,
                 template_version=template_version,
                 immutable_template_files=template_data.get("immutable_template_files", []),
-                automated_update=template_data.get("allow_template_update", False),
                 force=force,
                 data_dir=data_dir,
                 description=description,
@@ -234,7 +230,6 @@ def create_from_template(
     custom_metadata=None,
     template_version=None,
     immutable_template_files=[],
-    automated_update=False,
     force=None,
     data_dir=None,
     user=None,
@@ -243,8 +238,7 @@ def create_from_template(
     keywords=None,
 ):
     """Initialize a new project from a template."""
-
-    template_files = list(client.get_template_files(template_path, metadata))
+    template_files = list(get_template_files(template_base=template_path, template_metadata=metadata))
 
     commit_only = [f"{RENKU_HOME}/"] + template_files
 
@@ -263,15 +257,12 @@ def create_from_template(
         with client.with_metadata(
             name=name, description=description, custom_metadata=custom_metadata, keywords=keywords
         ) as project:
-            update_project_metadata(
-                project=project,
-                template_metadata=metadata,
-                template_version=template_version,
-                immutable_template_files=immutable_template_files,
-                automated_update=automated_update,
-            )
+            metadata["__template_version__"] = template_version
 
-            client.import_from_template(template_path, metadata, force)
+            update_project_metadata(
+                project=project, template_metadata=metadata, immutable_template_files=immutable_template_files
+            )
+            create_project_from_template(client=client, template_path=template_path, template_metadata=metadata)
 
         if data_dir:
             client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
@@ -287,7 +278,6 @@ def _create_from_template_local(
     default_metadata={},
     template_version=None,
     immutable_template_files=[],
-    automated_template_update=False,
     user=None,
     source=None,
     ref=None,
@@ -298,7 +288,6 @@ def _create_from_template_local(
     keywords=None,
 ):
     """Initialize a new project from a template."""
-
     client = client_dispatcher.current_client
 
     metadata = {**default_metadata, **metadata}
@@ -317,7 +306,6 @@ def _create_from_template_local(
         custom_metadata=custom_metadata,
         template_version=template_version,
         immutable_template_files=immutable_template_files,
-        automated_update=automated_template_update,
         force=False,
         user=user,
         commit_message=commit_message,

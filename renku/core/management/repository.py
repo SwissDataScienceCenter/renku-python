@@ -17,13 +17,11 @@
 # limitations under the License.
 """Client for handling a local repository."""
 
-import shutil
 from contextlib import contextmanager
 from uuid import uuid4
 
 import attr
 import filelock
-from jinja2 import Template
 
 from renku.core import errors
 from renku.core.compat import Path
@@ -34,14 +32,9 @@ from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.models.enums import ConfigFilter
 from renku.core.models.project import Project
-from renku.core.utils import communication
 from renku.core.utils.git import default_path
-from renku.core.utils.os import hash_file
-from renku.core.utils.templates import TEMPLATE_KEEP_FILES, write_template_checksum
 
 DEFAULT_DATA_DIR = "data"
-
-INIT_APPEND_FILES = [".gitignore"]
 
 
 def path_converter(path):
@@ -299,59 +292,6 @@ class RepositoryApiMixin(GitCore):
 
         # verify if git user information is available
         _ = self.repository.get_user()
-
-    def get_template_files(self, template_path, metadata):
-        """Gets paths in a rendered renku template."""
-        for file in template_path.glob("**/*"):
-            rel_path = file.relative_to(template_path)
-            destination = self.path / rel_path
-
-            destination = Path(Template(str(destination)).render(metadata))
-            yield destination.relative_to(self.path)
-
-    def import_from_template(self, template_path, metadata, force=False):
-        """Render template files from a template directory."""
-        checksums = {}
-        for file in sorted(template_path.glob("**/*")):
-            rel_path = file.relative_to(template_path)
-            destination = self.path / rel_path
-
-            try:
-                # TODO: notify about the expected variables - code stub:
-                # with file.open() as fr:
-                #     file_content = fr.read()
-                #     # look for the required keys
-                #     env = Environment()
-                #     parsed = env.parse(file_content)
-                #     variables = meta.find_undeclared_variables(parsed)
-
-                # parse file and process it
-                template = Template(file.read_text())
-                rendered_content = template.render(metadata)
-                # NOTE: the path could contain template variables, we need to template it
-                destination = Path(Template(str(destination)).render(metadata))
-                templated_rel_path = destination.relative_to(self.path)
-
-                if destination.exists() and str(templated_rel_path).lower() in INIT_APPEND_FILES:
-                    communication.echo(f"Appending to file {templated_rel_path} ...")
-                    destination.write_text(destination.read_text() + "\n" + rendered_content)
-                elif not destination.exists() or str(templated_rel_path).lower() not in TEMPLATE_KEEP_FILES:
-                    if destination.exists():
-                        communication.echo(f"Overwriting file {templated_rel_path} ...")
-                    else:
-                        communication.echo(f"Initializing file {templated_rel_path} ...")
-
-                    destination.write_text(rendered_content)
-
-                checksums[str(rel_path)] = hash_file(destination)
-            except IsADirectoryError:
-                destination.mkdir(parents=True, exist_ok=True)
-            except TypeError:
-                shutil.copy(file, destination)
-
-        self.template_checksums.parent.mkdir(parents=True, exist_ok=True)
-
-        write_template_checksum(self, checksums)
 
 
 DATABASE_METADATA_PATH = [

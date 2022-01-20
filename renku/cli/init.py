@@ -52,7 +52,7 @@ when you initialize a project. You can check them by typing:
 
 .. code-block:: console
 
-    $ renku init --list-templates
+    $ renku template ls
 
     INDEX ID     DESCRIPTION                     PARAMETERS
     ----- ------ ------------------------------- -----------------------------
@@ -91,7 +91,7 @@ Provide parameters
 ~~~~~~~~~~~~~~~~~-
 
 Some templates require parameters to properly initialize a new project. You
-can check them by listing the templates ``--list-templates``.
+can check them by listing the templates ``renku template ls --verbose``.
 
 To provide parameters, use the ``--parameter`` option and provide each
 parameter using ``--parameter "param1"="value1"``.
@@ -196,11 +196,6 @@ import click
 
 from renku.core import errors
 from renku.core.commands.options import option_external_storage_requested
-
-_GITLAB_CI = ".gitlab-ci.yml"
-_DOCKERFILE = "Dockerfile"
-_REQUIREMENTS = "requirements.txt"
-CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
 INVALID_DATA_DIRS = [".", ".renku", ".git"]
 """Paths that cannot be used as data directory name."""

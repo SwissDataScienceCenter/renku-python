@@ -57,16 +57,12 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     @property
     def default_metadata(self):
         """Default metadata for project creation."""
-        automated_update = True
-        if self.template and "allow_template_update" in self.template:
-            automated_update = self.template["allow_template_update"]
-
         metadata = {
             "__template_source__": self.ctx["git_url"],
             "__template_ref__": self.ctx["ref"],
             "__template_id__": self.ctx["identifier"],
             "__namespace__": self.ctx["project_namespace"],
-            "__automated_update__": automated_update,
+            "__automated_update__": True,
             "__repository__": self.ctx["project_repository"],
             "__sanitized_project_name__": self.ctx["project_name_stripped"],
             "__project_slug__": self.ctx["project_slug"],
@@ -151,7 +147,6 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 custom_metadata=self.ctx["project_custom_metadata"],
                 template_version=self.template_version,
                 immutable_template_files=self.template.get("immutable_template_files", []),
-                automated_template_update=self.template.get("allow_template_update", False),
                 user=self.git_user,
                 source=self.ctx["url"],
                 ref=self.ctx["ref"],

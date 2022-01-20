@@ -77,7 +77,6 @@ def project_init(template):
         "id": ["--template-id", template["id"]],
         "index": ["--template-index", template["index"]],
         "force": ["--force"],
-        "list": ["--list-templates"],
         "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
         "parameters_equal_missing": ["--parameter", "p3:v3"],
         "parameters_equal_early": ["--parameter", "=p4v3"],
@@ -132,7 +131,6 @@ def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_
                 {**template["default_metadata"], **template["metadata"]},
                 template_version="0.0.1",
                 immutable_template_files=immutable_files or [],
-                automated_update=True,
             )
 
         project_files = [

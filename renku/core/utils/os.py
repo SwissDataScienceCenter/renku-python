@@ -88,6 +88,15 @@ def are_paths_related(a, b) -> bool:
     return absolute_common_path == os.path.abspath(a) or absolute_common_path == os.path.abspath(b)
 
 
+def is_path_empty(path: Union[Path, str]) -> bool:
+    """Check if path contains files.
+
+    :ref path: target path
+    """
+    subpaths = Path(path).rglob("*")
+    return not any(subpaths)
+
+
 def print_markdown(text: str):
     """Print markdown text to console."""
     from rich.console import Console
@@ -129,8 +138,11 @@ def delete_file(path: Union[Path, str], ignore_errors: bool = True):
             raise
 
 
-def hash_file(path: Union[Path, str]) -> str:
+def hash_file(path: Union[Path, str]) -> Optional[str]:
     """Calculate the sha256 hash of a file."""
+    if not os.path.exists(path):
+        return
+
     sha256_hash = hashlib.sha256()
 
     with open(path, "rb") as f:

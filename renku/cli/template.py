@@ -17,39 +17,95 @@
 # limitations under the License.
 r"""Manage project templates.
 
+Renku projects are initialized using a project template. Renku has a set of
+built-in templates that you can use in your projects. These templates can be
+listed by using:
+
+.. code-block:: console
+
+    $ renku template ls
+
+    INDEX  ID              PARAMETERS
+    -----  --------------  ------------
+        1  python-minimal
+        2  R-minimal
+        3  julia-minimal
+
+You can use other sources of templates that reside inside a git repository:
+
+.. code-block:: console
+
+    $ renku template ls --template-source https://github.com/SwissDataScienceCenter/renku-project-template
+
+    INDEX  ID              PARAMETERS
+    -----  --------------  ------------
+        1  python-minimal
+        2  R-minimal
+        3  julia-minimal
+
+``renku template show`` command can be used to see detailed information about a
+single template.
+
+
 Set a template
 ~~~~~~~~~~~~~~
 
-To set a template for older Renku project that don't have a template, you can
-use:
+You can change a project's template using ``renku template set`` command:
 
 .. code-block:: console
 
-    $ renku template set <template-id>
+    $ renku template set --template-id <template-id>
 
-or:
+or use a template from a different source:
 
 .. code-block:: console
 
-    $ renku template set <template-id> --template-source <template-repo-url>
+    $ renku template set --template-id <template-id> --template-source <template-repo-url>
 
 This command fails if the project already has a template. Use ``--force`` flag
 to force-change the template.
 
-TODO: Complete the documentation
+.. note::
+
+    Setting a template does NOT overwrite existing files in a project. Pass
+    ``--interactive`` flag to get a prompt for selecting which files to keep or
+    overwrite.
+
+
+Update a project's template
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A project's template can be update using:
+
+.. code-block:: console
+
+    $ renku template update
+
+If an update is available, this commands updates all project's files that are
+not modified locally by the project. Pass ``--interactive`` flag to select
+which files to keep or overwrite.
+
+.. note::
+
+    You can set a fixed template version for a project by passing a
+    ``--template-ref`` when setting it (or when initializing a project). This
+    approach only works for templates from sources other than Renku because
+    Renku templates are bound to the Renku version. Note that a reference
+    should be a git tag or commit SHA. If you set a git branch as a reference
+    than the template can still be updated.
+
+.. note::
+
+    Renku always preserve project's Renku version that is set in the Dockerfile
+    even if you overwrite the Dockerfile. The reason is that project's metadata
+    is not updated when setting/updating a template and therefore the project
+    won't work with a different Renku version. To update Renku version you need
+    to use ``renku migrate`` command.
+
 """
 
 import click
 
 from renku.cli.init import parse_parameters
-
-_GITLAB_CI = ".gitlab-ci.yml"
-_DOCKERFILE = "Dockerfile"
-_REQUIREMENTS = "requirements.txt"
-CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
-
-INVALID_DATA_DIRS = [".", ".renku", ".git"]
-"""Paths that cannot be used as data directory name."""
 
 
 @click.group()
@@ -79,17 +135,13 @@ def list_templates(template_source, template_ref, verbose):
     "-r", "--template-ref", default=None, help="Specify the reference to checkout on the remote template repository."
 )
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
-@click.option("-n", "--template-index", help="Provide the index number of the template to use.", type=int)
-def show_template(template_source, template_ref, template_id, template_index):
+def show_template(template_source, template_ref, template_id):
     """Show detailed template information for a single template."""
     from renku.cli.utils.callback import ClickCallback
     from renku.core.commands.template import show_template_command
 
     show_template_command().with_communicator(ClickCallback()).build().execute(
-        template_source=template_source,
-        template_ref=template_ref,
-        template_id=template_id,
-        template_index=template_index,
+        template_source=template_source, template_ref=template_ref, template_id=template_id
     )
 
 
@@ -99,7 +151,6 @@ def show_template(template_source, template_ref, template_id, template_index):
     "-r", "--template-ref", default=None, help="Specify the reference to checkout on the remote template repository."
 )
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
-@click.option("-n", "--template-index", help="Provide the index number of the template to use.", type=int)
 @click.option(
     "-p",
     "--parameter",
@@ -114,16 +165,21 @@ def show_template(template_source, template_ref, template_id, template_index):
 )
 @click.option("-f", "--force", is_flag=True, help="Override existing template.")
 @click.option("-i", "--interactive", is_flag=True, help="Ask when overwriting an existing file in the project.")
-def set_template(template_source, template_ref, template_id, template_index, parameters, force, interactive):
+@click.pass_context
+def set_template(ctx, template_source, template_ref, template_id, parameters, force, interactive):
     """Set a template for a project."""
     from renku.cli.utils.callback import ClickCallback
+    from renku.core import errors
     from renku.core.commands.template import set_template_command
+    from renku.core.utils.metadata import is_renku_project_with_repository
+
+    if not is_renku_project_with_repository(ctx.obj):
+        raise errors.ProjectNotFound("Cannot set template outside a Renku project")
 
     set_template_command().with_communicator(ClickCallback()).build().execute(
         template_source=template_source,
         template_ref=template_ref,
         template_id=template_id,
-        template_index=template_index,
         parameters=parameters,
         force=force,
         interactive=interactive,
@@ -131,11 +187,19 @@ def set_template(template_source, template_ref, template_id, template_index, par
 
 
 @template.command("update")
-@click.option("-f", "--force", is_flag=True, help="Force-update a project with a fixed template reference.")
 @click.option("-i", "--interactive", is_flag=True, help="Ask when overwriting an existing file in the project.")
-def update_template(force, interactive):
-    """Set a template for a project."""
+@click.pass_context
+def update_template(ctx, interactive):
+    """Update a project's template."""
     from renku.cli.utils.callback import ClickCallback
+    from renku.core import errors
     from renku.core.commands.template import update_template_command
+    from renku.core.utils.metadata import is_renku_project_with_repository
 
-    update_template_command().with_communicator(ClickCallback()).build().execute(force=force, interactive=interactive)
+    if not is_renku_project_with_repository(ctx.obj):
+        raise errors.ProjectNotFound("Cannot update template outside a Renku project")
+
+    result = update_template_command().with_communicator(ClickCallback()).build().execute(interactive=interactive)
+
+    if result.output is False:
+        click.secho("Template is up-to-date", fg="green")
