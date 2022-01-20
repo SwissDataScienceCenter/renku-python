@@ -91,6 +91,18 @@ if:
    the arguments that are passed on the command line. Files or directories
    specified with this option will not be passed as input arguments to the
    script.
+   You can specify ``--input name=path`` or just `--input path``, the former
+   of which would also set the name of the input on the resulting Plan.
+
+.. topic:: Specifying auxiliary parameters (``--param``)
+
+   You can specify extra parameters to your program explicitly by using the
+   ``--param`` option. This is useful for getting Renku to consider a
+   parameter as just a string even if it matches a file name in the project.
+   This option is not a replacement for the arguments that are passed on the
+   command line.
+   You can specify ``--param name=value`` or just `--param value``, the former
+   of which would also set the name of the parameter on the resulting Plan.
 
 .. topic:: Disabling input detection (``--no-input-detection``)
 
@@ -148,6 +160,8 @@ those paths. Therefore:
    ``--output`` option. These output must exist after the execution of the
    ``renku run`` command. However, they do not need to be modified by
    the command.
+   You can specify ``--output name=path`` or just `--output path``, the former
+   of which would also set the name of the output on the resulting Plan.
 
 .. topic:: Disabling output detection (``--no-output-detection``)
 
@@ -240,6 +254,7 @@ from renku.core.commands.options import option_isolation
 @click.option("--keyword", multiple=True, help="List of keywords for the workflow.")
 @click.option("explicit_inputs", "--input", multiple=True, help="Force a path to be considered as an input.")
 @click.option("explicit_outputs", "--output", multiple=True, help="Force a path to be considered an output.")
+@click.option("explicit_parameters", "--param", multiple=True, help="Force a string to be considered a parameter.")
 @click.option("--no-output", is_flag=True, default=False, help="Allow command without output files.")
 @click.option("--no-input-detection", is_flag=True, default=False, help="Disable auto-detection of inputs.")
 @click.option("--no-output-detection", is_flag=True, default=False, help="Disable auto-detection of outputs.")
@@ -259,6 +274,7 @@ def run(
     keyword,
     explicit_inputs,
     explicit_outputs,
+    explicit_parameters,
     no_output,
     no_input_detection,
     no_output_detection,
@@ -281,6 +297,7 @@ def run(
         keyword=keyword,
         explicit_inputs=explicit_inputs,
         explicit_outputs=explicit_outputs,
+        explicit_parameters=explicit_parameters,
         no_output=no_output,
         no_input_detection=no_input_detection,
         no_output_detection=no_output_detection,
