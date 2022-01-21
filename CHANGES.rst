@@ -18,6 +18,26 @@
 Changes
 =======
 
+`0.16.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.2...v0.16.3>`__ (2022-01-21)
+----------------------------------------------------------------------------------------------------------
+
+This is a backport release that contains changes necessary for 1.0.0 multi-service compatibility.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Fix for git requiring a merge strategy to be set
+
+Features
+~~~~~~~~
+
+-  **core:** Dataverse subject field support added
+
+-  **service:** 1.0.0 style /version endpoint added
+
+-  **service:** Made all endpoints versioned (v0.9)
+
+
 `0.16.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.1...v0.16.2>`__ (2021-10-05)
 ----------------------------------------------------------------------------------------------------------
 
