@@ -40,6 +40,9 @@ Users can track parameters' values in a workflow by defining them using
 
     nc = Parameter(name="n_components", value=10)
 
+Once a Parameter is tracked like this, it can be set normally in commands like
+``renku workflow execute`` with the ``--set`` option to override the value.
+
 """
 
 import re
@@ -107,7 +110,19 @@ def parameter(name, value, project):
     env_value = environ.get(f"{RENKU_ENV_PREFIX}{name}", None)
 
     if env_value:
-        value = env_value
+        if isinstance(value, str):
+            value = env_value
+        elif isinstance(value, bool):
+            value = bool(env_value)
+        elif isinstance(value, int):
+            value = int(env_value)
+        elif isinstance(value, float):
+            value = float(env_value)
+        else:
+            raise errors.ParameterError(
+                f"Can't convert value '{env_value}' to type '{type(value)}' for parameter '{name}'. Only "
+                "str, bool, int and float are supported."
+            )
 
     add_indirect_parameter(project.path, name=name, value=value)
 
