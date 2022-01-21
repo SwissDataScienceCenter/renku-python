@@ -43,6 +43,7 @@ from renku.core.models.workflow.parameter import CommandParameterBase
 from renku.core.models.workflow.plan import Plan
 from renku.core.models.workflow.provider import IWorkflowProvider
 from renku.core.plugins import hookimpl
+from renku.core.plugins.provider import RENKU_ENV_PREFIX
 
 
 class AbstractToilJob(Job):
@@ -53,6 +54,7 @@ class AbstractToilJob(Job):
         self.workflow = workflow
         self._input_files: Dict[str, FileID] = {}
         self._parents_promise = []
+        self._environment = os.environ.copy()
 
     @abstractmethod
     def _execute(self, command_line: List[str], mapped_std: Dict[str, str]) -> int:
@@ -95,16 +97,22 @@ class AbstractToilJob(Job):
             )
             _read_input(i.actual_value, file_metadata)
 
+            self._environment[f"{RENKU_ENV_PREFIX}{i.name}"] = i.actual_value
+
             if i.mapped_to:
                 mapped_std[i.mapped_to.stream_type] = i.actual_value
 
         for o in self.workflow.outputs:
+            self._environment[f"{RENKU_ENV_PREFIX}{o.name}"] = o.actual_value
             output_path = Path(o.actual_value)
             if len(output_path.parts) > 1:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
 
             if o.mapped_to:
                 mapped_std[o.mapped_to.stream_type] = o.actual_value
+
+        for p in self.workflow.parameters:
+            self._environment[f"{RENKU_ENV_PREFIX}{p.name}"] = p.actual_value
 
         # construct cmd
         cmd = []
@@ -147,6 +155,7 @@ class SubprocessToilJob(AbstractToilJob):
             command_line,
             cwd=os.getcwd(),
             **{key: open(value, mode="r" if key == "stdin" else "w") for key, value in mapped_std.items()},
+            env=self._environment,
         )
 
 
