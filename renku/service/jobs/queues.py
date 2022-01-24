@@ -70,7 +70,6 @@ class WorkerQueues:
     @staticmethod
     def get(name):
         """Get specific queue object."""
-        name = f"{WALRUS_NAMESPACE}.{name}"
         return Queue(
             name, connection=WorkerQueues.connection, default_timeout=int(os.getenv("WORKER_DEFAULT_JOBS_TIMEOUT", 600))
         )
