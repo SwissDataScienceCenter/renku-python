@@ -21,22 +21,23 @@ import os
 from rq import Queue
 
 from renku.service.cache.base import BaseCache
+from renku.service.cache.config import WALRUS_NAMESPACE
 
-CLEANUP_QUEUE_FILES = "cache.cleanup.files"
-CLEANUP_QUEUE_PROJECTS = "cache.cleanup.projects"
+CLEANUP_QUEUE_FILES = f"{WALRUS_NAMESPACE}.cache.cleanup.files"
+CLEANUP_QUEUE_PROJECTS = f"{WALRUS_NAMESPACE}.cache.cleanup.projects"
 
-DATASETS_JOB_QUEUE = "datasets.jobs"
-MIGRATIONS_JOB_QUEUE = "project.migrations"
-GRAPH_JOB_QUEUE = "graph.jobs"
+DATASETS_JOB_QUEUE = f"{WALRUS_NAMESPACE}.datasets.jobs"
+MIGRATIONS_JOB_QUEUE = f"{WALRUS_NAMESPACE}.project.migrations"
+GRAPH_JOB_QUEUE = f"{WALRUS_NAMESPACE}.graph.jobs"
 
-DELAYED_CTRL_DATASETS_CREATE = "delayed.ctrl.DatasetsCreateCtrl"
-DELAYED_CTRL_DATASETS_ADD = "delayed.ctrl.DatasetsAddFileCtrl"
-DELAYED_CTRL_DATASETS_REMOVE = "delayed.ctrl.DatasetsRemoveCtrl"
-DELAYED_CTRL_DATASETS_IMPORT = "delayed.ctrl.DatasetsImportCtrl"
-DELAYED_CTRL_DATASETS_EDIT = "delayed.ctrl.DatasetsEditCtrl"
-DELAYED_CTRL_DATASETS_UNLINK = "delayed.ctrl.DatasetsUnlinkCtrl"
-DELAYED_CTRL_PROJECT_MIGRATE = "delayed.ctrl.MigrateProjectCtrl"
-DELAYED_CTRL_CONFIG_SET = "delayed.ctrl.SetConfigCtrl"
+DELAYED_CTRL_DATASETS_CREATE = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsCreateCtrl"
+DELAYED_CTRL_DATASETS_ADD = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsAddFileCtrl"
+DELAYED_CTRL_DATASETS_REMOVE = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsRemoveCtrl"
+DELAYED_CTRL_DATASETS_IMPORT = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsImportCtrl"
+DELAYED_CTRL_DATASETS_EDIT = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsEditCtrl"
+DELAYED_CTRL_DATASETS_UNLINK = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsUnlinkCtrl"
+DELAYED_CTRL_PROJECT_MIGRATE = f"{WALRUS_NAMESPACE}.delayed.ctrl.MigrateProjectCtrl"
+DELAYED_CTRL_CONFIG_SET = f"{WALRUS_NAMESPACE}.delayed.ctrl.SetConfigCtrl"
 
 
 QUEUES = [
@@ -69,6 +70,7 @@ class WorkerQueues:
     @staticmethod
     def get(name):
         """Get specific queue object."""
+        name = f"{WALRUS_NAMESPACE}.{name}"
         return Queue(
             name, connection=WorkerQueues.connection, default_timeout=int(os.getenv("WORKER_DEFAULT_JOBS_TIMEOUT", 600))
         )
