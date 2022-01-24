@@ -57,10 +57,17 @@ def _get_docker_containers(renku_client, docker_client):
     return docker_client.containers.list(filters={"ancestor": docker_image_tags})
 
 
+def _get_docker_client():
+    try:
+        return docker.from_env()
+    except docker.errors.DockerException:
+        raise errors.DockerError("Error initializing docker client, make sure that the docker service is running!")
+
+
 @inject.autoparams()
 def _session_list(client_dispatcher: IClientDispatcher, format="tabular"):
     client = client_dispatcher.current_client
-    docker_client = docker.from_env()
+    docker_client = _get_docker_client()
     repo_containers = _get_docker_containers(client, docker_client)
 
     return SESSION_FORMATS[format](repo_containers)
@@ -74,7 +81,7 @@ def session_list_command():
 @inject.autoparams()
 def _session_start(client_dispatcher: IClientDispatcher, image_name: str = None):
     client = client_dispatcher.current_client
-    docker_client = docker.from_env()
+    docker_client = _get_docker_client()
 
     def _find_docker_image(remote, commit_sha):
         try:
@@ -137,7 +144,7 @@ def session_start_command():
 @inject.autoparams()
 def _session_stop(session_name: str, client_dispatcher: IClientDispatcher, stop_all=False):
     client = client_dispatcher.current_client
-    docker_client = docker.from_env()
+    docker_client = _get_docker_client()
 
     try:
         docker_containers = (
