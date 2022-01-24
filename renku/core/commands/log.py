@@ -20,6 +20,8 @@
 from renku.core.commands.view_model.log import LogViewModel
 from renku.core.management.command_builder import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
+from renku.core.models.dataset import Dataset
 
 
 def log_command():
@@ -27,11 +29,41 @@ def log_command():
     return Command().command(_log)
 
 
-@inject.autoparams("activity_gateway")
-def _log(activity_gateway: IActivityGateway, workflows_only: bool = False):
+@inject.autoparams("activity_gateway", "dataset_gateway")
+def _log(
+    activity_gateway: IActivityGateway,
+    dataset_gateway: IDatasetGateway,
+    workflows_only: bool = False,
+    datasets_only: bool = False,
+):
     """Get a log of renku commands."""
 
-    activities = activity_gateway.get_all_activities()
-    log_entries = [LogViewModel.from_activity(a) for a in activities]
+    def _get_all_dataset_versions(dataset: Dataset):
+        """Get all datasets provenance for a dataset."""
+
+        current_dataset = dataset
+
+        while current_dataset:
+            yield current_dataset
+
+            if current_dataset.derived_from:
+                current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)
+            else:
+                return
+
+    log_entries = []
+
+    if not datasets_only:
+        activities = activity_gateway.get_all_activities()
+        log_entries.extend(LogViewModel.from_activity(a) for a in activities)
+
+    if not workflows_only:
+        datasets = [
+            d
+            for root_dataset in dataset_gateway.get_all_datasets()
+            for d in _get_all_dataset_versions(root_dataset)
+            if d.change_type
+        ]
+        log_entries.extend(LogViewModel.from_dataset(d) for d in datasets)
 
     return log_entries

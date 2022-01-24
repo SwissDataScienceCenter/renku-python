@@ -22,8 +22,11 @@ from datetime import datetime, timedelta
 
 from renku.core.commands.log import _log
 from renku.core.commands.view_model.log import LogType
+from renku.core.models.dataset import DatasetChangeType
 from renku.core.models.provenance.activity import Activity, Association
 from renku.core.models.provenance.agent import Person, SoftwareAgent
+import inject
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
 
 
 def test_log_activities(mocker):
@@ -75,7 +78,7 @@ def test_log_activities(mocker):
     activity_gateway = mocker.MagicMock()
     activity_gateway.get_all_activities.return_value = [previous, intermediate, following]
     full_agents = [a.full_identity for a in agents]
-    result = _log(activity_gateway, workflows_only=True)
+    result = _log(activity_gateway, dataset_gateway=mocker.MagicMock(), workflows_only=True, datasets_only=False)
     assert 3 == len(result)
     assert all(log.type == LogType.ACTIVITY for log in result)
     assert result[0].date == previous.ended_at_time
@@ -87,3 +90,47 @@ def test_log_activities(mocker):
     assert result[0].description == "touch A"
     assert result[1].description == "cp A B"
     assert result[2].description == "cp B C"
+
+
+def test_log_datasets(mocker):
+    """Test getting dataset viewmodels on log."""
+    old_dataset = mocker.MagicMock()
+    old_dataset.id = "old"
+    old_dataset.name = "ds"
+    old_dataset.change_type = DatasetChangeType.CREATED
+    old_dataset.derived_from = None
+    old_dataset.dataset_files = []
+
+    new_dataset = mocker.MagicMock()
+    new_dataset.id = "new"
+    new_dataset.name = "ds"
+    new_dataset.derived_from.url_id = "old"
+    new_dataset.change_type = DatasetChangeType.FILES_ADDED
+    new_dataset.dataset_files = []
+
+    dataset_gateway = mocker.MagicMock()
+    dataset_gateway.get_all_datasets.return_value = [new_dataset]
+
+    def _mock_get_by_id(id):
+        if id == "new":
+            return new_dataset
+        if id == "old":
+            return old_dataset
+
+        return None
+
+    dataset_gateway.get_by_id.side_effect = _mock_get_by_id
+
+    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+
+    try:
+        result = _log(
+            activity_gateway=mocker.MagicMock(),
+            dataset_gateway=dataset_gateway,
+            workflows_only=False,
+            datasets_only=True,
+        )
+    finally:
+        inject.clear()
+    breakpoint()
+    assert 2 == len(result)

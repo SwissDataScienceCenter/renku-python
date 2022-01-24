@@ -52,9 +52,10 @@ from renku.core.commands.view_model.log import LOG_COLUMNS, LOG_FORMATS
 )
 @click.option("--format", type=click.Choice(LOG_FORMATS), default="tabular", help="Choose an output format.")
 @click.option("-w", "--workflows", is_flag=True, default=False, help="Show only workflow executions.")
-def log(columns, format, workflows):
-    """Log in to the platform."""
+@click.option("-d", "--datasets", is_flag=True, default=False, help="Show only dataset modifications.")
+def log(columns, format, workflows, datasets):
+    """Show a history of renku workflow and dataset commands."""
     from renku.core.commands.log import log_command
 
-    result = log_command().with_database().build().execute(workflows_only=workflows).output
+    result = log_command().with_database().build().execute(workflows_only=workflows, datasets_only=datasets).output
     click.echo(LOG_FORMATS[format](result, columns))
