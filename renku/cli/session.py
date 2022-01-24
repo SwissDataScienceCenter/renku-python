@@ -39,12 +39,13 @@ def list():
 
 
 @session.command("start")
-def start():
+@click.argument("image", metavar="<image_name>", required=False)
+def start(image):
     """Start a local interactive sessions."""
     from renku.core.commands.session import session_start_command
 
     communicator = ClickCallback()
-    result = session_start_command().with_communicator(communicator).build().execute()
+    result = session_start_command().with_communicator(communicator).build().execute(image_name=image)
     click.echo(result.output)
 
 

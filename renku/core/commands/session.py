@@ -72,7 +72,7 @@ def session_list_command():
 
 
 @inject.autoparams()
-def _session_start(client_dispatcher: IClientDispatcher):
+def _session_start(client_dispatcher: IClientDispatcher, image_name: str = None):
     client = client_dispatcher.current_client
     docker_client = docker.from_env()
 
@@ -93,18 +93,19 @@ def _session_start(client_dispatcher: IClientDispatcher):
     try:
         remote = client.remote
         commit_short_sha = client.repository.head.commit.hexsha[:7]
-        image_name = _docker_image_name(remote, commit_short_sha)
+        if image_name is None:
+            image_name = _docker_image_name(remote, commit_short_sha)
 
-        try:
-            image = _find_docker_image(remote, commit_short_sha)
-        except docker.errors.ImageNotFound:
-            communication.confirm(
-                f"The docker image '{image_name}' does not exists. Would you like to build it?",
-                abort=True,
-            )
+            try:
+                _ = _find_docker_image(remote, commit_short_sha)
+            except docker.errors.ImageNotFound:
+                communication.confirm(
+                    f"The docker image '{image_name}' does not exists. Would you like to build it?",
+                    abort=True,
+                )
 
-            with yaspin(text="Building docker image"):
-                image, logs = docker_client.images.build(path=str(client.docker_path.parent), tag=image_name)
+                with yaspin(text="Building docker image"):
+                    _ = docker_client.images.build(path=str(client.docker_path.parent), tag=image_name)
 
         # TODO: no tokens? security concerns ?
         container = docker_client.containers.run(
