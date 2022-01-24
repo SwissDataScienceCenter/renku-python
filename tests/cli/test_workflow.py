@@ -599,6 +599,32 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
             assert Path(o).resolve().exists()
 
 
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, capsys, client, provider):
+    """Test executing a workflow with --set for a renku.api.Parameter."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+
+    with client.commit():
+        script.write_text("from renku.api import Parameter\n" 'print(Parameter("test", "hello world"))\n')
+
+    result = run_shell(f"renku run --name run1 -- python {script} > {output}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "hello world\n" == output.read_text()
+
+    result = run_shell(f"renku workflow execute -p {provider} --set test=goodbye run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "goodbye\n" == output.read_text()
+
+
 def test_workflow_visualize_non_interactive(runner, project, client, workflow_graph):
     """Test renku workflow visualize in non-interactive mode."""
 

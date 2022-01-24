@@ -77,7 +77,6 @@ class CWLToolProvider(IWorkflowProvider):
         # run cwl with cwltool
         argv = sys.argv
         sys.argv = ["cwltool"]
-
         runtime_args = {"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True}
         loading_args = {"relax_path_checks": True}
         if config:
@@ -111,8 +110,8 @@ class CWLToolProvider(IWorkflowProvider):
 
             try:
                 outputs = process()
-            except cwltool.factory.WorkflowStatus:
-                raise WorkflowExecuteError()
+            except cwltool.factory.WorkflowStatus as e:
+                raise WorkflowExecuteError() from e
 
             sys.argv = argv
 

@@ -109,11 +109,11 @@ def test_parameters(client):
     with Project():
         p2 = Parameter("param-2", "42")
 
-    p3 = Parameter(" parameter 3 ", 42.42)
+    p3 = Parameter("parameter_3 ", 42.42)
 
     assert (42, "42", 42.42) == (p1, p2, p3)
 
     data = read_indirect_parameters(client.path)
 
-    assert {"parameter 1", "param-2", " parameter 3 "} == set(data.keys())
+    assert {"parameter 1", "param-2", "parameter_3 "} == set(data.keys())
     assert {42, "42", 42.42} == set(data.values())
