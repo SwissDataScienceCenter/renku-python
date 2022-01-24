@@ -22,7 +22,8 @@ import click
 
 @click.command()
 @click.option("shell_completion", "--shell-completion", is_flag=True, help="Print shell completion command")
-def env(shell_completion):
+@click.pass_context
+def env(ctx, shell_completion):
     """Renku environment commands."""
 
     if shell_completion:
@@ -39,3 +40,5 @@ def env(shell_completion):
             click.echo("env _RENKU_COMPLETE=fish_source renku")
         else:
             raise UsageError(f"The currently used shell '{shell}' is not supported for shell completion.")
+    else:
+        click.echo(ctx.get_help())
