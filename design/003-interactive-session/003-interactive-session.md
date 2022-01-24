@@ -66,7 +66,7 @@ renku session stop [OPTIONS] <name>
 
 #### renku session list
 
-The command to list all the currently running local interactive sessions, with the detail information regarding
+The command to list all the currently running local interactive sessions, with the detailed information regarding
 the network port mappings.
 
 ## Drawbacks
