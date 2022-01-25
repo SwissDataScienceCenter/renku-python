@@ -76,7 +76,7 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
-            - name: WALRUS_NAMESPACE
+            - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ $.Values.cacheDirectory }}
@@ -142,7 +142,7 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
-            - name: WALRUS_NAMESPACE
+            - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: RENKU_JWT_TOKEN_SECRET
               value: {{ $.Values.jwtTokenSecret }}
@@ -185,7 +185,7 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
-            - name: WALRUS_NAMESPACE
+            - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ $.Values.cacheDirectory }}
@@ -226,7 +226,7 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
-            - name: WALRUS_NAMESPACE
+            - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ $.Values.cacheDirectory | quote }}

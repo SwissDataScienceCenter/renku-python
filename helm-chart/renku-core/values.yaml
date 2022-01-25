@@ -106,12 +106,12 @@ versions:
       repository: renku/renku-core
       tag: "v1.0.1"
       pullPolicy: IfNotPresent
-  # v8:
-  #   name: v8
-  #   prefix: "8"
-  #   nameOverride: ""
-  #   fullnameOverride: ""
-  #   image:
-  #     repository: renku/renku-core
-  #     tag: "v0.16.2"
-  #     pullPolicy: IfNotPresent
+  v8:
+    name: v8
+    prefix: "8"
+    nameOverride: ""
+    fullnameOverride: ""
+    image:
+      repository: renku/renku-core
+      tag: "v0.16.2"
+      pullPolicy: IfNotPresent

@@ -21,23 +21,23 @@ import os
 from rq import Queue
 
 from renku.service.cache.base import BaseCache
-from renku.service.cache.config import WALRUS_NAMESPACE
+from renku.service.cache.config import REDIS_NAMESPACE
 
-CLEANUP_QUEUE_FILES = f"{WALRUS_NAMESPACE}.cache.cleanup.files"
-CLEANUP_QUEUE_PROJECTS = f"{WALRUS_NAMESPACE}.cache.cleanup.projects"
+CLEANUP_QUEUE_FILES = f"{REDIS_NAMESPACE}.cache.cleanup.files"
+CLEANUP_QUEUE_PROJECTS = f"{REDIS_NAMESPACE}.cache.cleanup.projects"
 
-DATASETS_JOB_QUEUE = f"{WALRUS_NAMESPACE}.datasets.jobs"
-MIGRATIONS_JOB_QUEUE = f"{WALRUS_NAMESPACE}.project.migrations"
-GRAPH_JOB_QUEUE = f"{WALRUS_NAMESPACE}.graph.jobs"
+DATASETS_JOB_QUEUE = f"{REDIS_NAMESPACE}.datasets.jobs"
+MIGRATIONS_JOB_QUEUE = f"{REDIS_NAMESPACE}.project.migrations"
+GRAPH_JOB_QUEUE = f"{REDIS_NAMESPACE}.graph.jobs"
 
-DELAYED_CTRL_DATASETS_CREATE = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsCreateCtrl"
-DELAYED_CTRL_DATASETS_ADD = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsAddFileCtrl"
-DELAYED_CTRL_DATASETS_REMOVE = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsRemoveCtrl"
-DELAYED_CTRL_DATASETS_IMPORT = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsImportCtrl"
-DELAYED_CTRL_DATASETS_EDIT = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsEditCtrl"
-DELAYED_CTRL_DATASETS_UNLINK = f"{WALRUS_NAMESPACE}.delayed.ctrl.DatasetsUnlinkCtrl"
-DELAYED_CTRL_PROJECT_MIGRATE = f"{WALRUS_NAMESPACE}.delayed.ctrl.MigrateProjectCtrl"
-DELAYED_CTRL_CONFIG_SET = f"{WALRUS_NAMESPACE}.delayed.ctrl.SetConfigCtrl"
+DELAYED_CTRL_DATASETS_CREATE = f"{REDIS_NAMESPACE}.delayed.ctrl.DatasetsCreateCtrl"
+DELAYED_CTRL_DATASETS_ADD = f"{REDIS_NAMESPACE}.delayed.ctrl.DatasetsAddFileCtrl"
+DELAYED_CTRL_DATASETS_REMOVE = f"{REDIS_NAMESPACE}.delayed.ctrl.DatasetsRemoveCtrl"
+DELAYED_CTRL_DATASETS_IMPORT = f"{REDIS_NAMESPACE}.delayed.ctrl.DatasetsImportCtrl"
+DELAYED_CTRL_DATASETS_EDIT = f"{REDIS_NAMESPACE}.delayed.ctrl.DatasetsEditCtrl"
+DELAYED_CTRL_DATASETS_UNLINK = f"{REDIS_NAMESPACE}.delayed.ctrl.DatasetsUnlinkCtrl"
+DELAYED_CTRL_PROJECT_MIGRATE = f"{REDIS_NAMESPACE}.delayed.ctrl.MigrateProjectCtrl"
+DELAYED_CTRL_CONFIG_SET = f"{REDIS_NAMESPACE}.delayed.ctrl.SetConfigCtrl"
 
 
 QUEUES = [
