@@ -161,9 +161,7 @@ class RepositoryApiMixin(GitCore):
     @inject.autoparams()
     def project(self, project_gateway: IProjectGateway):
         """Return the Project instance."""
-        if self._project is None:
-            self._project = project_gateway.get_project()
-
+        self._project = project_gateway.get_project()
         return self._project
 
     @property

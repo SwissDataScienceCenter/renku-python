@@ -108,8 +108,8 @@ def update_template_command():
 
 
 @inject.autoparams()
-def _update_template(interactive, client_dispatcher: IClientDispatcher) -> bool:
+def _update_template(force, interactive, client_dispatcher: IClientDispatcher) -> bool:
     """Update project's template; return False if no update is possible."""
     client = client_dispatcher.current_client
 
-    return update_template(client=client, interactive=interactive)
+    return update_template(client=client, force=force, interactive=interactive)

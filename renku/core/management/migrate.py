@@ -186,7 +186,7 @@ def _update_template(client) -> bool:
     if not project.template_version:
         return False
 
-    return update_template(interactive=False, client=client)
+    return update_template(interactive=False, client=client, force=False)
 
 
 @inject.autoparams()

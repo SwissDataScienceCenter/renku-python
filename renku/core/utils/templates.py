@@ -542,7 +542,7 @@ def set_template(client, template_source, template_ref, template_id, force, inte
     )
 
 
-def update_template(interactive, client) -> bool:
+def update_template(force, interactive, client) -> bool:
     """Update project's template if possible. Return True if updated."""
     project = client.project
 
@@ -551,8 +551,10 @@ def update_template(interactive, client) -> bool:
     if not has_template_checksum(client) and not interactive:
         raise errors.TemplateUpdateError("Required template metadata doesn't exist: Use '-i/--interactive' flag")
 
+    template_ref = None if force else project.template_ref
+
     template_manifest, template_folder, template_source, template_version = fetch_template(
-        project.template_source, project.template_ref, validate=False
+        template_source=project.template_source, template_ref=template_ref, validate=False
     )
 
     if not is_template_update_available(
@@ -570,7 +572,7 @@ def update_template(interactive, client) -> bool:
         template_data=template_data,
         template_folder=template_folder,
         template_source=template_source,
-        template_ref=project.template_ref,
+        template_ref=template_ref,
         template_id=project.template_id,
         template_version=template_version,
         interactive=interactive,

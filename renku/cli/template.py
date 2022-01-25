@@ -67,7 +67,7 @@ to force-change the template.
 
 .. note::
 
-    Setting a template does NOT overwrite existing files in a project. Pass
+    Setting a template overwrites existing files in a project. Pass
     ``--interactive`` flag to get a prompt for selecting which files to keep or
     overwrite.
 
@@ -92,6 +92,12 @@ which files to keep or overwrite.
     Renku templates are bound to the Renku version. Note that a reference
     should be a git tag or commit SHA. If you set a git branch as a reference
     than the template can still be updated.
+
+.. note::
+
+    Passing ``--force`` flag causes Renku to update the template anyways. It
+    causes Renku to ignore the template reference and checks the HEAD of the
+    template's Git repository for an update.
 
 .. note::
 
@@ -187,9 +193,10 @@ def set_template(ctx, template_source, template_ref, template_id, parameters, fo
 
 
 @template.command("update")
+@click.option("-f", "--force", is_flag=True, help="Force an update for fixed template versions.")
 @click.option("-i", "--interactive", is_flag=True, help="Ask when overwriting an existing file in the project.")
 @click.pass_context
-def update_template(ctx, interactive):
+def update_template(ctx, force, interactive):
     """Update a project's template."""
     from renku.cli.utils.callback import ClickCallback
     from renku.core import errors
@@ -199,7 +206,12 @@ def update_template(ctx, interactive):
     if not is_renku_project_with_repository(ctx.obj):
         raise errors.ProjectNotFound("Cannot update template outside a Renku project")
 
-    result = update_template_command().with_communicator(ClickCallback()).build().execute(interactive=interactive)
+    result = (
+        update_template_command()
+        .with_communicator(ClickCallback())
+        .build()
+        .execute(force=force, interactive=interactive)
+    )
 
     if result.output is False:
         click.secho("Template is up-to-date", fg="green")
