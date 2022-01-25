@@ -18,6 +18,16 @@
 Changes
 =======
 
+`0.16.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.3...v0.16.4>`__ (2022-01-25)
+----------------------------------------------------------------------------------------------------------
+
+This is a backport release that contains changes necessary for 1.0.0 multi-service compatibility.
+
+Bug Fixes
+~~~~~~~~~
+
+- **core:** Fix different versions of core-service using same Job queues
+
 `0.16.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.2...v0.16.3>`__ (2022-01-21)
 ----------------------------------------------------------------------------------------------------------
 

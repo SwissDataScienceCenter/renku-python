@@ -29,6 +29,7 @@ from renku.core.errors import RenkuException, UninitializedProject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.utils.contexts import click_context
+from renku.service.cache.config import REDIS_NAMESPACE
 from renku.service.cache.models.job import Job
 from renku.service.cache.models.project import Project
 from renku.service.cache.models.user import User
@@ -137,7 +138,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
             job = self.cache.make_job(self.user, job_data={"ctrl_context": {**self.context, **ctrl_cls}})
 
-            with enqueue_retry(f"delayed.ctrl.{ctrl_cls['renku_ctrl']}") as queue:
+            with enqueue_retry(f"{REDIS_NAMESPACE}delayed.ctrl.{ctrl_cls['renku_ctrl']}") as queue:
                 queue.enqueue(delayed_ctrl_job, self.context, self.user_data, job.job_id, **ctrl_cls)
 
             return job

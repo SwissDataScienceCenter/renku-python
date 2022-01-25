@@ -22,3 +22,8 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_DATABASE = int(os.getenv("REDIS_DATABASE", 0))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+
+REDIS_NAMESPACE = os.getenv("REDIS_NAMESPACE", None)
+
+if REDIS_NAMESPACE:
+    REDIS_NAMESPACE = f"{REDIS_NAMESPACE}."
