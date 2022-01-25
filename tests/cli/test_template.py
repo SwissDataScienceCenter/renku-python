@@ -25,6 +25,7 @@ from renku.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 
+@pytest.mark.skip(reason="sys.argv is not set correctly from the tests")
 def test_template_list(isolated_runner):
     """Test list Renku templates."""
     result = isolated_runner.invoke(cli, ["template", "ls"])
@@ -33,6 +34,7 @@ def test_template_list(isolated_runner):
     assert "python-minimal" in result.output
 
 
+@pytest.mark.skip(reason="sys.argv is not set correctly from the tests")
 @pytest.mark.integration
 def test_template_list_from_source(isolated_runner):
     """Test list templates from other sources."""
@@ -51,20 +53,20 @@ def test_template_list_from_source(isolated_runner):
     assert "julia-minimal" not in result.output
 
 
-def test_template_set_outside_a_project(isolated_runner):
+def test_template_set_outside_a_renku_project(isolated_runner):
     """Test setting template outside a project is not possible."""
     result = isolated_runner.invoke(cli, ["template", "set"])
 
-    assert 1 == result.exit_code, format_result_exception(result)
-    assert "Cannot set template outside a Renku project" in result.output
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "is not a renku repository" in result.output
 
 
-def test_template_update_outside_a_project(isolated_runner):
+def test_template_update_outside_a_renku_project(isolated_runner):
     """Test updating template outside a project is not possible."""
     result = isolated_runner.invoke(cli, ["template", "update"])
 
-    assert 1 == result.exit_code, format_result_exception(result)
-    assert "Cannot update template outside a Renku project" in result.output
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "is not a renku repository" in result.output
 
 
 def test_template_set_failure(runner, client, client_database_injection_manager):

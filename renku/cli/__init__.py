@@ -117,7 +117,7 @@ def get_entry_points(name: str):
         return all_entry_points.get(name, [])
 
 
-WARNING_UNPROTECTED_COMMANDS = ["clone", "credentials", "env", "init", "help", "login", "logout", "service", "template"]
+WARNING_UNPROTECTED_COMMANDS = ["clone", "credentials", "env", "init", "help", "login", "logout", "service"]
 
 
 def _uuid_representer(dumper, data):
@@ -140,7 +140,16 @@ def print_global_config_path(ctx, param, value):
 
 def is_allowed_command(ctx):
     """Check if invoked command contains help command."""
-    return ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS or "-h" in sys.argv or "--help" in sys.argv
+
+    def is_allowed_template_command():
+        return ctx.invoked_subcommand == "template" and any(c in sys.argv for c in ["ls", "show"])
+
+    return (
+        ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS
+        or is_allowed_template_command()
+        or "-h" in sys.argv
+        or "--help" in sys.argv
+    )
 
 
 @with_plugins(get_entry_points("renku.cli_plugins"))

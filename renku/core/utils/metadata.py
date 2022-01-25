@@ -170,8 +170,3 @@ def is_external_file(path: Union[Path, str], client_path: Path):
 
     pointer = os.readlink(path)
     return str(os.path.join(RENKU_HOME, DatasetsApiMixin.POINTERS)) in pointer
-
-
-def is_renku_project_with_repository(client) -> bool:
-    """Check if repository is a renku project and a git repository."""
-    return client and client.repository is not None

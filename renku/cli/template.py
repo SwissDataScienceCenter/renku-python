@@ -171,16 +171,10 @@ def show_template(template_source, template_ref, template_id):
 )
 @click.option("-f", "--force", is_flag=True, help="Override existing template.")
 @click.option("-i", "--interactive", is_flag=True, help="Ask when overwriting an existing file in the project.")
-@click.pass_context
-def set_template(ctx, template_source, template_ref, template_id, parameters, force, interactive):
+def set_template(template_source, template_ref, template_id, parameters, force, interactive):
     """Set a template for a project."""
     from renku.cli.utils.callback import ClickCallback
-    from renku.core import errors
     from renku.core.commands.template import set_template_command
-    from renku.core.utils.metadata import is_renku_project_with_repository
-
-    if not is_renku_project_with_repository(ctx.obj):
-        raise errors.ProjectNotFound("Cannot set template outside a Renku project")
 
     set_template_command().with_communicator(ClickCallback()).build().execute(
         template_source=template_source,
@@ -195,16 +189,10 @@ def set_template(ctx, template_source, template_ref, template_id, parameters, fo
 @template.command("update")
 @click.option("-f", "--force", is_flag=True, help="Force an update for fixed template versions.")
 @click.option("-i", "--interactive", is_flag=True, help="Ask when overwriting an existing file in the project.")
-@click.pass_context
-def update_template(ctx, force, interactive):
+def update_template(force, interactive):
     """Update a project's template."""
     from renku.cli.utils.callback import ClickCallback
-    from renku.core import errors
     from renku.core.commands.template import update_template_command
-    from renku.core.utils.metadata import is_renku_project_with_repository
-
-    if not is_renku_project_with_repository(ctx.obj):
-        raise errors.ProjectNotFound("Cannot update template outside a Renku project")
 
     result = (
         update_template_command()
