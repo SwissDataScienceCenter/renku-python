@@ -112,7 +112,9 @@ class CWLExporter(IWorkflowConverter):
                 workflow, tmpdir, basedir, filename=filename, output_format=output_format
             )
         else:
-            path = CWLExporter._convert_step(workflow, tmpdir, basedir, filename=filename, output_format=output_format)
+            _, path = CWLExporter._convert_step(
+                workflow, tmpdir, basedir, filename=filename, output_format=output_format
+            )
 
         return path.read_text()
 
@@ -143,10 +145,10 @@ class CWLExporter(IWorkflowConverter):
         import networkx as nx
 
         for i, wf in enumerate(nx.topological_sort(graph.workflow_graph)):
-            path = CWLExporter._convert_step(
+            cwl_workflow, path = CWLExporter._convert_step(
                 workflow=wf, tmpdir=tmpdir, basedir=basedir, filename=None, output_format=output_format
             )
-            step = WorkflowStep("step_{}".format(i), str(path))
+            step = WorkflowStep(in_=[], out=[], run=str(path), id="step_{}".format(i))
 
             for input in wf.inputs:
                 input_path = input.actual_value
@@ -154,11 +156,11 @@ class CWLExporter(IWorkflowConverter):
                 sanitized_id = CWLExporter._sanitize_id(input.id)
                 if input_path in inputs:
                     # already used as top-level input elsewhere, reuse
-                    step.inputs.append(cwl.WorkflowStepInput(sanitized_id, source=inputs[input_path]))
+                    step.in_.append(cwl.WorkflowStepInput(sanitized_id, source=inputs[input_path]))
                 elif input_path in outputs:
                     # output of a previous step, refer to it
                     consumed_outputs.add(outputs[input_path][0])
-                    step.inputs.append(
+                    step.in_.append(
                         cwl.WorkflowStepInput(
                             sanitized_id, source="{}/{}".format(outputs[input_path][1], outputs[input_path][0])
                         )
@@ -166,13 +168,13 @@ class CWLExporter(IWorkflowConverter):
                 else:
                     # input isn't output and doesn't exist yet, add new
                     inputs[input_path] = "input_{}".format(input_index)
-                    step.inputs.append(cwl.WorkflowStepInput(sanitized_id, source=inputs[input_path]))
+                    step.in_.append(cwl.WorkflowStepInput(sanitized_id, source=inputs[input_path]))
                     input_index += 1
 
             for parameter in wf.parameters:
                 argument_id = "argument_{}".format(argument_index)
                 arguments[argument_id] = parameter.actual_value
-                step.inputs.append(cwl.WorkflowStepInput(CWLExporter._sanitize_id(parameter.id), source=argument_id))
+                step.in_.append(cwl.WorkflowStepInput(CWLExporter._sanitize_id(parameter.id), source=argument_id))
                 argument_index += 1
 
             for output in wf.outputs:
@@ -185,16 +187,14 @@ class CWLExporter(IWorkflowConverter):
 
             steps.append(step)
 
-        workflow_object = cwl.Workflow(str(uuid4()), cwl_version="v1.0")
-        workflow_object.hints = []
-        workflow_object.requirements = []
+        workflow_object = cwl.Workflow([], [], steps, id=str(uuid4()), requirements=[], hints=[], cwlVersion="v1.0")
 
         # check types of paths and add as top level inputs/outputs
         for path, id_ in inputs.items():
             type_ = "Directory" if os.path.isdir(path) else "File"
             workflow_object.inputs.append(
-                cwl.InputParameter(
-                    id_,
+                cwl.WorkflowInputParameter(
+                    id=id_,
                     type=type_,
                     default={"location": Path(path).resolve().as_uri(), "class": type_},
                 )
@@ -202,22 +202,22 @@ class CWLExporter(IWorkflowConverter):
 
         for id_, value in arguments.items():
             value, type_ = _get_argument_type(value)
-            workflow_object.inputs.append(cwl.InputParameter(id_, type=type_, default=value))
+            workflow_object.inputs.append(cwl.WorkflowInputParameter(id=id_, type=type_, default=value))
 
         for index, (path, (id_, step_id)) in enumerate(outputs.items(), 1):
             type_ = "Directory" if os.path.isdir(path) else "File"
             workflow_object.outputs.append(
                 cwl.WorkflowOutputParameter(
-                    "output_{}".format(index), output_source="{}/{}".format(step_id, id_), type=type_
+                    id="output_{}".format(index), outputSource="{}/{}".format(step_id, id_), type=type_
                 )
             )
-        workflow_object.steps.extend(steps)
         if not filename:
             filename = "parent_{}.cwl".format(uuid4())
-        path = tmpdir / filename
-        workflow_object.export(path.resolve())
 
-        return workflow_object, path
+        output = workflow_object.save()
+        path = (tmpdir / filename).resolve()
+        write_yaml(path, output)
+        return path
 
     @staticmethod
     def _convert_step(
@@ -316,7 +316,7 @@ class CWLExporter(IWorkflowConverter):
             filename = "{}.cwl".format(uuid4())
         path = (tmpdir / filename).resolve()
         write_yaml(path, output)
-        return path
+        return output, path
 
     @staticmethod
     def _convert_parameter(parameter: CommandParameter):
