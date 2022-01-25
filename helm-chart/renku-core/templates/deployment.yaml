@@ -1,4 +1,11 @@
 {{- range $version := .Values.versions }}
+{{- $queuesWithVersion := dict "datasetqueues" (list) "managementqueues" (list) -}}
+{{- range $queue := (split "," $.Values.datasetsWorkerQueues) -}}
+{{- $var := printf "%s.%s" $version.name $queue | append $queuesWithVersion.datasetqueues | set $queuesWithVersion "datasetqueues" -}}
+{{- end }}
+{{- range $queue := (split "," $.Values.managementWorkerQueues) -}}
+{{- $var := printf "%s.%s" $version.name $queue | append $queuesWithVersion.managementqueues | set $queuesWithVersion "managementqueues" -}}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -69,7 +76,7 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
-            - name: WALRUS_NAMESPACE
+            - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ $.Values.cacheDirectory }}
@@ -135,7 +142,7 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
-            - name: WALRUS_NAMESPACE
+            - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: RENKU_JWT_TOKEN_SECRET
               value: {{ $.Values.jwtTokenSecret }}
@@ -144,7 +151,7 @@ spec:
             - name: RENKU_SVC_CLEANUP_INTERVAL
               value: {{ $.Values.cleanupInterval | quote }}
             - name: RENKU_SVC_WORKER_QUEUES
-              value: {{ $.Values.datasetsWorkerQueues }}
+              value: {{ join "," $queuesWithVersion.datasetqueues }}
             - name: RENKU_SVC_CLEANUP_TTL_FILES
               value: {{ $.Values.cleanupFilesTTL | quote }}
             - name: RENKU_SVC_CLEANUP_TTL_PROJECTS
@@ -178,14 +185,14 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
-            - name: WALRUS_NAMESPACE
+            - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ $.Values.cacheDirectory }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
               value: {{ $.Values.cleanupInterval | quote }}
             - name: RENKU_SVC_WORKER_QUEUES
-              value: {{ $.Values.managementWorkerQueues }}
+              value: {{ join "," $queuesWithVersion.managementqueues }}
             - name: RENKU_SVC_CLEANUP_TTL_FILES
               value: {{ $.Values.cleanupFilesTTL | quote }}
             - name: RENKU_SVC_CLEANUP_TTL_PROJECTS
@@ -219,7 +226,7 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
-            - name: WALRUS_NAMESPACE
+            - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ $.Values.cacheDirectory | quote }}
