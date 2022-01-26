@@ -23,7 +23,7 @@ import redis
 from redis import RedisError
 from walrus import Database
 
-from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, WALRUS_NAMESPACE
+from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, REDIS_NAMESPACE, REDIS_PASSWORD, REDIS_PORT
 
 
 class BaseCache:
@@ -40,7 +40,7 @@ class BaseCache:
 
     cache = redis.Redis(**config_)
     model_db = Database(**config_)
-    namespace = WALRUS_NAMESPACE
+    namespace = REDIS_NAMESPACE
 
     def set_record(self, name, key, value):
         """Insert a record to hash set."""

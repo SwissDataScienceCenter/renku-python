@@ -33,6 +33,7 @@ from renku.core.models.workflow.converters import IWorkflowConverter
 from renku.core.models.workflow.parameter import DIRECTORY_MIME_TYPE, CommandInput, CommandParameter
 from renku.core.models.workflow.plan import Plan
 from renku.core.plugins import hookimpl
+from renku.core.plugins.provider import RENKU_ENV_PREFIX
 
 
 class CommandLineTool(cwlgen.CommandLineTool):
@@ -248,6 +249,7 @@ class CWLExporter(IWorkflowConverter):
         workdir_req = cwlgen.InitialWorkDirRequirement([])
         jsrequirement = False
 
+        environment_variables = []
         dirents = []
 
         for output_ in workflow.outputs:
@@ -264,6 +266,10 @@ class CWLExporter(IWorkflowConverter):
                 )
                 dirents.append(path)
                 jsrequirement = True
+
+            environment_variables.append(
+                cwlgen.EnvVarRequirement.EnvironmentDef(f"{RENKU_ENV_PREFIX}{output_.name}", output_.actual_value)
+            )
             outp, arg = CWLExporter._convert_output(output_)
             tool_object.outputs.append(outp)
             if arg:
@@ -278,11 +284,17 @@ class CWLExporter(IWorkflowConverter):
                 )
             )
 
+            environment_variables.append(
+                cwlgen.EnvVarRequirement.EnvironmentDef(f"{RENKU_ENV_PREFIX}{input_.name}", input_.actual_value)
+            )
             tool_object.inputs.append(tool_input)
             if input_.mapped_to:
                 tool_object.stdin = "$(inputs.{}.path)".format(tool_input.id)
                 jsrequirement = True
         for parameter in workflow.parameters:
+            environment_variables.append(
+                cwlgen.EnvVarRequirement.EnvironmentDef(f"{RENKU_ENV_PREFIX}{parameter.name}", parameter.actual_value)
+            )
             tool_object.inputs.append(CWLExporter._convert_parameter(parameter))
 
         workdir_req.listing.append(
@@ -303,6 +315,8 @@ class CWLExporter(IWorkflowConverter):
             tool_object.requirements.append(workdir_req)
         if jsrequirement:
             tool_object.requirements.append(cwlgen.InlineJavascriptRequirement())
+        if environment_variables:
+            tool_object.requirements.append(cwlgen.EnvVarRequirement(environment_variables))
 
         if not filename:
             filename = "{}.cwl".format(uuid4())

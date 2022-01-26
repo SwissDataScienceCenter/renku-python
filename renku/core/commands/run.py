@@ -48,6 +48,7 @@ def _run_command(
     keyword,
     explicit_inputs,
     explicit_outputs,
+    explicit_parameters,
     no_output,
     no_input_detection,
     no_output_detection,
@@ -119,10 +120,34 @@ def _run_command(
                 sys.stderr = system_stderr
 
         working_dir = str(client.repository.path)
+
+        def parse_explicit_definition(entries, type):
+            result = [tuple(e.split("=", maxsplit=1)[::-1]) if "=" in e else (e, None) for e in entries]
+
+            if not result:
+                return result
+
+            values, names = zip(*result)
+
+            if len(values) != len(set(values)):
+                raise errors.UsageError(f"Cannot specify the same explicit {type} value twice.")
+
+            names = [n for n in names if n]
+
+            if names and len(names) != len(set(names)):
+                raise errors.UsageError(f"Cannot specify the same explicit {type} name twice.")
+
+            return result
+
+        explicit_inputs = parse_explicit_definition(explicit_inputs, "input")
+        explicit_outputs = parse_explicit_definition(explicit_outputs, "output")
+        explicit_parameters = parse_explicit_definition(explicit_parameters, "param")
+
         factory = PlanFactory(
             command_line=command_line,
             explicit_inputs=explicit_inputs,
             explicit_outputs=explicit_outputs,
+            explicit_parameters=explicit_parameters,
             directory=os.getcwd(),
             working_dir=working_dir,
             no_input_detection=no_input_detection,

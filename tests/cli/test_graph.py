@@ -62,13 +62,24 @@ def test_graph_export_validation(runner, client, directory_tree, run, revision, 
 def test_graph_export_strict_run(runner, project, run_shell, format):
     """Test graph export output of run command."""
     # Run a shell command with pipe.
-    result = run_shell('renku run echo "my input string" > my_output_file')
+    assert run_shell('renku run --name run1 echo "my input string" > my_output_file')[1] is None
+    assert run_shell("renku run --name run2 cp my_output_file my_output_file2")[1] is None
+    assert run_shell("renku workflow compose my-composite-plan run1 run2")[1] is None
+
+    # Assert created output file.
+    result = runner.invoke(cli, ["graph", "export", "--full", "--strict", "--format={}".format(format)])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "my_output_file" in result.output
+    assert "my input string" in result.output
+    assert "my_output_file2" in result.output
+    assert "my-composite-plan" in result.output
+
+    assert run_shell("renku workflow remove composite")[1] is None
+    assert run_shell("renku workflow remove run2")[1] is None
 
     # Assert created output file.
     result = runner.invoke(cli, ["graph", "export", "--strict", "--format={}".format(format)])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "my_output_file" in result.output
-    assert "my input string" in result.output
 
 
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
