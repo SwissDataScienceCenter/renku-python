@@ -26,8 +26,8 @@ from functools import cmp_to_key
 from hashlib import sha1
 from pathlib import Path
 
-from cwlgen import CommandLineTool, parse_cwl
-from cwlgen.requirements import InitialWorkDirRequirement
+from cwl_utils.parser import CommandLineTool, load_document_by_uri
+from cwl_utils.parser.cwl_v1_2 import InitialWorkDirRequirement
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
@@ -424,7 +424,7 @@ def parse_cwl_cached(path):
     if path in _cwl_cache:
         return _cwl_cache[path]
 
-    cwl = parse_cwl(path)
+    cwl = load_document_by_uri(path)
 
     _cwl_cache[path] = cwl
 
