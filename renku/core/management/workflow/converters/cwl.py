@@ -336,7 +336,9 @@ class CWLExporter(IWorkflowConverter):
         return cwl.CommandInputParameter(
             id=CWLExporter._sanitize_id(parameter.id),
             type=type_,
-            inputBinding=cwl.CommandLineBinding(position=parameter.position, prefix=prefix, separate=separate),
+            inputBinding=cwl.CommandLineBinding(position=parameter.position, prefix=prefix, separate=separate)
+            if parameter.position or prefix
+            else None,
             default=value,
         )
 
@@ -364,7 +366,9 @@ class CWLExporter(IWorkflowConverter):
         return cwl.CommandInputParameter(
             id=sanitized_id,
             type=type_,
-            inputBinding=cwl.CommandLineBinding(position=position, prefix=prefix, separate=separate),
+            inputBinding=cwl.CommandLineBinding(position=position, prefix=prefix, separate=separate)
+            if position or prefix
+            else None,
             default={"location": (basedir / input.actual_value).resolve().as_uri(), "class": type_},
         )
 
