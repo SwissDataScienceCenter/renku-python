@@ -889,7 +889,7 @@
                "@id": "rdf:type"
             }
          ],
-         "closed": true,
+         "closed": false,
          "targetClass": "prov:Plan",
          "property": [
             {
@@ -955,6 +955,14 @@
                   "@id": "xsd:string"
                },
                "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:invalidatedAtTime",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
                "maxCount": 1
             }
          ]
@@ -1328,15 +1336,15 @@
          ]
       },
       {
-         "@id": "_:renkuGroupedRunShape",
+         "@id": "_:renkuCompositePlanShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
             {
                "@id": "rdf:type"
             }
          ],
-         "closed": true,
-         "targetClass": "renku:GroupedRun",
+         "closed": false,
+         "targetClass": "renku:CompositePlan",
          "property": [
             {
                "nodeKind": "sh:Literal",

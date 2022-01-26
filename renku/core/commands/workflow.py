@@ -469,6 +469,9 @@ def execute_workflow(
 
     delete_indirect_files_list(client.path)
 
+    if config:
+        config = _safe_read_yaml(config)
+
     started_at_time = local_now()
 
     execute(dag=dag, basedir=client.path, provider=provider, config=config)
@@ -522,9 +525,6 @@ def _execute_workflow(
             f'Could not resolve the following parameters in "{workflow.name}" workflow: '
             f'{",".join(rv.missing_parameters)}'
         )
-
-    if config:
-        config = _safe_read_yaml(config)
 
     graph = ExecutionGraph([workflow], virtual_links=True)
     execute_workflow(dag=graph.workflow_graph, command_name="execute", provider=provider, config=config)
@@ -733,8 +733,6 @@ def _iterate_workflow(
     from deepmerge import always_merger
 
     from renku.core.models.tabulate import tabulate
-
-    TAG_SEPARATOR = "@"
 
     if mapping_path is None and len(mappings) == 0:
         raise errors.UsageError("No mapping has been given for the iteration!")

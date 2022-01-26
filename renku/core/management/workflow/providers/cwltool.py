@@ -52,7 +52,7 @@ import networkx as nx
 from cwltool.context import LoadingContext, RuntimeContext
 
 from renku.core.commands.echo import progressbar
-from renku.core.errors import WorkflowExecuteError
+from renku.core.errors import NodeNotFoundError, WorkflowExecuteError
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.provider import IWorkflowProvider
 from renku.core.plugins import hookimpl
@@ -70,10 +70,13 @@ class CWLToolProvider(IWorkflowProvider):
     @hookimpl
     def workflow_execute(self, dag: nx.DiGraph, basedir: Path, config: Dict[str, Any]):
         """Executes a given workflow using cwltool."""
+
+        if not shutil.which("nodejs") and not shutil.which("node"):
+            raise NodeNotFoundError()
+
         # run cwl with cwltool
         argv = sys.argv
         sys.argv = ["cwltool"]
-
         runtime_args = {"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True}
         loading_args = {"relax_path_checks": True}
         if config:
@@ -107,8 +110,8 @@ class CWLToolProvider(IWorkflowProvider):
 
             try:
                 outputs = process()
-            except cwltool.factory.WorkflowStatus:
-                raise WorkflowExecuteError()
+            except cwltool.factory.WorkflowStatus as e:
+                raise WorkflowExecuteError() from e
 
             sys.argv = argv
 

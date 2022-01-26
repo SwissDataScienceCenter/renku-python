@@ -128,7 +128,7 @@ def test_04_output(client, client_database_injection_manager):
     output = Path(client.path) / "hello.txt"
     output.touch()
 
-    factory.add_outputs([output])
+    factory.add_outputs([(output, None)])
     parameters = factory.outputs
 
     assert "hello.txt" == parameters[0].default_value
@@ -151,7 +151,7 @@ def test_05_stdout(client, client_database_injection_manager):
     factory = PlanFactory(argv, directory=client.path, working_dir=client.path, stdout="output.txt")
 
     assert "output.txt" == factory.stdout
-    factory.add_outputs(["output.txt"])
+    factory.add_outputs([("output.txt", None)])
     assert "stdout" == factory.outputs[0].mapped_to.stream_type
     assert 2 == factory.outputs[0].position
 
@@ -248,7 +248,7 @@ def test_stdin_and_stdout(argv, client, client_database_injection_manager):
         assert factory.parameters
 
     assert "output.txt" == factory.stdout
-    factory.add_outputs(["output.txt", "error.txt"])
+    factory.add_outputs([("output.txt", None), ("error.txt", None)])
     assert "stdout" == factory.outputs[0].mapped_to.stream_type
 
     with client_database_injection_manager(client):

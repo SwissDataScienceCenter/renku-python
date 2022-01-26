@@ -134,6 +134,11 @@ the YAML should follow the this structure:
         myotherworkflow:
             language: en
 
+In addition to being passed on the command line and being available to
+``renku.api.*`` classes in Python scripts, parameters are also set as
+environment variables when executing the command, in the form of
+``RENKU_ENV_<parameter name>``.
+
 Provider specific settings can be passed as file using the ``--config`` parameter.
 
 .. cheatsheet::
