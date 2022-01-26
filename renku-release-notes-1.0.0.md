@@ -2,9 +2,9 @@
 
 After a period of relative silence, we are happy to announce the release of the Renku Python library version 1.0.0 :tada:
 
-This release contains a ton of changes, with a complete overhaul of workflow commands and cleaning up existing commands. We also introduced plugin support that allows Renku to support arbitrary workflow backends for execution.
+This release contains a ton of changes, with a complete overhaul of workflow commands and a cleanup of existing commands. We also introduced plugin support that allows Renku to support arbitrary workflow backends for execution.
 
-We also reworked our metadata storage, leading to a big improvement in both performance and storage requirements when working with the commandline interface in projects.
+We also reworked our metadata storage, leading to considerable improvement in both performance and storage requirements when working with the command line interface in projects.
 
 ## Table of Contents
 
