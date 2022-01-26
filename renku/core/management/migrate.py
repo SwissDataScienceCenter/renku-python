@@ -36,8 +36,8 @@ import re
 import shutil
 from pathlib import Path
 
-import pkg_resources
 from jinja2 import Template
+from packaging.version import Version
 
 from renku.core.errors import (
     DockerfileUpdateError,
@@ -57,7 +57,13 @@ from renku.core.management.migrations.utils import (
     is_using_temporary_datasets_path,
     read_project_version,
 )
+from renku.core.management.workflow.plan_factory import RENKU_TMP
 from renku.core.utils import communication
+
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -72,12 +78,12 @@ def check_for_migration():
 
 def is_migration_required():
     """Check if project requires migration."""
-    return is_renku_project() and _get_project_version() < SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and get_project_version() < SUPPORTED_PROJECT_VERSION
 
 
 def is_project_unsupported():
     """Check if this version of Renku cannot work with the project."""
-    return is_renku_project() and _get_project_version() > SUPPORTED_PROJECT_VERSION
+    return is_renku_project() and get_project_version() > SUPPORTED_PROJECT_VERSION
 
 
 def is_template_update_possible():
@@ -102,6 +108,7 @@ def migrate(
     max_version=None,
     strict=False,
     migration_type=MigrationType.ALL,
+    preserve_identifiers=False,
 ):
     """Apply all migration files to the project."""
     client = client_dispatcher.current_client
@@ -129,7 +136,7 @@ def migrate(
 
     if not skip_docker_update:
         try:
-            docker_updated = _update_dockerfile()
+            docker_updated, _, _ = _update_dockerfile()
         except DockerfileUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -138,10 +145,10 @@ def migrate(
     if skip_migrations:
         return False, template_updated, docker_updated
 
-    project_version = project_version or _get_project_version()
+    project_version = project_version or get_project_version()
     n_migrations_executed = 0
 
-    migration_options = MigrationOptions(strict=strict, type=migration_type)
+    migration_options = MigrationOptions(strict=strict, type=migration_type, preserve_identifiers=preserve_identifiers)
     migration_context = MigrationContext(client=client, options=migration_options)
 
     version = 1
@@ -157,14 +164,26 @@ def migrate(
             except (Exception, BaseException) as e:
                 raise MigrationError("Couldn't execute migration") from e
             n_migrations_executed += 1
-    if n_migrations_executed > 0 and not is_using_temporary_datasets_path():
-        client._project = None  # NOTE: force reloading of project metadata
-        client.project.version = str(version)
-        project_gateway.update_project(client.project)
+    if not is_using_temporary_datasets_path():
+        if n_migrations_executed > 0:
+            client._project = None  # NOTE: force reloading of project metadata
+            client.project.version = str(version)
+            project_gateway.update_project(client.project)
 
-        communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
+            communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
+
+        _remove_untracked_renku_files(renku_path=client.renku_path)
 
     return n_migrations_executed != 0, template_updated, docker_updated
+
+
+def _remove_untracked_renku_files(renku_path):
+    from renku.core.management.datasets import DatasetsApiMixin
+
+    untracked_paths = [RENKU_TMP, DatasetsApiMixin.CACHE, "vendors"]
+    for path in untracked_paths:
+        path = renku_path / path
+        shutil.rmtree(path, ignore_errors=True)
 
 
 @inject.autoparams()
@@ -188,16 +207,16 @@ def _update_template(client_dispatcher: IClientDispatcher, project_gateway: IPro
     )
 
     if template_source == "renku":
-        template_version = pkg_resources.parse_version(template_version)
-        current_version = pkg_resources.parse_version(project.template_version)
+        template_version = Version(template_version)
+        current_version = Version(project.template_version)
         if template_version <= current_version:
-            return False, project.template_version, current_version
+            return False, str(project.template_version), str(current_version)
     else:
         if template_version == project.template_version:
-            return False, project.template_version, template_version
+            return False, str(project.template_version), str(template_version)
 
     if check_only:
-        return True, project.template_version, template_version
+        return True, str(project.template_version), str(template_version)
 
     communication.echo("Updating project from template...")
 
@@ -297,29 +316,29 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
     client = client_dispatcher.current_client
 
     if not client.docker_path.exists():
-        return False
+        return False, None, None
 
     communication.echo("Updating dockerfile...")
 
     with open(client.docker_path, "r") as f:
         dockercontent = f.read()
 
-    current_version = pkg_resources.parse_version(__version__)
+    current_version = Version(__version__)
     m = re.search(r"^ARG RENKU_VERSION=(\d+\.\d+\.\d+)$", dockercontent, flags=re.MULTILINE)
     if not m:
         if check_only:
-            return False
+            return False, None, None
         raise DockerfileUpdateError(
             "Couldn't update renku-python version in Dockerfile, as it doesn't contain an 'ARG RENKU_VERSION=...' line."
         )
 
-    docker_version = pkg_resources.parse_version(m.group(1))
+    docker_version = Version(m.group(1))
 
     if docker_version >= current_version:
-        return False
+        return True, False, str(docker_version)
 
     if check_only:
-        return True
+        return True, True, str(docker_version)
 
     dockercontent = re.sub(
         r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockercontent, flags=re.MULTILINE
@@ -330,11 +349,12 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
 
     communication.echo("Updated dockerfile.")
 
-    return True
+    return True, False, str(current_version)
 
 
 @inject.autoparams()
-def _get_project_version(client_dispatcher: IClientDispatcher):
+def get_project_version(client_dispatcher: IClientDispatcher):
+    """Get the metadata version the renku project is on."""
     try:
         return int(read_project_version(client_dispatcher.current_client))
     except ValueError:
@@ -342,27 +362,27 @@ def _get_project_version(client_dispatcher: IClientDispatcher):
 
 
 @inject.autoparams()
-def is_renku_project(client_dispatcher: IClientDispatcher):
+def is_renku_project(client_dispatcher: IClientDispatcher) -> bool:
     """Check if repository is a renku project."""
     client = client_dispatcher.current_client
 
     try:
         return client.project is not None
-    except (ValueError):  # Error in loading due to an older schema
+    except ValueError:  # NOTE: Error in loading due to an older schema
         return client.renku_path.joinpath(OLD_METADATA_PATH).exists()
 
 
 def get_migrations():
     """Return a sorted list of versions and migration modules."""
     migrations = []
-    for file_ in pkg_resources.resource_listdir("renku.core.management", "migrations"):
-        match = re.search(r"m_([0-9]{4})__[a-zA-Z0-9_-]*.py", file_)
+    for entry in importlib_resources.files("renku.core.management.migrations").iterdir():
+        match = re.search(r"m_([0-9]{4})__[a-zA-Z0-9_-]*.py", entry.name)
 
         if match is None:  # migration files match m_0000__[name].py format
             continue
 
         version = int(match.groups()[0])
-        path = "renku.core.management.migrations.{}".format(Path(file_).stem)
+        path = "renku.core.management.migrations.{}".format(Path(entry.name).stem)
         migrations.append((version, path))
 
     migrations = sorted(migrations, key=lambda v: v[1].lower())

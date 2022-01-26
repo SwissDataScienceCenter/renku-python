@@ -42,11 +42,6 @@ nThreads: 8
 # NOTE: Make sure token secret is greater or equal to 32 bytes.
 jwtTokenSecret: bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn
 
-image:
-  repository: renku/renku-core
-  tag: 'latest'
-  pullPolicy: IfNotPresent
-
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -105,9 +100,31 @@ redis:
 sentry:
   dsn:
   environment:
+  sample_rate: 0.2
 
 ## Enable debug mode
 ## WARNING: DO NOT enable this in production as it exposes the service container. It is to be used for
 ## debugging a running instance of the core service and allows accessing and modifying the running
 ## code directly. See the repository README for more information.
 debug: false
+
+# versions is the list of different deployment that support different metadata versions.
+versions:
+  latest:
+    name: v9
+    prefix: "9"
+    nameOverride: ""
+    fullnameOverride: ""
+    image:
+      repository: renku/renku-core
+      tag: "v1.0.1"
+      pullPolicy: IfNotPresent
+  v8:
+    name: v8
+    prefix: "8"
+    nameOverride: ""
+    fullnameOverride: ""
+    image:
+      repository: renku/renku-core
+      tag: "v0.16.2"
+      pullPolicy: IfNotPresent

@@ -24,7 +24,6 @@ import sys
 import attr
 import click
 import lockfile
-import requests
 
 
 def print_version(ctx, param, value):
@@ -40,6 +39,8 @@ def print_version(ctx, param, value):
 
 def find_latest_version(name, allow_prereleases=False):
     """Find a latest version on PyPI."""
+    from renku.core.utils import requests
+
     response = requests.get("https://pypi.org/pypi/{name}/json".format(name=name))
 
     if response.status_code != 200:
@@ -47,11 +48,11 @@ def find_latest_version(name, allow_prereleases=False):
 
     description = response.json()
 
-    from pkg_resources import parse_version
+    from packaging.version import Version
 
     return max(
         version
-        for version in (parse_version(version) for version in description["releases"].keys())
+        for version in (Version(version) for version in description["releases"].keys())
         if allow_prereleases or not version.is_prerelease
     )
 
@@ -131,11 +132,11 @@ def _check_version():
     if VersionCache.load(APP_NAME).is_fresh:
         return
 
-    from pkg_resources import parse_version
+    from packaging.version import Version
 
     from renku.version import __version__
 
-    version = parse_version(__version__)
+    version = Version(__version__)
     allow_prereleases = version.is_prerelease
 
     latest_version = find_latest_version("renku", allow_prereleases=allow_prereleases)

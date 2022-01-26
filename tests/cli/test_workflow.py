@@ -19,6 +19,7 @@
 
 import itertools
 import os
+import re
 import tempfile
 import uuid
 from pathlib import Path
@@ -26,7 +27,7 @@ from pathlib import Path
 import pexpect
 import pyte
 import pytest
-from cwl_utils import parser_v1_2 as cwlgen
+from cwl_utils.parser import cwl_v1_2 as cwlgen
 
 from renku.cli import cli
 from renku.core.metadata.database import Database
@@ -343,7 +344,7 @@ def test_workflow_export_command(runner, project):
 
     workflow = cwlgen.load_document("run1.cwl")
     assert workflow.baseCommand[0] == "touch"
-    assert len(workflow.inputs) == 3
+    assert len(workflow.inputs) == 2
     assert len(workflow.outputs) == 1
 
 
@@ -503,6 +504,14 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
             [("run1", "touch data.csv"), ("run2", "wc data.csv > output")],
             {"run1": {"outputs": ["foo"]}, "run2": {"inputs": ["foo"], "outputs": ["bar"]}},
         ),
+        (
+            [("run1", "touch data.csv"), ("run2", "touch data2.csv"), ("run3", "wc data.csv data2.csv > output")],
+            {
+                "run1": {"outputs": ["foo"]},
+                "run2": {"outputs": ["bar"]},
+                "run3": {"inputs": ["foo", "bar"], "outputs": ["changed"]},
+            },
+        ),
     ],
 )
 def test_workflow_execute_command(runner, run_shell, project, capsys, client, provider, yaml, workflows, parameters):
@@ -626,7 +635,7 @@ def test_workflow_visualize_non_interactive(runner, project, client, workflow_gr
         assert all(e not in result.output for e in excludes)
 
     result = runner.invoke(
-        cli, ["workflow", "visualize", "--no-pager", "-x", "-a", "--no-color", "--revision", "HEAD^^", "H", "S"]
+        cli, ["workflow", "visualize", "--no-pager", "-x", "-a", "--no-color", "--revision", "HEAD^", "H", "S"]
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
@@ -785,3 +794,85 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
     assert output[1] is None
 
     assert "xyz\n" == Path("output4").read_text()
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+@pytest.mark.parametrize(
+    "workflow, parameters, num_iterations",
+    [
+        ('echo "a" > output', {}, 0),
+        ('echo "a" > output', {"parameter-1": ["b", "c", "d"], "output-2": "output_{iter_index}"}, 3),
+        (
+            "head -n 1 Dockerfile > output",
+            {
+                "input-2": ["environment.yml", "Dockerfile", "requirements.txt"],
+                "n-1": ["3", "4"],
+                "output-3": "output_{iter_index}",
+            },
+            6,
+        ),
+        (
+            "head -n 1 Dockerfile > output",
+            {
+                "input-2@tag1": ["environment.yml", "Dockerfile", "requirements.txt"],
+                "n-1@tag1": ["3", "4", "5"],
+                "output-3": "output_{iter_index}",
+            },
+            3,
+        ),
+        (
+            'sh -c \'head -n "$0" "$1" | tail -n "$2" > "$3"\' 1 Dockerfile 1 output',
+            {
+                "input-3@tag1": ["environment.yml", "requirements.txt"],
+                "parameter-2@tag2": ["3", "4", "5"],
+                "parameter-4@tag2": ["1", "2", "3"],
+                "output-5": "output_{iter_index}",
+            },
+            6,
+        ),
+    ],
+)
+def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provider, num_iterations):
+    """Test renku workflow iterate."""
+
+    workflow_name = "foobar"
+
+    # Run a shell command with pipe.
+    output = run_shell(f"renku run --name {workflow_name} -- {workflow}")
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    iteration_cmd = ["renku", "workflow", "iterate", "-p", provider, workflow_name]
+    outputs = []
+    index_re = re.compile(r"{iter_index}")
+
+    for k, v in filter(lambda x: x[0].startswith("output"), parameters.items()):
+        if isinstance(v, str) and index_re.search(v):
+            outputs += [index_re.sub(str(i), v) for i in range(num_iterations)]
+        else:
+            outputs.extend(v)
+
+    fd, values_path = tempfile.mkstemp()
+    os.close(fd)
+    write_yaml(values_path, parameters)
+    iteration_cmd += ["--mapping", values_path]
+
+    output = run_shell(" ".join(iteration_cmd))
+
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    # Check for error keyword in stdout
+    assert b"error" not in output[0]
+
+    if len(parameters) == 0:
+        # no effective mapping was suppiled
+        # this should result in an error
+        assert b"Error: Please check the provided mappings" in output[0]
+        return
+
+    # check whether parameters setting was effective
+    for o in outputs:
+        assert Path(o).resolve().exists()

@@ -31,14 +31,14 @@ from renku.core.models.workflow.plan import Plan
 def test_activity_parameter_values(mocker):
     """Test parameter values are correctly set on an activity."""
 
-    def mock_entity_from_revision(client, path, revision=None):
+    def get_entity_from_revision_mock(repository, path, revision=None):
         return Entity(checksum="abcdefg", id=uuid4().hex, path=path)
 
-    def mock_person_from_client(client):
+    def get_git_user_mock(client):
         return Person(id=uuid4().hex, name="John Doe", email="john@doe.com")
 
-    mocker.patch("renku.core.models.provenance.activity.Entity.from_revision", mock_entity_from_revision)
-    mocker.patch("renku.core.models.provenance.activity.Person.from_client", mock_person_from_client)
+    mocker.patch("renku.core.models.provenance.activity.get_entity_from_revision", get_entity_from_revision_mock)
+    mocker.patch("renku.core.models.provenance.activity.get_git_user", get_git_user_mock)
     commit = MagicMock()
     commit.hexsha.return_value = uuid4().hex
     commit.committer.email.return_value = "john@doe.com"
@@ -77,7 +77,6 @@ def test_activity_parameter_values(mocker):
         started_at_time=datetime.utcnow(),
         ended_at_time=datetime.utcnow(),
         annotations=[],
-        commit=commit,
     )
 
     assert len(activity.generations) == 3

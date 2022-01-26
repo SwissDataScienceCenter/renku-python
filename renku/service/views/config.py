@@ -16,11 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project config views."""
-from flask import Blueprint, request
+from flask import request
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.config_set import SetConfigCtrl
 from renku.service.controllers.config_show import ShowConfigCtrl
+from renku.service.views.api_versions import V0_9, V1_0, VersionedBlueprint
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
@@ -30,10 +31,10 @@ from renku.service.views.decorators import (
 )
 
 CONFIG_BLUEPRINT_TAG = "config"
-config_blueprint = Blueprint("config", __name__, url_prefix=SERVICE_PREFIX)
+config_blueprint = VersionedBlueprint("config", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@config_blueprint.route("/config.show", methods=["GET"], provide_automatic_options=False)
+@config_blueprint.route("/config.show", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0])
 @handle_common_except
 @requires_cache
 @optional_identity
@@ -59,7 +60,7 @@ def show_config(user_data, cache):
     return ShowConfigCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@config_blueprint.route("/config.set", methods=["POST"], provide_automatic_options=False)
+@config_blueprint.route("/config.set", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0])
 @handle_common_except
 @accepts_json
 @requires_cache

@@ -50,6 +50,7 @@ class MigrationOptions(NamedTuple):
     """Migration options."""
 
     strict: bool
+    preserve_identifiers: bool
     type: MigrationType = MigrationType.ALL
 
 
@@ -116,7 +117,7 @@ def generate_dataset_file_url(client, filepath):
         from renku.core.management.migrations.models.v9 import Project
 
         metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
-        project = Project.from_yaml(metadata_path)
+        project = Project.from_yaml(metadata_path, client=client)
 
         project_id = urlparse(project._id)
     else:

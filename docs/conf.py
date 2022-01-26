@@ -19,16 +19,16 @@
 
 from __future__ import print_function
 
-import os
-import re
 import sys
 from os.path import abspath, dirname, join
 
-import requests
-import sphinx.environment
-from pkg_resources import get_distribution, parse_version
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version
 
 sys.path.insert(0, abspath(join(dirname(__file__))))
+sys.path.append(abspath("./_ext"))
 
 # -- General configuration ------------------------------------------------
 
@@ -47,6 +47,9 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
+    "sphinxcontrib.spelling",
+    "sphinx_tabs.tabs",
+    "cheatsheet",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -75,7 +78,7 @@ author = "Swiss Data Science Center"
 # The short X.Y version.
 
 # Get the version string.
-version = get_distribution("renku").version
+version = version("renku")
 
 # The full version, including alpha/beta/rc tags.
 release = version
@@ -95,7 +98,7 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["_build"]
+exclude_patterns = ["_build", "CHANGES.rst", "cheatsheet.rst"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -325,19 +328,6 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 # This is used for linking and such so we link to the thing we're building
-on_rtd = os.environ.get("READTHEDOCS", None) == "True"
-rtd_version = os.environ.get("READTHEDOCS_VERSION", "latest")
-
-if rtd_version not in ["stable", "latest"]:
-    # building docs for tag, get latest renku tag to link to
-    r = requests.get("https://api.github.com/repos/SwissDataScienceCenter/renku/tags")
-    tags = r.json()
-    version_re = r"^\d+\.\d+\.\d+$"
-    versions = [parse_version(t["name"]) for t in tags if re.match(version_re, t["name"])]
-    latest = max(versions)
-    rtd_version = str(latest)
-
-
 intersphinx_mapping = {
     "python": ("https://docs.python.org/", None),
 }
@@ -347,10 +337,3 @@ autoclass_content = "both"
 autodoc_mock_imports = ["persistent", "ZODB"]
 autodoc_typehints = "none"
 autodoc_typehints_description_target = "documented"
-
-
-# -- Custom Document processing ----------------------------------------------
-
-from gensidebar import generate_sidebar
-
-generate_sidebar(on_rtd, rtd_version, "renku-python")

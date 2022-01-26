@@ -39,13 +39,14 @@ check_styles(){
     pydocstyle renku tests conftest.py docs
     black --check --diff renku tests conftest.py
     isort -c --df .
-    flake8 renku tests conftest.py setup.py
-    check-manifest --ignore ".travis-*,renku/version.py,renku/templates,renku/templates/**"
+    flakehell lint renku/ tests/ conftest.py
     find . -path ./.eggs -prune -o -iname \*.sh -print0 | xargs -0 shellcheck
+    poetry lock --no-update && git diff --exit-code -- poetry.lock > /dev/null || echo "Poetry lock file out of date! Run 'poetry lock'"
 }
 
 build_docs(){
     sphinx-build -qnNW docs docs/_build/html
+    sphinx-build -nNW -b spelling -d docs/_build/doctrees docs docs/_build/spelling
     pytest -v -m "not integration and not publish" -o testpaths="docs conftest.py" --ignore=docs/conf.py
 }
 

@@ -21,19 +21,19 @@ from datetime import datetime
 from typing import Dict, List
 from urllib.parse import quote
 
-from marshmallow import EXCLUDE
-
 from renku.core import errors
 from renku.core.metadata.database import persistent
-from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, oa, prov, renku, schema
-from renku.core.models.provenance.agent import Person, PersonSchema
-from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
+from renku.core.models.provenance.agent import Person
+from renku.core.models.provenance.annotation import Annotation
 from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.git import get_git_user
+from renku.core.utils.os import normalize_to_ascii
 
 
 class Project(persistent.Persistent):
     """Represent a project."""
+
+    keywords = None
 
     def __init__(
         self,
@@ -53,6 +53,7 @@ class Project(persistent.Persistent):
         template_source: str = None,
         template_version: str = None,
         version: str = None,
+        keywords: List[str] = None,
     ):
         from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 
@@ -78,6 +79,7 @@ class Project(persistent.Persistent):
         self.template_source: str = template_source
         self.template_version: str = template_version
         self.version: str = version
+        self.keywords: List[str] = keywords or []
 
     @classmethod
     def from_client(
@@ -85,12 +87,13 @@ class Project(persistent.Persistent):
         client,
         name: str = None,
         description: str = None,
+        keywords: List[str] = None,
         custom_metadata: Dict = None,
         creator: Person = None,
     ) -> "Project":
         """Create an instance from a LocalClient."""
         namespace, name = cls.get_namespace_and_name(client=client, name=name, creator=creator)
-        creator = creator or Person.from_git(client.repo)
+        creator = creator or get_git_user(client.repository)
         annotations = None
 
         if custom_metadata:
@@ -100,7 +103,9 @@ class Project(persistent.Persistent):
             raise ValueError("Project Creator not set")
 
         id = cls.generate_id(namespace=namespace, name=name)
-        return cls(creator=creator, id=id, name=name, description=description, annotations=annotations)
+        return cls(
+            creator=creator, id=id, name=name, description=description, keywords=keywords, annotations=annotations
+        )
 
     @staticmethod
     def get_namespace_and_name(*, client=None, name: str = None, creator: Person = None):
@@ -113,7 +118,7 @@ class Project(persistent.Persistent):
             name = remote.get("name") or name
 
             if not creator:
-                creator = Person.from_git(client.repo)
+                creator = get_git_user(client.repository)
 
         if not namespace and creator:
             namespace = creator.email.split("@")[0]
@@ -133,7 +138,7 @@ class Project(persistent.Persistent):
 
     def update_metadata(self, custom_metadata=None, **kwargs):
         """Updates metadata."""
-        editable_attributes = ["creator", "description"]
+        editable_attributes = ["creator", "description", "keywords"]
         for name, value in kwargs.items():
             if name not in editable_attributes:
                 raise errors.ParameterError(f"Cannot edit field: '{name}'")
@@ -146,30 +151,3 @@ class Project(persistent.Persistent):
             existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
 
             self.annotations = existing_metadata
-
-
-class ProjectSchema(JsonLDSchema):
-    """Project Schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [schema.Project, prov.Location]
-        model = Project
-        unknown = EXCLUDE
-
-    agent_version = StringList(schema.agent, missing="pre-0.11.0")
-    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
-    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=False)
-    creator = Nested(schema.creator, PersonSchema, missing=None)
-    date_created = DateTimeList(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
-    description = fields.String(schema.description, missing=None)
-    id = fields.Id(missing=None)
-    immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
-    name = fields.String(schema.name, missing=None)
-    template_id = fields.String(renku.templateId, missing=None)
-    template_metadata = fields.String(renku.templateMetadata, missing=None)
-    template_ref = fields.String(renku.templateReference, missing=None)
-    template_source = fields.String(renku.templateSource, missing=None)
-    template_version = fields.String(renku.templateVersion, missing=None)
-    version = StringList(schema.schemaVersion, missing="1")

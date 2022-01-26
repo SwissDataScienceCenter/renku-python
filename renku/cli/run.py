@@ -59,6 +59,14 @@ Basic usage is:
    actually redirected. Renku specific messages such as errors get printed to
    the terminal as usual and don't get redirected.
 
+.. cheatsheet::
+   :group: Running
+   :command: $ renku run --name <name> <command> [--input <in_file>...] [--output <out_file>...]
+   :description: Execute a <command> with Renku tracking inputs and outputs. Input and output files
+                 are automatically detected from the command string. Creates a workflow template
+                 named <name>. With --input and/or --output: Manually specify input or output files to track.
+   :extended:
+
 Detecting input paths
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -128,6 +136,12 @@ those paths. Therefore:
    You can specify the ``--no-output`` option to force tracking of such
    an execution.
 
+.. cheatsheet::
+   :group: Running
+   :command: $ renku run --name <name> <command> --no-output
+   :description: Run a <command> that produces no output.
+   :extended:
+
 .. topic:: Specifying outputs explicitly (``--output``)
 
    You can specify expected outputs of your program explicitly by using the
@@ -181,8 +195,8 @@ environment variable. When set, it points to a sub-directory within the
 Exit codes
 ~~~~~~~~~~
 
-All Unix commands return a number between 0 and 255 which is called
-"exit code". In case other numbers are returned, they are treaded module 256
+All Unix commands return a number between 0 and 255 which is called an
+"exit code". In case other numbers are returned, they are treated modulo 256
 (-10 is equivalent to 246, 257 is equivalent to 1). The exit-code 0 represents
 a *success* and non-zero exit-code indicates a *failure*.
 

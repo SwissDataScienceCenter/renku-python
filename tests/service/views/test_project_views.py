@@ -19,6 +19,7 @@
 import json
 import re
 
+import portalocker
 import pytest
 
 from tests.utils import retry_failed
@@ -30,6 +31,34 @@ def assert_rpc_response(response, with_key="result"):
 
     response_text = re.sub(r"http\S+", "", json.dumps(response.json))
     assert with_key in response_text
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_show_project_view(svc_client_with_repo):
+    """Test show project metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    show_payload = {
+        "project_id": project_id,
+    }
+    response = svc_client.post("/1.0/project.show", data=json.dumps(show_payload), headers=headers)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {
+        "id",
+        "name",
+        "description",
+        "created",
+        "creator",
+        "agent",
+        "custom_metadata",
+        "template_info",
+        "keywords",
+    } == set(response.json["result"])
 
 
 @pytest.mark.service
@@ -50,7 +79,7 @@ def test_edit_project_view(svc_client_with_repo):
             "https://schema.org/property2": "test",
         },
     }
-    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+    response = svc_client.post("/1.0/project.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
@@ -74,7 +103,7 @@ def test_edit_project_view(svc_client_with_repo):
 def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed edit."""
     response = svc_client.post(
-        "/project.edit",
+        "/1.0/project.edit",
         data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True)),
         headers=identity_headers,
     )
@@ -82,3 +111,45 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     assert 200 == response.status_code
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
+
+
+@pytest.mark.integration
+@pytest.mark.service
+def test_get_lock_status_unlocked(svc_client_setup):
+    """Test getting lock status for an unlocked project."""
+    svc_client, headers, project_id, _, _ = svc_client_setup
+
+    response = svc_client.get("/1.0/project.lock_status", query_string={"project_id": project_id}, headers=headers)
+
+    assert 200 == response.status_code
+    assert {"locked"} == set(response.json["result"].keys())
+    assert response.json["result"]["locked"] is False
+
+
+@pytest.mark.integration
+@pytest.mark.service
+def test_get_lock_status_locked(svc_client_setup):
+    """Test getting lock status for a locked project."""
+    svc_client, headers, project_id, _, repository = svc_client_setup
+
+    def mock_lock():
+        return portalocker.Lock(f"{repository.path}.lock", flags=portalocker.LOCK_EX, timeout=0)
+
+    with mock_lock():
+        response = svc_client.get("/1.0/project.lock_status", query_string={"project_id": project_id}, headers=headers)
+
+    assert 200 == response.status_code
+    assert {"locked"} == set(response.json["result"].keys())
+    assert response.json["result"]["locked"] is True
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@pytest.mark.parametrize("query_params", [{"project_id": "dummy"}, {"git_url": "https://example.com/repo.git"}])
+def test_get_lock_status_for_project_not_in_cache(svc_client, identity_headers, query_params):
+    """Test getting lock status for an unlocked project which is not cached."""
+    response = svc_client.get("/1.0/project.lock_status", query_string=query_params, headers=identity_headers)
+
+    assert 200 == response.status_code
+    assert {"locked"} == set(response.json["result"].keys())
+    assert response.json["result"]["locked"] is False

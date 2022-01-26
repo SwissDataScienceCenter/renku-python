@@ -25,6 +25,7 @@ class User(Model):
     """User cache model."""
 
     __database__ = BaseCache.model_db
+    __namespace__ = BaseCache.namespace
 
     user_id = TextField(primary_key=True, index=True)
     fullname = TextField()

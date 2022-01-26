@@ -18,14 +18,18 @@
 """Test ``migrate`` command."""
 import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
 
 from renku.cli import cli
+from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
+from renku.core.management.workflow.plan_factory import RENKU_TMP
+from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import RemoteEntity
 from tests.utils import format_result_exception
 
@@ -35,7 +39,7 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not old_project.is_dirty()
+    assert not old_project.is_dirty(untracked_files=True)
 
 
 @pytest.mark.migration
@@ -43,9 +47,9 @@ def test_migrate_project(isolated_runner, old_project, client_database_injection
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not old_project.is_dirty()
+    assert not old_project.is_dirty(untracked_files=True)
 
-    client = LocalClient(path=old_project.working_dir)
+    client = LocalClient(path=old_project.path)
     with client_database_injection_manager(client):
         assert client.project
         assert client.project.name
@@ -59,18 +63,32 @@ def test_migration_check(isolated_runner, project):
     assert 0 == result.exit_code, format_result_exception(result)
     output = json.loads(result.output)
     assert output.keys() == {
-        "latest_version",
-        "project_version",
-        "migration_required",
         "project_supported",
-        "template_update_possible",
-        "current_template_version",
-        "latest_template_version",
+        "core_renku_version",
+        "project_renku_version",
+        "core_compatibility_status",
+        "dockerfile_renku_status",
+        "template_status",
+    }
+    assert output["core_compatibility_status"].keys() == {
+        "project_metadata_version",
+        "current_metadata_version",
+        "migration_required",
+    }
+    assert output["dockerfile_renku_status"].keys() == {
+        "newer_renku_available",
+        "automated_dockerfile_update",
+        "latest_renku_version",
+        "dockerfile_renku_version",
+    }
+    assert output["template_status"].keys() == {
+        "automated_template_update",
+        "newer_template_available",
         "template_source",
+        "project_template_version",
+        "latest_template_version",
         "template_ref",
         "template_id",
-        "automated_update",
-        "docker_update_possible",
     }
 
 
@@ -80,7 +98,7 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    client = LocalClient(path=old_project.working_dir)
+    client = LocalClient(path=old_project.path)
     with client_database_injection_manager(client):
         assert client.datasets
 
@@ -98,7 +116,7 @@ def test_correct_relative_path(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    client = LocalClient(path=old_project.working_dir)
+    client = LocalClient(path=old_project.path)
 
     with client_database_injection_manager(client):
         datasets_provenance = DatasetsProvenance()
@@ -110,18 +128,18 @@ def test_correct_relative_path(isolated_runner, old_project, client_database_inj
 def test_remove_committed_lock_file(isolated_runner, old_project):
     """Check that renku lock file has been successfully removed from git."""
     repo = old_project
-    repo_path = Path(old_project.working_dir)
+    repo_path = Path(old_project.path)
     with open(str(repo_path / ".renku.lock"), "w") as f:
         f.write("lock")
 
-    repo.index.add([".renku.lock"])
-    repo.index.commit("locked")
+    repo.add(".renku.lock", force=True)
+    repo.commit("locked")
 
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert not (repo_path / ".renku.lock").exists()
-    assert not repo.is_dirty()
+    assert not repo.is_dirty(untracked_files=True)
 
     ignored = (repo_path / ".gitignore").read_text()
     assert ".renku.lock" in ignored
@@ -148,6 +166,11 @@ def test_migrations_runs(isolated_runner, old_project):
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "No migrations required." in result.output
+
+    tmp_path = os.path.join(RENKU_HOME, RENKU_TMP)
+    paths = [c.b_path for c in old_project.head.commit.get_changes() if tmp_path in c.b_path]
+
+    assert 0 == len(paths), ", ".join(paths)
 
 
 @pytest.mark.migration
@@ -232,25 +255,45 @@ def test_comprehensive_dataset_migration(
 
 
 @pytest.mark.migration
-def test_migrate_renku_dataset_same_as(isolated_runner, old_client_before_database, load_dataset_with_injection):
+@pytest.mark.parametrize(
+    "old_dataset_project, name, same_as",
+    [
+        ("old-datasets-v0.9.1.git", "dataverse", "https://doi.org/10.7910/DVN/EV6KLF"),
+        ("old-datasets-v0.16.0.git", "renku-dataset", "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0"),
+    ],
+    indirect=["old_dataset_project"],
+)
+def test_migrate_renku_dataset_same_as(
+    isolated_runner, old_dataset_project, load_dataset_with_injection, name, same_as
+):
     """Test migration of imported renku datasets remove dashes from the same_as field."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset_with_injection("renku-dataset", old_client_before_database)
+    dataset = load_dataset_with_injection(name, old_dataset_project)
 
-    assert "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0" == dataset.same_as.value
+    assert same_as == dataset.same_as.value
 
 
 @pytest.mark.migration
-def test_migrate_renku_dataset_derived_from(isolated_runner, old_client_before_database, load_dataset_with_injection):
+@pytest.mark.parametrize(
+    "old_dataset_project, name, derived_from",
+    [
+        ("old-datasets-v0.9.1.git", "mixed", "/datasets/f77be1a1d3adfa99bc84f463ad134ced"),
+        ("old-datasets-v0.16.0.git", "local", "/datasets/535b6e1ddb85442a897b2b3c72aec0c6"),
+    ],
+    indirect=["old_dataset_project"],
+)
+def test_migrate_renku_dataset_derived_from(
+    isolated_runner, old_dataset_project, load_dataset_with_injection, name, derived_from
+):
     """Test migration of datasets remove dashes from the derived_from field."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset_with_injection("local", old_client_before_database)
+    dataset = load_dataset_with_injection(name, old_dataset_project)
 
-    assert "/datasets/535b6e1ddb85442a897b2b3c72aec0c6" == dataset.derived_from.url_id
+    assert derived_from == dataset.derived_from.url_id
 
 
 @pytest.mark.migration
@@ -267,16 +310,15 @@ def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_proj
 
 @pytest.mark.migration
 def test_migrate_non_renku_repository(isolated_runner):
-    """Test migration prints proper message when run on non-renku repo."""
-    from git import Repo
-
-    Repo.init(".")
+    """Test migration prints proper message when run on non-renku repository."""
+    Repository.initialize(".")
     os.mkdir(".renku")
+    sys.argv = ["migrate", "--strict"]
 
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "Error: Not a renku project." in result.output
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "is not a renku repository." in result.output
 
 
 @pytest.mark.migration
@@ -299,16 +341,15 @@ def test_migrate_check_on_unsupported_project(isolated_runner, unsupported_proje
 
 @pytest.mark.migration
 def test_migrate_check_on_non_renku_repository(isolated_runner):
-    """Test migration check on non-renku repo."""
-    from git import Repo
-
-    Repo.init(".")
+    """Test migration check on non-renku repository."""
+    Repository.initialize(".")
     os.mkdir(".renku")
+    sys.argv = ["migrate", "--strict"]
 
     result = isolated_runner.invoke(cli, ["migrate", "--check"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "Error: Not a renku project." in result.output
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "is not a renku repository." in result.output
 
 
 @pytest.mark.migration
@@ -380,3 +421,57 @@ def test_commit_hook_with_immutable_modified_files(runner, local_client, mocker,
         result = runner.invoke(cli, ["check-immutable-template-files", "README.md"])
         assert result.exit_code == 1
         assert "README.md" in result.output
+
+
+@pytest.mark.migration
+@pytest.mark.parametrize("name", ["mixed", "dataverse"])
+def test_migrate_can_preserve_dataset_ids(isolated_runner, old_dataset_project, load_dataset_with_injection, name):
+    """Test migrate can preserve old datasets' ids."""
+    result = isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = load_dataset_with_injection(name, old_dataset_project)
+
+    assert dataset.identifier == dataset.initial_identifier
+    assert dataset.derived_from is None
+
+    result = isolated_runner.invoke(cli, ["graph", "export", "--strict"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+@pytest.mark.migration
+def test_migrate_preserves_creation_date_when_preserving_ids(
+    isolated_runner, old_dataset_project, load_dataset_with_injection
+):
+    """Test migrate doesn't change dataset's dateCreated when --preserve-identifiers is passed."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"]).exit_code
+
+    dataset = load_dataset_with_injection("mixed", old_dataset_project)
+
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_created.isoformat(" ")
+
+
+@pytest.mark.migration
+@pytest.mark.parametrize("old_dataset_project", ["old-datasets-v0.16.0.git"], indirect=True)
+def test_migrate_preserves_creation_date_for_mutated_datasets(
+    isolated_runner, old_dataset_project, load_dataset_with_injection
+):
+    """Test migration of datasets that were mutated keeps original dateCreated."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
+
+    dataset = load_dataset_with_injection("local", old_dataset_project)
+
+    assert "2021-07-23 14:34:58+00:00" == dataset.date_created.isoformat(" ")
+
+
+@pytest.mark.migration
+def test_migrate_sets_correct_creation_date_for_non_mutated_datasets(
+    isolated_runner, old_dataset_project, load_dataset_with_injection
+):
+    """Test migration of datasets that weren't mutated uses commit date as dateCreated."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
+
+    dataset = load_dataset_with_injection("mixed", old_dataset_project)
+
+    assert "2020-08-10 23:35:56+02:00" == dataset.date_created.isoformat(" ")

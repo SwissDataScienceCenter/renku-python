@@ -31,6 +31,12 @@ By default, configuration is stored locally in the project's directory. Use
 ``--global`` option to store configuration for all projects in your home
 directory.
 
+.. cheatsheet::
+   :group: Config
+   :command: $ renku config set <key> <value>
+   :description: Set entry <key> to <value> in renku config.
+   :extended:
+
 Remove values
 ~~~~~~~~~~~~~
 
@@ -42,6 +48,12 @@ To remove a specific key from configuration use:
 
 By default, only local configuration is searched for removal. Use ``--global``
 option to remove a global configuration value.
+
+.. cheatsheet::
+   :group: Config
+   :command: $ renku config remove <key>
+   :description: Unset entry <key> renku config.
+   :extended:
 
 Query values
 ~~~~~~~~~~~~
@@ -65,41 +77,47 @@ You can provide a KEY to display only its value:
     $ renku config show interactive.default_url
     default_url = /lab
 
+.. cheatsheet::
+   :group: Config
+   :command: $ renku config show [<key>]
+   :description: Show current configuration.
+   :extended:
+
 Available configuration values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following values are available for the ``renku config`` command:
 
-+----------------------------+-------------------------------------+-----------+
-| Name                       | Description                         | Default   |
-+============================+=====================================+===========+
-| show_lfs_message           | Whether to show messages about      | ``True``  |
-|                            | files being added to git LFS or not |           |
-+----------------------------+-------------------------------------+-----------+
-| lfs_threshold              | Threshold file size below which     | ``100kb`` |
-|                            | files are not added to git LFS      |           |
-+----------------------------+-------------------------------------+-----------+
-| zenodo.access_token        | Access token for Zenodo API         | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| dataverse.access_token     | Access token for Dataverse API      | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| dataverse.server_url       | URL for the Dataverse API server    | ``None``  |
-|                            | to use                              |           |
-+----------------------------+-------------------------------------+-----------+
-| interactive.default_url    | URL for interactive environments    | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| interactive.cpu_request    | CPU quota for environments          | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| interactive.mem_request    | Memory quota for environments       | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| interactive.gpu_request    | GPU quota for environments          | ``None``  |
-+----------------------------+-------------------------------------+-----------+
-| interactive.lfs_auto_fetch | Whether to automatically fetch lfs  | ``None``  |
-|                            | files on environments startup       |           |
-+----------------------------+-------------------------------------+-----------+
-| interactive.image          | Pinned Docker image for             | ``None``  |
-|                            | environments                        |           |
-+----------------------------+-------------------------------------+-----------+
++--------------------------------+-------------------------------------+-----------+
+| Name                           | Description                         | Default   |
++================================+=====================================+===========+
+| ``show_lfs_message``           | Whether to show messages about      | ``True``  |
+|                                | files being added to git LFS or not |           |
++--------------------------------+-------------------------------------+-----------+
+| ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
+|                                | files are not added to git LFS      |           |
++--------------------------------+-------------------------------------+-----------+
+| ``zenodo.access_token``        | Access token for Zenodo API         | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``dataverse.access_token``     | Access token for Dataverse API      | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``dataverse.server_url``       | URL for the Dataverse API server    | ``None``  |
+|                                | to use                              |           |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.default_url``    | URL for interactive environments    | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.cpu_request``    | CPU quota for environments          | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.mem_request``    | Memory quota for environments       | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.gpu_request``    | GPU quota for environments          | ``None``  |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.lfs_auto_fetch`` | Whether to automatically fetch lfs  | ``None``  |
+|                                | files on environments startup       |           |
++--------------------------------+-------------------------------------+-----------+
+| ``interactive.image``          | Pinned Docker image for             | ``None``  |
+|                                | environments                        |           |
++--------------------------------+-------------------------------------+-----------+
 """
 import click
 

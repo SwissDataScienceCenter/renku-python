@@ -40,9 +40,11 @@ When using ``renku`` as a hosted service the Sentry integration can be enabled
 to help developers iterate faster by showing them where bugs happen, how often,
 and who is affected.
 
-1. Install Sentry-SDK with ``python -m pip install sentry-sdk``;
+1. Install ``Sentry-SDK`` with ``python -m pip install sentry-sdk``;
 2. Set environment variable
    ``SENTRY_DSN=https://<key>@sentry.<domain>/<project>``.
+3. Set the environment variable ``SENTRY_SAMPLE_RATE=0.2``. This would track
+   20% of all requests in Sentry performance monitoring. Set to 0 to disable.
 
 .. warning:: User information might be sent to help resolving the problem.
    If you are not using your own Sentry instance you should inform users
@@ -68,13 +70,17 @@ _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=T
 
 HAS_SENTRY = None
 SENTRY_DSN = os.getenv("SENTRY_DSN")
+SENTRY_SAMPLERATE = float(os.getenv("SENTRY_SAMPLE_RATE", 0.2))
 
 if SENTRY_DSN:
-    import pkg_resources
+    try:
+        from importlib.metadata import PackageNotFoundError, distribution
+    except ImportError:
+        from importlib_metadata import PackageNotFoundError, distribution
 
     try:
-        pkg_resources.get_distribution("sentry-sdk")
-    except pkg_resources.DistributionNotFound:
+        distribution("sentry-sdk")
+    except PackageNotFoundError:
         HAS_SENTRY = False
     else:
         HAS_SENTRY = True
@@ -115,7 +121,9 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         if HAS_SENTRY:
             import sentry_sdk
 
-            sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"))
+            sentry_sdk.init(
+                dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"), traces_sample_rate=SENTRY_SAMPLERATE
+            )
 
     def main(self, *args, **kwargs):
         """Catch all exceptions."""
@@ -147,13 +155,10 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
         with configure_scope() as scope:
             with capture_internal_exceptions():
-                from git import Repo
-
                 from renku.core.commands.git import get_git_home
-                from renku.core.models.provenance.agent import Person
+                from renku.core.metadata.repository import Repository
 
-                repo = Repo(get_git_home())
-                user = Person.from_git(repo)
+                user = Repository(get_git_home()).get_user()
 
                 scope.user = {"name": user.name, "email": user.email}
 

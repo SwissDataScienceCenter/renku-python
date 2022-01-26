@@ -16,29 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku CLI fixtures for old project management."""
+
 from pathlib import Path
 
 import pytest
-from git import Repo
 
-
-def clone_compressed_repository(base_path, name):
-    """Decompress and clone a repository."""
-    import tarfile
-
-    compressed_repo_path = Path(__file__).parent / ".." / ".." / "data" / f"{name}.tar.gz"
-    working_dir = base_path / name
-
-    bare_base_path = working_dir / "bare"
-
-    with tarfile.open(compressed_repo_path, "r") as fixture:
-        fixture.extractall(str(bare_base_path))
-
-    bare_path = bare_base_path / name
-    repository_path = working_dir / "repository"
-    repository = Repo(bare_path, search_parent_directories=True).clone(repository_path)
-
-    return repository
+from renku.core.metadata.repository import Repository
+from tests.utils import clone_compressed_repository
 
 
 @pytest.fixture(params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git"])
@@ -50,7 +34,7 @@ def old_project(request, tmp_path):
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    with chdir(repository.working_dir):
+    with chdir(repository.path):
         yield repository
 
 
@@ -83,7 +67,7 @@ def old_workflow_project(request, tmp_path):
     name = request.param["name"]
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
-    repository_path = repository.working_dir
+    repository_path = repository.path
 
     with chdir(repository_path):
         yield {
@@ -94,18 +78,18 @@ def old_workflow_project(request, tmp_path):
         }
 
 
-@pytest.fixture
-def old_dataset_project(tmp_path):
+@pytest.fixture(params=["old-datasets-v0.9.1.git"])
+def old_dataset_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
     from renku.core.management.client import LocalClient
     from renku.core.utils.contexts import chdir
 
-    name = "old-datasets-v0.9.1.git"
+    name = request.param
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    with chdir(repository.working_dir):
-        yield LocalClient(path=repository.working_dir)
+    with chdir(repository.path):
+        yield LocalClient(path=repository.path)
 
 
 @pytest.fixture
@@ -123,7 +107,7 @@ def old_repository_with_submodules(request, tmp_path):
         repo.extractall(working_dir)
 
     repo_path = working_dir / name
-    repo = Repo(repo_path)
+    repo = Repository(repo_path)
 
     with chdir(repo_path):
         yield repo
@@ -137,21 +121,7 @@ def unsupported_project(client, client_database_injection_manager):
             impossible_newer_version = 42000
             project.version = impossible_newer_version
 
-    client.repo.git.add(".renku")
-    client.repo.index.commit("update renku.ini", skip_hooks=True)
+    client.repository.add(".renku")
+    client.repository.commit("update renku.ini", no_verify=True)
 
     yield client
-
-
-@pytest.fixture
-def old_client_before_database(tmp_path):
-    """A renku project from last version without Database."""
-    from renku.core.management.client import LocalClient
-    from renku.core.utils.contexts import chdir
-
-    name = "old-datasets-v0.16.0.git"
-    base_path = tmp_path / name
-    repository = clone_compressed_repository(base_path=base_path, name=name)
-
-    with chdir(repository.working_dir):
-        yield LocalClient(path=repository.working_dir)

@@ -21,59 +21,23 @@ import os
 from typing import List
 
 import click
-import requests
 
-from renku.core.management.config import RENKU_HOME
+from renku.core.management import RENKU_HOME
 
 
 class RenkuException(Exception):
     """A base class for all Renku related exception.
 
-    You can catch all errors raised by Renku SDK by using
-    ``except RenkuException:``.
+    You can catch all errors raised by Renku SDK by using ``except RenkuException:``.
     """
 
 
-class APIError(requests.exceptions.HTTPError, RenkuException):
-    """Catch HTTP errors from API calls."""
-
-    @classmethod
-    def from_http_exception(cls, e):
-        """Create ``APIError`` from ``requests.exception.HTTPError``."""
-        assert isinstance(e, requests.exceptions.HTTPError)
-        response = e.response
-        try:
-            message = response.json()["message"]
-        except (KeyError, ValueError):
-            message = response.content.strip()
-
-        raise cls(message)
+class RequestError(RenkuException):
+    """Raise when a ``requests`` call fails."""
 
 
-class NotFound(APIError):
-    """Raise when an API object is not found."""
-
-
-class UnexpectedStatusCode(APIError):
-    """Raise when the status code does not match specification."""
-
-    def __init__(self, response):
-        """Build custom message."""
-        super(UnexpectedStatusCode, self).__init__(
-            "Unexpected status code: {0}".format(response.status_code), response=response
-        )
-
-    @classmethod
-    def return_or_raise(cls, response, expected_status_code):
-        """Check for ``expected_status_code``."""
-        try:
-            if response.status_code in expected_status_code:
-                return response
-        except TypeError:
-            if response.status_code == expected_status_code:
-                return response
-
-        raise cls(response)
+class NotFound(RenkuException):
+    """Raise when an object is not found in KG."""
 
 
 class ParameterError(RenkuException):
@@ -100,33 +64,7 @@ class UsageError(RenkuException):
 
 
 class ConfigurationError(RenkuException):
-    """Raise in case of misconfiguration."""
-
-
-class MissingUsername(ConfigurationError):
-    """Raise when the username is not configured."""
-
-    def __init__(self, message=None):
-        """Build a custom message."""
-        message = message or (
-            "The user name is not configured. "
-            'Please use the "git config" command to configure it.\n\n'
-            '\tgit config --set user.name "John Doe"\n'
-        )
-        super(MissingUsername, self).__init__(message)
-
-
-class MissingEmail(ConfigurationError):
-    """Raise when the email is not configured."""
-
-    def __init__(self, message=None):
-        """Build a custom message."""
-        message = message or (
-            "The email address is not configured. "
-            'Please use the "git config" command to configure it.\n\n'
-            '\tgit config --set user.email "john.doe@example.com"\n'
-        )
-        super().__init__(message)
+    """Raise in case of misconfiguration; use GitConfigurationError for git-related configuration errors."""
 
 
 class AuthenticationError(RenkuException):
@@ -136,12 +74,12 @@ class AuthenticationError(RenkuException):
 class DirtyRepository(RenkuException):
     """Raise when trying to work with dirty repository."""
 
-    def __init__(self, repo):
+    def __init__(self, repository):
         """Build a custom message."""
         super(DirtyRepository, self).__init__(
             "The repository is dirty. "
             'Please use the "git" command to clean it.'
-            "\n\n" + str(repo.git.status()) + "\n\n"
+            "\n\n" + str(repository.status()) + "\n\n"
             "Once you have added the untracked files, "
             'commit them with "git commit".'
         )
@@ -150,7 +88,7 @@ class DirtyRepository(RenkuException):
 class DirtyRenkuDirectory(RenkuException):
     """Raise when a directory in the renku repository is dirty."""
 
-    def __init__(self, repo):
+    def __init__(self, repository):
         """Build a custom message."""
         super(DirtyRenkuDirectory, self).__init__(
             (
@@ -160,7 +98,7 @@ class DirtyRenkuDirectory(RenkuException):
                 "need to be manually committed or removed."
             ).format(RENKU_HOME)
             + "\n\n"
-            + str(repo.git.status())
+            + str(repository.status())
             + "\n\n"
         )
 
@@ -228,20 +166,20 @@ class CommitMessageEmpty(RenkuException):
 class FailedMerge(RenkuException):
     """Raise when automatic merge failed."""
 
-    def __init__(self, repo, branch, merge_args):
+    def __init__(self, repository, branch, merge_args):
         """Build a custom message."""
         super(FailedMerge, self).__init__(
             "Failed merge of branch {0} with args {1}".format(branch, ",".join(merge_args))
             + "The automatic merge failed.\n\n"
             'Please use the "git" command to clean it.'
-            "\n\n" + str(repo.git.status())
+            "\n\n" + str(repository.status())
         )
 
 
 class UnmodifiedOutputs(RenkuException):
     """Raise when there are unmodified outputs in the repository."""
 
-    def __init__(self, repo, unmodified):
+    def __init__(self, repository, unmodified):
         """Build a custom message."""
         super(UnmodifiedOutputs, self).__init__(
             "There are no detected new outputs or changes.\n"
@@ -263,7 +201,7 @@ class InvalidOutputPath(RenkuException):
 class OutputsNotFound(RenkuException):
     """Raise when there are not any detected outputs in the repository."""
 
-    def __init__(self, repo, inputs):
+    def __init__(self, repository, inputs):
         """Build a custom message."""
         from pathlib import Path
 
@@ -326,9 +264,9 @@ class DatasetExistsError(RenkuException):
 
 
 class ExternalStorageNotInstalled(RenkuException):
-    """Raise when LFS is required but not found or installed in the repo."""
+    """Raise when LFS is required but not found or installed in the repository."""
 
-    def __init__(self, repo):
+    def __init__(self, repository):
         """Build a custom message."""
         msg = (
             "External storage is not installed, "
@@ -347,7 +285,7 @@ class ExternalStorageNotInstalled(RenkuException):
 class ExternalStorageDisabled(RenkuException):
     """Raise when disabled repository storage API is trying to be used."""
 
-    def __init__(self, repo):
+    def __init__(self, repository):
         """Build a custom message."""
         msg = (
             "External storage is not configured, "
@@ -384,7 +322,64 @@ class InvalidAccessToken(RenkuException):
 
 
 class GitError(RenkuException):
-    """Raised when a remote Git repo cannot be accessed."""
+    """Raised when a Git operation fails."""
+
+
+class InvalidGitURL(GitError):
+    """Raise when a Git URL is not valid."""
+
+
+class GitCommandError(GitError):
+    """Raised when a Git command fails."""
+
+    def __init__(self, message="Git command failed.", command=None, stdout=None, stderr=None, status=None):
+        super().__init__(message)
+        self.command = command
+        self.stdout = stdout
+        self.stderr = stderr
+        self.status = status
+
+
+class GitCommitNotFoundError(GitError):
+    """Raised when a commit cannot be found in a Repository."""
+
+
+class GitRemoteNotFoundError(GitError):
+    """Raised when a remote cannot be found."""
+
+
+class GitReferenceNotFoundError(GitError):
+    """Raised when a branch or a reference cannot be found."""
+
+
+class GitConfigurationError(GitError):
+    """Raised when a git configuration cannot be accessed."""
+
+
+class GitMissingUsername(GitConfigurationError):
+    """Raise when the username is not configured."""
+
+    def __init__(self, message=None):
+        """Build a custom message."""
+        message = message or (
+            "The user name is not configured. "
+            'Please use the "git config" command to configure it.\n\n'
+            '\tgit config --set user.name "John Doe"\n'
+        )
+        super().__init__(message)
+
+
+class GitMissingEmail(GitConfigurationError):
+    """Raise when the email is not configured."""
+
+    def __init__(self, message=None):
+        """Build a custom message."""
+        message = message or (
+            "The email address is not configured. "
+            'Please use the "git config" command to configure it.\n\n'
+            '\tgit config --set user.email "john.doe@example.com"\n'
+        )
+        super().__init__(message)
 
 
 class GitLFSError(RenkuException):
@@ -410,10 +405,12 @@ class CommitProcessingError(RenkuException):
 class WorkflowExecuteError(RenkuException):
     """Raises when a workflow execution fails."""
 
-    def __init__(self):
+    def __init__(self, fail_reason=None):
         """Build a custom message."""
 
         msg = "Unable to finish executing workflow"
+        if fail_reason:
+            msg += f": {fail_reason}"
         super(WorkflowExecuteError, self).__init__(msg)
 
 

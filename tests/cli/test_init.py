@@ -22,7 +22,6 @@ import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 
-import git
 import pytest
 
 from renku.cli import cli
@@ -30,6 +29,7 @@ from renku.cli.init import parse_parameters
 from renku.core import errors
 from renku.core.commands.init import create_template_sentence
 from renku.core.metadata.database import Database
+from renku.core.metadata.repository import Repository
 from tests.utils import format_result_exception, raises
 
 
@@ -63,7 +63,7 @@ def test_template_selection_helpers():
             "name": "Template R",
             "folder": "folder_R",
             "description": "Description R",
-            "variables": {"custom": "random data"},
+            "variables": {"custom": {"description": "random data"}},
         },
     ]
     instructions = "Please choose a template by typing the index"
@@ -166,7 +166,7 @@ def test_init_initial_branch(isolated_runner, project_init):
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
     assert (new_project / ".renku" / "metadata").exists()
-    assert git.Repo(str(new_project)).active_branch.name == data["main_branch"]
+    assert Repository(new_project).active_branch.name == data["main_branch"]
 
 
 @pytest.mark.parametrize(
@@ -195,8 +195,8 @@ def test_init_with_git_remote(isolated_runner, project_init, remote):
     # create the project
     new_project = Path(data["test_project"])
     new_project.mkdir()
-    repo = git.Repo.init(new_project)
-    repo.create_remote("origin", remote[0])
+    repository = Repository.initialize(new_project)
+    repository.remotes.add("origin", remote[0])
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
     )
@@ -286,13 +286,13 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
 
 
 def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
-    """Run init --force in directory containing another repo."""
+    """Run init --force in directory containing another repository."""
     data, commands = project_init
 
     new_project = Path(data["test_project"])
     import shutil
 
-    shutil.copytree(str(data_repository.working_dir), str(new_project))
+    shutil.copytree(str(data_repository.path), str(new_project))
     assert new_project.exists()
 
     # try to create in a dirty folder
@@ -320,6 +320,162 @@ def test_init_remote(isolated_runner, project_init):
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
     assert (new_project / ".renku" / "metadata").exists()
+
+
+@pytest.mark.integration
+def test_init_new_metadata_defaults(isolated_runner, project_init):
+    """Test project initialization from a remote template with defaults."""
+    data, commands = project_init
+
+    # create the project using default values
+    description = ["--parameter", "description=some description"]
+    number_val = ["--parameter", "number_val=70.12"]
+
+    git_url = urlparse(commands["init_custom_template"])
+
+    url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+    git_url = git_url._replace(netloc=url).geturl()
+    template_source = ["--template-source", str(git_url)]
+
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli,
+        commands["init_custom"] + template_source + description + number_val,
+        "\n\n",
+    )
+    assert 0 == result.exit_code, result.output
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata").exists()
+
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    metadata = json.loads(project.template_metadata)
+    assert metadata["bool_var"]
+    assert metadata["enum_var"] == "ask again"
+    assert metadata["description"] == "some description"
+    assert metadata["number_val"] == 70.12
+
+
+@pytest.mark.integration
+def test_init_new_metadata_wrong_number(isolated_runner, project_init):
+    """Test project initialization from a remote template."""
+    data, commands = project_init
+
+    git_url = urlparse(commands["init_custom_template"])
+    url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+    git_url = git_url._replace(netloc=url).geturl()
+    template_source = ["--template-source", str(git_url)]
+
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
+
+    # create project using wrong number
+    description = ["--parameter", "description=lalala"]
+    number_val = ["--parameter", "number_val=abcd"]
+    bool_val = ["--parameter", "bool_val=true"]
+    enum_val = ["--parameter", "enum_var=yes"]
+    result = isolated_runner.invoke(
+        cli, commands["init_custom"] + template_source + description + number_val + bool_val + enum_val, "42\n"
+    )
+    assert 0 == result.exit_code, result.output
+    assert "Info: Value 'abcd' is not of type number required by number_val" in result.output
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata").exists()
+
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    metadata = json.loads(project.template_metadata)
+    assert metadata["bool_var"]
+    assert metadata["enum_var"] == "yes"
+    assert metadata["description"] == "lalala"
+    assert metadata["number_val"] == 42
+
+
+@pytest.mark.integration
+def test_init_new_metadata_wrong_bool(isolated_runner, project_init):
+    """Test project initialization from a remote template."""
+    data, commands = project_init
+
+    git_url = urlparse(commands["init_custom_template"])
+    url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+    git_url = git_url._replace(netloc=url).geturl()
+    template_source = ["--template-source", str(git_url)]
+
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
+
+    # create project using wrong bool
+    description = ["--parameter", "description=lalala"]
+    number_val = ["--parameter", "number_val=0.999999"]
+    bool_val = ["--parameter", "bool_var=yay"]
+    enum_val = ["--parameter", "enum_var=yes"]
+
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli, commands["init_custom"] + template_source + description + number_val + bool_val + enum_val, "0\n"
+    )
+    assert 0 == result.exit_code, result.output
+    assert "Info: Value 'yay' is not of type boolean required by bool_var" in result.output
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata").exists()
+
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    metadata = json.loads(project.template_metadata)
+    assert not metadata["bool_var"]
+    assert metadata["enum_var"] == "yes"
+    assert metadata["description"] == "lalala"
+    assert metadata["number_val"] == 0.999999
+
+
+@pytest.mark.integration
+def test_init_new_metadata_wrong_enum(isolated_runner, project_init):
+    """Test project initialization from a remote template."""
+    data, commands = project_init
+
+    git_url = urlparse(commands["init_custom_template"])
+    url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+    git_url = git_url._replace(netloc=url).geturl()
+    template_source = ["--template-source", str(git_url)]
+
+    new_project = Path(data["test_project"])
+    assert not new_project.exists()
+
+    # create project using wrong enum
+    description = ["--parameter", "description=lalala"]
+    number_val = ["--parameter", "number_val=0.999999"]
+    bool_val = ["--parameter", "bool_var=1"]
+    enum_val = ["--parameter", "enum_var=what"]
+
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli, commands["init_custom"] + template_source + description + number_val + bool_val + enum_val, "ask again\n"
+    )
+    assert 0 == result.exit_code, result.output
+    assert "Info: Value 'what' is not in list of possible values ['yes', 'no', 'maybe', 'ask again']" in result.output
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata").exists()
+
+    database = Database.from_path(new_project / ".renku" / "metadata")
+    project = database.get("project")
+
+    metadata = json.loads(project.template_metadata)
+    assert metadata["bool_var"]
+    assert metadata["enum_var"] == "ask again"
+    assert metadata["description"] == "lalala"
+    assert metadata["number_val"] == 0.999999
 
 
 def test_init_with_parameters(isolated_runner, project_init, template):
@@ -381,8 +537,6 @@ def test_init_with_custom_metadata(isolated_runner, project_init, template):
 @pytest.mark.parametrize("data_dir", ["dir", "nested/dir/s"])
 def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_init):
     """Test initializing with data directory."""
-    from git import Repo
-
     data, commands = project_init
 
     new_project = Path(data["test_project"])
@@ -391,7 +545,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 
     assert (new_project / data_dir).exists()
     assert (new_project / data_dir / ".gitkeep").exists()
-    assert not Repo(new_project).is_dirty()
+    assert not Repository(new_project).is_dirty(untracked_files=True)
 
     os.chdir(new_project.resolve())
     result = isolated_runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)])

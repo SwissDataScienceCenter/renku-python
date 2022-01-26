@@ -18,8 +18,9 @@
 """Custom database for store Persistent objects."""
 
 import datetime
-import gzip
 import hashlib
+import importlib
+import io
 import json
 from pathlib import Path
 from types import BuiltinFunctionType, FunctionType
@@ -27,25 +28,38 @@ from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
 import persistent
-from BTrees.OOBTree import OOBTree
+import zstandard as zstd
+from BTrees.Length import Length
+from BTrees.OOBTree import BTree, OOBucket, OOSet, OOTreeSet
 from persistent import GHOST, UPTODATE
 from persistent.interfaces import IPickleCache
+from zc.relation.catalog import Catalog
 from ZODB.utils import z64
 from zope.interface import implementer
 from zope.interface.interface import InterfaceClass
 
 from renku.core import errors
 from renku.core.metadata.immutable import Immutable
+from renku.core.models.project import Project
 
 OID_TYPE = str
 TYPE_TYPE = "type"
 FUNCTION_TYPE = "function"
 REFERENCE_TYPE = "reference"
+SET_TYPE = "set"
+FROZEN_SET_TYPE = "frozenset"
 MARKER = object()
 
 """NOTE: These are used as _p_serial to mark if an object was read from storage or is new"""
 NEW = z64  # NOTE: Do not change this value since this is the default when a Persistent object is created
 PERSISTED = b"1" * 8
+
+
+def _is_module_allowed(module_name: str, type_name: str):
+    """Checks whether it is allowed to import from the given module for security purposes."""
+
+    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
+        raise TypeError(f"Objects of type '{type_name}' are not allowed")
 
 
 def get_type_name(object) -> Optional[str]:
@@ -65,8 +79,7 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
     components = type_name.split(".")
     module_name = components[0]
 
-    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
-        raise TypeError(f"Objects of type '{type_name}' are not allowed")
+    _is_module_allowed(module_name, type_name)
 
     module = __import__(module_name)
 
@@ -75,12 +88,36 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
 
 def get_attribute(object, name: Union[List[str], str]):
     """Return an attribute of an object."""
+    import sys
+
     components = name.split(".") if isinstance(name, str) else name
 
+    def _module_name(o):
+        return o.__module__ if hasattr(o, "__module__") else o.__name__
+
+    module_name = _module_name(object)
+    root_module_name = module_name.split(".")[0]
+
     for component in components:
+        module_name = _module_name(object)
+        if not hasattr(object, component) and f"{module_name}.{component}" not in sys.modules:
+            try:
+                _is_module_allowed(root_module_name, object.__name__)
+                object = importlib.import_module(f".{component}", package=module_name)
+                continue
+            except ModuleNotFoundError:
+                pass
+
         object = getattr(object, component)
 
     return object
+
+
+class RenkuOOBTree(BTree):
+    """Customize ``BTrees.OOBTree.BTree`` implementation."""
+
+    max_leaf_size = 1000
+    max_internal_size = 2000
 
 
 class Persistent(persistent.Persistent):
@@ -93,7 +130,7 @@ class Persistent(persistent.Persistent):
     _v_immutable = False
 
     def reassign_oid(self):
-        """Reassign oid (after assigning a new identifier for example)."""
+        """Reassign ``oid`` (after assigning a new identifier for example)."""
         if self._p_jar is not None:
             self._p_jar.remove_from_cache(self)
 
@@ -109,18 +146,31 @@ class Persistent(persistent.Persistent):
         """Set immutable property."""
         self._v_immutable = True
 
+    def unfreeze(self):
+        """Allows modifying an immutable object.
+
+        Don't make an object mutable unless the intention is to drop the changes or modify the object in-place. Modified
+        objects will be updated in-place which results in a binary diff when persisted. Normally, we want to create a
+        mutable copy and persist it as a new object.
+        """
+        self._v_immutable = False
+
     def __setattr__(self, key, value):
         if self._v_immutable and key != "__weakref__" and not key.startswith("_p_") and not key.startswith("_v_"):
             raise RuntimeError(f"Cannot modify immutable object {self}.{key}")
 
         super().__setattr__(key, value)
 
+    @property
+    def __name__(self):
+        return self.__class__.__name__
+
 
 class Database:
     """The Metadata Object Database.
 
-    This class is equivalent to a persistent.DataManager and implements persistent.interfaces.IPersistentDataManager
-    interface.
+    This class is equivalent to a ``persistent.DataManager`` and implements
+    the ``persistent.interfaces.IPersistentDataManager`` interface.
     """
 
     ROOT_OID = "root"
@@ -134,7 +184,7 @@ class Database:
         self._objects_to_commit: Dict[OID_TYPE, persistent.Persistent] = {}
         self._reader: ObjectReader = ObjectReader(database=self)
         self._writer: ObjectWriter = ObjectWriter(database=self)
-        self._root: Optional[OOBTree] = None
+        self._root: Optional[RenkuOOBTree] = None
 
         self._initialize_root()
 
@@ -146,7 +196,7 @@ class Database:
 
     @staticmethod
     def generate_oid(object: persistent.Persistent) -> OID_TYPE:
-        """Generate oid for a persistent.Persistent object based on its id."""
+        """Generate an ``oid`` for a ``persistent.Persistent`` object based on its id."""
         oid = getattr(object, "_p_oid")
         if oid:
             assert isinstance(oid, OID_TYPE)
@@ -160,12 +210,12 @@ class Database:
 
     @staticmethod
     def hash_id(id: str) -> OID_TYPE:
-        """Return oid from id."""
+        """Return ``oid`` from id."""
         return hashlib.sha3_256(id.encode("utf-8")).hexdigest()
 
     @staticmethod
     def new_oid():
-        """Generate a random oid."""
+        """Generate a random ``oid``."""
         return f"{uuid4().hex}{uuid4().hex}"
 
     @staticmethod
@@ -189,7 +239,7 @@ class Database:
             try:
                 self._root = self.get(Database.ROOT_OID)
             except errors.ObjectNotFoundError:
-                self._root = OOBTree()
+                self._root = RenkuOOBTree()
                 self._root._p_oid = Database.ROOT_OID
                 self.register(self._root)
 
@@ -245,7 +295,7 @@ class Database:
         self._objects_to_commit[object._p_oid] = object
 
     def get(self, oid: OID_TYPE) -> persistent.Persistent:
-        """Get the object by oid."""
+        """Get the object by ``oid``."""
         if oid != Database.ROOT_OID and oid in self._root:  # NOTE: Avoid looping if getting "root"
             return self._root[oid]
         object = self.get_cached(oid)
@@ -316,8 +366,7 @@ class Database:
 
     def _store_object(self, object: persistent.Persistent):
         data = self._writer.serialize(object)
-        # TODO: Set compress based on the object type in the final version
-        compress = False  # if isinstance(object, (OOBTree, OOBucket, Project, Index)) else True
+        compress = False if isinstance(object, (Catalog, RenkuOOBTree, OOBucket, Project, Index)) else True
         self._storage.store(filename=self._get_filename_from_oid(object._p_oid), data=data, compress=compress)
 
         self._cache[object._p_oid] = object
@@ -344,13 +393,13 @@ class Database:
         assert object._p_oid is not None
 
     def oldstate(self, object, tid):
-        """See persistent.interfaces.IPersistentDataManager::oldstate."""
+        """See ``persistent.interfaces.IPersistentDataManager::oldstate``."""
         raise NotImplementedError
 
 
 @implementer(IPickleCache)
 class Cache:
-    """Database Cache."""
+    """Database ``Cache``."""
 
     def __init__(self):
         self._entries = {}
@@ -389,12 +438,12 @@ class Cache:
         return self._entries.pop(oid) if default is MARKER else self._entries.pop(oid, default)
 
     def get(self, oid, default=None):
-        """See IPickleCache."""
+        """See ``IPickleCache``."""
         assert isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
         return self._entries.get(oid, default)
 
     def new_ghost(self, oid, object):
-        """See IPickleCache."""
+        """See ``IPickleCache``."""
         assert object._p_oid is None, f"Object already has an oid: {object}"
         assert object._p_jar is not None, f"Object does not have a jar: {object}"
         assert oid not in self._entries, f"Duplicate oid: {oid}"
@@ -413,10 +462,10 @@ class Index(persistent.Persistent):
         """
         Create an index where keys are extracted using `attribute` from an object or a key.
 
-        @param name: Index's name
-        @param object_type: Type of objects that the index points to
-        @param attribute: Name of an attribute to be used to automatically generate a key (e.g. `entity.path`)
-        @param key_type: Type of keys. If not None then a key must be provided when updating the index
+        :param name: Index's name
+        :param object_type: Type of objects that the index points to
+        :param attribute: Name of an attribute to be used to automatically generate a key (e.g. `entity.path`)
+        :param key_type: Type of keys. If not None then a key must be provided when updating the index
         """
         assert name == name.lower(), f"Index name must be all lowercase: '{name}'."
 
@@ -427,7 +476,7 @@ class Index(persistent.Persistent):
         self._object_type = object_type
         self._key_type = key_type
         self._attribute: Optional[str] = attribute
-        self._entries: OOBTree = OOBTree()
+        self._entries: RenkuOOBTree = RenkuOOBTree()
         self._entries._p_oid = name
 
     def __len__(self):
@@ -482,9 +531,9 @@ class Index(persistent.Persistent):
             return
         return self._entries.pop(key) if default is MARKER else self._entries.pop(key, default)
 
-    def keys(self):
+    def keys(self, min=None, max=None, excludemin=False, excludemax=False):
         """Return an iterator of keys."""
-        return self._entries.keys()
+        return self._entries.keys(min=min, max=max, excludemin=excludemin, excludemax=excludemax)
 
     def values(self):
         """Return an iterator of values."""
@@ -544,6 +593,8 @@ class Storage:
 
     def __init__(self, path: Union[Path, str]):
         self.path = Path(path)
+        self.zstd_compressor = zstd.ZstdCompressor()
+        self.zstd_decompressor = zstd.ZstdDecompressor()
 
     def store(self, filename: str, data: Union[Dict, List], compress=False):
         """Store object."""
@@ -557,10 +608,13 @@ class Storage:
             path = self.path / filename
             self.path.mkdir(parents=True, exist_ok=True)
 
-        open_func = gzip.open if compress else open
-
-        with open_func(path, "wt") as file:
-            json.dump(data, file, ensure_ascii=False, sort_keys=True, indent=2)
+        if compress:
+            with open(path, "wb") as f, self.zstd_compressor.stream_writer(f) as compressor:
+                with io.TextIOWrapper(compressor) as out:
+                    json.dump(data, out, ensure_ascii=False)
+        else:
+            with open(path, "wt") as f:
+                json.dump(data, f, ensure_ascii=False, sort_keys=True, indent=2)
 
     def load(self, filename: str):
         """Load data for object with object id oid."""
@@ -575,13 +629,14 @@ class Storage:
         if not path.exists():
             raise errors.ObjectNotFoundError(filename)
 
-        try:
-            with gzip.open(path) as file:
+        with open(path, "rb") as file:
+            header = int.from_bytes(file.read(4), "little")
+            file.seek(0)
+            if header == zstd.MAGIC_NUMBER:
+                with self.zstd_decompressor.stream_reader(file) as zfile:
+                    data = json.load(zfile)
+            else:
                 data = json.load(file)
-        except OSError:  # Not a gzip file
-            with open(path) as file:
-                data = json.load(file)
-
         return data
 
 
@@ -619,6 +674,16 @@ class ObjectWriter:
             return object
         elif isinstance(object, list):
             return [self._serialize_helper(value) for value in object]
+        elif isinstance(object, set):
+            return {
+                "@renku_data_type": SET_TYPE,
+                "@renku_data_value": [self._serialize_helper(value) for value in object],
+            }
+        elif isinstance(object, frozenset):
+            return {
+                "@renku_data_type": FROZEN_SET_TYPE,
+                "@renku_data_value": [self._serialize_helper(value) for value in object],
+            }
         elif isinstance(object, dict):
             result = dict()
             items = sorted(object.items(), key=lambda x: x[0])
@@ -630,6 +695,10 @@ class ObjectWriter:
             state = object.__getstate__()
             state = self._serialize_helper(state)
             return {"@renku_data_type": get_type_name(object), "@renku_oid": object._p_oid, **state}
+        elif isinstance(object, (OOTreeSet, Length, OOSet)):
+            state = object.__getstate__()
+            state = self._serialize_helper(state)
+            return {"@renku_data_type": get_type_name(object), "@renku_data_value": state}
         elif isinstance(object, persistent.Persistent):
             if not object._p_oid:
                 object._p_oid = Database.generate_oid(object)
@@ -747,6 +816,10 @@ class ObjectReader:
             elif object_type == REFERENCE_TYPE:
                 # NOTE: we had a circular reference, we return the (not yet finalized) class here
                 return self._deserialization_cache[data["@renku_data_value"]]
+            elif object_type == SET_TYPE:
+                return set([self._deserialize_helper(value) for value in data["@renku_data_value"]])
+            elif object_type == FROZEN_SET_TYPE:
+                return frozenset([self._deserialize_helper(value) for value in data["@renku_data_value"]])
 
             cls = self._get_class(object_type)
 

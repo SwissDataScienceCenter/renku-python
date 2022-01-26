@@ -36,8 +36,8 @@ def test_03_input(client, client_database_injection_manager):
     whale = Path(client.path) / "whale.txt"
     whale.touch()
 
-    client.repo.index.add([str(whale)])
-    client.repo.index.commit("add whale.txt")
+    client.repository.add(whale)
+    client.repository.commit("add whale.txt")
 
     argv = [
         "echo",
@@ -69,8 +69,8 @@ def test_base_command_detection(client, client_database_injection_manager):
     hello = Path(client.path) / "hello.tar"
     hello.touch()
 
-    client.repo.index.add([str(hello)])
-    client.repo.index.commit("add hello.tar")
+    client.repository.add(hello)
+    client.repository.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
     with client_database_injection_manager(client):
@@ -92,8 +92,8 @@ def test_base_command_as_file_input(client, client_database_injection_manager):
     input_file = cwd / "input.csv"
     input_file.touch()
 
-    client.repo.index.add([str(script), str(input_file)])
-    client.repo.index.commit("add file")
+    client.repository.add(script, input_file)
+    client.repository.commit("add file")
 
     argv = ["script.py", "input.csv"]
     with client_database_injection_manager(client):
@@ -117,8 +117,8 @@ def test_04_output(client, client_database_injection_manager):
     hello = Path(client.path) / "hello.tar"
     hello.touch()
 
-    client.repo.index.add([str(hello)])
-    client.repo.index.commit("add hello.tar")
+    client.repository.add(hello)
+    client.repository.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
     factory = PlanFactory(argv, directory=client.path, working_dir=client.path)
@@ -144,8 +144,8 @@ def test_05_stdout(client, client_database_injection_manager):
     output = Path(client.path) / "output.txt"
     output.touch()
 
-    client.repo.index.add([str(output)])
-    client.repo.index.commit("add output")
+    client.repository.add(output)
+    client.repository.commit("add output")
 
     argv = ["echo", "Hello world!"]
     factory = PlanFactory(argv, directory=client.path, working_dir=client.path, stdout="output.txt")
@@ -166,8 +166,8 @@ def test_stdout_with_conflicting_arg(client, client_database_injection_manager):
     output = Path(client.path) / "lalala"
     output.touch()
 
-    client.repo.index.add([str(output)])
-    client.repo.index.commit("add lalala")
+    client.repository.add(output)
+    client.repository.commit("add lalala")
 
     argv = ["echo", "lalala"]
     factory = PlanFactory(argv, directory=client.path, working_dir=client.path, stdout="lalala")
@@ -185,8 +185,8 @@ def test_06_params(client, client_database_injection_manager):
     """Test referencing input parameters in other fields."""
     hello = Path(client.path) / "hello.tar"
     hello.touch()
-    client.repo.index.add([str(hello)])
-    client.repo.index.commit("add hello.tar")
+    client.repository.add(hello)
+    client.repository.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar", "goodbye.txt"]
     factory = PlanFactory(argv, directory=client.path, working_dir=client.path)
@@ -228,11 +228,11 @@ def test_stdin_and_stdout(argv, client, client_database_injection_manager):
     input_.touch()
     output = Path(client.path) / "output.txt"
     output.touch()
-    error = Path(client.path) / "error.log"
+    error = Path(client.path) / "error.txt"
     error.touch()
 
-    client.repo.index.add([str(input_), str(output), str(error)])
-    client.repo.index.commit("add files")
+    client.repository.add(input_, output, error)
+    client.repository.commit("add files")
 
     factory = PlanFactory(
         argv,
@@ -240,7 +240,7 @@ def test_stdin_and_stdout(argv, client, client_database_injection_manager):
         working_dir=client.path,
         stdin="input.txt",
         stdout="output.txt",
-        stderr="error.log",
+        stderr="error.txt",
     )
 
     assert factory.stdin
@@ -248,7 +248,7 @@ def test_stdin_and_stdout(argv, client, client_database_injection_manager):
         assert factory.parameters
 
     assert "output.txt" == factory.stdout
-    factory.add_outputs(["output.txt", "error.log"])
+    factory.add_outputs(["output.txt", "error.txt"])
     assert "stdout" == factory.outputs[0].mapped_to.stream_type
 
     with client_database_injection_manager(client):
@@ -279,8 +279,8 @@ def test_input_directory(client, client_database_injection_manager):
     src_tar = cwd / "src.tar"
     src_tar.touch()
 
-    client.repo.index.add([str(src), str(src_tar)])
-    client.repo.index.commit("add file and folder")
+    client.repository.add(src, src_tar)
+    client.repository.commit("add file and folder")
 
     argv = ["tar", "czvf", "src.tar", "src"]
     factory = PlanFactory(argv, directory=client.path, working_dir=client.path)

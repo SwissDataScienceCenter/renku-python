@@ -38,6 +38,12 @@ by running
 
     $ renku migrate -c
 
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku migrate
+   :description: Migrate old metadata to the current Renku version.
+   :extended:
+
 """
 import json
 import os
@@ -56,7 +62,13 @@ from renku.core.errors import MigrationRequired, ProjectNotSupported
     "-d", "--skip-docker-update", is_flag=True, hidden=True, help="Do not update Dockerfile to current renku version."
 )
 @click.option("-s", "--strict", is_flag=True, hidden=True, help="Abort migrations if an error is raised.")
-def migrate(check, skip_template_update, skip_docker_update, strict):
+@click.option(
+    "--preserve-identifiers",
+    is_flag=True,
+    hidden=True,
+    help="Keep original dataset identifier when KG migrates a project.",
+)
+def migrate(check, skip_template_update, skip_docker_update, strict, preserve_identifiers):
     """Check for migration and migrate to the latest Renku project version."""
     from renku.core.commands.migrate import (
         AUTOMATED_TEMPLATE_UPDATE_SUPPORTED,
@@ -107,7 +119,10 @@ def migrate(check, skip_template_update, skip_docker_update, strict):
 
     command = migrate_project().with_communicator(communicator).with_commit()
     result = command.build().execute(
-        skip_template_update=skip_template_update, skip_docker_update=skip_docker_update, strict=strict
+        skip_template_update=skip_template_update,
+        skip_docker_update=skip_docker_update,
+        strict=strict,
+        preserve_identifiers=preserve_identifiers,
     )
 
     result, _, _ = result.output
@@ -121,42 +136,10 @@ def migrate(check, skip_template_update, skip_docker_update, strict):
 @click.command(hidden=True)
 def migrationscheck():
     """Check status of the project and current renku-python version."""
-    from renku.core.commands.migrate import migrations_check, migrations_versions
+    from renku.core.commands.migrate import migrations_check
 
-    latest_version, project_version = migrations_versions().build().execute().output
-    (
-        migration_required,
-        project_supported,
-        template_update_possible,
-        current_template_version,
-        latest_template_version,
-        template_source,
-        template_ref,
-        template_id,
-        automated_update,
-        docker_update_possible,
-    ) = (
-        migrations_check().lock_project().build().execute().output
-    )
-
-    click.echo(
-        json.dumps(
-            {
-                "latest_version": latest_version,
-                "project_version": project_version,
-                "migration_required": migration_required,
-                "project_supported": project_supported,
-                "template_update_possible": template_update_possible,
-                "current_template_version": str(current_template_version),
-                "latest_template_version": str(latest_template_version),
-                "template_source": template_source,
-                "template_ref": template_ref,
-                "template_id": template_id,
-                "automated_update": automated_update,
-                "docker_update_possible": docker_update_possible,
-            }
-        )
-    )
+    result = migrations_check().lock_project().build().execute().output
+    click.echo(json.dumps(result))
 
 
 @click.command(hidden=True)

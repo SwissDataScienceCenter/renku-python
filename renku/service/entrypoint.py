@@ -51,6 +51,7 @@ if os.getenv("SENTRY_DSN"):
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
         environment=os.getenv("SENTRY_ENV"),
+        traces_sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 0.2)),
         integrations=[FlaskIntegration(), RqIntegration(), RedisIntegration()],
     )
 

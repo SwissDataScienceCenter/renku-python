@@ -34,6 +34,6 @@ class IDatabaseGateway(ABC):
         """Commit changes to database."""
         raise NotImplementedError
 
-    def get_modified_objects_from_revision(self, revision: str) -> Generator[Persistent, None, None]:
+    def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
         """Get all database objects modified in a revision."""
         raise NotImplementedError

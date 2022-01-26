@@ -34,6 +34,7 @@ class Project(Model):
     """User project object."""
 
     __database__ = BaseCache.model_db
+    __namespace__ = BaseCache.namespace
 
     created_at = DateTimeField()
     last_fetched_at = DateTimeField()
@@ -58,9 +59,12 @@ class Project(Model):
         """Full path of cached project."""
         return CACHE_PROJECTS_PATH / self.user_id / self.project_id / self.owner / self.slug
 
-    def read_lock(self):
+    def read_lock(self, timeout: int = None):
         """Shared read lock on the project."""
-        return portalocker.Lock(f"{self.abs_path}.lock", flags=portalocker.LOCK_SH, timeout=LOCK_TIMEOUT)
+        timeout = timeout if timeout is not None else LOCK_TIMEOUT
+        return portalocker.Lock(
+            f"{self.abs_path}.lock", flags=portalocker.LOCK_SH | portalocker.LOCK_NB, timeout=timeout
+        )
 
     def write_lock(self):
         """Exclusive write lock on the project."""

@@ -16,17 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helpers functions for metadata management/parsing."""
-
+import os
 from collections.abc import Iterable
-from typing import List, Set, Tuple, Union
-
-from git import Repo
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
 
 from renku.core import errors
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Activity
-from renku.core.models.provenance.agent import Person
-from renku.core.utils.git import get_object_hash
+from renku.core.utils.os import is_subpath
+
+if TYPE_CHECKING:
+    from renku.core.models.entity import Entity
+    from renku.core.models.provenance.activity import Activity
+    from renku.core.models.provenance.agent import Person
 
 
 def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
@@ -49,8 +50,10 @@ def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
     return people, no_email_warnings
 
 
-def construct_creator(creator: Union[dict, str], ignore_email):
+def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional["Person"], Optional[Union[dict, str]]]:
     """Parse input and return an instance of Person."""
+    from renku.core.models.provenance.agent import Person
+
     if not creator:
         return None, None
 
@@ -78,16 +81,24 @@ def construct_creator(creator: Union[dict, str], ignore_email):
 
 
 def get_modified_activities(
-    activities: List[Activity], repo: Repo
-) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    activities: List["Activity"], repository
+) -> Tuple[Set[Tuple["Activity", "Entity"]], Set[Tuple["Activity", "Entity"]]]:
     """Get lists of activities that have modified/deleted usage entities."""
     modified = set()
     deleted = set()
 
+    paths = []
+
+    for activity in activities:
+        for usage in activity.usages:
+            paths.append(usage.entity.path)
+
+    hashes = repository.get_object_hashes(paths=paths, revision="HEAD")
+
     for activity in activities:
         for usage in activity.usages:
             entity = usage.entity
-            current_checksum = get_object_hash(repo=repo, path=entity.path)
+            current_checksum = hashes.get(entity.path, None)
             if current_checksum is None:
                 deleted.add((activity, entity))
             elif current_checksum != entity.checksum:
@@ -96,7 +107,42 @@ def get_modified_activities(
     return modified, deleted
 
 
-def add_activity_if_recent(activity: Activity, activities: Set[Activity]):
+def filter_overridden_activities(activities: List["Activity"]) -> List["Activity"]:
+    """Filter out overridden activities from a list of activities."""
+    relevant_activities = {}
+
+    for activity in activities[::-1]:
+        outputs = frozenset(g.entity.path for g in activity.generations)
+
+        subset_of = set()
+        superset_of = set()
+
+        for k, a in relevant_activities.items():
+            if outputs.issubset(k):
+                subset_of.add((k, a))
+            elif outputs.issuperset(k):
+                superset_of.add((k, a))
+
+        if not subset_of and not superset_of:
+            relevant_activities[outputs] = activity
+            continue
+
+        if subset_of and any(activity.ended_at_time < s.ended_at_time for _, s in subset_of):
+            # activity is a subset of another, newer activity, ignore it
+            continue
+
+        older_subsets = [k for k, s in superset_of if activity.ended_at_time > s.ended_at_time]
+
+        for older_subset in older_subsets:
+            # remove other activities that this activity is a superset of
+            del relevant_activities[older_subset]
+
+        relevant_activities[outputs] = activity
+
+    return list(relevant_activities.values())
+
+
+def add_activity_if_recent(activity: "Activity", activities: Set["Activity"]):
     """Add ``activity`` to ``activities`` if it's not in the set or is the latest executed instance."""
     if activity in activities:
         return
@@ -110,3 +156,16 @@ def add_activity_if_recent(activity: Activity, activities: Set[Activity]):
 
     # NOTE: No similar activity was found
     activities.add(activity)
+
+
+def is_external_file(path: Union[Path, str], client_path: Path):
+    """Checks if a path is an external file."""
+    from renku.core.management import RENKU_HOME
+    from renku.core.management.datasets import DatasetsApiMixin
+
+    path = client_path / path
+    if not path.is_symlink() or not is_subpath(path=path, base=client_path):
+        return False
+
+    pointer = os.readlink(path)
+    return str(os.path.join(RENKU_HOME, DatasetsApiMixin.POINTERS)) in pointer

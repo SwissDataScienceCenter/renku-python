@@ -21,6 +21,10 @@ DOCKER_PREFIX:=${DOCKER_REGISTRY}$(DOCKER_REPOSITORY)
 
 GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short --verify HEAD)
 
+TEMPLATE_URL:=https://github.com/SwissDataScienceCenter/renku-project-template
+TEMPLATE_REFERENCE:=0.2.1
+TEMPLATE_DIR:=renku/templates/
+
 .PHONY: service cli docker-tag docker-push docker-login
 
 docker-tag: service cli
@@ -41,3 +45,31 @@ service:
 
 cli:
 	docker build -f Dockerfile.cli -t $(DOCKER_PREFIX)renku-python:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
+
+download-templates:
+	@echo "Downloading templates"
+	rm -rf $(TEMPLATE_DIR)
+	mkdir -p $(TEMPLATE_DIR)
+	git clone $(TEMPLATE_URL) $(TEMPLATE_DIR)
+	git --git-dir=$(TEMPLATE_DIR).git --work-tree=$(TEMPLATE_DIR) checkout $(TEMPLATE_REFERENCE)
+	rm -rf $(TEMPLATE_DIR).git
+
+build-package: download-templates
+	@echo "Building package"
+	poetry build
+
+publish-package: build-package
+	@echo "Publishing package"
+	poetry config pypi-token.pypi ${PYPI_TOKEN}
+	poetry publish
+
+build-lock-package: download-templates
+	@echo "Building package"
+	poetry-dynamic-versioning
+	poetry run poetry-lock-package --build
+	sed -i --regexp-extended 's/^version\s=\s"[^"]+"/version = "0.0.0"/gm' pyproject.toml
+	sed -i --regexp-extended 's/^__version__\s=\s"[^"]+"/__version__ = "0.0.0"/gm' renku/version.py
+
+publish-lock-package: build-lock-package
+	@echo "Publishing package"
+	twine upload -u __token__ -p ${PYPI_TOKEN} dist/renku_lock*

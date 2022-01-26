@@ -61,7 +61,7 @@ def _run_command(
     client = client_dispatcher.current_client
 
     if name:
-        valid_name = get_slug(name, invalid_chars=["."])
+        valid_name = get_slug(name, invalid_chars=["."], lowercase=False)
         if name != valid_name:
             raise errors.ParameterError(f"Invalid name: '{name}' (Hint: '{valid_name}' is valid).")
 
@@ -118,7 +118,7 @@ def _run_command(
                 old_stderr = sys.stderr
                 sys.stderr = system_stderr
 
-        working_dir = client.repo.working_dir
+        working_dir = str(client.repository.path)
         factory = PlanFactory(
             command_line=command_line,
             explicit_inputs=explicit_inputs,
@@ -146,9 +146,13 @@ def _run_command(
 
             started_at_time = local_now()
 
-            return_code = call(
-                factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()}
-            )
+            try:
+                return_code = call(
+                    factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()}
+                )
+            except FileNotFoundError:
+                command = " ".join(factory.base_command)
+                raise errors.ParameterError(f"Cannot execute command '{command}'")
 
             ended_at_time = local_now()
 

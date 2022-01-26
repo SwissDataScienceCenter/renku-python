@@ -38,6 +38,10 @@ class PlanGateway(IPlanGateway):
         """Get a plan by name."""
         return self.database_dispatcher.current_database["plans-by-name"].get(name)
 
+    def list_by_name(self, starts_with: str, ends_with: str = None) -> List[str]:
+        """Search plans by name."""
+        return self.database_dispatcher.current_database["plans-by-name"].keys(min=starts_with, max=ends_with)
+
     def get_newest_plans_by_names(self, with_invalidated: bool = False) -> Dict[str, AbstractPlan]:
         """Return a list of all newest plans with their names."""
         database = self.database_dispatcher.current_database

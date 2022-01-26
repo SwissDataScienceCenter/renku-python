@@ -45,6 +45,10 @@ need the LFS data, pass ``--no-pull-data`` option to skip this step.
         $ git remote remove origin
         $ git remote add origin <new-repository-url>
         $ git push --mirror origin
+
+To clone private repositories with an HTTPS address, you first need to log into
+a Renku deployment using the :ref:`cli-login` command. ``renku clone`` will use
+the stored credentials when available.
 """
 
 import click
@@ -57,8 +61,10 @@ import click
 def clone(no_pull_data, url, path):
     """Clone a Renku repository."""
     from renku.core.commands.clone import project_clone_command
-    from renku.core.commands.echo import GitProgress
+    from renku.core.utils.git import get_git_progress_instance
 
     click.echo(f"Cloning {url} ...")
-    project_clone_command().build().execute(url=url, path=path, skip_smudge=no_pull_data, progress=GitProgress())
+    project_clone_command().build().execute(
+        url=url, path=path, skip_smudge=no_pull_data, progress=get_git_progress_instance(), use_renku_credentials=True
+    )
     click.secho("OK", fg="green")

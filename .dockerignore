@@ -1,7 +1,8 @@
 .*
 **
 !renku/**
-!setup.py
+!pyproject.toml
+!poetry.lock
 !*.rst
 !entrypoint-svc.sh
 !.git

@@ -1,3 +1,5 @@
+:orphan:
+
 ..
     Copyright 2017-2021 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -15,11 +17,18 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+.. toctree::
+   :hidden:
+   :maxdepth: 2
+
+   Installation <installation>
+   Getting Started <gettingstarted>
+   How-to Guides <how-to-guides/index>
+   Reference <reference/index>
+
 .. raw:: html
 
    <meta http-equiv="refresh" content="0; url=introduction.html">
-
-.. include:: _sidebar.rst.inc
 
 .. include:: ../README.rst
    :end-before: Renku for Users

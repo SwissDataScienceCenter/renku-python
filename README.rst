@@ -190,7 +190,7 @@ Once all the requirements are installed, you can install Renku normally by runni
     $ pipx ensurepath
 
 After this, Renku is ready to use. You can access your Windows in the various mount points in
-``/mnt/`` and you can execute Windows executables (e.g. \*.exe) as usual directly from the
+``/mnt/`` and you can execute Windows executables (e.g. ``\*.exe``) as usual directly from the
 WSL (so ``renku run myexecutable.exe`` will work as expected).
 
 .. _docker-before-reference:
@@ -258,11 +258,12 @@ Deploying locally
 -----------------
 
 To test the service functionality you can deploy it quickly and easily using
-``docker-compose up``. Make sure to make a copy of the ``renku/service/.env-example``
-file and configure it to your needs. The setup here is to expose the service behind
-a traefik reverse proxy to mimic an actual production deployment. You can access
-the proxied endpoints at ``http://localhost/api``. The service itself is exposed
-on port 8080 so its endpoints are available directly under ``http://localhost:8080``.
+``docker-compose up`` [docker-compose](https://pypi.org/project/docker-compose/).
+Make sure to make a copy of the ``renku/service/.env-example`` file and configure it
+to your needs. The setup here is to expose the service behind a traefik reverse proxy
+to mimic an actual production deployment. You can access the proxied endpoints at
+``http://localhost/api``. The service itself is exposed on port 8080 so its endpoints
+are available directly under ``http://localhost:8080``.
 
 
 API Documentation

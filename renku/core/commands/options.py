@@ -21,19 +21,6 @@ import click
 
 from .git import set_git_isolation
 
-
-def install_completion(ctx, attr, value):  # pragma: no cover
-    """Install completion for the current shell."""
-    import click_completion.core
-
-    if not value or ctx.resilient_parsing:
-        return value
-
-    shell, path = click_completion.core.install()
-    click.secho("{0} completion installed in {1}".format(shell, path), fg="green")
-    ctx.exit()
-
-
 option_isolation = click.option(
     "--isolation",
     is_flag=True,

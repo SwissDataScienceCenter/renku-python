@@ -27,23 +27,22 @@ from urllib.parse import quote, urlparse
 from uuid import uuid4
 
 import marshmallow
-from marshmallow import EXCLUDE
 
 from renku.core import errors
 from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable, Slots
-from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, oa, prov, renku, schema
-from renku.core.models.entity import CollectionSchema, Entity, EntitySchema
-from renku.core.models.provenance.agent import Person, PersonSchema, SoftwareAgent
-from renku.core.models.provenance.annotation import Annotation, AnnotationSchema
+from renku.core.models.entity import Entity
+from renku.core.models.provenance.agent import Person, SoftwareAgent
+from renku.core.models.provenance.annotation import Annotation
 from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
-from renku.core.utils.git import get_path
-from renku.core.utils.urls import get_slug
+from renku.core.utils.git import get_entity_from_revision
+from renku.core.utils.metadata import is_external_file
+from renku.core.utils.urls import get_path, get_slug
 
 
 def is_dataset_name_valid(name):
     """Check if name is a valid slug."""
-    return name and name == get_slug(name)
+    return name and name == get_slug(name, lowercase=False)
 
 
 def generate_default_name(dataset_title, dataset_version=None):
@@ -139,10 +138,6 @@ class DatasetTag(Persistent):
         name = quote(f"{name}@{identifier}", safe="")
         return f"/dataset-tags/{name}"
 
-    def to_jsonld(self):
-        """Create JSON-LD."""
-        return DatasetTagSchema().dump(self)
-
 
 class Language(Immutable):
     """Represent a language of an object."""
@@ -181,7 +176,7 @@ class ImageObject(Slots):
 
 
 class RemoteEntity(Slots):
-    """Reference to an Entity in a remote repo."""
+    """Reference to an Entity in a remote repository."""
 
     __slots__ = ("checksum", "id", "path", "url")
 
@@ -244,11 +239,12 @@ class DatasetFile(Slots):
         cls, client, path: Union[str, Path], source=None, based_on: RemoteEntity = None
     ) -> Optional["DatasetFile"]:
         """Return an instance from a path."""
-        entity = Entity.from_revision(client=client, path=path)
+        entity = get_entity_from_revision(repository=client.repository, path=path)
         if not entity:
             return
 
-        return cls(entity=entity, is_external=client.is_external_file(path), source=source, based_on=based_on)
+        is_external = is_external_file(path=path, client_path=client.path)
+        return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
 
     @staticmethod
     def generate_id():
@@ -293,10 +289,6 @@ class DatasetFile(Slots):
     def is_removed(self) -> bool:
         """Return true if dataset is removed and should not be accessed."""
         return self.date_removed is not None
-
-    def to_jsonld(self):
-        """Create JSON-LD."""
-        return DatasetFileSchema(flattened=True).dump(self)
 
 
 class Dataset(Persistent):
@@ -365,15 +357,6 @@ class Dataset(Persistent):
         self.version: str = version
         self.annotations: List[Annotation] = annotations or []
 
-    @classmethod
-    def from_jsonld(cls, data, schema_class=None):
-        """Create an instance from JSON-LD data."""
-        assert isinstance(data, (dict, list)), f"Invalid data type: {data}"
-
-        schema_class = schema_class or DatasetSchema
-        self = schema_class(flattened=True).load(data)
-        return self
-
     @staticmethod
     def generate_id(identifier: str) -> str:
         """Generate an identifier for Dataset."""
@@ -413,28 +396,18 @@ class Dataset(Persistent):
 
     def copy(self) -> "Dataset":
         """Return a clone of this dataset."""
-        return Dataset(
-            annotations=[a.copy() for a in self.annotations],
-            creators=self.creators.copy(),
-            dataset_files=[f.copy() for f in self.dataset_files],
-            date_created=self.date_created,
-            date_published=self.date_published,
-            date_removed=self.date_removed,
-            derived_from=self.derived_from,
-            description=self.description,
-            id=self.id,
-            identifier=self.identifier,
-            images=list(self.images or []),
-            in_language=self.in_language,
-            initial_identifier=self.initial_identifier,
-            keywords=list(self.keywords or []),
-            license=self.license,
-            name=self.name,
-            project_id=self.project_id,
-            same_as=self.same_as,
-            title=self.title,
-            version=self.version,
-        )
+        try:
+            self.unfreeze()
+            dataset = copy.copy(self)
+        finally:
+            self.freeze()
+
+        dataset.annotations = [a.copy() for a in self.annotations]
+        dataset.creators = self.creators.copy()
+        dataset.dataset_files = [f.copy() for f in self.dataset_files]
+        dataset.images = list(dataset.images or [])
+        dataset.keywords = list(dataset.keywords or [])
+        return dataset
 
     def replace_identifier(self, identifier: str = None):
         """Replace dataset's identifier and update relevant fields.
@@ -450,7 +423,9 @@ class Dataset(Persistent):
         self._assign_new_identifier(identifier)
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
 
-    def derive_from(self, dataset: "Dataset", creator: Optional[Person], identifier: str = None):
+    def derive_from(
+        self, dataset: "Dataset", creator: Optional[Person], identifier: str = None, date_created: datetime = None
+    ):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"
 
@@ -459,7 +434,7 @@ class Dataset(Persistent):
         self.initial_identifier = dataset.initial_identifier
         self.derived_from = Url(url_id=dataset.id)
         self.same_as = None
-        self.date_created = local_now()
+        self.date_created = date_created or local_now()
         self.date_published = None
 
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
@@ -511,7 +486,7 @@ class Dataset(Persistent):
 
         self.dataset_files = files
 
-    def update_metadata_from(self, other: "Dataset"):
+    def update_metadata_from(self, other: "Dataset", exclude=None):
         """Update metadata from another dataset."""
         editable_fields = [
             "creators",
@@ -529,6 +504,8 @@ class Dataset(Persistent):
         ]
         for name in editable_fields:
             value = getattr(other, name)
+            if exclude and name in exclude:
+                continue
             setattr(self, name, value)
 
         if self.date_published is not None:
@@ -584,139 +561,6 @@ class Dataset(Persistent):
     def clear_files(self):
         """Remove all files."""
         self.dataset_files = []
-
-    def to_jsonld(self):
-        """Create JSON-LD."""
-        return DatasetSchema(flattened=True).dump(self)
-
-
-class UrlSchema(JsonLDSchema):
-    """Url schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = schema.URL
-        model = Url
-        unknown = EXCLUDE
-
-    id = fields.Id(missing=None)
-    url = Uri(schema.url, missing=None)
-
-
-class DatasetTagSchema(JsonLDSchema):
-    """DatasetTag schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = schema.PublicationEvent
-        model = DatasetTag
-        unknown = EXCLUDE
-
-    dataset_id = Nested(schema.about, UrlSchema, missing=None)
-    date_created = fields.DateTime(schema.startDate, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
-    description = fields.String(schema.description, missing=None)
-    id = fields.Id()
-    name = fields.String(schema.name)
-
-
-class LanguageSchema(JsonLDSchema):
-    """Language schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = schema.Language
-        model = Language
-        unknown = EXCLUDE
-
-    alternate_name = fields.String(schema.alternateName)
-    name = fields.String(schema.name)
-
-
-class ImageObjectSchema(JsonLDSchema):
-    """ImageObject schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = schema.ImageObject
-        model = ImageObject
-        unknown = EXCLUDE
-
-    content_url = fields.String(schema.contentUrl)
-    id = fields.Id(missing=None)
-    position = fields.Integer(schema.position)
-
-
-class RemoteEntitySchema(JsonLDSchema):
-    """RemoteEntity schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [prov.Entity]
-        model = RemoteEntity
-        unknown = EXCLUDE
-
-    checksum = fields.String(renku.checksum)
-    id = fields.Id()
-    path = fields.String(prov.atLocation)
-    url = fields.String(schema.url)
-
-
-class DatasetFileSchema(JsonLDSchema):
-    """DatasetFile schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [prov.Entity, schema.DigitalDocument]
-        model = DatasetFile
-        unknown = EXCLUDE
-
-    based_on = Nested(schema.isBasedOn, RemoteEntitySchema, missing=None)
-    date_added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
-    date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
-    entity = Nested(prov.entity, [EntitySchema, CollectionSchema])
-    id = fields.Id()
-    is_external = fields.Boolean(renku.external, missing=False)
-    source = fields.String(renku.source, missing=None)
-
-
-class DatasetSchema(JsonLDSchema):
-    """Dataset schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [prov.Entity, schema.Dataset]
-        model = Dataset
-        unknown = EXCLUDE
-
-    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
-    creators = Nested(schema.creator, PersonSchema, many=True)
-    date_created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
-    date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
-    date_published = fields.DateTime(
-        schema.datePublished, missing=None, format="%Y-%m-%d", extra_formats=("iso", "%Y-%m-%dT%H:%M:%S")
-    )
-    derived_from = Nested(prov.wasDerivedFrom, UrlSchema, missing=None)
-    description = fields.String(schema.description, missing=None)
-    dataset_files = Nested(schema.hasPart, DatasetFileSchema, many=True)
-    id = fields.Id(missing=None)
-    identifier = fields.String(schema.identifier)
-    images = fields.Nested(schema.image, ImageObjectSchema, missing=None, many=True)
-    in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    license = Uri(schema.license, missing=None)
-    name = fields.String(renku.slug)
-    initial_identifier = fields.String(renku.originalIdentifier)
-    project_id = fields.IRI(renku.hasDataset, reverse=True)
-    same_as = Nested(schema.sameAs, UrlSchema, missing=None)
-    title = fields.String(schema.name)
-    version = fields.String(schema.version, missing=None)
 
 
 class DatasetCreatorsJson(marshmallow.Schema):

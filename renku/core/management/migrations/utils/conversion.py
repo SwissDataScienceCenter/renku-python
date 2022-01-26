@@ -23,8 +23,8 @@ from urllib.parse import urlparse
 
 from renku.core.management.migrations.models import v9 as old_datasets
 from renku.core.models.dataset import Dataset, DatasetFile, DatasetTag, ImageObject, Language, RemoteEntity, Url
-from renku.core.models.entity import Entity
 from renku.core.models.provenance import agent as new_agents
+from renku.core.utils.git import get_entity_from_revision
 
 
 def _convert_dataset_identifier(identifier: str) -> str:
@@ -67,7 +67,7 @@ def _create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> O
 
 def _convert_dataset_file(dataset_file: old_datasets.DatasetFile, client, revision: str) -> Optional[DatasetFile]:
     """Convert old DatasetFile to new DatasetFile if available at revision."""
-    entity = Entity.from_revision(client=client, path=dataset_file.path, revision=revision)
+    entity = get_entity_from_revision(repository=client.repository, path=dataset_file.path, revision=revision)
     if not entity:
         return
 
@@ -153,6 +153,20 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
 
         return Url(url_id=Dataset.generate_id(identifier=Path(path).name))
 
+    def convert_license(license):
+        if not license:
+            return license
+        elif isinstance(license, (Url, str)):
+            return license
+        elif isinstance(license, dict) and len(license) == 1:
+            return list(license.values())[0]
+        elif isinstance(license, dict) and "@id" in license:
+            return license["@id"]
+        elif isinstance(license, list) and len(license) == 1:
+            return license[0]
+
+        return str(license)
+
     tags = [_convert_dataset_tag(tag) for tag in (dataset.tags or [])]
 
     return (
@@ -169,7 +183,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             images=[_convert_image_object(image) for image in (dataset.images or [])],
             in_language=_convert_language(dataset.in_language),
             keywords=dataset.keywords,
-            license=dataset.license,
+            license=convert_license(dataset.license),
             name=dataset.name,
             project_id=client.project.id,
             initial_identifier=_convert_dataset_identifier(dataset.initial_identifier),

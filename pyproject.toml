@@ -16,9 +16,233 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+[tool]
+
+[tool.poetry]
+name = "renku"
+version = "0.0.0" # placeholder, see poetry-dynamic-versioning
+description = "Python SDK and CLI for the Renku platform."
+license = "Apache License 2.0"
+keywords = ["Renku", "CLI"]
+classifiers = [
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Development Status :: 4 - Beta",
+]
+homepage = "https://github.com/swissdatasciencecenter/renku-python"
+documentation = "https://renku-python.rtfd.io/"
+
+authors = ["Swiss Data Science Center <contact@datascience.ch>"]
+include = ["renku/*", "renku/**/*", "CHANGES.rst", "AUTHORS.rst"]
+readme = "README.rst"
+
+[tool.poetry.urls]
+Changelog = "https://github.com/swissdatasciencecenter/renku-python/blob/master/CHANGES.rst"
+
+[tool.poetry.dependencies]
+python = "^3.7.1"
+apispec = { version = "<5.2.0,>=4.0.0", optional = true }
+apispec-webframeworks = { version = "<0.6,>=0.5.2", optional = true }
+appdirs = "<=1.4.4,>=1.4.3"
+attrs = "<21.3.0,>=19.3.0"
+black = { version = "==21.9b0", optional = true }
+calamus = "<0.4,>=0.3.13"
+check-manifest = { version = "<0.48,>=0.37", optional = true }
+circus = { version = "==0.17.1", optional = true }
+click = "<8.0.2,>=8.0"
+click-option-group = "<0.6.0,>=0.5.2"
+click-plugins = "==1.1.1"
+coverage = { version = "<6.2,>=4.5.3", optional = true }
+cryptography = "<35.1,>=3.4.1"
+cwl-utils = { version = ">=0.12", optional = true }
+cwlgen = "<=0.4.2,>=0.4.0"
+cwltool = "==3.1.20210922203925"
+deepmerge = "==0.3.0"
+environ-config = "<21.3.0,>=18.2.0"
+fakeredis = { version = "<1.6.2,>=1.4.1", optional = true }
+filelock = "<3.3.3,>=3.0.0"
+flake8 = { version = "<4.0,>=3.8", optional = true }                             #wait for https://github.com/flakehell/flakehell/pull/23 to be merged before bumping
+flakehell = { version = ">=0.9.0,<1.0.*", optional = true }
+flaky = { version = "==3.7.0", optional = true }
+flask = { version = "==2.0.2", optional = true }
+freezegun = { version = "<1.1.1,>=0.3.12", optional = true }
+gitpython = "==3.1.24"
+grandalf = "==0.7"
+gunicorn = { optional = true, version = "*" }
+humanize = "<3.12.0,>=2.5.0"
+importlib-metadata = { version = "<4.9.0,>=4.8.1", python = "<3.8.0" }
+importlib-resources = { version = "<5.5.0,>=5.4.0", python = "<3.9.0" }
+inject = "<4.4.0,>=4.3.0"
+isort = { version = "<5.10.0,>=5.3.2", optional = true }
+jinja2 = { version = "<3.0.2,>=2.10.3,>=2.11.3" }
+marshmallow = { version = "==3.13.0", optional = true }
+ndg-httpsclient = "==0.5.1"
+networkx = "<2.7,>=2.6.0"
+numpy = "<1.21.0,>=1.20.0"
+packaging = "<22.0,>=21.3"
+pathspec = "<1.0.0,>=0.8.0"
+patool = "==1.12"
+pexpect = { version = "<4.9.0,>=4.8.0", optional = true }
+pillow = { version = "<9.0,>=8.3.2", optional = true }
+pluggy = "==1.0.0"
+portalocker = "<2.4,>=2.2.1"
+psutil = "<5.8.1,>=5.4.7"
+ptvsd = { version = "<4.4.0,>=4.3.0", optional = true }
+pyasn1 = "<=0.4.8,>=0.4.5"
+pydocstyle = { version = "<6.1.2,>=3.0.0", optional = true }
+pyjwt = "==2.1.0"
+pyld = "==2.0.3"
+pyopenssl = "<20.1.0,>=19.0.0"
+pyshacl = "==0.17.2"
+pyte = { version = ">=0.8.0<0.9.0", optional = true }
+pytest = { version = "<6.2.6,>=4.0.0", optional = true }
+pytest-black = { version = "<0.3.13,>=0.3.10", optional = true }
+pytest-cache = { version = "==1.0", optional = true }
+pytest-cov = { version = "<2.13.0,>=2.5.1", optional = true }
+pytest-flake8 = { version = "<1.0.8,>=1.0.6", optional = true }
+pytest-mock = { version = "<3.7.0,>=3.2.0", optional = true }
+pytest-pep8 = { version = "==1.0.6", optional = true }
+pytest-recording = { version = "==0.12.0", optional = true }
+pytest-timeout = { version = "==2.0.1", optional = true }
+pytest-xdist = { version = "<2.5.0,>=1.34.0", optional = true }
+python-dateutil = "<2.8.3,>=2.6.1"
+python-dotenv = { version = "==0.19.0", optional = true }
+python-editor = "==1.0.4"
+python-gitlab = ">=2.10.1,<2.11"
+pyyaml = "<6.1.0,>=5.4"
+rdflib = "<7.0,>=6.0.0"
+redis = { version = "==3.5.3", optional = true }
+renku-sphinx-theme = { version = ">=0.2.0", optional = true }
+requests = "<2.27.0,>=2.23.0"
+responses = { version = "<0.14.1,>=0.7.0", optional = true }
+rich = "<10.13.0,>=9.3.0"
+rq = { version = "==1.10.0", optional = true }
+rq-scheduler = { version = "==0.11.0", optional = true }
+sentry-sdk = { version = "<1.4.4,>=0.7.4", extras = ["flask"], optional = true }
+sphinxcontrib-spelling = { version = "7.*", optional = true }
+sphinx-rtd-theme = { version = "<1.1,>=0.5.0", optional = true }
+sphinx-tabs = { version = "==3.2.0", optional = true }
+tabulate = "<0.8.10,>=0.7.7"
+toil = { version = "==5.5.0", optional = true }
+tqdm = "<4.62.4,>=4.48.1"
+walrus = { version = "==0.8.2", optional = true }
+wcmatch = "<8.3,>=6.0.0"
+werkzeug = "<2.0.3,>=0.15.5"
+yagup = ">=0.1.1"
+"zc.relation" = "<1.2,>=1.1"
+zodb = "==5.6.0"
+zstandard = "==0.16.0"
+
+[tool.poetry.dev-dependencies]
+poetry-lock-package = "^0.4.3"
+
+[tool.poetry.extras]
+# TODO: replace these with dependency groups (especially `all`) once poetry 1.2 is released
+service = [
+    "apispec",
+    "apispec-webframeworks",
+    "circus",
+    "flask",
+    "gunicorn",
+    "marshmallow",
+    "pillow",
+    "ptvsd",
+    "python-dotenv",
+    "redis",
+    "rq",
+    "rq-scheduler",
+    "sentry-sdk",
+    "walrus",
+]
+tests = [
+    "black",
+    "check-manifest",
+    "coverage",
+    "cwl-utils",
+    "fakeredis",
+    "flakehell",
+    "flaky",
+    "freezegun",
+    "isort",
+    "pexpect",
+    "pydocstyle",
+    "pyte",
+    "pytest",
+    "pytest-black",
+    "pytest-cache",
+    "pytest-cov",
+    "pytest-flake8",
+    "pytest-mock",
+    "pytest-pep8",
+    "pytest-recording",
+    "pytest-timeout",
+    "pytest-xdist",
+    "responses",
+]
+toil = ["toil"]
+docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
+all = [
+    "apispec",
+    "apispec-webframeworks",
+    "black",
+    "check-manifest",
+    "circus",
+    "coverage",
+    "cwl-utils",
+    "fakeredis",
+    "flakehell",
+    "flaky",
+    "flask",
+    "freezegun",
+    "gunicorn",
+    "isort",
+    "jinja2",
+    "marshmallow",
+    "pexpect",
+    "pillow",
+    "ptvsd",
+    "pydocstyle",
+    "pyte",
+    "pytest",
+    "pytest-black",
+    "pytest-cache",
+    "pytest-cov",
+    "pytest-flake8",
+    "pytest-mock",
+    "pytest-pep8",
+    "pytest-recording",
+    "pytest-timeout",
+    "pytest-xdist",
+    "python-dotenv",
+    "redis",
+    "renku-sphinx-theme",
+    "responses",
+    "rq",
+    "rq-scheduler",
+    "sentry-sdk",
+    "sphinxcontrib-spelling",
+    "sphinx-rtd-theme",
+    "sphinx-tabs",
+    "toil",
+    "walrus",
+]
+
+[tool.poetry.scripts]
+renku = "renku.cli:cli"
+
 [tool.black]
 line-length = 120
-target-version = ['py36', 'py37', 'py38']
+target-version = ["py36", "py37", "py38"]
 include = '\.pyi?$'
 exclude = '''
 (
@@ -37,3 +261,68 @@ exclude = '''
   | docs/conf.py
 )
 '''
+
+[tool.pydocstyle]
+add_ignore = ["D105", "D107", "D202", "D401"]
+
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 120
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+dirty = true
+format-jinja = """
+    {%- if distance == 0 -%}
+        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}
+    {%- else -%}
+        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}.dev{{distance}}+g{{commit}}
+    {%- endif -%}
+"""
+pattern = """
+    (?x)                                                (?# ignore whitespace)
+    ^v(?P<base>\\d+(\\.\\d+)*)                             (?# v1.2.3)
+    (-?((?P<stage>[a-zA-Z0-9]+)?\\.?(?P<revision>(pre|post)\\d+)?))?    (?# b0)
+    (\\+(?P<tagged_metadata>.+))?$                       (?# e.g., +linux)
+"""
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ["renku/version.py"]
+
+[tool.pytest.ini_options]
+addopts = "--flake8 --black --doctest-glob=\"*.rst\" --doctest-modules --cov=renku --cov-config .coveragerc --cov-report=term-missing --ignore=docs/cheatsheet/"
+doctest_optionflags = "ALLOW_UNICODE"
+flake8-ignore = ["*.py", "E121", "E126", "E203", "E226", "E231", "W503", "W504", "docs/conf.py", "docs/cheatsheet/conf.py", "ALL"]
+flake8-max-line-length = 120
+testpaths = ["docs", "tests", "renku", "conftest.py"]
+markers = [
+    "integration: mark a test as a integration.",
+    "service: mark a test as service test.",
+    "jobs: mark a test as a job test.",
+    "migration: mark a test as a migration test.",
+    "shelled: mark a test as a shelled test.",
+    "serial: mark a test that can not be run in parallel",
+]
+
+[tool.coverage.run]
+omit = ["renku/conftest.py", "renku/data/*"]
+
+[tool.flakehell]
+max_line_length = 120
+show_source = true
+extended_default_ignore = []
+
+[tool.flakehell.plugins]
+pycodestyle = ["+*", "-E121", "-E126", "-E203", "-E226", "-E231", "-W503", "-W504"]
+pyflakes = ["+*", "-E121", "-E126", "-E203", "-E226", "-E231", "-W503", "-W504"]
+pylint = ["+F*", "+E*", "-E121", "-E126", "-E203", "-E226", "-E231", "-W503", "-W504"]
+
+
+[build-system]
+requires = ["poetry>=1.1.11,<1.2.0", "poetry-dynamic-versioning", "gitpython==3.1.24"]
+build-backend = "poetry.masonry.api"

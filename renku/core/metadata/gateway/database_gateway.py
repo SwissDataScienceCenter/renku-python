@@ -19,7 +19,6 @@
 
 from pathlib import Path
 from typing import Generator
-from uuid import uuid4
 
 import BTrees
 from persistent import Persistent
@@ -32,10 +31,10 @@ from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.metadata.database import RenkuOOBTree
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.plan import AbstractPlan
-from renku.core.utils.scm import git_unicode_unescape
 
 
 class IActivityDownstreamRelation(Interface):
@@ -53,7 +52,7 @@ class ActivityDownstreamRelation:
         self.downstream = downstream
         self.upstream = upstream
 
-        self.id = uuid4().hex
+        self.id = f"{upstream.id}:{downstream.id}"
 
 
 def dump_activity(activity: Activity, catalog, cache) -> str:
@@ -91,13 +90,12 @@ def load_downstream_relations(token, catalog, cache, database_dispatcher: IDatab
 def initialize_database(database):
     """Initialize an empty database with all required metadata."""
     database.add_index(name="activities", object_type=Activity, attribute="id")
-    database.add_index(name="latest-activity-by-plan", object_type=Activity, attribute="association.plan.id")
-    database.add_root_object(name="activities-by-usage", obj=BTrees.OOBTree.OOBTree())
-    database.add_root_object(name="activities-by-generation", obj=BTrees.OOBTree.OOBTree())
+    database.add_root_object(name="activities-by-usage", obj=RenkuOOBTree())
+    database.add_root_object(name="activities-by-generation", obj=RenkuOOBTree())
 
     database.add_index(name="activity-collections", object_type=ActivityCollection, attribute="id")
 
-    database.add_root_object(name="_downstream_relations", obj=BTrees.OOBTree.OOBTree())
+    database.add_root_object(name="_downstream_relations", obj=RenkuOOBTree())
 
     activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
     activity_catalog.addValueIndex(
@@ -142,28 +140,20 @@ class DatabaseGateway(IDatabaseGateway):
     def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
         """Get all database objects modified in a revision."""
         # TODO: use gateway once #renku-python/issues/2253 is done
-        from git import NULL_TREE
 
         client_dispatcher = inject.instance(IClientDispatcher)
         client = client_dispatcher.current_client
 
         if ".." in revision_or_range:
-            commits = client.repo.iter_commits(rev=revision_or_range)
+            commits = client.repository.iterate_commits(revision=revision_or_range)
         else:
-            commits = [client.repo.commit(revision_or_range)]
+            commits = [client.repository.get_commit(revision_or_range)]
 
         for commit in commits:
-            if commit.parents:
-                parent = commit.parents[0]
-                child = commit
-            else:
-                # NOTE: For some reason diffs are the other way around when diffing NULL_TREE
-                parent = commit
-                child = NULL_TREE
-            for file_ in parent.diff(child, paths=f"{client.database_path}/**"):
-                if file_.change_type == "D":
+            for file in commit.get_changes(paths=f"{client.database_path}/**"):
+                if file.deleted:
                     continue
 
-                oid = Path(git_unicode_unescape(file_.a_path)).name
+                oid = Path(file.a_path).name
 
                 yield self.database_dispatcher.current_database.get(oid)

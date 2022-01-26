@@ -16,21 +16,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Check for required Git hooks."""
+
 from io import StringIO
-from pathlib import Path
 
-import pkg_resources
-from git.index.fun import hook_path as get_hook_path
-
+from renku.core.commands.echo import WARNING
 from renku.core.management.githooks import HOOKS
+from renku.core.utils.git import get_hook_path
 
-from ..echo import WARNING
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 
 def check_git_hooks_installed(client):
     """Checks if all necessary hooks are installed."""
     for hook in HOOKS:
-        hook_path = Path(get_hook_path(hook, client.repo.git_dir))
+        hook_path = get_hook_path(name=hook, repository=client.repository)
         if not hook_path.exists():
             message = WARNING + "Git hooks are not installed. " 'Use "renku githooks install" to install them. \n'
             return False, message
@@ -68,4 +70,4 @@ def _extract_renku_hook(file_):
 
 
 def _read_resource(hook):
-    return pkg_resources.resource_string("renku.data", "{hook}.sh".format(hook=hook)).decode("utf-8")
+    return importlib_resources.files("renku.data").joinpath(f"{hook}.sh").read_bytes().decode("utf-8")

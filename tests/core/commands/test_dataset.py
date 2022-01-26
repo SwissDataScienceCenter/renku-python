@@ -24,16 +24,17 @@ import stat
 from pathlib import Path
 
 import pytest
-from git import Repo
 
 from renku.core import errors
 from renku.core.commands.dataset import add_to_dataset, create_dataset, file_unlink, list_datasets, list_files
 from renku.core.errors import ParameterError
 from renku.core.management.datasets import DatasetsProvenance
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.models.dataset import Dataset
+from renku.core.metadata.repository import Repository
+from renku.core.models.dataset import Dataset, is_dataset_name_valid
 from renku.core.models.provenance.agent import Person
 from renku.core.utils.contexts import chdir
+from renku.core.utils.git import get_git_user
 from renku.core.utils.urls import get_slug
 from tests.utils import assert_dataset_is_mutated, load_dataset, raises
 
@@ -88,17 +89,10 @@ def test_data_add_recursive(directory_tree, client_with_injection):
         assert os.path.basename(os.path.dirname(dataset.files[0].entity.path)) == "dir1"
 
 
-@pytest.mark.parametrize(
-    "creators",
-    [
-        [Person(name="me", email="me@example.com")],
-        [Person.from_jsonld({"http://schema.org/name": "me", "http://schema.org/email": "me@example.com"})],
-    ],
-)
-def test_creator_parse(creators):
+def test_creator_parse():
     """Test that different options for specifying creators work."""
-    dataset = Dataset(name="dataset", creators=creators)
     creator = Person(name="me", email="me@example.com")
+    dataset = Dataset(name="dataset", creators=[creator])
     assert creator in dataset.creators
 
     # email check
@@ -122,38 +116,14 @@ def test_creators_with_same_email(client_with_injection, load_dataset_with_injec
     assert {c.name for c in dataset.creators} == {"me", "me2"}
 
 
-def test_dataset_serialization(client_with_datasets, load_dataset_with_injection):
-    """Test dataset (de)serialization."""
-    dataset = load_dataset_with_injection("dataset-1", client_with_datasets)
-
-    def read_value(key):
-        return dataset_metadata.get(key)[0].get("@value")
-
-    flattened_metadata = dataset.to_jsonld()
-    dataset = Dataset.from_jsonld(flattened_metadata)
-
-    # assert that all attributes found in metadata are set in the instance
-    assert dataset.date_created
-    assert dataset.creators
-    assert dataset.identifier
-    assert dataset.title
-
-    dataset_metadata = [m for m in flattened_metadata if "@type" in m and "Dataset" in str(m["@type"])][0]
-
-    # check values
-    assert str(dataset.date_created.isoformat()) == read_value("http://schema.org/dateCreated")
-    assert dataset.identifier == read_value("http://schema.org/identifier")
-    assert dataset.title == read_value("http://schema.org/name")
-
-
 def test_create_dataset_custom_message(project):
     """Test create dataset custom message."""
     create_dataset().with_commit_message("my dataset").with_database(write=True).build().execute(
         "ds1", title="", description="", creators=[]
     )
 
-    last_commit = Repo(".").head.commit
-    assert "my dataset" == last_commit.message
+    last_commit = Repository(".").head.commit
+    assert "my dataset" == last_commit.message.splitlines()[0]
 
 
 def test_list_datasets_default(project):
@@ -206,14 +176,14 @@ def test_mutate(client):
 
     dataset.mutate()
 
-    mutator = Person.from_git(client.repo)
+    mutator = get_git_user(client.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
 @pytest.mark.xfail
 def test_mutator_is_added_once(client):
     """Test mutator of a dataset is added only once to its creators list."""
-    mutator = Person.from_git(client.repo)
+    mutator = get_git_user(client.repository)
 
     dataset = Dataset(
         name="my-dataset",
@@ -259,3 +229,9 @@ def test_mutate_is_done_once():
 def test_dataset_name_slug(name, slug):
     """Test slug generation from name."""
     assert slug == get_slug(name)
+
+
+def test_uppercase_dataset_name_is_valid():
+    """Test dataset name can have uppercase characters."""
+    assert is_dataset_name_valid("UPPER-CASE")
+    assert is_dataset_name_valid("Pascal-Case")

@@ -28,12 +28,12 @@ from typing import List, Optional, Union
 
 import pytest
 from flaky import flaky
-from git import Repo
 
 from renku.core.management.command_builder.command import inject, remove_injector
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
+from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Dataset
 from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
@@ -153,7 +153,7 @@ def with_dataset(
 ):
     """Yield an editable metadata object for a dataset."""
     dataset = client.get_dataset(name=name, strict=True, immutable=True)
-    dataset._v_immutable = False
+    dataset.unfreeze()
 
     yield dataset
 
@@ -207,16 +207,15 @@ def injection_manager(bindings):
             remove_injector()
 
 
-def write_and_commit_file(repo: Repo, path: Union[Path, str], content: str):
+def write_and_commit_file(repository: Repository, path: Union[Path, str], content: str):
     """Write content to a given file and make a commit."""
-    filepath = Path(path)
-    path = str(path)
+    path = repository.path / path
 
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    filepath.write_text(content)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
 
-    repo.git.add(path)
-    repo.index.commit(f"Updated '{path}'")
+    repository.add(path)
+    repository.commit(f"Updated '{path.relative_to(repository.path)}'")
 
 
 def create_dummy_activity(
@@ -254,3 +253,22 @@ def create_dummy_activity(
             for u in usages
         ],
     )
+
+
+def clone_compressed_repository(base_path, name) -> Repository:
+    """Decompress and clone a repository."""
+    import tarfile
+
+    compressed_repo_path = Path(__file__).parent / "data" / f"{name}.tar.gz"
+    working_dir = base_path / name
+
+    bare_base_path = working_dir / "bare"
+
+    with tarfile.open(compressed_repo_path, "r") as fixture:
+        fixture.extractall(str(bare_base_path))
+
+    bare_path = bare_base_path / name
+    repository_path = working_dir / "repository"
+    repository = Repository.clone_from(bare_path, repository_path)
+
+    return repository

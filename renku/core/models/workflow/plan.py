@@ -30,16 +30,8 @@ from werkzeug.utils import secure_filename
 
 from renku.core import errors
 from renku.core.metadata.database import Persistent
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
-from renku.core.models.workflow.parameter import (
-    CommandInput,
-    CommandInputSchema,
-    CommandOutput,
-    CommandOutputSchema,
-    CommandParameter,
-    CommandParameterBase,
-    CommandParameterSchema,
-)
+from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter, CommandParameterBase
+from renku.core.utils.datetime8601 import local_now
 
 MAX_GENERATED_NAME_LENGTH = 25
 
@@ -52,6 +44,7 @@ class AbstractPlan(Persistent, ABC):
         *,
         description: str = None,
         id: str,
+        date_created: datetime = None,
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str = None,
@@ -60,6 +53,7 @@ class AbstractPlan(Persistent, ABC):
     ):
         self.description: str = description
         self.id: str = id
+        self.date_created: datetime = date_created or local_now()
         self.invalidated_at: datetime = invalidated_at
         self.keywords: List[str] = keywords or []
         self.name: str = name
@@ -103,6 +97,9 @@ class AbstractPlan(Persistent, ABC):
         new_uuid = uuid4().hex
         self.id = self.id.replace(current_uuid, new_uuid)
 
+        # NOTE: We also need to re-assign the _p_oid since identifier has changed
+        self.reassign_oid()
+
         return new_uuid
 
     def _extract_uuid(self) -> str:
@@ -137,6 +134,7 @@ class Plan(AbstractPlan):
         description: str = None,
         id: str,
         inputs: List[CommandInput] = None,
+        date_created: datetime = None,
         invalidated_at: datetime = None,
         keywords: List[str] = None,
         name: str = None,
@@ -153,6 +151,7 @@ class Plan(AbstractPlan):
         super().__init__(
             id=id,
             description=description,
+            date_created=date_created,
             invalidated_at=invalidated_at,
             keywords=keywords,
             name=name,
@@ -213,6 +212,13 @@ class Plan(AbstractPlan):
         """Find if a parameter exists on this plan."""
         return any(parameter.id == p.id for p in self.inputs + self.outputs + self.parameters)
 
+    def get_parameter_path(self, parameter: CommandParameterBase):
+        """Get the path to a parameter inside this plan."""
+        if self.find_parameter(parameter):
+            return [self]
+
+        return None
+
     def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
         """Get a parameter on this plan by id."""
         return next((p for p in self.inputs + self.outputs + self.parameters if parameter_id == p.id), None)
@@ -237,19 +243,14 @@ class Plan(AbstractPlan):
 
     def derive(self) -> "Plan":
         """Create a new ``Plan`` that is derived from self."""
-        derived = Plan(
-            parameters=self.parameters.copy(),
-            command=self.command,
-            description=self.description,
-            id=self.id,
-            inputs=self.inputs.copy(),
-            invalidated_at=self.invalidated_at,
-            keywords=self.keywords.copy(),
-            name=self.name,
-            derived_from=self.id,
-            outputs=self.outputs.copy(),
-            success_codes=self.success_codes.copy(),
-        )
+        derived = copy.copy(self)
+        derived.derived_from = self.id
+        derived.date_created = local_now()
+        derived.parameters = self.parameters.copy()
+        derived.inputs = self.inputs.copy()
+        derived.keywords = self.keywords.copy()
+        derived.outputs = self.outputs.copy()
+        derived.success_codes = self.success_codes.copy()
         derived.assign_new_id()
         return derived
 
@@ -300,30 +301,6 @@ class Plan(AbstractPlan):
         Required where a plan is used several times in a workflow but we need to set different values on them.
         """
         return copy.deepcopy(self)
-
-
-class PlanSchema(JsonLDSchema):
-    """Plan schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork]
-        model = Plan
-        unknown = marshmallow.EXCLUDE
-
-    command = fields.String(renku.command, missing=None)
-    description = fields.String(schema.description, missing=None)
-    id = fields.Id()
-    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
-    invalidated_at = fields.DateTime(prov.invalidatedAtTime, add_value_types=True)
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    name = fields.String(schema.name, missing=None)
-    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
-    project_id = fields.IRI(renku.hasPlan, reverse=True)
-    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
-    parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
-    success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
 
 
 class PlanDetailsJson(marshmallow.Schema):

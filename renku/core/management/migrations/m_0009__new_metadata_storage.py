@@ -21,12 +21,12 @@ import os
 import shutil
 import traceback
 import uuid
+from collections import defaultdict
+from hashlib import sha1
 from itertools import chain
 from pathlib import Path, PurePosixPath
 from typing import List, Optional, Union
 from urllib.parse import urlparse
-
-from git import NULL_TREE, Commit, GitCommandError
 
 import renku.core.management.migrate
 from renku.core import errors
@@ -47,17 +47,22 @@ from renku.core.management.migrations.utils import (
     unset_temporary_datasets_path,
 )
 from renku.core.management.migrations.utils.conversion import convert_dataset
+from renku.core.metadata.repository import Commit
 from renku.core.models.entity import Collection, Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.project import Project
 from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
 from renku.core.models.provenance.agent import Person, SoftwareAgent
 from renku.core.models.provenance.parameter import ParameterValue
-from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
+from renku.core.models.workflow.parameter import (
+    DIRECTORY_MIME_TYPE,
+    CommandInput,
+    CommandOutput,
+    CommandParameter,
+    MappedIOStream,
+)
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils import communication
-from renku.core.utils.git import get_object_hash
-from renku.core.utils.scm import git_unicode_unescape
 
 NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 
@@ -68,31 +73,33 @@ def migrate(migration_context):
     """Migration function."""
     client = migration_context.client
     committed = _commit_previous_changes(client)
-    # TODO: set remove=True once the migration to the new metadata is finalized
-    generate_new_metadata(
-        remove=False,
+    # NOTE: Initialize submodules
+    _ = client.repository.submodules
+    _generate_new_metadata(
         committed=committed,
         strict=migration_context.options.strict,
         migration_type=migration_context.options.type,
+        preserve_identifiers=migration_context.options.preserve_identifiers,
     )
     _remove_dataset_metadata_files(client)
+
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
-    metadata_path.unlink()
+    with open(metadata_path, "w") as f:
+        f.write(
+            "# Dummy file kept for backwards compatibility, does not contain actual version\n"
+            "'http://schema.org/schemaVersion': '9'"
+        )
 
 
 def _commit_previous_changes(client):
-    client.repo.git.add(str(client.renku_path))
-
-    staged_files = client.repo.index.diff("HEAD")
-    if staged_files:
+    if client.repository.is_dirty():
         project_path = client.renku_path.joinpath(OLD_METADATA_PATH)
         project = old_schema.Project.from_yaml(project_path, client)
         project.version = "8"
         project.to_yaml(client.renku_path.joinpath(project_path))
 
-        client.repo.git.add(str(client.renku_path))
-
-        client.repo.index.commit("renku migrate: committing structural changes", skip_hooks=True)
+        client.repository.add(client.renku_path)
+        client.repository.commit("renku migrate: committing structural changes" + client.transaction_id, no_verify=True)
         return True
 
     return False
@@ -104,7 +111,7 @@ def maybe_migrate_project_to_database(client, project_gateway: IProjectGateway):
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
 
     if metadata_path.exists():
-        old_project = old_schema.Project.from_yaml(metadata_path)
+        old_project = old_schema.Project.from_yaml(metadata_path, client=client)
 
         id_path = urlparse(old_project._id).path
         id_path = id_path.replace("/projects/", "")
@@ -153,7 +160,7 @@ def remove_graph_files(client):
 
 
 @inject.autoparams()
-def generate_new_metadata(
+def _generate_new_metadata(
     strict,
     migration_type: MigrationType,
     client_dispatcher: IClientDispatcher,
@@ -162,6 +169,7 @@ def generate_new_metadata(
     force=True,
     remove=True,
     committed=False,
+    preserve_identifiers=False,
 ):
     """Generate graph and dataset provenance metadata."""
     client = client_dispatcher.current_client
@@ -178,14 +186,14 @@ def generate_new_metadata(
     datasets_provenance = DatasetsProvenance()
 
     commits = list(
-        client.repo.iter_commits(
-            paths=[f"{client.renku_path}/workflow/*.yaml", ".renku/datasets/*/*.yml"], reverse=True
+        client.repository.iterate_commits(
+            f"{client.renku_path}/workflow/*.yaml", ".renku/datasets/*/*.yml", reverse=True
         )
     )
     n_commits = len(commits)
 
     for n, commit in enumerate(commits, start=1):
-        communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\n")
+        communication.echo(f"Processing commits {n}/{n_commits} {commit.hexsha}", end="\r")
 
         # NOTE: Treat the last commit differently if it was done by this migration
         is_last_commit = committed and n == n_commits
@@ -193,9 +201,13 @@ def generate_new_metadata(
         try:
             # NOTE: Don't migrate workflows for dataset-only migrations
             if MigrationType.WORKFLOWS in migration_type:
-                _process_workflows(client=client, activity_gateway=activity_gateway, commit=commit, remove=remove)
+                _process_workflows(activity_gateway=activity_gateway, commit=commit, remove=remove, client=client)
             _process_datasets(
-                client=client, commit=commit, datasets_provenance=datasets_provenance, is_last_commit=is_last_commit
+                client=client,
+                commit=commit,
+                datasets_provenance=datasets_provenance,
+                is_last_commit=is_last_commit,
+                preserve_identifiers=preserve_identifiers,
             )
         except errors.MigrationError:
             if strict:
@@ -214,7 +226,7 @@ def generate_new_metadata(
     database_gateway.commit()
 
 
-def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
+def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
     """Create a Plan from a Run."""
     assert not run.subprocesses, f"Cannot create a Plan from a Run with subprocesses: {run._id}"
 
@@ -228,6 +240,9 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
         return PLAN_CACHE[uuid]
 
     plan_id = Plan.generate_id(uuid=uuid)
+
+    def get_mime_type(entity: Union[old_schema.Entity, old_schema.Collection]) -> List[str]:
+        return [DIRECTORY_MIME_TYPE] if isinstance(entity, old_schema.Collection) else ["application/octet-stream"]
 
     def convert_argument(argument: old_schema.CommandArgument) -> CommandParameter:
         """Convert an old CommandArgument to a new CommandParameter."""
@@ -259,6 +274,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=input.name,
             position=input.position,
             prefix=input.prefix,
+            encoding_format=get_mime_type(input.consumes),
             postfix=PurePosixPath(input._id).name,
         )
 
@@ -279,6 +295,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
             name=output.name,
             position=output.position,
             prefix=output.prefix,
+            encoding_format=get_mime_type(output.produces),
             postfix=PurePosixPath(output._id).name,
         )
 
@@ -291,7 +308,7 @@ def _convert_run_to_plan(run: old_schema.Run, client: LocalClient) -> Plan:
         name=run.name,
         outputs=[convert_output(o) for o in run.outputs],
         parameters=[convert_argument(a) for a in run.arguments],
-        project_id=client.project.id,
+        project_id=project_id,
         success_codes=run.successcodes,
     )
 
@@ -322,12 +339,11 @@ def _get_process_runs(workflow_run: old_schema.WorkflowRun) -> List[old_schema.P
 
 def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, commit: Commit, remove: bool):
 
-    for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.renku_path}/workflow/*.yaml"):
-        # Ignore deleted files (they appear as ADDED in this backwards diff)
-        if file_.change_type == "A":
+    for file in commit.get_changes(paths=f"{client.renku_path}/workflow/*.yaml"):
+        if file.deleted:
             continue
 
-        path: str = git_unicode_unescape(file_.a_path)
+        path: str = file.b_path
 
         if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
             continue
@@ -344,25 +360,40 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
             activities = [workflow]
 
         for old_activity in activities:
-            new_activities = _process_run_to_new_activity(process_run=old_activity)
+            new_activities = _process_run_to_new_activity(process_run=old_activity, client=client)
             for new_activity in new_activities:
                 activity_gateway.add(new_activity)
 
         if remove:
             try:
-                os.remove(file_.a_path)
+                os.remove(file.b_path)
             except FileNotFoundError:
                 pass
 
 
-@inject.autoparams("client_dispatcher")
-def _process_run_to_new_activity(
-    process_run: old_schema.ProcessRun, client_dispatcher: IClientDispatcher
-) -> List[Activity]:
+def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: LocalClient) -> List[Activity]:
     """Convert a ProcessRun to a new Activity."""
+
+    def generate_activity_id(process_run_id: str, suffix: str = None) -> str:
+        # https://localhost/activities/commit/b092dca8866c940dd4ff119b7d76d163a1be6a65
+        # https://localhost/activities/commit/b092dca8866c940dd4ff119b7d76d163a1be6a65/steps/step_1
+        parts = process_run_id.rstrip("/").rsplit("/", maxsplit=3)
+
+        if parts[-2] == "steps":
+            parts = parts[-3:]
+        else:
+            parts = [parts[-1]]
+
+        original_id = "/".join(parts)
+
+        if suffix:
+            original_id += suffix
+
+        return sha1(original_id.encode("utf-8")).hexdigest()
+
     assert not isinstance(process_run, old_schema.WorkflowRun)
 
-    client = client_dispatcher.current_client
+    project_id = client.project.id
 
     run = process_run.association.plan
 
@@ -372,10 +403,10 @@ def _process_run_to_new_activity(
         runs = [run]
 
     activities = []
-    for run in runs:
-        activity_id = Activity.generate_id()
+    for i, run in enumerate(runs):
+        activity_id = generate_activity_id(process_run._id, suffix=str(i) if i else None)
 
-        plan = _convert_run_to_plan(run, client)
+        plan = _convert_run_to_plan(run, project_id=project_id)
 
         agents = [_old_agent_to_new_agent(a) for a in process_run.agents or []]
         association_agent = _old_agent_to_new_agent(process_run.association.agent)
@@ -415,7 +446,7 @@ def _process_run_to_new_activity(
                 id=activity_id,
                 invalidations=invalidations,
                 parameters=parameters,
-                # project=process_run._project,
+                project_id=project_id,
                 started_at_time=process_run.started_at_time,
                 usages=usages,
             )
@@ -449,9 +480,9 @@ def _convert_used_entity(entity: old_schema.Entity, revision: str, activity_id: 
     """
     assert isinstance(entity, old_schema.Entity)
 
-    checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
+    checksum = client.repository.get_object_hash(revision=revision, path=entity.path)
     if not checksum:
-        communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
+        _EntityWarningCache.warn(path=entity.path, revision=revision)
         checksum = NON_EXISTING_ENTITY_CHECKSUM
 
     if isinstance(entity, old_schema.Collection):
@@ -479,15 +510,16 @@ def _convert_generated_entity(entity: old_schema.Entity, revision: str, activity
     assert isinstance(entity, old_schema.Entity)
 
     try:
-        entity_commit = client.find_previous_commit(paths=entity.path, revision=revision)
-    except KeyError:
+        entity_commit = client.repository.get_previous_commit(path=entity.path, revision=revision, submodule=True)
+    except errors.GitCommitNotFoundError:
         return None
+
     if entity_commit.hexsha != revision:
         return None
 
-    checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
+    checksum = client.repository.get_object_hash(revision=revision, path=entity.path)
     if not checksum:
-        communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
+        _EntityWarningCache.warn(path=entity.path, revision=revision)
         checksum = NON_EXISTING_ENTITY_CHECKSUM
 
     if isinstance(entity, old_schema.Collection):
@@ -513,14 +545,14 @@ def _convert_invalidated_entity(entity: old_schema.Entity, client) -> Optional[E
     assert not isinstance(entity, old_schema.Collection), f"Collection passed as invalidated: {entity._id}"
 
     commit_sha = _extract_commit_sha(entity_id=entity._id)
-    commit = client.find_previous_commit(revision=commit_sha, paths=entity.path)
+    commit = client.repository.get_previous_commit(revision=commit_sha, path=entity.path, submodule=True)
     revision = commit.hexsha
-    checksum = get_object_hash(repo=client.repo, revision=revision, path=entity.path)
+    checksum = client.repository.get_object_hash(revision=revision, path=entity.path)
     if not checksum:
         # Entity was deleted at revision; get the one before it to have object_id
-        checksum = get_object_hash(repo=client.repo, revision=f"{revision}~", path=entity.path)
+        checksum = client.repository.get_object_hash(revision=f"{revision}~", path=entity.path)
         if not checksum:
-            communication.warn(f"Entity '{entity.path}' not found at '{revision}'")
+            _EntityWarningCache.warn(path=entity.path, revision=revision)
             checksum = NON_EXISTING_ENTITY_CHECKSUM
 
     new_entity = Entity(checksum=checksum, path=entity.path)
@@ -584,11 +616,13 @@ def _old_agent_to_new_agent(
     )
 
 
-def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: DatasetsProvenance, is_last_commit):
-    files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
-    paths = [git_unicode_unescape(f.a_path) for f in files_diff]
-    paths = [p for p in paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
-    deleted_paths = [git_unicode_unescape(f.a_path) for f in files_diff if f.change_type == "A"]
+def _process_datasets(
+    client: LocalClient, commit: Commit, datasets_provenance: DatasetsProvenance, is_last_commit, preserve_identifiers
+):
+    changes = commit.get_changes(paths=".renku/datasets/*/*.yml")
+    changed_paths = [c.b_path for c in changes if not c.deleted]
+    paths = [p for p in changed_paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
+    deleted_paths = [c.a_path for c in changes if c.deleted]
 
     datasets, deleted_datasets = _fetch_datasets(
         client=client, revision=commit.hexsha, paths=paths, deleted_paths=deleted_paths
@@ -601,13 +635,22 @@ def _process_datasets(client: LocalClient, commit: Commit, datasets_provenance: 
         dataset, tags = convert_dataset(dataset=dataset, client=client, revision=revision)
         if is_last_commit:
             datasets_provenance.update_during_migration(
-                dataset, commit_sha=revision, date=date, tags=tags, replace=True
+                dataset,
+                commit_sha=revision,
+                date=date,
+                tags=tags,
+                replace=True,
+                preserve_identifiers=preserve_identifiers,
             )
         else:
-            datasets_provenance.update_during_migration(dataset, commit_sha=revision, date=date, tags=tags)
+            datasets_provenance.update_during_migration(
+                dataset, commit_sha=revision, date=date, tags=tags, preserve_identifiers=preserve_identifiers
+            )
     for dataset in deleted_datasets:
         dataset, _ = convert_dataset(dataset=dataset, client=client, revision=revision)
-        datasets_provenance.update_during_migration(dataset, commit_sha=revision, date=date, remove=True)
+        datasets_provenance.update_during_migration(
+            dataset, commit_sha=revision, date=date, remove=True, preserve_identifiers=preserve_identifiers
+        )
 
 
 def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):
@@ -622,8 +665,8 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
     def read_project_version():
         """Read project version at revision."""
         try:
-            project_file_content = client.repo.git.show(f"{revision}:.renku/metadata.yml")
-        except GitCommandError:  # Project metadata file does not exist
+            project_file_content = client.repository.get_content(path=".renku/metadata.yml", revision=revision)
+        except errors.GitCommandError:  # Project metadata file does not exist
             return 1
 
         try:
@@ -654,13 +697,13 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
         for path in paths:
             rev = revision
             if path in deleted_paths:
-                rev = client.find_previous_commit(path, revision=f"{revision}~")
+                rev = client.repository.get_previous_commit(path, revision=f"{revision}~", submodule=True)
             identifier = get_dataset_identifier(path)
             if not identifier:
                 continue
             new_path = datasets_path / identifier / "metadata.yml"
             new_path.parent.mkdir(parents=True, exist_ok=True)
-            content = client.repo.git.show(f"{rev}:{path}")
+            content = client.repository.get_content(path=path, revision=str(rev))
             new_path.write_text(content)
             if path in deleted_paths:
                 deleted.append(new_path)
@@ -712,22 +755,22 @@ class _DatasetMigrationContext:
 
     def exists(self, path) -> bool:
         try:
-            self.client.repo.git.cat_file("-e", f"{self.revision}:{str(path)}")
-        except GitCommandError:
+            self.client.repository.run_git_command("cat-file", "-e", f"{self.revision}:{path}")
+        except errors.GitCommandError:
             return False
         else:
             return True
 
     def is_dir(self, path) -> bool:
         try:
-            result = self.client.repo.git.cat_file("-t", f"{self.revision}:{str(path)}")
-        except GitCommandError:
+            result = self.client.repository.run_git_command("cat-file", "-t", f"{self.revision}:{path}")
+        except errors.GitCommandError:
             return False
         else:
             return "tree" in result
 
-    def find_previous_commit(self, path):
-        return self.client.find_previous_commit(path, revision=self.revision)
+    def get_previous_commit(self, path):
+        return self.client.repository.get_previous_commit(path, revision=self.revision)
 
 
 def _remove_dataset_metadata_files(client: LocalClient):
@@ -741,3 +784,22 @@ def _remove_dataset_metadata_files(client: LocalClient):
         shutil.rmtree(os.path.join(client.renku_path, "refs", OLD_DATASETS_PATH))
     except FileNotFoundError:
         pass
+
+
+class _EntityWarningCache:
+    """Cache warning messages to avoid re-prints."""
+
+    cache = defaultdict(set)
+
+    @staticmethod
+    def warn(path, revision):
+        """Print a warning if it's not already printed for the path/revision."""
+        path = str(path)
+        revision = str(revision)
+
+        already_warned = _EntityWarningCache.cache[path]
+        if revision in already_warned:
+            return
+
+        already_warned.add(revision)
+        communication.warn(f"Entity '{path}' not found at '{revision}'")

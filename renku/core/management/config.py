@@ -25,13 +25,11 @@ import attr
 import click
 import portalocker
 
+from renku.core.management import RENKU_HOME
 from renku.core.models.enums import ConfigFilter
 
 APP_NAME = "Renku"
 """Application name for storing configuration."""
-
-RENKU_HOME = ".renku"
-"""Project directory name."""
 
 
 def _get_global_config_dir():
@@ -59,7 +57,7 @@ class ConfigManagerMixin:
         """Renku global (user's) config path."""
         config = Path(self.global_config_dir)
         if not config.exists():
-            config.mkdir()
+            config.mkdir(parents=True)
 
         return str(config / Path(self.CONFIG_NAME))
 
@@ -80,10 +78,16 @@ class ConfigManagerMixin:
 
     def load_config(self, config_filter=ConfigFilter.ALL):
         """Loads local, global or both configuration object."""
-        from pkg_resources import resource_filename
+        try:
+            import importlib_resources
+        except ImportError:
+            import importlib.resources as importlib_resources
 
-        config = configparser.ConfigParser()
-        config_files = [resource_filename("renku", "data/defaults.ini")]
+        # NOTE: Use RawConfigParser because ConfigParser does non-standard INI interpolation of some values
+        config = configparser.RawConfigParser()
+        ref = importlib_resources.files("renku.data") / "defaults.ini"
+        with importlib_resources.as_file(ref) as default_ini:
+            config_files = [default_ini]
 
         if config_filter == ConfigFilter.LOCAL_ONLY:
             config_files += [self.local_config_path]

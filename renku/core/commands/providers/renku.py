@@ -26,7 +26,6 @@ from subprocess import PIPE, SubprocessError, run
 from typing import List
 
 import attr
-import requests
 
 from renku.core import errors
 from renku.core.commands.login import read_renku_token
@@ -36,6 +35,7 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils import communication
+from renku.core.utils.git import clone_renku_repository, get_cache_directory_for_repository
 
 
 @attr.s
@@ -171,13 +171,15 @@ class RenkuProvider(ProviderApi):
         return project_id, dataset_name_or_id
 
     def _query_knowledge_graph(self, url):
+        from renku.core.utils import requests
+
         if self._renku_token and not self._gitlab_token:
             # NOTE: Authorization with renku token requires going through the gateway route
             url = url.replace("/knowledge-graph/", "/api/kg/")
 
         try:
             response = requests.get(url, headers=self._authorization_header)
-        except urllib.error.HTTPError as e:
+        except errors.RequestError as e:
             raise errors.OperationError(f"Cannot access knowledge graph: {url}") from e
 
         if response.status_code == 404:
@@ -315,7 +317,7 @@ class _RenkuRecordSerializer:
 
     @property
     def repository(self):
-        """The cloned repo that contains the dataset."""
+        """The cloned repository that contains the dataset."""
         return self._project_repo
 
     @staticmethod
@@ -344,8 +346,7 @@ class _RenkuRecordSerializer:
         from renku.core.management.client import LocalClient
         from renku.core.models.dataset import get_dataset_data_dir
 
-        repo_path = None
-        repo = None
+        repository = None
         client = client_dispatcher.current_client
 
         parsed_uri = urllib.parse.urlparse(self._uri)
@@ -354,12 +355,14 @@ class _RenkuRecordSerializer:
         # Clone the project
         for url in urls:
             try:
-                repo, repo_path = client.prepare_git_repo(
+                repository = clone_renku_repository(
                     url=url,
+                    path=get_cache_directory_for_repository(client=client, url=url),
                     gitlab_token=self._gitlab_token,
-                    renku_token=self._renku_token,
                     deployment_hostname=parsed_uri.netloc,
                     depth=None,
+                    reuse_existing_repository=True,
+                    use_renku_credentials=True,
                 )
             except errors.GitError:
                 pass
@@ -370,14 +373,13 @@ class _RenkuRecordSerializer:
         if not self._project_url:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
 
-        self._remote_client = LocalClient(repo_path)
+        self._remote_client = LocalClient(repository.path)
         client_dispatcher.push_created_client_to_stack(self._remote_client)
         database_dispatcher.push_database_to_stack(self._remote_client.database_path)
 
         try:
-
             self._migrate_project()
-            self._project_repo = repo
+            self._project_repo = repository
 
             self._dataset = self._remote_client.get_dataset(self._name)
         finally:
@@ -411,6 +413,8 @@ class _RenkuRecordSerializer:
         try:
             communication.disable()
             # NOTE: We are not interested in migrating workflows when importing datasets
-            migrate(skip_template_update=True, skip_docker_update=True, migration_type=~MigrationType.WORKFLOWS)
+            migrate(
+                skip_template_update=True, skip_docker_update=True, migration_type=~MigrationType.WORKFLOWS, strict=True
+            )
         finally:
             communication.enable()

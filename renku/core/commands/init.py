@@ -19,7 +19,6 @@
 
 import json
 import re
-import tempfile
 from collections import OrderedDict, namedtuple
 from pathlib import Path
 from tempfile import mkdtemp
@@ -27,21 +26,27 @@ from uuid import uuid4
 
 import attr
 import click
-import git
-import pkg_resources
 import yaml
 
 from renku.core import errors
 from renku.core.commands.git import set_git_home
+from renku.core.management import RENKU_HOME
 from renku.core.management.command_builder.command import Command, inject
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
+from renku.core.management.migrations.utils import OLD_METADATA_PATH
 from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
+from renku.core.metadata.repository import Repository
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
+from renku.core.utils.git import clone_repository
 from renku.version import __version__, is_release
+
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources
 
 TEMPLATE_MANIFEST = "manifest.yaml"
 
@@ -61,11 +66,17 @@ def create_template_sentence(templates, describe=False, instructions=False):
         return None
 
     def extract_variables(template_elem):
-        """Extract variables from tempalte manifest."""
+        """Extract variables from template manifest."""
         if describe:
-            return "\n".join(
-                [f"{variable[0]}: {variable[1]}" for variable in template_elem.get("variables", {}).items()]
-            )
+            descriptions = []
+            for name, variable in template_elem.get("variables", {}).items():
+                variable_type = f', type: {variable["type"]}' if "type" in variable else ""
+                enum_values = f', options: {variable["enum"]}' if "enum" in variable else ""
+                default_value = f', default: {variable["default_value"]}' if "default_value" in variable else ""
+                description = variable["description"]
+
+                descriptions.append(f"{name}: {description}{variable_type}{enum_values}{default_value}")
+            return "\n".join(descriptions)
 
         return ",".join(template_elem.get("variables", {}).keys())
 
@@ -93,7 +104,8 @@ def create_template_sentence(templates, describe=False, instructions=False):
 
 def store_directory(value):
     """Store directory as a new Git home."""
-    Path(value).mkdir(parents=True, exist_ok=True)
+    value = Path(value)
+    value.mkdir(parents=True, exist_ok=True)
     set_git_home(value)
     return value
 
@@ -136,6 +148,8 @@ def select_template_from_manifest(
     if prompt and (repeat or not (template_id or template_index)):
         templates = [template_elem for template_elem in template_manifest]
         if len(templates) == 1:
+            if describe:
+                communication.echo(create_template_sentence(templates, describe=describe, instructions=False))
             template_data = templates[0]
         else:
             template_index = communication.prompt(
@@ -151,18 +165,107 @@ def select_template_from_manifest(
     return template_data, template_id
 
 
+def validate_template_variable_value(name, template_variable, value):
+    """Validates template values by type."""
+    if "type" not in template_variable:
+        return True, None, value
+
+    variable_type = template_variable["type"]
+    valid = True
+
+    if variable_type == "string":
+        if not isinstance(value, str):
+            valid = False
+    elif variable_type == "number":
+        try:
+            value = int(value)
+            is_int = True
+        except ValueError:
+            is_int = False
+
+        try:
+            value = float(value)
+            is_float = True
+        except ValueError:
+            is_float = False
+
+        if not is_float and not is_int:
+            valid = False
+    elif variable_type == "boolean":
+        truthy = [True, 1, "1", "true", "True"]
+        falsy = [False, 0, "0", "false", "False"]
+        if value not in truthy and value not in falsy:
+            valid = False
+        else:
+            value = True if value in truthy else False
+    elif variable_type == "enum":
+        if "enum" not in template_variable:
+            raise errors.InvalidTemplateError(
+                f'Template contains variable {name} of type enum but does not provide a corresponding "enum" list.'
+            )
+        possible_values = template_variable["enum"]
+        if value not in possible_values:
+            return (
+                False,
+                f"Value '{value}' is not in list of possible values {possible_values} for template parameter {name}.",
+                value,
+            )
+    else:
+        raise errors.InvalidTemplateError(
+            f"Template contains variable {name} of type {variable_type} which is not supported."
+        )
+
+    if not valid:
+        return False, f"Value '{value}' is not of type {variable_type} required by {name}.", value
+
+    return True, None, value
+
+
+def prompt_for_value(name, template_variable):
+    """Prompt the user for a template value."""
+    valid = False
+    while not valid:
+        variable_type = f', type: {template_variable["type"]}' if "type" in template_variable else ""
+        enum_values = f', options: {template_variable["enum"]}' if "enum" in template_variable else ""
+        default_value = template_variable["default_value"] if "default_value" in template_variable else ""
+
+        value = communication.prompt(
+            msg=(
+                f'The template requires a value for "{name}" ({template_variable["description"]}'
+                f"{variable_type}{enum_values})"
+            ),
+            default=default_value,
+            show_default=bool(default_value),
+        )
+
+        valid, msg, value = validate_template_variable_value(name, template_variable, value)
+
+        if msg:
+            communication.info(msg)
+
+    return value
+
+
 def verify_template_variables(template_data, metadata):
     """Verifies that template variables are correctly set."""
     template_variables = template_data.get("variables", {})
     template_variables_keys = set(template_variables.keys())
     input_parameters_keys = set(metadata.keys())
+
+    for key in template_variables:
+        if "description" not in template_variables[key]:
+            raise errors.InvalidTemplateError(f"Template parameter {key} does not contain a description.")
+
+    for key in sorted(template_variables_keys.intersection(input_parameters_keys)):
+        valid, msg, metadata[key] = validate_template_variable_value(key, template_variables[key], metadata[key])
+
+        if not valid:
+            communication.info(msg)
+
+            metadata[key] = prompt_for_value(key, template_variables[key])
+
     for key in template_variables_keys - input_parameters_keys:
-        value = communication.prompt(
-            msg=f'The template requires a value for "{key}" ({template_variables[key]})',
-            default="",
-            show_default=False,
-        )
-        metadata[key] = value
+        metadata[key] = prompt_for_value(key, template_variables[key])
 
     # ignore internal variables, i.e. __\w__
     internal_keys = re.compile(r"__\w+__$")
@@ -179,7 +282,7 @@ def verify_template_variables(template_data, metadata):
 
 @inject.autoparams()
 def get_existing_template_files(template_path, metadata, client_dispatcher: IClientDispatcher, force=False):
-    """Gets files in the template that already exists in the repo."""
+    """Gets files in the template that already exists in the repository."""
     client = client_dispatcher.current_client
 
     template_files = list(client.get_template_files(template_path, metadata))
@@ -197,20 +300,19 @@ def get_existing_template_files(template_path, metadata, client_dispatcher: ICli
 
 @inject.autoparams()
 def create_backup_branch(path, client_dispatcher: IClientDispatcher):
-    """Creates a backup branch of the repo."""
+    """Creates a backup branch of the repository."""
     client = client_dispatcher.current_client
 
     branch_name = None
     if not is_path_empty(path):
-
         try:
-            if client.repo.head.is_valid():
-                commit = client.repo.head.commit.commit
+            if client.repository.head.is_valid():
+                commit = client.repository.head.commit
                 hexsha = commit.hexsha[:7]
 
                 branch_name = f"pre_renku_init_{hexsha}"
 
-                for ref in client.repo.references:
+                for ref in client.repository.branches:
                     if branch_name == ref.name:
                         branch_name = f"pre_renku_init_{hexsha}_{uuid4().hex}"
                         break
@@ -223,8 +325,8 @@ def create_backup_branch(path, client_dispatcher: IClientDispatcher):
                     communication.warn("Saving current data in branch {0}".format(branch_name))
         except AttributeError:
             communication.echo("Warning! Overwriting non-empty folder.")
-        except git.exc.GitCommandError as e:
-            raise errors.GitError(e)
+        except errors.GitCommandError:
+            raise
 
     return branch_name
 
@@ -236,6 +338,7 @@ def _init(
     path,
     name,
     description,
+    keywords,
     template_id,
     template_index,
     template_source,
@@ -296,7 +399,8 @@ def _init(
     metadata["__project_description__"] = description
     if is_release() and "__renku_version__" not in metadata:
         metadata["__renku_version__"] = __version__
-    metadata["name"] = name
+    metadata["name"] = name  # NOTE: kept for backwards compatibility
+    metadata["__name__"] = name
 
     template_path = template_folder / template_data["folder"]
 
@@ -326,6 +430,14 @@ def _init(
     database_gateway = inject.instance(IDatabaseGateway)
     database_gateway.initialize()
 
+    # add metadata.yml for backwards compatibility
+    metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
+    with open(metadata_path, "w") as f:
+        f.write(
+            "# Dummy file kept for backwards compatibility, does not contain actual version\n"
+            "'http://schema.org/schemaVersion': '9'"
+        )
+
     # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")
     with client.lock:
@@ -342,6 +454,7 @@ def _init(
                 force=force,
                 data_dir=data_dir,
                 description=description,
+                keywords=keywords,
             )
         except FileExistsError as e:
             raise errors.InvalidFileOperation(e)
@@ -349,7 +462,7 @@ def _init(
         communication.echo(
             "Project initialized.\n"
             f"You can undo this command by running 'git reset --hard {branch_name}'\n"
-            f"You can see changes made by running 'git diff {branch_name} {client.repo.head.ref.name}'"
+            f"You can see changes made by running 'git diff {branch_name} {client.repository.head.reference.name}'"
         )
     else:
         communication.echo("Project initialized.")
@@ -368,39 +481,15 @@ def fetch_template_from_git(source, ref=None, tempdir=None):
     :param tempdir: temporary work directory path
     :return: tuple of (template folder, template version)
     """
-    if tempdir is None:
-        tempdir = Path(tempfile.mkdtemp())
-
-    try:
-        # clone the repo locally without checking out files
-        template_repo = git.Repo.clone_from(source, tempdir, no_checkout=True)
-    except git.exc.GitCommandError as e:
-        raise errors.GitError("Cannot clone repo from {0}".format(source)) from e
-
-    if ref:
-        try:
-            # fetch ref and set the HEAD
-            template_repo.remotes.origin.fetch()
-            try:
-                template_repo.head.reset(template_repo.commit(ref))
-            except git.exc.BadName:
-                ref = "origin/{0}".format(ref)
-                template_repo.head.reset(template_repo.commit(ref))
-            git_repo = git.Git(str(tempdir))
-        except (git.exc.GitCommandError, git.exc.BadName) as e:
-            raise errors.GitError("Cannot fetch and checkout reference {0}".format(ref)) from e
-    else:
-        template_repo.remotes.origin.fetch()
-        template_repo.head.reset(template_repo.commit())
-        git_repo = git.Git(str(tempdir))
+    template_repository = clone_repository(url=source, path=tempdir, checkout_revision=ref, install_lfs=False)
 
     # checkout the manifest
     try:
-        git_repo.checkout(TEMPLATE_MANIFEST)
-    except git.exc.GitCommandError as e:
-        raise errors.GitError("Cannot checkout manifest file {0}".format(TEMPLATE_MANIFEST)) from e
+        template_repository.checkout(TEMPLATE_MANIFEST)
+    except errors.GitCommandError as e:
+        raise errors.GitError(f"Cannot checkout manifest file {TEMPLATE_MANIFEST}") from e
 
-    return tempdir / TEMPLATE_MANIFEST, template_repo.head.commit.hexsha
+    return template_repository.path / TEMPLATE_MANIFEST, template_repository.head.commit.hexsha
 
 
 def fetch_template(template_source, template_ref):
@@ -422,7 +511,9 @@ def fetch_template(template_source, template_ref):
         if template_ref and template_ref != "master":
             raise errors.ParameterError("Templates included in renku don't support specifying a template_ref")
 
-        template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
+        ref = importlib_resources.files("renku") / "templates"
+        with importlib_resources.as_file(ref) as folder:
+            template_folder = folder
         template_manifest = read_template_manifest(template_folder)
         template_source = "renku"
         template_version = str(__version__)
@@ -464,6 +555,12 @@ def validate_template_manifest(manifest):
                 raise errors.InvalidTemplateError(
                     ('Template "{0}" doesn\'t have a {1} attribute'.format(template["name"], attribute))
                 )
+
+        if "variables" in template:
+            for key, variable in template["variables"].items():
+                if isinstance(variable, str):
+                    # NOTE: Backwards compatibility
+                    template["variables"][key] = {"description": variable}
     return True
 
 
@@ -473,6 +570,7 @@ def read_template_manifest(folder, checkout=False):
     :param folder: path where to find the template manifest file
     :param checkout: checkout the template folder from local repo
     """
+    folder = Path(folder)
     manifest_path = folder / TEMPLATE_MANIFEST
     try:
         manifest = yaml.safe_load(manifest_path.read_text())
@@ -481,7 +579,7 @@ def read_template_manifest(folder, checkout=False):
     validate_template_manifest(manifest)
 
     if checkout:
-        git_repo = git.Git(str(folder))
+        repository = Repository(folder)
         template_folders = [template["folder"] for template in manifest]
         template_icons = [template["icon"] for template in manifest if "icon" in template]
         if len(template_folders) < 1:
@@ -489,15 +587,15 @@ def read_template_manifest(folder, checkout=False):
         for template_folder in template_folders:
             template_path = folder / template_folder
             try:
-                git_repo.checkout(template_folder)
-            except git.exc.GitCommandError as e:
+                repository.checkout(template_folder)
+            except errors.GitCommandError as e:
                 raise errors.InvalidTemplateError('Cannot checkout the folder "{0}"'.format(template_folder)) from e
             validate_template(template_path)
 
         for template_icon in template_icons:
             try:
-                git_repo.checkout(template_icon)
-            except git.exc.GitCommandError as e:
+                repository.checkout(template_icon)
+            except errors.GitCommandError as e:
                 raise errors.InvalidTemplateError('Cannot checkout the icon "{0}"'.format(template_icon)) from e
 
     return manifest
@@ -517,6 +615,7 @@ def create_from_template(
     user=None,
     commit_message=None,
     description=None,
+    keywords=None,
 ):
     """Initialize a new project from a template."""
 
@@ -524,11 +623,21 @@ def create_from_template(
 
     commit_only = [f"{RENKU_HOME}/"] + template_files
 
-    if "name" not in metadata:
+    if data_dir:
+        data_path = client.path / data_dir
+        data_path.mkdir(parents=True, exist_ok=True)
+        keep = data_path / ".gitkeep"
+        keep.touch(exist_ok=True)
+        commit_only.append(keep)
+
+    if "__name__" not in metadata:
         metadata["name"] = name
+        metadata["__name__"] = name
 
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
-        with client.with_metadata(name=name, description=description, custom_metadata=custom_metadata) as project:
+        with client.with_metadata(
+            name=name, description=description, custom_metadata=custom_metadata, keywords=keywords
+        ) as project:
             project.template_source = metadata["__template_source__"]
             project.template_ref = metadata["__template_ref__"]
             project.template_id = metadata["__template_id__"]
@@ -541,9 +650,6 @@ def create_from_template(
 
         if data_dir:
             client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
-            data_path = client.path / data_dir
-            data_path.mkdir(parents=True, exist_ok=True)
-            (data_path / ".gitkeep").touch(exist_ok=True)
 
 
 @inject.autoparams()
@@ -564,6 +670,7 @@ def _create_from_template_local(
     initial_branch=None,
     commit_message=None,
     description=None,
+    keywords=None,
 ):
     """Initialize a new project from a template."""
 
@@ -590,6 +697,7 @@ def _create_from_template_local(
         user=user,
         commit_message=commit_message,
         description=description,
+        keywords=keywords,
     )
 
 

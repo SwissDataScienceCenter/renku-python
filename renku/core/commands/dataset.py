@@ -25,9 +25,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import click
-import git
 import patoolib
-import requests
 
 from renku.core import errors
 from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
@@ -52,12 +50,23 @@ from renku.core.models.dataset import (
     generate_default_name,
     get_dataset_data_dir,
 )
-from renku.core.models.provenance.agent import Person
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
 from renku.core.utils.doi import is_doi
+from renku.core.utils.git import get_git_user
 from renku.core.utils.metadata import construct_creators
 from renku.core.utils.urls import remove_credentials
+
+
+def _search_datasets(name: str) -> List[str]:
+    """Get all the datasets whose name starts with the given string."""
+    datasets_provenance = DatasetsProvenance()
+    return list(filter(lambda x: x.startswith(name), map(lambda x: x.name, datasets_provenance.datasets)))
+
+
+def search_datasets():
+    """Command to get all the datasets whose name starts with the given string."""
+    return Command().command(_search_datasets).require_migration().with_database()
 
 
 def _list_datasets(format=None, columns=None):
@@ -99,7 +108,7 @@ def create_dataset_helper(
     client = client_dispatcher.current_client
 
     if not creators:
-        creators = [Person.from_git(client.repo)]
+        creators = [get_git_user(client.repository)]
     else:
         creators, _ = construct_creators(creators)
 
@@ -118,7 +127,7 @@ def create_dataset_helper(
 
 
 def create_dataset():
-    """Return a command for creating an empty dataset in the current repo."""
+    """Return a command for creating an empty dataset in the current repository."""
     command = Command().command(create_dataset_helper).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
@@ -173,7 +182,7 @@ def _edit_dataset(
         return [], no_email_warnings
 
     datasets_provenance = DatasetsProvenance()
-    datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
+    datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
 
     return updated, no_email_warnings
 
@@ -196,7 +205,7 @@ def show_dataset():
     return Command().command(_show_dataset).with_database().require_migration()
 
 
-@inject.autoparams()
+@inject.autoparams("client_dispatcher", "database_gateway")
 def _add_to_dataset(
     urls,
     name,
@@ -218,6 +227,8 @@ def _add_to_dataset(
     clear_files_before=False,
 ):
     """Add data to a dataset."""
+    from renku.core.utils import requests
+
     client = client_dispatcher.current_client
     if len(urls) == 0:
         raise UsageError("No URL is specified")
@@ -228,9 +239,9 @@ def _add_to_dataset(
         total_size = 0
         for url in urls:
             try:
-                with requests.get(url, stream=True, allow_redirects=True) as r:
-                    total_size += int(r.headers.get("content-length", 0))
-            except requests.exceptions.RequestException:
+                response = requests.head(url, allow_redirects=True)
+                total_size += int(response.headers.get("content-length", 0))
+            except errors.RequestError:
                 pass
     usage = shutil.disk_usage(client.path)
 
@@ -274,7 +285,7 @@ def _add_to_dataset(
             '"renku dataset add {0}" command with "--create" option for '
             "automatic dataset creation.".format(name)
         )
-    except (FileNotFoundError, git.exc.NoSuchPathError) as e:
+    except (FileNotFoundError, errors.GitCommandError) as e:
         raise ParameterError("Could not find paths/URLs: \n{0}".format("\n".join(urls))) from e
 
 
@@ -359,7 +370,7 @@ def _file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, y
         dataset.unlink_file(file.entity.path)
 
     datasets_provenance = DatasetsProvenance()
-    datasets_provenance.add_or_update(dataset, creator=Person.from_client(client))
+    datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
 
     return records
 

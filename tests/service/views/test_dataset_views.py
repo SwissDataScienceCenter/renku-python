@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 from werkzeug.utils import secure_filename
 
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.os import normalize_to_ascii
 from renku.service.config import (
     GIT_ACCESS_DENIED_ERROR_CODE,
     INVALID_HEADERS_ERROR_CODE,
@@ -1120,6 +1120,7 @@ def test_add_existing_file(svc_client_with_repo):
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
+@pytest.mark.vcr
 def test_cached_import_dataset_job(doi, svc_client_cache, project):
     """Test import a dataset."""
     client, headers, cache = svc_client_cache
@@ -1171,6 +1172,7 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
+@pytest.mark.vcr
 def test_remote_import_dataset_job(doi, svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed import of a dataset."""
     response = svc_client.post(
@@ -1537,6 +1539,7 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
 
 
 @pytest.mark.integration
+@pytest.mark.service
 @retry_failed
 def test_protected_branch(svc_protected_repo):
     """Test adding a file to protected branch."""

@@ -34,7 +34,6 @@ execute ``renku help``:
     Options:
       --version                       Print version number.
       --global-config-path            Print global application's config path.
-      --install-completion            Install completion for the current shell.
       --path <path>                   Location of a Renku repository.
                                       [default: (dynamic)]
       --external-storage / -S, --no-external-storage
@@ -59,6 +58,7 @@ Windows:
 
 If in doubt where to look for the configuration file, you can display its path
 by running ``renku --global-config-path``.
+
 """
 import os
 import sys
@@ -66,7 +66,6 @@ import uuid
 from pathlib import Path
 
 import click
-import click_completion
 import yaml
 from click_plugins import with_plugins
 
@@ -79,12 +78,13 @@ from renku.cli.githooks import githooks as githooks_command
 from renku.cli.graph import graph
 from renku.cli.init import init as init_command
 from renku.cli.log import log
-from renku.cli.login import login, logout, token
+from renku.cli.login import credentials, login, logout
 from renku.cli.migrate import check_immutable_template_files, migrate, migrationscheck
 from renku.cli.move import move
 from renku.cli.project import project
 from renku.cli.remove import remove
 from renku.cli.rerun import rerun
+from renku.cli.rollback import rollback
 from renku.cli.run import run
 from renku.cli.save import save
 from renku.cli.service import service
@@ -93,7 +93,7 @@ from renku.cli.storage import storage
 from renku.cli.update import update
 from renku.cli.workflow import workflow
 from renku.core.commands.echo import WARNING
-from renku.core.commands.options import install_completion, option_external_storage_requested
+from renku.core.commands.options import option_external_storage_requested
 from renku.core.commands.version import check_version, print_version
 from renku.core.errors import UsageError
 from renku.core.utils.git import default_path
@@ -115,10 +115,7 @@ def get_entry_points(name: str):
         return all_entry_points.get(name, [])
 
 
-#: Monkeypatch Click application.
-click_completion.init()
-
-WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service"]
+WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service", "credentials"]
 
 
 def _uuid_representer(dumper, data):
@@ -160,14 +157,6 @@ def is_allowed_command(ctx):
     help=print_global_config_path.__doc__,
 )
 @click.option(
-    "--install-completion",
-    is_flag=True,
-    callback=install_completion,
-    expose_value=False,
-    is_eager=True,
-    help=install_completion.__doc__,
-)
-@click.option(
     "--path", show_default=True, metavar="<path>", default=default_path, help="Location of a Renku repository."
 )
 @option_external_storage_requested
@@ -183,11 +172,17 @@ def is_allowed_command(ctx):
 @click.pass_context
 def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
+    from renku.core.management import RENKU_HOME
     from renku.core.management.client import LocalClient
-    from renku.core.management.config import RENKU_HOME
+    from renku.core.management.migrations.utils import OLD_METADATA_PATH
+    from renku.core.management.repository import RepositoryApiMixin
+    from renku.core.metadata.database import Database
 
     renku_path = Path(path) / RENKU_HOME
-    if not renku_path.exists() and not is_allowed_command(ctx):
+    old_metadata = renku_path / OLD_METADATA_PATH
+    new_metadata = renku_path / RepositoryApiMixin.DATABASE_PATH / Database.ROOT_OID
+
+    if not old_metadata.exists() and not new_metadata.exists() and not is_allowed_command(ctx):
         raise UsageError(
             (
                 "`{0}` is not a renku repository.\n"
@@ -227,11 +222,12 @@ cli.add_command(move)
 cli.add_command(project)
 cli.add_command(remove)
 cli.add_command(rerun)
+cli.add_command(rollback)
 cli.add_command(run)
 cli.add_command(save)
 cli.add_command(status)
 cli.add_command(storage)
-cli.add_command(token)
+cli.add_command(credentials)
 cli.add_command(update)
 cli.add_command(workflow)
 cli.add_command(service)

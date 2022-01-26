@@ -19,15 +19,9 @@
 
 import re
 import uuid
-from typing import Optional, Union
 from urllib.parse import quote
 
-from calamus.schema import JsonLDSchema
-from marshmallow import EXCLUDE
-
 from renku.core.metadata.immutable import Slots
-from renku.core.models.calamus import StringList, fields, prov, schema
-from renku.core.models.git import get_user_info
 from renku.version import __version__, version_url
 
 
@@ -52,11 +46,6 @@ class Agent(Slots):
     def __hash__(self):
         return hash((self.id, self.name))
 
-    @classmethod
-    def from_commit(cls, commit) -> Union["Person", "SoftwareAgent"]:
-        """Create an instance from a Git commit."""
-        return SoftwareAgent.from_commit(commit) if commit.author != commit.committer else Person.from_commit(commit)
-
     @property
     def full_identity(self):
         """Return the identity of this Agent."""
@@ -65,11 +54,6 @@ class Agent(Slots):
 
 class SoftwareAgent(Agent):
     """Represent executed software."""
-
-    @classmethod
-    def from_commit(cls, commit):
-        """Create an instance from a Git commit."""
-        return cls(id=commit.committer.email, name=commit.committer.name)
 
 
 # set up the default agent
@@ -116,23 +100,6 @@ class Person(Agent):
         return hash((self.id, self.full_identity))
 
     @classmethod
-    def from_commit(cls, commit):
-        """Create an instance from a Git commit."""
-        return cls(name=commit.author.name, email=commit.author.email)
-
-    @classmethod
-    def from_git(cls, git):
-        """Create an instance from a Git repo."""
-        name, email = get_user_info(git)
-        return cls(email=email, name=name)
-
-    @classmethod
-    def from_client(cls, client) -> Optional["Person"]:
-        """Create an instance from a Renku project repo."""
-        if client.repo:
-            return cls.from_git(client.repo)
-
-    @classmethod
     def from_string(cls, string):
         """Create an instance from a 'Name <email>' string."""
         regex_pattern = r"([^<>\[\]]*)" r"(?:<{1}\s*(\S+@\S+\.\S+){0,1}\s*>{1}){0,1}\s*" r"(?:\[{1}(.*)\]{1}){0,1}"
@@ -149,14 +116,6 @@ class Person(Agent):
     def from_dict(cls, data):
         """Create and instance from a dictionary."""
         return cls(**data)
-
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if not isinstance(data, dict):
-            raise ValueError(data)
-
-        return PersonSchema().load(data)
 
     @staticmethod
     def generate_id(email, full_identity):
@@ -202,34 +161,3 @@ class Person(Agent):
     def full_identity(self):
         """Return name, email, and affiliation."""
         return self.get_full_identity(self.email, self.affiliation, self.name)
-
-
-class PersonSchema(JsonLDSchema):
-    """Person schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [prov.Person, schema.Person]
-        model = Person
-        unknown = EXCLUDE
-
-    affiliation = StringList(schema.affiliation, missing=None)
-    alternate_name = StringList(schema.alternateName, missing=None)
-    email = fields.String(schema.email, missing=None)
-    id = fields.Id()
-    name = StringList(schema.name, missing=None)
-
-
-class SoftwareAgentSchema(JsonLDSchema):
-    """SoftwareAgent schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [prov.SoftwareAgent]
-        model = SoftwareAgent
-        unknown = EXCLUDE
-
-    id = fields.Id()
-    name = StringList(schema.name, missing=None)

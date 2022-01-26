@@ -16,10 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Serializers for dataset list files."""
+
 import re
 from subprocess import PIPE, SubprocessError, run
 
 from renku.core.commands.format.tabulate import tabulate
+from renku.core.commands.schema.dataset import DatasetFileSchema
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
@@ -56,11 +58,11 @@ def _get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
     """Check if files are tracked in git lfs."""
     client = client_dispatcher.current_client
 
-    paths = [r.path for r in records]
-    attrs = client.find_attr(*paths)
+    paths = (r.path for r in records)
+    attrs = client.repository.get_attributes(*paths)
 
     for record in records:
-        if attrs.get(record.path, {}).get("filter") == "lfs":
+        if attrs.get(str(record.path), {}).get("filter") == "lfs":
             record.is_lfs = True
         else:
             record.is_lfs = False
@@ -96,7 +98,9 @@ def _get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
                 size = size.replace(" B", "  B")
             lfs_files_sizes[path] = size
 
-    non_lfs_files_sizes = {o.path: o.size for o in client.repo.tree().traverse() if o.path not in lfs_files_sizes}
+    non_lfs_files_sizes = {
+        o.path: o.size for o in client.repository.head.commit.traverse() if o.path not in lfs_files_sizes
+    }
     non_lfs_files_sizes = {k: naturalsize(v).upper().replace("BYTES", " B") for k, v in non_lfs_files_sizes.items()}
 
     for record in records:
@@ -111,7 +115,7 @@ def jsonld(records, **kwargs):
     """
     from renku.core.models.json import dumps
 
-    data = [record.to_jsonld() for record in records]
+    data = [DatasetFileSchema(flattened=True).dump(record) for record in records]
     return dumps(data, indent=2)
 
 

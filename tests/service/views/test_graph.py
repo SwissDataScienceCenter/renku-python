@@ -24,7 +24,7 @@ import pytest
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-@pytest.mark.parametrize("revision", [None, "HEAD", "HEAD^^", "HEAD^^..HEAD"])
+@pytest.mark.parametrize("revision", [None, "HEAD", "HEAD^", "HEAD^..HEAD"])
 def test_graph_export_job(svc_client_cache, it_remote_repo_url, revision):
     """Test graph export job."""
     svc_client, headers, _ = svc_client_cache
@@ -36,6 +36,6 @@ def test_graph_export_job(svc_client_cache, it_remote_repo_url, revision):
         "migrate_project": True,
     }
 
-    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
+    response = svc_client.get("/1.0/graph.export", data=json.dumps(payload), headers=headers)
     assert response
-    assert {"graph"} == set(response.json["result"].keys())
+    assert {"graph"} == set(response.json.get("result", {}).keys()), response.json

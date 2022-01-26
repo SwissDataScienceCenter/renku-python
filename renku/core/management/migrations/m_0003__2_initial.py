@@ -21,7 +21,7 @@ import shutil
 import urllib
 from pathlib import Path
 
-from renku.core.management.config import RENKU_HOME
+from renku.core.management import RENKU_HOME
 from renku.core.management.migrations.models.v3 import Collection, Dataset, Project, get_client_datasets
 from renku.core.management.migrations.models.v9 import generate_file_id, generate_label
 from renku.core.management.migrations.utils import (
@@ -91,9 +91,9 @@ def _migrate_datasets_pre_v0_3(client):
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
         with client.with_metadata(read_only=True) as meta:
-            for module in client.repo.submodules:
-                if Path(module.url).name == meta.name:
-                    module.remove()
+            for submodule in client.repository.submodules:
+                if Path(submodule.url).name == meta.name:
+                    client.repository.submodules.remove(submodule)
 
         for file_ in dataset.files:
             if not Path(file_.path).exists():
@@ -113,8 +113,8 @@ def _migrate_datasets_pre_v0_3(client):
         project.version = "3"
         project.to_yaml(project_path)
 
-        client.repo.git.add("--all")
-        client.repo.index.commit("renku migrate: committing structural changes")
+        client.repository.add(all=True)
+        client.repository.commit("renku migrate: committing structural changes" + client.transaction_id)
 
 
 def _migrate_broken_dataset_paths(client):
@@ -185,8 +185,8 @@ def _fix_labels_and_ids(client):
         for file_ in dataset.files:
             if not _exists(client=client, path=file_.path):
                 continue
-            _, commit, _ = client.resolve_in_submodules(
-                _find_previous_commit(client, file_.path, revision="HEAD"), file_.path
+            _, commit, _ = client.get_in_submodules(
+                _get_previous_commit(client, file_.path, revision="HEAD"), file_.path
             )
 
             if not _is_file_id_valid(file_._id, file_.path, commit.hexsha):
@@ -238,7 +238,9 @@ def _exists(client, path):
     dmc = getattr(client, "dataset_migration_context", None)
     if dmc:
         return dmc.exists(path)
-    return Path(path).exists()
+
+    path = Path(path)
+    return path.exists() or (path.is_symlink() and os.path.lexists(path))
 
 
 def _is_dir(client, path):
@@ -248,8 +250,8 @@ def _is_dir(client, path):
     return Path(path).is_dir()
 
 
-def _find_previous_commit(client, path, revision):
+def _get_previous_commit(client, path, revision):
     dmc = getattr(client, "dataset_migration_context", None)
     if dmc:
-        return dmc.find_previous_commit(path)
-    return client.find_previous_commit(path, revision=revision)
+        return dmc.get_previous_commit(path)
+    return client.repository.get_previous_commit(path, revision=revision)

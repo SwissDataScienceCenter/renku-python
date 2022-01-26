@@ -49,13 +49,13 @@ def get_activities_until_paths(
 
     if revision:
         client = client_dispatcher.current_client
-        commit = client.repo.commit(revision)
+        commit = client.repository.get_commit(revision)
 
     for path in paths:
         checksum = None
         if commit:
             try:
-                blob = commit.tree / path
+                blob = commit.tree[path]
             except KeyError:
                 raise errors.GitError(f"Couldn't find file {path} at revision {revision}")
             checksum = blob.hexsha
@@ -155,17 +155,21 @@ def create_activity_graph(
 
     def create_order_among_activities(activities: Set[Activity], path):
         for a, b in itertools.combinations(activities, 2):
-            if networkx.has_path(graph, a, b) or networkx.has_path(graph, b, a):
+            if (networkx.has_path(graph, a, b) and path in overridden_activities[a]) or (
+                networkx.has_path(graph, b, a) and path in overridden_activities[b]
+            ):
                 continue
 
             # NOTE: More recent activity should be executed after the other one
             # NOTE: This won't introduce a cycle in the graph because there is no other path between the two nodes
             comparison = a.compare_to(b)
             if comparison < 0:
-                graph.add_edge(a, b)
+                if not networkx.has_path(graph, a, b):
+                    graph.add_edge(a, b)
                 overridden_activities[a].add(path)
             elif comparison > 0:
-                graph.add_edge(b, a)
+                if not networkx.has_path(graph, b, a):
+                    graph.add_edge(b, a)
                 overridden_activities[b].add(path)
             else:
                 raise ValueError(f"Cannot create an order between activities {a.id} and {b.id}")

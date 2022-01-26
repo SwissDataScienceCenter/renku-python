@@ -23,7 +23,7 @@ from marshmallow import Schema, ValidationError, fields, post_load, pre_load, va
 from yagup import GitURL
 from yagup.exceptions import InvalidURL
 
-from renku.core.utils.scm import normalize_to_ascii
+from renku.core.utils.os import normalize_to_ascii
 from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.cache import ProjectCloneContext, RepositoryCloneRequest
 from renku.service.serializers.rpc import JsonRPCResponse
@@ -61,6 +61,7 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     project_repository = fields.String(required=True)
     project_slug = fields.String(required=True)
     project_description = fields.String(missing=None)
+    project_keywords = fields.List(fields.String(), missing=None)
     project_custom_metadata = fields.Dict(missing=None)
 
     new_project_url = fields.String(required=True)

@@ -178,11 +178,11 @@ def read_logs(log_file, follow=True, output_all=False):
 @click.pass_context
 def service(ctx, env):
     """Manage service components."""
-    try:
-        import redis  # noqa: F401
-        import rq  # noqa: F401
-        from dotenv import load_dotenv
+    import redis  # noqa: F401
+    import rq  # noqa: F401
+    from dotenv import load_dotenv
 
+    try:
         from renku.service.cache.base import BaseCache
 
         BaseCache.cache.ping()

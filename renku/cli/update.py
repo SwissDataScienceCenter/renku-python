@@ -17,8 +17,8 @@
 # limitations under the License.
 r"""Update outdated files created by the "run" command.
 
-.. image:: _static/asciicasts/update.delay.gif
-   :width: 600
+.. image:: ../_static/asciicasts/update.delay.gif
+   :width: 850
    :alt: Update outdate files
 
 Recreating outdated files
@@ -76,6 +76,14 @@ In this situation, you can do effectively three things:
 .. note:: If there were uncommitted changes then the command fails.
    Check :program:`git status` to see details.
 
+.. cheatsheet::
+   :group: Running
+   :command: $ renku update [--all] [<path>...]
+   :description: Update outdated output files created by renku run. With
+                 <path>'s: Only recreate these files. With --all: Update
+                 all outdated output files.
+   :extended:
+
 Pre-update checks
 ~~~~~~~~~~~~~~~~~
 
@@ -120,8 +128,10 @@ The following commands will produce the same result.
 """
 
 import click
+from lazy_object_proxy import Proxy
 
 from renku.cli.utils.callback import ClickCallback
+from renku.cli.utils.plugins import available_workflow_providers
 from renku.core import errors
 
 
@@ -129,7 +139,19 @@ from renku.core import errors
 @click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all outdated files.")
 @click.option("--dry-run", "-n", is_flag=True, default=False, help="Show a preview of plans that will be executed.")
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
-def update(update_all, dry_run, paths):
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    default="cwltool",
+    show_default=True,
+    type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
+    help="The workflow engine to use.",
+)
+@click.option(
+    "config", "-c", "--config", metavar="<config file>", help="YAML file containing configuration for the provider."
+)
+def update(update_all, dry_run, paths, provider, config):
     """Update existing files by rerunning their outdated workflow."""
     from renku.core.commands.format.activity import tabulate_activities
     from renku.core.commands.update import update_command
@@ -141,7 +163,7 @@ def update(update_all, dry_run, paths):
             update_command()
             .with_communicator(communicator)
             .build()
-            .execute(update_all=update_all, dry_run=dry_run, paths=paths)
+            .execute(update_all=update_all, dry_run=dry_run, paths=paths, provider=provider, config=config)
         )
     except errors.NothingToExecuteError:
         exit(1)

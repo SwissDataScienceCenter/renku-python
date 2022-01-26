@@ -22,6 +22,7 @@ from pathlib import Path
 
 from renku.core.commands.dataset import create_dataset
 from renku.core.management.client import LocalClient
+from renku.core.metadata.repository import Repository
 
 
 def test_latest_version(project, client_database_injection_manager):
@@ -38,18 +39,16 @@ def test_latest_version(project, client_database_injection_manager):
 
 def test_latest_version_user_commits(project, client_database_injection_manager):
     """Test retrieval of `SoftwareAgent` with latest non-renku command."""
-    from git import Repo
-
     from renku import __version__
 
     create_dataset().build().execute("ds1", title="", description="", creators=[])
 
-    myfile = Path("myfile")
-    myfile.write_text("123")
+    file = Path("my-file")
+    file.write_text("123")
 
-    repo = Repo(project)
-    repo.index.add([str(myfile)])
-    repo.index.commit("added myfile")
+    repository = Repository(project)
+    repository.add(file)
+    repository.commit("added my-file")
 
     client = LocalClient(project)
     with client_database_injection_manager(client):
@@ -75,14 +74,14 @@ def test_import_from_template(local_client):
         with fake_template_file.open("w") as dest:
             dest.writelines(
                 [
-                    "name: {{ name }}",
+                    "name: {{ __name__ }}",
                     "description: {{ description }}",
                     "created: {{ date_created }}",
                     "updated: {{ date_updated }}",
                 ]
             )
             metadata = {
-                "name": "name",
+                "__name__": "name",
                 "description": "description",
                 "date_created": "now",
                 "date_updated": "now",
