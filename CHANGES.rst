@@ -44,12 +44,6 @@ Bug Fixes
 -  **core:** move NodeJS requirement check to cwltool plugin
    (`#2586 <https://github.com/SwissDataScienceCenter/renku-python/issues/2586>`__)
    (`1d79ce2 <https://github.com/SwissDataScienceCenter/renku-python/commit/1d79ce27d7661e59e2ddc33b90e6003b16a4e090>`__)
--  **core:** reintroduce shell completion command
-   (`#2562 <https://github.com/SwissDataScienceCenter/renku-python/issues/2562>`__)
-   (`6b3ee60 <https://github.com/SwissDataScienceCenter/renku-python/commit/6b3ee604db4e23bd8b51a323ec0af93fda0d23ff>`__)
--  **service:** disable migration check optimization
-   (`#2541 <https://github.com/SwissDataScienceCenter/renku-python/issues/2541>`__)
-   (`f2f573f <https://github.com/SwissDataScienceCenter/renku-python/commit/f2f573f299b971c1914b711a3d39fc97a54c7987>`__)
 -  **service:** fix cache.migrate not locking the project
    (`#2573 <https://github.com/SwissDataScienceCenter/renku-python/issues/2573>`__)
    (`ed2bcd8 <https://github.com/SwissDataScienceCenter/renku-python/commit/ed2bcd8551f500e3a4a422a6906d0813317b1c77>`__)
@@ -75,6 +69,9 @@ Features
 -  **core:** support forward compatibility of datasets
    (`#2554 <https://github.com/SwissDataScienceCenter/renku-python/issues/2554>`__)
    (`c6a7013 <https://github.com/SwissDataScienceCenter/renku-python/commit/c6a7013e02b639bf1894d6b96e53b05a0058cb9e>`__)
+-  **core:** reintroduce shell completion command
+   (`#2562 <https://github.com/SwissDataScienceCenter/renku-python/issues/2562>`__)
+   (`6b3ee60 <https://github.com/SwissDataScienceCenter/renku-python/commit/6b3ee604db4e23bd8b51a323ec0af93fda0d23ff>`__)
 
 ` <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.1...v1.0.2>`__ (2022-01-18)
 --------------------------------------------------------------------------------------------------
