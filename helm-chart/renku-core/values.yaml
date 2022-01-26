@@ -14,8 +14,8 @@ global:
     image:
       repository: renku/certificates
       tag: '0.0.1'
-    customCAs:
-      - secret:
+    customCAs: []
+      # - secret:
 
 # base path - this is the reverse proxy base path
 apiBasePath: /api
