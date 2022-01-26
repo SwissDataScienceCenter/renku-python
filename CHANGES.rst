@@ -18,6 +18,64 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.2...v1.0.3>`__ (2022-01-26)
+--------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Execution graph linking of plans
+   `#2600 <https://github.com/SwissDataScienceCenter/renku-python/issues/2600>`__
+   (`0528d7c <https://github.com/SwissDataScienceCenter/renku-python/commit/0528d7c3a7285ce931d50661d549ae5c159d2e0f>`__)
+-  **core:** fix copying keywords of a plan
+   (`818093f <https://github.com/SwissDataScienceCenter/renku-python/commit/818093fda0a9528063ac34fcb5a87b8ce91c233c>`__)
+-  **core:** fix cwl float type and derived from
+   (`#2570 <https://github.com/SwissDataScienceCenter/renku-python/issues/2570>`__)
+   (`19454ba <https://github.com/SwissDataScienceCenter/renku-python/commit/19454ba89f2eea15cc0051f48a0e60cf373d742d>`__)
+-  **core:** fix SHACL for Plan and CompositePlan
+   (`#2598 <https://github.com/SwissDataScienceCenter/renku-python/issues/2598>`__)
+   (`21b022e <https://github.com/SwissDataScienceCenter/renku-python/commit/21b022e6ebfa0991abb3737aaec2d1f907236944>`__)
+-  **core:** fix Zenodo dataset import if ``sameAs`` is set
+   (`#2572 <https://github.com/SwissDataScienceCenter/renku-python/issues/2572>`__)
+   (`f704916 <https://github.com/SwissDataScienceCenter/renku-python/commit/f7049165b53c69776a5a0a9d2c5ef0fd7b233b62>`__)
+-  **core:** make activity ids deterministic in migration
+   (`#2581 <https://github.com/SwissDataScienceCenter/renku-python/issues/2581>`__)
+   (`7ed6102 <https://github.com/SwissDataScienceCenter/renku-python/commit/7ed6102496abb03329f6b19521232215e31a834a>`__)
+-  **core:** move NodeJS requirement check to cwltool plugin
+   (`#2586 <https://github.com/SwissDataScienceCenter/renku-python/issues/2586>`__)
+   (`1d79ce2 <https://github.com/SwissDataScienceCenter/renku-python/commit/1d79ce27d7661e59e2ddc33b90e6003b16a4e090>`__)
+-  **core:** reintroduce shell completion command
+   (`#2562 <https://github.com/SwissDataScienceCenter/renku-python/issues/2562>`__)
+   (`6b3ee60 <https://github.com/SwissDataScienceCenter/renku-python/commit/6b3ee604db4e23bd8b51a323ec0af93fda0d23ff>`__)
+-  **service:** disable migration check optimization
+   (`#2541 <https://github.com/SwissDataScienceCenter/renku-python/issues/2541>`__)
+   (`f2f573f <https://github.com/SwissDataScienceCenter/renku-python/commit/f2f573f299b971c1914b711a3d39fc97a54c7987>`__)
+-  **service:** fix cache.migrate not locking the project
+   (`#2573 <https://github.com/SwissDataScienceCenter/renku-python/issues/2573>`__)
+   (`ed2bcd8 <https://github.com/SwissDataScienceCenter/renku-python/commit/ed2bcd8551f500e3a4a422a6906d0813317b1c77>`__)
+-  **service:** use separate queues for multi core service deployment
+   (`#2602 <https://github.com/SwissDataScienceCenter/renku-python/issues/2602>`__)
+   (`0f3fefb <https://github.com/SwissDataScienceCenter/renku-python/commit/0f3fefb97cadae79a26e4a33ef3aea30e870e2fe>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** add explicit parameters to renku run
+   (`#2583 <https://github.com/SwissDataScienceCenter/renku-python/issues/2583>`__)
+   (`5118774 <https://github.com/SwissDataScienceCenter/renku-python/commit/511877464266a7c6053bcf78b49560c36135f412>`__)
+-  **core:** extended template variable functionality
+   (`#2120 <https://github.com/SwissDataScienceCenter/renku-python/issues/2120>`__)
+   (`0e13fc1 <https://github.com/SwissDataScienceCenter/renku-python/commit/0e13fc1b4db8b0fd323cc3d3fc0c865ed280fccc>`__)
+-  **core:** ignore quotation mark in git user/email config
+   (`#2537 <https://github.com/SwissDataScienceCenter/renku-python/issues/2537>`__)
+   (`e70481c <https://github.com/SwissDataScienceCenter/renku-python/commit/e70481cd386ceadd9e43e06d373c32e8f6c8669d>`__)
+-  **core:** pass parameters as environment vars to scripts (and renku.api)
+   (`#2596 <https://github.com/SwissDataScienceCenter/renku-python/issues/2596>`__)
+   (`c4fd71c <https://github.com/SwissDataScienceCenter/renku-python/commit/c4fd71c6c3df0b755d88c88c40f1b81792e91b46>`__)
+-  **core:** support forward compatibility of datasets
+   (`#2554 <https://github.com/SwissDataScienceCenter/renku-python/issues/2554>`__)
+   (`c6a7013 <https://github.com/SwissDataScienceCenter/renku-python/commit/c6a7013e02b639bf1894d6b96e53b05a0058cb9e>`__)
+
 ` <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.1...v1.0.2>`__ (2022-01-18)
 --------------------------------------------------------------------------------------------------
 
