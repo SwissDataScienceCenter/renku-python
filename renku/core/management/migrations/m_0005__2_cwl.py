@@ -26,8 +26,8 @@ from functools import cmp_to_key
 from hashlib import sha1
 from pathlib import Path
 
-from cwl_utils.parser import CommandLineTool, load_document_by_uri
-from cwl_utils.parser.cwl_v1_2 import InitialWorkDirRequirement
+from cwl_utils.parser import load_document_by_uri
+from cwl_utils.parser.cwl_v1_2 import CommandLineTool, InitialWorkDirRequirement
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
