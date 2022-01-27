@@ -527,8 +527,8 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory, load_d
 @pytest.mark.parametrize(
     "params,message",
     [
-        (["-s", "file", "https://renkulab.io/"], 'Cannot use "--source" with URLs or local files.'),
-        (["-s", "file", "/some/local/path"], 'Cannot use "--source" with URLs or local files.'),
+        (["-s", "file", "https://renkulab.io/"], "Cannot use '-s/--src/--source' with URLs or local files."),
+        (["-s", "file", "/some/local/path"], "Cannot use '-s/--src/--source' with URLs or local files."),
     ],
 )
 def test_usage_error_in_add_from_url(runner, client, params, message):
@@ -552,7 +552,7 @@ def test_add_data_directory(runner, client, directory_tree):
 
     result = runner.invoke(cli, ["dataset", "add", "new-dataset", "data/new-dataset"], catch_exceptions=False)
     assert 2 == result.exit_code
-    assert "Cannot add dataset's data directory recursively" in result.output
+    assert "Cannot recursively add path containing dataset's data directory" in result.output
 
 
 def test_dataset_add_with_copy(tmpdir, runner, project, client, load_dataset_with_injection):
@@ -1125,7 +1125,7 @@ def test_dataset_tag(tmpdir, runner, client, subdirectory, get_datasets_provenan
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(
-        cli, ["dataset", "tag", "my-dataset", "A", "-d", "short descriptiön"], catch_exceptions=False
+        cli, ["dataset", "tag", "my-dataset", "A", "-d", "short description"], catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 

@@ -32,7 +32,13 @@ from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Url, get_dataset_data_dir
 from renku.core.utils.contexts import chdir
 from renku.core.utils.git import get_git_user
-from tests.utils import assert_dataset_is_mutated, format_result_exception, retry_failed, with_dataset
+from tests.utils import (
+    assert_dataset_is_mutated,
+    format_result_exception,
+    retry_failed,
+    with_dataset,
+    write_and_commit_file,
+)
 
 
 @pytest.mark.integration
@@ -884,29 +890,48 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
         (["-s", "docker"], "data/remote/docker/r/Dockerfile"),
         (["-s", "docker/r/Dockerfile"], "data/remote/Dockerfile"),
         # add data to a non-existing destination
-        (["-s", "docker", "-d", "new"], "data/remote/new/docker/r/Dockerfile"),
-        (["-s", "docker/r", "-d", "new"], "data/remote/new/r/Dockerfile"),
-        (["-s", "docker/r/Dockerfile", "-d", "new"], "data/remote/new/Dockerfile"),
-        # add data to an existing destination
+        (["-s", "docker", "-d", "new"], "data/remote/new/r/Dockerfile"),
+        (["-s", "docker/r", "-d", "new"], "data/remote/new/Dockerfile"),
+        (["-s", "docker/r/Dockerfile", "-d", "path/with/sub-dirs/new"], "data/remote/path/with/sub-dirs/new"),
+    ],
+)
+@pytest.mark.vcr
+def test_add_from_git_to_new_path(runner, client, params, path, load_dataset_with_injection):
+    """Test add data from a git repository with no destination or to a non-existing destination."""
+    remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+    assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
+
+    result = runner.invoke(cli, ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params)
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert Path(path).exists()
+
+    file = load_dataset_with_injection("remote", client).find_file(path)
+    assert file.source == remote
+    assert file.based_on.url == remote
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "params,path",
+    [
         (["-s", "docker", "-d", "existing"], "data/remote/existing/docker/r/Dockerfile"),
         (["-s", "docker/r", "-d", "existing"], "data/remote/existing/r/Dockerfile"),
         (["-s", "docker/r/Dockerfile", "-d", "existing"], "data/remote/existing/Dockerfile"),
     ],
 )
-@retry_failed
 @pytest.mark.vcr
-def test_add_data_from_git(runner, client, params, path, load_dataset_with_injection):
-    """Test add data to datasets from a git repository."""
+def test_add_from_git_to_existing_path(runner, client, params, path, load_dataset_with_injection):
+    """Test add data to datasets from a git repository to an existing path."""
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
-    command = ["dataset", "add"]
-    result = runner.invoke(
-        cli,
-        command + ["remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", "-d", "existing/LICENSE", remote],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
 
-    result = runner.invoke(cli, command + ["remote", "--ref", "0.3.0", remote] + params, catch_exceptions=False)
+    write_and_commit_file(client.repository, client.path / "data" / "remote" / "existing" / ".gitkeep", "")
+
+    result = runner.invoke(cli, ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params)
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert Path(path).exists()
@@ -923,17 +948,41 @@ def test_add_data_from_git(runner, client, params, path, load_dataset_with_injec
 @pytest.mark.parametrize(
     "params,files",
     [
+        (["-s", "docker*"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
+        (["-s", "docker/*"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
+        (["-s", "docker/**"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
+        (["-s", "docker/*/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
+        (["-s", "docker/*/fix*sh"], {"fix-permissions.sh"}),  # Multiple files copied to the same destination
+        (["-s", "**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
+    ],
+)
+@pytest.mark.vcr
+def test_add_from_git_with_wildcards_to_new_path(runner, client, params, files, load_dataset_with_injection):
+    """Test add data from a git repository using wildcards to a non-existing destination."""
+    remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+
+    result = runner.invoke(
+        cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", "-d", "new", remote] + params
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert files == set(os.listdir("data/remote/new"))
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "params,files",
+    [
         (["-s", "docker*"], {"docker"}),
         (["-s", "docker/*"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
         (["-s", "docker/**"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
         (["-s", "docker/*/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
+        (["-s", "docker/*/fix*sh"], {"fix-permissions.sh"}),
         (["-s", "**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
     ],
 )
-@retry_failed
 @pytest.mark.vcr
-def test_add_data_from_git_with_wildcards(runner, client, params, files):
-    """Test add data using wildcards to datasets from a git repository."""
+def test_add_from_git_with_wildcards_to_existing_path(runner, client, params, files, load_dataset_with_injection):
+    """Test add data from a git repository using wildcards with no destination or to a non-existing destination."""
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     result = runner.invoke(
@@ -941,12 +990,6 @@ def test_add_data_from_git_with_wildcards(runner, client, params, files):
     )
     assert 0 == result.exit_code, format_result_exception(result)
     assert files == set(os.listdir("data/remote"))
-
-    result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--ref", "0.5.2", "-d", "new", remote] + params, catch_exceptions=False
-    )
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert files == set(os.listdir("data/remote/new"))
 
 
 @pytest.mark.integration
@@ -1309,7 +1352,7 @@ def test_import_from_renku_project(tmpdir, client, runner, load_dataset_with_inj
             "-s",
             "data/testing-create-04/ie_data_with_TRCAPE.xls",
             "-d",
-            "new-directory",
+            "new-directory/ie_data_with_TRCAPE.xls",
             "--ref",
             "97f907e",
             url,
