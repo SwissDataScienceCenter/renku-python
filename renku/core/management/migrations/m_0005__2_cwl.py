@@ -25,9 +25,10 @@ from collections import defaultdict
 from functools import cmp_to_key
 from hashlib import sha1
 from pathlib import Path
+from urllib.parse import urlparse
 
 from cwl_utils.parser import load_document_by_uri
-from cwl_utils.parser.cwl_v1_2 import CommandLineTool, InitialWorkDirRequirement
+from cwl_utils.parser.cwl_v1_0 import CommandLineTool, InitialWorkDirRequirement
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
@@ -149,7 +150,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
         if name.endswith(")"):
             name = name[:-1]
 
-        matched_input = next(i for i in inputs if i.id == name)
+        matched_input = next(i for i in inputs if i.id.endswith(name))
         inputs.remove(matched_input)
 
         path = client.renku_path / OLD_WORKFLOW_PATH / Path(matched_input.default["path"])
@@ -174,7 +175,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             )
         )
 
-        matched_output = next(o for o in outputs if o.id == "output_stdout")
+        matched_output = next(o for o in outputs if o.id.endswith("output_stdout"))
 
         if matched_output:
             outputs.remove(matched_output)
@@ -189,7 +190,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             )
         )
 
-        matched_output = next(o for o in outputs if o.id == "output_stderr")
+        matched_output = next(o for o in outputs if o.id.endswith("output_stderr"))
 
         if matched_output:
             outputs.remove(matched_output)
@@ -215,7 +216,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             if name.endswith(")"):
                 name = name[:-1]
 
-            matched_input = next(i for i in all_inputs if i.id == name)
+            matched_input = next(i for i in all_inputs if i.id.endswith(name))
             try:
                 inputs.remove(matched_input)
             except ValueError:
@@ -290,8 +291,8 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             )
 
     for a in cmd_line_tool.arguments:
-        id_ = CommandArgument.generate_id(base_id, a["position"])
-        run.arguments.append(CommandArgument(id=id_, position=a["position"], value=a["valueFrom"]))
+        id_ = CommandArgument.generate_id(base_id, a.position)
+        run.arguments.append(CommandArgument(id=id_, position=a.position, value=a.valueFrom))
 
     if not persist:
         return run, None
@@ -327,15 +328,15 @@ def _migrate_composite_step(client, workflow, path, commit=None):
     name = "{0}_migrated.yaml".format(uuid.uuid4().hex)
 
     wf_path = client.renku_path / OLD_WORKFLOW_PATH
-
     run.path = (wf_path / name).relative_to(client.path)
 
     for step in workflow.steps:
         if isinstance(step.run, dict):
             continue
         else:
-            path = wf_path / step.run
-            subrun = parse_cwl_cached(str(path))
+            uri = urlparse(step.run)
+            path = uri.path
+            subrun = parse_cwl_cached(path)
 
         subprocess, _ = _migrate_single_step(client, subrun, path, parent_commit=commit)
         run.add_subprocess(subprocess)
