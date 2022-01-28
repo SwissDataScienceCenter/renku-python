@@ -18,8 +18,17 @@
 Changes
 =======
 
-` <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.2...v1.0.3>`__ (2022-01-26)
---------------------------------------------------------------------------------------------------
+`1.0.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.3...v1.0.4>`__ (2022-01-28)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **service:** Unlimited uploaded file size for multiple core-service deployment
+   (`#2609 <https://github.com/SwissDataScienceCenter/renku-python/pull/2609>`__)
+
+`1.0.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.2...v1.0.3>`__ (2022-01-26)
+-------------------------------------------------------------------------------------------------------
 
 Bug Fixes
 ~~~~~~~~~
@@ -73,8 +82,8 @@ Features
    (`#2562 <https://github.com/SwissDataScienceCenter/renku-python/issues/2562>`__)
    (`6b3ee60 <https://github.com/SwissDataScienceCenter/renku-python/commit/6b3ee604db4e23bd8b51a323ec0af93fda0d23ff>`__)
 
-` <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.1...v1.0.2>`__ (2022-01-18)
---------------------------------------------------------------------------------------------------
+`1.0.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.1...v1.0.2>`__ (2022-01-18)
+-------------------------------------------------------------------------------------------------------
 
 Bug Fixes
 ~~~~~~~~~
@@ -127,8 +136,8 @@ Features
    (`#2531 <https://github.com/SwissDataScienceCenter/renku-python/issues/2531>`__)
    (`082e897 <https://github.com/SwissDataScienceCenter/renku-python/commit/082e897feac105e772f5672349f4f3535425d4ce>`__)
 
-` <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.0...v1.0.1>`__ (2021-12-07)
---------------------------------------------------------------------------------------------------
+`1.0.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.0...v1.0.1>`__ (2021-12-07)
+-------------------------------------------------------------------------------------------------------
 
 Bug Fixes
 ~~~~~~~~~
@@ -144,8 +153,8 @@ Bug Fixes
    (`4946f89 <https://github.com/SwissDataScienceCenter/renku-python/commit/4946f89c1e1110a94aa5a17f10ebe9220e3136ce>`__)
 
 
-` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.2...v1.0.0>`__ (2021-12-02)
----------------------------------------------------------------------------------------------------
+`1.0.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.2...v1.0.0>`__ (2021-12-02)
+--------------------------------------------------------------------------------------------------------
 
 Overview
 ~~~~~~~~
