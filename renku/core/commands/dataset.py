@@ -567,7 +567,7 @@ def _import_dataset(
         sources = []
 
         if record.datadir_exists:
-            sources = [f"{dataset.data_dir}/**"]
+            sources = [f"{dataset.data_dir}/*"]
 
         for file in dataset.files:
             try:

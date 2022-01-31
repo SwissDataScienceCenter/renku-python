@@ -19,6 +19,7 @@
 
 import concurrent.futures
 import fnmatch
+import glob
 import imghdr
 import os
 import shutil
@@ -31,7 +32,6 @@ from typing import Dict, List, Optional, Set
 from urllib.request import urlretrieve
 
 import attr
-from wcmatch import glob
 
 from renku.core import errors
 from renku.core.management import RENKU_HOME
@@ -330,14 +330,10 @@ class DatasetsApiMixin(object):
         destination = self._resolve_path(dataset_datadir, destination)
         destination = dataset_datadir / destination
 
-        # # TODO: Remove this
-        # if destination.exists() and not destination.is_dir():
-        #     raise errors.ParameterError(f'Destination is not a directory: "{destination}"')
-
         self.check_external_storage()
 
         files = []
-        if all_at_once:  # Importing a dataset
+        if all_at_once:  # Importing a non-git dataset
             files = self._add_from_urls(
                 urls=urls, destination_names=destination_names, destination=destination, extract=extract
             )
@@ -425,7 +421,7 @@ class DatasetsApiMixin(object):
 
             src, dst, action = operation
 
-            # Remove existing file if any
+            # Remove existing file if any; required as a safety-net to avoid corrupting external files
             self.remove_file(dst)
             dst.parent.mkdir(parents=True, exist_ok=True)
 
@@ -504,9 +500,6 @@ class DatasetsApiMixin(object):
                 raise errors.ParameterError(f"Cannot find source file: {path}")
             if source_root.is_dir() and destination_exists and not destination_is_dir:
                 raise errors.ParameterError(f"Cannot copy directory '{path}' to non-directory '{destination}'")
-            # TODO: Is this needed? Perhaps we should delete the symlink before copy
-            if destination.is_symlink():  # NOTE: To protect external files from being accidentally overwritten
-                raise errors.ParameterError(f"Cannot overwrite symlink '{destination}': Remove it manually")
 
             name = source_root.name if destination_exists and destination_is_dir else ""
             return destination / name
@@ -627,7 +620,6 @@ class DatasetsApiMixin(object):
 
         destination_exists = destination.exists()
         destination_is_dir = destination.is_dir()
-        # TODO what if sources is empty
 
         def check_sources_are_within_remote_repo():
             for source in sources:
@@ -643,14 +635,11 @@ class DatasetsApiMixin(object):
             for source in sources:
                 # NOTE: Normalized source to resolve .. references (if any). This preserves wildcards.
                 normalized_source = os.path.normpath(source)
-                subpaths = set(repository.path.glob(normalized_source))
+                absolute_source = os.path.join(repository.path, normalized_source)
+                # NOTE: Path.glob("root/**") does not return correct results (e.g. it include ``root`` in the result)
+                subpaths = set(Path(p) for p in glob.glob(absolute_source))
                 if len(subpaths) == 0:
                     raise errors.ParameterError("No such file or directory", param_hint=str(source))
-
-                # NOTE: Path.glob("root/**") returns ``root`` as well which is wrong. Check subpaths using
-                # ``glob.globmatc`` to return the correct result.
-                absolute_source = str(repository.path / normalized_source)
-                subpaths = {s for s in subpaths if glob.globmatch(s, absolute_source, flags=glob.GLOBSTAR)}
                 paths |= subpaths
 
             return paths
@@ -661,9 +650,6 @@ class DatasetsApiMixin(object):
 
             if multiple_sources and destination_exists and not destination_is_dir:
                 raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
-            # TODO: Is this needed? Perhaps we should delete the symlink before copy
-            if destination.is_symlink():  # NOTE: To protect external files from being accidentally overwritten
-                raise errors.ParameterError(f"Cannot overwrite symlink '{destination}': Remove it manually")
 
             name = path.name if has_multiple_paths or (destination_exists and destination_is_dir) else ""
             return destination / name

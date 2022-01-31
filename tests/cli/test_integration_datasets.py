@@ -953,7 +953,7 @@ def test_add_from_git_to_existing_path(runner, client, params, path, load_datase
         (["-s", "docker/**"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
         (["-s", "docker/*/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
         (["-s", "docker/*/fix*sh"], {"fix-permissions.sh"}),  # Multiple files copied to the same destination
-        (["-s", "**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
+        (["-s", "*/**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
     ],
 )
 @pytest.mark.vcr
@@ -977,7 +977,7 @@ def test_add_from_git_with_wildcards_to_new_path(runner, client, params, files, 
         (["-s", "docker/**"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
         (["-s", "docker/*/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
         (["-s", "docker/*/fix*sh"], {"fix-permissions.sh"}),
-        (["-s", "**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
+        (["-s", "*/**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
     ],
 )
 @pytest.mark.vcr

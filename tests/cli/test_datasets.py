@@ -473,6 +473,28 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client, load_dataset_
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+def test_add_with_relative_path(runner, client, directory_tree, subdirectory):
+    """Test adding data with relative path."""
+    relative_path = os.path.relpath(directory_tree / "file1", os.getcwd())
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", relative_path])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    path = client.path / client.data_dir / "local" / "file1"
+    assert path.exists()
+    assert "file1 content" == path.read_text()
+
+
+def test_add_an_empty_directory(runner, client, directory_tree):
+    """Test adding an empty directory to a dataset."""
+    path = directory_tree / "empty-directory"
+    path.mkdir()
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", str(path)])
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "Error: There is nothing to commit." in result.output
+
+
 def test_repository_file_to_dataset(runner, client, subdirectory, load_dataset_with_injection):
     """Test adding a file from the repository into a dataset."""
     # create a dataset
@@ -873,7 +895,7 @@ def test_datasets_ls_files_correct_size(runner, client, directory_tree, large_fi
     line = next(line for line in result.output.split("\n") if "file1" in line)
     size = int(line.split()[0])
 
-    assert 3 == size
+    assert 13 == size
 
 
 @pytest.mark.skip(reason="FIXME: We don't have commit shas for files. What should be listed here?")
@@ -1568,6 +1590,26 @@ def test_overwrite_external_file(runner, client, directory_tree, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
     pointer_files_exist = len(list(client.renku_pointers_path.rglob("*"))) > 0
     assert pointer_files_exist
+
+
+def test_overwrite_external_file_keeps_original_content(runner, client, directory_tree):
+    """Check overwriting external files doesn't corrupt original content."""
+    origin = directory_tree / "file1"
+
+    assert 0 == runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(origin)]).exit_code
+
+    path = client.path / DATA_DIR / "my-data" / "file1"
+    assert "file1 content" == path.read_text()
+    assert path.is_symlink()
+
+    new_data = directory_tree / "dir1" / "file2"
+    # Can add another file to the same destination
+    result = runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", "-d", "file1", str(new_data)])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert "file2 content" == path.read_text()
+    assert not path.is_symlink()
+    assert "file1 content" == origin.read_text()
 
 
 def test_remove_external_file(runner, client, directory_tree, subdirectory):
