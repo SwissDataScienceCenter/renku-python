@@ -16,7 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku common fixtures."""
+
 import shutil
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -94,7 +96,8 @@ def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_
     def _template_update(immutable_files=None, docker=False, after_template_version="0.0.2"):
         """Fetches an updatable template with various options."""
         from renku.core.commands.init import create_from_template
-        from renku.core.utils.templates import read_template_manifest
+        from renku.core.management.template.template import EmbeddedTemplates
+        from renku.core.models.template import TEMPLATE_MANIFEST, TemplatesManifest
 
         try:
             import importlib_resources
@@ -109,7 +112,7 @@ def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_
         with importlib_resources.as_file(ref) as template_local:
             shutil.copytree(str(template_local), str(temppath))
 
-        manifest = read_template_manifest(temppath)
+        manifest = TemplatesManifest.from_path(temppath / TEMPLATE_MANIFEST).get_raw_content()
         template_path = temppath / manifest[0]["folder"]
 
         if docker:
@@ -147,8 +150,9 @@ def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_
             template_files.append(expected_file)
             assert expected_file.exists()
 
-        fetch_template = mocker.patch("renku.core.utils.templates.fetch_template")
-        fetch_template.return_value = (manifest, temppath, "renku", after_template_version)
+        fetch_template = mocker.patch("renku.core.management.template.template.fetch_templates_source")
+        source = EmbeddedTemplates(path=temppath, source="renku", reference=None, version=after_template_version)
+        fetch_template.return_value = source
 
         return {
             "template_files": template_files,
@@ -159,3 +163,38 @@ def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_
         }
 
     yield _template_update
+
+
+@pytest.fixture
+def source_template(tmp_path):
+    """Yield a dummy Template."""
+    from renku.core.models.template import SourceTemplate
+
+    (tmp_path / "{{ __name__ }}.dummy").touch()
+    (tmp_path / "README.md").write_text("""A Renku project: {{ __project_description__ }}\n""")
+    (tmp_path / "Dockerfile").write_text(
+        textwrap.dedent(
+            """
+            ARG RENKU_BASE_IMAGE=renku/renkulab-r:4.1.2-0.11.0
+            FROM ${RENKU_BASE_IMAGE}
+            # Docker content
+            ARG RENKU_VERSION={{ __renku_version__ | default("0.42.0") }}
+            # More content
+            """
+        )
+    )
+
+    yield SourceTemplate(
+        id="dummy",
+        name="Dummy Template",
+        description="A dummy template",
+        parameters={},
+        icon="",
+        immutable_files=[],
+        allow_update=True,
+        source="dummy",
+        reference="1.0.0",
+        version="7598ddf356e28c80747f93ce97a55a69082b5cf1",
+        path=tmp_path,
+        templates_source=None,  # TODO
+    )

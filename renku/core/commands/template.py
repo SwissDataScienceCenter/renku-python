@@ -17,80 +17,30 @@
 # limitations under the License.
 """Template management commands."""
 
-from renku.core.management.command_builder.command import Command, inject
-from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.utils import communication
-from renku.core.utils.templates import (
-    create_template_sentence,
-    fetch_template,
-    select_template_from_manifest,
-    set_template,
-    update_template,
-)
+from renku.core.management.command_builder.command import Command
+from renku.core.management.template.usecase import list_templates, set_template, show_template, update_template
 
 
 def list_templates_command():
     """Command to list available templates."""
-    return Command().command(_list_templates)
-
-
-def _list_templates(template_source, template_ref, verbose):
-    """List available templates."""
-    template_manifest, _, _, _ = fetch_template(template_source, template_ref)
-    template_data, _ = select_template_from_manifest(template_manifest, prompt=False)
-    data = [template_data] if template_data else template_manifest
-
-    communication.echo(create_template_sentence(data, describe=verbose))
+    return Command().command(list_templates)
 
 
 def show_template_command():
     """Command to show template details."""
-    return Command().command(_show_template)
-
-
-def _show_template(template_source, template_ref, template_id):
-    """Show template details."""
-    template_manifest, _, _, _ = fetch_template(template_source, template_ref)
-    template_data, _ = select_template_from_manifest(template_manifest, template_id=template_id, prompt=True)
-    data = [template_data] if template_data else template_manifest
-
-    communication.echo(create_template_sentence(data, describe=True))
+    return Command().command(show_template)
 
 
 def set_template_command():
     """Command to set template for a project."""
     return (
         Command()
-        .command(_set_template)
+        .command(set_template)
         .lock_project()
         .require_migration()
         .require_clean()
         .with_database(write=True)
         .with_commit()
-    )
-
-
-@inject.autoparams()
-def _set_template(
-    template_source,
-    template_ref,
-    template_id,
-    parameters,
-    force,
-    interactive,
-    client_dispatcher: IClientDispatcher,
-):
-    """Set template for a project."""
-    client = client_dispatcher.current_client
-
-    set_template(
-        client=client,
-        template_source=template_source,
-        template_ref=template_ref,
-        template_id=template_id,
-        force=force,
-        interactive=interactive,
-        parameters=parameters,
     )
 
 
@@ -98,18 +48,10 @@ def update_template_command():
     """Command to update project's template."""
     return (
         Command()
-        .command(_update_template)
+        .command(update_template)
         .lock_project()
         .require_migration()
         .require_clean()
         .with_database(write=True)
         .with_commit()
     )
-
-
-@inject.autoparams()
-def _update_template(force, interactive, client_dispatcher: IClientDispatcher) -> bool:
-    """Update project's template; return False if no update is possible."""
-    client = client_dispatcher.current_client
-
-    return update_template(client=client, force=force, interactive=interactive)

@@ -17,14 +17,15 @@
 # limitations under the License.
 """Renku service template create project controller."""
 import shutil
+from pathlib import Path
 
 from marshmallow import EXCLUDE
 
 from renku.core.commands.init import create_from_template_local_command
 from renku.core.errors import RenkuException
 from renku.core.metadata.repository import Repository
+from renku.core.models.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.core.utils.contexts import click_context
-from renku.core.utils.templates import read_template_manifest
 from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
@@ -57,12 +58,16 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     @property
     def default_metadata(self):
         """Default metadata for project creation."""
+        automated_update = True
+        if self.template and "allow_template_update" in self.template:
+            automated_update = self.template["allow_template_update"]
+
         metadata = {
             "__template_source__": self.ctx["git_url"],
             "__template_ref__": self.ctx["ref"],
             "__template_id__": self.ctx["identifier"],
             "__namespace__": self.ctx["project_namespace"],
-            "__automated_update__": True,
+            "__automated_update__": automated_update,
             "__repository__": self.ctx["project_repository"],
             "__sanitized_project_name__": self.ctx["project_name_stripped"],
             "__project_slug__": self.ctx["project_slug"],
@@ -109,7 +114,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     def setup_template(self):
         """Reads template manifest."""
         project = user_project_clone(self.user_data, self.ctx)
-        templates = read_template_manifest(project.abs_path)
+        templates = TemplatesManifest.from_path(Path(project.abs_path) / TEMPLATE_MANIFEST).get_raw_content()
         self.template = next((template for template in templates if template["folder"] == self.ctx["identifier"]), None)
         if self.template is None:
             raise RenkuException("invalid identifier for target repository")
@@ -147,6 +152,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 custom_metadata=self.ctx["project_custom_metadata"],
                 template_version=self.template_version,
                 immutable_template_files=self.template.get("immutable_template_files", []),
+                automated_template_update=self.template.get("allow_template_update", True),
                 user=self.git_user,
                 source=self.ctx["url"],
                 ref=self.ctx["ref"],

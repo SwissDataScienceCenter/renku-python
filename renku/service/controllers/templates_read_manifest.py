@@ -21,7 +21,8 @@ from io import BytesIO
 
 from marshmallow import EXCLUDE
 
-from renku.core.utils.templates import fetch_template
+from renku.core.management.template.template import fetch_templates_source
+from renku.core.utils.os import get_safe_relative_path
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC
@@ -50,26 +51,24 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
         """Reads template manifest."""
         from PIL import Image
 
-        template_manifest, template_folder, _, _ = fetch_template(self.ctx["git_url"], self.ctx["ref"])
+        templates_source = fetch_templates_source(source=self.ctx["git_url"], reference=self.ctx["ref"])
+        manifest = templates_source.manifest.get_raw_content()
 
         # NOTE: convert icons to base64
-        for template in template_manifest:
-            if "icon" not in template:
+        for template in manifest:
+            icon = template.get("icon")
+            if not icon:
                 continue
 
-            # NOTE: prevent path traversal attack
-            icon_path = template_folder / (
-                (template_folder / template["icon"]).resolve().relative_to(template_folder.resolve())
-            )
-
-            icon = Image.open(icon_path)
+            icon_path = get_safe_relative_path(path=icon, base=templates_source.path)
+            icon = Image.open(templates_source.path / icon_path)
             icon.thumbnail(MAX_ICON_SIZE)
 
             buffer = BytesIO()
             icon.save(buffer, format="PNG")
             template["icon"] = base64.b64encode(buffer.getvalue())
 
-        return template_manifest
+        return manifest
 
     def renku_op(self):
         """Renku operation for the controller."""

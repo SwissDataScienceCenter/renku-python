@@ -17,6 +17,7 @@
 # limitations under the License.
 """Client for handling a local repository."""
 
+import os
 from contextlib import contextmanager
 from uuid import uuid4
 
@@ -215,6 +216,10 @@ class RepositoryApiMixin(GitCore):
     def is_project_set(self):
         """Return if project is set for the client."""
         return self._project is not None
+
+    def has_template_checksum(self) -> bool:
+        """Return if project has a templates checksum file."""
+        return os.path.exists(self.template_checksums)
 
     def get_in_submodules(self, commit, path):
         """Resolve filename in submodules."""

@@ -116,6 +116,11 @@ class BaseRepository:
             raise errors.GitError("Cannot get staged changes") from e
 
     @property
+    def tags(self) -> "TagManager":
+        """Return all available tags."""
+        return TagManager(self._repository)
+
+    @property
     def unstaged_changes(self) -> List["Diff"]:
         """Return a list of changes that are not staged."""
         try:
@@ -176,7 +181,7 @@ class BaseRepository:
 
         return Commit.from_commit(self._repository, self._repository.head.commit)
 
-    def checkout(self, reference: Union["Branch", str]):
+    def checkout(self, reference: Union["Branch", "Tag", str]):
         """Check-out a specific reference."""
         self.run_git_command("checkout", reference)
 
@@ -341,7 +346,12 @@ class BaseRepository:
         return ignored
 
     def get_content(
-        self, *, path: Union[Path, str], revision: str = None, checksum: str = None, binary: bool = False
+        self,
+        path: Union[Path, str],
+        *,
+        revision: Union["Reference", str] = None,
+        checksum: str = None,
+        binary: bool = False,
     ) -> Union[bytes, str]:
         """Get content of a file in a given revision as text or binary."""
         output = self.copy_content_to_file(path=path, checksum=checksum, revision=revision)
@@ -420,6 +430,7 @@ class BaseRepository:
         if from_submodules:
             return from_submodules
 
+        # TODO: Return FileNotFound
         raise errors.ExportError(f"File not found in the repository: '{revision}/{checksum}:{path}'")
 
     def get_object_hashes(self, paths: List[Union[Path, str]], revision: str = None) -> Dict[str, str]:
@@ -1241,6 +1252,72 @@ class RemoteManager:
                 stderr=e.stderr,
                 status=e.status,
             ) from e
+
+
+class Tag(Reference):
+    """A git tag."""
+
+    def __init__(self, repository: git.Repo, path: str):
+        super().__init__(repository, path)
+        self._reference = git.Tag(repo=repository, path=path, check_path=False)
+
+    @classmethod
+    def from_tag(cls, repository: git.Repo, tag: git.Tag):
+        """Create an instance from a git.Head."""
+        return cls(repository, tag.path)
+
+    @property
+    def commit(self) -> Optional[Commit]:
+        """Return the commit the tag refers to."""
+        try:
+            commit = self._reference.commit
+        except ValueError:
+            commit = self._reference.object
+
+        return Commit.from_commit(self._repository, commit) if commit else None
+
+
+class TagManager:
+    """Manage tags of a Repository."""
+
+    def __init__(self, repository: git.Repo):
+        self._repository = repository
+
+    def __getitem__(self, name_or_index: Union[int, str]) -> Tag:
+        try:
+            tag = self._repository.tags[name_or_index]
+        except IndexError:
+            raise errors.GitReferenceNotFoundError(f"Tag '{name_or_index}' not found")
+        else:
+            return Tag.from_tag(self._repository, tag)
+
+    def __iter__(self):
+        return (Tag.from_tag(self._repository, t) for t in self._repository.tags)
+
+    def __len__(self) -> int:
+        return len(self._repository.tags)
+
+    def __repr__(self) -> str:
+        return str(list(self))
+
+    def add(self, name: str) -> Tag:
+        """Add a new tag."""
+        try:
+            tag = self._repository.create_tag(path=name)
+        except git.GitCommandError as e:
+            raise errors.GitCommandError(
+                message=f"Git command failed: {str(e)}",
+                command=e.command,
+                stdout=e.stdout,
+                stderr=e.stderr,
+                status=e.status,
+            ) from e
+        else:
+            return Tag.from_tag(repository=self._repository, tag=tag)
+
+    def remove(self, tag: Union[Tag, str]):
+        """Remove an existing tag."""
+        _run_git_command(self._repository, "tag", tag, delete=True)
 
 
 class Configuration:

@@ -30,19 +30,18 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.migrations.utils import OLD_METADATA_PATH
-from renku.core.utils import communication
-from renku.core.utils.os import is_path_empty
-from renku.core.utils.templates import (
+from renku.core.management.template.template import (
     TEMPLATE_INIT_APPEND_FILES,
     TEMPLATE_KEEP_FILES,
-    create_project_from_template,
-    get_template_files,
-    set_template_variables,
+    MetadataManager,
+    fetch_templates_source,
     update_project_metadata,
 )
+from renku.core.management.template.usecase import create_project_from_template, get_template_files, select_template
+from renku.core.models.template import SourceTemplate
+from renku.core.utils import communication
+from renku.core.utils.os import is_path_empty
 from renku.version import __version__, is_release
-
-TEMPLATE_MANIFEST = "manifest.yaml"
 
 
 def store_directory(value):
@@ -95,10 +94,9 @@ def _init(
     description,
     keywords,
     template_id,
-    template_index,
     template_source,
     template_ref,
-    metadata,
+    input_parameters,
     custom_metadata,
     force,
     data_dir,
@@ -107,17 +105,7 @@ def _init(
     database_dispatcher: IDatabaseDispatcher,
 ):
     """Initialize a renku project."""
-    from renku.core.utils.templates import fetch_template, select_template_from_manifest
-
     client = client_dispatcher.current_client
-
-    template_manifest, template_folder, template_source, template_version = fetch_template(
-        template_source, template_ref
-    )
-
-    template_data, template_id = select_template_from_manifest(template_manifest, template_id, template_index)
-
-    metadata = set_template_variables(template_data, metadata)
 
     # NOTE: set local path and storage
     store_directory(path)
@@ -134,7 +122,11 @@ def _init(
     communication.echo("Initializing Git repository...")
     client.init_repository(force, None, initial_branch=initial_branch)
 
-    # NOTE: supply additional metadata
+    templates_source = fetch_templates_source(source=template_source, reference=template_ref)
+    source_template = select_template(templates_source=templates_source, id=template_id)
+
+    metadata = dict()
+    # NOTE: supply metadata
     metadata["__template_source__"] = template_source
     metadata["__template_ref__"] = template_ref
     metadata["__template_id__"] = template_id
@@ -148,11 +140,14 @@ def _init(
     metadata["name"] = name  # NOTE: kept for backwards compatibility
     metadata["__name__"] = name
 
-    template_path = template_folder / template_data["folder"]
+    metadata_manager = MetadataManager.from_metadata(metadata=metadata)
+    metadata_manager.update_from_template(template=source_template)
+    # TODO: Validate input_parameters to make sure they don't contain __\w+__ keys
+    metadata_manager.set_template_variables(template=source_template, input_parameters=input_parameters)
 
     existing = [
         p
-        for p in get_template_files(template_base=template_path, template_metadata=metadata)
+        for p in get_template_files(template_base=source_template.path, template_metadata=metadata)
         if (client.path / p).exists()
     ]
 
@@ -193,13 +188,14 @@ def _init(
     with client.lock:
         try:
             create_from_template(
-                template_path=template_path,
+                template_path=source_template.path,
                 client=client,
                 name=name,
-                metadata=metadata,
+                metadata=metadata_manager.metadata,
                 custom_metadata=custom_metadata,
-                template_version=template_version,
-                immutable_template_files=template_data.get("immutable_template_files", []),
+                template_version=source_template.version,
+                immutable_template_files=source_template.immutable_files or [],
+                automated_update=True,  # TODO: This should come from a command line flag
                 force=force,
                 data_dir=data_dir,
                 description=description,
@@ -230,6 +226,7 @@ def create_from_template(
     custom_metadata=None,
     template_version=None,
     immutable_template_files=[],
+    automated_update=True,
     force=None,
     data_dir=None,
     user=None,
@@ -253,6 +250,21 @@ def create_from_template(
         metadata["name"] = name
         metadata["__name__"] = name
 
+    source_template = SourceTemplate(
+        id=metadata["__template_id__"],
+        name="",
+        description="",
+        parameters={},
+        icon="",
+        immutable_files=immutable_template_files,
+        allow_update=True,  # TODO: Get this from a command line param
+        source=metadata["__template_source__"],
+        reference=metadata["__template_ref__"],
+        version=template_version,
+        path=template_path,
+        templates_source=None,
+    )
+
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
         with client.with_metadata(
             name=name, description=description, custom_metadata=custom_metadata, keywords=keywords
@@ -260,9 +272,9 @@ def create_from_template(
             metadata["__template_version__"] = template_version
 
             update_project_metadata(
-                project=project, template_metadata=metadata, immutable_template_files=immutable_template_files
+                project=project, template_metadata=metadata, immutable_files=immutable_template_files
             )
-            create_project_from_template(client=client, template_path=template_path, template_metadata=metadata)
+            create_project_from_template(client=client, source_template=source_template, template_metadata=metadata)
 
         if data_dir:
             client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
@@ -278,6 +290,7 @@ def _create_from_template_local(
     default_metadata={},
     template_version=None,
     immutable_template_files=[],
+    automated_template_update=True,
     user=None,
     source=None,
     ref=None,
@@ -306,6 +319,7 @@ def _create_from_template_local(
         custom_metadata=custom_metadata,
         template_version=template_version,
         immutable_template_files=immutable_template_files,
+        automated_update=automated_template_update,
         force=False,
         user=user,
         commit_message=commit_message,

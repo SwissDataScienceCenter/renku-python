@@ -20,6 +20,7 @@
 import re
 
 import pytest
+from packaging.version import Version
 
 from renku.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
@@ -131,17 +132,9 @@ def test_template_set_preserve_renku_version(runner, client):
     assert "ARG RENKU_VERSION=0.0.42" in content
 
 
-def test_template_update(runner, client):
-    """Test updating template that is the latest version."""
-    result = runner.invoke(cli, ["template", "update"])
-
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "Template is up-to-date" in result.output
-
-
 @pytest.mark.integration
-def test_template_forced_update(runner, client, client_database_injection_manager):
-    """Test list templates from other sources."""
+def test_template_update(runner, client, client_database_injection_manager):
+    """Test updating a template."""
     url = "https://github.com/SwissDataScienceCenter/renku-project-template"
 
     result = runner.invoke(
@@ -158,13 +151,21 @@ def test_template_forced_update(runner, client, client_database_injection_manage
     result = runner.invoke(cli, ["template", "update"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Template is up-to-date" in result.output
-
-    result = runner.invoke(cli, ["template", "update", "--force"])
-
-    assert 0 == result.exit_code, format_result_exception(result)
     assert "Template is up-to-date" not in result.output
     with client_database_injection_manager(client):
         assert "python-minimal" == client.project.template_id
-        assert client.project.template_ref is None
+        assert Version(client.project.template_ref) > Version("0.1.10")
         assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != client.project.template_version
+
+    result = runner.invoke(cli, ["template", "update"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Template is up-to-date" in result.output
+
+
+def test_template_update_latest_version(runner, client):
+    """Test updating template that is the latest version."""
+    result = runner.invoke(cli, ["template", "update"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Template is up-to-date" in result.output

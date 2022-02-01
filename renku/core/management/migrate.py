@@ -175,7 +175,7 @@ def _remove_untracked_renku_files(renku_path):
 
 def _update_template(client) -> bool:
     """Update local files from the remote template."""
-    from renku.core.utils.templates import update_template
+    from renku.core.management.template.usecase import update_template
 
     try:
         project = client.project
@@ -186,7 +186,7 @@ def _update_template(client) -> bool:
     if not project.template_version:
         return False
 
-    return update_template(interactive=False, client=client, force=False)
+    return bool(update_template(interactive=False, client=client, force=False, dry_run=False))
 
 
 @inject.autoparams()

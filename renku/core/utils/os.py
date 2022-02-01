@@ -43,6 +43,18 @@ def get_absolute_path(path: Union[Path, str], base: Union[Path, str] = None) -> 
     return os.path.abspath(path)
 
 
+def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Path:
+    """Return a relative path to the base and check path is within base with all symlinks resolved.
+
+    NOTE: This is used to prevent path traversal attack.
+    """
+    try:
+        absolute_path = Path(base) / path
+        return Path(absolute_path).relative_to(base)
+    except ValueError:
+        raise ValueError(f"Path '{path}' is not with base directory '{base}'")
+
+
 def get_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Optional[Path]:
     """Return a relative path to the base if path is within base without resolving symlinks."""
     try:

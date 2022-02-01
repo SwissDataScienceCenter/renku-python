@@ -20,14 +20,14 @@ import base64
 import json
 from copy import deepcopy
 from io import BytesIO
-from tempfile import TemporaryDirectory
 from time import sleep
 
 import pytest
 
+from renku.core.management.template.template import fetch_templates_source
 from renku.core.metadata.repository import Repository
+from renku.core.models.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.core.utils.os import normalize_to_ascii
-from renku.core.utils.templates import fetch_template_from_git, read_template_manifest
 from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
 from tests.utils import retry_failed
 
@@ -59,7 +59,6 @@ def test_read_manifest_from_template(svc_client_with_templates):
 
 @pytest.mark.service
 @pytest.mark.integration
-@retry_failed
 def test_compare_manifests(svc_client_with_templates):
     """Check reading manifest template."""
     svc_client, headers, template_params = svc_client_with_templates
@@ -70,23 +69,24 @@ def test_compare_manifests(svc_client_with_templates):
     assert {"result"} == set(response.json.keys())
     assert response.json["result"]["templates"]
 
-    with TemporaryDirectory() as temp_dir:
-        manifest_file, _ = fetch_template_from_git(template_params["url"], template_params["ref"], temp_dir)
-        manifest = read_template_manifest(temp_dir)
+    templates_source = fetch_templates_source(source=template_params["url"], reference=template_params["ref"])
+    manifest_file = templates_source.path / TEMPLATE_MANIFEST
 
-        assert manifest_file and manifest_file.exists()
-        assert manifest
+    manifest = TemplatesManifest.from_path(manifest_file).get_raw_content()
 
-        templates_service = response.json["result"]["templates"]
-        templates_local = manifest
-        default_index = template_params["index"] - 1
+    assert manifest_file and manifest_file.exists()
+    assert manifest
 
-        if "icon" in templates_service[default_index]:
-            del templates_service[default_index]["icon"]
-        if "icon" in templates_local[default_index]:
-            del templates_local[default_index]["icon"]
+    templates_service = response.json["result"]["templates"]
+    templates_local = manifest
+    default_index = template_params["index"] - 1
 
-        assert templates_service[default_index] == templates_local[default_index]
+    if "icon" in templates_service[default_index]:
+        del templates_service[default_index]["icon"]
+    if "icon" in templates_local[default_index]:
+        del templates_local[default_index]["icon"]
+
+    assert templates_service[default_index] == templates_local[default_index]
 
 
 @pytest.mark.service

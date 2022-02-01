@@ -16,11 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrate project to the latest Renku version."""
-
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.utils.templates import check_for_template_update
+from renku.core.management.template.usecase import check_for_template_update
 
 SUPPORTED_RENKU_PROJECT = 1
 MIGRATION_REQUIRED = 2
@@ -85,7 +84,7 @@ def template_migration_check():
 
 def _template_migration_check(client):
     """Return template migration status."""
-    newer_template_available, current_version, new_version = check_for_template_update(client)
+    update_available, update_allowed, current_version, new_version = check_for_template_update(client)
 
     try:
         template_source = client.project.template_source
@@ -97,8 +96,8 @@ def _template_migration_check(client):
         template_id = None
 
     return {
-        "automated_template_update": True,
-        "newer_template_available": newer_template_available,
+        "automated_template_update": update_allowed,
+        "newer_template_available": update_available,
         "project_template_version": current_version,
         "latest_template_version": new_version,
         "template_source": template_source,
