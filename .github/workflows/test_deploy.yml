@@ -892,7 +892,7 @@ jobs:
         uses: SwissDataScienceCenter/renku-actions/publish-chart@v0.3.2
         env:
           CHART_NAME: renku-core
-          GITHUB_TOKEN: ${{ secrets.RENKU_CI_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       - name: Wait for chart to be available
@@ -901,7 +901,7 @@ jobs:
         uses: SwissDataScienceCenter/renku-actions/update-component-version@v0.3.2
         env:
           CHART_NAME: renku-core
-          GITHUB_TOKEN: ${{ secrets.RENKU_CI_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
 
   coveralls-final:
     name: Aggregate coveralls data
