@@ -1,24 +1,24 @@
 - Start Date: 2021-12-02
 - Status: Proposed
 
-# Run local interactive sessions
+# Run interactive sessions
 
 ## Summary
 
 Propose a new sub-group command `renku session` that is responsible for
-managing local interactive sessions for a project.
+managing interactive sessions, both local and remote, for a project.
 
 ## Motivation
 
 Renkulab.io provides the option to run interactive sessions of a project. Among other things the session
 contains a jupyter notebook.
 
-The motivation behind this RFC is to provide a simple renku CLI command that basically mimics this, i.e. the
-option to start an interactive session of a project locally.
+The motivation behind this RFC is to provide a simple renku CLI sub-command that basically allows the
+starting and stopping of these interactive sessions.
 
 ## Design Detail
 
-The proposed sub-commands of `renku session`, namely to run interactive sessions locally, heavily relies on
+The proposed sub-commands of `renku session`, namely to run interactive sessions. The local session heavily relies on
 [docker](https://www.docker.com/). Docker is one of the most popular container engines, that eases the development
 and deployment of applications, by off-loading the installation of the runtime environment dependencies of the
 application.
@@ -38,12 +38,19 @@ that's going to be used for running the interactive session. In case the docker 
 user is going to be prompted whether the user wants to build the docker image, as in some cases it can be
 time consuming.
 
+By using the `--remote [endpoint]` flag an interactive session will be spawned on the specified endpoint. It requires
+that the user has authenticated herself previously with the `renku login` command and aquired the authentication
+token for the endpoint.	If the endpoint is not defined the command will try to assume the endpoint set in the project's
+configuration if available.
+
 ##### Detailed Parameter Description
 
 ```
 renku session start [OPTIONS]
 
 --image <image_name>	override the docker image to be used for the interactive session.
+--remote [endpoint]	start a remote interactive session using the JWT aquired for the
+			specific endpoint with renku login.
 
 ```
 
@@ -58,7 +65,7 @@ One can shut down all the currently running interactive sessions at once with th
 ```
 renku session stop [OPTIONS] <name>
 
-<name>
+<name>      Name of the session that the user wants to stop.
 
 --all       Stops all the running containers.
 
@@ -68,6 +75,16 @@ renku session stop [OPTIONS] <name>
 
 The command to list all the currently running local interactive sessions, with the detailed information regarding
 the network port mappings.
+
+##### Detailed Parameter Description
+
+```
+renku session list [OPTIONS]
+
+--remote       List the remote interactive sessions currently running.
+               By default only the local interactive sessions are listed.
+
+```
 
 ## Drawbacks
 
