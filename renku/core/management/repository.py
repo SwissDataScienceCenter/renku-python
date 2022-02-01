@@ -290,6 +290,8 @@ class RepositoryApiMixin(GitCore):
 
         # initialize repo and set user data
         path = self.path.absolute()
+        if force and (path / ".renku").exists():
+            shutil.rmtree(path / ".renku")
         self.repository = Repository.initialize(path=path, branch=initial_branch)
         if user:
             with self.repository.get_configuration(writable=True) as config_writer:
