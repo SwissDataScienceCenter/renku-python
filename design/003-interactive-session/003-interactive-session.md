@@ -51,6 +51,10 @@ renku session start [OPTIONS]
 --image <image_name>	override the docker image to be used for the interactive session.
 --remote [endpoint]	start a remote interactive session using the JWT aquired for the
 			specific endpoint with renku login.
+--cpu <num of cpus>	Specify how much of the available CPU resources a container can use.
+--disk <disk space>	Specify the amount of disk space for the container.
+--gpu <device>		Specify the GPU allocated for the container.
+--memory <max memory>	The maximum amount of memory the container can use.
 
 ```
 
