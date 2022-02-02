@@ -438,7 +438,7 @@ name = "cwl-upgrader"
 version = "1.2.2"
 description = "Common Workflow Language standalone document upgrader"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6, <4"
 
 [package.dependencies]
@@ -450,7 +450,7 @@ name = "cwl-utils"
 version = "0.13"
 description = ""
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -461,17 +461,6 @@ schema-salad = ">=8.2,<9"
 
 [package.extras]
 pretty = ["cwlformat"]
-
-[[package]]
-name = "cwlgen"
-version = "0.4.2"
-description = "Generation of CWL programmatically. Available types: Workflow, CommandLineTool and Requirements"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-"ruamel.yaml" = ">=0.12.4,<=0.16.5"
 
 [[package]]
 name = "cwltool"
@@ -2487,16 +2476,16 @@ cffi = {version = ">=1.11", markers = "platform_python_implementation == \"PyPy\
 cffi = ["cffi (>=1.11)"]
 
 [extras]
-all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "cwl-utils", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "jinja2", "marshmallow", "pexpect", "pillow", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "walrus"]
+all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "jinja2", "marshmallow", "pexpect", "pillow", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "walrus"]
 docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
 service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "marshmallow", "pillow", "ptvsd", "python-dotenv", "redis", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
-tests = ["black", "check-manifest", "coverage", "cwl-utils", "fakeredis", "flakehell", "flaky", "freezegun", "isort", "pexpect", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "responses"]
+tests = ["black", "check-manifest", "coverage", "fakeredis", "flakehell", "flaky", "freezegun", "isort", "pexpect", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "responses"]
 toil = ["toil"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "aeb972bb965cf7d5b36222885fb1946c05c6688f6b9c895b9dd475ceb85338dd"
+content-hash = "34e73b852b1354e110bde939b094703c10bb9bd5d1dc14b3aefe69421fd36388"
 
 [metadata.files]
 addict = [
@@ -2796,9 +2785,6 @@ cwl-upgrader = [
 cwl-utils = [
     {file = "cwl-utils-0.13.tar.gz", hash = "sha256:47171decb93e05b9deb74bbad564db3b5aff971e16c632624cdc56f00bb1b47f"},
     {file = "cwl_utils-0.13-py3-none-any.whl", hash = "sha256:0f23d091a7fd1e15ad233255a3a0f12aeeb0a6aa6ecdec2db449c92f1d577bb2"},
-]
-cwlgen = [
-    {file = "cwlgen-0.4.2.tar.gz", hash = "sha256:8ee26cddc0f352dd485fc11696711b810b7b8bf4f4a39b33f481294fc0b0c2a0"},
 ]
 cwltool = [
     {file = "cwltool-3.1.20210922203925-py3-none-any.whl", hash = "sha256:eb894d91be7cb8a6845a2f468d09bc7ce237b3ff7393b4a3f12dea4843e7b2d0"},
