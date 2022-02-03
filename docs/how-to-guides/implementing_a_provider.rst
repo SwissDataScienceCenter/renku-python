@@ -53,7 +53,9 @@ The ``workflow_provider`` function shall return a tuple of ``(object, str)``,  w
 should be the plugin object, i.e. ``self`` and the string is a unique identifier of the
 provider plugin. This unique string will be the string that the user can provide to the
 ``--provider`` command line argument to select this plugin for executing the desired
-workflows.
+workflows. A dummy provider implementation is available
+`here <https://github.com/SwissDataScienceCenter/renku-dummy-provider>`_ in order to ease the
+initial implementation of a provider plugin.
 
 A provider HAS to set environment variables for a plans parameters, so they can be used by scripts.
 These environment variables have to be prefixed with the value of the
