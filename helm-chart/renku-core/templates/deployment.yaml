@@ -42,6 +42,9 @@ spec:
       volumes:
         - name: shared-volume
           emptyDir: {}
+        {{- include "certificates.volumes" $ | nindent 8 }}
+      initContainers:
+        {{- include "certificates.initContainer" $ | nindent 8 }}
       containers:
       {{ if $.Values.metrics.enabled }}
         - name: {{ $.Chart.Name}}-rqmetrics
@@ -112,9 +115,11 @@ spec:
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ $.Values.global.renku.domain }}
+            {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ $.Values.cacheDirectory }}
+            {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
           ports:
             - name: http
               containerPort: 8080
@@ -168,9 +173,11 @@ spec:
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ $.Values.global.renku.domain }}
+            {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ $.Values.cacheDirectory }}
+            {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
 
         - name: {{ $.Chart.Name }}-management-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
@@ -209,9 +216,11 @@ spec:
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ $.Values.global.renku.domain }}
+            {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ $.Values.cacheDirectory }}
+            {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
 
         - name: {{ $.Chart.Name }}-scheduler
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
@@ -238,6 +247,9 @@ spec:
               value: {{ $.Values.sentry.sample_rate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
+            {{- include "certificates.env.python" $ | nindent 12 }}
+          volumeMounts:
+            {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
