@@ -86,6 +86,23 @@ where `myproject.pluginmodule:mycmd` points to a click command e.g.:
 
 An example implementation of such plugin is available `here <https://github.com/SwissDataScienceCenter/renku-cli-plugin-example>`_.
 
+Workflow Converter Plugins
+--------------------------
+
+Additional workflow converters can be implemented by extending
+:class:`renku.core.models.workflow.converters.IWorkflowConverter`. By default renku
+provides a CWL converter plugins that is used when exporting a workflow:
+
+.. code-block:: console
+
+   $ renku workflow export --format cwl <my_workflow>
+
+.. autoclass:: renku.core.models.workflow.converters.IWorkflowConverter
+    :members:
+
+We created a `dummy <https://github.com/SwissDataScienceCenter/renku-dummy-format>`_ implementation of such
+converter plugin.
+
 Workflow Provider Plugins
 -------------------------
 
