@@ -16,6 +16,20 @@
     limitations under the License.
 
 
+Plugin Gallery
+==============
+
+Here you will find a list of Renku compatible plugins. A list of supported types of plugins is listed in the Plugin Support section.
+
+Renku-MLS plugin
+----------------
+
+This plugin is a runtime and CLI plugin designed to facilitate benchmarking of machine learning models on Renku.
+Once you have run your `renku` workflow to train several models, exporting them to the Renku-MLS plugin allows you to 
+view metrics across all your runs. See __discourse post__ for an introductory post and `<https://pypi.org/project/renku-mls/>`__
+for instructions to download it. We have also provided a self-paced guided tour of it in this sample project:
+`<https://renkulab.io/gitlab/learn-renku/plugins/renku-mls-plugin>`__.
+
 Plugin Support
 ==============
 
