@@ -54,6 +54,8 @@ where `myproject.pluginmodule` points to a Renku `hookimpl` e.g.:
 .. automodule:: renku.core.plugins.run
    :members:
 
+`This <https://github.com/SwissDataScienceCenter/renku-dummy-annotator>`_ repository contains an implementation of
+an activity annotation plugin.
 
 CLI Plugins
 -----------
@@ -81,6 +83,8 @@ where `myproject.pluginmodule:mycmd` points to a click command e.g.:
     @click.command()
     def mycmd():
         ...
+
+An example implementation of such plugin is available `here <https://github.com/SwissDataScienceCenter/renku-cli-plugin-example>`_.
 
 Workflow Provider Plugins
 -------------------------
