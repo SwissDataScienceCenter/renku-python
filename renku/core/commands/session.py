@@ -21,6 +21,7 @@ from itertools import chain
 
 import docker
 from yaspin import yaspin
+import webbrowser
 
 from renku.core import errors
 from renku.core.commands.format.session import SESSION_FORMATS
@@ -74,7 +75,7 @@ def _session_list(client_dispatcher: IClientDispatcher, format="tabular"):
 
 
 def session_list_command():
-    """List all the running local interactive session."""
+    """List all the running interactive sessions."""
     return Command().command(_session_list)
 
 
@@ -137,7 +138,7 @@ def _session_start(client_dispatcher: IClientDispatcher, image_name: str = None)
 
 
 def session_start_command():
-    """Start a running local interactive session."""
+    """Start an interactive session."""
     return Command().command(_session_start)
 
 
@@ -167,5 +168,24 @@ def _session_stop(session_name: str, client_dispatcher: IClientDispatcher, stop_
 
 
 def session_stop_command():
-    """Stop a running local interactive session."""
+    """Stop a running an interactive session."""
     return Command().command(_session_stop)
+
+
+@inject.autoparams()
+def _session_open(session_name: str, client_dispatcher: IClientDispatcher):
+    client = client_dispatcher.current_client
+    docker_client = _get_docker_client()
+    repo_containers = _get_docker_containers(client, docker_client)
+    for c in repo_containers:
+        if c.short_id == session_name and f"{JUPYTER_PORT}/tcp" in c.ports:
+            host = c.ports[f"{JUPYTER_PORT}/tcp"][0]
+            webbrowser.open(f'http://{host["HostIp"]}:{host["HostPort"]}')
+            break
+    else:
+        raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
+
+
+def session_open_command():
+    """Open a running interactive session."""
+    return Command().command(_session_open)
