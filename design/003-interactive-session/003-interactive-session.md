@@ -77,8 +77,8 @@ renku session stop [OPTIONS] <name>
 
 #### renku session list
 
-The command to list all the currently running interactive sessions, with the detailed information regarding
-the network port mappings.
+The command to list all the currently running interactive sessions for the given project, with the
+detailed information regarding the network port mappings.
 
 ##### Detailed Parameter Description
 
