@@ -101,7 +101,7 @@ provides a CWL converter plugins that is used when exporting a workflow:
     :members:
 
 We created a `dummy <https://github.com/SwissDataScienceCenter/renku-dummy-format>`_ implementation of such
-converter plugin.
+a converter plugin.
 
 Workflow Provider Plugins
 -------------------------
