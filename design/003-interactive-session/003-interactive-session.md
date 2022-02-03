@@ -77,7 +77,7 @@ renku session stop [OPTIONS] <name>
 
 #### renku session list
 
-The command to list all the currently running local interactive sessions, with the detailed information regarding
+The command to list all the currently running interactive sessions, with the detailed information regarding
 the network port mappings.
 
 ##### Detailed Parameter Description
@@ -89,6 +89,13 @@ renku session list [OPTIONS]
                By default only the local interactive sessions are listed.
 
 ```
+
+#### renku session open
+
+`renku session open <my_session>` opens the given interactive session in the user's default browser.
+
+Note, it is possible that the user is running renku on a remote machine via SSH. In this case this command
+might fail, unless for example X-Fowarding is not enabled.
 
 ## Drawbacks
 

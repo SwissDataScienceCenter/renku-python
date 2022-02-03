@@ -64,3 +64,12 @@ def stop(session_name, stop_all):
         click.echo("All running local interactive sessions for this project have been stopped.")
     else:
         click.echo(f"Local interactive '{session_name}' has been successfully stopped.")
+
+
+@session.command("open")
+@click.argument("session_name", metavar="<name>", required=False)
+def open(session_name):
+    """Stop a local interactive sessions."""
+    from renku.core.commands.session import session_open_command
+
+    session_open_command().build().execute(session_name=session_name)
