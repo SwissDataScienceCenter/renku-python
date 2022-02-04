@@ -101,6 +101,9 @@ class DatasetsProvenance:
             else:
                 dataset.change_type = DatasetChangeType.CREATED
 
+            if dataset.dataset_files:
+                dataset.change_type = dataset.change_type | DatasetChangeType.FILES_ADDED
+
         self.dataset_gateway.add_or_remove(dataset)
 
     def remove(self, dataset, date: datetime = None, creator: Person = None):

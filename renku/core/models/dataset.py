@@ -473,10 +473,12 @@ class Dataset(Persistent):
         ):
             self.change_type |= DatasetChangeType.METADATA_CHANGED
 
-        if len(set(self.dataset_files) - set(dataset.dataset_files)) > 0:
+        current_files = {f for f in self.dataset_files if not f.date_removed}
+        previous_files = {f for f in dataset.dataset_files if not f.date_removed}
+        if len(set(current_files) - set(previous_files)) > 0:
             self.change_type |= DatasetChangeType.FILES_ADDED
 
-        if len(set(dataset.dataset_files) - set(self.dataset_files)) > 0:
+        if len(set(previous_files) - set(current_files)) > 0:
             self.change_type |= DatasetChangeType.FILES_REMOVED
 
     def _assign_new_identifier(self, identifier: str):
