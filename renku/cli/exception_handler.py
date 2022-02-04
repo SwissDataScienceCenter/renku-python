@@ -68,7 +68,7 @@ from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSuppo
 
 _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=True)
 
-HAS_SENTRY = os.getenv("SENTRY_ENABLED")
+HAS_SENTRY = os.getenv("SENTRY_ENABLED").lower() == "true"
 SENTRY_SAMPLERATE = float(os.getenv("SENTRY_SAMPLE_RATE", 0.2))
 
 if HAS_SENTRY:

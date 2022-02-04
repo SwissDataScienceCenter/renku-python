@@ -47,7 +47,7 @@ from renku.service.views.version import version_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
 
-if os.getenv("SENTRY_ENABLED"):
+if os.getenv("SENTRY_ENABLED").lower() == "true":
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
         environment=os.getenv("SENTRY_ENV"),

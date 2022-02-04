@@ -166,7 +166,7 @@ spec:
             - name: DEPLOYMENT_LOG_LEVEL
               value: {{ $.Values.logLevel }}
             - name: SENTRY_ENABLED
-              value: {{ $.Values.sentry.enabled }}
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
@@ -211,7 +211,7 @@ spec:
             - name: DEPLOYMENT_LOG_LEVEL
               value: {{ $.Values.logLevel }}
             - name: SENTRY_ENABLED
-              value: {{ $.Values.sentry.enabled }}
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
@@ -248,7 +248,7 @@ spec:
             - name: RENKU_SVC_CLEANUP_INTERVAL
               value: {{ $.Values.cleanupInterval | quote }}
             - name: SENTRY_ENABLED
-              value: {{ $.Values.sentry.enabled }}
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
