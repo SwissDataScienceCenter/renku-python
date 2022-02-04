@@ -27,7 +27,7 @@ from renku.core.errors import ConfigurationError, UsageError
 from renku.service.jobs.queues import QUEUES, WorkerQueues
 from renku.service.logger import DEPLOYMENT_LOG_LEVEL, worker_log
 
-if os.getenv("SENTRY_DSN"):
+if os.getenv("SENTRY_ENABLED"):
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
         environment=os.getenv("SENTRY_ENV"),

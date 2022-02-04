@@ -68,11 +68,10 @@ from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSuppo
 
 _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=True)
 
-HAS_SENTRY = None
-SENTRY_DSN = os.getenv("SENTRY_DSN")
+HAS_SENTRY = os.getenv("SENTRY_ENABLED")
 SENTRY_SAMPLERATE = float(os.getenv("SENTRY_SAMPLE_RATE", 0.2))
 
-if SENTRY_DSN:
+if HAS_SENTRY:
     try:
         from importlib.metadata import PackageNotFoundError, distribution
     except ImportError:
@@ -82,8 +81,6 @@ if SENTRY_DSN:
         distribution("sentry-sdk")
     except PackageNotFoundError:
         HAS_SENTRY = False
-    else:
-        HAS_SENTRY = True
 
 
 class RenkuExceptionsHandler(click.Group):
