@@ -41,7 +41,7 @@ to help developers iterate faster by showing them where bugs happen, how often,
 and who is affected.
 
 1. Install ``Sentry-SDK`` with ``python -m pip install sentry-sdk``;
-2. Set environment variable
+2. Set environment variables ``SENTRY_DSN=true`` and
    ``SENTRY_DSN=https://<key>@sentry.<domain>/<project>``.
 3. Set the environment variable ``SENTRY_SAMPLE_RATE=0.2``. This would track
    20% of all requests in Sentry performance monitoring. Set to 0 to disable.
