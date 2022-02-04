@@ -96,7 +96,7 @@ spec:
             - name: SERVICE_LOG_LEVEL
               value: {{ $.Values.logLevel }}
             - name: SENTRY_ENABLED
-              value: {{ $.Values.sentry.enabled }}
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
