@@ -47,15 +47,7 @@ def _get_jupyter_urls(ports, jupyter_port=8888):
 
 
 def _get_docker_containers(renku_client, docker_client):
-    docker_image_tags = list(
-        chain(
-            *map(
-                lambda x: x.tags,
-                docker_client.images.list(filters={"reference": _docker_image_name(renku_client.remote)}),
-            )
-        )
-    )
-    return docker_client.containers.list(filters={"ancestor": docker_image_tags})
+    return docker_client.containers.list(filters={"label": f"renku_project={_docker_image_name(renku_client.remote)}"})
 
 
 def _get_docker_client():
@@ -121,6 +113,7 @@ def _session_start(client_dispatcher: IClientDispatcher, image_name: str = None)
             f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={JUPYTER_PORT} --NotebookApp.token=""'
             ' --NotebookApp.default_url="/lab" --NotebookApp.notebook_dir=/home/jovyan/work',
             detach=True,
+            labels={"renku_project": _docker_image_name(remote)},
             ports={f"{JUPYTER_PORT}/tcp": None},
             remove=True,
             volumes=[f"{str(client.path.resolve())}:/home/jovyan/work"],
