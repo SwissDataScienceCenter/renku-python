@@ -39,7 +39,7 @@ def list():
 
 
 @session.command("start")
-@click.argument("image", metavar="<image_name>", required=False)
+@click.option("--image", type=click.STRING, metavar="<image_name>", help="Docker image to use for the session.")
 def start(image):
     """Start a local interactive sessions."""
     from renku.core.commands.session import session_start_command
