@@ -17,11 +17,10 @@
 # limitations under the License.
 """Renku session commands."""
 
-from itertools import chain
+import webbrowser
 
 import docker
 from yaspin import yaspin
-import webbrowser
 
 from renku.core import errors
 from renku.core.commands.format.session import SESSION_FORMATS
