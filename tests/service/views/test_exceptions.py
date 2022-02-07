@@ -21,44 +21,53 @@ import uuid
 
 import pytest
 
-from renku.service.config import INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE
+from renku.service.config import SVC_ERROR_PROGRAMMING
+from renku.service.errors import ErrorUserAnonymous
 from tests.utils import retry_failed
 
 
 @pytest.mark.service
 def test_allowed_methods_exc(service_allowed_endpoint):
-    """Check allowed methods for every endpoint."""
+    """Check invalid methods amongst the allowed service methods for some endpoints."""
     methods, request, svc_client = service_allowed_endpoint
 
     method = request["allowed_method"]
-    if method == "GET":  # if GET remove sister method HEAD
-        methods.pop(method)
-        methods.pop("HEAD")
-    else:
-        methods.pop(method)
+    methods.pop(method)
 
     for method, fn in methods.items():
         response = fn(request["url"])
-        assert 405 == response.status_code
+        assert 200 == response.status_code
+        assert {"error"} == set(response.json.keys())
+        assert SVC_ERROR_PROGRAMMING + 405 == response.json["error"]["code"]
 
 
+@pytest.mark.service
+def test_unallowed_methods_exc(service_unallowed_endpoint):
+    """Check unallowed methods for some endpoint."""
+    methods, request, svc_client = service_unallowed_endpoint
+
+    for method, fn in methods.items():
+        response = fn(request["url"], content_type="application/json")
+        assert 200 == response.status_code
+        assert {"error"} == set(response.json.keys())
+        assert SVC_ERROR_PROGRAMMING + 405 == response.json["error"]["code"]
+
+
+# TODO: fix this
 @pytest.mark.service
 def test_auth_headers_exc(service_allowed_endpoint):
     """Check correct headers for every endpoint."""
     methods, request, svc_client = service_allowed_endpoint
 
     method = request["allowed_method"]
-    if method == "GET":  # if GET remove sister method HEAD
-        client_method = methods.pop(method)
-        methods.pop("HEAD")
-    else:
-        client_method = methods.pop(method)
+    client_method = methods.pop(method)
 
     response = client_method(request["url"], headers=request["headers"])
 
     assert 200 == response.status_code
-    assert response.json["error"]["code"] in [INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE]
-    assert response.json["error"]["reason"]
+    assert (ErrorUserAnonymous()).code == response.json["error"]["code"]
+
+    assert response.json["error"]["userMessage"]
 
 
 @pytest.mark.service
@@ -76,6 +85,36 @@ def test_migration_required_flag(svc_client_setup):
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert response.json["error"]["migration_required"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.parametrize(
+    "url,verb,code",
+    [
+        ("/this_endpoint_does_not_exists", "POST", SVC_ERROR_PROGRAMMING + 404),
+        ("/this_endpoint_does_not_exists", "GET", SVC_ERROR_PROGRAMMING + 404),
+        ("/version", "POST", SVC_ERROR_PROGRAMMING + 405),
+        ("/version", "WRONG_VERB", SVC_ERROR_PROGRAMMING + 405),
+        ("/this_endpoint_does_not_exists", "WRONG_VERB", SVC_ERROR_PROGRAMMING + 404),
+    ],
+)
+def test_http_common_errors(url, verb, code, svc_client):
+    """Check migration required failure."""
+    # NOTE: the service always uses http error codes with no payload in case of unsupported verbs
+    if verb == "POST":
+        fn = svc_client.post
+    elif verb == "GET":
+        fn = svc_client.get
+    elif verb == "WRONG_VERB":
+        fn = svc_client.options
+
+    response = fn(url)
+
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert response.json["error"]["code"] == code
 
 
 @pytest.mark.service

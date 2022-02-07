@@ -22,10 +22,12 @@ from io import BytesIO
 from marshmallow import EXCLUDE
 
 from renku.core.commands.init import fetch_template
+from renku.core.errors import GitError
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
+from renku.service.errors import ErrorUserTemplateNotFound, ServiceError
 from renku.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC
-from renku.service.views import result_response
+from renku.service.views import error_response_new, result_response
 
 MAX_ICON_SIZE = (256, 256)
 
@@ -78,4 +80,13 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(TemplatesReadManifestCtrl.RESPONSE_SERIALIZER, {"templates": self.template_manifest()})
+        try:
+            templates = self.template_manifest()
+        except GitError as e:
+            error_message = str(e)
+            if "Cannot clone repo from" in error_message:
+                error_details = ErrorUserTemplateNotFound()
+                return error_response_new(ServiceError(e, error_details))
+            raise
+
+        return result_response(TemplatesReadManifestCtrl.RESPONSE_SERIALIZER, {"templates": templates})

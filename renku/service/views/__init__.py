@@ -18,7 +18,24 @@
 """Renku service views."""
 from flask import current_app
 
+from renku.service.config import SVC_ERROR_GENERIC
 from renku.service.serializers.rpc import JsonRPCResponse
+
+
+def error_response_new(serviceError):
+    """Construct error response."""
+    error = {}
+    error["code"] = serviceError.code if hasattr(serviceError, "code") else SVC_ERROR_GENERIC
+    error["userMessage"] = serviceError.userMessage if hasattr(serviceError, "userMessage") else "Unexpected exception"
+    error["devMessage"] = serviceError.devMessage if hasattr(serviceError, "devMessage") else error["userMessage"]
+    if hasattr(serviceError, "userReference"):
+        error["userReference"] = serviceError.userReference
+    if hasattr(serviceError, "devReference"):
+        error["devReference"] = serviceError.devReference
+    if hasattr(serviceError, "sentry"):
+        error["sentry"] = serviceError.sentry
+
+    return current_app.response_class(response=JsonRPCResponse().dumps({"error": error}), mimetype="application/json")
 
 
 def result_response(serializer, data):

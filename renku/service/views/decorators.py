@@ -25,7 +25,6 @@ from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtEr
 from marshmallow import ValidationError
 from redis import RedisError
 from sentry_sdk import capture_exception, set_context
-from werkzeug.exceptions import HTTPException
 
 from renku.core import errors
 from renku.core.errors import (
@@ -38,17 +37,24 @@ from renku.core.errors import (
 )
 from renku.service.cache import cache
 from renku.service.config import (
-    GIT_ACCESS_DENIED_ERROR_CODE,
-    GIT_UNKNOWN_ERROR_CODE,
-    INTERNAL_FAILURE_ERROR_CODE,
     INVALID_HEADERS_ERROR_CODE,
     INVALID_PARAMS_ERROR_CODE,
     REDIS_EXCEPTION_ERROR_CODE,
     RENKU_EXCEPTION_ERROR_CODE,
 )
+from renku.service.errors import (
+    ErrorProgContentType,
+    ErrorProgGit,
+    ErrorProgInternal,
+    ErrorProgRepoUnknown,
+    ErrorUserAnonymous,
+    ErrorUserRepoNoAccess,
+    ErrorUserRepoNotFound,
+    ServiceError,
+)
 from renku.service.serializers.headers import OptionalIdentityHeaders, RequiredIdentityHeaders
 from renku.service.utils.squash import squash
-from renku.service.views import error_response
+from renku.service.views import error_response, error_response_new
 
 
 def requires_identity(f):
@@ -60,10 +66,8 @@ def requires_identity(f):
         try:
             user_identity = RequiredIdentityHeaders().load(request.headers)
         except (ValidationError, KeyError) as e:
-            capture_exception(e)
-
-            err_message = "user identification is incorrect or missing"
-            return jsonify(error={"code": INVALID_HEADERS_ERROR_CODE, "reason": err_message})
+            error_details = ErrorUserAnonymous()
+            return error_response_new(ServiceError(e, error_details))
 
         return f(user_identity, *args, **kws)
 
@@ -239,22 +243,17 @@ def handle_git_except(f):
             except (Exception, BaseException):
                 pass
 
-            capture_exception(e)
-
-            error_code = GIT_ACCESS_DENIED_ERROR_CODE if "Access denied" in e.stderr else GIT_UNKNOWN_ERROR_CODE
-
-            if "is this a git repository?" in e.stderr:
-                error_reason = "Repository could not be found"
-            elif "Access denied" in e.stderr:
-                error_reason = "Repository could not be accessed - Do you have access rights?"
+            error_message = e.stderr.lower() if e.stderr else ""
+            error_message_safe = format(" ".join(error_message.strip().split("\n")))
+            error_message_safe = re.sub("^(.+oauth2:)[^@]+(@.+)$", r"\1<token-hidden>\2", error_message_safe)
+            if "access denied" in error_message:
+                error_details = ErrorUserRepoNoAccess(error_message_safe)
+            elif "is this a git repository?" in error_message or "not found" in error_message:
+                error_details = ErrorUserRepoNotFound(error_message_safe)
             else:
-                error_reason = format(" ".join(e.stderr.strip().split("\n")))
+                error_details = ErrorProgRepoUnknown(error_message_safe)
 
-                # strip oauth tokens
-                error_reason_safe = re.sub("^(.+oauth2:)[^@]+(@.+)$", r"\1<token-hidden>\2", error_reason)
-                error_reason = f"git error: {error_reason_safe}"
-
-            return error_response(error_code, error_reason)
+            return error_response_new(ServiceError(e, error_details))
 
     return decorated_function
 
@@ -265,13 +264,18 @@ def accepts_json(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
+        content_type = "application/json"
+        wrong_type = False
         if "Content-Type" not in request.headers:
-            return jsonify(error={"code": INVALID_HEADERS_ERROR_CODE, "reason": "invalid request headers"})
+            wrong_type = True
+        else:
+            header_check = request.headers["Content-Type"] == content_type
+            if not request.is_json or not header_check:
+                wrong_type = True
 
-        header_check = request.headers["Content-Type"] == "application/json"
-
-        if not request.is_json or not header_check:
-            return jsonify(error={"code": INVALID_HEADERS_ERROR_CODE, "reason": "invalid request payload"})
+        if wrong_type:
+            error_details = ErrorProgContentType(content_type)
+            return error_response_new(ServiceError(None, error_details))
 
         return f(*args, **kwargs)
 
@@ -287,34 +291,28 @@ def handle_base_except(f):
         try:
             return f(*args, **kwargs)
 
-        except HTTPException as e:  # handle general werkzeug exception
-            capture_exception(e)
-
-            error_message = f"Failed to contact external service. Received response {e.code} ({e.description})."
-            return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
-
+        # NOTE: HTTPException are now handled in the entrypoint
         except errors.GitError as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
                 pass
-            capture_exception(e)
 
-            error_message = "Failed to execute git operation."
-            return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
+            error_details = ErrorProgGit(e.message if e.message else None)
+            return error_response_new(ServiceError(e, error_details))
 
         except (Exception, BaseException, OSError, IOError) as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
                 pass
-            capture_exception(e)
-
-            internal_error = "internal error"
             if hasattr(e, "stderr"):
-                internal_error += ": {0}".format(" ".join(e.stderr.strip().split("\n")))
+                error_message = " ".join(e.stderr.strip().split("\n"))
+            else:
+                error_message = str(e)
+            error_details = ErrorProgInternal(error_message)
 
-            return error_response(INTERNAL_FAILURE_ERROR_CODE, internal_error)
+            return error_response_new(ServiceError(e, error_details))
 
     return decorated_function
 

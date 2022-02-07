@@ -48,6 +48,14 @@ else
     fi
 fi
 
+CORE_VERSION="v9"
+echo -e "Target version is: ${COLOR_RED}${CORE_VERSION}${COLOR_RESET}"
+read -p "Press enter to use it, or type a different one [skip]: " -r
+if [[ $REPLY ]]
+then
+    CORE_VERSION=$REPLY
+fi
+
 if [[ ! $CURRENT_CONTEXT ]] || [[ ! $DEV_NAMESPACE ]]
 then
     echo "ERROR: you need to provide a context and a namespace"
@@ -64,7 +72,7 @@ then
     mkdir temp/service_cache 
 fi
 
-POD_NAME="${DEV_NAMESPACE}-renku-core"
+POD_NAME="${DEV_NAMESPACE}-renku-core-${CORE_VERSION}"
 echo -e ""
 echo -e "Context: ${COLOR_RED}${CURRENT_CONTEXT}${COLOR_RESET}, target: ${COLOR_RED}${POD_NAME}${COLOR_RESET}"
 echo "Starting telepresence..."
@@ -89,6 +97,13 @@ echo -e ""
 echo -e "\U0001F40D You should be able to attach a remote python debugger."
 echo "If you use VScode, be sure to have the following settings:"
 echo '"type": "python", "request": "attach", "port": 5678, "host": "localhost"'
+echo -e ""
+echo -e "\U00002753 You can ajust the above command to enable other features:"
+echo -e "- AUTO RELOAD (immediately apply changes when code changes, but cannot attach debugger):"
+echo -e "    --> Add 'DEBUG_RELOAD=true' at the beginning, remove '--no-reload' at the end."
+echo -e "- USE SENTRY (register the exceptions in Sentry):"
+echo -e "    --> Add 'SENTRY_ENV=${DEV_NAMESPACE}' and 'SENTRY_DSN=<xyz>' at the beginning,"
+echo -e "        where <xyz> is the url you find under 'core.dns' in your values.yaml file."
 echo -e ""
 echo -e "\U0001F438 Enjoy Renku!"
 echo -e ""
