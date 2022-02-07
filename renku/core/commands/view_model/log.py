@@ -82,6 +82,7 @@ class DatasetChangeDetailsViewModel:
     keywords_added: Optional[List[str]] = None
     keywords_removed: Optional[List[str]] = None
     images_changed_to: Optional[List[str]] = None
+    source: Optional[str] = None
 
 
 class LogViewModel:
@@ -162,6 +163,7 @@ class LogViewModel:
         elif dataset.change_type & DatasetChangeType.IMPORTED:
             descriptions.append("imported")
             details.imported = True
+            details.source = dataset.same_as.value
         elif dataset.change_type & DatasetChangeType.INVALIDATED:
             descriptions.append("deleted")
             details.deleted = True
@@ -249,8 +251,8 @@ class LogViewModel:
 
         return DatasetLogViewModel(
             id=dataset.name,
-            date=dataset.date_modified,
-            description=descriptions[0] + " ".join(descriptions[1:]),
+            date=dataset.date_removed if dataset.change_type & DatasetChangeType.INVALIDATED else dataset.date_modified,
+            description=descriptions[0] + ", ".join(descriptions[1:]),
             details=details,
             agents=[c.full_identity for c in dataset.creators],
         )

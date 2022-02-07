@@ -105,6 +105,9 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
     if change:
         results.append(click.style("Changes: ", bold=True, fg="magenta") + ", ".join(change))
 
+    if log_entry.details.source:
+        results.append(click.style("Source: ", bold=True, fg="magenta") + log_entry.details.source)
+
     if log_entry.details.title_changed:
         results.append(click.style("Title set to: ", bold=True, fg="magenta") + log_entry.details.title_changed)
 

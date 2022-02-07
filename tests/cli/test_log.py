@@ -28,12 +28,54 @@ def test_activity_log(runner, project):
 
     result = runner.invoke(cli, ["log"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Run     touch foo" in result.output
+    assert "Activity /activities/" in result.output
+    assert "Command: touch foo" in result.output
+    assert "output-1: foo" in result.output
+    assert "Start Time:" in result.output
+    assert "Renku Version:" in result.output
 
     result = runner.invoke(cli, ["run", "--name", "run2", "cp", "foo", "bar"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["log"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Run     touch foo" in result.output
-    assert "Run     cp foo bar" in result.output
+    assert "Activity /activities/" in result.output
+    assert "Command: touch foo" in result.output
+    assert "output-1: foo" in result.output
+    assert "Start Time:" in result.output
+    assert "Renku Version:" in result.output
+    assert "Command: cp foo bar" in result.output
+    assert "input-1: foo" in result.output
+    assert "output-2: bar" in result.output
+
+
+def test_dataset_log(runner, project, client):
+    """Test renku log for dataset."""
+    result = runner.invoke(cli, ["dataset", "create", "testset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with (client.path / "my_file").open("w") as fp:
+        fp.write("dataset file")
+
+    result = runner.invoke(cli, ["dataset", "add", "testset", "my_file"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(
+        cli, ["dataset", "edit", "testset", "-t", "new title", "-d", "new description", "-k", "a", "-k", "b"]
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["dataset", "unlink", "testset", "--include", "my_file"], input="y")
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["log"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Dataset testset" in result.output
+    assert "Changes: created" in result.output
+    assert "Changes: modified" in result.output
+    assert "Files modified" in result.output
+    assert "- my_file" in result.output
+    assert "+ my_file" in result.output
+    assert "Title set to: new title" in result.output
+    assert "Description set to: new description" in result.output
+    assert "Keywords modified" in result.output
+    assert "Creators modified" in result.output
