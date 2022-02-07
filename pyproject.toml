@@ -204,7 +204,6 @@ all = [
     "freezegun",
     "gunicorn",
     "isort",
-    "jinja2",
     "marshmallow",
     "pexpect",
     "pillow",
