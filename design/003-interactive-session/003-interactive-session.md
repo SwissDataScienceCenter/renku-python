@@ -38,23 +38,24 @@ that's going to be used for running the interactive session. In case the docker 
 user is going to be prompted whether the user wants to build the docker image, as in some cases it can be
 time consuming.
 
-By using the `--remote [endpoint]` flag an interactive session will be spawned on the specified endpoint. It requires
-that the user has authenticated herself previously with the `renku login` command and aquired the authentication
-token for the endpoint.	If the endpoint is not defined the command will try to assume the endpoint set in the project's
-configuration if available.
+With the `--provider <provider_type>` flag a user can specify session provider to be used for starting
+an interactive session. By default two different providers are shipped with Renku CLI:
+ - docker
+ - renkulab
+The provider specific configuration values can be specified by using the `--config <config.yaml>` flag.
 
 ##### Detailed Parameter Description
 
 ```
 renku session start [OPTIONS]
 
---image <image_name>	override the docker image to be used for the interactive session.
---remote [endpoint]	start a remote interactive session using the JWT aquired for the
-			specific endpoint with renku login.
---cpu <num of cpus>	Specify how much of the available CPU resources a container can use.
---disk <disk space>	Specify the amount of disk space for the container.
---gpu <device>		Specify the GPU allocated for the container.
---memory <max memory>	The maximum amount of memory the container can use.
+--image <image_name>			Override the docker image to be used for the interactive session.
+-p|--provider [docker|renkulab] 	Use the specified backend for starting an interactive session.
+-c|--config   				YAML file containing configuration for the provider.
+--cpu <num of cpus>			Specify how much of the available CPU resources a container can use.
+--disk <disk space>			Specify the amount of disk space for the container.
+--gpu <device>				Specify the GPU allocated for the container.
+--memory <max memory>			The maximum amount of memory the container can use.
 
 ```
 
@@ -85,8 +86,8 @@ detailed information regarding the network port mappings.
 ```
 renku session list [OPTIONS]
 
---remote       List the remote interactive sessions currently running.
-               By default only the local interactive sessions are listed.
+-p|--provider [docker|renkulab] 	Use the specified backend for listing the interactive sessions.
+-c|--config   				YAML file containing configuration for the provider.
 
 ```
 
