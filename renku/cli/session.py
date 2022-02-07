@@ -15,11 +15,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Manage local interactive sessions."""
+"""Manage interactive sessions."""
 
 import click
+from lazy_object_proxy import Proxy
 
 from renku.cli.utils.callback import ClickCallback
+from renku.cli.utils.plugins import supported_session_providers
 from renku.core import errors
 
 
@@ -30,30 +32,69 @@ def session():
 
 
 @session.command("list")
-def list():
-    """List local interactive sessions."""
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    type=click.Choice(Proxy(supported_session_providers)),
+    default="docker",
+    show_default=True,
+    help="Backend to use for listing interactive sessions.",
+)
+@click.option(
+    "config",
+    "-c",
+    "--config",
+    type=click.Path(exists=True, dir_okay=False),
+    metavar="<config file>",
+    help="YAML file containing configuration for the provider.",
+)
+def list(provider, config):
+    """List interactive sessions."""
     from renku.core.commands.session import session_list_command
 
-    result = session_list_command().build().execute()
+    result = session_list_command().build().execute(provider=provider, config=config)
     click.echo(result.output)
 
 
 @session.command("start")
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    type=click.Choice(Proxy(supported_session_providers)),
+    default="docker",
+    show_default=True,
+    help="Backend to use for creating an interactive session.",
+)
+@click.option(
+    "config",
+    "-c",
+    "--config",
+    type=click.Path(exists=True, dir_okay=False),
+    metavar="<config file>",
+    help="YAML file containing configuration for the provider.",
+)
 @click.option("--image", type=click.STRING, metavar="<image_name>", help="Docker image to use for the session.")
-def start(image):
-    """Start a local interactive sessions."""
+def start(provider, config, image):
+    """Start a interactive sessions."""
     from renku.core.commands.session import session_start_command
 
     communicator = ClickCallback()
-    result = session_start_command().with_communicator(communicator).build().execute(image_name=image)
-    click.echo(result.output)
+    result = (
+        session_start_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(provider=provider, config=config, image_name=image)
+    )
+    click.echo(result.output[0])
 
 
 @session.command("stop")
 @click.argument("session_name", metavar="<name>", required=False)
 @click.option("stop_all", "--all", is_flag=True, help="Stops all the running containers.")
 def stop(session_name, stop_all):
-    """Stop a local interactive sessions."""
+    """Stop a interactive sessions."""
     from renku.core.commands.session import session_stop_command
 
     if not stop_all and session_name is None:
@@ -61,15 +102,15 @@ def stop(session_name, stop_all):
 
     session_stop_command().build().execute(session_name=session_name, stop_all=stop_all)
     if stop_all:
-        click.echo("All running local interactive sessions for this project have been stopped.")
+        click.echo("All running interactive sessions for this project have been stopped.")
     else:
-        click.echo(f"Local interactive '{session_name}' has been successfully stopped.")
+        click.echo(f"Interactive '{session_name}' has been successfully stopped.")
 
 
 @session.command("open")
 @click.argument("session_name", metavar="<name>", required=False)
 def open(session_name):
-    """Stop a local interactive sessions."""
+    """Stop a interactive sessions."""
     from renku.core.commands.session import session_open_command
 
     session_open_command().build().execute(session_name=session_name)
