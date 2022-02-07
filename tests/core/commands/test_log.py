@@ -21,10 +21,9 @@
 from datetime import datetime, timedelta
 from typing import List
 
-import inject
-
 from renku.core.commands.log import _log
 from renku.core.commands.view_model.log import DatasetLogViewModel, LogType
+from renku.core.management.command_builder.command import inject, remove_injector
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.models.dataset import DatasetChangeType
 from renku.core.models.provenance.activity import Activity, Association
@@ -110,7 +109,7 @@ def test_log_dataset_create_simple(mocker):
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_all_datasets.return_value = [new_dataset]
 
-    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+    inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result: List[DatasetLogViewModel] = _log(
@@ -120,7 +119,7 @@ def test_log_dataset_create_simple(mocker):
             datasets_only=True,
         )
     finally:
-        inject.clear()
+        remove_injector()
 
     assert 1 == len(result)
 
@@ -163,7 +162,7 @@ def test_log_dataset_create_complex(mocker):
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_all_datasets.return_value = [new_dataset]
 
-    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+    inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result = _log(
@@ -173,7 +172,7 @@ def test_log_dataset_create_complex(mocker):
             datasets_only=True,
         )
     finally:
-        inject.clear()
+        remove_injector()
 
     assert 1 == len(result)
 
@@ -218,7 +217,7 @@ def test_log_dataset_add_create(mocker):
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_all_datasets.return_value = [new_dataset]
 
-    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+    inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result = _log(
@@ -228,7 +227,7 @@ def test_log_dataset_add_create(mocker):
             datasets_only=True,
         )
     finally:
-        inject.clear()
+        remove_injector()
 
     assert 1 == len(result)
 
@@ -273,7 +272,7 @@ def test_log_dataset_import(mocker):
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_all_datasets.return_value = [new_dataset]
 
-    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+    inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result = _log(
@@ -283,7 +282,7 @@ def test_log_dataset_import(mocker):
             datasets_only=True,
         )
     finally:
-        inject.clear()
+        remove_injector()
 
     assert 1 == len(result)
 
@@ -343,7 +342,7 @@ def test_log_dataset_deleted(mocker):
 
     dataset_gateway.get_by_id.side_effect = _mock_get_by_id
 
-    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+    inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result: List[DatasetLogViewModel] = _log(
@@ -353,7 +352,7 @@ def test_log_dataset_deleted(mocker):
             datasets_only=True,
         )
     finally:
-        inject.clear()
+        remove_injector()
 
     assert 2 == len(result)
 
@@ -416,7 +415,7 @@ def test_log_dataset_files_removed(mocker):
 
     dataset_gateway.get_by_id.side_effect = _mock_get_by_id
 
-    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+    inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result: List[DatasetLogViewModel] = _log(
@@ -426,7 +425,7 @@ def test_log_dataset_files_removed(mocker):
             datasets_only=True,
         )
     finally:
-        inject.clear()
+        remove_injector()
 
     assert 2 == len(result)
 
@@ -495,7 +494,7 @@ def test_log_dataset_metadata_modified(mocker):
 
     dataset_gateway.get_by_id.side_effect = _mock_get_by_id
 
-    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+    inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result: List[DatasetLogViewModel] = _log(
@@ -505,7 +504,7 @@ def test_log_dataset_metadata_modified(mocker):
             datasets_only=True,
         )
     finally:
-        inject.clear()
+        remove_injector()
 
     assert 2 == len(result)
 

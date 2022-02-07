@@ -64,8 +64,7 @@ click-option-group = "<0.6.0,>=0.5.2"
 click-plugins = "==1.1.1"
 coverage = { version = "<6.2,>=4.5.3", optional = true }
 cryptography = "<35.1,>=3.4.1"
-cwl-utils = { version = ">=0.12", optional = true }
-cwlgen = "<=0.4.2,>=0.4.0"
+cwl-utils = ">=0.12"
 cwltool = "==3.1.20210922203925"
 deepmerge = "==0.3.0"
 environ-config = "<21.3.0,>=18.2.0"
@@ -129,6 +128,7 @@ rich = "<10.13.0,>=9.3.0"
 rq = { version = "==1.10.0", optional = true }
 rq-scheduler = { version = "==0.11.0", optional = true }
 sentry-sdk = { version = "<1.4.4,>=0.7.4", extras = ["flask"], optional = true }
+shellingham = "1.4.0"
 sphinxcontrib-spelling = { version = "7.*", optional = true }
 sphinx-rtd-theme = { version = "<1.1,>=0.5.0", optional = true }
 sphinx-tabs = { version = "==3.2.0", optional = true }
@@ -168,7 +168,6 @@ tests = [
     "black",
     "check-manifest",
     "coverage",
-    "cwl-utils",
     "fakeredis",
     "flakehell",
     "flaky",
@@ -198,7 +197,6 @@ all = [
     "check-manifest",
     "circus",
     "coverage",
-    "cwl-utils",
     "fakeredis",
     "flakehell",
     "flaky",
@@ -206,7 +204,6 @@ all = [
     "freezegun",
     "gunicorn",
     "isort",
-    "jinja2",
     "marshmallow",
     "pexpect",
     "pillow",
