@@ -19,11 +19,12 @@
 
 
 from datetime import datetime, timedelta
+from typing import List
 
 import inject
 
 from renku.core.commands.log import _log
-from renku.core.commands.view_model.log import LogType
+from renku.core.commands.view_model.log import DatasetLogViewModel, LogType
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.models.dataset import DatasetChangeType
 from renku.core.models.provenance.activity import Activity, Association
@@ -91,6 +92,119 @@ def test_log_activities(mocker):
     assert result[0].description == "touch A"
     assert result[1].description == "cp A B"
     assert result[2].description == "cp B C"
+
+
+def test_log_dataset_create_simple(mocker):
+    """Test getting dataset viewmodels on create."""
+
+    new_dataset = mocker.MagicMock()
+    new_dataset.id = "new"
+    new_dataset.name = "ds"
+    new_dataset.title = None
+    new_dataset.description = None
+    new_dataset.derived_from = None
+    new_dataset.change_type = DatasetChangeType.CREATED
+    new_dataset.dataset_files = []
+    new_dataset.date_modified = datetime.utcnow()
+
+    dataset_gateway = mocker.MagicMock()
+    dataset_gateway.get_all_datasets.return_value = [new_dataset]
+
+    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+
+    try:
+        result: List[DatasetLogViewModel] = _log(
+            activity_gateway=mocker.MagicMock(),
+            dataset_gateway=dataset_gateway,
+            workflows_only=False,
+            datasets_only=True,
+        )
+    finally:
+        inject.clear()
+
+    assert 1 == len(result)
+
+    entry = result[0]
+    assert LogType.DATASET == entry.type
+    assert not entry.agents
+    assert new_dataset.date_modified == entry.date
+    assert "ds" == entry.id
+    assert "Dataset 'ds': created" == entry.description
+
+    assert "title" == entry.details.title_changed
+    assert not entry.details.description_changed
+    assert not entry.details.creators_added
+    assert not entry.details.creators_removed
+    assert not entry.details.keywords_added
+    assert not entry.details.keywords_removed
+    assert not entry.details.images_changed_to
+    assert entry.details.created
+    assert not entry.details.imported
+    assert not entry.details.migrated
+    assert not entry.details.modified
+
+
+def test_log_dataset_create_complex(mocker):
+    """Test getting dataset viewmodels on create."""
+
+    new_dataset = mocker.MagicMock()
+    new_dataset.id = "new"
+    new_dataset.name = "ds"
+    new_dataset.derived_from = None
+    new_dataset.change_type = DatasetChangeType.CREATED
+    new_dataset.title = "new-title"
+    new_dataset.description = "new-description"
+    new_dataset.dataset_files = []
+    new_dataset.creators = [mocker.MagicMock(full_identity="John")]
+    new_dataset.keywords = ["a", "b"]
+    new_dataset.images = [mocker.MagicMock(content_url="./img/img1.png")]
+
+    dataset_gateway = mocker.MagicMock()
+    dataset_gateway.get_all_datasets.return_value = [new_dataset]
+
+    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+
+    try:
+        result = _log(
+            activity_gateway=mocker.MagicMock(),
+            dataset_gateway=dataset_gateway,
+            workflows_only=False,
+            datasets_only=True,
+        )
+    finally:
+        inject.clear()
+
+    assert 1 == len(result)
+
+
+def test_log_dataset_add_create(mocker):
+    """Test getting dataset viewmodels on create."""
+
+    new_dataset = mocker.MagicMock()
+    new_dataset.id = "new"
+    new_dataset.name = "ds"
+    new_dataset.derived_from = None
+    new_dataset.change_type = DatasetChangeType.CREATED
+    new_dataset.title = "new-title"
+    new_dataset.description = "new-description"
+    new_dataset.dataset_files = []
+
+    dataset_gateway = mocker.MagicMock()
+    dataset_gateway.get_all_datasets.return_value = [new_dataset]
+
+    inject.clear_and_configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway))
+
+    try:
+        result = _log(
+            activity_gateway=mocker.MagicMock(),
+            dataset_gateway=dataset_gateway,
+            workflows_only=False,
+            datasets_only=True,
+        )
+    finally:
+        inject.clear()
+
+    assert 1 == len(result)
 
 
 def test_log_datasets(mocker):

@@ -197,8 +197,12 @@ class LogViewModel:
             details.modified = True
 
         if dataset.change_type & DatasetChangeType.METADATA_CHANGED and previous_dataset or not previous_dataset:
-            descriptions.append("metadata modified")
-            details.modified = True
+            if (
+                not dataset.change_type & DatasetChangeType.CREATED
+                and not dataset.change_type & DatasetChangeType.IMPORTED
+            ):
+                descriptions.append("metadata modified")
+                details.modified = True
 
             if not previous_dataset or dataset.title != previous_dataset.title:
                 details.title_changed = dataset.title
