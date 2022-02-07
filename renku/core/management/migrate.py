@@ -376,7 +376,7 @@ def get_migrations():
     """Return a sorted list of versions and migration modules."""
     migrations = []
     for entry in importlib_resources.files("renku.core.management.migrations").iterdir():
-        match = re.search(r"m_([0-9]{4})__[a-zA-Z0-9_-]*.py", entry.name)
+        match = re.search(r"^m_([0-9]{4})__[a-zA-Z0-9_-]*.py$", entry.name)
 
         if match is None:  # migration files match m_0000__[name].py format
             continue
