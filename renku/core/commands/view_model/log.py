@@ -20,7 +20,7 @@
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import inject
 
@@ -100,12 +100,12 @@ class LogViewModel:
         self.description = description
         self.agents = agents
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Return a dict representation of this view model."""
         raise NotImplementedError()
 
     @classmethod
-    def from_activity(cls, activity: "Activity"):
+    def from_activity(cls, activity: "Activity") -> "ActivityLogViewModel":
         """Create a log entry from an activity."""
         from renku.core.models.provenance.agent import Person, SoftwareAgent
 
@@ -144,7 +144,7 @@ class LogViewModel:
         )
 
     @classmethod
-    def from_dataset(cls, dataset: "Dataset"):
+    def from_dataset(cls, dataset: "Dataset") -> Optional["DatasetLogViewModel"]:
         """Create a log entry from an activity."""
         from renku.core.management.interface.dataset_gateway import IDatasetGateway
         from renku.core.models.dataset import DatasetChangeType
@@ -269,7 +269,7 @@ class DatasetLogViewModel(LogViewModel):
         super().__init__(id, date, description, agents)
         self.details = details
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Return a dict representation of this view model."""
         return {
             "date": self.date.isoformat(),
@@ -289,7 +289,7 @@ class ActivityLogViewModel(LogViewModel):
         super().__init__(id, date, description, agents)
         self.details = details
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Return a dict representation of this view model."""
         return {
             "date": self.date.isoformat(),

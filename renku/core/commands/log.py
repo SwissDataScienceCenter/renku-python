@@ -17,6 +17,8 @@
 # limitations under the License.
 """Log of renku commands."""
 
+from typing import List
+
 from renku.core.commands.view_model.log import LogViewModel
 from renku.core.management.command_builder import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
@@ -35,7 +37,7 @@ def _log(
     dataset_gateway: IDatasetGateway,
     workflows_only: bool = False,
     datasets_only: bool = False,
-):
+) -> List[LogViewModel]:
     """Get a log of renku commands."""
 
     def _get_all_dataset_versions(dataset: Dataset):

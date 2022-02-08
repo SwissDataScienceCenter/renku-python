@@ -23,10 +23,27 @@ At the moment, it only shows workflow executions.
 .. code-block:: console
 
     $ renku log
-    DATE                 TYPE  DESCRIPTION
-    -------------------  ----  -------------
-    2021-09-21 15:46:02  Run   cp A C
-    2021-09-21 10:52:51  Run   cp A B
+    Activity /activities/be60896d8d984a0bb585e53f7a3146dc
+    Start Time: 2022-02-03T13:56:27+01:00
+    End Time: 2022-02-03T13:56:28+01:00
+    User: John Doe <John.Doe@example.com>
+    Renku Version: renku 1.0.5
+    Command: python test.py
+    Inputs:
+            input-1: test.py
+    Parameters:
+            text: hello
+
+    Dataset testset
+    Date: 2022-02-03T11:26:55+01:00
+    Changes: created
+    Title set to: testset
+    Creators modified:
+            + John Doe <John.Doe@example.com>
+
+To show only dataset entries, use ``-d``, to show only workflows, use ``-w``.
+
+You can select a format using the ``--format <format>`` argument.
 
 .. cheatsheet::
    :group: Misc
