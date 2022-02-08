@@ -35,10 +35,16 @@ class DockerSessionProvider(ISessionProvider):
     JUPYTER_PORT = 8888
 
     def __init__(self):
-        try:
-            self._docker_client = docker.from_env()
-        except docker.errors.DockerException:
-            raise errors.DockerError("Error initializing docker client, make sure that the docker service is running!")
+        self._docker_client = None
+
+    def docker_client(self):
+        """Get the docker client."""
+        if self._docker_client is None:
+            try:
+                self._docker_client = docker.from_env()
+            except docker.errors.DockerException as e:
+                raise errors.DockerError(f"Error while initializing docker client: {str(e)}")
+        return self._docker_client
 
     @staticmethod
     def _docker_image_name(remote, commit_sha=None):
@@ -54,7 +60,7 @@ class DockerSessionProvider(ISessionProvider):
         return map(lambda x: f'http://{x["HostIp"]}:{x["HostPort"]}/', ports[port_key])
 
     def _get_docker_containers(self, client):
-        return self._docker_client.containers.list(
+        return self.docker_client().containers.list(
             filters={"label": f"renku_project={DockerSessionProvider._docker_image_name(client.remote)}"}
         )
 
@@ -84,13 +90,15 @@ class DockerSessionProvider(ISessionProvider):
 
         def _find_docker_image(remote, commit_sha):
             try:
-                return self._docker_client.images.get(DockerSessionProvider._docker_image_name(remote, commit_sha))
+                return self.docker_client().images.get(DockerSessionProvider._docker_image_name(remote, commit_sha))
             except docker.errors.ImageNotFound:
                 # try to pull
-                return self._docker_client.images.pull(DockerSessionProvider._docker_image_name(remote), tag=commit_sha)
+                return self.docker_client().images.pull(
+                    DockerSessionProvider._docker_image_name(remote), tag=commit_sha
+                )
 
         try:
-            docker_is_running = self._docker_client.ping()
+            docker_is_running = self.docker_client().ping()
             if not docker_is_running:
                 raise errors.DockerError(
                     "Could not communicate with the docker instance. Please make sure it is running!"
@@ -113,10 +121,10 @@ class DockerSessionProvider(ISessionProvider):
                     )
 
                     with yaspin(text="Building docker image"):
-                        _ = self._docker_client.images.build(path=str(client.docker_path.parent), tag=image_name)
+                        _ = self.docker_client().images.build(path=str(client.docker_path.parent), tag=image_name)
 
             # TODO: no tokens? security concerns ?
-            container = self._docker_client.containers.run(
+            container = self.docker_client().containers.run(
                 image_name,
                 f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}'
                 '--NotebookApp.token="" --NotebookApp.default_url="/lab" --NotebookApp.notebook_dir=/home/jovyan/work',
@@ -146,7 +154,7 @@ class DockerSessionProvider(ISessionProvider):
             docker_containers = (
                 self._get_docker_containers(client)
                 if all
-                else self._docker_client.containers.list(filters={"id": session_name})
+                else self.docker_client().containers.list(filters={"id": session_name})
             )
 
             if len(docker_containers) == 0:
