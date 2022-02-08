@@ -133,10 +133,12 @@ class DockerSessionProvider(ISessionProvider):
                         _ = self.docker_client().images.build(path=str(client.docker_path.parent), tag=image_name)
 
             auth_token = uuid4().hex
+            project_config = client.load_config()
+            default_url = project_config.get("interactive", "default_url")
             container = self.docker_client().containers.run(
                 image_name,
                 f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}'
-                f' --NotebookApp.token="{auth_token}" --NotebookApp.default_url="/lab"'
+                f' --NotebookApp.token="{auth_token}" --NotebookApp.default_url="{default_url}"'
                 " --NotebookApp.notebook_dir=/home/jovyan/work",
                 detach=True,
                 labels={"renku_project": DockerSessionProvider._docker_image_name(remote), "jupyter_token": auth_token},
@@ -155,7 +157,7 @@ class DockerSessionProvider(ISessionProvider):
             message += "\n\t".join(jupyter_urls)
             return message
         except (docker.errors.APIError, docker.errors.BuildError) as error:
-            raise errors.DockerError(error.msg)
+            raise errors.DockerError(str(error))
 
     @hookimpl
     def session_stop(self, client: LocalClient, session_name: Optional[str], stop_all: bool):
