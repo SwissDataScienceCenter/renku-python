@@ -23,7 +23,7 @@ from .tabulate import tabulate
 def tabular(sessions, *, columns=None):
     """Format workflows with a tabular output."""
     if not columns:
-        columns = "id,status,ports"
+        columns = "id,status,url"
 
     return tabulate(collection=sessions, columns=columns, columns_mapping=SESSION_COLUMNS)
 
@@ -32,7 +32,7 @@ SESSION_FORMATS = {"tabular": tabular}
 """Valid formatting options."""
 
 SESSION_COLUMNS = {
-    "id": ("short_id", "id"),
+    "id": ("id", "id"),
     "status": ("status", "status"),
-    "ports": ("ports", "ports"),
+    "url": ("url", "url"),
 }

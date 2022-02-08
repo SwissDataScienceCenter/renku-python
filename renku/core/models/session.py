@@ -26,6 +26,15 @@ from typing import List, Optional, Tuple
 from renku.core.management.client import LocalClient
 
 
+class Session:
+    """Interactive session."""
+
+    def __init__(self, id: str, status: str, url: str):
+        self.id = id
+        self.status = status
+        self.url = url
+
+
 class ISessionProvider(metaclass=ABCMeta):
     """Abstract class for a interactive session provider."""
 
@@ -38,7 +47,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_list(self, config: Optional[Path], client: LocalClient) -> List[str]:
+    def session_list(self, config: Optional[Path], client: LocalClient) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         :param config: Path to the session provider specific configuration YAML.
