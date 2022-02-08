@@ -21,6 +21,7 @@ from typing import List, Optional, Tuple
 
 import pluggy
 
+from renku.core.management.client import LocalClient
 from renku.core.models.session import ISessionProvider
 
 hookspec = pluggy.HookspecMarker("renku")
@@ -37,7 +38,7 @@ def session_provider() -> Tuple[ISessionProvider, str]:
 
 # FIXME: we might just want to return all the plugins results at once.
 @hookspec(firstresult=True)
-def session_list(self, config: Optional[Path], client) -> List[str]:
+def session_list(self, config: Optional[Path], client: LocalClient) -> List[str]:
     """Lists all the sessions currently running by the given session provider.
 
     :returns: a list of sessions.
@@ -46,7 +47,7 @@ def session_list(self, config: Optional[Path], client) -> List[str]:
 
 
 @hookspec(firstresult=True)
-def session_start(self, config: Path, image_name: Optional[str], client) -> str:
+def session_start(self, config: Path, image_name: Optional[str], client: LocalClient) -> str:
     """Creates an interactive session.
 
     :returns: a unique id for the created interactive sesssion.
@@ -55,7 +56,7 @@ def session_start(self, config: Path, image_name: Optional[str], client) -> str:
 
 
 @hookspec
-def session_stop(self, client, session_name: Optional[str], stop_all: bool):
+def session_stop(self, client: LocalClient, session_name: Optional[str], stop_all: bool):
     """Stops all or a given interactive session."""
     pass
 
