@@ -25,38 +25,52 @@ from typing import List, Optional, Tuple
 
 
 class ISessionProvider(metaclass=ABCMeta):
-    """Abstract class for executing ``Plan``."""
+    """Abstract class for a interactive session provider."""
 
     @abstractmethod
     def session_provider(self) -> Tuple["ISessionProvider", str]:
-        """Supported session engine.
+        """Supported session provider.
 
         :returns: a tuple of ``self`` and engine type name.
         """
         pass
 
     @abstractmethod
-    def session_list(self, config: Path, client) -> List[str]:
-        """Lists all the sessions currently running by the given session engine.
+    def session_list(self, config: Optional[Path], client) -> List[str]:
+        """Lists all the sessions currently running by the given session provider.
 
+        :param config: Path to the session provider specific configuration YAML.
+        :param client: Renku client.
         :returns: a list of sessions.
         """
         pass
 
     @abstractmethod
-    def session_start(self, config: Path, image_name: Optional[str], client) -> str:
+    def session_start(self, config: Optional[Path], image_name: Optional[str], client) -> str:
         """Creates an interactive session.
 
+        :param config: Path to the session provider specific configuration YAML.
+        :param image_name: Container image name to be used for the interactive session.
+        :param client: Renku client.
         :returns: a unique id for the created interactive sesssion.
         """
         pass
 
     @abstractmethod
     def session_stop(self, client, session_name: Optional[str], stop_all: bool):
-        """Stops all or a given interactive session."""
+        """Stops all or a given interactive session.
+
+        :param client: Renku client.
+        :param session_name: The unique id of the interactive session.
+        :param stop_all: Specifies whether or not to stop all the running interactive sessions.
+        """
         pass
 
     @abstractmethod
     def session_url(self, session_name: str) -> str:
-        """Get the given sessions URL."""
+        """Get the given session's URL.
+
+        :param session_name: The unique id of the interactive session.
+        :returns: URL of the interactive session.
+        """
         pass

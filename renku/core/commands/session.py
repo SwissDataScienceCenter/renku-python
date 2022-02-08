@@ -24,6 +24,7 @@ from renku.core.commands.format.session import SESSION_FORMATS
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.utils.os import safe_read_yaml
 
 
 def _get_provider_command(provider: str, cmd: str):
@@ -41,10 +42,12 @@ def _get_provider_command(provider: str, cmd: str):
 
 
 @inject.autoparams()
-def _session_list(provider, client_dispatcher: IClientDispatcher, format="tabular"):
+def _session_list(provider: str, config: str, client_dispatcher: IClientDispatcher, format="tabular"):
     client = client_dispatcher.current_client
     lister = _get_provider_command(provider, "session_list")
-    return SESSION_FORMATS[format](lister(client=client)[0])
+    if config:
+        config = safe_read_yaml(config)
+    return SESSION_FORMATS[format](lister(config=config, client=client)[0])
 
 
 def session_list_command():
@@ -56,6 +59,8 @@ def session_list_command():
 def _session_start(provider: str, config: str, client_dispatcher: IClientDispatcher, image_name: str = None):
     client = client_dispatcher.current_client
     session_starter = _get_provider_command(provider, "session_start")
+    if config:
+        config = safe_read_yaml(config)
     return session_starter(config=config, client=client, image_name=image_name)
 
 

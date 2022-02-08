@@ -30,7 +30,7 @@ from renku.core.utils import communication
 
 
 class DockerSessionProvider(ISessionProvider):
-    """Abstract class for executing ``Plan``."""
+    """A docker based interactive session provider."""
 
     JUPYTER_PORT = 8888
 
@@ -67,7 +67,7 @@ class DockerSessionProvider(ISessionProvider):
         return (self, "docker")
 
     @hookimpl
-    def session_list(self, config: Path, client) -> List[str]:
+    def session_list(self, config: Optional[Path], client) -> List[str]:
         """Lists all the sessions currently running by the given session provider.
 
         :returns: a list of sessions.
@@ -76,7 +76,7 @@ class DockerSessionProvider(ISessionProvider):
         return self._get_docker_containers(client)
 
     @hookimpl
-    def session_start(self, config: Path, image_name: Optional[str], client) -> str:
+    def session_start(self, config: Optional[Path], image_name: Optional[str], client) -> str:
         """Creates an interactive session.
 
         :returns: a unique id for the created interactive sesssion.
@@ -158,10 +158,11 @@ class DockerSessionProvider(ISessionProvider):
             raise errors.DockerError(error.msg)
 
     @hookimpl
-    def session_url(self, client, session_name: str) -> str:
+    def session_url(self, client, session_name: str) -> Optional[str]:
         """Get the URL of the interactive session."""
         repo_containers = self._get_docker_containers(client)
         for c in repo_containers:
             if c.short_id == session_name and f"{DockerSessionProvider.JUPYTER_PORT}/tcp" in c.ports:
                 host = c.ports[f"{DockerSessionProvider.JUPYTER_PORT}/tcp"][0]
                 return f'http://{host["HostIp"]}:{host["HostPort"]}'
+        return None
