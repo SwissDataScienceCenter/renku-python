@@ -19,6 +19,7 @@
 
 from pathlib import Path
 from typing import List, Optional, Tuple
+from uuid import uuid4
 
 import docker
 from yaspin import yaspin
@@ -53,11 +54,11 @@ class DockerSessionProvider(ISessionProvider):
         return f"{remote['owner']}/{remote['name']}"
 
     @staticmethod
-    def _get_jupyter_urls(ports, jupyter_port=8888):
+    def _get_jupyter_urls(ports, auth_token, jupyter_port=8888):
         port_key = f"{jupyter_port}/tcp"
         if port_key not in ports:
             return None
-        return map(lambda x: f'http://{x["HostIp"]}:{x["HostPort"]}/', ports[port_key])
+        return map(lambda x: f'http://{x["HostIp"]}:{x["HostPort"]}/?token={auth_token}', ports[port_key])
 
     def _get_docker_containers(self, client):
         return self.docker_client().containers.list(
@@ -123,13 +124,14 @@ class DockerSessionProvider(ISessionProvider):
                     with yaspin(text="Building docker image"):
                         _ = self.docker_client().images.build(path=str(client.docker_path.parent), tag=image_name)
 
-            # TODO: no tokens? security concerns ?
+            auth_token = uuid4().hex
             container = self.docker_client().containers.run(
                 image_name,
                 f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}'
-                '--NotebookApp.token="" --NotebookApp.default_url="/lab" --NotebookApp.notebook_dir=/home/jovyan/work',
+                f' --NotebookApp.token="{auth_token}" --NotebookApp.default_url="/lab"'
+                " --NotebookApp.notebook_dir=/home/jovyan/work",
                 detach=True,
-                labels={"renku_project": DockerSessionProvider._docker_image_name(remote)},
+                labels={"renku_project": DockerSessionProvider._docker_image_name(remote), "jupyter_token": auth_token},
                 ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": None},
                 remove=True,
                 volumes=[f"{str(client.path.resolve())}:/home/jovyan/work"],
@@ -139,7 +141,7 @@ class DockerSessionProvider(ISessionProvider):
                 container.reload()
 
             jupyter_urls = DockerSessionProvider._get_jupyter_urls(
-                container.ports, jupyter_port=DockerSessionProvider.JUPYTER_PORT
+                container.ports, auth_token, jupyter_port=DockerSessionProvider.JUPYTER_PORT
             )
             message = f"The session for '{image_name}' has been successfully started. It is available at:\n\t"
             message += "\n\t".join(jupyter_urls)
@@ -172,5 +174,5 @@ class DockerSessionProvider(ISessionProvider):
         for c in repo_containers:
             if c.short_id == session_name and f"{DockerSessionProvider.JUPYTER_PORT}/tcp" in c.ports:
                 host = c.ports[f"{DockerSessionProvider.JUPYTER_PORT}/tcp"][0]
-                return f'http://{host["HostIp"]}:{host["HostPort"]}'
+                return f'http://{host["HostIp"]}:{host["HostPort"]}/?token={c.labels["jupyter_token"]}'
         return None
