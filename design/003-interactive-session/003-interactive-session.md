@@ -11,7 +11,7 @@ managing interactive sessions, both local and remote, for a project.
 ## Motivation
 
 Renkulab.io provides the option to run interactive sessions of a project. Among other things the session
-contains a jupyter notebook.
+contains a jupyter server.
 
 The motivation behind this RFC is to provide a simple renku CLI sub-command that basically allows the
 starting and stopping of these interactive sessions.

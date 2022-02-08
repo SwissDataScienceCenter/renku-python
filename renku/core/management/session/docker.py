@@ -18,13 +18,14 @@
 """Docker based interactive session provider."""
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import docker
 from yaspin import yaspin
 
 from renku.core import errors
+from renku.core.management.client import LocalClient
 from renku.core.models.session import ISessionProvider
 from renku.core.plugins import hookimpl
 from renku.core.utils import communication
@@ -38,7 +39,7 @@ class DockerSessionProvider(ISessionProvider):
     def __init__(self):
         self._docker_client = None
 
-    def docker_client(self):
+    def docker_client(self) -> docker.client.DockerClient:
         """Get the docker client."""
         if self._docker_client is None:
             try:
@@ -48,19 +49,19 @@ class DockerSessionProvider(ISessionProvider):
         return self._docker_client
 
     @staticmethod
-    def _docker_image_name(remote, commit_sha=None):
+    def _docker_image_name(remote: Dict[str, str], commit_sha: Optional[str]) -> str:
         if commit_sha:
             return f"{remote['owner']}/{remote['name']}:{commit_sha}"
         return f"{remote['owner']}/{remote['name']}"
 
     @staticmethod
-    def _get_jupyter_urls(ports, auth_token, jupyter_port=8888):
+    def _get_jupyter_urls(ports: Dict[str, Any], auth_token: str, jupyter_port: int = 8888) -> List[str]:
         port_key = f"{jupyter_port}/tcp"
         if port_key not in ports:
             return None
         return map(lambda x: f'http://{x["HostIp"]}:{x["HostPort"]}/?token={auth_token}', ports[port_key])
 
-    def _get_docker_containers(self, client):
+    def _get_docker_containers(self, client: LocalClient) -> List[docker.models.containers.Container]:
         return self.docker_client().containers.list(
             filters={"label": f"renku_project={DockerSessionProvider._docker_image_name(client.remote)}"}
         )
@@ -74,7 +75,7 @@ class DockerSessionProvider(ISessionProvider):
         return (self, "docker")
 
     @hookimpl
-    def session_list(self, config: Optional[Path], client) -> List[str]:
+    def session_list(self, config: Optional[Path], client: LocalClient) -> List[str]:
         """Lists all the sessions currently running by the given session provider.
 
         :returns: a list of sessions.
@@ -83,13 +84,13 @@ class DockerSessionProvider(ISessionProvider):
         return self._get_docker_containers(client)
 
     @hookimpl
-    def session_start(self, config: Optional[Path], image_name: Optional[str], client) -> str:
+    def session_start(self, config: Optional[Path], image_name: Optional[str], client: LocalClient) -> str:
         """Creates an interactive session.
 
         :returns: a unique id for the created interactive sesssion.
         """
 
-        def _find_docker_image(remote, commit_sha):
+        def _find_docker_image(remote: Dict[str, str], commit_sha: str) -> docker.models.images.Image:
             try:
                 return self.docker_client().images.get(DockerSessionProvider._docker_image_name(remote, commit_sha))
             except docker.errors.ImageNotFound:
@@ -150,7 +151,7 @@ class DockerSessionProvider(ISessionProvider):
             raise errors.DockerError(error.msg)
 
     @hookimpl
-    def session_stop(self, client, session_name: Optional[str], stop_all: bool):
+    def session_stop(self, client: LocalClient, session_name: Optional[str], stop_all: bool):
         """Stops all or a given interactive session."""
         try:
             docker_containers = (
@@ -168,7 +169,7 @@ class DockerSessionProvider(ISessionProvider):
             raise errors.DockerError(error.msg)
 
     @hookimpl
-    def session_url(self, client, session_name: str) -> Optional[str]:
+    def session_url(self, client: LocalClient, session_name: str) -> Optional[str]:
         """Get the URL of the interactive session."""
         repo_containers = self._get_docker_containers(client)
         for c in repo_containers:

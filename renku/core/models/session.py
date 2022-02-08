@@ -23,6 +23,8 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from renku.core.management.client import LocalClient
+
 
 class ISessionProvider(metaclass=ABCMeta):
     """Abstract class for a interactive session provider."""
@@ -36,7 +38,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_list(self, config: Optional[Path], client) -> List[str]:
+    def session_list(self, config: Optional[Path], client: LocalClient) -> List[str]:
         """Lists all the sessions currently running by the given session provider.
 
         :param config: Path to the session provider specific configuration YAML.
@@ -46,7 +48,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_start(self, config: Optional[Path], image_name: Optional[str], client) -> str:
+    def session_start(self, config: Optional[Path], image_name: Optional[str], client: LocalClient) -> str:
         """Creates an interactive session.
 
         :param config: Path to the session provider specific configuration YAML.
@@ -57,7 +59,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_stop(self, client, session_name: Optional[str], stop_all: bool):
+    def session_stop(self, client: LocalClient, session_name: Optional[str], stop_all: bool):
         """Stops all or a given interactive session.
 
         :param client: Renku client.
