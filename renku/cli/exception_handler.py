@@ -65,13 +65,12 @@ import portalocker
 
 from renku.core.commands.echo import ERROR
 from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
+from renku.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 
 _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=True)
+HAS_SENTRY = SENTRY_ENABLED
 
-HAS_SENTRY = os.getenv("SENTRY_ENABLED").lower() == "true"
-SENTRY_SAMPLERATE = float(os.getenv("SENTRY_SAMPLE_RATE", 0.2))
-
-if HAS_SENTRY:
+if SENTRY_ENABLED:
     try:
         from importlib.metadata import PackageNotFoundError, distribution
     except ImportError:
