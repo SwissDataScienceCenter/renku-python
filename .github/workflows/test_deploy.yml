@@ -157,7 +157,7 @@ jobs:
           git config --global --add user.email "renku@datascience.ch"
       - name: Build cheatsheet
         run: |
-          sphinx-build -b latex -c docs/cheatsheet/ docs docs/latex/
+          sphinx-build -b latex -c docs/cheatsheet/ docs docs/latex/ -W
           cd docs/latex/
           xelatex cheatsheet
           cat <(md5sum cheatsheet.tex) <(md5sum sdsc_cheatsheet.cls) > ../cheatsheet_hash_new
