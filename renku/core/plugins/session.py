@@ -22,7 +22,7 @@ from typing import List, Optional, Tuple
 import pluggy
 
 from renku.core.management.client import LocalClient
-from renku.core.models.session import ISessionProvider
+from renku.core.models.session import ISessionProvider, Session
 
 hookspec = pluggy.HookspecMarker("renku")
 
@@ -38,7 +38,7 @@ def session_provider() -> Tuple[ISessionProvider, str]:
 
 # FIXME: we might just want to return all the plugins results at once.
 @hookspec(firstresult=True)
-def session_list(self, config: Optional[Path], client: LocalClient) -> List[str]:
+def session_list(self, config: Optional[Path], client: LocalClient) -> List[Session]:
     """Lists all the sessions currently running by the given session provider.
 
     :returns: a list of sessions.

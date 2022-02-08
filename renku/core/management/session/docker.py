@@ -26,7 +26,7 @@ from yaspin import yaspin
 
 from renku.core import errors
 from renku.core.management.client import LocalClient
-from renku.core.models.session import ISessionProvider
+from renku.core.models.session import ISessionProvider, Session
 from renku.core.plugins import hookimpl
 from renku.core.utils import communication
 
@@ -49,7 +49,7 @@ class DockerSessionProvider(ISessionProvider):
         return self._docker_client
 
     @staticmethod
-    def _docker_image_name(remote: Dict[str, str], commit_sha: Optional[str]) -> str:
+    def _docker_image_name(remote: Dict[str, str], commit_sha: str = None) -> str:
         if commit_sha:
             return f"{remote['owner']}/{remote['name']}:{commit_sha}"
         return f"{remote['owner']}/{remote['name']}"
@@ -75,13 +75,20 @@ class DockerSessionProvider(ISessionProvider):
         return (self, "docker")
 
     @hookimpl
-    def session_list(self, config: Optional[Path], client: LocalClient) -> List[str]:
+    def session_list(self, config: Optional[Path], client: LocalClient) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         :returns: a list of sessions.
         """
 
-        return self._get_docker_containers(client)
+        return map(
+            lambda x: Session(
+                id=x.short_id,
+                status=x.status,
+                url=next(DockerSessionProvider()._get_jupyter_urls(x.ports, x.labels["jupyter_token"])),
+            ),
+            self._get_docker_containers(client),
+        )
 
     @hookimpl
     def session_start(self, config: Optional[Path], image_name: Optional[str], client: LocalClient) -> str:
