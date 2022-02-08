@@ -37,7 +37,7 @@ def session_provider() -> Tuple[ISessionProvider, str]:
 
 # FIXME: we might just want to return all the plugins results at once.
 @hookspec(firstresult=True)
-def session_list(self, config: Path, client) -> List[str]:
+def session_list(self, config: Optional[Path], client) -> List[str]:
     """Lists all the sessions currently running by the given session provider.
 
     :returns: a list of sessions.

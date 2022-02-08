@@ -20,7 +20,7 @@
 import os
 import re
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from renku.core import errors
 
@@ -114,3 +114,17 @@ def delete_file(path: Union[Path, str], ignore_errors: bool = True):
     except OSError:
         if not ignore_errors:
             raise
+
+
+def safe_read_yaml(file: str) -> Dict[str, Any]:
+    """Parse a YAML file.
+
+    :returns: In case of success a dictionary of the YAML's content,
+    otherwise raises a ParameterError exception.
+    """
+    try:
+        from renku.core.models import jsonld as jsonld
+
+        return jsonld.read_yaml(file)
+    except Exception as e:
+        raise errors.ParameterError(e)
