@@ -107,6 +107,7 @@ def register_exceptions(app):
     @app.errorhandler(Exception)
     def exceptions(e):
         """This exceptions handler manages Flask/Werkzeug exceptions.
+
         For the other exception handlers check ``service/decorators.py``
         """
         # NOTE: add log entry

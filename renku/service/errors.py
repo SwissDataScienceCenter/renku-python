@@ -101,7 +101,6 @@ class ServiceError:
     def _handle_sentry(self):
         """Send the expection to Sentry when available."""
         from sentry_sdk import capture_exception, set_tag, set_user
-        from sentry_sdk.utils import capture_internal_exceptions
 
         if HAS_SENTRY:
             user = self._get_user()
