@@ -139,7 +139,7 @@ def _get_graph_for_all_objects(
 
     objects.append(project)
 
-    datasets = dataset_gateway.get_all_datasets()
+    datasets = dataset_gateway.get_all_active_datasets()
     objects.extend(datasets)
 
     for dataset in datasets:

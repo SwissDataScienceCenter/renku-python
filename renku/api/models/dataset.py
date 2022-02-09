@@ -91,7 +91,7 @@ class Dataset:
         dataset_gateway = DatasetGateway()
         dataset_gateway.database_dispatcher = database_dispatcher
 
-        return [Dataset._from_dataset(d) for d in dataset_gateway.get_all_datasets()]
+        return [Dataset._from_dataset(d) for d in dataset_gateway.get_all_active_datasets()]
 
     def __getattribute__(self, name):
         dataset = object.__getattribute__(self, "_dataset")

@@ -65,6 +65,8 @@ def test_dataset_log(runner, project, client):
     assert 0 == result.exit_code, format_result_exception(result)
     result = runner.invoke(cli, ["dataset", "unlink", "testset", "--include", "my_file"], input="y")
     assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["dataset", "rm", "testset"], input="y")
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["log"])
 
@@ -72,6 +74,7 @@ def test_dataset_log(runner, project, client):
     assert "Dataset testset" in result.output
     assert "Changes: created" in result.output
     assert "Changes: modified" in result.output
+    assert "Changes: deleted" in result.output
     assert "Files modified" in result.output
     assert "- my_file" in result.output
     assert "+ my_file" in result.output

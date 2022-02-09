@@ -62,7 +62,7 @@ def _log(
     if not workflows_only:
         datasets = [
             d
-            for root_dataset in dataset_gateway.get_all_datasets()
+            for root_dataset in dataset_gateway.get_provenance_tails()
             for d in _get_all_dataset_versions(root_dataset)
             if d.change_type
         ]

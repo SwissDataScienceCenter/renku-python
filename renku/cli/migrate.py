@@ -50,6 +50,7 @@ import os
 
 import click
 
+import renku.cli.utils.color as color
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import ERROR, INFO
 from renku.core.errors import MigrationRequired, ProjectNotSupported
@@ -128,7 +129,7 @@ def migrate(check, skip_template_update, skip_docker_update, strict, preserve_id
     result, _, _ = result.output
 
     if result:
-        click.secho("OK", fg="green")
+        click.secho("OK", fg=color.GREEN)
     else:
         click.secho("No migrations required.")
 

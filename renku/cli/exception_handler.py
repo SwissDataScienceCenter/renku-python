@@ -63,10 +63,11 @@ import click
 import filelock
 import portalocker
 
+import renku.cli.utils.color as color
 from renku.core.commands.echo import ERROR
 from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
 
-_BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=True)
+_BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg=color.RED, bold=True)
 
 HAS_SENTRY = None
 SENTRY_DSN = os.getenv("SENTRY_DSN")
@@ -134,7 +135,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         except (filelock.Timeout, portalocker.LockException, portalocker.AlreadyLocked):
             click.echo(
                 (
-                    click.style("Unable to acquire lock.\n", fg="red") + "Hint: Please wait for another renku "
+                    click.style("Unable to acquire lock.\n", fg=color.RED) + "Hint: Please wait for another renku "
                     "process to finish and then try again."
                 )
             )
@@ -170,9 +171,11 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         """Handle exception and submit it as GitHub issue."""
         value = click.prompt(
             _BUG
-            + click.style('1. Open an issue by typing "open";\n', fg="green")
-            + click.style("2. Print human-readable information by typing " '"print";\n', fg="yellow")
-            + click.style("3. See the full traceback without submitting details " '(default: "ignore").\n\n', fg="red")
+            + click.style('1. Open an issue by typing "open";\n', fg=color.GREEN)
+            + click.style("2. Print human-readable information by typing " '"print";\n', fg=color.YELLOW)
+            + click.style(
+                "3. See the full traceback without submitting details " '(default: "ignore").\n\n', fg=color.RED
+            )
             + "Please select an action by typing its name",
             type=click.Choice(["open", "print", "ignore"]),
             default="ignore",
@@ -212,7 +215,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         if not click.confirm("Did it work?", default=True):
             click.echo()
             self._process_print()
-            click.secho("\nOpen the line manually and copy the text above\n", fg="yellow")
+            click.secho("\nOpen the line manually and copy the text above\n", fg=color.YELLOW)
             click.secho("  " + self.REPO_URL + self.ISSUE_SUFFIX + "\n", bold=True)
 
     def _process_print(self):

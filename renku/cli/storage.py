@@ -80,6 +80,7 @@ import os
 
 import click
 
+import renku.cli.utils.color as color
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import WARNING
 
@@ -107,7 +108,7 @@ def clean(paths):
     communicator = ClickCallback()
     clean_command().with_communicator(communicator).build().execute(paths=paths)
 
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @storage.command("check-lfs-hook", hidden=True)
@@ -134,7 +135,7 @@ def check(all):
         click.echo(message)
         exit(1)
     else:
-        click.secho("OK", fg="green")
+        click.secho("OK", fg=color.GREEN)
 
 
 @storage.command()
