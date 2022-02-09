@@ -212,14 +212,20 @@ class LogViewModel:
             if not previous_dataset or dataset.description != previous_dataset.description:
                 details.description_changed = dataset.description
 
-            if not previous_dataset or sorted(dataset.creators, key=lambda x: x.id) != sorted(
-                previous_dataset.creators, key=lambda x: x.id
+            current_creators = dataset.creators or []
+            previous_creators = []
+
+            if previous_dataset and previous_dataset.creators:
+                previous_creators = previous_dataset.creators
+
+            if not previous_dataset or sorted(current_creators, key=lambda x: x.id) != sorted(
+                previous_creators, key=lambda x: x.id
             ):
                 if previous_dataset:
-                    added_creators = set(dataset.creators) - set(previous_dataset.creators)
-                    removed_creators = set(previous_dataset.creators) - set(dataset.creators)
+                    added_creators = set(current_creators) - set(previous_creators)
+                    removed_creators = set(previous_creators) - set(current_creators)
                 else:
-                    added_creators = set(dataset.creators)
+                    added_creators = set(current_creators)
                     removed_creators = None
 
                 if added_creators:
@@ -228,14 +234,20 @@ class LogViewModel:
                 if removed_creators:
                     details.creators_removed = [c.full_identity for c in removed_creators]
 
-            if (not previous_dataset and dataset.keywords) or (
-                previous_dataset and sorted(dataset.keywords) != sorted(previous_dataset.keywords)
+            current_keywords = dataset.keywords or []
+            previous_keywords = []
+
+            if previous_dataset and previous_dataset.keywords:
+                previous_keywords = previous_dataset.keywords
+
+            if (not previous_dataset and current_keywords) or (
+                previous_dataset and sorted(current_keywords) != sorted(previous_keywords)
             ):
                 if previous_dataset:
-                    added_keywords = set(dataset.keywords) - set(previous_dataset.keywords)
-                    removed_keywords = set(previous_dataset.keywords) - set(dataset.keywords)
+                    added_keywords = set(current_keywords) - set(previous_keywords)
+                    removed_keywords = set(previous_keywords) - set(current_keywords)
                 else:
-                    added_keywords = set(dataset.keywords)
+                    added_keywords = set(current_keywords)
                     removed_keywords = None
 
                 if added_keywords:
@@ -243,11 +255,17 @@ class LogViewModel:
                 if removed_keywords:
                     details.keywords_removed = [k for k in removed_keywords]
 
-            if (not previous_dataset and dataset.images) or (
+            current_images = dataset.images or []
+            previous_images = []
+
+            if previous_dataset and previous_dataset.images:
+                previous_images = previous_dataset.images
+
+            if (not previous_dataset and current_images) or (
                 previous_dataset
-                and sorted(dataset.images, key=lambda x: x.id) != sorted(previous_dataset.images, key=lambda x: x.id)
+                and sorted(current_images, key=lambda x: x.id) != sorted(previous_images, key=lambda x: x.id)
             ):
-                details.images_changed_to = [i.content_url for i in dataset.images]
+                details.images_changed_to = [i.content_url for i in current_images]
 
         return DatasetLogViewModel(
             id=dataset.name,

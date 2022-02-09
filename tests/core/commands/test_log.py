@@ -107,7 +107,7 @@ def test_log_dataset_create_simple(mocker):
     new_dataset.date_modified = datetime.utcnow()
 
     dataset_gateway = mocker.MagicMock()
-    dataset_gateway.get_all_active_datasets.return_value = [new_dataset]
+    dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
@@ -160,7 +160,7 @@ def test_log_dataset_create_complex(mocker):
     new_dataset.images = [mocker.MagicMock(content_url="./img/img1.png")]
 
     dataset_gateway = mocker.MagicMock()
-    dataset_gateway.get_all_active_datasets.return_value = [new_dataset]
+    dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
@@ -215,7 +215,7 @@ def test_log_dataset_add_create(mocker):
     ]
 
     dataset_gateway = mocker.MagicMock()
-    dataset_gateway.get_all_active_datasets.return_value = [new_dataset]
+    dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
@@ -270,7 +270,7 @@ def test_log_dataset_import(mocker):
     ]
 
     dataset_gateway = mocker.MagicMock()
-    dataset_gateway.get_all_active_datasets.return_value = [new_dataset]
+    dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
@@ -330,7 +330,7 @@ def test_log_dataset_deleted(mocker):
     new_dataset.date_removed = datetime.utcnow()
 
     dataset_gateway = mocker.MagicMock()
-    dataset_gateway.get_all_active_datasets.return_value = [new_dataset]
+    dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     def _mock_get_by_id(id):
         if id == "new":
@@ -403,7 +403,7 @@ def test_log_dataset_files_removed(mocker):
     new_dataset.date_modified = datetime.utcnow()
 
     dataset_gateway = mocker.MagicMock()
-    dataset_gateway.get_all_active_datasets.return_value = [new_dataset]
+    dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     def _mock_get_by_id(id):
         if id == "new":
@@ -482,7 +482,7 @@ def test_log_dataset_metadata_modified(mocker):
     new_dataset.date_modified = datetime.utcnow()
 
     dataset_gateway = mocker.MagicMock()
-    dataset_gateway.get_all_active_datasets.return_value = [new_dataset]
+    dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     def _mock_get_by_id(id):
         if id == "new":
