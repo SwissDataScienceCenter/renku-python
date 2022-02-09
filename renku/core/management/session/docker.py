@@ -118,7 +118,12 @@ class DockerSessionProvider(ISessionProvider):
         try:
             remote = client.remote
             commit_short_sha = client.repository.head.commit.hexsha[:7]
-            if image_name is None:
+            project_config = client.load_config()
+            pinned_image = project_config.get("interactive", "image", fallback=None)
+
+            if pinned_image:
+                image_name = pinned_image
+            elif image_name is None:
                 image_name = DockerSessionProvider._docker_image_name(remote, commit_short_sha)
 
                 try:
@@ -133,8 +138,8 @@ class DockerSessionProvider(ISessionProvider):
                         _ = self.docker_client().images.build(path=str(client.docker_path.parent), tag=image_name)
 
             auth_token = uuid4().hex
-            project_config = client.load_config()
             default_url = project_config.get("interactive", "default_url")
+
             container = self.docker_client().containers.run(
                 image_name,
                 f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}'
