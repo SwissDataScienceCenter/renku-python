@@ -78,23 +78,23 @@ resources: {}
 
 # affinity: {}
 
-## The renku core service deploys its own redis as a dependency. These values
-## do probably not need to be changed.
-redis:
-  nameOverride: core-redis
+## The renku core service uses the global redis instance of the renku platform.
+## if using the redis subchart, set the following values
+# redis:
+#   nameOverride: core-redis
 
-  cluster:
-    enabled: false
+#   cluster:
+#     enabled: false
 
-  usePassword: false
+#   usePassword: false
 
-  master:
-    persistence:
-      enabled: false
+#   master:
+#     persistence:
+#       enabled: false
 
-  networkPolicy:
-    enabled: true
-    allowExternal: false
+#   networkPolicy:
+#     enabled: true
+#     allowExternal: false
 
 ## Add sentry configuration
 sentry:

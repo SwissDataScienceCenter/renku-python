@@ -229,7 +229,6 @@
         "service",
         "ingress",
         "metrics",
-        "redis",
         "sentry",
         "versions"
     ],

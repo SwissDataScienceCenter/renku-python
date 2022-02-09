@@ -33,7 +33,7 @@ spec:
         app.kubernetes.io/name: {{ include "renku-core.name" $ }}
         app.kubernetes.io/instance: {{ $.Release.Name }}
         app.kubernetes.io/deploymentVersion: {{ $version.name }}
-        {{ include "call-nested" (list $ "redis" "redis.fullname") }}-client: "true"
+        {{ .Values.global.redis.clientLabel | default (printf "%s-%s" (include "redis.host" .) "-client") }}: "true"
     spec:
     {{- with $.Values.imagePullSecrets }}
       imagePullSecrets:
@@ -52,7 +52,7 @@ spec:
           imagePullPolicy: {{ $.Values.metrics.image.pullPolicy }}
           env:
             - name: RQ_REDIS_HOST
-              value: {{ include "call-nested" (list $ "redis" "redis.fullname") }}-master
+              value: {{ template "redis.host" . }}
       {{ end }}
         - name: {{ $.Chart.Name }}
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
@@ -72,13 +72,16 @@ spec:
           {{- end }}
           env:
             - name: REDIS_HOST
-              value: {{ include "call-nested" (list $ "redis" "redis.fullname") }}-master
+              value: {{ template "redis.host" . }}
             - name: REDIS_PORT
-              value: "6379"
+              value: {{ .Values.global.redis.port | default "6379" | quote }}
             - name: REDIS_DATABASE
-              value: "0"
+              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_PASSWORD
-              value:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.existingSecret }}
+                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
@@ -140,13 +143,16 @@ spec:
           args: ["worker"]
           env:
             - name: REDIS_HOST
-              value: {{ include "call-nested" (list $ "redis" "redis.fullname") }}-master
+              value: {{ template "redis.host" . }}
             - name: REDIS_PORT
               value: "6379"
             - name: REDIS_DATABASE
-              value: "0"
+              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_PASSWORD
-              value:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.existingSecret }}
+                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: RENKU_JWT_TOKEN_SECRET
@@ -185,13 +191,16 @@ spec:
           args: ["worker"]
           env:
             - name: REDIS_HOST
-              value: {{ include "call-nested" (list $ "redis" "redis.fullname") }}-master
+              value: {{ template "redis.host" . }}
             - name: REDIS_PORT
               value: "6379"
             - name: REDIS_DATABASE
-              value: "0"
+              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_PASSWORD
-              value:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.existingSecret }}
+                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
@@ -228,13 +237,16 @@ spec:
           args: ["scheduler"]
           env:
             - name: REDIS_HOST
-              value: {{ include "call-nested" (list $ "redis" "redis.fullname") }}-master
+              value: {{ template "redis.host" . }}
             - name: REDIS_PORT
               value: "6379"
             - name: REDIS_DATABASE
-              value: "0"
+              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_PASSWORD
-              value:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.existingSecret }}
+                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
