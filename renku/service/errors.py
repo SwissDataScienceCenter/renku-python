@@ -174,7 +174,7 @@ class ErrorProgRepoUnknown(_ErrorGeneric):
 
     This is a fallback error and it should ideally never show up.
     When it happens, it's best to investigate the underlying error and either
-    create a morte specific error or open an issue.
+    create a more specific error or open an issue.
     """
 
     code = SVC_ERROR_PROGRAMMING + 10
@@ -191,7 +191,7 @@ class ErrorProgGit(_ErrorGeneric):
 
     This is a fallback error and it should ideally never show up.
     When it happens, it's best to investigate the underlying error and either
-    create a morte specific error or open an issue.
+    create a more specific error or open an issue.
     """
 
     code = SVC_ERROR_PROGRAMMING + 20
@@ -250,7 +250,7 @@ class ErrorProgContentType(_ErrorGeneric):
 
 
 class ErrorProgHttpMethod(_ErrorGeneric):
-    """Http error 405 method not allowed.
+    """HTTP error 405 method not allowed.
 
     The method cannot be used on the target endpoint. The service only supports GET and POST.
     """
@@ -267,7 +267,7 @@ class ErrorProgHttpMethod(_ErrorGeneric):
 
 
 class ErrorProgHttpMissing(_ErrorGeneric):
-    """Http error 404 not found.
+    """HTTP error 404 not found.
 
     Either the URL is wrong or the user doesn't have permissions to access it.
     """
@@ -285,7 +285,7 @@ class ErrorProgHttpMissing(_ErrorGeneric):
 
 
 class ErrorProgHttpRequest(_ErrorGeneric):
-    """Http error 400 bad request.
+    """HTTP error 400 bad request.
 
     This is usually triggered by wrong parameters or payload. Double check the API documentation.
     """
@@ -299,7 +299,7 @@ class ErrorProgHttpRequest(_ErrorGeneric):
 
 
 class ErrorProgHttpTimeout(_ErrorGeneric):
-    """Http error 408 request timeout.
+    """HTTP error 408 request timeout.
 
     This is usually triggered by wrong parameters or payload. Double check the API documentation.
     """
@@ -313,7 +313,7 @@ class ErrorProgHttpTimeout(_ErrorGeneric):
 
 
 class ErrorProgHttpServer(_ErrorGeneric):
-    """Any other http error.
+    """Any other HTTP error.
 
     Most of the times (always?) this will be a 50x error.
     The only way to get more details is to access the sentry exception.
