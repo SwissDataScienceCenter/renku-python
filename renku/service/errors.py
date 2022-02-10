@@ -59,6 +59,8 @@ class ServiceError(Exception):
         super().__init__()
         self.exception = exception
         self.devReference = f"{DOCS_URL_BASE}{DOCS_URL_ERRORS}{self.__class__.__name__}"
+        if exception:
+            self.__cause__ = exception
 
         if errorObject is None:
             if code:
