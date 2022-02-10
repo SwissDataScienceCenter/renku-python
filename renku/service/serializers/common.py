@@ -22,7 +22,7 @@ from datetime import datetime
 import yagup
 from marshmallow import Schema, fields, validates
 
-from renku.service.errors import ErrorUserRepoUrlInvalid
+from renku.service.errors import UserRepoUrlInvalidError
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -45,7 +45,7 @@ class RemoteRepositoryBaseSchema(Schema):
             try:
                 yagup.parse(value)
             except yagup.exceptions.InvalidURL as e:
-                raise ErrorUserRepoUrlInvalid(e, "Invalid `git_url`")
+                raise UserRepoUrlInvalidError(e, "Invalid `git_url`")
 
         return value
 

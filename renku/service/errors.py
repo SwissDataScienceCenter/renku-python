@@ -48,41 +48,25 @@ class ServiceError(Exception):
         devMessage=None,
         userReference=None,
         devReference=None,
-        errorObject=None,
         exception=None,
     ):
-        """Initialize the service error.
-
-        Either provide an `errorObject` taken from the error classes in renku.service.errors,
-        or a set of the remaining arguments. They are mutually exclusive.
-        """
+        """Initialize the service error."""
         super().__init__()
         self.exception = exception
         self.devReference = f"{DOCS_URL_BASE}{DOCS_URL_ERRORS}{self.__class__.__name__}"
         if exception:
             self.__cause__ = exception
 
-        if errorObject is None:
-            if code:
-                self.code = code
-            if userMessage:
-                self.userMessage = userMessage
-            if devMessage:
-                self.devMessage = devMessage
-            if userReference:
-                self.userReference = userReference
-            if devReference:
-                self.devReference = devReference
-        else:
-            self.code = errorObject.code
-            if hasattr(errorObject, "userMessage"):
-                self.userMessage = errorObject.userMessage
-            if hasattr(errorObject, "devMessage"):
-                self.devMessage = errorObject.devMessage
-            if hasattr(errorObject, "userReference"):
-                self.userReference = errorObject.userReference
-            if hasattr(errorObject, "devReference"):
-                self.devReference = errorObject.devReference
+        if code:
+            self.code = code
+        if userMessage:
+            self.userMessage = userMessage
+        if devMessage:
+            self.devMessage = devMessage
+        if userReference:
+            self.userReference = userReference
+        if devReference:
+            self.devReference = devReference
 
         if HAS_SENTRY:
             self._handle_sentry()
@@ -132,7 +116,7 @@ class ServiceError(Exception):
         self.sentry = sentry
 
 
-class ErrorUserRepoUrlInvalid(ServiceError):
+class UserRepoUrlInvalidError(ServiceError):
     """The provided URL is not a valid Git repository.
 
     This usually happens when the URL is wrong.
@@ -156,11 +140,11 @@ class ErrorUserRepoUrlInvalid(ServiceError):
         super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
 
 
-class ErrorUserRepoNoAccess(ServiceError):
+class UserRepoNoAccessError(ServiceError):
     """The target repository cannot be accessed by the current user.
 
-    This is usually due to lack of permissions by the user, although in the case
-    the repository manager usually return a Not Found error instead.
+    This is usually due to lack of permissions by the user, although in that case
+    the repository manager usually returns a Not Found error instead.
     """
 
     code = SVC_ERROR_USER + 11
@@ -171,8 +155,8 @@ class ErrorUserRepoNoAccess(ServiceError):
         super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
 
 
-class ErrorUserAnonymous(ServiceError):
-    """The user must login in to user the target endpoint."""
+class UserAnonymousError(ServiceError):
+    """The user must login in to use the target endpoint."""
 
     code = SVC_ERROR_USER + 30
     userMessage = "It's necessary to be authenticated to access the target data."
@@ -182,7 +166,7 @@ class ErrorUserAnonymous(ServiceError):
         super().__init__(exception=exception)
 
 
-class ErrorProgRepoUnknown(ServiceError):
+class ProgramRepoUnknownError(ServiceError):
     """Unknown error when working with the repository.
 
     This is a fallback error and it should ideally never show up.
@@ -198,7 +182,7 @@ class ErrorProgRepoUnknown(ServiceError):
         super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
 
 
-class ErrorProgGit(ServiceError):
+class ProgramGitError(ServiceError):
     """Unknown error when working with git.
 
     This is a fallback error and it should ideally never show up.
@@ -214,8 +198,7 @@ class ErrorProgGit(ServiceError):
         super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
 
 
-# ! FIX THIS
-class ErrorUserTemplateInvalid(ServiceError):
+class UserTemplateInvalidError(ServiceError):
     """The provided URL doesn't lead to a valid template repository.
 
     There are many possibilities:
@@ -227,13 +210,13 @@ class ErrorUserTemplateInvalid(ServiceError):
 
     code = SVC_ERROR_USER + 101
     userMessage = "The target repository is not a valid RenkuLab template repository."
-    devMessage = "Target repository is not a vlid template."
+    devMessage = "Target repository is not a valid template."
 
     def __init__(self):
         super().__init__()
 
 
-class ErrorProgInternal(ServiceError):
+class ProgramInternalError(ServiceError):
     """Unknown internal error.
 
     This is an unexpected exception probably triggered at the core level.
@@ -248,7 +231,7 @@ class ErrorProgInternal(ServiceError):
         super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
 
 
-class ErrorProgContentType(ServiceError):
+class ProgramContentTypeError(ServiceError):
     """Content type not correctly specified."""
 
     code = SVC_ERROR_PROGRAMMING + 30
@@ -261,7 +244,7 @@ class ErrorProgContentType(ServiceError):
         super().__init__(devMessage=self.devMessage.format(content_type=content_type, expected_type=expected_type))
 
 
-class ErrorProgHttpMethod(ServiceError):
+class ProgramHttpMethodError(ServiceError):
     """HTTP error 405 method not allowed.
 
     The method cannot be used on the target endpoint. The service only supports GET and POST.
@@ -271,14 +254,14 @@ class ErrorProgHttpMethod(ServiceError):
     userMessage = "One of the resources on our servers could not process the data properly."
     devMessage = (
         "Error 405 - method not allowed. Check if you are using GET or POST as specified in the"
-        "API documentation. Mind that the service doesn't support eny other method."
+        "API documentation. Mind that the service doesn't support any other method."
     )
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
 
 
-class ErrorProgHttpMissing(ServiceError):
+class ProgramHttpMissingError(ServiceError):
     """HTTP error 404 not found.
 
     Either the URL is wrong or the user doesn't have permissions to access it.
@@ -296,7 +279,7 @@ class ErrorProgHttpMissing(ServiceError):
         super().__init__(exception=exception)
 
 
-class ErrorProgHttpRequest(ServiceError):
+class ProgramHttpRequestError(ServiceError):
     """HTTP error 400 bad request.
 
     This is usually triggered by wrong parameters or payload. Double check the API documentation.
@@ -310,7 +293,7 @@ class ErrorProgHttpRequest(ServiceError):
         super().__init__(exception=exception)
 
 
-class ErrorProgHttpTimeout(ServiceError):
+class ProgramHttpTimeoutError(ServiceError):
     """HTTP error 408 request timeout.
 
     This is usually triggered by wrong parameters or payload. Double check the API documentation.
@@ -324,7 +307,7 @@ class ErrorProgHttpTimeout(ServiceError):
         super().__init__(exception=exception)
 
 
-class ErrorProgHttpServer(ServiceError):
+class ProgramHttpServerError(ServiceError):
     """Any other HTTP error.
 
     Most of the times (always?) this will be a 50x error.

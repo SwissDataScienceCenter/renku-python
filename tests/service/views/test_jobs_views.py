@@ -27,7 +27,7 @@ from marshmallow.utils import isoformat
 from werkzeug.utils import secure_filename
 
 from renku.service.cache.models.project import Project
-from renku.service.errors import ErrorUserAnonymous
+from renku.service.errors import UserAnonymousError
 from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 
 
@@ -41,7 +41,7 @@ def test_jobs_view_identity_protected(svc_client):
     response = svc_client.get("/jobs", headers=headers)
 
     assert {"error"} == set(response.json.keys())
-    assert (ErrorUserAnonymous()).code == response.json["error"]["code"]
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -145,7 +145,7 @@ def test_job_details_auth(svc_client):
     response = svc_client.get("/jobs/myjob", headers=headers)
 
     assert {"error"} == set(response.json.keys())
-    assert (ErrorUserAnonymous()).code == response.json["error"]["code"]
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service

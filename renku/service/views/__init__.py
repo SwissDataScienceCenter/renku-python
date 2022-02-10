@@ -25,9 +25,9 @@ from renku.service.serializers.rpc import JsonRPCResponse
 def error_response_new(serviceError):
     """Construct error response."""
     error = {}
-    error["code"] = serviceError.code if hasattr(serviceError, "code") else SVC_ERROR_GENERIC
-    error["userMessage"] = serviceError.userMessage if hasattr(serviceError, "userMessage") else "Unexpected exception"
-    error["devMessage"] = serviceError.devMessage if hasattr(serviceError, "devMessage") else error["userMessage"]
+    error["code"] = getattr(serviceError, "code", SVC_ERROR_GENERIC)
+    error["userMessage"] = getattr(serviceError, "userMessage", "Unexpected exception")
+    error["devMessage"] = getattr(serviceError, "devMessage", error["userMessage"])
     if hasattr(serviceError, "userReference"):
         error["userReference"] = serviceError.userReference
     if hasattr(serviceError, "devReference"):

@@ -22,7 +22,7 @@ import uuid
 import pytest
 
 from renku.service.config import SVC_ERROR_PROGRAMMING
-from renku.service.errors import ErrorProgContentType, ErrorUserAnonymous, ErrorUserRepoUrlInvalid
+from renku.service.errors import ProgramContentTypeError, UserAnonymousError, UserRepoUrlInvalidError
 from tests.utils import retry_failed
 
 
@@ -64,7 +64,7 @@ def test_auth_headers_exc(service_allowed_endpoint):
     response = client_method(request["url"], headers=request["headers"])
 
     assert 200 == response.status_code
-    assert (ErrorUserAnonymous()).code == response.json["error"]["code"]
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
     assert response.json["error"]["userMessage"]
 
@@ -91,7 +91,7 @@ def test_content_type_headers_exc(svc_client_with_repo):
     response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert ErrorProgContentType().code == response.json["error"]["code"]
+    assert ProgramContentTypeError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -223,4 +223,4 @@ def test_invalid_git_remote(git_url, svc_client_with_templates):
 
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert ErrorUserRepoUrlInvalid().code == response.json["error"]["code"]
+    assert UserRepoUrlInvalidError().code == response.json["error"]["code"]

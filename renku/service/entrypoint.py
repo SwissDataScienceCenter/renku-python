@@ -31,11 +31,11 @@ from sentry_sdk.integrations.rq import RqIntegration
 from renku.service.cache import cache
 from renku.service.config import CACHE_DIR, SERVICE_PREFIX
 from renku.service.errors import (
-    ErrorProgHttpMethod,
-    ErrorProgHttpMissing,
-    ErrorProgHttpRequest,
-    ErrorProgHttpServer,
-    ErrorProgHttpTimeout,
+    ProgramHttpMethodError,
+    ProgramHttpMissingError,
+    ProgramHttpRequestError,
+    ProgramHttpServerError,
+    ProgramHttpTimeoutError,
 )
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
@@ -110,7 +110,8 @@ def register_exceptions(app):
         For the other exception handlers check ``service/decorators.py``
         """
         # NOTE: add log entry
-        log_error_code = {str(e.code)} if hasattr(e, "code") else "unavailable"
+        str(getattr(e, "code", "unavailable"))
+        log_error_code = str(getattr(e, "code", "unavailable"))
         service_log.error(
             f"{request.remote_addr} {request.method} {request.scheme} {request.full_path}\n"
             f"Error code: {log_error_code}\n"
@@ -127,15 +128,15 @@ def register_exceptions(app):
                 return Response(status=code)
 
             if code == 400:
-                error = ErrorProgHttpRequest(e)
+                error = ProgramHttpRequestError(e)
             elif code == 404:
-                error = ErrorProgHttpMissing(e)
+                error = ProgramHttpMissingError(e)
             elif code == 405:
-                error = ErrorProgHttpMethod(e)
+                error = ProgramHttpMethodError(e)
             elif code == 408:
-                error = ErrorProgHttpTimeout(e)
+                error = ProgramHttpTimeoutError(e)
             else:
-                error = ErrorProgHttpServer(e, code)
+                error = ProgramHttpServerError(e, code)
 
             return error_response_new(error)
 

@@ -43,14 +43,14 @@ from renku.service.config import (
     RENKU_EXCEPTION_ERROR_CODE,
 )
 from renku.service.errors import (
-    ErrorProgContentType,
-    ErrorProgGit,
-    ErrorProgInternal,
-    ErrorProgRepoUnknown,
-    ErrorUserAnonymous,
-    ErrorUserRepoNoAccess,
-    ErrorUserRepoUrlInvalid,
+    ProgramContentTypeError,
+    ProgramGitError,
+    ProgramInternalError,
+    ProgramRepoUnknownError,
     ServiceError,
+    UserAnonymousError,
+    UserRepoNoAccessError,
+    UserRepoUrlInvalidError,
 )
 from renku.service.serializers.headers import OptionalIdentityHeaders, RequiredIdentityHeaders
 from renku.service.utils.squash import squash
@@ -66,7 +66,7 @@ def requires_identity(f):
         try:
             user_identity = RequiredIdentityHeaders().load(request.headers)
         except (ValidationError, KeyError) as e:
-            return error_response_new(ErrorUserAnonymous(e))
+            raise UserAnonymousError(e)
 
         return f(user_identity, *args, **kws)
 
@@ -246,13 +246,11 @@ def handle_git_except(f):
             error_message_safe = format(" ".join(error_message.strip().split("\n")))
             error_message_safe = re.sub("^(.+oauth2:)[^@]+(@.+)$", r"\1<token-hidden>\2", error_message_safe)
             if "access denied" in error_message:
-                error = ErrorUserRepoNoAccess(e, error_message_safe)
+                raise UserRepoNoAccessError(e, error_message_safe)
             elif "is this a git repository?" in error_message or "not found" in error_message:
-                error = ErrorUserRepoUrlInvalid(e, error_message_safe)
+                raise UserRepoUrlInvalidError(e, error_message_safe)
             else:
-                error = ErrorProgRepoUnknown(e, error_message_safe)
-
-            return error_response_new(error)
+                raise ProgramRepoUnknownError(e, error_message_safe)
 
     return decorated_function
 
@@ -273,7 +271,7 @@ def accepts_json(f):
                 wrong_type = True
 
         if wrong_type:
-            return error_response_new(ErrorProgContentType(request.headers["Content-Type"], content_type))
+            raise ProgramContentTypeError(request.headers["Content-Type"], content_type)
 
         return f(*args, **kwargs)
 
@@ -298,7 +296,7 @@ def handle_base_except(f):
             except (Exception, BaseException):
                 pass
 
-            return error_response_new(ErrorProgGit(e, e.message if e.message else None))
+            return error_response_new(ProgramGitError(e, e.message if e.message else None))
 
         except (Exception, BaseException, OSError, IOError) as e:
             try:
@@ -310,7 +308,7 @@ def handle_base_except(f):
             else:
                 error_message = str(e)
 
-            return error_response_new(ErrorProgInternal(e, error_message))
+            return error_response_new(ProgramInternalError(e, error_message))
 
     return decorated_function
 

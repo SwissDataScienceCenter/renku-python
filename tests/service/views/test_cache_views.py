@@ -27,7 +27,7 @@ import pytest
 from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
-from renku.service.errors import ErrorUserAnonymous
+from renku.service.errors import UserAnonymousError
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import retry_failed
 
@@ -68,7 +68,7 @@ def test_list_upload_files_all_no_auth(svc_client):
     assert 200 == response.status_code
 
     assert {"error"} == set(response.json.keys())
-    assert (ErrorUserAnonymous()).code == response.json["error"]["code"]
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -171,7 +171,7 @@ def test_file_upload_no_auth(svc_client):
     assert 200 == response.status_code
 
     assert {"error"} == set(response.json.keys())
-    assert (ErrorUserAnonymous()).code == response.json["error"]["code"]
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
