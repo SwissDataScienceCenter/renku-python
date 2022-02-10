@@ -59,17 +59,9 @@ spec:
           imagePullPolicy: {{ $version.image.pullPolicy }}
           securityContext:
             runAsUser: 1000
-            {{- if $.Values.debug }}
-            runAsGroup: 2000
-            {{ else }}
             runAsGroup: 1000
-            {{- end }}
             allowPrivilegeEscalation: false
-          {{- if $.Values.debug }}
-          args: ["api", "--debug"]
-          {{ else }}
           args: ["api"]
-          {{- end }}
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list $ "redis" "redis.fullname") }}-master
@@ -101,8 +93,6 @@ spec:
               value: {{ $.Values.sentry.sample_rate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
-            - name: DEBUG_MODE
-              value: {{ $.Values.debug | quote }}
             {{ if $.Values.nWorkers }}
             - name: RENKU_SVC_NUM_WORKERS
               value: {{ $.Values.nWorkers | quote }}

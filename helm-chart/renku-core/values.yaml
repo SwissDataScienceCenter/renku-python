@@ -102,12 +102,6 @@ sentry:
   environment:
   sample_rate: 0.2
 
-## Enable debug mode
-## WARNING: DO NOT enable this in production as it exposes the service container. It is to be used for
-## debugging a running instance of the core service and allows accessing and modifying the running
-## code directly. See the repository README for more information.
-debug: false
-
 # versions is the list of different deployment that support different metadata versions.
 versions:
   latest:
