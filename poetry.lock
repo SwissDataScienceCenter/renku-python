@@ -691,6 +691,14 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "future"
+version = "0.18.2"
+description = "Clean single-source support for Python 3 and 2"
+category = "main"
+optional = true
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
+
+[[package]]
 name = "gitdb"
 version = "4.0.9"
 description = "Git Object Database"
@@ -1237,6 +1245,20 @@ description = "library with cross-python path, ini-parsing, io, code, log facili
 category = "main"
 optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+
+[[package]]
+name = "py-tes"
+version = "0.4.2"
+description = "Library for communicating with the GA4GH Task Execution API"
+category = "main"
+optional = true
+python-versions = ">=2.7, <4"
+
+[package.dependencies]
+attrs = ">=17.4.0"
+future = ">=0.16.0"
+python-dateutil = ">=2.6.1"
+requests = ">=2.18.1"
 
 [[package]]
 name = "pyasn1"
@@ -2081,33 +2103,34 @@ widechars = ["wcwidth"]
 
 [[package]]
 name = "toil"
-version = "5.5.0"
+version = "5.6.0"
 description = "Pipeline management software for clusters."
 category = "main"
 optional = true
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
-addict = ">=2.2.1,<2.3"
+addict = ">=2.2.1,<2.5"
 dill = ">=0.3.2,<0.4"
-docker = "4.3.1"
+docker = ">=3.7.2,<6"
 enlighten = ">=1.5.2,<2"
 psutil = ">=3.0.1,<6"
+py-tes = ">=0.4.2,<1"
 python-dateutil = "*"
 pytz = ">=2012"
-pyyaml = ">=5,<6"
 requests = ">=2,<3"
 typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 
 [package.extras]
-all = ["boto (>=2.48.0,<3)", "boto3 (>=1.17,<2)", "boto3-stubs[s3] (>=1.17,<2)", "futures (>=3.1.1,<4)", "pycryptodome (==3.5.1)", "cwltool (==3.1.20210922203925)", "galaxy-tool-util", "pynacl (==1.3.0)", "gcs-oauth2-boto-plugin (==1.14)", "apache-libcloud (==2.2.1)", "google-cloud-storage (==1.6.0)", "kubernetes (>=12.0.1,<13)", "idna (>=2)", "pymesos (==0.3.15)", "psutil (>=3.0.1,<6)", "wdlparse (==0.1.0)"]
-aws = ["boto (>=2.48.0,<3)", "boto3 (>=1.17,<2)", "boto3-stubs[s3] (>=1.17,<2)", "futures (>=3.1.1,<4)", "pycryptodome (==3.5.1)"]
-cwl = ["cwltool (==3.1.20210922203925)", "galaxy-tool-util"]
-encryption = ["pynacl (==1.3.0)"]
-google = ["gcs-oauth2-boto-plugin (==1.14)", "apache-libcloud (==2.2.1)", "google-cloud-storage (==1.6.0)"]
-htcondor = ["htcondor (>=8.6.0)"]
-kubernetes = ["kubernetes (>=12.0.1,<13)", "idna (>=2)"]
-mesos = ["pymesos (==0.3.15)", "psutil (>=3.0.1,<6)"]
+all = ["boto (>=2.48.0,<3)", "boto3 (>=1.17,<2)", "boto3-stubs[s3] (>=1.17,<2)", "futures (>=3.1.1,<4)", "cwltool (==3.1.20211107152837)", "galaxy-tool-util", "ruamel.yaml (==0.17.16)", "ruamel.yaml.clib (>=0.2.6)", "pynacl (>=1.4.0,<2)", "apache-libcloud (>=2.2.1,<3)", "google-cloud-storage (==1.6.0)", "kubernetes (>=12.0.1,<22)", "idna (>=2)", "pymesos (>=0.3.15,<0.4)", "wdlparse (==0.1.0)", "connexion[swagger-ui] (>=2.5.1,<3)", "flask-cors (==3.0.10)", "gunicorn (==20.1.0)", "celery (>=5.1.0,<6)"]
+aws = ["boto (>=2.48.0,<3)", "boto3 (>=1.17,<2)", "boto3-stubs[s3] (>=1.17,<2)", "futures (>=3.1.1,<4)"]
+cwl = ["cwltool (==3.1.20211107152837)", "galaxy-tool-util", "ruamel.yaml (==0.17.16)", "ruamel.yaml.clib (>=0.2.6)"]
+encryption = ["pynacl (>=1.4.0,<2)"]
+google = ["apache-libcloud (>=2.2.1,<3)", "google-cloud-storage (==1.6.0)"]
+htcondor = ["htcondor (>=8.6.0,<9)"]
+kubernetes = ["kubernetes (>=12.0.1,<22)", "idna (>=2)"]
+mesos = ["pymesos (>=0.3.15,<0.4)"]
+server = ["connexion[swagger-ui] (>=2.5.1,<3)", "flask-cors (==3.0.10)", "gunicorn (==20.1.0)", "celery (>=5.1.0,<6)"]
 wdl = ["wdlparse (==0.1.0)"]
 
 [[package]]
@@ -2484,7 +2507,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "38ff9a6eed4e95c434c7475cbf3ba056bd3498633529269c40ec21029fb649f8"
+content-hash = "3bf7c6e39c2ccaafdfe277adb68833160c88bf8f56a3b41eb58f2727fd6966bd"
 
 [metadata.files]
 addict = [
@@ -2867,6 +2890,9 @@ frozendict = [
     {file = "frozendict-2.3.0-cp39-cp39-win_amd64.whl", hash = "sha256:9ffaf440648b44e0bc694c1a4701801941378ba3ba6541e17750ae4b4aeeb116"},
     {file = "frozendict-2.3.0-py3-none-any.whl", hash = "sha256:8578fe06815fcdcc672bd5603eebc98361a5317c1c3a13b28c6c810f6ea3b323"},
     {file = "frozendict-2.3.0.tar.gz", hash = "sha256:da4231adefc5928e7810da2732269d3ad7b5616295b3e693746392a8205ea0b5"},
+]
+future = [
+    {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
 ]
 gitdb = [
     {file = "gitdb-4.0.9-py3-none-any.whl", hash = "sha256:8033ad4e853066ba6ca92050b9df2f89301b8fc8bf7e9324d412a63f8bf1a8fd"},
@@ -3479,6 +3505,9 @@ py = [
     {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
     {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
 ]
+py-tes = [
+    {file = "py-tes-0.4.2.tar.gz", hash = "sha256:f6926cd59b7dfc8e37840955bf1cc7c43ad4d99ba5eae100b6156c918617472c"},
+]
 pyasn1 = [
     {file = "pyasn1-0.4.8-py2.4.egg", hash = "sha256:fec3e9d8e36808a28efb59b489e4528c10ad0f480e57dcc32b4de5c9d8c9fdf3"},
     {file = "pyasn1-0.4.8-py2.5.egg", hash = "sha256:0458773cfe65b153891ac249bcf1b5f8f320b7c2ce462151f8fa74de8934becf"},
@@ -3945,9 +3974,9 @@ tabulate = [
     {file = "tabulate-0.8.9.tar.gz", hash = "sha256:eb1d13f25760052e8931f2ef80aaf6045a6cceb47514db8beab24cded16f13a7"},
 ]
 toil = [
-    {file = "toil-5.5.0-py3-none-any.whl", hash = "sha256:9cc3ce839ec57933e6c291a21a4b5ec0744e27261a92e0a69bd1e14e8372fd62"},
-    {file = "toil-5.5.0-py3.6.egg", hash = "sha256:465a01e5e2d1f629b9a406992840f7865eeadc2d7950b985ffa643325fe5706a"},
-    {file = "toil-5.5.0.tar.gz", hash = "sha256:1a520f5876265adba4d1f51abbf67a56c13b55eedcacb84d48ae094817dfc7a2"},
+    {file = "toil-5.6.0-py3-none-any.whl", hash = "sha256:2eec8d2f8c01d4db1911d8ce270dd0220373bbd66f0c019038a9755bd0c44eda"},
+    {file = "toil-5.6.0-py3.8.egg", hash = "sha256:23a7f10097c7958583b50fca1c1051466151c079cfbdd070bf28156bbfdda8c2"},
+    {file = "toil-5.6.0.tar.gz", hash = "sha256:9bab73ad10822d42cefb007c86d525b7428448b9bfbdd21e4f306b8a19c0a3f2"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
