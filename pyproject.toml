@@ -65,7 +65,7 @@ click-plugins = "==1.1.1"
 coverage = { version = "<6.2,>=4.5.3", optional = true }
 cryptography = "<35.1,>=3.4.1"
 cwl-utils = ">=0.12"
-cwltool = "==3.1.20210922203925"
+cwltool = "==3.1.20211107152837"
 deepmerge = "==0.3.0"
 environ-config = "<21.3.0,>=18.2.0"
 fakeredis = { version = "<1.6.2,>=1.4.1", optional = true }
