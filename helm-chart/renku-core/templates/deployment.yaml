@@ -33,7 +33,7 @@ spec:
         app.kubernetes.io/name: {{ include "renku-core.name" $ }}
         app.kubernetes.io/instance: {{ $.Release.Name }}
         app.kubernetes.io/deploymentVersion: {{ $version.name }}
-        {{ .Values.global.redis.clientLabel | default (printf "%s-%s" (include "redis.host" .) "-client") }}: "true"
+        {{ $.Values.global.redis.clientLabel | default (printf "%s-%s" (include "redis.host" .) "-client") }}: "true"
     spec:
     {{- with $.Values.imagePullSecrets }}
       imagePullSecrets:
@@ -52,7 +52,7 @@ spec:
           imagePullPolicy: {{ $.Values.metrics.image.pullPolicy }}
           env:
             - name: RQ_REDIS_HOST
-              value: {{ template "redis.host" . }}
+              value: {{ template "redis.host" $ }}
       {{ end }}
         - name: {{ $.Chart.Name }}
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
@@ -72,16 +72,16 @@ spec:
           {{- end }}
           env:
             - name: REDIS_HOST
-              value: {{ template "redis.host" . }}
+              value: {{ template "redis.host" $ }}
             - name: REDIS_PORT
-              value: {{ .Values.global.redis.port | default "6379" | quote }}
+              value: {{ $.Values.global.redis.port | default "6379" | quote }}
             - name: REDIS_DATABASE
-              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
+              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.global.redis.existingSecret }}
-                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
+                  name: {{ $.Values.global.redis.existingSecret }}
+                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
@@ -117,7 +117,7 @@ spec:
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
-              value: {{ $.Values.global.renku.domain }}
+              value: {{ $$.Values.global.renku.domain }}
             {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
@@ -143,16 +143,16 @@ spec:
           args: ["worker"]
           env:
             - name: REDIS_HOST
-              value: {{ template "redis.host" . }}
+              value: {{ template "redis.host" $ }}
             - name: REDIS_PORT
-              value: "6379"
+             value: {{ $.Values.global.redis.port | default "6379" | quote }}
             - name: REDIS_DATABASE
-              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
+              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.global.redis.existingSecret }}
-                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
+                  name: {{ $.Values.global.redis.existingSecret }}
+                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: RENKU_JWT_TOKEN_SECRET
@@ -178,7 +178,7 @@ spec:
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
-              value: {{ $.Values.global.renku.domain }}
+              value: {{ $$.Values.global.renku.domain }}
             {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
@@ -191,16 +191,16 @@ spec:
           args: ["worker"]
           env:
             - name: REDIS_HOST
-              value: {{ template "redis.host" . }}
+              value: {{ template "redis.host" $ }}
             - name: REDIS_PORT
-              value: "6379"
+             value: {{ $.Values.global.redis.port | default "6379" | quote }}
             - name: REDIS_DATABASE
-              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
+              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.global.redis.existingSecret }}
-                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
+                  name: {{ $.Values.global.redis.existingSecret }}
+                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
@@ -224,7 +224,7 @@ spec:
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
-              value: {{ $.Values.global.renku.domain }}
+              value: {{ $$.Values.global.renku.domain }}
             {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
@@ -237,16 +237,16 @@ spec:
           args: ["scheduler"]
           env:
             - name: REDIS_HOST
-              value: {{ template "redis.host" . }}
+              value: {{ template "redis.host" $ }}
             - name: REDIS_PORT
-              value: "6379"
+             value: {{ $.Values.global.redis.port | default "6379" | quote }}
             - name: REDIS_DATABASE
-              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
+              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.global.redis.existingSecret }}
-                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
+                  name: {{ $.Values.global.redis.existingSecret }}
+                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
