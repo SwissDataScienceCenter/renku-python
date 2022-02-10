@@ -40,17 +40,23 @@ Users can track parameters' values in a workflow by defining them using
 
     nc = Parameter(name="n_components", value=10)
 
+Once a Parameter is tracked like this, it can be set normally in commands like
+``renku workflow execute`` with the ``--set`` option to override the value.
+
 """
 
-from os import PathLike
+import re
+from os import PathLike, environ
 from pathlib import Path
 
 from renku.api.models.project import ensure_project_context
+from renku.core import errors
 from renku.core.management.workflow.plan_factory import (
     add_indirect_parameter,
     get_indirect_inputs_path,
     get_indirect_outputs_path,
 )
+from renku.core.plugins.provider import RENKU_ENV_PREFIX
 
 
 class _PathBase(PathLike):
@@ -97,6 +103,27 @@ class Output(_PathBase):
 @ensure_project_context
 def parameter(name, value, project):
     """Store parameter's name and value."""
+    if not re.match("[a-zA-Z0-9-_]+", name):
+        raise errors.ParameterError(
+            f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
+        )
+    env_value = environ.get(f"{RENKU_ENV_PREFIX}{name}", None)
+
+    if env_value:
+        if isinstance(value, str):
+            value = env_value
+        elif isinstance(value, bool):
+            value = bool(env_value)
+        elif isinstance(value, int):
+            value = int(env_value)
+        elif isinstance(value, float):
+            value = float(env_value)
+        else:
+            raise errors.ParameterError(
+                f"Can't convert value '{env_value}' to type '{type(value)}' for parameter '{name}'. Only "
+                "str, bool, int and float are supported."
+            )
+
     add_indirect_parameter(project.path, name=name, value=value)
 
     return value

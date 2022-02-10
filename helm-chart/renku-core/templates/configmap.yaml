@@ -17,6 +17,7 @@ data:
 
       sendfile on;
       tcp_nopush on;
+      client_max_body_size 0; # Required for uploading large files
 
       location /renku/versions {
         root /;

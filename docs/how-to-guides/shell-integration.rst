@@ -5,6 +5,14 @@ Shell integration of Renku CLI
 
 Renku CLI supports shell auto-completion for Renku commands and their arguments like datasets and workflows.
 
+A convenience method is available for printing to the standard output the shell completion command for the
+currently used shell:
+
+.. code-block:: console
+
+        $ renku env --shell-completion
+        _RENKU_COMPLETE=zsh_source renku
+
 To activate tab completion for your supported shell run the following command after installing Renku CLI:
 
 .. tabs::
@@ -37,7 +45,7 @@ in case of ``renku workflow execute`` the available ``Plans`` are going to be li
 
 .. note::
 
-   Tab completion of available ``Plans`` only works if the user is executing the command
+   Tab completion of available ``Plans`` (or ``Datasets``) only works if the user is executing the command
    within a Renku project.
 
 

@@ -27,6 +27,8 @@ import pluggy
 from renku.core import errors
 from renku.core.models.workflow.provider import IWorkflowProvider
 
+RENKU_ENV_PREFIX = "RENKU_ENV_"
+
 hookspec = pluggy.HookspecMarker("renku")
 
 
