@@ -117,7 +117,7 @@ spec:
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
-              value: {{ $$.Values.global.renku.domain }}
+              value: {{ $.Values.global.renku.domain }}
             {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
@@ -178,7 +178,7 @@ spec:
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
-              value: {{ $$.Values.global.renku.domain }}
+              value: {{ $.Values.global.renku.domain }}
             {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
@@ -224,7 +224,7 @@ spec:
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
-              value: {{ $$.Values.global.renku.domain }}
+              value: {{ $.Values.global.renku.domain }}
             {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
