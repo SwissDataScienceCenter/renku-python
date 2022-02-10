@@ -16,6 +16,18 @@ global:
       tag: '0.0.1'
     customCAs: []
       # - secret:
+  ## Specify the information required to connect to a redis instance.
+  redis:
+    ## Host is optional, otherwise it needs to be provided below.
+    ## The hostname is optional only if this chart is used as a child of the larger renku helm chart, in all other cases the value has to be provided below.
+    # host:
+    ## The label used to enable the network policy that allows the gateway to connect to redis.
+    ## If not defined below, it will default to <redis hostname>-client.
+    # clientLabel:
+    ## All the values below are required.
+    isSentinel:
+    dbIndex:
+      coreService:
 
 # base path - this is the reverse proxy base path
 apiBasePath: /api
@@ -77,24 +89,6 @@ resources: {}
 # tolerations: []
 
 # affinity: {}
-
-## The renku core service uses the global redis instance of the renku platform.
-## if using the redis subchart, set the following values
-# redis:
-#   nameOverride: core-redis
-
-#   cluster:
-#     enabled: false
-
-#   usePassword: false
-
-#   master:
-#     persistence:
-#       enabled: false
-
-#   networkPolicy:
-#     enabled: true
-#     allowExternal: false
 
 ## Add sentry configuration
 sentry:
