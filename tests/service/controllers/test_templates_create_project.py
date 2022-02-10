@@ -28,7 +28,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
     from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
     cache, user_data = ctrl_init
-    _svc_client, _headers, payload, _rm_remote = svc_client_templates_creation
+    _, _, payload, _ = svc_client_templates_creation
 
     ctrl = TemplatesCreateProjectCtrl(cache, user_data, payload)
     ctrl_mock = mocker.patch.object(ctrl, "new_project_push", return_value=None)
@@ -136,7 +136,7 @@ def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client
     from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
     cache, user_data = ctrl_init
-    svc_client, headers, payload, rm_remote = svc_client_templates_creation
+    _, _, payload, _ = svc_client_templates_creation
     payload["project_name"] = project_name
 
     ctrl = TemplatesCreateProjectCtrl(cache, user_data, payload)
@@ -155,7 +155,7 @@ def test_except_project_name_handler(project_name, ctrl_init, svc_client_templat
     from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
     cache, user_data = ctrl_init
-    _svc_client, _headers, payload, _rm_remote = svc_client_templates_creation
+    _, _, payload, _ = svc_client_templates_creation
     payload["project_name"] = project_name
 
     with pytest.raises(ValidationError) as exc_info:

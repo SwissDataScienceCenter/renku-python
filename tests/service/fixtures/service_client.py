@@ -241,3 +241,5 @@ def svc_client_templates_creation(svc_client_with_templates):
         return True
 
     yield svc_client, authentication_headers, payload, remove_project
+
+    remove_project()
