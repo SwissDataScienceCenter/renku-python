@@ -25,7 +25,7 @@ from renku.core.commands.init import fetch_template
 from renku.core.errors import GitError
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
-from renku.service.errors import ErrorUserTemplateNotFound, ServiceError
+from renku.service.errors import ErrorUserRepoUrlInvalid, ErrorUserTemplateInvalid
 from renku.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC
 from renku.service.views import error_response_new, result_response
 
@@ -85,8 +85,10 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
         except GitError as e:
             error_message = str(e)
             if "Cannot clone repo from" in error_message:
-                error_details = ErrorUserTemplateNotFound()
-                return error_response_new(ServiceError(e, error_details))
-            raise
+                return error_response_new(ErrorUserRepoUrlInvalid(e))
+            elif "Cannot checkout manifest file" in error_message:
+                return error_response_new(ErrorUserTemplateInvalid(e))
+            else:
+                raise e
 
         return result_response(TemplatesReadManifestCtrl.RESPONSE_SERIALIZER, {"templates": templates})

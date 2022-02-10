@@ -36,7 +36,6 @@ from renku.service.errors import (
     ErrorProgHttpRequest,
     ErrorProgHttpServer,
     ErrorProgHttpTimeout,
-    ServiceError,
 )
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
@@ -128,19 +127,19 @@ def register_exceptions(app):
                 return Response(status=code)
 
             if code == 400:
-                error_details = ErrorProgHttpRequest()
+                error = ErrorProgHttpRequest(e)
             elif code == 404:
-                error_details = ErrorProgHttpMissing()
+                error = ErrorProgHttpMissing(e)
             elif code == 405:
-                error_details = ErrorProgHttpMethod()
+                error = ErrorProgHttpMethod(e)
             elif code == 408:
-                error_details = ErrorProgHttpTimeout()
+                error = ErrorProgHttpTimeout(e)
             else:
-                error_details = ErrorProgHttpServer(code)
+                error = ErrorProgHttpServer(e, code)
 
-            return error_response_new(ServiceError(e, error_details))
+            return error_response_new(error)
 
-        # NOTE: Werkzeug exceptions should be covered above, following line is for
+        # NOTE: Werkzeug exceptions should be covered above, the following line is for
         #   unexpected HTTP server errors.
         return error_response_new(e)
 

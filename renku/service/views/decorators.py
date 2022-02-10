@@ -49,7 +49,7 @@ from renku.service.errors import (
     ErrorProgRepoUnknown,
     ErrorUserAnonymous,
     ErrorUserRepoNoAccess,
-    ErrorUserRepoNotFound,
+    ErrorUserRepoUrlInvalid,
     ServiceError,
 )
 from renku.service.serializers.headers import OptionalIdentityHeaders, RequiredIdentityHeaders
@@ -66,8 +66,7 @@ def requires_identity(f):
         try:
             user_identity = RequiredIdentityHeaders().load(request.headers)
         except (ValidationError, KeyError) as e:
-            error_details = ErrorUserAnonymous()
-            return error_response_new(ServiceError(e, error_details))
+            return error_response_new(ErrorUserAnonymous(e))
 
         return f(user_identity, *args, **kws)
 
@@ -247,13 +246,13 @@ def handle_git_except(f):
             error_message_safe = format(" ".join(error_message.strip().split("\n")))
             error_message_safe = re.sub("^(.+oauth2:)[^@]+(@.+)$", r"\1<token-hidden>\2", error_message_safe)
             if "access denied" in error_message:
-                error_details = ErrorUserRepoNoAccess(error_message_safe)
+                error = ErrorUserRepoNoAccess(e, error_message_safe)
             elif "is this a git repository?" in error_message or "not found" in error_message:
-                error_details = ErrorUserRepoNotFound(error_message_safe)
+                error = ErrorUserRepoUrlInvalid(e, error_message_safe)
             else:
-                error_details = ErrorProgRepoUnknown(error_message_safe)
+                error = ErrorProgRepoUnknown(e, error_message_safe)
 
-            return error_response_new(ServiceError(e, error_details))
+            return error_response_new(error)
 
     return decorated_function
 
@@ -274,8 +273,7 @@ def accepts_json(f):
                 wrong_type = True
 
         if wrong_type:
-            error_details = ErrorProgContentType(content_type)
-            return error_response_new(ServiceError(None, error_details))
+            return error_response_new(ErrorProgContentType(request.headers["Content-Type"], content_type))
 
         return f(*args, **kwargs)
 
@@ -292,14 +290,15 @@ def handle_base_except(f):
             return f(*args, **kwargs)
 
         # NOTE: HTTPException are now handled in the entrypoint
+        except ServiceError as e:
+            return error_response_new(e)
         except errors.GitError as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
                 pass
 
-            error_details = ErrorProgGit(e.message if e.message else None)
-            return error_response_new(ServiceError(e, error_details))
+            return error_response_new(ErrorProgGit(e, e.message if e.message else None))
 
         except (Exception, BaseException, OSError, IOError) as e:
             try:
@@ -310,9 +309,8 @@ def handle_base_except(f):
                 error_message = " ".join(e.stderr.strip().split("\n"))
             else:
                 error_message = str(e)
-            error_details = ErrorProgInternal(error_message)
 
-            return error_response_new(ServiceError(e, error_details))
+            return error_response_new(ErrorProgInternal(e, error_message))
 
     return decorated_function
 

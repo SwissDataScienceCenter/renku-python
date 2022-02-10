@@ -29,6 +29,7 @@ from renku.core.commands.init import fetch_template_from_git, read_template_mani
 from renku.core.metadata.repository import Repository
 from renku.core.utils.os import normalize_to_ascii
 from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
+from renku.service.errors import ErrorUserRepoUrlInvalid, ErrorUserTemplateInvalid
 from tests.utils import retry_failed
 
 
@@ -55,6 +56,30 @@ def test_read_manifest_from_template(svc_client_with_templates):
     assert "icon" in default_template and default_template["icon"]
     icon = Image.open(BytesIO(base64.b64decode(default_template["icon"])))
     assert icon.size == (256, 256)
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.parametrize(
+    "template_url,error",
+    [
+        ("definitely_no_a_valid_URL", ErrorUserRepoUrlInvalid),
+        ("https://renkulabnonexistingwebsite.io", ErrorUserRepoUrlInvalid),
+        ("https://datascience.ch", ErrorUserRepoUrlInvalid),
+        ("https://github.com/SwissDataScienceCenter/renku-python", ErrorUserTemplateInvalid),
+    ],
+)
+def test_read_manifest_from_wrong_template(svc_client_with_templates, template_url, error):
+    """Check reading manifest template."""
+    svc_client, headers, template_params = svc_client_with_templates
+    template_params["url"] = template_url
+
+    response = svc_client.get("/templates.read_manifest", query_string=template_params, headers=headers)
+
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert error().code == response.json["error"]["code"]
 
 
 @pytest.mark.service

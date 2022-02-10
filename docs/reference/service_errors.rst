@@ -64,7 +64,7 @@ List of available errors
 .. automodule:: renku.service.errors
    :members:
    :undoc-members:
-   :inherited-members:
+   :show-inheritance:
    :member-order: bysource
    :exclude-members: AuthenticationTokenMissing, IdentificationError, OperationNotSupported,
-       ProjectNotFound, RenkuOpTimeoutError, RenkuServiceLockError, ServiceError
+       ProjectNotFound, RenkuOpTimeoutError, RenkuServiceLockError

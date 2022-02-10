@@ -22,7 +22,7 @@ import uuid
 import pytest
 
 from renku.service.config import SVC_ERROR_PROGRAMMING
-from renku.service.errors import ErrorUserAnonymous
+from renku.service.errors import ErrorProgContentType, ErrorUserAnonymous, ErrorUserRepoUrlInvalid
 from tests.utils import retry_failed
 
 
@@ -53,7 +53,6 @@ def test_unallowed_methods_exc(service_unallowed_endpoint):
         assert SVC_ERROR_PROGRAMMING + 405 == response.json["error"]["code"]
 
 
-# TODO: fix this
 @pytest.mark.service
 def test_auth_headers_exc(service_allowed_endpoint):
     """Check correct headers for every endpoint."""
@@ -68,6 +67,31 @@ def test_auth_headers_exc(service_allowed_endpoint):
     assert (ErrorUserAnonymous()).code == response.json["error"]["code"]
 
     assert response.json["error"]["userMessage"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_content_type_headers_exc(svc_client_with_repo):
+    """Verify exceptions are triggered when missing data."""
+
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    headers["Content-Type"] = "Fake"
+
+    payload = {
+        "project_id": project_id,
+        "config": {
+            "lfs_threshold": "1b",
+            "renku.autocommit_lfs": "true",
+            "interactive.default_url": "/not_lab",
+            "interactive.dummy": "dummy-value",
+        },
+    }
+
+    response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert ErrorProgContentType().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -183,31 +207,20 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.parametrize(
-    "git_url,expected",
+    "git_url",
     [
-        (
-            "https://github.com",
-            {"error": {"code": -32602, "reason": "Validation error: `git_url` - Invalid `git_url`"}},
-        ),
-        (
-            "https://github.com/SwissDataScienceCenter",
-            {"error": {"code": -32100, "reason": "Cannot clone repo from https://github.com/SwissDataScienceCenter"}},
-        ),
-        (
-            "https://test.com/test2/test3",
-            {"error": {"code": -32100, "reason": "Cannot clone repo from https://test.com/test2/test3"}},
-        ),
-        (
-            "https://www.test.com/test2/test3",
-            {"error": {"code": -32100, "reason": "Cannot clone repo from https://www.test.com/test2/test3"}},
-        ),
+        "https://github.com",
+        "https://github.com/SwissDataScienceCenter",
+        "https://test.com/test2/test3",
+        "https://www.test.com/test2/test3",
     ],
 )
-def test_invalid_git_remote(git_url, expected, svc_client_with_templates):
+def test_invalid_git_remote(git_url, svc_client_with_templates):
     """Check reading manifest template."""
     svc_client, headers, template_params = svc_client_with_templates
     template_params["url"] = git_url
     response = svc_client.get("/templates.read_manifest", query_string=template_params, headers=headers)
 
-    assert response
-    assert expected == response.json
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert ErrorUserRepoUrlInvalid().code == response.json["error"]["code"]

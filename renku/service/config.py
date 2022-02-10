@@ -32,7 +32,7 @@ SVC_ERROR_INTERMITTENT = 3000
 
 DOCS_URL_BASE = "https://renku.readthedocs.io/projects/renku-python/en/latest/"
 DOCS_URL_ERRORS = "service_errors.html#renku.service.errors."
-DOCS_NOT_AVAILABLE = "N/A"
+ERROR_NOT_AVAILABLE = "Unknown"
 
 # TODO: #2100 the git access error should have its own error code
 GIT_ACCESS_DENIED_ERROR_CODE = -32000
