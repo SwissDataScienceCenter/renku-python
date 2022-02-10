@@ -192,10 +192,12 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
     type=click.STRING,
     default="date,type,description",
     metavar="<columns>",
-    help="Comma-separated list of column to display: {}.".format(", ".join(LOG_COLUMNS.keys())),
+    help="Comma-separated list of column to display (for 'tabular' format): {}.".format(", ".join(LOG_COLUMNS.keys())),
     show_default=True,
 )
-@click.option("--format", type=click.Choice(LOG_FORMATS), default="detailed", help="Choose an output format.")
+@click.option(
+    "--format", type=click.Choice(LOG_FORMATS), default="detailed", help="Choose an output format (default: detailed)."
+)
 @click.option("-w", "--workflows", is_flag=True, default=False, help="Show only workflow executions.")
 @click.option("-d", "--datasets", is_flag=True, default=False, help="Show only dataset modifications.")
 def log(columns, format, workflows, datasets):
