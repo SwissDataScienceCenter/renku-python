@@ -27,7 +27,7 @@ from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.errors import UserRepoUrlInvalidError, UserTemplateInvalidError
 from renku.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC
-from renku.service.views import error_response_new, result_response
+from renku.service.views import result_response
 
 MAX_ICON_SIZE = (256, 256)
 
