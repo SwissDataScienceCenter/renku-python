@@ -35,6 +35,7 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils import communication
+from renku.core.utils.file_size import bytes_to_unit
 from renku.core.utils.git import clone_renku_repository, get_cache_directory_for_repository
 
 
@@ -396,7 +397,9 @@ class _RenkuRecordSerializer:
             file_info = DynamicProxy(file)
             file_info.checksum = file.entity.checksum
             file_info.filename = Path(file.entity.path).name
-            file_info.size_in_mb = _RenkuRecordSerializer._get_file_size(self._remote_client, file.entity.path)
+            file_info.size_in_mb = bytes_to_unit(
+                _RenkuRecordSerializer._get_file_size(self._remote_client, file.entity.path), "mi"
+            )
             file_info.filetype = Path(file.entity.path).suffix.replace(".", "")
             files_info.append(file_info)
 
