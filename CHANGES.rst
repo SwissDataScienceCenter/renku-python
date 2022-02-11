@@ -18,6 +18,21 @@
 Changes
 =======
 
+`1.0.5 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.4...v1.0.5>`__ (2022-02-07)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** replace ``cwlgen`` with ``cwl-utils``
+   (`#2603 <https://github.com/SwissDataScienceCenter/renku-python/issues/2603>`__)
+   (`ab2e9cf <https://github.com/SwissDataScienceCenter/renku-python/commit/ab2e9cf0b1f0c63a025bd6e09fffd4ab350a0d48>`__)
+
+-  **core:** fix jinja2 dependency not being installed by pip
+   (`#2613 <https://github.com/SwissDataScienceCenter/renku-python/issues/2613>`__)
+   (`6effa0e <https://github.com/SwissDataScienceCenter/renku-python/commit/6effa0efe7fe093119212d11a05515cd5f8cdeab>`__)
+
+
 `1.0.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.3...v1.0.4>`__ (2022-01-28)
 -------------------------------------------------------------------------------------------------------
 
