@@ -68,21 +68,21 @@ cwl-utils = ">=0.12"
 cwltool = "==3.1.20220210171524"
 deepmerge = "==0.3.0"
 environ-config = "<21.3.0,>=18.2.0"
-fakeredis = { version = "<1.6.2,>=1.4.1", optional = true }
+fakeredis = { version = "<1.7.1,>=1.4.1", optional = true }
 filelock = "<3.3.3,>=3.0.0"
 flake8 = { version = "<4.0,>=3.8", optional = true }                             #wait for https://github.com/flakehell/flakehell/pull/23 to be merged before bumping
 flakehell = { version = ">=0.9.0,<1.0.*", optional = true }
 flaky = { version = "==3.7.0", optional = true }
 flask = { version = "==2.0.2", optional = true }
 freezegun = { version = "<1.1.1,>=0.3.12", optional = true }
-gitpython = "==3.1.24"
+gitpython = "==3.1.26"
 grandalf = "==0.7"
 gunicorn = { optional = true, version = "*" }
 humanize = "<3.15.0,>=3.0.0"
-importlib-metadata = { version = "<4.9.0,>=4.8.1", python = "<3.8.0" }
+importlib-metadata = { version = "<4.12.0,>=4.8.1", python = "<3.8.0" }
 importlib-resources = { version = "<5.5.0,>=5.4.0", python = "<3.9.0" }
 inject = "<4.4.0,>=4.3.0"
-isort = { version = "<5.10.0,>=5.3.2", optional = true }
+isort = { version = "<5.10.2,>=5.3.2", optional = true }
 jinja2 = { version = "<3.0.2,>=2.10.3,>=2.11.3" }
 marshmallow = { version = ">=3.13.0,<3.15.0", optional = true }
 ndg-httpsclient = "==0.5.1"
@@ -123,7 +123,7 @@ rdflib = "<7.0,>=6.0.0"
 redis = { version = "==3.5.3", optional = true }
 renku-sphinx-theme = { version = ">=0.2.0", optional = true }
 requests = "<2.27.0,>=2.23.0"
-responses = { version = "<0.14.1,>=0.7.0", optional = true }
+responses = { version = "<0.19.0,>=0.7.0", optional = true }
 rich = "<10.13.0,>=9.3.0"
 rq = { version = "==1.10.1", optional = true }
 rq-scheduler = { version = "==0.11.0", optional = true }
