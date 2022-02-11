@@ -246,7 +246,7 @@ def _add_to_dataset(
     usage = shutil.disk_usage(client.path)
 
     if total_size > usage.free:
-        mb = 2 ** 20
+        mb = 2**20
         message = "Insufficient disk space (required: {:.2f} MB" "/available: {:.2f} MB). ".format(
             total_size / mb, usage.free / mb
         )
@@ -517,7 +517,7 @@ def _import_dataset(
                 if file_.size_in_mb is not None:
                     total_size += file_.size_in_mb
 
-            total_size *= 2 ** 20
+            total_size *= 2**20
 
     except KeyError as e:
         raise ParameterError(f"Could not process '{uri}'.\nUnable to fetch metadata: {e}")
