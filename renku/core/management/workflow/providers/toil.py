@@ -19,6 +19,7 @@
 
 import functools
 import itertools
+import logging
 import os
 import shutil
 import uuid
@@ -32,7 +33,6 @@ from toil.common import Toil
 from toil.fileStores import FileID
 from toil.fileStores.abstractFileStore import AbstractFileStore
 from toil.job import Job, Promise
-from toil.leader import FailedJobsException
 
 from renku.core import errors
 from renku.core.commands.echo import progressbar
@@ -44,6 +44,13 @@ from renku.core.models.workflow.plan import Plan
 from renku.core.models.workflow.provider import IWorkflowProvider
 from renku.core.plugins import hookimpl
 from renku.core.plugins.provider import RENKU_ENV_PREFIX
+
+# silence cwltool version warning
+logger = logging.getLogger("toil.cwl")
+logger.disabled = True
+from toil.leader import FailedJobsException  # noqa
+
+logger.disabled = False
 
 
 class AbstractToilJob(Job):
