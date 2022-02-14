@@ -87,7 +87,6 @@ def edit_project_view(user_data, cache):
 
 @project_blueprint.route("/project.lock_status", methods=["GET"], provide_automatic_options=False, versions=[V1_0])
 @handle_common_except
-@accepts_json
 @requires_cache
 @requires_identity
 def get_project_lock_status(user_data, cache):
