@@ -324,7 +324,7 @@ def test_dataset_import_renku_provider(runner, client, uri, load_dataset_with_in
 
 
 @pytest.mark.integration
-@retry_failed
+# @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
     "uri",

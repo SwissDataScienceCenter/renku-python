@@ -15,30 +15,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Template utilities.
-
-# TODO Fix all error messages to avoid command line parameters
-
-# TODO Update this comment
-
-# TODO: Should we create a TemplateVersion class to set reference and version
-
-A project has three attributes to specify a template: ``template_source``, ``template_version``, and ``template_ref``.
-In projects that use templates that are bundled with Renku, ``template_source`` is "renku" and ``template_version`` is
-set to the installed Renku version. ``template_ref`` should not be set for such projects.
-
-For projects that use a template from a Git repository, ``template_source`` is repository's URL and ``template_version``
-is set to the current HEAD commit SHA. If a Git referenced was passed when setting the template, then project's
-``template_ref`` is the same as the passed reference. In this case, Renku won't update a project's template if the
-reference is a fixed value (i.e. a tag or a commit SHA).
-"""
+"""Template use cases."""
 
 from collections import namedtuple
-from pathlib import Path
-from typing import Generator, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import click
-import jinja2
 
 from renku.core import errors
 from renku.core.commands.view_model.template import TemplateChangeViewModel, TemplateViewModel
@@ -46,15 +28,17 @@ from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.template.template import (
-    MetadataManager,
+    FileAction,
     RenderedTemplate,
-    RenderType,
-    TemplateRenderer,
+    TemplateAction,
+    copy_template_metadata_to_client,
+    copy_template_to_client,
     fetch_templates_source,
-    is_renku_template,
+    get_file_actions,
+    set_template_parameters,
 )
 from renku.core.models.tabulate import tabulate
-from renku.core.models.template import SourceTemplate, TemplatesSource
+from renku.core.models.template import SourceTemplate, TemplateMetadata, TemplatesSource
 from renku.core.utils import communication
 
 
@@ -75,7 +59,7 @@ def show_template(source, reference, id) -> TemplateViewModel:
 
 def check_for_template_update(client) -> Tuple[bool, bool, Optional[str], Optional[str]]:
     """Check if the project can be updated to a newer version of the project template."""
-    metadata = MetadataManager.from_project(client=client)
+    metadata = TemplateMetadata.from_client(client=client)
 
     templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
     latest_version = templates_source.get_latest_version(
@@ -85,26 +69,6 @@ def check_for_template_update(client) -> Tuple[bool, bool, Optional[str], Option
     update_available = latest_version is not None and latest_version != metadata.version
 
     return update_available, metadata.allow_update, metadata.version, latest_version
-
-
-def create_project_from_template(client, source_template: SourceTemplate, template_metadata):
-    """Render template files from a template directory."""
-    renderer = TemplateRenderer(
-        source_template=source_template, metadata=template_metadata, render_type=RenderType.INITIALIZE
-    )
-    rendered_template = renderer.render(client=client, interactive=False)
-
-    rendered_template.copy_files_to_project(client=client)
-
-
-def get_template_files(template_base: Path, template_metadata) -> Generator[str, None, None]:
-    """Return relative paths Gets paths in a rendered renku template."""
-    for file in template_base.rglob("*"):
-        relative_path = str(file.relative_to(template_base))
-        # NOTE: The path could contain template variables, we need to template it
-        relative_path = jinja2.Template(relative_path).render(template_metadata)
-
-        yield relative_path
 
 
 @inject.autoparams("client_dispatcher")
@@ -117,8 +81,6 @@ def set_template(
 
     if project.template_source and not force:
         raise errors.TemplateUpdateError("Project already has a template: To set a template use '-f/--force' flag")
-    if is_renku_template(source) and reference is not None:
-        raise errors.ParameterError("Templates included in renku don't support specifying a reference")
     if not client.has_template_checksum() and not interactive:
         raise errors.TemplateUpdateError("Required template metadata doesn't exist: Use '-i/--interactive' flag")
 
@@ -126,17 +88,18 @@ def set_template(
 
     source_template = select_template(templates_source, id=id)
 
-    rendered_template = _set_or_update_project_from_template(
+    rendered_template, actions = _set_or_update_project_from_template(
         templates_source=templates_source,
         reference=source_template.reference,
         id=source_template.id,
         interactive=interactive,
         dry_run=dry_run,
-        render_type=RenderType.SET,
+        template_action=TemplateAction.SET,
         input_parameters=input_parameters,
+        client=client,
     )
 
-    return TemplateChangeViewModel.from_template(template=rendered_template)
+    return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
 
 
 @inject.autoparams("client_dispatcher")
@@ -146,7 +109,7 @@ def update_template(
     """Update project's template if possible. Return True if updated."""
     client = client_dispatcher.current_client
 
-    template_metadata = MetadataManager.from_project(client=client)
+    template_metadata = TemplateMetadata.from_client(client=client)
 
     if not template_metadata.source:
         raise errors.TemplateUpdateError("Project doesn't have a template: Use 'renku template set'")
@@ -168,61 +131,67 @@ def update_template(
     if not update_available:
         return
 
-    rendered_template = _set_or_update_project_from_template(
+    rendered_template, actions = _set_or_update_project_from_template(
         templates_source=templates_source,
         reference=latest_version,
         id=template_metadata.id,
         interactive=interactive,
         dry_run=dry_run,
-        render_type=RenderType.UPDATE,
+        template_action=TemplateAction.UPDATE,
         input_parameters=None,
+        client=client,
     )
 
-    return TemplateChangeViewModel.from_template(template=rendered_template)
+    return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
 
 
-@inject.autoparams("client_dispatcher", "project_gateway")
+@inject.autoparams("project_gateway")
 def _set_or_update_project_from_template(
     templates_source: TemplatesSource,
     reference: str,
     id: str,
     interactive,
     dry_run: bool,
-    render_type: RenderType,
-    client_dispatcher: IClientDispatcher,
+    template_action: TemplateAction,
+    input_parameters,
+    client,
     project_gateway: IProjectGateway,
-    input_parameters=None,
-) -> RenderedTemplate:
+) -> Tuple[RenderedTemplate, Dict[str, FileAction]]:
     """Update project files and metadata from a template."""
     if interactive and not communication.has_prompt():
         raise errors.ParameterError("Cannot use interactive mode with no prompt")
 
     input_parameters = input_parameters or {}
 
-    client = client_dispatcher.current_client
     project = project_gateway.get_project()
 
     source_template = templates_source.get_template(id=id, reference=reference)
 
-    metadata_manager = MetadataManager.from_project(client=client)
-    metadata_manager.update_from_template(template=source_template)
+    template_metadata = TemplateMetadata.from_client(client=client)
+    template_metadata.update(template=source_template)
 
     if not dry_run:
-        metadata_manager.set_template_variables(
-            template=source_template, input_parameters=input_parameters, interactive=interactive
+        set_template_parameters(
+            template=source_template,
+            template_metadata=template_metadata,
+            input_parameters=input_parameters,
+            interactive=interactive,
         )
 
-    renderer = TemplateRenderer(
-        source_template=source_template, metadata=metadata_manager.metadata, render_type=render_type
+    rendered_template = source_template.render(metadata=template_metadata)
+    actions = get_file_actions(
+        rendered_template=rendered_template,
+        template_action=template_action,
+        client=client,
+        interactive=interactive and not dry_run,
     )
-    rendered_template = renderer.render(client=client, interactive=interactive and not dry_run)
 
     if not dry_run:
-        rendered_template.copy_files_to_project(client=client)
-        metadata_manager.update_project(project=project)
+        copy_template_to_client(rendered_template=rendered_template, client=client, actions=actions)
+        copy_template_metadata_to_client(rendered_template=rendered_template, client=client, project=project)
         project_gateway.update_project(project)
 
-    return rendered_template
+    return rendered_template, actions
 
 
 def select_template(templates_source: TemplatesSource, id=None) -> SourceTemplate:

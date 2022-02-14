@@ -18,6 +18,7 @@
 """Template models."""
 
 import copy
+import json
 import os
 import tempfile
 from abc import abstractmethod
@@ -29,11 +30,9 @@ import yaml
 
 from renku.core import errors
 from renku.core.management import RENKU_HOME
+from renku.core.utils.os import hash_file, get_safe_relative_path
 
 TEMPLATE_MANIFEST = "manifest.yaml"
-
-
-# TODO: Should we validate the templates in the constructor
 
 
 class TemplatesSource:
@@ -55,10 +54,10 @@ class TemplatesSource:
     @property
     def templates(self) -> List["SourceTemplate"]:
         """Return list of templates."""
-        for template in self.manifest.templates_ha:
+        for template in self.manifest.templates:
             template.templates_source = self
 
-        return self.manifest.templates_ha
+        return self.manifest.templates
 
     @abstractmethod
     def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
@@ -111,7 +110,7 @@ class TemplatesManifest:
             return manifest
 
     @property
-    def templates_ha(self) -> List["SourceTemplate"]:  # TODO
+    def templates(self) -> List["SourceTemplate"]:
         """Return list of available templates info in the manifest."""
         if self._templates is None:
             self._templates: List[SourceTemplate] = [
@@ -150,8 +149,6 @@ class TemplatesManifest:
             if not isinstance(template, dict):
                 raise errors.InvalidTemplateError(f"Invalid template type: '{type(template).__name__}'")
 
-            # TODO: Check if these two values are not the same
-            # TODO: Warn about deprecations
             id = template.get("id") or template.get("folder")
             if not id:
                 raise errors.InvalidTemplateError(f"Template doesn't have an id: '{template}'")
@@ -165,7 +162,7 @@ class TemplatesManifest:
                     if isinstance(parameter, str):  # NOTE: Backwards compatibility
                         template["variables"][key] = {"description": parameter}
 
-        for template in self.templates_ha:
+        for template in self.templates:
             template.validate()
 
 
@@ -207,7 +204,7 @@ class SourceTemplate:
         self._templates_source: Optional[TemplatesSource] = templates_source
 
     @property
-    def templates_source(self) -> TemplatesSource:
+    def templates_source(self) -> Optional[TemplatesSource]:
         """Return template's source."""
         return self._templates_source
 
@@ -224,7 +221,7 @@ class SourceTemplate:
         """Return all available versions for the template."""
         return self.templates_source.get_all_versions(self.id)
 
-    def validate(self, skip_files: bool = True):
+    def validate(self):
         """Validate a template."""
         for attribute in ("name", "description"):
             if not getattr(self, attribute):
@@ -233,40 +230,21 @@ class SourceTemplate:
         for parameter in self.parameters:
             parameter.validate()
 
-        if skip_files:
-            return
+        if not self.path.exists():
+            raise errors.InvalidTemplateError(f"Template directory for '{self.id}' does not exists")
 
-        # TODO: implement a better check
-        required_folders = [RENKU_HOME]
+        # TODO: What are required files
         required_files = self.REQUIRED_FILES
-        for folder in required_folders:
-            if not (self.path / folder).is_dir():
-                raise errors.InvalidTemplateError(f"Folder '{folder}' is required for the template to be valid")
         for file in required_files:
             if not (self.path / file).is_file():
                 raise errors.InvalidTemplateError(f"File '{file}' is required for the template to be valid")
 
-        # TODO: Validate symlinks resolve to paths in projects for security
-        # TODO: Check template folder and icon exist
-        # TODO: Warn if there are large files in the template
-        """
-        template_folders = [template["folder"] for template in manifest]
-        template_icons = [template["icon"] for template in manifest if "icon" in template]
-        for template_folder in template_folders:
-            template_path = path / template_folder
+        # NOTE: Validate symlinks resolve to a path inside the template
+        for relative_path in self.get_files():
             try:
-                repository.checkout(template_folder)
-            except errors.GitCommandError as e:
-                raise errors.InvalidTemplateError(f"Cannot checkout the folder '{template_folder}'") from e
-
-        for template_icon in template_icons:
-            try:
-                repository.checkout(template_icon)
-            except errors.GitCommandError as e:
-                raise errors.InvalidTemplateError(f"Cannot checkout the icon '{template_icon}'") from e
-        """
-
-        return True
+                get_safe_relative_path(path=relative_path, base=self.path)
+            except ValueError:
+                raise errors.InvalidTemplateError(f"File '{relative_path}' is not within the template.")
 
     def get_files(self) -> Generator[str, None, None]:
         """Return all files in a rendered renku template."""
@@ -274,13 +252,13 @@ class SourceTemplate:
             if subpath.is_file():
                 yield str(subpath.relative_to(self.path))
 
-    def render(self, metadata: Dict[str, Any]) -> "SourceTemplate":
+    def render(self, metadata: "TemplateMetadata") -> "RenderedTemplate":
         """Render template files in a new directory."""
         render_base = Path(tempfile.mkdtemp())
 
         for relative_path in self.get_files():
             # NOTE: The path could contain template variables, we need to template it
-            rendered_relative_path = jinja2.Template(relative_path).render(metadata)
+            rendered_relative_path = jinja2.Template(relative_path).render(metadata.metadata)
 
             destination = render_base / rendered_relative_path
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -294,26 +272,30 @@ class SourceTemplate:
                 destination.write_bytes(content)
             else:
                 template = jinja2.Template(content, keep_trailing_newline=True)
-                rendered_content = template.render(metadata)
+                rendered_content = template.render(metadata.metadata)
                 destination.write_text(rendered_content)
 
-        result = SourceTemplate(  # TODO Use a copy constructor or deepcopy
-            path=render_base,
-            id=self.id,
-            name=self.name,
-            description=self.description,
-            parameters={},
-            icon=self.icon,
-            immutable_files=self.immutable_files,
-            allow_update=self.allow_update,
-            source=self.source,
-            reference=self.reference,
-            version=self.version,
-            templates_source=self.templates_source,
-        )
-        result.parameters = self.parameters
+        return RenderedTemplate(path=render_base, template=self, metadata=metadata.metadata)
 
-        return result
+
+class RenderedTemplate:
+    """A rendered version of a SourceTemplate."""
+
+    def __init__(self, path: Path, template: SourceTemplate, metadata: Dict[str, Any]):
+        self.path: Path = path
+        self.template: SourceTemplate = template
+        self.metadata: Dict[str, Any] = metadata
+        self.checksums: Dict[str, str] = {f: hash_file(self.path / f) for f in self.get_files()}
+
+    def get_files(self) -> Generator[str, None, None]:
+        """Return all files in a rendered renku template."""
+        for subpath in self.path.rglob("*"):
+            if not subpath.is_file():
+                continue
+
+            relative_path = str(subpath.relative_to(self.path))
+
+            yield relative_path
 
 
 class TemplateParameter:
@@ -384,11 +366,8 @@ class TemplateParameter:
             except ValueError as e:
                 raise errors.InvalidTemplateError(f"Invalid default value for '{self.name}': {e}")
 
-        # TODO: Check list of possible values (bool cannot have it)
-
     def convert(self, value: Union[int, float, str, bool]) -> Union[int, float, str, bool]:
         """Convert a given value to the proper type and raise if value is not valid."""
-        # TODO check for None and raise; always convert value to str and then do the rest
         valid = True
 
         if not self.type:
@@ -424,3 +403,79 @@ class TemplateParameter:
             raise ValueError(f"Invalid value '{value}' for template variable '{self.name}{info}'")
 
         return value
+
+
+class TemplateMetadata:
+    """Metadata required for rendering a template."""
+
+    def __init__(self, metadata: Dict[str, Any], immutable_files: List[str]):
+        self.metadata: Dict[str, Any] = metadata or {}
+        self.immutable_files: List[str] = immutable_files or []
+
+    @classmethod
+    def from_dict(cls, metadata: Dict[str, Any]) -> "TemplateMetadata":
+        """Return an instance from a metadata dict."""
+        return cls(metadata=metadata, immutable_files=[])
+
+    @classmethod
+    def from_client(cls, client) -> "TemplateMetadata":
+        """Return an instance from reading template-related metadata from a project."""
+        from renku.core.utils.metadata import get_renku_version
+
+        try:
+            project = client.project
+        except ValueError:
+            metadata = {}
+            immutable_files = []
+        else:
+            metadata = json.loads(project.template_metadata) if project.template_metadata else {}
+
+            # NOTE: Make sure project's template metadata is updated
+            metadata["__template_source__"] = project.template_source
+            metadata["__template_ref__"] = project.template_ref
+            metadata["__template_version__"] = project.template_version
+            metadata["__template_id__"] = project.template_id
+            # NOTE: Ignore Project.automated_update since it's default is False and won't allow any update at all
+
+            immutable_files = project.immutable_template_files
+
+        # NOTE: Always set __renku_version__ to the value read from the Dockerfile (if available) since setting/updating
+        # the template doesn't change project's metadata version and shouldn't update the Renku version either
+        renku_version = metadata.get("__renku_version__")
+        metadata["__renku_version__"] = get_renku_version(client) or renku_version or ""
+
+        return cls(metadata=metadata, immutable_files=immutable_files)
+
+    @property
+    def source(self):
+        """Template source."""
+        return self.metadata.get("__template_source__")
+
+    @property
+    def reference(self):
+        """Template reference."""
+        return self.metadata.get("__template_ref__")
+
+    @property
+    def version(self):
+        """Template version."""
+        return self.metadata.get("__template_version__")
+
+    @property
+    def id(self):
+        """Template id."""
+        return self.metadata.get("__template_id__")
+
+    @property
+    def allow_update(self) -> bool:
+        """Is template updatable."""
+        return self.metadata.get("__automated_update__", True)
+
+    def update(self, template: SourceTemplate):
+        """Update metadata from a template."""
+        self.metadata["__template_source__"] = template.source
+        self.metadata["__template_ref__"] = template.reference
+        self.metadata["__template_version__"] = template.version
+        self.metadata["__template_id__"] = template.id
+        self.metadata["__automated_update__"] = template.allow_update
+        self.immutable_files = template.immutable_files

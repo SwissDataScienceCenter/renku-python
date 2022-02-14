@@ -59,7 +59,7 @@ when you initialize a project. You can check them by typing:
     1     python The simplest Python-based [...] description: project des[...]
     2     R      R-based renku project with[...] description: project des[...]
 
-If you know which template you are going to use, you can provide uts id using
+If you know which template you are going to use, you can provide its id using
 ``--template-id``.
 
 You can use a newer version of the templates or even create your own one and

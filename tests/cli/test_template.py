@@ -91,28 +91,28 @@ def test_template_set(runner, client, client_database_injection_manager):
 
 def test_template_set_overwrites_modified(runner, client, client_database_injection_manager):
     """Test setting a new template in a project overwrite modified files."""
-    write_and_commit_file(client.repository, "Dockerfile", "my-changes")
+    write_and_commit_file(client.repository, "Dockerfile", "my-modifications")
 
     result = runner.invoke(cli, ["template", "set", "--force", "--template-id", "R-minimal"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
         assert "R-minimal" == client.project.template_id
-    assert "my-changes" not in (client.path / "Dockerfile").read_text()
+    assert "my-modifications" not in (client.path / "Dockerfile").read_text()
     assert not client.repository.is_dirty(untracked_files=True)
 
 
 @pytest.mark.parametrize("overwrite, found", [["y", False], ["n", True]])
 def test_template_set_interactive(runner, client, client_database_injection_manager, overwrite, found):
     """Test setting a template in interactive mode."""
-    write_and_commit_file(client.repository, "Dockerfile", "my-changes")
+    write_and_commit_file(client.repository, "Dockerfile", "my-modifications")
 
     result = runner.invoke(cli, ["template", "set", "-f", "-t", "R-minimal", "-i"], input=f"{overwrite}\n" * 420)
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
         assert "R-minimal" == client.project.template_id
-    assert ("my-changes" in (client.path / "Dockerfile").read_text()) is found
+    assert ("my-modifications" in (client.path / "Dockerfile").read_text()) is found
     assert not client.repository.is_dirty(untracked_files=True)
 
 
@@ -169,3 +169,22 @@ def test_template_update_latest_version(runner, client):
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Template is up-to-date" in result.output
+
+
+def test_git_hook_for_modified_immutable_template_files(runner, client_with_template):
+    """Test check for modified immutable template files."""
+    from renku.core.utils.contexts import chdir
+
+    (client_with_template.path / "immutable.file").write_text("Locally modified immutable files")
+
+    with chdir(client_with_template.path):
+        result = runner.invoke(cli, ["check-immutable-template-files", "Dockerfile"])
+        assert result.exit_code == 0, result.output
+
+        result = runner.invoke(cli, ["check-immutable-template-files", "immutable.file"])
+        assert result.exit_code == 1
+        assert "immutable.file" in result.output
+
+
+def test_template_files_after_initilize(runner, client_with_template):
+    """Test check for modified immutable template files."""

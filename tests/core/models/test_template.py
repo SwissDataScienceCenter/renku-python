@@ -23,7 +23,7 @@ import textwrap
 import pytest
 
 from renku.core import errors
-from renku.core.models.template import TemplateParameter, TemplatesManifest
+from renku.core.models.template import TemplateParameter, TemplatesManifest, TemplateMetadata
 from renku.core.utils.metadata import read_renku_version_from_dockerfile
 
 try:
@@ -48,12 +48,12 @@ def test_template_get_files(source_template):
     """Test get files of a template."""
     files = set(source_template.get_files())
 
-    assert {"Dockerfile", "README.md", "{{ __name__ }}.dummy"} == files
+    assert {".gitignore", "Dockerfile", "README.md", "{{ __name__ }}.dummy", "immutable.file"} == files
 
 
 def test_template_render(source_template):
     """Test rendering a template."""
-    rendered_template = source_template.render(metadata=TEMPLATE_METADATA)
+    rendered_template = source_template.render(metadata=TemplateMetadata.from_dict(TEMPLATE_METADATA))
 
     assert "A Renku project: My Project\n" == (rendered_template.path / "README.md").read_text()
     assert "42.0.0" == read_renku_version_from_dockerfile(rendered_template.path / "Dockerfile")
@@ -62,16 +62,18 @@ def test_template_render(source_template):
 @pytest.mark.parametrize("name", ["", "a-renku-project"])
 def test_template_render_with_templated_filename(source_template, name):
     """Test rendering a template with templated filenames."""
-    rendered_template = source_template.render(metadata={"__name__": name})
+    rendered_template = source_template.render(metadata=TemplateMetadata.from_dict({"__name__": name}))
 
     assert (rendered_template.path / f"{name}.dummy").exists()
 
 
 def test_template_get_rendered_files(source_template):
     """Test get files of a rendered template."""
-    rendered_template = source_template.render(metadata=TEMPLATE_METADATA)
+    rendered_template = source_template.render(metadata=TemplateMetadata.from_dict(TEMPLATE_METADATA))
 
-    assert {"Dockerfile", "README.md", "my-project.dummy"} == set(rendered_template.get_files())
+    assert {".gitignore", "Dockerfile", "README.md", "my-project.dummy", "immutable.file"} == set(
+        rendered_template.get_files()
+    )
 
 
 def test_templates_manifest():
@@ -96,15 +98,15 @@ def test_templates_manifest():
         )
     )
 
-    assert 2 == len(manifest.templates_ha)
+    assert 2 == len(manifest.templates)
 
-    template = next(t for t in manifest.templates_ha if t.id == "python")
+    template = next(t for t in manifest.templates if t.id == "python")
     assert "Python Project" == template.name
     assert "A Python-based Renku project" == template.description
     assert "python.png" == template.icon
     assert [] == template.parameters
 
-    template = next(t for t in manifest.templates_ha if t.id == "R")
+    template = next(t for t in manifest.templates if t.id == "R")
     assert "R Project" == template.name
     assert "An R-based Renku project" == template.description
     assert "R.png" == template.icon

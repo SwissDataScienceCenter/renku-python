@@ -17,7 +17,7 @@
 # limitations under the License.
 """Template view model."""
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from renku.core.management.template.template import FileAction, RenderedTemplate
 from renku.core.models.template import SourceTemplate, TemplateParameter
@@ -60,7 +60,7 @@ class TemplateViewModel:
             id=template.id,
             name=template.name,
             description=template.description,
-            variables=template.variables,
+            variables=template.parameters,
             icon=template.icon,
             immutable_files=template.immutable_files,
             versions=template.get_all_versions(),
@@ -93,23 +93,23 @@ class TemplateChangeViewModel:
         self.overwrites = overwrites
 
     @classmethod
-    def from_template(cls, template: RenderedTemplate) -> "TemplateChangeViewModel":
+    def from_template(cls, template: RenderedTemplate, actions: Dict[str, FileAction]) -> "TemplateChangeViewModel":
         """Create view model from ``Template``."""
-        appends = [k for k, v in template.actions.items() if v == FileAction.APPEND]
-        creates = [k for k, v in template.actions.items() if v in (FileAction.CREATE, FileAction.RECREATE)]
-        deletes = [k for k, v in template.actions.items() if v == FileAction.DELETED]
+        appends = [k for k, v in actions.items() if v == FileAction.APPEND]
+        creates = [k for k, v in actions.items() if v in (FileAction.CREATE, FileAction.RECREATE)]
+        deletes = [k for k, v in actions.items() if v == FileAction.DELETED]
         keeps = [
             k
-            for k, v in template.actions.items()
+            for k, v in actions.items()
             if v in (FileAction.IGNORE_IDENTICAL, FileAction.IGNORE_UNCHANGED_REMOTE, FileAction.KEEP)
         ]
-        overwrites = [k for k, v in template.actions.items() if v == FileAction.OVERWRITE]
+        overwrites = [k for k, v in actions.items() if v == FileAction.OVERWRITE]
 
         return cls(
-            id=template.source_template.id,
-            source=template.source_template.source,
-            reference=template.source_template.reference,
-            version=template.source_template.version,
+            id=template.template.id,
+            source=template.template.source,
+            reference=template.template.reference,
+            version=template.template.version,
             appends=appends,
             creates=creates,
             deletes=deletes,

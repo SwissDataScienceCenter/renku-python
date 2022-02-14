@@ -20,26 +20,21 @@
 import pytest
 
 from renku.core import errors
-from renku.core.management.migrate import migrate
-from renku.core.management.template.template import fetch_templates_source
+from renku.core.management.template.template import (
+    FileAction,
+    TemplateAction,
+    copy_template_to_client,
+    fetch_templates_source,
+    get_file_actions,
+)
+from renku.core.management.template.usecase import check_for_template_update, update_template
 from renku.core.models.template import TEMPLATE_MANIFEST
-
-try:
-    import importlib_resources
-except ImportError:
-    import importlib.resources as importlib_resources
-
-ref = importlib_resources.files("renku") / "templates"
-with importlib_resources.as_file(ref) as path:
-    template_local = path
-
 
 TEMPLATES_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize("reference", [None, "master", "0.3.0"])
-@pytest.mark.skip
 def test_template_fetch_from_git(reference):
     """Test fetching a template from git."""
     templates_source = fetch_templates_source(source=TEMPLATES_URL, reference=reference)
@@ -58,169 +53,174 @@ def test_template_fetch_invalid_git_url():
 
 
 @pytest.mark.integration
+@pytest.mark.vcr
 def test_template_fetch_invalid_git_reference():
     """Test fetching a template from an invalid reference."""
     with pytest.raises(errors.InvalidTemplateError):
         fetch_templates_source(source=TEMPLATES_URL, reference="invalid-ref")
 
 
-def test_update_from_template(local_client, template_update, client_database_injection_manager):
-    """Test repository update from a template."""
-    local_client.init_repository()
+def test_check_for_template_update(client_with_template, templates_source, client_database_injection_manager):
+    """Test checking for a template update."""
+    templates_source.versions = ["2.0.0"]
 
-    res = template_update()
-    project_files = res["project_files"]
-    template_files = res["template_files"]
+    with client_database_injection_manager(client_with_template):
+        updates_available, _, current_version, new_version = check_for_template_update(client_with_template)
 
-    project_files_before = {p: p.read_text() for p in project_files if not p.is_dir()}
-
-    for p in template_files:
-        if p.is_dir():
-            continue
-        p.write_text(f"{p.read_text()}\nmodified")
-
-    with client_database_injection_manager(local_client):
-        migrate(skip_docker_update=True)
-
-    for p in project_files:
-        if p.is_dir():
-            continue
-        content = project_files_before[p]
-        new_content = p.read_text()
-        assert content != new_content
+    assert updates_available is True
+    assert "1.0.0" == current_version
+    assert "2.0.0" == new_version
 
 
-def test_update_from_template_with_modified_files(local_client, template_update, client_database_injection_manager):
-    """Test repository update from a template with modified local files."""
-    local_client.init_repository()
+def test_template_update_files(client_with_template, templates_source, client_database_injection_manager):
+    """Test template update."""
+    templates_source.update(id="dummy", version="2.0.0")
 
-    res = template_update()
-    project_files = res["project_files"]
-    template_files = res["template_files"]
+    files_before = {p: p.read_text() for p in client_with_template.template_files}
 
-    project_files_before = {p: p.read_text() for p in project_files if not p.is_dir()}
+    with client_database_injection_manager(client_with_template):
+        update_template(force=False, interactive=False, dry_run=False)
 
-    for p in template_files:
-        if p.is_dir():
-            continue
-        p.write_text(f"{p.read_text()}\nmodified")
-
-    # NOTE: modify local file
-    modified_file = next(f for f in project_files if str(f).endswith("README.md"))
-    modified_local_content = modified_file.read_text() + "\nlocal modification"
-    modified_file.write_text(modified_local_content)
-
-    # NOTE: delete local file
-    deleted_file = next(f for f in project_files if str(f).endswith("README.md"))
-    deleted_file.unlink()
-
-    with client_database_injection_manager(local_client):
-        migrate(skip_docker_update=True)
-
-    for p in project_files:
-        if p.is_dir():
-            continue
-        if p == deleted_file:
-            assert not p.exists()
-            continue
-
-        content = project_files_before[p]
-        new_content = p.read_text()
-
-        if p == modified_file:
-            assert modified_local_content == new_content
-        else:
-            assert content != new_content
+    for file in client_with_template.template_files:
+        assert file.read_text() != files_before[file]
 
 
-def test_update_from_template_with_immutable_modified_files(
-    local_client, mocker, template_update, client_database_injection_manager
+@pytest.mark.parametrize(
+    "action, content_type",
+    [
+        (FileAction.APPEND, "append"),
+        (FileAction.CREATE, "template"),
+        (FileAction.OVERWRITE, "template"),
+        (FileAction.RECREATE, "template"),
+        (FileAction.DELETED, "project"),
+        (FileAction.IGNORE_IDENTICAL, "project"),
+        (FileAction.IGNORE_UNCHANGED_REMOTE, "project"),
+        (FileAction.KEEP, "project"),
+    ],
+)
+def test_copy_template_actions(client, rendered_template, action, content_type):
+    """Test FileActions when copying a template."""
+    project_content = (client.path / "Dockerfile").read_text()
+    template_content = (rendered_template.path / "Dockerfile").read_text()
+
+    # NOTE: Ignore all other files expect the Dockerfile
+    actions = {f: FileAction.IGNORE_UNCHANGED_REMOTE for f in rendered_template.get_files()}
+    actions["Dockerfile"] = action
+    copy_template_to_client(rendered_template=rendered_template, client=client, actions=actions)
+
+    # NOTE: Make sure that files have some content
+    assert project_content
+    assert template_content
+    assert project_content != template_content
+
+    if content_type == "append":
+        expected_content = f"{project_content}\n{template_content}"
+    elif content_type == "template":
+        expected_content = template_content
+    else:
+        expected_content = project_content
+
+    assert expected_content == (client.path / "Dockerfile").read_text()
+
+
+def test_get_file_actions_for_initialize(client, rendered_template):
+    """Test getting file action when initializing."""
+    actions = get_file_actions(
+        rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, client=client, interactive=False
+    )
+
+    appended_file = ".gitignore"
+    assert FileAction.APPEND == actions[appended_file]
+    new_file = ".dummy"
+    assert FileAction.CREATE == actions[new_file]
+    existing_file = "Dockerfile"
+    assert FileAction.OVERWRITE == actions[existing_file]
+    kept_file = "README.md"
+    assert FileAction.KEEP == actions[kept_file]
+
+
+def test_get_file_actions_for_set(client, rendered_template):
+    """Test getting file action when setting a template."""
+    actions = get_file_actions(
+        rendered_template=rendered_template, template_action=TemplateAction.SET, client=client, interactive=False
+    )
+
+    new_file = ".dummy"
+    assert FileAction.CREATE == actions[new_file]
+    existing_file = "Dockerfile"
+    assert FileAction.OVERWRITE == actions[existing_file]
+    kept_file = "README.md"
+    assert FileAction.KEEP == actions[kept_file]
+
+
+def test_get_file_actions_for_update(
+    client_with_template, rendered_template_with_update, client_database_injection_manager
 ):
-    """Test repository update from a template with modified local immutable files."""
-    local_client.init_repository()
+    """Test getting file action when updating a template."""
+    with client_database_injection_manager(client_with_template):
+        actions = get_file_actions(
+            rendered_template=rendered_template_with_update,
+            template_action=TemplateAction.UPDATE,
+            client=client_with_template,
+            interactive=False,
+        )
 
-    res = template_update(immutable_files=["README.md"])
-    project_files = res["project_files"]
-    template_files = res["template_files"]
+    identical_file = ".dummy"
+    assert FileAction.IGNORE_IDENTICAL == actions[identical_file]
+    remotely_modified = "Dockerfile"
+    assert FileAction.OVERWRITE == actions[remotely_modified]
 
-    for p in template_files:
-        if p.is_dir():
-            continue
-        p.write_text(f"{p.read_text()}\nmodified")
 
-    # NOTE: modify local file
-    modified_file = next(f for f in project_files if str(f).endswith("README.md"))
-    modified_local_content = modified_file.read_text() + "\nlocal modification"
-    modified_file.write_text(modified_local_content)
+def test_update_with_locally_modified_file(
+    client_with_template, rendered_template_with_update, client_database_injection_manager
+):
+    """Test a locally modified file that is remotely updated won't change."""
+    (client_with_template.path / "Dockerfile").write_text("Local modification")
+
+    with client_database_injection_manager(client_with_template):
+        actions = get_file_actions(
+            rendered_template=rendered_template_with_update,
+            template_action=TemplateAction.UPDATE,
+            client=client_with_template,
+            interactive=False,
+        )
+
+    assert FileAction.KEEP == actions["Dockerfile"]
+
+
+def test_update_with_locally_deleted_file(
+    client_with_template, rendered_template_with_update, client_database_injection_manager
+):
+    """Test a locally deleted file that is remotely updated won't be re-created."""
+    (client_with_template.path / "Dockerfile").unlink()
+
+    with client_database_injection_manager(client_with_template):
+        actions = get_file_actions(
+            rendered_template=rendered_template_with_update,
+            template_action=TemplateAction.UPDATE,
+            client=client_with_template,
+            interactive=False,
+        )
+
+    assert FileAction.DELETED == actions["Dockerfile"]
+
+
+@pytest.mark.parametrize("delete", [False, True])
+def test_update_with_locally_changed_immutable_file(
+    client_with_template, rendered_template_with_update, client_database_injection_manager, delete
+):
+    """Test a locally deleted file that is remotely updated won't be re-created."""
+    if delete:
+        (client_with_template.path / "immutable.file").unlink()
+    else:
+        (client_with_template.path / "immutable.file").write_text("Locally modified immutable files")
 
     with pytest.raises(
-        errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
-    ), client_database_injection_manager(local_client):
-        migrate()
-
-
-def test_update_from_template_with_immutable_deleted_files(
-    local_client, mocker, template_update, client_database_injection_manager
-):
-    """Test repository update from a template with deleted local immutable files."""
-    local_client.init_repository()
-
-    res = template_update(immutable_files=["README.md"])
-    project_files = res["project_files"]
-    template_files = res["template_files"]
-
-    for p in template_files:
-        if p.is_dir():
-            continue
-        p.write_text(f"{p.read_text()}\nmodified")
-
-    # NOTE: modify local file
-    deleted_file = next(f for f in project_files if str(f).endswith("README.md"))
-    deleted_file.unlink()
-
-    with pytest.raises(
-        errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
-    ), client_database_injection_manager(local_client):
-        migrate()
-
-
-def test_update_template_dockerfile(local_client, monkeypatch, template_update, client_database_injection_manager):
-    """Test repository Dockerfile update."""
-    local_client.init_repository()
-
-    template_update(docker=True, after_template_version="0.0.1")
-
-    monkeypatch.setattr("renku.__version__", "0.0.2")
-
-    with client_database_injection_manager(local_client):
-        migrate()
-
-    dockerfile = (local_client.path / "Dockerfile").read_text()
-    assert "0.0.2" in dockerfile
-
-
-def test_update_from_template_with_new_variable(
-    local_client, mocker, template_update, client_database_injection_manager
-):
-    """Test repository update from a template with a new template variable required."""
-    local_client.init_repository()
-
-    res = template_update()
-    manifest = res["manifest"]
-    manifest_path = res["manifest_path"]
-    template_files = res["template_files"]
-
-    # NOTE: Add new template variable
-    manifest[0]["variables"]["__new_arbitrary_template_value__"] = {"description": "new var"}
-    fetch_template = mocker.patch("renku.core.utils.templates.fetch_templates_source")
-    fetch_template.return_value = (manifest, manifest_path, "renku", "0.0.2")
-
-    for p in template_files:
-        if p.is_dir():
-            continue
-        p.write_text(f"{p.read_text()}\nmodified")
-
-    with pytest.raises(
-        errors.TemplateUpdateError, match=r".*Can't update template, it now requires variable.*"
-    ), client_database_injection_manager(local_client):
-        migrate()
+        errors.TemplateUpdateError, match="Can't update template as immutable template file .* has local changes."
+    ), client_database_injection_manager(client_with_template):
+        get_file_actions(
+            rendered_template=rendered_template_with_update,
+            template_action=TemplateAction.UPDATE,
+            client=client_with_template,
+            interactive=False,
+        )

@@ -18,6 +18,7 @@
 """Project initialization logic."""
 
 from pathlib import Path
+from typing import Dict
 from uuid import uuid4
 
 import attr
@@ -31,14 +32,17 @@ from renku.core.management.interface.database_dispatcher import IDatabaseDispatc
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.migrations.utils import OLD_METADATA_PATH
 from renku.core.management.template.template import (
-    TEMPLATE_INIT_APPEND_FILES,
-    TEMPLATE_KEEP_FILES,
-    MetadataManager,
+    FileAction,
+    RenderedTemplate,
+    TemplateAction,
+    copy_template_metadata_to_client,
+    copy_template_to_client,
     fetch_templates_source,
-    update_project_metadata,
+    get_file_actions,
+    set_template_parameters,
 )
-from renku.core.management.template.usecase import create_project_from_template, get_template_files, select_template
-from renku.core.models.template import SourceTemplate
+from renku.core.management.template.usecase import select_template
+from renku.core.models.template import SourceTemplate, TemplateMetadata
 from renku.core.utils import communication
 from renku.core.utils.os import is_path_empty
 from renku.version import __version__, is_release
@@ -139,35 +143,34 @@ def _init(
         metadata["__renku_version__"] = __version__
     metadata["name"] = name  # NOTE: kept for backwards compatibility
     metadata["__name__"] = name
+    metadata["__template_version__"] = source_template.version
+    metadata["__automated_update__"] = True  # TODO: This should come from a command line flag
 
-    metadata_manager = MetadataManager.from_metadata(metadata=metadata)
-    metadata_manager.update_from_template(template=source_template)
+    template_metadata = TemplateMetadata.from_dict(metadata=metadata)
+    template_metadata.update(template=source_template)
     # TODO: Validate input_parameters to make sure they don't contain __\w+__ keys
-    metadata_manager.set_template_variables(template=source_template, input_parameters=input_parameters)
+    set_template_parameters(
+        template=source_template, template_metadata=template_metadata, input_parameters=input_parameters
+    )
 
-    existing = [
-        p
-        for p in get_template_files(template_base=source_template.path, template_metadata=metadata)
-        if (client.path / p).exists()
-    ]
+    rendered_template = source_template.render(metadata=template_metadata)
+    actions = get_file_actions(
+        rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, client=client, interactive=False
+    )
 
-    append = list(filter(lambda x: x.lower() in TEMPLATE_INIT_APPEND_FILES, existing))
-    existing = list(filter(lambda x: x.lower() not in TEMPLATE_INIT_APPEND_FILES + TEMPLATE_KEEP_FILES, existing))
+    if not force:
+        appends = [k for k, v in actions.items() if v == FileAction.APPEND]
+        overwrites = [k for k, v in actions.items() if v == FileAction.OVERWRITE]
 
-    if (existing or append) and not force:
         message = ""
-
-        if existing:
-            existing = sorted(existing)
-            existing_paths = "\n\t".join(existing)
-            message += f"The following files exist in the directory and will be overwritten:\n\t{existing_paths}\n"
-
-        if append:
-            append = sorted(append)
-            append_paths = "\n\t".join(append)
-            message += f"The following files exist in the directory and will be appended to:\n\t{append_paths}\n"
-
-        communication.confirm(f"{message}Proceed?", abort=True, warning=True)
+        if overwrites:
+            overwrites = "\n\t".join(sorted(overwrites))
+            message += f"The following files exist in the directory and will be overwritten:\n\t{overwrites}\n"
+        if appends:
+            appends = "\n\t".join(sorted(appends))
+            message += f"The following files exist in the directory and will be appended to:\n\t{appends}\n"
+        if message:
+            communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 
     branch_name = create_backup_branch(path=path)
 
@@ -188,14 +191,11 @@ def _init(
     with client.lock:
         try:
             create_from_template(
-                template_path=source_template.path,
+                rendered_template=rendered_template,
+                actions=actions,
                 client=client,
                 name=name,
-                metadata=metadata_manager.metadata,
                 custom_metadata=custom_metadata,
-                template_version=source_template.version,
-                immutable_template_files=source_template.immutable_files or [],
-                automated_update=True,  # TODO: This should come from a command line flag
                 force=force,
                 data_dir=data_dir,
                 description=description,
@@ -219,14 +219,11 @@ def init_command():
 
 
 def create_from_template(
-    template_path,
+    rendered_template: RenderedTemplate,
+    actions: Dict[str, FileAction],
     client,
     name=None,
-    metadata={},
     custom_metadata=None,
-    template_version=None,
-    immutable_template_files=[],
-    automated_update=True,
     force=None,
     data_dir=None,
     user=None,
@@ -235,9 +232,7 @@ def create_from_template(
     keywords=None,
 ):
     """Initialize a new project from a template."""
-    template_files = list(get_template_files(template_base=template_path, template_metadata=metadata))
-
-    commit_only = [f"{RENKU_HOME}/"] + template_files
+    commit_only = [f"{RENKU_HOME}/", str(client.template_checksums)] + list(rendered_template.get_files())
 
     if data_dir:
         data_path = client.path / data_dir
@@ -246,35 +241,12 @@ def create_from_template(
         keep.touch(exist_ok=True)
         commit_only.append(keep)
 
-    if "__name__" not in metadata:
-        metadata["name"] = name
-        metadata["__name__"] = name
-
-    source_template = SourceTemplate(
-        id=metadata["__template_id__"],
-        name="",
-        description="",
-        parameters={},
-        icon="",
-        immutable_files=immutable_template_files,
-        allow_update=True,  # TODO: Get this from a command line param
-        source=metadata["__template_source__"],
-        reference=metadata["__template_ref__"],
-        version=template_version,
-        path=template_path,
-        templates_source=None,
-    )
-
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
         with client.with_metadata(
             name=name, description=description, custom_metadata=custom_metadata, keywords=keywords
         ) as project:
-            metadata["__template_version__"] = template_version
-
-            update_project_metadata(
-                project=project, template_metadata=metadata, immutable_files=immutable_template_files
-            )
-            create_project_from_template(client=client, source_template=source_template, template_metadata=metadata)
+            copy_template_to_client(rendered_template=rendered_template, client=client, actions=actions)
+            copy_template_metadata_to_client(rendered_template=rendered_template, client=client, project=project)
 
         if data_dir:
             client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
@@ -285,11 +257,11 @@ def _create_from_template_local(
     template_path,
     name,
     client_dispatcher: IClientDispatcher,
-    metadata={},
+    metadata=None,
     custom_metadata=None,
-    default_metadata={},
+    default_metadata=None,
     template_version=None,
-    immutable_template_files=[],
+    immutable_template_files=None,
     automated_template_update=True,
     user=None,
     source=None,
@@ -303,6 +275,9 @@ def _create_from_template_local(
     """Initialize a new project from a template."""
     client = client_dispatcher.current_client
 
+    metadata = metadata or {}
+    default_metadata = default_metadata or {}
+
     metadata = {**default_metadata, **metadata}
 
     client.init_repository(False, user, initial_branch=initial_branch)
@@ -311,15 +286,42 @@ def _create_from_template_local(
     database_gateway = inject.instance(IDatabaseGateway)
     database_gateway.initialize()
 
+    if "__name__" not in metadata:
+        metadata["name"] = name
+        metadata["__name__"] = name
+
+    metadata["__template_version__"] = template_version
+
+    source_template = SourceTemplate(
+        id=metadata["__template_id__"],
+        name="",
+        description="",
+        parameters={},
+        icon="",
+        immutable_files=immutable_template_files,
+        allow_update=automated_template_update,
+        source=metadata["__template_source__"],
+        reference=metadata["__template_ref__"],
+        version=template_version,
+        path=template_path,
+        templates_source=None,
+    )
+
+    template_metadata = TemplateMetadata.from_dict(metadata=metadata)
+    template_metadata.update(template=source_template)
+    set_template_parameters(template=source_template, template_metadata=template_metadata, input_parameters={})
+
+    rendered_template = source_template.render(metadata=template_metadata)
+    actions = get_file_actions(
+        rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, client=client, interactive=False
+    )
+
     create_from_template(
-        template_path=template_path,
+        rendered_template=rendered_template,
+        actions=actions,
         client=client,
         name=name,
-        metadata=metadata,
         custom_metadata=custom_metadata,
-        template_version=template_version,
-        immutable_template_files=immutable_template_files,
-        automated_update=automated_template_update,
         force=False,
         user=user,
         commit_message=commit_message,
