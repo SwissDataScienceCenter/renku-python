@@ -115,7 +115,7 @@ def project_clone_view(user_data, cache):
       requestBody:
         content:
           application/json:
-            schema: ProjectCloneRequest
+            schema: RepositoryCloneRequest
       responses:
         200:
           description: Cloned project.
