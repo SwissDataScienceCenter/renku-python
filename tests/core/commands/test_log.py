@@ -25,7 +25,6 @@ from renku.core.commands.log import _log
 from renku.core.commands.view_model.log import DatasetLogViewModel, LogType
 from renku.core.management.command_builder.command import inject, remove_injector
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.models.dataset import DatasetChangeType
 from renku.core.models.provenance.activity import Activity, Association
 from renku.core.models.provenance.agent import Person, SoftwareAgent
 
@@ -102,8 +101,9 @@ def test_log_dataset_create_simple(mocker):
     new_dataset.title = None
     new_dataset.description = None
     new_dataset.derived_from = None
-    new_dataset.change_type = DatasetChangeType.CREATED
+    new_dataset.same_as = None
     new_dataset.dataset_files = []
+    new_dataset.date_removed = None
     new_dataset.date_modified = datetime.utcnow()
 
     dataset_gateway = mocker.MagicMock()
@@ -151,13 +151,15 @@ def test_log_dataset_create_complex(mocker):
     new_dataset.id = "new"
     new_dataset.name = "ds"
     new_dataset.derived_from = None
-    new_dataset.change_type = DatasetChangeType.CREATED
+    new_dataset.same_as = None
     new_dataset.title = "new-title"
     new_dataset.description = "new-description"
     new_dataset.dataset_files = []
     new_dataset.creators = [mocker.MagicMock(full_identity="John")]
     new_dataset.keywords = ["a", "b"]
     new_dataset.images = [mocker.MagicMock(content_url="./img/img1.png")]
+    new_dataset.date_removed = None
+    new_dataset.date_modified = datetime.utcnow()
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -206,13 +208,15 @@ def test_log_dataset_add_create(mocker):
     new_dataset.id = "new"
     new_dataset.name = "ds"
     new_dataset.derived_from = None
-    new_dataset.change_type = DatasetChangeType.CREATED | DatasetChangeType.FILES_ADDED
+    new_dataset.same_as = None
     new_dataset.title = "new-title"
     new_dataset.description = "new-description"
     new_dataset.dataset_files = [
         mocker.MagicMock(date_removed=None, entity=mocker.MagicMock(path="file_a")),
         mocker.MagicMock(date_removed=None, entity=mocker.MagicMock(path="file_b")),
     ]
+    new_dataset.date_removed = None
+    new_dataset.date_modified = datetime.utcnow()
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -260,7 +264,6 @@ def test_log_dataset_import(mocker):
     new_dataset.id = "new"
     new_dataset.name = "ds"
     new_dataset.derived_from = None
-    new_dataset.change_type = DatasetChangeType.IMPORTED | DatasetChangeType.FILES_ADDED
     new_dataset.title = "new-title"
     new_dataset.description = "new-description"
     new_dataset.same_as = mocker.MagicMock(value="http://renkulab.io/my/dataset")
@@ -268,6 +271,8 @@ def test_log_dataset_import(mocker):
         mocker.MagicMock(date_removed=None, entity=mocker.MagicMock(path="file_a")),
         mocker.MagicMock(date_removed=None, entity=mocker.MagicMock(path="file_b")),
     ]
+    new_dataset.date_removed = None
+    new_dataset.date_modified = datetime.utcnow()
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -315,8 +320,8 @@ def test_log_dataset_deleted(mocker):
     old_dataset = mocker.MagicMock()
     old_dataset.id = "old"
     old_dataset.name = "ds"
-    old_dataset.change_type = DatasetChangeType.CREATED
     old_dataset.derived_from = None
+    old_dataset.same_as = None
     old_dataset.dataset_files = []
 
     new_dataset = mocker.MagicMock()
@@ -325,7 +330,6 @@ def test_log_dataset_deleted(mocker):
     new_dataset.title = None
     new_dataset.description = None
     new_dataset.derived_from.url_id = "old"
-    new_dataset.change_type = DatasetChangeType.INVALIDATED
     new_dataset.dataset_files = []
     new_dataset.date_removed = datetime.utcnow()
 
@@ -385,8 +389,10 @@ def test_log_dataset_files_removed(mocker):
     old_dataset = mocker.MagicMock()
     old_dataset.id = "old"
     old_dataset.name = "ds"
-    old_dataset.change_type = DatasetChangeType.CREATED
+    old_dataset.title = None
+    old_dataset.description = None
     old_dataset.derived_from = None
+    old_dataset.same_as = None
     old_dataset.dataset_files = [
         mocker.MagicMock(date_removed=None, entity=mocker.MagicMock(path="file_a")),
         mocker.MagicMock(date_removed=None, entity=mocker.MagicMock(path="file_b")),
@@ -398,9 +404,9 @@ def test_log_dataset_files_removed(mocker):
     new_dataset.title = None
     new_dataset.description = None
     new_dataset.derived_from.url_id = "old"
-    new_dataset.change_type = DatasetChangeType.FILES_REMOVED
     new_dataset.dataset_files = [old_dataset.dataset_files[0]]
     new_dataset.date_modified = datetime.utcnow()
+    new_dataset.date_removed = None
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -458,7 +464,6 @@ def test_log_dataset_metadata_modified(mocker):
     old_dataset = mocker.MagicMock()
     old_dataset.id = "old"
     old_dataset.name = "ds"
-    old_dataset.change_type = DatasetChangeType.CREATED
     old_dataset.title = "old-title"
     old_dataset.description = "old-description"
     old_dataset.dataset_files = []
@@ -466,6 +471,7 @@ def test_log_dataset_metadata_modified(mocker):
     old_dataset.keywords = ["a", "b"]
     old_dataset.images = [mocker.MagicMock(content_url="./img/img1.png")]
     old_dataset.derived_from = None
+    old_dataset.same_as = None
     old_dataset.dataset_files = []
 
     new_dataset = mocker.MagicMock()
@@ -477,9 +483,9 @@ def test_log_dataset_metadata_modified(mocker):
     new_dataset.creators = [mocker.MagicMock(full_identity="Jane")]
     new_dataset.keywords = ["a", "c"]
     new_dataset.images = [mocker.MagicMock(content_url="./img/img2.png")]
-    new_dataset.change_type = DatasetChangeType.METADATA_CHANGED
     new_dataset.dataset_files = []
     new_dataset.date_modified = datetime.utcnow()
+    new_dataset.date_removed = None
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]

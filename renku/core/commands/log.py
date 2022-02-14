@@ -64,7 +64,6 @@ def _log(
             d
             for root_dataset in dataset_gateway.get_provenance_tails()
             for d in _get_all_dataset_versions(root_dataset)
-            if d.change_type
         ]
         log_entries.extend(LogViewModel.from_dataset(d) for d in datasets)
 

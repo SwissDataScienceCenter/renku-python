@@ -21,7 +21,6 @@ import copy
 import os
 import posixpath
 from datetime import datetime
-from enum import Flag, auto
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from urllib.parse import quote, urlparse
@@ -109,19 +108,6 @@ class Url:
             return {"@id": self.url_id}
         else:
             raise NotImplementedError("Either url_id or url_str has to be set")
-
-
-class DatasetChangeType(Flag):
-    """Types of changes to a dataset, to enable change tracking."""
-
-    NONE = 0
-    CREATED = auto()
-    IMPORTED = auto()
-    INVALIDATED = auto()
-    FILES_ADDED = auto()
-    FILES_REMOVED = auto()
-    METADATA_CHANGED = auto()
-    MIGRATED = auto()
 
 
 class DatasetTag(Persistent):
@@ -309,7 +295,6 @@ class Dataset(Persistent):
     """Represent a dataset."""
 
     date_modified: Optional[datetime] = None
-    change_type: Optional[DatasetChangeType] = None
 
     def __init__(
         self,
@@ -334,7 +319,6 @@ class Dataset(Persistent):
         same_as: Url = None,
         title: str = None,
         version: str = None,
-        change_type: Optional[DatasetChangeType] = None,
     ):
         if not name:
             assert title, "Either 'name' or 'title' must be set."
@@ -375,8 +359,6 @@ class Dataset(Persistent):
         self.title: str = title
         self.version: str = version
         self.annotations: List[Annotation] = annotations or []
-        if change_type:
-            self.change_type = change_type
 
     @staticmethod
     def generate_id(identifier: str) -> str:
@@ -461,25 +443,6 @@ class Dataset(Persistent):
 
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
             self.creators.append(creator)
-
-        self.change_type = DatasetChangeType.NONE
-
-        if (
-            sorted(self.creators, key=lambda x: x.id) != sorted(dataset.creators, key=lambda x: x.id)
-            or self.description != dataset.description
-            or sorted(self.keywords) != sorted(dataset.keywords)
-            or self.title != dataset.title
-            or sorted(self.images, key=lambda x: x.id) != sorted(dataset.images, key=lambda x: x.id)
-        ):
-            self.change_type |= DatasetChangeType.METADATA_CHANGED
-
-        current_files = {f for f in self.dataset_files if not f.date_removed}
-        previous_files = {f for f in dataset.dataset_files if not f.date_removed}
-        if len(set(current_files) - set(previous_files)) > 0:
-            self.change_type |= DatasetChangeType.FILES_ADDED
-
-        if len(set(previous_files) - set(current_files)) > 0:
-            self.change_type |= DatasetChangeType.FILES_REMOVED
 
     def _assign_new_identifier(self, identifier: str):
         identifier = identifier or uuid4().hex

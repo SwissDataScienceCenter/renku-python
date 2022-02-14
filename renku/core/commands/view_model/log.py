@@ -147,29 +147,22 @@ class LogViewModel:
     def from_dataset(cls, dataset: "Dataset") -> Optional["DatasetLogViewModel"]:
         """Create a log entry from an activity."""
         from renku.core.management.interface.dataset_gateway import IDatasetGateway
-        from renku.core.models.dataset import DatasetChangeType
 
         dataset_gateway = inject.instance(IDatasetGateway)
-
-        if not dataset.change_type:
-            return
 
         descriptions = [f"Dataset '{dataset.name}': "]
         details = DatasetChangeDetailsViewModel()
 
-        if dataset.change_type & DatasetChangeType.CREATED:
+        if not dataset.derived_from and not dataset.same_as:
             descriptions.append("created")
             details.created = True
-        elif dataset.change_type & DatasetChangeType.IMPORTED:
+        elif not dataset.derived_from and dataset.same_as:
             descriptions.append("imported")
             details.imported = True
             details.source = dataset.same_as.value
-        elif dataset.change_type & DatasetChangeType.INVALIDATED:
+        elif dataset.derived_from and dataset.date_removed:
             descriptions.append("deleted")
             details.deleted = True
-        elif dataset.change_type & DatasetChangeType.MIGRATED:
-            descriptions.append("migrated")
-            details.migrated = True
 
         previous_dataset = None
 
@@ -182,7 +175,13 @@ class LogViewModel:
         if previous_dataset:
             previous_files = {f for f in previous_dataset.dataset_files if not f.date_removed}
 
-        if dataset.change_type & DatasetChangeType.FILES_ADDED:
+        if (
+            previous_files
+            and {f.id for f in current_files}.difference({f.id for f in previous_files})
+            or not previous_files
+            and current_files
+        ):
+            # NOTE: Files added
             if previous_files:
                 new_files = current_files - previous_files
             else:
@@ -192,84 +191,72 @@ class LogViewModel:
             details.files_added = [str(f.entity.path) for f in new_files]
             details.modified = True
 
-        if dataset.change_type & DatasetChangeType.FILES_REMOVED and previous_files:
+        if previous_files and {f.id for f in previous_files}.difference({f.id for f in current_files}):
+            # NOTE: Files removed
             removed_files = previous_files - current_files
             descriptions.append(f"{len(removed_files)} file(s) removed")
             details.files_removed = [str(f.entity.path) for f in removed_files]
             details.modified = True
 
-        if dataset.change_type & DatasetChangeType.METADATA_CHANGED and previous_dataset or not previous_dataset:
-            if (
-                not dataset.change_type & DatasetChangeType.CREATED
-                and not dataset.change_type & DatasetChangeType.IMPORTED
-            ):
-                descriptions.append("metadata modified")
-                details.modified = True
-
-            if not previous_dataset or dataset.title != previous_dataset.title:
+        if not previous_dataset:
+            # NOTE: Check metadata changes on create/import
+            if dataset.title:
                 details.title_changed = dataset.title
 
-            if not previous_dataset or dataset.description != previous_dataset.description:
+            if dataset.description:
                 details.description_changed = dataset.description
 
-            current_creators = dataset.creators or []
-            previous_creators = []
+            if dataset.creators:
+                details.creators_added = [c.full_identity for c in dataset.creators]
 
-            if previous_dataset and previous_dataset.creators:
-                previous_creators = previous_dataset.creators
+            if dataset.keywords:
+                details.keywords_added = [k for k in dataset.keywords]
 
-            if not previous_dataset or sorted(current_creators, key=lambda x: x.id) != sorted(
-                previous_creators, key=lambda x: x.id
-            ):
-                if previous_dataset:
-                    added_creators = set(current_creators) - set(previous_creators)
-                    removed_creators = set(previous_creators) - set(current_creators)
-                else:
-                    added_creators = set(current_creators)
-                    removed_creators = None
+            if dataset.images:
+                details.images_changed_to = [i.content_url for i in dataset.images]
+        elif not details.deleted:
+            # NOTE: Check metadata changes to previous dataset
+            modified = False
+            if dataset.title != previous_dataset.title:
+                details.title_changed = dataset.title
+                modified = True
+            if dataset.description != previous_dataset.description:
+                details.description_changed = dataset.description
+                modified = True
 
-                if added_creators:
-                    details.creators_added = [c.full_identity for c in added_creators]
+            current_creators = set(dataset.creators or [])
+            previous_creators = set(previous_dataset.creators or [])
 
-                if removed_creators:
-                    details.creators_removed = [c.full_identity for c in removed_creators]
+            if current_creators.difference(previous_creators):
+                details.creators_added = [c.full_identity for c in current_creators.difference(previous_creators)]
+                modified = True
+            if previous_creators.difference(current_creators):
+                details.creators_removed = [c.full_identity for c in previous_creators.difference(current_creators)]
+                modified = True
 
-            current_keywords = dataset.keywords or []
-            previous_keywords = []
+            current_keywords = set(dataset.keywords)
+            previous_keywords = set(previous_dataset.keywords)
 
-            if previous_dataset and previous_dataset.keywords:
-                previous_keywords = previous_dataset.keywords
+            if current_keywords.difference(previous_keywords):
+                details.keywords_added = list(current_keywords.difference(previous_keywords))
+                modified = True
+            if previous_keywords.difference(current_keywords):
+                details.keywords_removed = list(previous_keywords.difference(current_keywords))
+                modified = True
 
-            if (not previous_dataset and current_keywords) or (
-                previous_dataset and sorted(current_keywords) != sorted(previous_keywords)
-            ):
-                if previous_dataset:
-                    added_keywords = set(current_keywords) - set(previous_keywords)
-                    removed_keywords = set(previous_keywords) - set(current_keywords)
-                else:
-                    added_keywords = set(current_keywords)
-                    removed_keywords = None
+            current_images = set(dataset.images)
+            previous_images = set(previous_dataset.images)
 
-                if added_keywords:
-                    details.keywords_added = [k for k in added_keywords]
-                if removed_keywords:
-                    details.keywords_removed = [k for k in removed_keywords]
-
-            current_images = dataset.images or []
-            previous_images = []
-
-            if previous_dataset and previous_dataset.images:
-                previous_images = previous_dataset.images
-
-            if (not previous_dataset and current_images) or (
-                previous_dataset
-                and sorted(current_images, key=lambda x: x.id) != sorted(previous_images, key=lambda x: x.id)
-            ):
+            if current_images != previous_images:
                 details.images_changed_to = [i.content_url for i in current_images]
+                modified = True
+            if modified:
+                details.modified = True
+                descriptions.append("metadata modified")
 
         return DatasetLogViewModel(
             id=dataset.name,
-            date=dataset.date_removed if dataset.change_type & DatasetChangeType.INVALIDATED else dataset.date_modified,
+            date=dataset.date_removed if dataset.date_removed else dataset.date_modified,
             description=descriptions[0] + ", ".join(descriptions[1:]),
             details=details,
             agents=[c.full_identity for c in dataset.creators],

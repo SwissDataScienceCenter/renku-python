@@ -24,7 +24,7 @@ from uuid import UUID
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.models.dataset import Dataset, DatasetChangeType, DatasetTag, Url
+from renku.core.models.dataset import Dataset, DatasetTag, Url
 from renku.core.models.provenance.agent import Person
 from renku.core.utils import communication
 
@@ -96,14 +96,6 @@ class DatasetsProvenance:
                 dataset.derived_from is None
             ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
 
-            if dataset.same_as:
-                dataset.change_type = DatasetChangeType.IMPORTED
-            else:
-                dataset.change_type = DatasetChangeType.CREATED
-
-            if dataset.dataset_files:
-                dataset.change_type = dataset.change_type | DatasetChangeType.FILES_ADDED
-
         self.dataset_gateway.add_or_remove(dataset)
 
     def remove(self, dataset, date: datetime = None, creator: Person = None):
@@ -123,7 +115,6 @@ class DatasetsProvenance:
                 dataset.derived_from is None
             ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
 
-        dataset.change_type = DatasetChangeType.INVALIDATED
         dataset.remove(date)
         self.dataset_gateway.add_or_remove(dataset)
 
@@ -185,8 +176,6 @@ class DatasetsProvenance:
             dataset.remove()
         else:
             self._process_dataset_tags(dataset, tags)
-
-        dataset.change_type = DatasetChangeType.MIGRATED
 
         self.dataset_gateway.add_or_remove(dataset)
 
