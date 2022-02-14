@@ -612,6 +612,9 @@ def test_execute_migrations(svc_client_setup):
     assert any(
         m.startswith("Successfully applied") and m.endswith("migrations.") for m in response.json["result"]["messages"]
     )
+    assert "warnings" in response.json["result"]
+    assert "errors" in response.json["result"]
+    assert not response.json["result"]["errors"]
 
 
 @pytest.mark.service

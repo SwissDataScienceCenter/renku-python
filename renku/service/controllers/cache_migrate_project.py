@@ -55,7 +55,14 @@ def execute_migration(
         was_migrated, template_migrated, docker_migrated = result.output
 
     worker_log.debug(f"migration finished - was_migrated={was_migrated}")
-    return communicator.messages, was_migrated, template_migrated, docker_migrated
+    return (
+        was_migrated,
+        template_migrated,
+        docker_migrated,
+        communicator.messages,
+        communicator.warnings,
+        communicator.errors,
+    )
 
 
 class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
@@ -90,7 +97,7 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        messages, was_migrated, template_migrated, docker_migrated = execute_migration(
+        return execute_migration(
             self.project_path,
             self.force_template_update,
             self.skip_template_update,
@@ -99,18 +106,18 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
             self.commit_message,
         )
 
-        return messages, was_migrated, template_migrated, docker_migrated
-
     def to_response(self):
         """Execute controller flow and serialize to service response."""
         op_result, remote_branch = self.execute_and_sync()
         if isinstance(op_result, Job):
             return result_response(MigrateProjectCtrl.JOB_RESPONSE_SERIALIZER, op_result)
 
-        messages, was_migrated, template_migrated, docker_migrated = op_result
+        was_migrated, template_migrated, docker_migrated, messages, warnings, errors = op_result
 
         response = {
             "messages": messages,
+            "warnings": warnings,
+            "errors": errors,
             "was_migrated": was_migrated,
             "template_migrated": template_migrated,
             "docker_migrated": docker_migrated,
