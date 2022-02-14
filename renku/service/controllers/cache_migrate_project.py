@@ -124,4 +124,4 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
             "remote_branch": remote_branch,
         }
 
-        return result_response(MigrateProjectCtrl.RESPONSE_SERIALIZER, response)
+        return result_response(self.RESPONSE_SERIALIZER, response)
