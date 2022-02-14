@@ -22,10 +22,8 @@ from io import BytesIO
 from marshmallow import EXCLUDE
 
 from renku.core.commands.init import fetch_template
-from renku.core.errors import GitError
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
-from renku.service.errors import UserRepoUrlInvalidError, UserTemplateInvalidError
 from renku.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC
 from renku.service.views import result_response
 
@@ -80,15 +78,5 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        try:
-            templates = self.template_manifest()
-        except GitError as e:
-            error_message = str(e)
-            if "Cannot clone repo from" in error_message:
-                raise UserRepoUrlInvalidError(e)
-            elif "Cannot checkout manifest file" in error_message:
-                raise UserTemplateInvalidError(e)
-            else:
-                raise
 
-        return result_response(TemplatesReadManifestCtrl.RESPONSE_SERIALIZER, {"templates": templates})
+        return result_response(TemplatesReadManifestCtrl.RESPONSE_SERIALIZER, {"templates": self.templates_manifest()})

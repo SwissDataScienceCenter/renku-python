@@ -155,6 +155,48 @@ class UserRepoNoAccessError(ServiceError):
         super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
 
 
+class UserRepoBranchInvalidError(ServiceError):
+    """The provided URL is a valid Git repository, but the target branch does not exist.
+
+    This usually happens when the target branch does not exist anymore.
+    It is possible it was there at some point and it has been removed in the meanwhile.
+    """
+
+    code = SVC_ERROR_USER + 12
+    userMessage = "The target URL is a valid Git repository, but we could not find the branch '{branch}'."
+    devMessage = "Branch not valid. Git error message: {error_message}"
+
+    def __init__(self, exception=None, branch=ERROR_NOT_AVAILABLE, error_message=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(branch=branch),
+            devMessage=self.devMessage.format(error_message=error_message),
+            exception=exception,
+        )
+
+
+class UserRepoReferenceInvalidError(ServiceError):
+    """The provided URL is a valid Git repository, but the target reference does not exist.
+
+    This usually happens when the target branch, tag or commit does not exist anymore.
+    It's possible it was there and the history has been re-written in the meanwhile, or it
+    was never there at all.
+    """
+
+    code = SVC_ERROR_USER + 13
+    userMessage = (
+        "The target URL is a valid Git repository, but we could not find the reference"
+        "'{reference}'. Please specify a valid tag, branch or commit"
+    )
+    devMessage = "Reference not valid. Git error message: {error_message}"
+
+    def __init__(self, exception=None, branch=ERROR_NOT_AVAILABLE, error_message=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(branch=branch),
+            devMessage=self.devMessage.format(error_message=error_message),
+            exception=exception,
+        )
+
+
 class UserAnonymousError(ServiceError):
     """The user must login in to use the target endpoint."""
 
@@ -216,6 +258,24 @@ class UserTemplateInvalidError(ServiceError):
         super().__init__()
 
 
+class UserProjectCreationError(ServiceError):
+    """Error when creating a new project from a Renku template.
+
+    One (or more) project field is wrong.
+    """
+
+    code = SVC_ERROR_USER + 102
+    userMessage = "There is an error with a project field: {error_message}."
+    devMessage = "Project creation from a Renku template failed. The user provided wrong field(s): {error_message}."
+
+    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(error_message=error_message),
+            devMessage=self.devMessage.format(error_message=error_message),
+            exception=exception,
+        )
+
+
 class ProgramInternalError(ServiceError):
     """Unknown internal error.
 
@@ -242,6 +302,23 @@ class ProgramContentTypeError(ServiceError):
 
     def __init__(self, content_type=ERROR_NOT_AVAILABLE, expected_type=ERROR_NOT_AVAILABLE):
         super().__init__(devMessage=self.devMessage.format(content_type=content_type, expected_type=expected_type))
+
+
+class ProgramProjectCreationError(ServiceError):
+    """Error when creating a new project due to one or more wrong fields not controlled by the user."""
+
+    code = SVC_ERROR_PROGRAMMING + 102
+    userMessage = "Our servers could not create the new project."
+    devMessage = (
+        "Project creation from a Renku template failed."
+        "It is likely that some non user input fields contain unexpected values: {error_message}."
+    )
+
+    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            devMessage=self.devMessage.format(error_message=error_message),
+            exception=exception,
+        )
 
 
 class ProgramHttpMethodError(ServiceError):
