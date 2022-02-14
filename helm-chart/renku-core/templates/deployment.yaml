@@ -33,7 +33,7 @@ spec:
         app.kubernetes.io/name: {{ include "renku-core.name" $ }}
         app.kubernetes.io/instance: {{ $.Release.Name }}
         app.kubernetes.io/deploymentVersion: {{ $version.name }}
-        {{ $.Values.global.redis.clientLabel | default (printf "%s-%s" (include "redis.host" $) "client") | nindent 8 }}: "true"
+        {{ $.Values.global.redis.clientLabel | default (printf "%s-%s" (include "redis.host" .) "client") | nindent 8 }}: "true"
     spec:
     {{- with $.Values.imagePullSecrets }}
       imagePullSecrets:
