@@ -119,7 +119,9 @@ def test_get_lock_status_unlocked(svc_client_setup):
     """Test getting lock status for an unlocked project."""
     svc_client, headers, project_id, _, _ = svc_client_setup
 
-    response = svc_client.get("/1.0/project.lock_status", query_string={"project_id": project_id}, headers=headers)
+    response = svc_client.get(
+        "/1.0/project.lock_status", query_string={"project_id": project_id}, headers=headers, content_type="text/xml"
+    )
 
     assert 200 == response.status_code
     assert {"locked"} == set(response.json["result"].keys())
