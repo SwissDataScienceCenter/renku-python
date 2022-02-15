@@ -222,7 +222,7 @@ def test_comprehensive_dataset_migration(
     assert "1" == tags[0].name
     assert "Tag 1 created by renku import" == tags[0].description
     assert isinstance(dataset.license, str)
-    assert "https://creativecommons.org/publicdomain/zero/1.1/" in str(dataset.license)
+    assert "https://creativecommons.org/publicdomain/zero/1.0/" in str(dataset.license)
 
     file_ = dataset.find_file("data/dataverse/copy.sh")
     assert "https://dataverse.harvard.edu/api/access/datafile/3050656" == file_.source

@@ -17,12 +17,8 @@
 # limitations under the License.
 """Renku service cache view tests."""
 import json
-import uuid
 
 import pytest
-
-from renku.core.metadata.repository import Repository
-from tests.utils import retry_failed
 
 
 @pytest.mark.service
