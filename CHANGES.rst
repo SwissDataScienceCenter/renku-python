@@ -18,6 +18,30 @@
 Changes
 =======
 
+`1.0.6 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.5...v1.0.6>`__ (2022-02-15)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix file size in dataset imported from renku
+   (`#2637 <https://github.com/SwissDataScienceCenter/renku-python/issues/2637>`__)
+   (`c4d06d4 <https://github.com/SwissDataScienceCenter/renku-python/commit/c4d06d48693b8d5d052e6ef1534111e8a1787b18>`__)
+-  **service:** bump Pillow to 9.0+ to fix security vulnerability
+   (`#2645 <https://github.com/SwissDataScienceCenter/renku-python/issues/2645>`__)
+   (`06202bd <https://github.com/SwissDataScienceCenter/renku-python/commit/06202bd34453497eac8bc8c39f693a1e1fee61ae>`__)
+-  **service:** remove json requirement from project.lock_status
+   (`#2676 <https://github.com/SwissDataScienceCenter/renku-python/issues/2676>`__)
+   (`c5924ca <https://github.com/SwissDataScienceCenter/renku-python/commit/c5924caf9f77e7d47f40494c38259f68ffd654c9>`__)
+
+Features
+~~~~~~~~
+
+-  **service:** expose warnings and errors on cache.migrate endpoint
+   (`#2681 <https://github.com/SwissDataScienceCenter/renku-python/issues/2681>`__)
+   (`425d4e6 <https://github.com/SwissDataScienceCenter/renku-python/commit/425d4e6ce5b8eff7589e1213a427b8c94483fec2>`__)
+
+
 `1.0.5 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.4...v1.0.5>`__ (2022-02-07)
 -------------------------------------------------------------------------------------------------------
 
