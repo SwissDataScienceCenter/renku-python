@@ -24,14 +24,15 @@ from rq import Worker
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.core.errors import ConfigurationError, UsageError
+from renku.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 from renku.service.jobs.queues import QUEUES, WorkerQueues
 from renku.service.logger import DEPLOYMENT_LOG_LEVEL, worker_log
 
-if os.getenv("SENTRY_DSN"):
+if SENTRY_ENABLED:
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
         environment=os.getenv("SENTRY_ENV"),
-        traces_sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 0.2)),
+        traces_sample_rate=float(SENTRY_SAMPLERATE),
         integrations=[RqIntegration()],
     )
 
