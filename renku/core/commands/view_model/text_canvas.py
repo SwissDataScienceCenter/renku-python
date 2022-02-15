@@ -247,7 +247,7 @@ class TextCanvas:
 
     def render(self, color: bool = True, ascii=False):
         """Render contained shapes onto canvas."""
-        extent = (Point(2 ** 64, 2 ** 64), Point(-(2 ** 64), -(2 ** 64)))
+        extent = (Point(2**64, 2**64), Point(-(2**64), -(2**64)))
 
         layers = sorted(self.shapes.keys())
 
