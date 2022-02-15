@@ -80,3 +80,7 @@ ref = importlib_resources.files("renku.service") / "logging.yaml"
 with importlib_resources.as_file(ref) as path:
     LOGGER_CONFIG_FILE = path
 MESSAGE_PREFIX = os.environ.get("RENKU_DOMAIN", "service") + ":"
+
+# Sentry configuration
+SENTRY_ENABLED = os.getenv("SENTRY_ENABLED", "false").lower() == "true"
+SENTRY_SAMPLERATE = float(os.getenv("SENTRY_SAMPLE_RATE", 0.2))
