@@ -98,9 +98,10 @@ redis:
 
 ## Add sentry configuration
 sentry:
+  enabled: false
   dsn:
   environment:
-  sample_rate: 0.2
+  sampleRate: 0.2
 
 # versions is the list of different deployment that support different metadata versions.
 versions:

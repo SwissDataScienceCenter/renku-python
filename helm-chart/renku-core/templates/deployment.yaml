@@ -87,10 +87,12 @@ spec:
               value: /renku/openapi.json
             - name: SERVICE_LOG_LEVEL
               value: {{ $.Values.logLevel }}
+            - name: SENTRY_ENABLED
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
-              value: {{ $.Values.sentry.sample_rate | quote }}
+              value: {{ $.Values.sentry.sampleRate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             {{ if $.Values.nWorkers }}
@@ -153,10 +155,12 @@ spec:
               value: {{ $.Values.cleanupProjectsTTL | quote }}
             - name: DEPLOYMENT_LOG_LEVEL
               value: {{ $.Values.logLevel }}
+            - name: SENTRY_ENABLED
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
-              value: {{ $.Values.sentry.sample_rate | quote }}
+              value: {{ $.Values.sentry.sampleRate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
@@ -196,10 +200,12 @@ spec:
               value: {{ $.Values.cleanupProjectsTTL | quote }}
             - name: DEPLOYMENT_LOG_LEVEL
               value: {{ $.Values.logLevel }}
+            - name: SENTRY_ENABLED
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
-              value: {{ $.Values.sentry.sample_rate | quote }}
+              value: {{ $.Values.sentry.sampleRate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
@@ -231,10 +237,12 @@ spec:
               value: {{ $.Values.cacheDirectory | quote }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
               value: {{ $.Values.cleanupInterval | quote }}
+            - name: SENTRY_ENABLED
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
-              value: {{ $.Values.sentry.sample_rate | quote }}
+              value: {{ $.Values.sentry.sampleRate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             {{- include "certificates.env.python" $ | nindent 12 }}
