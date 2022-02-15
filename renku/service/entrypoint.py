@@ -30,7 +30,7 @@ from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.service.cache import cache
-from renku.service.config import CACHE_DIR, HTTP_SERVER_ERROR, SERVICE_PREFIX
+from renku.service.config import CACHE_DIR, HTTP_SERVER_ERROR, SENTRY_ENABLED, SENTRY_SAMPLERATE, SERVICE_PREFIX
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
@@ -47,11 +47,11 @@ from renku.service.views.version import version_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
 
-if os.getenv("SENTRY_DSN"):
+if SENTRY_ENABLED:
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
         environment=os.getenv("SENTRY_ENV"),
-        traces_sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 0.2)),
+        traces_sample_rate=float(SENTRY_SAMPLERATE),
         integrations=[FlaskIntegration(), RqIntegration(), RedisIntegration()],
     )
 

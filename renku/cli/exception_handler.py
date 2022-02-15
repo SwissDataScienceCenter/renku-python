@@ -41,7 +41,7 @@ to help developers iterate faster by showing them where bugs happen, how often,
 and who is affected.
 
 1. Install ``Sentry-SDK`` with ``python -m pip install sentry-sdk``;
-2. Set environment variable
+2. Set environment variables ``SENTRY_DSN=true`` and
    ``SENTRY_DSN=https://<key>@sentry.<domain>/<project>``.
 3. Set the environment variable ``SENTRY_SAMPLE_RATE=0.2``. This would track
    20% of all requests in Sentry performance monitoring. Set to 0 to disable.
@@ -68,12 +68,9 @@ from renku.core.commands.echo import ERROR
 from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
 
 _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg=color.RED, bold=True)
+HAS_SENTRY = SENTRY_ENABLED
 
-HAS_SENTRY = None
-SENTRY_DSN = os.getenv("SENTRY_DSN")
-SENTRY_SAMPLERATE = float(os.getenv("SENTRY_SAMPLE_RATE", 0.2))
-
-if SENTRY_DSN:
+if SENTRY_ENABLED:
     try:
         from importlib.metadata import PackageNotFoundError, distribution
     except ImportError:
@@ -83,8 +80,6 @@ if SENTRY_DSN:
         distribution("sentry-sdk")
     except PackageNotFoundError:
         HAS_SENTRY = False
-    else:
-        HAS_SENTRY = True
 
 
 class RenkuExceptionsHandler(click.Group):
