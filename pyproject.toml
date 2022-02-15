@@ -78,7 +78,7 @@ freezegun = { version = "<1.1.1,>=0.3.12", optional = true }
 gitpython = "==3.1.26"
 grandalf = "==0.7"
 gunicorn = { optional = true, version = "*" }
-humanize = "<3.15.0,>=3.0.0"
+humanize = ">=3.0.0,<4.1.0"
 importlib-metadata = { version = "<4.12.0,>=4.8.1", python = "<3.8.0" }
 importlib-resources = { version = "<5.5.0,>=5.4.0", python = "<3.9.0" }
 inject = "<4.4.0,>=4.3.0"
