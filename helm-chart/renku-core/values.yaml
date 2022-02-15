@@ -98,9 +98,10 @@ redis:
 
 ## Add sentry configuration
 sentry:
+  enabled: false
   dsn:
   environment:
-  sample_rate: 0.2
+  sampleRate: 0.2
 
 ## Enable debug mode
 ## WARNING: DO NOT enable this in production as it exposes the service container. It is to be used for
@@ -117,7 +118,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.0.5"
+      tag: "v1.0.6"
       pullPolicy: IfNotPresent
   v8:
     name: v8

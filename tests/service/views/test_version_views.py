@@ -59,3 +59,15 @@ def test_version(svc_client):
     assert SUPPORTED_PROJECT_VERSION == data["supported_project_version"]
     assert MINIMUM_VERSION.name == data["minimum_api_version"]
     assert MAXIMUM_VERSION.name == data["maximum_api_version"]
+
+    response = svc_client.get("/1.1/version")
+    assert "result" in response.json
+    data = response.json["result"]
+
+    assert {"latest_version", "supported_project_version", "minimum_api_version", "maximum_api_version"} == set(
+        data.keys()
+    )
+    assert __version__ == data["latest_version"]
+    assert SUPPORTED_PROJECT_VERSION == data["supported_project_version"]
+    assert MINIMUM_VERSION.name == data["minimum_api_version"]
+    assert MAXIMUM_VERSION.name == data["maximum_api_version"]
