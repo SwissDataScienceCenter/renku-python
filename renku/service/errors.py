@@ -25,11 +25,9 @@ from renku.service.config import (
     ERROR_NOT_AVAILABLE,
     SVC_ERROR_PROGRAMMING,
     SVC_ERROR_USER,
+    SENTRY_ENABLED,
 )
 from renku.service.serializers.headers import OptionalIdentityHeaders
-
-HAS_SENTRY = True if os.getenv("SENTRY_DSN") else False
-SENTRY_URL = os.getenv("SENTRY_URL", None)
 
 
 class ServiceError(Exception):
@@ -68,7 +66,7 @@ class ServiceError(Exception):
         if devReference:
             self.devReference = devReference
 
-        if HAS_SENTRY:
+        if SENTRY_ENABLED:
             self._handle_sentry()
 
     def _get_user(self):
@@ -89,7 +87,7 @@ class ServiceError(Exception):
         """Send the expection to Sentry when available."""
         from sentry_sdk import capture_exception, set_context, set_tag, set_user
 
-        if HAS_SENTRY:
+        if SENTRY_ENABLED:
             user = self._get_user()
             set_user(user)
             set_tag("error_code", self.code)
@@ -106,6 +104,7 @@ class ServiceError(Exception):
 
             try:
                 sentry = capture_exception(self)
+                SENTRY_URL = os.getenv("SENTRY_URL", None)
                 if SENTRY_URL is not None:
                     sentry = f"{SENTRY_URL}?query={sentry}"
             except KeyError as e:
