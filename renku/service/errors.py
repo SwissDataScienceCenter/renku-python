@@ -23,9 +23,9 @@ from renku.service.config import (
     DOCS_URL_BASE,
     DOCS_URL_ERRORS,
     ERROR_NOT_AVAILABLE,
+    SENTRY_ENABLED,
     SVC_ERROR_PROGRAMMING,
     SVC_ERROR_USER,
-    SENTRY_ENABLED,
 )
 from renku.service.serializers.headers import OptionalIdentityHeaders
 
