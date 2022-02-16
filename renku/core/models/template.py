@@ -52,7 +52,7 @@ class TemplatesSource:
         raise NotImplementedError
 
     @property
-    def templates(self) -> List["SourceTemplate"]:
+    def templates(self) -> List["Template"]:
         """Return list of templates."""
         for template in self.manifest.templates:
             template.templates_source = self
@@ -75,7 +75,7 @@ class TemplatesSource:
         raise NotImplementedError
 
     @abstractmethod
-    def get_template(self, id, reference: Optional[str]) -> Optional["SourceTemplate"]:
+    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
         """Return a template at a specific reference."""
         raise NotImplementedError
 
@@ -85,7 +85,7 @@ class TemplatesManifest:
 
     def __init__(self, content: List[Dict]):
         self._content: List[Dict] = content
-        self._templates: Optional[List[SourceTemplate]] = None
+        self._templates: Optional[List[Template]] = None
 
     @classmethod
     def from_path(cls, path: Union[Path, str]) -> "TemplatesManifest":
@@ -110,11 +110,11 @@ class TemplatesManifest:
             return manifest
 
     @property
-    def templates(self) -> List["SourceTemplate"]:
+    def templates(self) -> List["Template"]:
         """Return list of available templates info in the manifest."""
         if self._templates is None:
-            self._templates: List[SourceTemplate] = [
-                SourceTemplate(
+            self._templates: List[Template] = [
+                Template(
                     id=t.get("id") or t.get("folder"),
                     name=t.get("name"),
                     description=t.get("description"),
@@ -166,7 +166,7 @@ class TemplatesManifest:
             template.validate()
 
 
-class SourceTemplate:
+class Template:
     """Template files and metadata from a template source."""
 
     REQUIRED_FILES = (os.path.join(RENKU_HOME, "renku.ini"), "Dockerfile")
@@ -279,11 +279,11 @@ class SourceTemplate:
 
 
 class RenderedTemplate:
-    """A rendered version of a SourceTemplate."""
+    """A rendered version of a Template."""
 
-    def __init__(self, path: Path, template: SourceTemplate, metadata: Dict[str, Any]):
+    def __init__(self, path: Path, template: Template, metadata: Dict[str, Any]):
         self.path: Path = path
-        self.template: SourceTemplate = template
+        self.template: Template = template
         self.metadata: Dict[str, Any] = metadata
         self.checksums: Dict[str, str] = {f: hash_file(self.path / f) for f in self.get_files()}
 
@@ -471,7 +471,7 @@ class TemplateMetadata:
         """Is template updatable."""
         return self.metadata.get("__automated_update__", True)
 
-    def update(self, template: SourceTemplate):
+    def update(self, template: Template):
         """Update metadata from a template."""
         self.metadata["__template_source__"] = template.source
         self.metadata["__template_ref__"] = template.reference

@@ -42,7 +42,7 @@ from renku.core.management.template.template import (
     set_template_parameters,
 )
 from renku.core.management.template.usecase import select_template
-from renku.core.models.template import SourceTemplate, TemplateMetadata
+from renku.core.models.template import Template, TemplateMetadata
 from renku.core.utils import communication
 from renku.core.utils.os import is_path_empty
 from renku.version import __version__, is_release
@@ -127,7 +127,7 @@ def _init(
     client.init_repository(force, None, initial_branch=initial_branch)
 
     templates_source = fetch_templates_source(source=template_source, reference=template_ref)
-    source_template = select_template(templates_source=templates_source, id=template_id)
+    template = select_template(templates_source=templates_source, id=template_id)
 
     metadata = dict()
     # NOTE: supply metadata
@@ -143,17 +143,17 @@ def _init(
         metadata["__renku_version__"] = __version__
     metadata["name"] = name  # NOTE: kept for backwards compatibility
     metadata["__name__"] = name
-    metadata["__template_version__"] = source_template.version
+    metadata["__template_version__"] = template.version
     metadata["__automated_update__"] = True  # TODO: This should come from a command line flag
 
     template_metadata = TemplateMetadata.from_dict(metadata=metadata)
-    template_metadata.update(template=source_template)
+    template_metadata.update(template=template)
     # TODO: Validate input_parameters to make sure they don't contain __\w+__ keys
     set_template_parameters(
-        template=source_template, template_metadata=template_metadata, input_parameters=input_parameters
+        template=template, template_metadata=template_metadata, input_parameters=input_parameters
     )
 
-    rendered_template = source_template.render(metadata=template_metadata)
+    rendered_template = template.render(metadata=template_metadata)
     actions = get_file_actions(
         rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, client=client, interactive=False
     )
@@ -292,7 +292,7 @@ def _create_from_template_local(
 
     metadata["__template_version__"] = template_version
 
-    source_template = SourceTemplate(
+    template = Template(
         id=metadata["__template_id__"],
         name="",
         description="",
@@ -308,10 +308,10 @@ def _create_from_template_local(
     )
 
     template_metadata = TemplateMetadata.from_dict(metadata=metadata)
-    template_metadata.update(template=source_template)
-    set_template_parameters(template=source_template, template_metadata=template_metadata, input_parameters={})
+    template_metadata.update(template=template)
+    set_template_parameters(template=template, template_metadata=template_metadata, input_parameters={})
 
-    rendered_template = source_template.render(metadata=template_metadata)
+    rendered_template = template.render(metadata=template_metadata)
     actions = get_file_actions(
         rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, client=client, interactive=False
     )

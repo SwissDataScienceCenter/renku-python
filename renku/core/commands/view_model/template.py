@@ -20,7 +20,7 @@
 from typing import Dict, List, Optional
 
 from renku.core.management.template.template import FileAction, RenderedTemplate
-from renku.core.models.template import SourceTemplate, TemplateParameter
+from renku.core.models.template import Template, TemplateParameter
 
 
 class TemplateViewModel:
@@ -51,7 +51,7 @@ class TemplateViewModel:
         self.versions = versions
 
     @classmethod
-    def from_template(cls, template: SourceTemplate) -> "TemplateViewModel":
+    def from_template(cls, template: Template) -> "TemplateViewModel":
         """Create view model from ``Template``."""
         return cls(
             source=template.source,

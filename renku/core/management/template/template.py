@@ -33,7 +33,7 @@ from renku.core.metadata.repository import Repository
 from renku.core.models.template import (
     TEMPLATE_MANIFEST,
     RenderedTemplate,
-    SourceTemplate,
+    Template,
     TemplateMetadata,
     TemplateParameter,
     TemplatesManifest,
@@ -268,7 +268,7 @@ def get_file_actions(
 
 
 def set_template_parameters(
-    template: SourceTemplate, template_metadata: TemplateMetadata, input_parameters: Dict[str, str], interactive=False
+    template: Template, template_metadata: TemplateMetadata, input_parameters: Dict[str, str], interactive=False
 ):
     """Set and verify template parameters' values in the template_metadata."""
     if interactive and not communication.has_prompt():
@@ -387,7 +387,7 @@ class EmbeddedTemplates(TemplatesSource):
         else:
             return str(template_version) if current_version < template_version else version
 
-    def get_template(self, id, reference: Optional[str]) -> Optional["SourceTemplate"]:
+    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
         """Return all available versions for a template id."""
         try:
             return next(t for t in self.templates if t.id == id)
@@ -469,7 +469,7 @@ class RepositoryTemplates(TemplatesSource):
         else:
             return any(t.id == id for t in manifest.templates)
 
-    def get_template(self, id, reference: Optional[str]) -> Optional["SourceTemplate"]:
+    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
         """Return a template at a specific reference."""
         if reference is not None:
             try:

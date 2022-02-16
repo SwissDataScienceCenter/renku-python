@@ -38,7 +38,7 @@ from renku.core.management.template.template import (
     set_template_parameters,
 )
 from renku.core.models.tabulate import tabulate
-from renku.core.models.template import SourceTemplate, TemplateMetadata, TemplatesSource
+from renku.core.models.template import Template, TemplateMetadata, TemplatesSource
 from renku.core.utils import communication
 
 
@@ -86,12 +86,12 @@ def set_template(
 
     templates_source = fetch_templates_source(source=source, reference=reference)
 
-    source_template = select_template(templates_source, id=id)
+    template = select_template(templates_source, id=id)
 
     rendered_template, actions = _set_or_update_project_from_template(
         templates_source=templates_source,
-        reference=source_template.reference,
-        id=source_template.id,
+        reference=template.reference,
+        id=template.id,
         interactive=interactive,
         dry_run=dry_run,
         template_action=TemplateAction.SET,
@@ -165,20 +165,20 @@ def _set_or_update_project_from_template(
 
     project = project_gateway.get_project()
 
-    source_template = templates_source.get_template(id=id, reference=reference)
+    template = templates_source.get_template(id=id, reference=reference)
 
     template_metadata = TemplateMetadata.from_client(client=client)
-    template_metadata.update(template=source_template)
+    template_metadata.update(template=template)
 
     if not dry_run:
         set_template_parameters(
-            template=source_template,
+            template=template,
             template_metadata=template_metadata,
             input_parameters=input_parameters,
             interactive=interactive,
         )
 
-    rendered_template = source_template.render(metadata=template_metadata)
+    rendered_template = template.render(metadata=template_metadata)
     actions = get_file_actions(
         rendered_template=rendered_template,
         template_action=template_action,
@@ -194,7 +194,7 @@ def _set_or_update_project_from_template(
     return rendered_template, actions
 
 
-def select_template(templates_source: TemplatesSource, id=None) -> SourceTemplate:
+def select_template(templates_source: TemplatesSource, id=None) -> Template:
     """Select a template from a template source."""
 
     def prompt_to_select_template():

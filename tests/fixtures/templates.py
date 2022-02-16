@@ -100,7 +100,7 @@ def project_init(template):
 def templates_source(tmp_path, monkeypatch):
     """A dummy TemplatesSource."""
     from renku.core import errors
-    from renku.core.models.template import SourceTemplate, TemplatesSource
+    from renku.core.models.template import Template, TemplatesSource
 
     templates_source_root = tmp_path / "templates_source"
     dummy_template_root = templates_source_root / "dummy"
@@ -171,7 +171,7 @@ def templates_source(tmp_path, monkeypatch):
             _ = self.get_template(id=id, reference=reference)
             return str(max(self.versions))
 
-        def get_template(self, id, reference: Optional[str]) -> Optional[SourceTemplate]:
+        def get_template(self, id, reference: Optional[str]) -> Optional[Template]:
             """Return a template at a specific reference."""
             try:
                 return next(t for t in self.templates if t.id == id)
@@ -206,9 +206,9 @@ def templates_source(tmp_path, monkeypatch):
 @pytest.fixture
 def source_template(templates_source):
     """A dummy Template."""
-    from renku.core.models.template import SourceTemplate
+    from renku.core.models.template import Template
 
-    template: SourceTemplate = templates_source.get_template(id="dummy", reference=None)
+    template: Template = templates_source.get_template(id="dummy", reference=None)
 
     yield template
 
