@@ -48,7 +48,14 @@ def test_template_get_files(source_template):
     """Test get files of a template."""
     files = set(source_template.get_files())
 
-    assert {".gitignore", "Dockerfile", "README.md", "{{ __name__ }}.dummy", "immutable.file"} == files
+    assert {
+        ".gitignore",
+        ".renku/renku.ini",
+        "Dockerfile",
+        "README.md",
+        "{{ __name__ }}.dummy",
+        "immutable.file",
+    } == files
 
 
 def test_template_render(source_template):
@@ -71,7 +78,7 @@ def test_template_get_rendered_files(source_template):
     """Test get files of a rendered template."""
     rendered_template = source_template.render(metadata=TemplateMetadata.from_dict(TEMPLATE_METADATA))
 
-    assert {".gitignore", "Dockerfile", "README.md", "my-project.dummy", "immutable.file"} == set(
+    assert {".gitignore", ".renku/renku.ini", "Dockerfile", "README.md", "my-project.dummy", "immutable.file"} == set(
         rendered_template.get_files()
     )
 

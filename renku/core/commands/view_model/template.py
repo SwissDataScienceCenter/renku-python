@@ -17,10 +17,11 @@
 # limitations under the License.
 """Template view model."""
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from renku.core.management.template.template import FileAction, RenderedTemplate
+from renku.core.management.template.template import FileAction, RenderedTemplate, get_sorted_actions
 from renku.core.models.template import Template, TemplateParameter
+from renku.core.utils.util import to_string
 
 
 class TemplateViewModel:
@@ -35,7 +36,7 @@ class TemplateViewModel:
         name: str,
         reference: Optional[str],
         source: str,
-        variables: List[TemplateParameter],
+        parameters: List[TemplateParameter],
         version: str,
         versions: List[str],
     ):
@@ -46,7 +47,9 @@ class TemplateViewModel:
         self.name: str = name
         self.reference = reference
         self.source = source
-        self.variables: List[TemplateParameter] = variables
+        self.parameters: List[TemplateParameterViewModel] = [
+            TemplateParameterViewModel.from_template_parameter(p) for p in parameters
+        ]
         self.version = version
         self.versions = versions
 
@@ -60,59 +63,75 @@ class TemplateViewModel:
             id=template.id,
             name=template.name,
             description=template.description,
-            variables=template.parameters,
+            parameters=template.parameters,
             icon=template.icon,
             immutable_files=template.immutable_files,
             versions=template.get_all_versions(),
         )
 
 
-class TemplateChangeViewModel:
-    """A view model for resulting changes from a template set/update."""
+class TemplateParameterViewModel:
+    """A view model for a ``TemplateParameter``."""
 
     def __init__(
         self,
-        id: str,
-        source: str,
-        reference: Optional[str],
-        version: str,
-        appends: List[str],
-        creates: List[str],
-        deletes: List[str],
-        keeps: List[str],
-        overwrites: List[str],
+        name: str,
+        description: str,
+        type: str,
+        possible_values: List[str],
+        default: str,
     ):
+        self.name: str = name
+        self.description: str = description
+        self.type: str = type
+        self.possible_values: List[Any] = possible_values
+        self.default: Optional[str] = default
+
+    @classmethod
+    def from_template_parameter(cls, parameter: TemplateParameter) -> "TemplateParameterViewModel":
+        """Create view model from ``Template``."""
+        return cls(
+            name=parameter.name,
+            description=parameter.description,
+            type=to_string(parameter.type),
+            possible_values=parameter.possible_values or [],
+            default=parameter.default,
+        )
+
+
+class TemplateChangeViewModel:
+    """A view model for resulting changes from a template set/update."""
+
+    def __init__(self, id: str, source: str, reference: Optional[str], version: str, file_changes: List[str]):
         self.id: str = id
         self.source = source
         self.reference = reference
         self.version = version
-        self.appends = appends
-        self.creates = creates
-        self.deletes = deletes
-        self.keeps = keeps
-        self.overwrites = overwrites
+        self.file_changes = file_changes
 
     @classmethod
     def from_template(cls, template: RenderedTemplate, actions: Dict[str, FileAction]) -> "TemplateChangeViewModel":
         """Create view model from ``Template``."""
-        appends = [k for k, v in actions.items() if v == FileAction.APPEND]
-        creates = [k for k, v in actions.items() if v in (FileAction.CREATE, FileAction.RECREATE)]
-        deletes = [k for k, v in actions.items() if v == FileAction.DELETED]
-        keeps = [
-            k
-            for k, v in actions.items()
-            if v in (FileAction.IGNORE_IDENTICAL, FileAction.IGNORE_UNCHANGED_REMOTE, FileAction.KEEP)
+        actions_mapping: Dict[FileAction, str] = {
+            FileAction.APPEND: "Append to",
+            FileAction.CREATE: "Initialize",
+            FileAction.DELETED: "Ignore deleted file",
+            FileAction.IGNORE_IDENTICAL: "Ignore unchanged file",
+            FileAction.IGNORE_UNCHANGED_REMOTE: "Ignore unchanged template file",
+            FileAction.KEEP: "Keep",
+            FileAction.OVERWRITE: "Overwrite",
+            FileAction.RECREATE: "Recreate deleted file",
+        }
+
+        file_changes = [
+            f"{actions_mapping[action]} {relative_path} ..."
+            for relative_path, action in get_sorted_actions(actions=actions).items()
         ]
-        overwrites = [k for k, v in actions.items() if v == FileAction.OVERWRITE]
 
         return cls(
             id=template.template.id,
             source=template.template.source,
             reference=template.template.reference,
             version=template.template.version,
-            appends=appends,
-            creates=creates,
-            deletes=deletes,
-            keeps=keeps,
-            overwrites=overwrites,
+            file_changes=file_changes,
         )

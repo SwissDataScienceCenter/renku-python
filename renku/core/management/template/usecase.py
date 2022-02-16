@@ -29,7 +29,6 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
 from renku.core.management.template.template import (
     FileAction,
-    RenderedTemplate,
     TemplateAction,
     copy_template_metadata_to_client,
     copy_template_to_client,
@@ -38,7 +37,7 @@ from renku.core.management.template.template import (
     set_template_parameters,
 )
 from renku.core.models.tabulate import tabulate
-from renku.core.models.template import Template, TemplateMetadata, TemplatesSource
+from renku.core.models.template import RenderedTemplate, Template, TemplateMetadata, TemplatesSource
 from renku.core.utils import communication
 
 

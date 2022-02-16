@@ -101,8 +101,8 @@ which files to keep or overwrite.
 
 .. note::
 
-    Renku always preserve project's Renku version that is set in the Dockerfile
-    even if you overwrite the Dockerfile. The reason is that project's metadata
+    Renku always preserve the project's Renku version that is set in the Dockerfile
+    even if you overwrite the Dockerfile. The reason is that the project's metadata
     is not updated when setting/updating a template and therefore the project
     won't work with a different Renku version. To update Renku version you need
     to use ``renku migrate`` command.
@@ -237,13 +237,25 @@ def _print_template(template: "TemplateViewModel"):
     print_name = functools.partial(click.style, bold=True, fg="magenta")
     print_value = functools.partial(click.style, bold=True)
 
+    def print_template_parameters():
+        for p in template.parameters:
+            click.echo(f"  {print_value(p.name)}:")
+            click.echo(print_name("    Description: ") + print_value(p.description))
+            if p.type:
+                click.echo(print_name("    Type: ") + print_value(p.type))
+            if p.possible_values:
+                click.echo(print_name("    Possible values: ") + print_value(p.possible_values))
+            if p.default is not None:
+                click.echo(print_name("    Default value: ") + print_value(p.default))
+
     click.echo(print_name("Id: ") + print_value(template.id))
     click.echo(print_name("Name: ") + print_value(template.name))
     click.echo(print_name("Source: ") + print_value(template.source))
     click.echo(print_name("Reference: ") + print_value(to_string(template.reference)))
     click.echo(print_name("Version: ") + print_value(template.version))
     click.echo(print_name("Description: ") + print_value(template.description))
-    click.echo(print_name("Variables: ") + print_value(template.variables))
+    click.echo(print_name("Parameters:"))
+    print_template_parameters()
     click.echo(print_name("Immutable files: ") + print_value(template.immutable_files))
     click.echo(print_name("Available versions: ") + print_value(template.versions))
 
@@ -251,20 +263,6 @@ def _print_template(template: "TemplateViewModel"):
 def _print_template_list(templates: List["TemplateViewModel"], verbose: bool):
     """Print a list of templates."""
     from renku.core.models.tabulate import tabulate
-
-    def extract_variables(template_elem):  # TODO: Show variables
-        """Extract variables from template manifest."""
-        descriptions = []
-        for name, variable in template_elem.get("variables", {}).items():
-            variable_type = f', type: {variable["type"]}' if "type" in variable else ""
-            enum_values = f', options: {variable["enum"]}' if "enum" in variable else ""
-            default_value = f', default: {variable["default_value"]}' if "default_value" in variable else ""
-            description = variable["description"]
-
-            descriptions.append(f"{name}: {description}{variable_type}{enum_values}{default_value}")
-        return "\n".join(descriptions)
-
-        return ",".join(template_elem.get("variables", {}).keys())
 
     for index, template in enumerate(templates, start=1):
         setattr(template, "index", index)
@@ -282,12 +280,6 @@ def _print_template_change(changes: "TemplateChangeViewModel"):
     """Print detailed template info."""
     from renku.core.utils.util import to_string
 
-    def print_list(message: str, files: List[str]):
-        if not files:
-            return
-        files = "\n\t".join(sorted(files))
-        click.echo(f"{message}:\n\t{files}")
-
     print_name = functools.partial(click.style, bold=True, fg="magenta")
     print_value = functools.partial(click.style, bold=True)
 
@@ -295,9 +287,5 @@ def _print_template_change(changes: "TemplateChangeViewModel"):
     click.echo(print_name("Source: ") + print_value(changes.source))
     click.echo(print_name("New reference: ") + print_value(to_string(changes.reference)))
     click.echo(print_name("New version: ") + print_value(to_string(changes.version)))
-
-    print_list("These files will be appended to", changes.appends)
-    print_list("These files will be created", changes.creates)
-    print_list("These files were deleted locally and won't be recreated", changes.deletes)
-    print_list("These files won't change", changes.keeps)
-    print_list("These files will be overwritten", changes.overwrites)
+    click.echo(print_name("File changes:"))
+    click.echo("  " + "\n  ".join(changes.file_changes))

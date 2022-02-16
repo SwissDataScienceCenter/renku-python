@@ -171,6 +171,7 @@ class TemplatesManifest:
 class Template:
     """Template files and metadata from a template source."""
 
+    REQUIRED_ATTRIBUTES = ("name",)
     REQUIRED_FILES = (os.path.join(RENKU_HOME, "renku.ini"), "Dockerfile")
 
     def __init__(
@@ -225,7 +226,7 @@ class Template:
 
     def validate(self, skip_files):
         """Validate a template."""
-        for attribute in ("name", "description"):
+        for attribute in self.REQUIRED_ATTRIBUTES:
             if not getattr(self, attribute):
                 raise errors.InvalidTemplateError(f"Template '{self.id}' does not have a '{attribute}' attribute")
 
@@ -237,6 +238,12 @@ class Template:
 
         if not self.path.exists():
             raise errors.InvalidTemplateError(f"Template directory for '{self.id}' does not exists")
+
+        # TODO: What are required files
+        required_files = self.REQUIRED_FILES
+        for file in required_files:
+            if not (self.path / file).is_file():
+                raise errors.InvalidTemplateError(f"File '{file}' is required for template '{self.id}'")
 
         # NOTE: Validate symlinks resolve to a path inside the template
         for relative_path in self.get_files():

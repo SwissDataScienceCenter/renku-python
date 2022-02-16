@@ -18,6 +18,7 @@
 """Test ``template`` command."""
 
 import re
+import sys
 
 import pytest
 from packaging.version import Version
@@ -25,33 +26,61 @@ from packaging.version import Version
 from renku.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
+TEMPLATES_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
 
-@pytest.mark.skip(reason="sys.argv is not set correctly from the tests")
+
+@pytest.mark.serial
 def test_template_list(isolated_runner):
     """Test list Renku templates."""
-    result = isolated_runner.invoke(cli, ["template", "ls"])
+    command = ["template", "ls"]
+    argv = sys.argv
+    sys.argv = command
 
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "python-minimal" in result.output
+    try:
+        result = isolated_runner.invoke(cli, command)
+
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "python-minimal" in result.output
+    finally:
+        sys.argv = argv
 
 
-@pytest.mark.skip(reason="sys.argv is not set correctly from the tests")
 @pytest.mark.integration
 def test_template_list_from_source(isolated_runner):
     """Test list templates from other sources."""
-    url = "https://github.com/SwissDataScienceCenter/renku-project-template"
+    command = ["template", "ls"]
+    argv = sys.argv
+    sys.argv = command
 
-    result = isolated_runner.invoke(cli, ["template", "ls", "--template-source", url])
+    try:
+        result = isolated_runner.invoke(cli, command + ["--source", TEMPLATES_URL])
 
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "python-minimal" in result.output
-    assert "julia-minimal" in result.output
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "python-minimal" in result.output
+        assert "julia-minimal" in result.output
 
-    result = isolated_runner.invoke(cli, ["template", "ls", "--template-source", url, "--template-ref", "0.1.10"])
+        result = isolated_runner.invoke(cli, command + ["-s", TEMPLATES_URL, "--reference", "0.1.10"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "python-minimal" in result.output
-    assert "julia-minimal" not in result.output
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "python-minimal" in result.output
+        assert "julia-minimal" not in result.output
+    finally:
+        sys.argv = argv
+
+
+def test_template_show(isolated_runner):
+    """Test show detailed template info."""
+    command = ["template", "show"]
+    argv = sys.argv
+    sys.argv = command
+
+    try:
+        result = isolated_runner.invoke(cli, command + ["--template", "python-minimal"])
+
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "Name: Basic Python (3.9) Project" in result.output
+    finally:
+        sys.argv = argv
 
 
 def test_template_set_outside_a_renku_project(isolated_runner):
@@ -132,14 +161,24 @@ def test_template_set_preserve_renku_version(runner, client):
     assert "ARG RENKU_VERSION=0.0.42" in content
 
 
+def test_template_set_dry_run(runner, client):
+    """Test set dry-run doesn't make any changes."""
+    commit_sha_before = client.repository.head.commit.hexsha
+
+    result = runner.invoke(cli, ["template", "set", "-f", "-t", "R-minimal", "--dry-run"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert not client.repository.is_dirty()
+    assert commit_sha_before == client.repository.head.commit.hexsha
+
+
 @pytest.mark.integration
 def test_template_update(runner, client, client_database_injection_manager):
     """Test updating a template."""
-    url = "https://github.com/SwissDataScienceCenter/renku-project-template"
-
     result = runner.invoke(
         cli,
-        ["template", "set", "-f", "-t", "python-minimal", "-s", url, "-r", "0.1.10", "-p", "description=fixed-version"],
+        ["template", "set", "-f", "-t", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.1.10"]
+        + ["-p", "description=fixed-version"],
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
@@ -171,6 +210,26 @@ def test_template_update_latest_version(runner, client):
     assert "Template is up-to-date" in result.output
 
 
+@pytest.mark.integration
+def test_template_update_dry_run(runner, client):
+    """Test update dry-run doesn't make any changes."""
+    result = runner.invoke(
+        cli,
+        ["template", "set", "-f", "-t", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.1.10"]
+        + ["-p", "description=fixed-version"],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    commit_sha_before = client.repository.head.commit.hexsha
+
+    result = runner.invoke(cli, ["template", "update", "--dry-run"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert not client.repository.is_dirty()
+    assert commit_sha_before == client.repository.head.commit.hexsha
+
+
 def test_git_hook_for_modified_immutable_template_files(runner, client_with_template):
     """Test check for modified immutable template files."""
     from renku.core.utils.contexts import chdir
@@ -184,7 +243,3 @@ def test_git_hook_for_modified_immutable_template_files(runner, client_with_temp
         result = runner.invoke(cli, ["check-immutable-template-files", "immutable.file"])
         assert result.exit_code == 1
         assert "immutable.file" in result.output
-
-
-def test_template_files_after_initilize(runner, client_with_template):
-    """Test check for modified immutable template files."""

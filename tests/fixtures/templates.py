@@ -105,7 +105,7 @@ def templates_source(tmp_path, monkeypatch):
     templates_source_root = tmp_path / "templates_source"
     dummy_template_root = templates_source_root / "dummy"
 
-    dummy_template_root.mkdir(parents=True, exist_ok=True)
+    (dummy_template_root / ".renku").mkdir(parents=True, exist_ok=True)
 
     (templates_source_root / "manifest.yaml").write_text(
         textwrap.dedent(
@@ -123,6 +123,7 @@ def templates_source(tmp_path, monkeypatch):
     (dummy_template_root / "README.md").write_text("""A Renku project: {{ __project_description__ }}\n""")
     (dummy_template_root / "immutable.file").write_text("immutable content")
     (dummy_template_root / ".gitignore").write_text(".swp")
+    (dummy_template_root / ".renku" / "renku.ini").touch()
     (dummy_template_root / "Dockerfile").write_text(
         textwrap.dedent(
             """
@@ -250,7 +251,7 @@ def client_with_template(client, rendered_template, templates_source, client_dat
 def rendered_template_with_update(tmp_path, rendered_template):
     """An updated RenderedTemplate.
 
-    This fixture modifies 3 files in the template: ``immutable.file``, ``.gitignore``, ``Dockerfile``.
+    This fixture modifies these files: ``immutable.file``, ``.gitignore``, ``Dockerfile``, ``README.md``.
     """
     from renku.core.models.template import RenderedTemplate
 
@@ -262,6 +263,7 @@ def rendered_template_with_update(tmp_path, rendered_template):
     (updated_template_root / ".gitignore").write_text(".swp\n.idea")
     dockerfile = updated_template_root / "Dockerfile"
     dockerfile.write_text(f"{dockerfile.read_text()}\n# Updated Dockerfile")
+    (updated_template_root / "README.md").write_text("""Updated README: {{ __project_description__ }}\n""")
 
     updated_rendered_template = RenderedTemplate(
         path=updated_template_root, template=rendered_template.template, metadata=rendered_template.metadata

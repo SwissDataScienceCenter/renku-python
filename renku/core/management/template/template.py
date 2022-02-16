@@ -21,7 +21,8 @@ import json
 import re
 import shutil
 import tempfile
-from enum import Enum, auto
+from enum import Enum
+from functools import total_ordering
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -55,22 +56,28 @@ TEMPLATE_INIT_APPEND_FILES = [".gitignore"]
 class TemplateAction(Enum):
     """Types of template rendering."""
 
-    INITIALIZE = auto()
-    SET = auto()
-    UPDATE = auto()
+    INITIALIZE = 1
+    SET = 2
+    UPDATE = 3
 
 
+@total_ordering
 class FileAction(Enum):
     """Types of operation when copying a template to a project."""
 
-    APPEND = auto()
-    DELETED = auto()
-    IGNORE_IDENTICAL = auto()
-    IGNORE_UNCHANGED_REMOTE = auto()
-    CREATE = auto()
-    KEEP = auto()
-    OVERWRITE = auto()
-    RECREATE = auto()
+    APPEND = 1
+    CREATE = 2
+    DELETED = 3
+    IGNORE_IDENTICAL = 4
+    IGNORE_UNCHANGED_REMOTE = 5
+    KEEP = 6
+    OVERWRITE = 7
+    RECREATE = 8
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value < other.value
+        return NotImplemented
 
 
 def fetch_templates_source(source: Optional[str], reference: Optional[str]) -> TemplatesSource:
@@ -126,19 +133,18 @@ def copy_template_to_client(rendered_template: RenderedTemplate, client, actions
     actions_mapping: Dict[FileAction, Tuple[str, str]] = {
         FileAction.APPEND: ("append", "Appending to"),
         FileAction.CREATE: ("copy", "Initializing"),
-        FileAction.OVERWRITE: ("copy", "Overwriting"),
-        FileAction.RECREATE: ("copy", "Recreating deleted file"),
         FileAction.DELETED: ("", "Ignoring deleted file"),
-        FileAction.IGNORE_IDENTICAL: ("", "Ignoring unchanged file"),
+        FileAction.IGNORE_IDENTICAL: ("", "Ignoring identical file"),
         FileAction.IGNORE_UNCHANGED_REMOTE: ("", "Ignoring unchanged template file"),
         FileAction.KEEP: ("", "Keeping"),
+        FileAction.OVERWRITE: ("copy", "Overwriting"),
+        FileAction.RECREATE: ("copy", "Recreating deleted file"),
     }
 
-    for relative_path in rendered_template.get_files():
+    for relative_path, action in get_sorted_actions(actions=actions).items():
         source = rendered_template.path / relative_path
         destination = client.path / relative_path
 
-        action = actions[relative_path]
         operation, message = actions_mapping[action]
         communication.echo(f"{message} {relative_path} ...")
 
@@ -158,6 +164,11 @@ def copy_template_to_client(rendered_template: RenderedTemplate, client, actions
                 client.repository.clean()
 
             raise errors.TemplateUpdateError(f"Cannot write to '{destination}'") from e
+
+
+def get_sorted_actions(actions: Dict[str, FileAction]) -> Dict[str, FileAction]:
+    """Return a sorted actions list."""
+    return {k: v for k, v in sorted(actions.items(), key=lambda i: (i[1], i[0]))}
 
 
 def get_file_actions(
@@ -189,10 +200,14 @@ def get_file_actions(
         else:
             return FileAction.OVERWRITE
 
-    def get_action_for_set(relative_path: str, destination: Path) -> FileAction:
+    def get_action_for_set(relative_path: str, destination: Path, new_checksum: str) -> FileAction:
         """Decide what to do with a template file."""
+        current_checksum = hash_file(destination)
+
         if not destination.exists():
             return FileAction.CREATE
+        if new_checksum == current_checksum:
+            return FileAction.IGNORE_IDENTICAL
         elif interactive:
             overwrite = communication.confirm(f"Overwrite {relative_path}?", default=True)
             return FileAction.OVERWRITE if overwrite else FileAction.KEEP
@@ -205,13 +220,13 @@ def get_file_actions(
         relative_path: str, destination: Path, old_checksum: Optional[str], new_checksum: str
     ) -> FileAction:
         """Decide what to do with a template file."""
-        current_hash = hash_file(destination)
-        local_changes = current_hash != old_checksum
+        current_checksum = hash_file(destination)
+        local_changes = current_checksum != old_checksum
         remote_changes = new_checksum != old_checksum
         file_exists = destination.exists()
         file_deleted = not file_exists and old_checksum is not None
 
-        if not file_deleted and new_checksum == current_hash:
+        if not file_deleted and new_checksum == current_checksum:
             return FileAction.IGNORE_IDENTICAL
         if not file_exists and not file_deleted:
             return FileAction.CREATE
@@ -239,7 +254,7 @@ def get_file_actions(
 
     actions: Dict[str, FileAction] = {}
 
-    for relative_path in rendered_template.get_files():
+    for relative_path in sorted(rendered_template.get_files()):
         destination = client.path / relative_path
 
         if destination.is_dir():
@@ -247,16 +262,18 @@ def get_file_actions(
                 f"Cannot copy a file '{relative_path}' from template to the directory '{relative_path}'"
             )
 
+        new_checksum = rendered_template.checksums[relative_path]
+
         if template_action == TemplateAction.INITIALIZE:
             action = get_action_for_initialize(relative_path, destination)
         elif template_action == TemplateAction.SET:
-            action = get_action_for_set(relative_path, destination)
+            action = get_action_for_set(relative_path, destination, new_checksum=new_checksum)
         else:
             action = get_action_for_update(
                 relative_path,
                 destination,
                 old_checksum=old_checksums.get(relative_path),
-                new_checksum=rendered_template.checksums[relative_path],
+                new_checksum=new_checksum,
             )
 
         actions[relative_path] = action
