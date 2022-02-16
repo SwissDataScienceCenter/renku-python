@@ -50,7 +50,7 @@ def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Pa
     """
     try:
         absolute_path = Path(base) / path
-        return Path(absolute_path).relative_to(base)
+        return absolute_path.resolve().relative_to(base)
     except ValueError:
         raise ValueError(f"Path '{path}' is not with base directory '{base}'")
 

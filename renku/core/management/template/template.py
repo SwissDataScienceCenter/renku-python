@@ -173,8 +173,6 @@ def get_file_actions(
         immutable_files = client.project.immutable_template_files or []
     except ValueError:  # NOTE: Project is not set
         immutable_files = []
-    except inject.InjectorException:  # TODO Make sure it's ok to do this
-        immutable_files = []
 
     def should_append(path: str):
         return path.lower() in TEMPLATE_INIT_APPEND_FILES
@@ -482,7 +480,6 @@ class RepositoryTemplates(TemplatesSource):
 
             try:
                 manifest = TemplatesManifest.from_path(self.path / TEMPLATE_MANIFEST)
-                manifest.validate()
             except errors.InvalidTemplateError as e:
                 raise errors.InvalidTemplateError(f"Cannot load template's manifest file at '{reference}'.") from e
             else:

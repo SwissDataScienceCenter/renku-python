@@ -87,6 +87,8 @@ class TemplatesManifest:
         self._content: List[Dict] = content
         self._templates: Optional[List[Template]] = None
 
+        self.validate()
+
     @classmethod
     def from_path(cls, path: Union[Path, str]) -> "TemplatesManifest":
         """Extract template metadata from the manifest file."""
@@ -106,7 +108,6 @@ class TemplatesManifest:
             raise errors.InvalidTemplateError("Cannot parse manifest file") from e
         else:
             manifest = TemplatesManifest(manifest)
-            manifest.validate()
             return manifest
 
     @property
