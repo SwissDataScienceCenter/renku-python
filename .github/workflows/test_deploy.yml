@@ -850,7 +850,7 @@ jobs:
           ref: 'develop'
       - name: merge changes from master
         run: |
-          git merge master -X theirs
+          git merge master
           git push
 
   build-images:
