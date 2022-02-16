@@ -20,7 +20,7 @@
 import tempfile
 from pathlib import Path
 
-from renku.core.commands.dataset import create_dataset
+from renku.core.commands.dataset import create_dataset_command
 from renku.core.management.client import LocalClient
 from renku.core.metadata.repository import Repository
 
@@ -29,7 +29,7 @@ def test_latest_version(project, client_database_injection_manager):
     """Test returning the latest version of `SoftwareAgent`."""
     from renku import __version__
 
-    create_dataset().build().execute("ds1", title="", description="", creators=[])
+    create_dataset_command().build().execute("ds1", title="", description="", creators=[])
 
     client = LocalClient(project)
     with client_database_injection_manager(client):
@@ -41,7 +41,7 @@ def test_latest_version_user_commits(project, client_database_injection_manager)
     """Test retrieval of `SoftwareAgent` with latest non-renku command."""
     from renku import __version__
 
-    create_dataset().build().execute("ds1", title="", description="", creators=[])
+    create_dataset_command().build().execute("ds1", title="", description="", creators=[])
 
     file = Path("my-file")
     file.write_text("123")

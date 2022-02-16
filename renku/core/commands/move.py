@@ -23,6 +23,8 @@ from pathlib import Path
 from renku.core import errors
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.dataset.usecase import move_files
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
 
@@ -38,7 +40,7 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
     client = client_dispatcher.current_client
 
     if to_dataset:
-        client.get_dataset(to_dataset, strict=True)
+        DatasetsProvenance().get_by_name(to_dataset, strict=True)
 
     absolute_destination = _get_absolute_path(destination)
     absolute_sources = [_get_absolute_path(src) for src in sources]
@@ -91,7 +93,7 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
     # NOTE: Force-add to include possible ignored files
     client.repository.add(*files.values(), force=True)
 
-    client.move_files(files=files, to_dataset=to_dataset)
+    move_files(files=files, to_dataset=to_dataset)
 
     if verbose:
         _show_moved_files(client.path, files)

@@ -52,10 +52,13 @@ class DatasetsProvenance:
 
             return dataset.copy()
 
-    def get_by_name(self, name: str, immutable: bool = False) -> Optional[Dataset]:
+    def get_by_name(self, name: str, immutable: bool = False, strict: bool = False) -> Optional[Dataset]:
         """Return a dataset by its name."""
         dataset = self.dataset_gateway.get_by_name(name)
         if not dataset:
+            if strict:
+                raise errors.DatasetNotFound(name=name)
+
             return
         if not dataset.immutable or immutable:
             return dataset

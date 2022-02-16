@@ -22,6 +22,8 @@ import yaml
 from renku.core.commands.echo import WARNING
 from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
 from renku.core.commands.schema.project import ProjectSchema
+from renku.core.management.command_builder import inject
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.models.jsonld import NoDatesSafeLoader
 from renku.core.utils.shacl import validate_graph
 
@@ -69,13 +71,14 @@ def check_project_structure(client):
     return False, problems
 
 
-def check_datasets_structure(client):
+@inject.autoparams()
+def check_datasets_structure(client, dataset_gateway: IDatasetGateway):
     """Validate dataset metadata against SHACL."""
     ok = True
 
     problems = [f"{WARNING}Invalid structure of dataset metadata"]
 
-    for dataset in client.datasets.values():
+    for dataset in dataset_gateway.get_all_datasets():
         data = dump_dataset_as_jsonld(dataset)
         try:
             conform, graph, t = _check_shacl_structure(data)

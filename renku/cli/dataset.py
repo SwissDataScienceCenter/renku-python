@@ -572,7 +572,7 @@ def list_dataset(format, columns):
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
 def create(name, title, description, creators, metadata, keyword):
     """Create an empty dataset in the current repo."""
-    from renku.core.commands.dataset import create_dataset
+    from renku.core.commands.dataset import create_dataset_command
 
     communicator = ClickCallback()
     creators = creators or ()
@@ -583,7 +583,7 @@ def create(name, title, description, creators, metadata, keyword):
         custom_metadata = json.loads(Path(metadata).read_text())
 
     result = (
-        create_dataset()
+        create_dataset_command()
         .with_communicator(communicator)
         .build()
         .execute(

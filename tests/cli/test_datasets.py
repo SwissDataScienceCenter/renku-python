@@ -34,6 +34,7 @@ from renku.core.commands.providers import ProviderFactory
 from renku.core.commands.providers.dataverse import DataverseProvider
 from renku.core.commands.providers.zenodo import ZenodoProvider
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.dataset.constant import renku_pointers_path
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.dataset import Dataset
 from renku.core.models.refs import LinkReference
@@ -1560,13 +1561,13 @@ def test_overwrite_external_file(runner, client, directory_tree, subdirectory):
     # Can add the same file with --overwrite
     result = runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
-    pointer_files_deleted = list(client.renku_pointers_path.rglob("*")) == []
+    pointer_files_deleted = list(renku_pointers_path(client).rglob("*")) == []
     assert pointer_files_deleted
 
     # Can add the same external file
     result = runner.invoke(cli, ["dataset", "add", "--external", "my-data", "--overwrite", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
-    pointer_files_exist = len(list(client.renku_pointers_path.rglob("*"))) > 0
+    pointer_files_exist = len(list(renku_pointers_path(client).rglob("*"))) > 0
     assert pointer_files_exist
 
 
@@ -1575,13 +1576,13 @@ def test_remove_external_file(runner, client, directory_tree, subdirectory):
     result = runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    targets_before = {str(p.resolve()) for p in client.renku_pointers_path.rglob("*")}
+    targets_before = {str(p.resolve()) for p in renku_pointers_path(client).rglob("*")}
     path = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
 
     result = runner.invoke(cli, ["rm", str(path)])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    targets_after = {str(p.resolve()) for p in client.renku_pointers_path.rglob("*")}
+    targets_after = {str(p.resolve()) for p in renku_pointers_path(client).rglob("*")}
 
     removed = targets_before - targets_after
     assert 1 == len(removed)

@@ -31,7 +31,7 @@ def add_dataset_tag(dataset: Dataset, tag: str, description="", force=False):
     Validates if the tag already exists and that the tag follows the same rules as docker tags.
     See https://docs.docker.com/engine/reference/commandline/tag/ for a documentation of docker tag syntax.
 
-    :raises: errors.ParameterError
+    :raises: ``errors.ParameterError``
     """
     if len(tag) > 128:
         raise errors.ParameterError("Tags can be at most 128 characters long.")

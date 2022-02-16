@@ -28,6 +28,7 @@ import pytest
 from renku.cli import cli
 from renku.core import errors
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Url, get_dataset_data_dir
 from renku.core.utils.contexts import chdir
@@ -366,7 +367,7 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client, cli
     assert "bla" in result.output
 
     with client_database_injection_manager(client):
-        dataset = [d for d in client.datasets.values()][0]
+        dataset = [d for d in DatasetGateway().get_all_datasets()][0]
     assert 2 == len(dataset.images)
     img1 = next((i for i in dataset.images if i.position == 1))
     img2 = next((i for i in dataset.images if i.position == 2))

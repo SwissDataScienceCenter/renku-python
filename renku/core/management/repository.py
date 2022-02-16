@@ -21,6 +21,7 @@ import hashlib
 import json
 import shutil
 from contextlib import contextmanager
+from fnmatch import fnmatch
 from uuid import uuid4
 
 import attr
@@ -362,6 +363,19 @@ class RepositoryApiMixin(GitCore):
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
+
+    def is_protected_path(self, path):
+        """Checks if a path is a protected path."""
+        try:
+            path_in_repo = str(path.relative_to(self.path))
+        except ValueError:
+            return False
+
+        for protected_path in self.RENKU_PROTECTED_PATHS:
+            if fnmatch(path_in_repo, protected_path):
+                return True
+
+        return False
 
 
 DATABASE_METADATA_PATH = [

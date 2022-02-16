@@ -178,9 +178,9 @@ def migrate(
 
 
 def _remove_untracked_renku_files(renku_path):
-    from renku.core.management.datasets import DatasetsApiMixin
+    from renku.core.management.dataset.usecase import CACHE
 
-    untracked_paths = [RENKU_TMP, DatasetsApiMixin.CACHE, "vendors"]
+    untracked_paths = [RENKU_TMP, CACHE, "vendors"]
     for path in untracked_paths:
         path = renku_path / path
         shutil.rmtree(path, ignore_errors=True)

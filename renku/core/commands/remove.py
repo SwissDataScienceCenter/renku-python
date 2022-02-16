@@ -25,13 +25,15 @@ from renku.core import errors
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.dataset.usecase import remove_file
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.utils import communication
 from renku.core.utils.git import get_git_user
 
 
 @inject.autoparams()
-def _remove(sources, edit_command, client_dispatcher: IClientDispatcher):
+def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset_gateway: IDatasetGateway):
     """Remove files and check repository for potential problems."""
     from renku.core.management.git import _expand_directories
 
@@ -53,9 +55,10 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher):
 
     # 1. Update dataset metadata files.
     progress_text = "Updating dataset metadata"
-    communication.start_progress(progress_text, total=len(client.datasets))
+    all_datasets = dataset_gateway.get_all_datasets()
+    communication.start_progress(progress_text, total=len(all_datasets))
     try:
-        for dataset in client.datasets.values():
+        for dataset in all_datasets:
             remove = []
             for file in dataset.files:
                 key = file.entity.path
@@ -67,7 +70,7 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher):
                 dataset = dataset.copy()
                 for key in remove:
                     dataset.unlink_file(key)
-                    client.remove_file(client.path / key)
+                    remove_file(client.path / key)
 
                 datasets_provenance = DatasetsProvenance()
                 datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
