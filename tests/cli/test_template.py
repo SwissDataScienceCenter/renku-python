@@ -24,6 +24,7 @@ import pytest
 from packaging.version import Version
 
 from renku.cli import cli
+from renku.core.models.template import TemplateMetadata, TemplateParameter
 from renku.core.utils.contexts import chdir
 from tests.utils import format_result_exception, write_and_commit_file
 
@@ -267,11 +268,52 @@ def test_git_hook_for_modified_immutable_template_files(runner, client_with_temp
         assert "immutable.file" in result.output
 
 
-def test_template_update_with_parameters(runner, client_with_template):
-    """Test check for modified immutable template files."""
-    result = runner.invoke(cli, ["template", "update"])
+def test_template_update_with_parameters(
+    runner, client_with_template, templates_source, client_database_injection_manager
+):
+    """Test update prompts for new template parameters."""
+    parameter = TemplateParameter(name="new-parameter", description="", type="", possible_values=[], default=None)
+    templates_source.update(id="dummy", version="2.0.0", parameters=[parameter])
+
+    result = runner.invoke(cli, ["template", "update"], input="new-value\n")
+
     assert result.exit_code == 0, result.output
 
-    result = runner.invoke(cli, ["check-immutable-template-files", "immutable.file"])
-    assert result.exit_code == 1
-    assert "immutable.file" in result.output
+    with client_database_injection_manager(client_with_template):
+        template_metadata = TemplateMetadata.from_client(client=client_with_template)
+        assert "new-parameter" in template_metadata.metadata
+        assert "new-value" == template_metadata.metadata["new-parameter"]
+
+
+def test_template_update_with_parameters_with_defaults(
+    runner, client_with_template, templates_source, client_database_injection_manager
+):
+    """Test update doesn't prompt for new template parameters with default value."""
+    parameter = TemplateParameter(name="new-parameter", description="", type="", possible_values=[], default="def-val")
+    templates_source.update(id="dummy", version="2.0.0", parameters=[parameter])
+
+    result = runner.invoke(cli, ["template", "update"])
+
+    assert result.exit_code == 0, result.output
+
+    with client_database_injection_manager(client_with_template):
+        template_metadata = TemplateMetadata.from_client(client=client_with_template)
+        assert "new-parameter" in template_metadata.metadata
+        assert "def-val" == template_metadata.metadata["new-parameter"]
+
+
+def test_template_set_with_parameters(
+    runner, client_with_template, templates_source, client_database_injection_manager
+):
+    """Test template set doesn't prompts for new template parameters when passed on command line."""
+    parameter = TemplateParameter(name="new-parameter", description="", type="", possible_values=[], default=None)
+    templates_source.update(id="dummy", version="2.0.0", parameters=[parameter])
+
+    result = runner.invoke(cli, ["template", "set", "-f", "-s", "dummy", "dummy", "-p", "new-parameter=param-value"])
+
+    assert result.exit_code == 0, result.output
+
+    with client_database_injection_manager(client_with_template):
+        template_metadata = TemplateMetadata.from_client(client=client_with_template)
+        assert "new-parameter" in template_metadata.metadata
+        assert "param-value" == template_metadata.metadata["new-parameter"]

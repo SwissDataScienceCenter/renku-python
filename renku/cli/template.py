@@ -99,7 +99,7 @@ list of files that will be updated.
 
 .. note::
 
-    A template maintainer can mark a template an not-updatable. In this case,
+    A template maintainer can disable updates for a template. In this case,
     ``renku update`` refuses to update the project. Passing ``--force`` flag
     causes Renku to update the template anyways.
 

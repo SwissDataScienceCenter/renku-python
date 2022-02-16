@@ -62,7 +62,7 @@ def test_template_fetch_invalid_git_reference():
 
 def test_check_for_template_update(client_with_template, templates_source, client_database_injection_manager):
     """Test checking for a template update."""
-    templates_source.versions = ["2.0.0"]
+    templates_source.update(id="dummy", version="2.0.0")
 
     with client_database_injection_manager(client_with_template):
         updates_available, _, current_version, new_version = check_for_template_update(client_with_template)

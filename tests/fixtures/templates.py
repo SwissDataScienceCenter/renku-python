@@ -97,27 +97,14 @@ def project_init(template):
 
 
 @pytest.fixture
-def templates_source(tmp_path, monkeypatch):
-    """A dummy TemplatesSource."""
-    from renku.core import errors
-    from renku.core.models.template import Template, TemplatesSource
+def source_template(tmp_path):
+    """A dummy Template."""
+    from renku.core.models.template import Template
 
     templates_source_root = tmp_path / "templates_source"
     dummy_template_root = templates_source_root / "dummy"
 
     (dummy_template_root / ".renku").mkdir(parents=True, exist_ok=True)
-
-    (templates_source_root / "manifest.yaml").write_text(
-        textwrap.dedent(
-            """
-            - id: dummy
-              name: Dummy Template
-              description: A dummy template
-              immutable_template_files:
-                - immutable.file
-            """
-        )
-    )
 
     (dummy_template_root / "{{ __name__ }}.dummy").touch()
     (dummy_template_root / "README.md").write_text("""A Renku project: {{ __project_description__ }}\n""")
@@ -136,6 +123,42 @@ def templates_source(tmp_path, monkeypatch):
         )
     )
 
+    yield Template(
+        id="dummy",
+        name="Dummy Template",
+        description="A dummy template",
+        source="dummy",
+        reference="1.0.0",
+        version="1.0.0",
+        allow_update=True,
+        parameters={},
+        immutable_files=["immutable.file"],
+        path=dummy_template_root,
+        icon="",
+        templates_source=None,
+    )
+
+
+@pytest.fixture
+def templates_source(tmp_path, monkeypatch):
+    """A dummy TemplatesSource."""
+    from renku.core import errors
+    from renku.core.models.template import Template, TemplateParameter, TemplatesSource
+
+    templates_source_root = tmp_path / "templates_source"
+
+    (templates_source_root / "manifest.yaml").write_text(
+        textwrap.dedent(
+            """
+            - id: dummy
+              name: Dummy Template
+              description: A dummy template
+              immutable_template_files:
+                - immutable.file
+            """
+        )
+    )
+
     class DummyTemplatesSource(TemplatesSource):
         """Base class for Renku template sources."""
 
@@ -147,16 +170,6 @@ def templates_source(tmp_path, monkeypatch):
         def fetch(cls, source: Optional[str], reference: Optional[str]) -> "TemplatesSource":
             raise NotImplementedError
 
-        @property
-        def versions(self):
-            """Return all available versions."""
-            return self._versions
-
-        @versions.setter
-        def versions(self, versions: List[str]):
-            """Set all available version."""
-            self._versions = [Version(v) for v in versions]
-
         def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
             """Return True if an update is available along with the latest version of a template."""
             latest_version = self.get_latest_version(id=id, reference=reference, version=version)
@@ -165,27 +178,39 @@ def templates_source(tmp_path, monkeypatch):
 
         def get_all_versions(self, id) -> List[str]:
             """Return all available versions for a template id."""
-            return [str(v) for v in self.versions]
+            return [str(v) for v in self._versions]
 
         def get_latest_version(self, id: str, reference: Optional[str], version: Optional[str]) -> Optional[str]:
             """Return latest version number of a template."""
             _ = self.get_template(id=id, reference=reference)
-            return str(max(self.versions))
+            return str(max(self._versions))
 
         def get_template(self, id, reference: Optional[str]) -> Optional[Template]:
             """Return a template at a specific reference."""
+            if not reference:
+                reference = self.reference
+            elif Version(reference) not in self._versions:
+                raise errors.InvalidTemplateError(f"Cannot find reference '{reference}'")
+
             try:
-                return next(t for t in self.templates if t.id == id)
+                template = next(t for t in self.templates if t.id == id)
             except StopIteration:
                 raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available.")
+            else:
+                template.version = reference
+                template.reference = reference
 
-        def update(self, id, version, content="# modification"):
+                return template
+
+        def update(self, id, version, content="# modification", parameters: List[TemplateParameter] = None):
             """Update all files of a template."""
             template = self.get_template(id=id, reference=None)
 
             for relative_path in template.get_files():
                 path = template.path / relative_path
                 path.write_text(f"{path.read_text()}\n{content}")
+
+            template.parameters = parameters or []
 
             self._versions.append(Version(version))
 
@@ -205,16 +230,6 @@ def templates_source(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def source_template(templates_source):
-    """A dummy Template."""
-    from renku.core.models.template import Template
-
-    template: Template = templates_source.get_template(id="dummy", reference=None)
-
-    yield template
-
-
-@pytest.fixture
 def rendered_template(source_template, template_metadata):
     """A dummy RenderedTemplate."""
     from renku.core.models.template import TemplateMetadata
@@ -225,7 +240,7 @@ def rendered_template(source_template, template_metadata):
 
 
 @pytest.fixture
-def client_with_template(client, rendered_template, templates_source, client_database_injection_manager):
+def client_with_template(client, rendered_template, client_database_injection_manager):
     """A client with a dummy template."""
     from renku.core.management.template.template import (
         FileAction,
