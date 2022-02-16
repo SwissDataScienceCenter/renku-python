@@ -123,11 +123,15 @@ def test_copy_template_actions(client, rendered_template, action, content_type):
     assert expected_content == (client.path / "Dockerfile").read_text()
 
 
-def test_get_file_actions_for_initialize(client, rendered_template):
+def test_get_file_actions_for_initialize(client, rendered_template, client_database_injection_manager):
     """Test getting file action when initializing."""
-    actions = get_file_actions(
-        rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, client=client, interactive=False
-    )
+    with client_database_injection_manager(client):
+        actions = get_file_actions(
+            rendered_template=rendered_template,
+            template_action=TemplateAction.INITIALIZE,
+            client=client,
+            interactive=False,
+        )
 
     appended_file = ".gitignore"
     assert FileAction.APPEND == actions[appended_file]
@@ -139,11 +143,12 @@ def test_get_file_actions_for_initialize(client, rendered_template):
     assert FileAction.KEEP == actions[kept_file]
 
 
-def test_get_file_actions_for_set(client, rendered_template):
+def test_get_file_actions_for_set(client, rendered_template, client_database_injection_manager):
     """Test getting file action when setting a template."""
-    actions = get_file_actions(
-        rendered_template=rendered_template, template_action=TemplateAction.SET, client=client, interactive=False
-    )
+    with client_database_injection_manager(client):
+        actions = get_file_actions(
+            rendered_template=rendered_template, template_action=TemplateAction.SET, client=client, interactive=False
+        )
 
     new_file = ".dummy"
     assert FileAction.CREATE == actions[new_file]

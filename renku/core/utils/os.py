@@ -49,7 +49,8 @@ def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Pa
     NOTE: This is used to prevent path traversal attack.
     """
     try:
-        absolute_path = Path(base) / path
+        base = Path(base).resolve()
+        absolute_path = base / path
         return absolute_path.resolve().relative_to(base)
     except ValueError:
         raise ValueError(f"Path '{path}' is not with base directory '{base}'")

@@ -25,7 +25,6 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import inject
 from packaging.version import Version
 
 from renku.core import errors

@@ -30,7 +30,7 @@ import yaml
 
 from renku.core import errors
 from renku.core.management import RENKU_HOME
-from renku.core.utils.os import hash_file, get_safe_relative_path
+from renku.core.utils.os import get_safe_relative_path, hash_file
 
 TEMPLATE_MANIFEST = "manifest.yaml"
 
@@ -56,6 +56,7 @@ class TemplatesSource:
         """Return list of templates."""
         for template in self.manifest.templates:
             template.templates_source = self
+            template.validate(skip_files=False)
 
         return self.manifest.templates
 
@@ -164,7 +165,7 @@ class TemplatesManifest:
                         template["variables"][key] = {"description": parameter}
 
         for template in self.templates:
-            template.validate()
+            template.validate(skip_files=True)
 
 
 class Template:
@@ -222,7 +223,7 @@ class Template:
         """Return all available versions for the template."""
         return self.templates_source.get_all_versions(self.id)
 
-    def validate(self):
+    def validate(self, skip_files):
         """Validate a template."""
         for attribute in ("name", "description"):
             if not getattr(self, attribute):
@@ -231,14 +232,11 @@ class Template:
         for parameter in self.parameters:
             parameter.validate()
 
+        if skip_files:
+            return
+
         if not self.path.exists():
             raise errors.InvalidTemplateError(f"Template directory for '{self.id}' does not exists")
-
-        # TODO: What are required files
-        required_files = self.REQUIRED_FILES
-        for file in required_files:
-            if not (self.path / file).is_file():
-                raise errors.InvalidTemplateError(f"File '{file}' is required for the template to be valid")
 
         # NOTE: Validate symlinks resolve to a path inside the template
         for relative_path in self.get_files():

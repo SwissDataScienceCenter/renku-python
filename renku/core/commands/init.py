@@ -149,9 +149,7 @@ def _init(
     template_metadata = TemplateMetadata.from_dict(metadata=metadata)
     template_metadata.update(template=template)
     # TODO: Validate input_parameters to make sure they don't contain __\w+__ keys
-    set_template_parameters(
-        template=template, template_metadata=template_metadata, input_parameters=input_parameters
-    )
+    set_template_parameters(template=template, template_metadata=template_metadata, input_parameters=input_parameters)
 
     rendered_template = template.render(metadata=template_metadata)
     actions = get_file_actions(
