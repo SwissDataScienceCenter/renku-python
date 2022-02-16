@@ -242,17 +242,14 @@ def rendered_template(source_template, template_metadata):
 @pytest.fixture
 def client_with_template(client, rendered_template, client_database_injection_manager):
     """A client with a dummy template."""
-    from renku.core.management.template.template import (
-        FileAction,
-        copy_template_metadata_to_client,
-        copy_template_to_client,
-    )
+    from renku.core.management.template.template import FileAction, copy_template_to_client
 
     with client_database_injection_manager(client):
         actions = {f: FileAction.OVERWRITE for f in rendered_template.get_files()}
 
-        copy_template_to_client(rendered_template=rendered_template, client=client, actions=actions)
-        copy_template_metadata_to_client(rendered_template=rendered_template, client=client, project=client.project)
+        copy_template_to_client(
+            rendered_template=rendered_template, client=client, project=client.project, actions=actions
+        )
 
         client.template_files = [client.path / f for f in rendered_template.get_files()]
 

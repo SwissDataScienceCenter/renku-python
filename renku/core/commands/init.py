@@ -35,7 +35,6 @@ from renku.core.management.template.template import (
     FileAction,
     RenderedTemplate,
     TemplateAction,
-    copy_template_metadata_to_client,
     copy_template_to_client,
     fetch_templates_source,
     get_file_actions,
@@ -243,8 +242,9 @@ def create_from_template(
         with client.with_metadata(
             name=name, description=description, custom_metadata=custom_metadata, keywords=keywords
         ) as project:
-            copy_template_to_client(rendered_template=rendered_template, client=client, actions=actions)
-            copy_template_metadata_to_client(rendered_template=rendered_template, client=client, project=project)
+            copy_template_to_client(
+                rendered_template=rendered_template, client=client, project=project, actions=actions
+            )
 
         if data_dir:
             client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))

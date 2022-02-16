@@ -98,7 +98,7 @@ def test_template_update_files(client_with_template, templates_source, client_da
         (FileAction.KEEP, "project"),
     ],
 )
-def test_copy_template_actions(client, rendered_template, action, content_type):
+def test_copy_template_actions(client, rendered_template, action, content_type, client_database_injection_manager):
     """Test FileActions when copying a template."""
     project_content = (client.path / "Dockerfile").read_text()
     template_content = (rendered_template.path / "Dockerfile").read_text()
@@ -106,7 +106,10 @@ def test_copy_template_actions(client, rendered_template, action, content_type):
     # NOTE: Ignore all other files expect the Dockerfile
     actions = {f: FileAction.IGNORE_UNCHANGED_REMOTE for f in rendered_template.get_files()}
     actions["Dockerfile"] = action
-    copy_template_to_client(rendered_template=rendered_template, client=client, actions=actions)
+    with client_database_injection_manager(client):
+        copy_template_to_client(
+            rendered_template=rendered_template, client=client, project=client.project, actions=actions
+        )
 
     # NOTE: Make sure that files have some content
     assert project_content

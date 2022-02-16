@@ -114,21 +114,22 @@ def read_template_checksum(client) -> Dict[str, str]:
     return {}
 
 
-def copy_template_metadata_to_client(rendered_template: RenderedTemplate, client, project):  # TODO
-    """Update template-related metadata in a project."""
-    write_template_checksum(client, rendered_template.checksums)
-
-    project.template_source = rendered_template.template.source
-    project.template_ref = rendered_template.template.reference
-    project.template_id = rendered_template.template.id
-    project.template_version = rendered_template.template.version
-    project.immutable_template_files = rendered_template.template.immutable_files.copy()
-    project.automated_update = rendered_template.template.allow_update
-    project.template_metadata = json.dumps(rendered_template.metadata)
-
-
-def copy_template_to_client(rendered_template: RenderedTemplate, client, actions: Dict[str, FileAction], cleanup=True):
+def copy_template_to_client(
+    rendered_template: RenderedTemplate, client, project, actions: Dict[str, FileAction], cleanup=True
+):
     """Update project files and metadata from a template."""
+
+    def copy_template_metadata_to_client():
+        """Update template-related metadata in a project."""
+        write_template_checksum(client, rendered_template.checksums)
+
+        project.template_source = rendered_template.template.source
+        project.template_ref = rendered_template.template.reference
+        project.template_id = rendered_template.template.id
+        project.template_version = rendered_template.template.version
+        project.immutable_template_files = rendered_template.template.immutable_files.copy()
+        project.automated_update = rendered_template.template.allow_update
+        project.template_metadata = json.dumps(rendered_template.metadata)
 
     actions_mapping: Dict[FileAction, Tuple[str, str]] = {
         FileAction.APPEND: ("append", "Appending to"),
@@ -164,6 +165,8 @@ def copy_template_to_client(rendered_template: RenderedTemplate, client, actions
                 client.repository.clean()
 
             raise errors.TemplateUpdateError(f"Cannot write to '{destination}'") from e
+
+    copy_template_metadata_to_client()
 
 
 def get_sorted_actions(actions: Dict[str, FileAction]) -> Dict[str, FileAction]:

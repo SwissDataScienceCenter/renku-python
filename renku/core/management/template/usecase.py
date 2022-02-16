@@ -31,7 +31,6 @@ from renku.core.management.migrate import is_renku_project
 from renku.core.management.template.template import (
     FileAction,
     TemplateAction,
-    copy_template_metadata_to_client,
     copy_template_to_client,
     fetch_templates_source,
     get_file_actions,
@@ -194,8 +193,7 @@ def _set_or_update_project_from_template(
     )
 
     if not dry_run:
-        copy_template_to_client(rendered_template=rendered_template, client=client, actions=actions)
-        copy_template_metadata_to_client(rendered_template=rendered_template, client=client, project=project)
+        copy_template_to_client(rendered_template=rendered_template, client=client, project=project, actions=actions)
         project_gateway.update_project(project)
 
     return rendered_template, actions
