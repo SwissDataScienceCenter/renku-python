@@ -85,8 +85,8 @@ class ActivityGraphViewModel:
 
             graph = Graph(nodes.values(), edges)
 
-            shortest_node_width = 2 ** 64
-            shortest_node_height = 2 ** 64
+            shortest_node_width = 2**64
+            shortest_node_height = 2**64
 
             for node in nodes.values():
                 node.view = NodeViewer(node.data[0])

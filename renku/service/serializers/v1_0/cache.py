@@ -15,23 +15,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Context for jobs."""
-import contextlib
-import time
+"""Renku service cache serializers."""
 
-from redis import BusyLoadingError
+from marshmallow import fields
 
-from renku.service.jobs.queues import WorkerQueues
+from renku.service.serializers.common import RenkuSyncSchema
+from renku.service.serializers.rpc import JsonRPCResponse
 
 
-@contextlib.contextmanager
-def enqueue_retry(queue, retry=3):
-    """Ensure job gets queued."""
-    count = 0
-    while count < retry:
-        try:
-            yield WorkerQueues.get(queue)
-        except (OSError, IOError, BusyLoadingError):
-            time.sleep(2**count)
-            count += 1
-        break
+class ProjectMigrateResponse_1_0(RenkuSyncSchema):
+    """Response schema for project migrate."""
+
+    was_migrated = fields.Boolean()
+    template_migrated = fields.Boolean()
+    docker_migrated = fields.Boolean()
+    messages = fields.List(fields.String)
+
+
+class ProjectMigrateResponseRPC_1_0(JsonRPCResponse):
+    """RPC response schema for project migrate."""
+
+    result = fields.Nested(ProjectMigrateResponse_1_0)

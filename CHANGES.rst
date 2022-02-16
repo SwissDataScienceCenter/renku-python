@@ -18,6 +18,45 @@
 Changes
 =======
 
+`1.0.6 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.5...v1.0.6>`__ (2022-02-15)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix file size in dataset imported from renku
+   (`#2637 <https://github.com/SwissDataScienceCenter/renku-python/issues/2637>`__)
+   (`fc58c81 <https://github.com/SwissDataScienceCenter/renku-python/commit/fc58c8100ebb0ecb31038d21f899ae953758a04d>`__)
+-  **service:** bump Pillow to 9.0+ to fix security vulnerability
+   (`#2645 <https://github.com/SwissDataScienceCenter/renku-python/issues/2645>`__)
+   (`6002279 <https://github.com/SwissDataScienceCenter/renku-python/commit/6002279767c3b2ce9cfe2ee56691a47c8869780d>`__)
+-  **service:** remove json requirement from project.lock_status
+   (`#2676 <https://github.com/SwissDataScienceCenter/renku-python/issues/2676>`__)
+   (`7744a2d <https://github.com/SwissDataScienceCenter/renku-python/commit/7744a2d629950bad13d9d0374ba11e0841a4a962>`__)
+
+Features
+~~~~~~~~
+
+-  **service:** expose warnings and errors on cache.migrate endpoint
+   (`#2681 <https://github.com/SwissDataScienceCenter/renku-python/issues/2681>`__)
+   (`8d4db90 <https://github.com/SwissDataScienceCenter/renku-python/commit/8d4db905598a512f2e351f081d519cf3295fd14b>`__)
+
+
+`1.0.5 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.4...v1.0.5>`__ (2022-02-07)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** replace ``cwlgen`` with ``cwl-utils``
+   (`#2603 <https://github.com/SwissDataScienceCenter/renku-python/issues/2603>`__)
+   (`ab2e9cf <https://github.com/SwissDataScienceCenter/renku-python/commit/ab2e9cf0b1f0c63a025bd6e09fffd4ab350a0d48>`__)
+
+-  **core:** fix jinja2 dependency not being installed by pip
+   (`#2613 <https://github.com/SwissDataScienceCenter/renku-python/issues/2613>`__)
+   (`6effa0e <https://github.com/SwissDataScienceCenter/renku-python/commit/6effa0efe7fe093119212d11a05515cd5f8cdeab>`__)
+
+
 `1.0.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.3...v1.0.4>`__ (2022-01-28)
 -------------------------------------------------------------------------------------------------------
 
