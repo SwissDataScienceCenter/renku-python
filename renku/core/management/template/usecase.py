@@ -27,6 +27,7 @@ from renku.core.commands.view_model.template import TemplateChangeViewModel, Tem
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.project_gateway import IProjectGateway
+from renku.core.management.migrate import is_renku_project
 from renku.core.management.template.template import (
     FileAction,
     TemplateAction,
@@ -48,10 +49,19 @@ def list_templates(source, reference) -> List[TemplateViewModel]:
     return [TemplateViewModel.from_template(t) for t in templates_source.templates]
 
 
-def show_template(source, reference, id) -> TemplateViewModel:
+@inject.autoparams("client_dispatcher")
+def show_template(source, reference, id, client_dispatcher: IClientDispatcher) -> TemplateViewModel:
     """Show template details."""
-    templates_source = fetch_templates_source(source=source, reference=reference)
-    template = select_template(templates_source=templates_source, id=id)
+    if source or id:
+        templates_source = fetch_templates_source(source=source, reference=reference)
+        template = templates_source.get_template(id=id, reference=None)
+    elif is_renku_project():
+        metadata = TemplateMetadata.from_client(client=client_dispatcher.current_client)
+
+        templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
+        template = templates_source.get_template(id=metadata.id, reference=None)
+    else:
+        raise errors.ParameterError("No Renku project found")
 
     return TemplateViewModel.from_template(template)
 
@@ -80,8 +90,6 @@ def set_template(
 
     if project.template_source and not force:
         raise errors.TemplateUpdateError("Project already has a template: To set a template use '-f/--force' flag")
-    if not client.has_template_checksum() and not interactive:
-        raise errors.TemplateUpdateError("Required template metadata doesn't exist: Use '-i/--interactive' flag")
 
     templates_source = fetch_templates_source(source=source, reference=reference)
 

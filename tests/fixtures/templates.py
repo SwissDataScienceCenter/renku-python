@@ -241,8 +241,8 @@ def client_with_template(client, rendered_template, templates_source, client_dat
 
         client.template_files = [client.path / f for f in rendered_template.get_files()]
 
-        client.repository.add(all=True)
-        client.repository.commit("Set a dummy template")
+    client.repository.add(all=True)
+    client.repository.commit("Set a dummy template")
 
     yield client
 

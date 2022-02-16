@@ -28,7 +28,7 @@ def list_templates_command():
 
 def show_template_command():
     """Command to show template details."""
-    return Command().command(show_template)
+    return Command().command(show_template).with_database()
 
 
 def set_template_command():

@@ -24,6 +24,7 @@ import pytest
 from packaging.version import Version
 
 from renku.cli import cli
+from renku.core.utils.contexts import chdir
 from tests.utils import format_result_exception, write_and_commit_file
 
 TEMPLATES_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
@@ -75,10 +76,33 @@ def test_template_show(isolated_runner):
     sys.argv = command
 
     try:
-        result = isolated_runner.invoke(cli, command + ["--template", "python-minimal"])
+        result = isolated_runner.invoke(cli, command + ["R-minimal"])
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "Name: Basic Python (3.9) Project" in result.output
+        assert "Name: Basic R (4.0.5) Project" in result.output
+    finally:
+        sys.argv = argv
+
+
+def test_template_show_no_id(runner, client):
+    """Test show current project's template."""
+    result = runner.invoke(cli, ["template", "show"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Name: Basic Python (3.9) Project" in result.output
+
+
+def test_template_show_no_id_outside_project(isolated_runner):
+    """Test show with no id."""
+    command = ["template", "show"]
+    argv = sys.argv
+    sys.argv = command
+
+    try:
+        result = isolated_runner.invoke(cli, command)
+
+        assert 2 == result.exit_code, format_result_exception(result)
+        assert "No Renku project found" in result.output
     finally:
         sys.argv = argv
 
@@ -111,7 +135,7 @@ def test_template_set_failure(runner, client, client_database_injection_manager)
 
 def test_template_set(runner, client, client_database_injection_manager):
     """Test setting a new template in a project."""
-    result = runner.invoke(cli, ["template", "set", "--force", "--template-id", "R-minimal"])
+    result = runner.invoke(cli, ["template", "set", "--force", "R-minimal"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
@@ -122,7 +146,7 @@ def test_template_set_overwrites_modified(runner, client, client_database_inject
     """Test setting a new template in a project overwrite modified files."""
     write_and_commit_file(client.repository, "Dockerfile", "my-modifications")
 
-    result = runner.invoke(cli, ["template", "set", "--force", "--template-id", "R-minimal"])
+    result = runner.invoke(cli, ["template", "set", "--force", "R-minimal"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
@@ -136,7 +160,7 @@ def test_template_set_interactive(runner, client, client_database_injection_mana
     """Test setting a template in interactive mode."""
     write_and_commit_file(client.repository, "Dockerfile", "my-modifications")
 
-    result = runner.invoke(cli, ["template", "set", "-f", "-t", "R-minimal", "-i"], input=f"{overwrite}\n" * 420)
+    result = runner.invoke(cli, ["template", "set", "-f", "R-minimal", "-i"], input=f"{overwrite}\n" * 420)
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
@@ -151,7 +175,7 @@ def test_template_set_preserve_renku_version(runner, client):
     new_content = re.sub(r"^\s*ARG RENKU_VERSION=(.+)$", "ARG RENKU_VERSION=0.0.42", content, flags=re.MULTILINE)
     write_and_commit_file(client.repository, "Dockerfile", new_content)
 
-    result = runner.invoke(cli, ["template", "set", "-f", "-t", "R-minimal", "--interactive"], input="y\n" * 420)
+    result = runner.invoke(cli, ["template", "set", "-f", "R-minimal", "--interactive"], input="y\n" * 420)
 
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -165,7 +189,7 @@ def test_template_set_dry_run(runner, client):
     """Test set dry-run doesn't make any changes."""
     commit_sha_before = client.repository.head.commit.hexsha
 
-    result = runner.invoke(cli, ["template", "set", "-f", "-t", "R-minimal", "--dry-run"])
+    result = runner.invoke(cli, ["template", "set", "-f", "R-minimal", "--dry-run"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert not client.repository.is_dirty()
@@ -177,7 +201,7 @@ def test_template_update(runner, client, client_database_injection_manager):
     """Test updating a template."""
     result = runner.invoke(
         cli,
-        ["template", "set", "-f", "-t", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.1.10"]
+        ["template", "set", "-f", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.1.10"]
         + ["-p", "description=fixed-version"],
     )
 
@@ -215,7 +239,7 @@ def test_template_update_dry_run(runner, client):
     """Test update dry-run doesn't make any changes."""
     result = runner.invoke(
         cli,
-        ["template", "set", "-f", "-t", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.1.10"]
+        ["template", "set", "-f", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.1.10"]
         + ["-p", "description=fixed-version"],
     )
 
@@ -232,8 +256,6 @@ def test_template_update_dry_run(runner, client):
 
 def test_git_hook_for_modified_immutable_template_files(runner, client_with_template):
     """Test check for modified immutable template files."""
-    from renku.core.utils.contexts import chdir
-
     (client_with_template.path / "immutable.file").write_text("Locally modified immutable files")
 
     with chdir(client_with_template.path):
@@ -243,3 +265,13 @@ def test_git_hook_for_modified_immutable_template_files(runner, client_with_temp
         result = runner.invoke(cli, ["check-immutable-template-files", "immutable.file"])
         assert result.exit_code == 1
         assert "immutable.file" in result.output
+
+
+def test_template_update_with_parameters(runner, client_with_template):
+    """Test check for modified immutable template files."""
+    result = runner.invoke(cli, ["template", "update"])
+    assert result.exit_code == 0, result.output
+
+    result = runner.invoke(cli, ["check-immutable-template-files", "immutable.file"])
+    assert result.exit_code == 1
+    assert "immutable.file" in result.output

@@ -25,8 +25,8 @@ listed by using:
 
     $ renku template ls
 
-    INDEX  ID              PARAMETERS
-    -----  --------------  ------------
+    INDEX  ID
+    -----  --------------
         1  python-minimal
         2  R-minimal
         3  julia-minimal
@@ -37,14 +37,15 @@ You can use other sources of templates that reside inside a git repository:
 
     $ renku template ls --source https://github.com/SwissDataScienceCenter/contributed-project-templates
 
-    INDEX  ID              PARAMETERS
-    -----  --------------  ------------
+    INDEX  ID
+    -----  --------------
         1  python-minimal
         2  R-minimal
         3  julia-minimal
 
-``renku template show`` command can be used to see detailed information about a
-single template.
+``renku template show <template-id>`` command can be used to see detailed
+information about a single template. If no template ID is passed, then it shows
+current project's template.
 
 
 Set a template
@@ -54,13 +55,13 @@ You can change a project's template using ``renku template set`` command:
 
 .. code-block:: console
 
-    $ renku template set --id <template-id>
+    $ renku template set <template-id>
 
 or use a template from a different source:
 
 .. code-block:: console
 
-    $ renku template set --id <template-id> --source <template-repo-url>
+    $ renku template set <template-id> --source <template-repo-url>
 
 This command fails if the project already has a template. Use ``--force`` flag
 to force-change the template.
@@ -84,20 +85,23 @@ If an update is available, this commands updates all project's files that are
 not modified locally by the project. Pass ``--interactive`` flag to select
 which files to keep or overwrite.
 
+Passing ``--dry-run`` flags shows the newest available template version and a
+list of files that will be updated.
+
 .. note::
 
-    You can set a fixed template version for a project by passing a
+    You can specify a template version for a project by passing a
     ``--reference`` when setting it (or when initializing a project). This
     approach only works for templates from sources other than Renku because
-    Renku templates are bound to the Renku version. Note that a reference
-    should be a git tag or commit SHA. If you set a git branch as a reference
-    than the template can still be updated.
+    Renku templates are bound to the Renku version. Note that although a
+    reference can be a git tag, branch or commit SHA, it's recommended to use
+    only git tags as a reference.
 
 .. note::
 
-    Passing ``--force`` flag causes Renku to update the template anyways. It
-    causes Renku to ignore the template reference and checks the HEAD of the
-    template's Git repository for an update.
+    A template maintainer can mark a template an not-updatable. In this case,
+    ``renku update`` refuses to update the project. Passing ``--force`` flag
+    causes Renku to update the template anyways.
 
 .. note::
 
@@ -148,8 +152,8 @@ def list_templates(source, reference, verbose):
 @click.option(
     "-r", "--reference", default=None, help="Specify the reference to checkout on the remote template repository"
 )
-@click.option("-t", "--template", "--template-id", "template", help="Provide the id of the template to use")
-def show_template(source, reference, template):
+@click.argument("template-id", required=False, default=None)
+def show_template(source, reference, template_id):
     """Show detailed template information for a single template."""
     from renku.cli.utils.callback import ClickCallback
     from renku.core.commands.template import show_template_command
@@ -158,7 +162,7 @@ def show_template(source, reference, template):
         show_template_command()
         .with_communicator(ClickCallback())
         .build()
-        .execute(source=source, reference=reference, id=template)
+        .execute(source=source, reference=reference, id=template_id)
     )
     _print_template(result.output)
 
@@ -168,7 +172,6 @@ def show_template(source, reference, template):
 @click.option(
     "-r", "--reference", default=None, help="Specify the reference to checkout on the remote template repository"
 )
-@click.option("-t", "--template", "--template-id", "id", help="Provide the id of the template to use")
 @click.option(
     "-p",
     "--parameter",
@@ -184,7 +187,8 @@ def show_template(source, reference, template):
 @click.option("-f", "--force", is_flag=True, help="Override existing template")
 @click.option("-i", "--interactive", is_flag=True, help="Ask for overwriting files or parameter values")
 @click.option("-n", "--dry-run", is_flag=True, help="Show what would have been changed")
-def set_template(source, reference, id, parameters, force, interactive, dry_run):
+@click.argument("template-id", required=False, default=None)
+def set_template(source, reference, template_id, parameters, force, interactive, dry_run):
     """Set a template for a project."""
     from renku.cli.utils.callback import ClickCallback
     from renku.core.commands.template import set_template_command
@@ -196,7 +200,7 @@ def set_template(source, reference, id, parameters, force, interactive, dry_run)
         .execute(
             source=source,
             reference=reference,
-            id=id,
+            id=template_id,
             input_parameters=parameters,
             force=force,
             interactive=interactive,

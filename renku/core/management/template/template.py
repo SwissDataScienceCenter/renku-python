@@ -485,7 +485,7 @@ class RepositoryTemplates(TemplatesSource):
 
     def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
         """Return a template at a specific reference."""
-        if reference is not None:
+        if reference is not None and reference != self.reference:
             try:
                 self.repository.checkout(reference=reference)
             except errors.GitError as e:
