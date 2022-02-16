@@ -19,9 +19,10 @@ spec:
         prometheus.io/path: '/metrics'
         prometheus.io/port: '8765'
       labels:
-        app.kubernetes.io/name: {{ include "renku-core.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        {{ include "call-nested" (list . "redis" "redis.fullname") }}-client: "true"
+        app.kubernetes.io/name: {{ include "renku-core.name" $ }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/deploymentVersion: {{ $version.name }}
+        {{ $.Values.global.redis.clientLabel | toYaml | nindent 8 }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -37,7 +38,7 @@ spec:
           imagePullPolicy: {{ .Values.metrics.image.pullPolicy }}
           env:
             - name: RQ_REDIS_HOST
-              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+              value: {{ $.Values.global.redis.host }}
       {{ end }}
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -51,13 +52,20 @@ spec:
           {{ end }}
           env:
             - name: REDIS_HOST
-              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+              value: {{ $.Values.global.redis.host | quote }}
             - name: REDIS_PORT
-              value: "6379"
+              value: {{ $.Values.global.redis.port | quote }}
             - name: REDIS_DATABASE
-              value: "0"
+              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+            - name: REDIS_IS_SENTINEL
+              value: {{ $.Values.global.redis.isSentinel | quote }}
             - name: REDIS_PASSWORD
-              value:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.global.redis.existingSecret }}
+                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+            - name: REDIS_NAMESPACE
+              value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ .Values.cacheDirectory }}
             - name: PROJECT_CLONE_DEPTH_DEFAULT
@@ -113,13 +121,20 @@ spec:
           args: ["worker"]
           env:
             - name: REDIS_HOST
-              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+              value: {{ $.Values.global.redis.host | quote }}
             - name: REDIS_PORT
-              value: "6379"
+              value: {{ $.Values.global.redis.port | quote }}
             - name: REDIS_DATABASE
-              value: "0"
+              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+            - name: REDIS_IS_SENTINEL
+              value: {{ $.Values.global.redis.isSentinel | quote }}
             - name: REDIS_PASSWORD
-              value:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.global.redis.existingSecret }}
+                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+            - name: REDIS_NAMESPACE
+              value: {{ $version.name }}
             - name: RENKU_JWT_TOKEN_SECRET
               value: {{ .Values.jwtTokenSecret }}
             - name: CACHE_DIR
@@ -152,13 +167,20 @@ spec:
           args: ["worker"]
           env:
             - name: REDIS_HOST
-              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+              value: {{ $.Values.global.redis.host | quote }}
             - name: REDIS_PORT
-              value: "6379"
+              value: {{ $.Values.global.redis.port | quote }}
             - name: REDIS_DATABASE
-              value: "0"
+              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+            - name: REDIS_IS_SENTINEL
+              value: {{ $.Values.global.redis.isSentinel | quote }}
             - name: REDIS_PASSWORD
-              value:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.global.redis.existingSecret }}
+                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+            - name: REDIS_NAMESPACE
+              value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ .Values.cacheDirectory }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
@@ -189,13 +211,20 @@ spec:
           args: ["scheduler"]
           env:
             - name: REDIS_HOST
-              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+              value: {{ $.Values.global.redis.host | quote }}
             - name: REDIS_PORT
-              value: "6379"
+              value: {{ $.Values.global.redis.port | quote }}
             - name: REDIS_DATABASE
-              value: "0"
+              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+            - name: REDIS_IS_SENTINEL
+              value: {{ $.Values.global.redis.isSentinel | quote }}
             - name: REDIS_PASSWORD
-              value:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.global.redis.existingSecret }}
+                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+            - name: REDIS_NAMESPACE
+              value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ .Values.cacheDirectory | quote }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
