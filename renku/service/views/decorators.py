@@ -33,7 +33,6 @@ from renku.core.errors import (
     MigrationRequired,
     RenkuException,
     TemplateUpdateError,
-    UninitializedProject,
 )
 from renku.service.cache import cache
 from renku.service.config import (
@@ -43,12 +42,16 @@ from renku.service.config import (
     RENKU_EXCEPTION_ERROR_CODE,
 )
 from renku.service.errors import (
+    IntermittentProjectIdError,
     ProgramContentTypeError,
     ProgramGitError,
     ProgramInternalError,
+    ProgramRenkuError,
     ProgramRepoUnknownError,
     ServiceError,
     UserAnonymousError,
+    UserInvalidGenericFieldsError,
+    UserOutdatedProjectError,
     UserRepoNoAccessError,
     UserRepoUrlInvalidError,
 )
@@ -148,12 +151,15 @@ def handle_validation_except(f):
         try:
             return f(*args, **kwargs)
         except ValidationError as e:
-            capture_exception(e)
+            items = squash(e.messages).items()
+            reasons = []
+            for key, value in items:
+                if key == "project_id":
+                    raise IntermittentProjectIdError(e)
+                reasons.append(f"'{key}': {', '.join(value)}")
 
-            reasons = [f"`{key}` - {', '.join(value)}" for key, value in squash(e.messages).items()]
-            error_message = f"Validation error: {'; '.join(reasons)}"
-
-            return error_response(INVALID_PARAMS_ERROR_CODE, error_message)
+            error_message = f"{'; '.join(reasons)}"
+            raise UserInvalidGenericFieldsError(e, error_message)
 
     return decorated_function
 
@@ -183,25 +189,15 @@ def handle_renku_except(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
+        except MigrationRequired as e:
+            raise UserOutdatedProjectError(e)
         except RenkuException as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
                 pass
-            capture_exception(e)
 
-            err_response = {
-                "code": RENKU_EXCEPTION_ERROR_CODE,
-                "reason": str(e),
-            }
-
-            if isinstance(e, UninitializedProject):
-                err_response["project_initialization_required"] = True
-
-            if isinstance(e, MigrationRequired):
-                err_response["migration_required"] = True
-
-            return jsonify(error=err_response)
+            raise ProgramRenkuError(e)
 
     return decorated_function
 
@@ -271,7 +267,7 @@ def accepts_json(f):
                 wrong_type = True
 
         if wrong_type:
-            raise ProgramContentTypeError(request.headers["Content-Type"], content_type)
+            raise ProgramContentTypeError(request.headers.get("Content-Type"), content_type)
 
         return f(*args, **kwargs)
 

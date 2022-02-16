@@ -18,7 +18,7 @@
 """Renku service jobs views."""
 
 from renku.service.config import SERVICE_PREFIX
-from renku.service.errors import ProjectNotFound
+from renku.service.errors import IntermittentProjectIdError
 from renku.service.serializers.jobs import JobDetailsResponseRPC, JobListResponseRPC
 from renku.service.views import result_response
 from renku.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
@@ -55,7 +55,7 @@ def list_jobs(user_data, cache):
         try:
             if job.project_id:
                 job.project = cache.get_project(user, job.project_id)
-        except ProjectNotFound:
+        except IntermittentProjectIdError:
             continue
 
         jobs.append(job)
@@ -96,7 +96,7 @@ def job_details(user_data, cache, job_id):
 
     try:
         job.project = cache.get_project(user, job.project_id)
-    except ProjectNotFound:
+    except IntermittentProjectIdError:
         pass
 
     return result_response(JobDetailsResponseRPC(), job)

@@ -22,7 +22,7 @@ from renku.service.cache.base import BaseCache
 from renku.service.cache.models.project import Project
 from renku.service.cache.models.user import User
 from renku.service.cache.serializers.project import ProjectSchema
-from renku.service.errors import ProjectNotFound
+from renku.service.errors import IntermittentProjectIdError
 
 
 class ProjectManagementCache(BaseCache):
@@ -44,12 +44,12 @@ class ProjectManagementCache(BaseCache):
         """Get user cached project."""
         try:
             record = Project.get((Project.project_id == project_id) & (Project.user_id == user.user_id))
-        except ValueError:
-            raise ProjectNotFound(project_id)
+        except ValueError as e:
+            raise IntermittentProjectIdError(e)
 
         if not record.abs_path.exists():
             record.delete()
-            raise ProjectNotFound(project_id)
+            raise IntermittentProjectIdError()
 
         return record
 

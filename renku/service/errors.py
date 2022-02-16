@@ -24,6 +24,7 @@ from renku.service.config import (
     DOCS_URL_ERRORS,
     ERROR_NOT_AVAILABLE,
     SENTRY_ENABLED,
+    SVC_ERROR_INTERMITTENT,
     SVC_ERROR_PROGRAMMING,
     SVC_ERROR_USER,
 )
@@ -113,6 +114,24 @@ class ServiceError(Exception):
             sentry = "Unavailable"
 
         self.sentry = sentry
+
+
+class UserInvalidGenericFieldsError(ServiceError):
+    """One or more fields provided by the user has an invalid value.
+
+    This is a generic error. Where possible, it would be best to create specific errors meaningful for the users.
+    """
+
+    code = SVC_ERROR_USER + 1
+    userMessage = "Some of the provided values are wrong: {wrong_values}"
+    devMessage = "Wrong values have been provided: {wrong_values}"
+
+    def __init__(self, exception=None, wrong_values=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.devMessage.format(wrong_values=wrong_values),
+            devMessage=self.devMessage.format(wrong_values=wrong_values),
+            exception=exception,
+        )
 
 
 class UserRepoUrlInvalidError(ServiceError):
@@ -207,38 +226,6 @@ class UserAnonymousError(ServiceError):
         super().__init__(exception=exception)
 
 
-class ProgramRepoUnknownError(ServiceError):
-    """Unknown error when working with the repository.
-
-    This is a fallback error and it should ideally never show up.
-    When it happens, it's best to investigate the underlying error and either
-    create a more specific error or open an issue.
-    """
-
-    code = SVC_ERROR_PROGRAMMING + 10
-    userMessage = "Fatal error occured while working on the repository."
-    devMessage = "Unexpected repository error. Git error message: {error_message}"
-
-    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
-        super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
-
-
-class ProgramGitError(ServiceError):
-    """Unknown error when working with git.
-
-    This is a fallback error and it should ideally never show up.
-    When it happens, it's best to investigate the underlying error and either
-    create a more specific error or open an issue.
-    """
-
-    code = SVC_ERROR_PROGRAMMING + 20
-    userMessage = "Fatal error occured while processing a git operation on the repository."
-    devMessage = "Unexpected git error. Git error message: {error_message}"
-
-    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
-        super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
-
-
 class UserTemplateInvalidError(ServiceError):
     """The provided URL doesn't lead to a valid template repository.
 
@@ -273,6 +260,49 @@ class UserProjectCreationError(ServiceError):
             devMessage=self.devMessage.format(error_message=error_message),
             exception=exception,
         )
+
+
+class UserOutdatedProjectError(ServiceError):
+    """The operation can be done only after updating the target project."""
+
+    code = SVC_ERROR_USER + 200
+    userMessage = "This operation requires to update the project first."
+    devMessage = "The requested operation can only be performed on an up-to-date project."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
+class ProgramRepoUnknownError(ServiceError):
+    """Unknown error when working with the repository.
+
+    This is a fallback error and it should ideally never show up.
+    When it happens, it's best to investigate the underlying error and either
+    create a more specific error or open an issue.
+    """
+
+    code = SVC_ERROR_PROGRAMMING + 10
+    userMessage = "Fatal error occured while working on the repository."
+    devMessage = "Unexpected repository error. Git error message: {error_message}"
+
+    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
+        super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
+
+
+class ProgramGitError(ServiceError):
+    """Unknown error when working with git.
+
+    This is a fallback error and it should ideally never show up.
+    When it happens, it's best to investigate the underlying error and either
+    create a more specific error or open an issue.
+    """
+
+    code = SVC_ERROR_PROGRAMMING + 20
+    userMessage = "Fatal error occured while processing a git operation on the repository."
+    devMessage = "Unexpected git error. Git error message: {error_message}"
+
+    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
+        super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
 
 
 class ProgramInternalError(ServiceError):
@@ -316,6 +346,22 @@ class ProgramProjectCreationError(ServiceError):
     def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
         super().__init__(
             devMessage=self.devMessage.format(error_message=error_message),
+            exception=exception,
+        )
+
+
+class ProgramRenkuError(ServiceError):
+    """Renku error unexpected at service level for a specific operation."""
+
+    code = SVC_ERROR_PROGRAMMING + 200
+    userMessage = "Our servers could not process the requested operation. The following details may help: {renku_error}"
+    devMessage = "Unexpected Renku exception from a service operation: {renku_error}"
+
+    def __init__(self, exception=None):
+        message = str(exception)
+        super().__init__(
+            userMessage=self.devMessage.format(renku_error=message),
+            devMessage=self.devMessage.format(renku_error=message),
             exception=exception,
         )
 
@@ -398,16 +444,25 @@ class ProgramHttpServerError(ServiceError):
         super().__init__(exception=exception, code=self.code + http_error_code)
 
 
+class IntermittentProjectIdError(ServiceError):
+    """The project id cannot be found in the cache.
+
+    This is an unexpected error possibly related to a cache malfunction, or just an unlucky case if the operation
+    was appempted just after the project was cleaned up form the local cache. The latter is unlikely to happen.
+    The culprit may be the client if it explicitly provides the project id.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 1
+    userMessage = "An unexpcted error occured. This may be a temporary problem. Please try again in a few minutes."
+    devMessage = (
+        "Project id cannot be found. It may be a temporary problem. Check the sentry exception for further details."
+    )
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
 # NOTE: old errors
-
-
-class ProjectNotFound(RenkuException):
-    """Project reference not found exception."""
-
-    def __init__(self, project_id):
-        """Build a custom message."""
-        message = f'project_id "{project_id}" not found'
-        super(ProjectNotFound, self).__init__(message)
 
 
 class IdentificationError(RenkuException):

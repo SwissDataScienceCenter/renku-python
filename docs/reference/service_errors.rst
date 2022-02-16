@@ -67,4 +67,4 @@ List of available errors
    :show-inheritance:
    :member-order: bysource
    :exclude-members: AuthenticationTokenMissing, IdentificationError, OperationNotSupported,
-       ProjectNotFound, RenkuOpTimeoutError, RenkuServiceLockError
+       RenkuOpTimeoutError, RenkuServiceLockError

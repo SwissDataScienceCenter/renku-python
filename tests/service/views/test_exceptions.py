@@ -22,7 +22,12 @@ import uuid
 import pytest
 
 from renku.service.config import SVC_ERROR_PROGRAMMING
-from renku.service.errors import ProgramContentTypeError, UserAnonymousError, UserRepoUrlInvalidError
+from renku.service.errors import (
+    IntermittentProjectIdError,
+    ProgramContentTypeError,
+    UserAnonymousError,
+    UserRepoUrlInvalidError,
+)
 from tests.utils import retry_failed
 
 
@@ -216,7 +221,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
     ],
 )
 def test_invalid_git_remote(git_url, svc_client_with_templates):
-    """Check reading manifest template."""
+    """Test error on invalid repository URL while reading template manifest file."""
     svc_client, headers, template_params = svc_client_with_templates
     template_params["url"] = git_url
     response = svc_client.get("/templates.read_manifest", query_string=template_params, headers=headers)
@@ -224,3 +229,20 @@ def test_invalid_git_remote(git_url, svc_client_with_templates):
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
     assert UserRepoUrlInvalidError().code == response.json["error"]["code"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_invalid_project_id(svc_client_with_repo):
+    """Test error on wrong project_id while showing project metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    show_payload = {
+        "project_id": project_id + "12345",
+    }
+    response = svc_client.post("/project.show", data=json.dumps(show_payload), headers=headers)
+
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert IntermittentProjectIdError().code == response.json["error"]["code"]
