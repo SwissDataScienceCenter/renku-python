@@ -18,7 +18,8 @@
 """Renku exceptions."""
 
 import os
-from typing import List
+from pathlib import Path
+from typing import List, Union
 
 import click
 
@@ -106,7 +107,7 @@ class DirtyRenkuDirectory(RenkuException):
 class ProtectedFiles(RenkuException):
     """Raise when trying to work with protected files."""
 
-    def __init__(self, ignored):
+    def __init__(self, ignored: List[Union[Path, str]]):
         """Build a custom message."""
         super(ProtectedFiles, self).__init__(
             "The following paths are protected as part of renku:"

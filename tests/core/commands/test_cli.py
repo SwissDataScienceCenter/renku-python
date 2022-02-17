@@ -335,7 +335,7 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
 
         result = isolated_runner.invoke(cli, ["--no-external-storage"] + failing_command)
         assert 2 == result.exit_code
-        assert 'Cannot use "--source" with URLs' in result.output
+        assert "Cannot use '-s/--src/--source' with URLs" in result.output
 
 
 def test_file_tracking(isolated_runner, project_init):
@@ -691,7 +691,7 @@ def test_lfs_size_limit(isolated_runner, project_init):
 
     large = Path("large")
     with large.open("w") as f:
-        f.write("x" * 1024 ** 2)
+        f.write("x" * 1024**2)
 
     result = runner.invoke(cli, ["dataset", "add", "--create", "my-dataset", str(large)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
@@ -749,7 +749,7 @@ def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
     with filepath.open("w") as f:
-        f.write("x" * 1024 ** 2)
+        f.write("x" * 1024**2)
 
     result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(filepath)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
