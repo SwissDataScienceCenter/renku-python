@@ -32,7 +32,13 @@ from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Url, get_dataset_data_dir
 from renku.core.utils.contexts import chdir
 from renku.core.utils.git import get_git_user
-from tests.utils import assert_dataset_is_mutated, format_result_exception, retry_failed, with_dataset
+from tests.utils import (
+    assert_dataset_is_mutated,
+    format_result_exception,
+    retry_failed,
+    with_dataset,
+    write_and_commit_file,
+)
 
 
 @pytest.mark.integration
@@ -183,7 +189,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     [
         ("10.5281/zenodo.5979642342", "record not found"),
         ("10.7910/DVN/S8MSVFXXXX", "provider DVN not found"),
-        ("10.5281/zenodo.1494915", "no files have been found"),
+        ("10.5281/zenodo.4557383", "no files have been found"),  # A restricted dataset
         ("https://zenodo.org/record/2621201248", "record not found"),
         ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX", "record not found"),
     ],
@@ -288,17 +294,15 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
     assert "Data Key 2002-2006" in result.output
 
 
-# @pytest.mark.skip("has an issue with imported dataset getting mutated and losing same_as. look into this later")
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
     "uri",
     [
-        "https://dev.renku.ch/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0",
-        "https://dev.renku.ch/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0/",
-        "https://dev.renku.ch/projects/renku-test-projects/dataset-import/datasets/"
-        "860f6b5b-4636-4c83-b6a9-b38ef198bcc0",
+        "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0",
+        "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0/",
+        "https://dev.renku.ch/projects/renku-test-projects/dataset-import/datasets/860f6b5b46364c83b6a9b38ef198bcc0",
         "https://dev.renku.ch/projects/renku-test-projects/dataset-import/datasets/remote-dataset/",
     ],
 )
@@ -315,7 +319,7 @@ def test_dataset_import_renku_provider(runner, client, uri, load_dataset_with_in
     assert "business-employment-data-december-2020-quarter-csv.zip" in [Path(f.entity.path).name for f in dataset.files]
 
     # NOTE: Check that schema:sameAs is always set to canonical dataset URI regardless of import URI
-    canonical_uri = "https://dev.renku.ch/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0"
+    canonical_uri = "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0"
     assert dataset.same_as.url["@id"] == canonical_uri
 
 
@@ -326,7 +330,7 @@ def test_dataset_import_renku_provider(runner, client, uri, load_dataset_with_in
     "uri",
     [
         "https://dev.renku.ch/projects/renku-test-projects/test-subgroup-1/dataset-import-in-sub-groups/datasets/"
-        "b13b7293-3068-4b86-9741-760c7c5b5e83",
+        "b13b729330684b869741760c7c5b5e83",
         "https://dev.renku.ch/projects/renku-test-projects/test-subgroup-1/dataset-import-in-sub-groups/datasets/"
         "remote-dataset",
     ],
@@ -342,8 +346,9 @@ def test_dataset_import_renku_provider_with_subgroups(runner, client, uri, load_
     assert "business-employment-data-december-2020-quarter-csv.zip" in [Path(f.entity.path).name for f in dataset.files]
 
     # NOTE: Check that schema:sameAs is always set to canonical dataset URI regardless of import URI
-    canonical_uri = "https://dev.renku.ch/datasets/b13b7293-3068-4b86-9741-760c7c5b5e83"
+    canonical_uri = "https://dev.renku.ch/datasets/b13b729330684b869741760c7c5b5e83"
     assert dataset.same_as.url["@id"] == canonical_uri
+    assert dataset.derived_from is None
 
 
 @pytest.mark.integration
@@ -352,7 +357,7 @@ def test_dataset_import_renku_provider_with_subgroups(runner, client, uri, load_
 def test_dataset_import_renkulab_dataset_with_image(runner, project, client, client_database_injection_manager):
     """Test dataset import from Renkulab projects."""
     result = runner.invoke(
-        cli, ["dataset", "import", "https://dev.renku.ch/datasets/4f36f891-bb7c-4b2b-ab13-7633cc270a40"], input="y"
+        cli, ["dataset", "import", "https://dev.renku.ch/datasets/4f36f891bb7c4b2bab137633cc270a40"], input="y"
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
@@ -381,7 +386,7 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client, cli
 @pytest.mark.vcr
 def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, client, load_dataset_with_injection):
     """Test dataset imported from Renku projects have correct directory hierarchy."""
-    url = "https://dev.renku.ch/datasets/1a637fd1-a7a6-4d1f-b9aa-157e7033cd1c"
+    url = "https://dev.renku.ch/datasets/1a637fd1a7a64d1fb9aa157e7033cd1c"
     assert 0 == runner.invoke(cli, ["dataset", "import", "--yes", "--name", "remote", url]).exit_code
 
     dataset = load_dataset_with_injection("remote", client)
@@ -398,7 +403,7 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, cli
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2"])
+@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
 def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
     from renku.core.commands.providers import renku
@@ -456,7 +461,7 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
             "non-existing-dataset",
         ),
         (
-            "https://dev.renku.ch/projects/invalid/project-path/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0",
+            "https://dev.renku.ch/projects/invalid/project-path/datasets/860f6b5b46364c83b6a9b38ef198bcc0",
             "remote-dataset",
         ),
     ],
@@ -474,7 +479,7 @@ def test_dataset_import_renku_provider_errors(runner, project, uri, name):
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2"])
+@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
 def test_dataset_reimport_renkulab_dataset(runner, project, url):
     """Test dataset import for existing dataset"""
     assert 0 == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
@@ -490,7 +495,7 @@ def test_dataset_reimport_renkulab_dataset(runner, project, url):
 def test_renku_dataset_import_missing_lfs_objects(runner, project):
     """Test importing a dataset with missing LFS objects fails."""
     result = runner.invoke(
-        cli, ["dataset", "import", "--yes", "https://dev.renku.ch/datasets/5c11e321-2bea-458c-94ce-abccf4257a54"]
+        cli, ["dataset", "import", "--yes", "https://dev.renku.ch/datasets/5c11e3212bea458c94ceabccf4257a54"]
     )
 
     assert 1 == result.exit_code
@@ -884,29 +889,48 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
         (["-s", "docker"], "data/remote/docker/r/Dockerfile"),
         (["-s", "docker/r/Dockerfile"], "data/remote/Dockerfile"),
         # add data to a non-existing destination
-        (["-s", "docker", "-d", "new"], "data/remote/new/docker/r/Dockerfile"),
-        (["-s", "docker/r", "-d", "new"], "data/remote/new/r/Dockerfile"),
-        (["-s", "docker/r/Dockerfile", "-d", "new"], "data/remote/new/Dockerfile"),
-        # add data to an existing destination
+        (["-s", "docker", "-d", "new"], "data/remote/new/r/Dockerfile"),
+        (["-s", "docker/r", "-d", "new"], "data/remote/new/Dockerfile"),
+        (["-s", "docker/r/Dockerfile", "-d", "path/with/sub-dirs/new"], "data/remote/path/with/sub-dirs/new"),
+    ],
+)
+@pytest.mark.vcr
+def test_add_from_git_to_new_path(runner, client, params, path, load_dataset_with_injection):
+    """Test add data from a git repository with no destination or to a non-existing destination."""
+    remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+    assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
+
+    result = runner.invoke(cli, ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params)
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert Path(path).exists()
+
+    file = load_dataset_with_injection("remote", client).find_file(path)
+    assert file.source == remote
+    assert file.based_on.url == remote
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "params,path",
+    [
         (["-s", "docker", "-d", "existing"], "data/remote/existing/docker/r/Dockerfile"),
         (["-s", "docker/r", "-d", "existing"], "data/remote/existing/r/Dockerfile"),
         (["-s", "docker/r/Dockerfile", "-d", "existing"], "data/remote/existing/Dockerfile"),
     ],
 )
-@retry_failed
 @pytest.mark.vcr
-def test_add_data_from_git(runner, client, params, path, load_dataset_with_injection):
-    """Test add data to datasets from a git repository."""
+def test_add_from_git_to_existing_path(runner, client, params, path, load_dataset_with_injection):
+    """Test add data to datasets from a git repository to an existing path."""
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
-    command = ["dataset", "add"]
-    result = runner.invoke(
-        cli,
-        command + ["remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", "-d", "existing/LICENSE", remote],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
 
-    result = runner.invoke(cli, command + ["remote", "--ref", "0.3.0", remote] + params, catch_exceptions=False)
+    write_and_commit_file(client.repository, client.path / "data" / "remote" / "existing" / ".gitkeep", "")
+
+    result = runner.invoke(cli, ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params)
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert Path(path).exists()
@@ -923,17 +947,41 @@ def test_add_data_from_git(runner, client, params, path, load_dataset_with_injec
 @pytest.mark.parametrize(
     "params,files",
     [
+        (["-s", "docker*"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
+        (["-s", "docker/*"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
+        (["-s", "docker/**"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
+        (["-s", "docker/*/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
+        (["-s", "docker/*/fix*sh"], {"fix-permissions.sh"}),  # Multiple files copied to the same destination
+        (["-s", "*/**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
+    ],
+)
+@pytest.mark.vcr
+def test_add_from_git_with_wildcards_to_new_path(runner, client, params, files, load_dataset_with_injection):
+    """Test add data from a git repository using wildcards to a non-existing destination."""
+    remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+
+    result = runner.invoke(
+        cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", "-d", "new", remote] + params
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert files == set(os.listdir("data/remote/new"))
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "params,files",
+    [
         (["-s", "docker*"], {"docker"}),
         (["-s", "docker/*"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
         (["-s", "docker/**"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
         (["-s", "docker/*/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
-        (["-s", "**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
+        (["-s", "docker/*/fix*sh"], {"fix-permissions.sh"}),
+        (["-s", "*/**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
     ],
 )
-@retry_failed
 @pytest.mark.vcr
-def test_add_data_from_git_with_wildcards(runner, client, params, files):
-    """Test add data using wildcards to datasets from a git repository."""
+def test_add_from_git_with_wildcards_to_existing_path(runner, client, params, files, load_dataset_with_injection):
+    """Test add data from a git repository using wildcards with no destination or to a non-existing destination."""
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     result = runner.invoke(
@@ -941,12 +989,6 @@ def test_add_data_from_git_with_wildcards(runner, client, params, files):
     )
     assert 0 == result.exit_code, format_result_exception(result)
     assert files == set(os.listdir("data/remote"))
-
-    result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--ref", "0.5.2", "-d", "new", remote] + params, catch_exceptions=False
-    )
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert files == set(os.listdir("data/remote/new"))
 
 
 @pytest.mark.integration
@@ -1105,13 +1147,13 @@ def test_dataset_update_dataverse(client, runner, doi, load_dataset_with_injecti
 @pytest.mark.vcr
 def test_dataset_update_renku(client, runner, load_dataset_with_injection, client_database_injection_manager):
     """Test updating datasets from renku provider."""
-    uri = "https://dev.renku.ch/datasets/860f6b5b-4636-4c83-b6a9-b38ef198bcc0"
+    uri = "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0"
     assert 0 == runner.invoke(cli, ["dataset", "import", "--name", "remote-dataset", uri], input="y").exit_code
 
     with client_database_injection_manager(client):
         with with_dataset(client, name="remote-dataset", commit_database=True) as dataset:
             # NOTE: To mock an update we schema:sameAs to a dataset that has an update
-            update_uri = "https://dev.renku.ch/datasets/04b463b0-1b51-4833-b236-186a941f6259"
+            update_uri = "https://dev.renku.ch/datasets/04b463b01b514833b236186a941f6259"
             dataset.same_as = Url(url_id=update_uri)
 
     client.repository.add(all=True)
@@ -1125,7 +1167,7 @@ def test_dataset_update_renku(client, runner, load_dataset_with_injection, clien
     after_dataset = load_dataset_with_injection("remote-dataset", client)
     assert after_dataset.id != before_dataset.id
     assert after_dataset.derived_from is None
-    latest_uri = "https://dev.renku.ch/datasets/e55070d9-95b3-4b9b-a319-c6e66f883f00"
+    latest_uri = "https://dev.renku.ch/datasets/e55070d995b34b9ba319c6e66f883f00"
     assert latest_uri == after_dataset.same_as.url["@id"]
 
     before_filenames = [Path(f.entity.path).name for f in before_dataset.files]
@@ -1309,7 +1351,7 @@ def test_import_from_renku_project(tmpdir, client, runner, load_dataset_with_inj
             "-s",
             "data/testing-create-04/ie_data_with_TRCAPE.xls",
             "-d",
-            "new-directory",
+            "new-directory/ie_data_with_TRCAPE.xls",
             "--ref",
             "97f907e",
             url,
@@ -1620,10 +1662,10 @@ def test_immutability_after_update(client, runner, load_dataset_with_injection):
 @pytest.mark.parametrize(
     "url",
     [
-        "https://dev.renku.ch/datasets/9dde49ee-031a-4568-b193-a58892e26534",
-        "https://dev.renku.ch/datasets/6baee173-9338-4679-8a80-03f4b1a9a86e",
-        "https://dev.renku.ch/datasets/b956c47f-9182-4e6d-8d5a-c161b97c195c",
-        "https://dev.renku.ch/datasets/0dc3a120-e4af-4a4c-a888-70d1719c4631",
+        "https://dev.renku.ch/datasets/9dde49ee031a4568b193a58892e26534",
+        "https://dev.renku.ch/datasets/6baee173933846798a8003f4b1a9a86e",
+        "https://dev.renku.ch/datasets/b956c47f91824e6d8d5ac161b97c195c",
+        "https://dev.renku.ch/datasets/0dc3a120e4af4a4ca88870d1719c4631",
     ],
 )
 @retry_failed
@@ -1633,8 +1675,8 @@ def test_import_returns_last_dataset_version(runner, client, url, load_dataset_w
 
     dataset = load_dataset_with_injection("my-dataset", client)
 
-    initial_identifier = "9dde49ee-031a-4568-b193-a58892e26534"
-    latest_identifier = "0dc3a120-e4af-4a4c-a888-70d1719c4631"
+    initial_identifier = "9dde49ee031a4568b193a58892e26534"
+    latest_identifier = "0dc3a120e4af4a4ca88870d1719c4631"
     assert dataset.identifier not in [initial_identifier, latest_identifier]
     assert f"https://dev.renku.ch/datasets/{latest_identifier}" == dataset.same_as.url["@id"]
 
