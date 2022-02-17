@@ -150,4 +150,3 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert response
     assert {"result"} == set(response.json.keys())
     assert expected_url == response.json["result"]["url"]
-    assert rm_remote() is True

@@ -42,6 +42,9 @@ spec:
       volumes:
         - name: shared-volume
           emptyDir: {}
+        {{- include "certificates.volumes" $ | nindent 8 }}
+      initContainers:
+        {{- include "certificates.initContainer" $ | nindent 8 }}
       containers:
       {{ if $.Values.metrics.enabled }}
         - name: {{ $.Chart.Name}}-rqmetrics
@@ -92,10 +95,12 @@ spec:
               value: /renku/openapi.json
             - name: SERVICE_LOG_LEVEL
               value: {{ $.Values.logLevel }}
+            - name: SENTRY_ENABLED
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
-              value: {{ $.Values.sentry.sample_rate | quote }}
+              value: {{ $.Values.sentry.sampleRate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             - name: DEBUG_MODE
@@ -112,9 +117,11 @@ spec:
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ $.Values.global.renku.domain }}
+            {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ $.Values.cacheDirectory }}
+            {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
           ports:
             - name: http
               containerPort: 8080
@@ -158,19 +165,23 @@ spec:
               value: {{ $.Values.cleanupProjectsTTL | quote }}
             - name: DEPLOYMENT_LOG_LEVEL
               value: {{ $.Values.logLevel }}
+            - name: SENTRY_ENABLED
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
-              value: {{ $.Values.sentry.sample_rate | quote }}
+              value: {{ $.Values.sentry.sampleRate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ $.Values.global.renku.domain }}
+            {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ $.Values.cacheDirectory }}
+            {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
 
         - name: {{ $.Chart.Name }}-management-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
@@ -199,19 +210,23 @@ spec:
               value: {{ $.Values.cleanupProjectsTTL | quote }}
             - name: DEPLOYMENT_LOG_LEVEL
               value: {{ $.Values.logLevel }}
+            - name: SENTRY_ENABLED
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
-              value: {{ $.Values.sentry.sample_rate | quote }}
+              value: {{ $.Values.sentry.sampleRate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ $.Values.global.renku.domain }}
+            {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ $.Values.cacheDirectory }}
+            {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
 
         - name: {{ $.Chart.Name }}-scheduler
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
@@ -232,12 +247,17 @@ spec:
               value: {{ $.Values.cacheDirectory | quote }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
               value: {{ $.Values.cleanupInterval | quote }}
+            - name: SENTRY_ENABLED
+              value: {{ $.Values.sentry.enabled | quote }}
             - name: SENTRY_DSN
               value: {{ $.Values.sentry.dsn }}
             - name: SENTRY_SAMPLE_RATE
-              value: {{ $.Values.sentry.sample_rate | quote }}
+              value: {{ $.Values.sentry.sampleRate | quote }}
             - name: SENTRY_ENV
               value: {{ $.Values.sentry.environment }}
+            {{- include "certificates.env.python" $ | nindent 12 }}
+          volumeMounts:
+            {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
