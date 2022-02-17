@@ -37,8 +37,8 @@ from tests.utils import retry_failed
 @pytest.mark.parametrize(
     "url",
     [
-        "https://dev.renku.ch/datasets/428c3626-1c56-463d-8753-336470cc6917/",
-        "https://dev.renku.ch/datasets/0d4630e5-6ee5-42b3-bb3a-b3222da811ec",
+        "https://dev.renku.ch/datasets/428c36261c56463d8753336470cc6917/",
+        "https://dev.renku.ch/datasets/0d4630e56ee542b3bb3ab3222da811ec",
     ],
 )
 @pytest.mark.integration
