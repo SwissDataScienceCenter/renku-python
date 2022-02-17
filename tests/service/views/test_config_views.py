@@ -21,6 +21,7 @@ import json
 
 import pytest
 
+from renku.service.errors import UserNonRenkuProjectError
 from tests.utils import retry_failed
 
 
@@ -42,6 +43,21 @@ def test_config_view_show(svc_client_with_repo):
     assert keys == set(response.json["result"]["config"].keys())
     assert keys == set(response.json["result"]["default"].keys())
     assert 200 == response.status_code
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_config_view_show_errors(svc_client_with_user, it_non_renku_repo_url):
+    """Check config show view."""
+    svc_client, headers, _, _ = svc_client_with_user
+    params = {"git_url": it_non_renku_repo_url}
+
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
+
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert UserNonRenkuProjectError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service

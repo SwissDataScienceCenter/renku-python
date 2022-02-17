@@ -26,20 +26,18 @@ from marshmallow import ValidationError
 from redis import RedisError
 from sentry_sdk import capture_exception, set_context
 
-from renku.core import errors
 from renku.core.errors import (
     DockerfileUpdateError,
+    GitCommandError,
+    GitError,
     MigrationError,
     MigrationRequired,
     RenkuException,
     TemplateUpdateError,
+    UninitializedProject,
 )
 from renku.service.cache import cache
-from renku.service.config import (
-    INVALID_PARAMS_ERROR_CODE,
-    REDIS_EXCEPTION_ERROR_CODE,
-    RENKU_EXCEPTION_ERROR_CODE,
-)
+from renku.service.config import INVALID_PARAMS_ERROR_CODE, REDIS_EXCEPTION_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.errors import (
     IntermittentAuthenticationError,
     IntermittentProjectIdError,
@@ -52,6 +50,7 @@ from renku.service.errors import (
     ServiceError,
     UserAnonymousError,
     UserInvalidGenericFieldsError,
+    UserNonRenkuProjectError,
     UserOutdatedProjectError,
     UserRepoNoAccessError,
     UserRepoUrlInvalidError,
@@ -191,6 +190,8 @@ def handle_renku_except(f):
             return f(*args, **kwargs)
         except MigrationRequired as e:
             raise UserOutdatedProjectError(e)
+        except UninitializedProject as e:
+            raise UserNonRenkuProjectError(e)
         except RenkuException as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
@@ -232,7 +233,7 @@ def handle_git_except(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
-        except errors.GitCommandError as e:
+        except GitCommandError as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
@@ -286,7 +287,7 @@ def handle_base_except(f):
         # NOTE: HTTPException are now handled in the entrypoint
         except ServiceError as e:
             return error_response_new(e)
-        except errors.GitError as e:
+        except GitError as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):

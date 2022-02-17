@@ -262,6 +262,17 @@ class UserProjectCreationError(ServiceError):
         )
 
 
+class UserNonRenkuProjectError(ServiceError):
+    """The target repository is valid but it is not a Renku project."""
+
+    code = SVC_ERROR_USER + 110
+    userMessage = "The target project is not a Renku project."
+    devMessage = "Cannot work on a non Renku project."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
 class UserOutdatedProjectError(ServiceError):
     """The operation can be done only after updating the target project."""
 
@@ -378,7 +389,7 @@ class ProgramHttpMethodError(ServiceError):
     code = SVC_ERROR_PROGRAMMING + 405
     userMessage = "One of the resources on our servers could not process the data properly."
     devMessage = (
-        "Error 405 - method not allowed. Check if you are using GET or POST as specified in the"
+        "Error 405 - method not allowed. Check if you are using GET or POST as specified in the "
         "API documentation. Mind that the service doesn't support any other method."
     )
 
@@ -482,7 +493,7 @@ class IntermittentProjectIdError(ServiceError):
 
 class IntermittentAuthenticationError(ServiceError):
     """The user credentials were received but they are not valid.
-    
+
     This may happen for a number of reasons. Triggering a new login will likely fix it.
     """
 
