@@ -24,7 +24,9 @@ from marshmallow import ValidationError
 
 from renku.core.errors import GitError
 from renku.service.errors import (
+    ProgramInvalidGenericFieldsError,
     ProgramProjectCreationError,
+    UserInvalidGenericFieldsError,
     UserProjectCreationError,
     UserRepoBranchInvalidError,
     UserRepoUrlInvalidError,
@@ -80,5 +82,22 @@ def handle_templates_create_errors(f):
             # NOTE: it's hard to determine if the error is user generated here
             error_message = str(e).strip("'").replace("_", " ")
             raise UserProjectCreationError(e, f"provide a value for {error_message}")
+
+    return decorated_function
+
+
+def handle_project_write_errors(f):
+    """Wrapper which handles writing project metadata errors."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except UserInvalidGenericFieldsError as e:
+            if "Unknown field" in str(e):
+                raise ProgramInvalidGenericFieldsError(e)
+            else:
+                raise
 
     return decorated_function

@@ -273,6 +273,24 @@ class UserOutdatedProjectError(ServiceError):
         super().__init__(exception=exception)
 
 
+class ProgramInvalidGenericFieldsError(ServiceError):
+    """One or more fields are unexpected.
+
+    This error should not be triggered by any user input, but rather by unexpected fields.
+    It is most likely a bug on the client side.
+    """
+
+    code = SVC_ERROR_PROGRAMMING + 1
+    userMessage = "There was an unexpected error while handling project data."
+    devMessage = "Unexpected fields have been provided: {wrong_values}"
+
+    def __init__(self, exception=None, wrong_values=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            devMessage=self.devMessage.format(wrong_values=wrong_values),
+            exception=exception,
+        )
+
+
 class ProgramRepoUnknownError(ServiceError):
     """Unknown error when working with the repository.
 
@@ -300,21 +318,6 @@ class ProgramGitError(ServiceError):
     code = SVC_ERROR_PROGRAMMING + 20
     userMessage = "Fatal error occured while processing a git operation on the repository."
     devMessage = "Unexpected git error. Git error message: {error_message}"
-
-    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
-        super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
-
-
-class ProgramInternalError(ServiceError):
-    """Unknown internal error.
-
-    This is an unexpected exception probably triggered at the core level.
-    Please use sentry to get more information.
-    """
-
-    code = SVC_ERROR_PROGRAMMING + 1
-    userMessage = "Our servers generated an unexpected error while processing data."
-    devMessage = "Renku service internal error. Further information: {error_message}"
 
     def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
         super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
@@ -444,11 +447,26 @@ class ProgramHttpServerError(ServiceError):
         super().__init__(exception=exception, code=self.code + http_error_code)
 
 
+class ProgramInternalError(ServiceError):
+    """Unknown internal error.
+
+    This is an unexpected exception probably triggered at the core level.
+    Please use sentry to get more information.
+    """
+
+    code = SVC_ERROR_PROGRAMMING + 900
+    userMessage = "Our servers generated an unexpected error while processing data."
+    devMessage = "Renku service internal error. Further information: {error_message}"
+
+    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
+        super().__init__(devMessage=self.devMessage.format(error_message=error_message), exception=exception)
+
+
 class IntermittentProjectIdError(ServiceError):
     """The project id cannot be found in the cache.
 
     This is an unexpected error possibly related to a cache malfunction, or just an unlucky case if the operation
-    was appempted just after the project was cleaned up form the local cache. The latter is unlikely to happen.
+    was attempted just after the project was cleaned up form the local cache. The latter is unlikely to happen.
     The culprit may be the client if it explicitly provides the project id.
     """
 

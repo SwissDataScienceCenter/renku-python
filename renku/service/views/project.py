@@ -24,6 +24,7 @@ from renku.service.controllers.project_lock_status import ProjectLockStatusCtrl
 from renku.service.controllers.project_show import ProjectShowCtrl
 from renku.service.views.api_versions import V1_0, V1_1, VersionedBlueprint
 from renku.service.views.decorators import accepts_json, handle_common_except, requires_cache, requires_identity
+from renku.service.views.error_handlers import handle_project_write_errors
 
 PROJECT_BLUEPRINT_TAG = "project"
 project_blueprint = VersionedBlueprint(PROJECT_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
@@ -59,6 +60,7 @@ def show_project_view(user_data, cache):
 
 @project_blueprint.route("/project.edit", methods=["POST"], provide_automatic_options=False, versions=[V1_0, V1_1])
 @handle_common_except
+@handle_project_write_errors
 @accepts_json
 @requires_cache
 @requires_identity

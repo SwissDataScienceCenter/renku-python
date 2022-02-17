@@ -46,6 +46,7 @@ from renku.service.errors import (
     ProgramContentTypeError,
     ProgramGitError,
     ProgramInternalError,
+    ProgramInvalidGenericFieldsError,
     ProgramRenkuError,
     ProgramRepoUnknownError,
     ServiceError,
@@ -159,6 +160,8 @@ def handle_validation_except(f):
                 reasons.append(f"'{key}': {', '.join(value)}")
 
             error_message = f"{'; '.join(reasons)}"
+            if "Unknown field" in error_message:
+                raise ProgramInvalidGenericFieldsError(e, error_message)
             raise UserInvalidGenericFieldsError(e, error_message)
 
     return decorated_function
