@@ -21,8 +21,8 @@ import re
 
 import portalocker
 import pytest
-from renku.service.errors import ProgramInvalidGenericFieldsError
 
+from renku.service.errors import ProgramInvalidGenericFieldsError
 from tests.utils import retry_failed
 
 

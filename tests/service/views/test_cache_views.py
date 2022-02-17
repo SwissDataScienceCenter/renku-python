@@ -26,8 +26,8 @@ import pytest
 
 from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
-from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
-from renku.service.errors import UserAnonymousError
+from renku.service.config import INVALID_HEADERS_ERROR_CODE
+from renku.service.errors import IntermittentFileExistsError, UserAnonymousError
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import retry_failed
 
@@ -100,7 +100,6 @@ def test_file_upload_override(svc_client, identity_headers):
         "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename)), headers=headers
     )
 
-    assert response
     assert 200 == response.status_code
     assert {"result"} == set(response.json.keys())
     assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
@@ -110,12 +109,9 @@ def test_file_upload_override(svc_client, identity_headers):
         "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename)), headers=headers
     )
 
-    assert response
     assert 200 == response.status_code
-
     assert {"error"} == set(response.json.keys())
-    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
-    assert "file exists" == response.json["error"]["reason"]
+    assert IntermittentFileExistsError().code == response.json["error"]["code"]
 
     response = svc_client.post(
         "/cache.files_upload",
@@ -144,22 +140,17 @@ def test_file_upload_same_file(svc_client, identity_headers):
         "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename)), headers=headers
     )
 
-    assert response
     assert 200 == response.status_code
-
     assert {"result"} == set(response.json.keys())
-
     assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
 
     response = svc_client.post(
         "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename)), headers=headers
     )
 
-    assert response
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
-    assert "file exists" == response.json["error"]["reason"]
+    assert IntermittentFileExistsError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service

@@ -128,7 +128,7 @@ class UserInvalidGenericFieldsError(ServiceError):
 
     def __init__(self, exception=None, wrong_values=ERROR_NOT_AVAILABLE):
         super().__init__(
-            userMessage=self.devMessage.format(wrong_values=wrong_values),
+            userMessage=self.userMessage.format(wrong_values=wrong_values),
             devMessage=self.devMessage.format(wrong_values=wrong_values),
             exception=exception,
         )
@@ -363,7 +363,7 @@ class ProgramRenkuError(ServiceError):
     def __init__(self, exception=None):
         message = str(exception)
         super().__init__(
-            userMessage=self.devMessage.format(renku_error=message),
+            userMessage=self.userMessage.format(renku_error=message),
             devMessage=self.devMessage.format(renku_error=message),
             exception=exception,
         )
@@ -478,6 +478,25 @@ class IntermittentProjectIdError(ServiceError):
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
+
+
+class IntermittentFileExistsError(ServiceError):
+    """An operation failed because one or more files were expected not to exist.
+
+    It may be a syncronization error happening when two or more concurrent operations overlap
+    and one creates content unexpected from another one.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 110
+    userMessage = "There was an error with the file '${file_name}'. Please refresh the page and try again."
+    devMessage = "Unexpected error on file '${file_name}', possibly caused by concurrent actions."
+
+    def __init__(self, exception=None, file_name=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(file_name=file_name),
+            devMessage=self.devMessage.format(file_name=file_name),
+            exception=exception,
+        )
 
 
 # NOTE: old errors
