@@ -183,7 +183,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     [
         ("10.5281/zenodo.5979642342", "record not found"),
         ("10.7910/DVN/S8MSVFXXXX", "provider DVN not found"),
-        ("10.5281/zenodo.1494915", "no files have been found"),
+        ("10.5281/zenodo.4557383", "no files have been found"),  # A restricted dataset
         ("https://zenodo.org/record/2621201248", "record not found"),
         ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX", "record not found"),
     ],
