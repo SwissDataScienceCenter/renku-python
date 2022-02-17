@@ -26,7 +26,6 @@ import pytest
 
 from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
-from renku.service.config import INVALID_HEADERS_ERROR_CODE
 from renku.service.errors import IntermittentFileExistsError, UserAnonymousError
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import retry_failed
@@ -229,14 +228,12 @@ def test_clone_projects_no_auth(svc_client, identity_headers, it_remote_repo_url
         "/cache.project_clone", data=json.dumps(payload), headers={"Content-Type": "application/json"}
     )
 
+    assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
-
-    err_message = "user identification is incorrect or missing"
-    assert err_message == response.json["error"]["reason"]
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-    assert response
+    assert 200 == response.status_code
     assert {"result"} == set(response.json.keys())
 
 
@@ -322,10 +319,9 @@ def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote
         "/cache.project_list",
         # no auth headers, expected error
     )
-    assert response
-
+    assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
     response = svc_client.get("/cache.project_list", headers=identity_headers)
 
@@ -356,9 +352,9 @@ def test_clone_projects_invalid_headers(svc_client, identity_headers, it_remote_
         "/cache.project_list",
         # no auth headers, expected error
     )
-    assert response
+    assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
     response = svc_client.get("/cache.project_list", headers=identity_headers)
 
@@ -648,7 +644,7 @@ def test_check_migrations_local(svc_client_setup):
     """Check if migrations are required for a local project."""
     svc_client, headers, project_id, _, _ = svc_client_setup
 
-    response = svc_client.get("/1.1/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
 
     assert response.json["result"]["core_compatibility_status"]["migration_required"]
@@ -668,7 +664,7 @@ def test_check_migrations_local(svc_client_setup):
 def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_url):
     """Check if migrations are required for a remote project."""
     response = svc_client.get(
-        "/1.1/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
     )
 
     assert 200 == response.status_code
@@ -687,7 +683,7 @@ def test_check_no_migrations(svc_client_with_repo):
     """Check if migrations are not required."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    response = svc_client.get("/1.1/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
     assert 200 == response.status_code
 
@@ -731,7 +727,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
     """Check migrating on a protected branch does not change cache state."""
     svc_client, headers, project_id, _, _ = svc_protected_old_repo
 
-    response = svc_client.get("/1.1/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
     assert response.json["result"]["core_compatibility_status"]["migration_required"]
 
@@ -745,7 +741,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
         m.startswith("Successfully applied") and m.endswith("migrations.") for m in response.json["result"]["messages"]
     )
 
-    response = svc_client.get("/1.1/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
     assert response.json["result"]["core_compatibility_status"]["migration_required"]
 
@@ -808,7 +804,7 @@ def test_cache_gets_synchronized(
 def test_check_migrations_remote_anonymous(svc_client, it_remote_public_repo_url):
     """Test anonymous users can check for migration of public projects."""
     response = svc_client.get(
-        "/1.1/cache.migrations_check", query_string={"git_url": it_remote_public_repo_url}, headers={}
+        "/cache.migrations_check", query_string={"git_url": it_remote_public_repo_url}, headers={}
     )
 
     assert 200 == response.status_code

@@ -26,8 +26,10 @@ from renku.service.errors import (
     IntermittentProjectIdError,
     ProgramContentTypeError,
     UserAnonymousError,
+    UserRepoNoAccessError,
     UserRepoUrlInvalidError,
 )
+from tests.fixtures.config import IT_PROTECTED_REMOTE_REPO_URL
 from tests.utils import retry_failed
 
 
@@ -246,3 +248,21 @@ def test_invalid_project_id(svc_client_with_repo):
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
     assert IntermittentProjectIdError().code == response.json["error"]["code"]
+
+
+@pytest.mark.integration
+@pytest.mark.service
+def test_user_without_permissons(svc_client_with_user):
+    """Test getting lock status for a locked project."""
+    svc_client, headers, _, _ = svc_client_with_user
+    headers["Authorization"] = "Bearer 123abc"
+
+    response = svc_client.post(
+        "/project.show",
+        data=json.dumps({"migrate_project": True, "git_url": IT_PROTECTED_REMOTE_REPO_URL}),
+        headers=headers,
+    )
+
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert UserRepoNoAccessError().code == response.json["error"]["code"]

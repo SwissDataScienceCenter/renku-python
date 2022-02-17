@@ -480,10 +480,24 @@ class IntermittentProjectIdError(ServiceError):
         super().__init__(exception=exception)
 
 
+class IntermittentAuthenticationError(ServiceError):
+    """The user credentials were received but they are not valid.
+    
+    This may happen for a number of reasons. Triggering a new login will likely fix it.
+    """
+
+    code = SVC_ERROR_USER + 30
+    userMessage = "Invalid user credentials. Please try to log out and in again."
+    devMessage = "Authentication error. Check the Sentry exception to inspect the headers"
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
 class IntermittentFileExistsError(ServiceError):
     """An operation failed because one or more files were expected not to exist.
 
-    It may be a syncronization error happening when two or more concurrent operations overlap
+    It may be a synchronization error happening when two or more concurrent operations overlap
     and one creates content unexpected from another one.
     """
 

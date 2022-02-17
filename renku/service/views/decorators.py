@@ -36,12 +36,12 @@ from renku.core.errors import (
 )
 from renku.service.cache import cache
 from renku.service.config import (
-    INVALID_HEADERS_ERROR_CODE,
     INVALID_PARAMS_ERROR_CODE,
     REDIS_EXCEPTION_ERROR_CODE,
     RENKU_EXCEPTION_ERROR_CODE,
 )
 from renku.service.errors import (
+    IntermittentAuthenticationError,
     IntermittentProjectIdError,
     ProgramContentTypeError,
     ProgramGitError,
@@ -58,7 +58,7 @@ from renku.service.errors import (
 )
 from renku.service.serializers.headers import OptionalIdentityHeaders, RequiredIdentityHeaders
 from renku.service.utils.squash import squash
-from renku.service.views import error_response, error_response_new
+from renku.service.views import error_response_new
 
 
 def requires_identity(f):
@@ -176,10 +176,7 @@ def handle_jwt_except(f):
         try:
             return f(*args, **kwargs)
         except (ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError) as e:
-            capture_exception(e)
-
-            error_message = "invalid web token"
-            return error_response(INVALID_HEADERS_ERROR_CODE, error_message)
+            raise IntermittentAuthenticationError(e)
 
     return decorated_function
 
