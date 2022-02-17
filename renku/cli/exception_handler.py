@@ -66,6 +66,7 @@ import portalocker
 import renku.cli.utils.color as color
 from renku.core.commands.echo import ERROR
 from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
+from renku.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 
 _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg=color.RED, bold=True)
 HAS_SENTRY = SENTRY_ENABLED
