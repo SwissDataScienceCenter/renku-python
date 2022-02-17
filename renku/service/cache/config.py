@@ -18,8 +18,6 @@
 """Renku service cache configuration."""
 import os
 
-import redis
-
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_DATABASE = int(os.getenv("REDIS_DATABASE", 0))
@@ -28,10 +26,11 @@ REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_NAMESPACE = os.getenv("REDIS_NAMESPACE")
 
 REDIS_IS_SENTINEL = os.environ.get("REDIS_IS_SENTINEL", "") == "true"
+REDIS_MASTER_SET = os.environ.get("REDIS_MASTER_SET", "mymaster")
 if REDIS_IS_SENTINEL:
-    # INFO: You have to ask the sentinel what the true host and port is
-    sentinel = redis.Sentinel(
+    from redis.sentinel import Sentinel
+    sentinel = Sentinel(
         [(REDIS_HOST, REDIS_PORT)],
         sentinel_kwargs={"password": REDIS_PASSWORD},
     )
-    REDIS_HOST, REDIS_PORT = sentinel.discover_master("mymaster")
+    REDIS_HOST, REDIS_PORT = sentinel.discover_master(REDIS_MASTER_SET)

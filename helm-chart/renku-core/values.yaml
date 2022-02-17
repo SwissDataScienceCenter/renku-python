@@ -20,7 +20,9 @@ global:
   ## Redis configuration. This is where renku-core expects to find
   ## a functioning redis instance and credentials to connect to it.
   redis:
-    isSentinel: true
+    sentinel:
+      enabled: true
+      masterSet: mymaster
     dbIndex:
       coreService: "1"
     host: renku-redis

@@ -52,7 +52,21 @@ spec:
           imagePullPolicy: {{ $.Values.metrics.image.pullPolicy }}
           env:
             - name: RQ_REDIS_HOST
-              value: {{ $.Values.global.redis.host }}
+              value: {{ $.Values.global.redis.host | quote }}
+            - name: RQ_REDIS_PORT
+              value: {{ $.Values.global.redis.port | quote }}
+            - name: RQ_REDIS_DB
+              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+            - name: RQ_REDIS_IS_SENTINEL
+              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+            - name: RQ_REDIS_MASTER_SET
+              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
+            - name: RQ_REDIS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.global.redis.existingSecret }}
+                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+            # TODO: Deal with redis namespace properly in rqmetrics, then pass that on as well
       {{ end }}
         - name: {{ $.Chart.Name }}
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
@@ -78,7 +92,9 @@ spec:
             - name: REDIS_DATABASE
               value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_IS_SENTINEL
-              value: {{ $.Values.global.redis.isSentinel | quote }}
+              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+            - name: REDIS_MASTER_SET
+              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -153,7 +169,9 @@ spec:
             - name: REDIS_DATABASE
               value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_IS_SENTINEL
-              value: {{ $.Values.global.redis.isSentinel | quote }}
+              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+            - name: REDIS_MASTER_SET
+              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -205,7 +223,9 @@ spec:
             - name: REDIS_DATABASE
               value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_IS_SENTINEL
-              value: {{ $.Values.global.redis.isSentinel | quote }}
+              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+            - name: REDIS_MASTER_SET
+              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -255,7 +275,9 @@ spec:
             - name: REDIS_DATABASE
               value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_IS_SENTINEL
-              value: {{ $.Values.global.redis.isSentinel | quote }}
+              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+            - name: REDIS_MASTER_SET
+              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
