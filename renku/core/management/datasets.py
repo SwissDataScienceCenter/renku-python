@@ -56,7 +56,7 @@ from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.utils.metadata import is_external_file
-from renku.core.utils.os import get_absolute_path, get_files_recursively, get_relative_path, is_subpath
+from renku.core.utils.os import get_absolute_path, get_files, get_relative_path, is_subpath
 from renku.core.utils.urls import get_slug, remove_credentials
 
 
@@ -501,8 +501,7 @@ class DatasetsApiMixin(object):
             if source_root.is_dir() and destination_exists and not destination_is_dir:
                 raise errors.ParameterError(f"Cannot copy directory '{path}' to non-directory '{destination}'")
 
-            name = source_root.name if destination_exists and destination_is_dir else ""
-            return destination / name
+            return destination / source_root.name if destination_exists and destination_is_dir else destination
 
         def get_metadata(src) -> Dict:
             if is_with_repo:
@@ -651,8 +650,11 @@ class DatasetsApiMixin(object):
             if multiple_sources and destination_exists and not destination_is_dir:
                 raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
 
-            name = path.name if has_multiple_paths or (destination_exists and destination_is_dir) else ""
-            return destination / name
+            return (
+                destination / path.name
+                if has_multiple_paths or (destination_exists and destination_is_dir)
+                else destination
+            )
 
         def get_metadata(src, dst) -> Optional[Dict]:
             path_in_src_repo = src.relative_to(repository.path)
@@ -699,7 +701,7 @@ class DatasetsApiMixin(object):
         for path in paths:
             dst_root = get_destination_root(n_paths=n_paths, path=path)
 
-            for file in get_files_recursively(path):
+            for file in get_files(path):
                 src = file
                 relative_path = file.relative_to(path)
                 dst = dst_root / relative_path

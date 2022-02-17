@@ -68,8 +68,8 @@ def get_relative_paths(base: Union[Path, str], paths: List[Union[Path, str]]) ->
     return relative_paths
 
 
-def get_files_recursively(path: Path) -> Generator[Path, None, None]:
-    """Return all files from starting files/directories."""
+def get_files(path: Path) -> Generator[Path, None, None]:
+    """Return all files from a starting file/directory."""
     if not path.is_dir():
         yield path
     else:
