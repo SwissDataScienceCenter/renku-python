@@ -882,6 +882,24 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
 
 
 @pytest.mark.integration
+@pytest.mark.vc
+def test_add_from_url_to_destination(runner, client, load_dataset_with_injection):
+    """Test add data from a URL to a new destination."""
+    url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
+    assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
+
+    result = runner.invoke(cli, ["dataset", "add", "remote", "-d", "new-name", url])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    relative_path = os.path.join(client.data_dir, "remote", "new-name")
+    assert (client.path / relative_path).exists()
+    assert (client.path / relative_path).is_file()
+
+    dataset = load_dataset_with_injection("remote", client)
+    assert dataset.find_file(relative_path) is not None
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "params,path",
     [

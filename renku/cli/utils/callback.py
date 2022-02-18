@@ -22,6 +22,7 @@ import sys
 import click
 from tqdm import tqdm
 
+import renku.cli.utils.color as color
 from renku.core.utils.communication import CommunicationCallback
 
 
@@ -96,9 +97,9 @@ class StandardOutput(CommunicationCallback):
 class ClickCallback(StandardOutput):
     """CommunicationCallback implementation for ``click`` messages."""
 
-    INFO = click.style("Info: ", bold=True, fg="blue")
-    WARNING = click.style("Warning: ", bold=True, fg="yellow")
-    ERROR = click.style("Error: ", bold=True, fg="red")
+    INFO = click.style("Info: ", bold=True, fg=color.BLUE)
+    WARNING = click.style("Warning: ", bold=True, fg=color.YELLOW)
+    ERROR = click.style("Error: ", bold=True, fg=color.RED)
 
     def echo(self, msg, end="\n"):
         """Write a message."""

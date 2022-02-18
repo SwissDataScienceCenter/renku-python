@@ -34,11 +34,11 @@ class IDatasetGateway(ABC):
         """Get a dataset by id."""
         raise NotImplementedError
 
-    def get_all_datasets(self) -> List[Dataset]:
+    def get_all_active_datasets(self) -> List[Dataset]:
         """Get all datasets."""
         raise NotImplementedError
 
-    def get_provenance(self) -> List[Dataset]:
+    def get_provenance_tails(self) -> List[Dataset]:
         """Return the provenance for all datasets."""
         raise NotImplementedError
 

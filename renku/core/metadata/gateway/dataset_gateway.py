@@ -40,11 +40,11 @@ class DatasetGateway(IDatasetGateway):
         """Get a dataset by id."""
         return self.database_dispatcher.current_database["datasets"].get(name)
 
-    def get_all_datasets(self) -> List[Dataset]:
+    def get_all_active_datasets(self) -> List[Dataset]:
         """Return all datasets."""
         return list(self.database_dispatcher.current_database["datasets"].values())
 
-    def get_provenance(self) -> List[Dataset]:
+    def get_provenance_tails(self) -> List[Dataset]:
         """Return the provenance for all datasets."""
         return list(self.database_dispatcher.current_database["datasets-provenance-tails"].values())
 
