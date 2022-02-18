@@ -212,8 +212,7 @@ them.
 
 You can use ``--destination`` or ``-d`` flag to set the location where the new
 data is copied to. This location be will under the dataset's data directory and
-will be created if does not exists. You will get an error message if the
-destination exists and is a file.
+will be created if does not exists.
 
 .. code-block:: console
 
@@ -510,6 +509,7 @@ from pathlib import Path
 
 import click
 
+import renku.cli.utils.color as color
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
@@ -599,7 +599,7 @@ def create(name, title, description, creators, metadata, keyword):
     new_dataset = result.output
 
     click.echo(f'Use the name "{new_dataset.name}" to refer to this dataset.')
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @dataset.command()
@@ -674,8 +674,8 @@ def show(name):
     result = show_dataset().build().execute(name=name)
     ds = result.output
 
-    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(ds["name"], bold=True))
-    click.echo(click.style("Created: ", bold=True, fg="magenta") + (ds.get("created_at", "") or ""))
+    click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(ds["name"], bold=True))
+    click.echo(click.style("Created: ", bold=True, fg=color.MAGENTA) + (ds.get("created_at", "") or ""))
 
     creators = []
     for creator in ds.get("creators", []):
@@ -684,20 +684,20 @@ def show(name):
         else:
             creators.append(f"{creator['name']} <{creator['email']}>")
 
-    click.echo(click.style("Creator(s): ", bold=True, fg="magenta") + ", ".join(creators))
+    click.echo(click.style("Creator(s): ", bold=True, fg=color.MAGENTA) + ", ".join(creators))
     if ds["keywords"]:
-        click.echo(click.style("Keywords: ", bold=True, fg="magenta") + ", ".join(ds.get("keywords", "")))
+        click.echo(click.style("Keywords: ", bold=True, fg=color.MAGENTA) + ", ".join(ds.get("keywords", "")))
 
     if ds["version"]:
-        click.echo(click.style("Version: ", bold=True, fg="magenta") + ds.get("version", ""))
+        click.echo(click.style("Version: ", bold=True, fg=color.MAGENTA) + ds.get("version", ""))
 
     if ds["annotations"]:
-        click.echo(click.style("Annotations: ", bold=True, fg="magenta"))
+        click.echo(click.style("Annotations: ", bold=True, fg=color.MAGENTA))
         click.echo(json.dumps(ds.get("annotations", ""), indent=2))
 
-    click.echo(click.style("Title: ", bold=True, fg="magenta") + click.style(ds.get("title", ""), bold=True))
+    click.echo(click.style("Title: ", bold=True, fg=color.MAGENTA) + click.style(ds.get("title", ""), bold=True))
 
-    click.echo(click.style("Description: ", bold=True, fg="magenta"))
+    click.echo(click.style("Description: ", bold=True, fg=color.MAGENTA))
     print_markdown(ds.get("description", "") or "")
 
 
@@ -731,7 +731,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
         destination=destination,
         ref=ref,
     )
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @dataset.command("ls-files")
@@ -776,7 +776,7 @@ def unlink(name, include, exclude, yes):
 
     communicator = ClickCallback()
     file_unlink().with_communicator(communicator).build().execute(name=name, include=include, exclude=exclude, yes=yes)
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @dataset.command("rm")
@@ -786,7 +786,7 @@ def remove(name):
     from renku.core.commands.dataset import remove_dataset
 
     remove_dataset().build().execute(name)
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @dataset.command("tag")
@@ -799,7 +799,7 @@ def tag(name, tag, description, force):
     from renku.core.commands.dataset import add_dataset_tag_command
 
     add_dataset_tag_command().build().execute(name=name, tag=tag, description=description, force=force)
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @dataset.command("rm-tags")
@@ -810,7 +810,7 @@ def remove_tags(name, tags):
     from renku.core.commands.dataset import remove_dataset_tags_command
 
     remove_dataset_tags_command().build().execute(name=name, tags=tags)
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @dataset.command("ls-tags")
@@ -889,7 +889,7 @@ def export_(name, provider, publish, tag, **kwargs):
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, errors.RequestError) as e:
         raise click.BadParameter(e)
 
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @dataset.command("import")
@@ -908,7 +908,7 @@ def import_(uri, name, extract, yes):
     import_dataset().with_communicator(communicator).build().execute(uri=uri, name=name, extract=extract, yes=yes)
 
     click.secho(" " * 79 + "\r", nl=False)
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @dataset.command("update")
@@ -936,4 +936,4 @@ def update(names, creators, include, exclude, ref, delete, external):
         delete=delete,
         external=external,
     )
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)

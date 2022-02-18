@@ -27,6 +27,8 @@ import textwrap
 
 import click
 
+import renku.cli.utils.color as color
+
 
 @click.command()
 @click.pass_context
@@ -38,7 +40,7 @@ def doctor(ctx):
     is_ok, problems = doctor_check_command().build().execute().output
 
     if is_ok:
-        click.secho("Everything seems to be ok.", fg="green")
+        click.secho("Everything seems to be ok.", fg=color.GREEN)
         ctx.exit(0)
 
     click.secho(problems)
