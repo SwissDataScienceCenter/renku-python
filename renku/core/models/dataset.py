@@ -40,7 +40,7 @@ from renku.core.utils.metadata import is_external_file
 from renku.core.utils.urls import get_path, get_slug
 
 
-def is_dataset_name_valid(name):
+def is_dataset_name_valid(name: str) -> bool:
     """Check if name is a valid slug."""
     return name and name == get_slug(name, lowercase=False)
 
