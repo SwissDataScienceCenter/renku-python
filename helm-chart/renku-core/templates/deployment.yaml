@@ -20,9 +20,9 @@ spec:
         prometheus.io/port: '8765'
       labels:
         app.kubernetes.io/name: {{ include "renku-core.name" $ }}
-        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/deploymentVersion: {{ $version.name }}
-        {{ $.Values.global.redis.clientLabel | toYaml | nindent 8 }}
+        {{ .Values.global.redis.clientLabel | toYaml | nindent 8 }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -38,20 +38,20 @@ spec:
           imagePullPolicy: {{ .Values.metrics.image.pullPolicy }}
           env:
             - name: RQ_REDIS_HOST
-              value: {{ $.Values.global.redis.host | quote }}
+              value: {{ .Values.global.redis.host | quote }}
             - name: RQ_REDIS_PORT
-              value: {{ $.Values.global.redis.port | quote }}
+              value: {{ .Values.global.redis.port | quote }}
             - name: RQ_REDIS_DB
-              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
             - name: RQ_REDIS_IS_SENTINEL
-              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+              value: {{ .Values.global.redis.sentinel.enabled | quote }}
             - name: RQ_REDIS_MASTER_SET
-              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
+              value: {{ .Values.global.redis.sentinel.masterSet | quote }}
             - name: RQ_REDIS_PASS
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.global.redis.existingSecret }}
-                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+                  name: {{ .Values.global.redis.existingSecret }}
+                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
             # TODO: Deal with redis namespace properly in rqmetrics, then pass that on as well
       {{ end }}
         - name: {{ .Chart.Name }}
@@ -66,20 +66,20 @@ spec:
           {{ end }}
           env:
             - name: REDIS_HOST
-              value: {{ $.Values.global.redis.host | quote }}
+              value: {{ .Values.global.redis.host | quote }}
             - name: REDIS_PORT
-              value: {{ $.Values.global.redis.port | quote }}
+              value: {{ .Values.global.redis.port | quote }}
             - name: REDIS_DATABASE
-              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_IS_SENTINEL
-              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+              value: {{ .Values.global.redis.sentinel.enabled | quote }}
             - name: REDIS_MASTER_SET
-              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
+              value: {{ .Values.global.redis.sentinel.masterSet | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.global.redis.existingSecret }}
-                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+                  name: {{ .Values.global.redis.existingSecret }}
+                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
@@ -137,20 +137,20 @@ spec:
           args: ["worker"]
           env:
             - name: REDIS_HOST
-              value: {{ $.Values.global.redis.host | quote }}
+              value: {{ .Values.global.redis.host | quote }}
             - name: REDIS_PORT
-              value: {{ $.Values.global.redis.port | quote }}
+              value: {{ .Values.global.redis.port | quote }}
             - name: REDIS_DATABASE
-              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_IS_SENTINEL
-              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+              value: {{ .Values.global.redis.sentinel.enabled | quote }}
             - name: REDIS_MASTER_SET
-              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
+              value: {{ .Values.global.redis.sentinel.masterSet | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.global.redis.existingSecret }}
-                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+                  name: {{ .Values.global.redis.existingSecret }}
+                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: RENKU_JWT_TOKEN_SECRET
@@ -185,20 +185,20 @@ spec:
           args: ["worker"]
           env:
             - name: REDIS_HOST
-              value: {{ $.Values.global.redis.host | quote }}
+              value: {{ .Values.global.redis.host | quote }}
             - name: REDIS_PORT
-              value: {{ $.Values.global.redis.port | quote }}
+              value: {{ .Values.global.redis.port | quote }}
             - name: REDIS_DATABASE
-              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_IS_SENTINEL
-              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+              value: {{ .Values.global.redis.sentinel.enabled | quote }}
             - name: REDIS_MASTER_SET
-              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
+              value: {{ .Values.global.redis.sentinel.masterSet | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.global.redis.existingSecret }}
-                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+                  name: {{ .Values.global.redis.existingSecret }}
+                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
@@ -231,20 +231,20 @@ spec:
           args: ["scheduler"]
           env:
             - name: REDIS_HOST
-              value: {{ $.Values.global.redis.host | quote }}
+              value: {{ .Values.global.redis.host | quote }}
             - name: REDIS_PORT
-              value: {{ $.Values.global.redis.port | quote }}
+              value: {{ .Values.global.redis.port | quote }}
             - name: REDIS_DATABASE
-              value: {{ $.Values.global.redis.dbIndex.coreService | quote }}
+              value: {{ .Values.global.redis.dbIndex.coreService | quote }}
             - name: REDIS_IS_SENTINEL
-              value: {{ $.Values.global.redis.sentinel.enabled | quote }}
+              value: {{ .Values.global.redis.sentinel.enabled | quote }}
             - name: REDIS_MASTER_SET
-              value: {{ $.Values.global.redis.sentinel.masterSet | quote }}
+              value: {{ .Values.global.redis.sentinel.masterSet | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.global.redis.existingSecret }}
-                  key: {{ $.Values.global.redis.existingSecretPasswordKey }}
+                  name: {{ .Values.global.redis.existingSecret }}
+                  key: {{ .Values.global.redis.existingSecretPasswordKey }}
             - name: REDIS_NAMESPACE
               value: {{ $version.name }}
             - name: CACHE_DIR
