@@ -22,18 +22,24 @@ from functools import wraps
 
 from marshmallow import ValidationError
 
-from renku.core.errors import GitError, ParameterError
+from renku.core.errors import DatasetExistsError, DatasetImageError, GitError, ParameterError, RenkuException
 from renku.service.errors import (
+    IntermittentDatasetExistsError,
+    IntermittentFileNotExistsError,
     IntermittentSettingExistsError,
     ProgramInvalidGenericFieldsError,
     ProgramProjectCorruptError,
     ProgramProjectCreationError,
+    UserDatasetsMultipleImagesError,
+    UserDatasetsUnreachableImageError,
     UserInvalidGenericFieldsError,
+    UserMissingFieldError,
     UserProjectCreationError,
     UserRepoBranchInvalidError,
     UserRepoUrlInvalidError,
     UserTemplateInvalidError,
 )
+from renku.service.utils.squash import squash
 
 
 def handle_templates_read_errors(f):
@@ -136,6 +142,37 @@ def handle_config_write_errors(f):
                 if len(match.groups()) > 0:
                     parameter = match.group(1)
                 raise IntermittentSettingExistsError(e, parameter)
+            raise
+
+    return decorated_function
+
+
+def handle_datasets_write_errors(f):
+    """Wrapper which handles datasets errors."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except DatasetImageError as e:
+            error_message = str(e)
+            if "Duplicate dataset image" in error_message:
+                raise UserDatasetsMultipleImagesError(e)
+            elif "couldn't be mirrored" in error_message:
+                raise UserDatasetsUnreachableImageError(e)
+            raise
+        except ValidationError as e:
+            items = squash(e.messages).items()
+            for key, value in items:
+                if "".join(value) == "Field may not be null.":
+                    raise UserMissingFieldError(e, key)
+            raise
+        except DatasetExistsError as e:
+            raise IntermittentDatasetExistsError(e)
+        except RenkuException as e:
+            if str(e).startswith("invalid file reference"):
+                raise IntermittentFileNotExistsError(e)
             raise
 
     return decorated_function

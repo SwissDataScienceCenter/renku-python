@@ -226,6 +226,21 @@ class UserAnonymousError(ServiceError):
         super().__init__(exception=exception)
 
 
+class UserMissingFieldError(ServiceError):
+    """The user has not provided an expected field."""
+
+    code = SVC_ERROR_USER + 40
+    userMessage = "The following field is required: {field}."
+    devMessage = "User did not provide the mandatory field '{field}'."
+
+    def __init__(self, exception=None, field=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(field=field),
+            devMessage=self.devMessage.format(field=field),
+            exception=exception,
+        )
+
+
 class UserTemplateInvalidError(ServiceError):
     """The provided URL doesn't lead to a valid template repository.
 
@@ -268,6 +283,28 @@ class UserNonRenkuProjectError(ServiceError):
     code = SVC_ERROR_USER + 110
     userMessage = "The target project is not a Renku project."
     devMessage = "Cannot work on a non Renku project."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
+class UserDatasetsMultipleImagesError(ServiceError):
+    """Multiple images have been set for the same dataset."""
+
+    code = SVC_ERROR_USER + 130
+    userMessage = "Cannot set multiple images for the dataset."
+    devMessage = "The parameters specified multiple images  for the dataset."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
+class UserDatasetsUnreachableImageError(ServiceError):
+    """Dataset image not reachable."""
+
+    code = SVC_ERROR_USER + 131
+    userMessage = "Cannot get the dataset image."
+    devMessage = "The dataset image is no reachable."
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
@@ -535,6 +572,25 @@ class IntermittentFileExistsError(ServiceError):
         )
 
 
+class IntermittentFileNotExistsError(ServiceError):
+    """An operation failed because one or more files were expected to exist.
+
+    It may be a synchronization error happening when two or more concurrent operations overlap
+    and one consumes the file expected by another one.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 111
+    userMessage = "There was an error with the file '{file_name}'. Please refresh the page and try again."
+    devMessage = "Unexpected error on file '{file_name}', possibly caused by concurrent actions."
+
+    def __init__(self, exception=None, file_name=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(file_name=file_name),
+            devMessage=self.devMessage.format(file_name=file_name),
+            exception=exception,
+        )
+
+
 class IntermittentSettingExistsError(ServiceError):
     """An operation failed because one or more project settings does not exist.
 
@@ -552,6 +608,21 @@ class IntermittentSettingExistsError(ServiceError):
             devMessage=self.devMessage.format(setting_name=setting_name),
             exception=exception,
         )
+
+
+class IntermittentDatasetExistsError(ServiceError):
+    """An operation failed because a dataset was expected not to exist.
+
+    It may be a synchronization error happening when two or more concurrent operations overlap
+    and one tries to create content already created from another one.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 130
+    userMessage = "The dataset creation failed because it already exists. Please refresh the page."
+    devMessage = "Unexpected error creating a dataset, possibly caused by concurrent actions."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
 
 
 # NOTE: old errors

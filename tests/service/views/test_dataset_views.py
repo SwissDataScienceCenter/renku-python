@@ -28,11 +28,17 @@ import pytest
 from werkzeug.utils import secure_filename
 
 from renku.core.utils.os import normalize_to_ascii
-from renku.service.config import (
-    GIT_ACCESS_DENIED_ERROR_CODE,
-    INVALID_HEADERS_ERROR_CODE,
-    INVALID_PARAMS_ERROR_CODE,
-    RENKU_EXCEPTION_ERROR_CODE,
+from renku.service.config import GIT_ACCESS_DENIED_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
+from renku.service.errors import (
+    IntermittentDatasetExistsError,
+    IntermittentFileNotExistsError,
+    IntermittentProjectIdError,
+    ProgramInvalidGenericFieldsError,
+    UserAnonymousError,
+    UserDatasetsMultipleImagesError,
+    UserDatasetsUnreachableImageError,
+    UserMissingFieldError,
+    UserOutdatedProjectError,
 )
 from renku.service.serializers.headers import encode_b64
 from tests.utils import make_dataset_add_payload, retry_failed
@@ -57,7 +63,6 @@ def upload_file(svc_client, headers, filename) -> str:
         headers=headers,
     )
 
-    assert response
     assert 200 == response.status_code
     assert_rpc_response(response)
 
@@ -84,7 +89,6 @@ def test_create_dataset_view(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
     assert_rpc_response(response)
 
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
@@ -104,9 +108,8 @@ def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-    assert_rpc_response(response, with_key="error")
-    assert {"code", "migration_required", "reason"} == set(response.json["error"].keys())
+    assert_rpc_response(response, "error")
+    assert UserOutdatedProjectError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -123,9 +126,7 @@ def test_delay_create_dataset_view(svc_client_cache, it_remote_repo_url):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
-    assert_rpc_response(response, with_key="result")
+    assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
 
@@ -142,11 +143,8 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
-    assert {
-        "error": {"code": RENKU_EXCEPTION_ERROR_CODE, "reason": 'project_id "ref does not exist" not found'}
-    } == response.json
+    assert_rpc_response(response, "error")
+    assert IntermittentProjectIdError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -169,8 +167,7 @@ def test_remove_dataset_view(svc_client_with_repo):
 
     # NOTE: Ensure that dataset does not exists in this project anymore!
     response = svc_client.get("/datasets.list", query_string={"project_id": project_id}, headers=headers)
-    assert "result" in response.json
-
+    assert_rpc_response(response)
     datasets = [ds["name"] for ds in response.json["result"]["datasets"]]
     assert payload["name"] not in datasets
 
@@ -186,7 +183,7 @@ def test_remote_remove_view(svc_client, it_remote_repo_url, identity_headers):
         headers=identity_headers,
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
 
@@ -209,9 +206,7 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -220,11 +215,8 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
-
     assert payload["title"] == ds["title"]
     assert payload["name"] == ds["name"]
     assert payload["description"] == ds["description"]
@@ -252,9 +244,8 @@ def test_create_dataset_with_images(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
-    assert {"error"} == response.json.keys()
+    assert_rpc_response(response, "error")
+    assert UserDatasetsMultipleImagesError().code == response.json["error"]["code"]
 
     payload = {
         "project_id": project_id,
@@ -269,8 +260,6 @@ def test_create_dataset_with_images(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
@@ -280,8 +269,6 @@ def test_create_dataset_with_images(svc_client_with_repo):
         "project_id": project_id,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
@@ -321,8 +308,6 @@ def test_create_dataset_with_custom_metadata(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
@@ -332,8 +317,6 @@ def test_create_dataset_with_custom_metadata(svc_client_with_repo):
         "project_id": project_id,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
@@ -366,8 +349,8 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-    assert {"error"} == response.json.keys()
+    assert_rpc_response(response, "error")
+    assert UserDatasetsUnreachableImageError().code == response.json["error"]["code"]
 
     payload = {
         "project_id": project_id,
@@ -379,10 +362,7 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -390,8 +370,6 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
         "project_id": project_id,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
@@ -422,10 +400,7 @@ def test_create_dataset_with_uploaded_images(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -433,8 +408,6 @@ def test_create_dataset_with_uploaded_images(svc_client_with_repo):
         "project_id": project_id,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
@@ -470,11 +443,9 @@ def test_create_dataset_invalid_creator(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
-    assert response
-    assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
-
-    expected_err = "Validation error: `creators.0.name` - Field may not be null."
-    assert expected_err == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert UserMissingFieldError().code == response.json["error"]["code"]
+    assert "creators.0.name" in response.json["error"]["userMessage"]
 
 
 @pytest.mark.service
@@ -490,15 +461,11 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-    assert "result" in response.json.keys()
+    assert_rpc_response(response)
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-    assert_rpc_response(response, with_key="error")
-
-    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
-    assert "Dataset exists" in response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert IntermittentDatasetExistsError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -508,17 +475,13 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
     """Create new dataset by specifying unknown parameters."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    payload = {"project_id": project_id, "name": "mydata", "remote_name": "origin"}
+    unknown_field = "remote_name"
+    payload = {"project_id": project_id, "name": "mydata", unknown_field: "origin"}
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
-    assert_rpc_response(response, with_key="error")
-
-    assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
-
-    expected_reason = "Validation error: `remote_name` - Unknown field."
-    assert expected_reason == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert ProgramInvalidGenericFieldsError().code == response.json["error"]["code"]
+    assert unknown_field in response.json["error"]["devMessage"]
 
 
 @pytest.mark.service
@@ -535,19 +498,11 @@ def test_create_dataset_with_no_identity(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        "/datasets.create",
-        data=json.dumps(payload),
-        headers={"Content-Type": headers["Content-Type"]}
-        # no user identity, expect error
+        "/datasets.create", data=json.dumps(payload), headers={"Content-Type": headers["Content-Type"]}
     )
 
-    assert response
-    assert_rpc_response(response, with_key="error")
-
-    assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
-
-    err_message = "user identification is incorrect or missing"
-    assert err_message == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -563,18 +518,11 @@ def test_add_file_view_with_no_identity(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        "/datasets.add",
-        data=json.dumps(payload),
-        headers={"Content-Type": headers["Content-Type"]}
-        # no user identity, expect error
+        "/datasets.add", data=json.dumps(payload), headers={"Content-Type": headers["Content-Type"]}
     )
-    assert response
-    assert_rpc_response(response, with_key="error")
 
-    assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
-
-    err_message = "user identification is incorrect or missing"
-    assert err_message == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert UserAnonymousError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -595,11 +543,8 @@ def test_add_file_view(svc_client_with_repo):
 
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "project_id", "files", "remote_branch"} == set(response.json["result"].keys())
-
     assert 1 == len(response.json["result"]["files"])
     assert file_id == response.json["result"]["files"][0]["file_id"]
 
@@ -617,7 +562,7 @@ def test_remote_add_view(svc_client, it_remote_repo_url, identity_headers):
         headers=identity_headers,
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
 
@@ -639,11 +584,8 @@ def test_add_file_failure(svc_client_with_repo):
     }
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
-    assert response
-    assert_rpc_response(response, with_key="error")
-
-    assert {"code", "reason"} == set(response.json["error"].keys())
-    assert "invalid file reference" in response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert IntermittentFileNotExistsError().code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -658,13 +600,9 @@ def test_list_datasets_view(svc_client_with_repo):
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
     assert {"datasets"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
-
     assert {
         "version",
         "description",

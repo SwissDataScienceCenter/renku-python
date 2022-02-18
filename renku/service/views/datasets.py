@@ -35,6 +35,7 @@ from renku.service.views.decorators import (
     requires_cache,
     requires_identity,
 )
+from renku.service.views.error_handlers import handle_datasets_write_errors
 
 DATASET_BLUEPRINT_TAG = "datasets"
 dataset_blueprint = VersionedBlueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
@@ -100,6 +101,7 @@ def list_dataset_files_view(user_data, cache):
     "/datasets.add", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
 )
 @handle_common_except
+@handle_datasets_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
@@ -130,6 +132,7 @@ def add_file_to_dataset_view(user_data, cache):
     "/datasets.create", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
 )
 @handle_common_except
+@handle_datasets_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
@@ -220,6 +223,7 @@ def import_dataset_view(user_data, cache):
     "/datasets.edit", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
 )
 @handle_common_except
+@handle_datasets_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
