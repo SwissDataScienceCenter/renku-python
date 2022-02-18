@@ -364,6 +364,17 @@ class ProgramProjectCreationError(ServiceError):
         )
 
 
+class ProgramProjectCorruptError(ServiceError):
+    """Error triggered by an unexpected project corruption, not easily fixable by the user."""
+
+    code = SVC_ERROR_PROGRAMMING + 120
+    userMessage = "The Renku project seems partially corrupted, and the operation could not finish."
+    devMessage = "Project corrupted. It probably requires manually fixing it, or reverting to a previous commit."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
 class ProgramRenkuError(ServiceError):
     """Renku error unexpected at service level for a specific operation."""
 
@@ -513,13 +524,32 @@ class IntermittentFileExistsError(ServiceError):
     """
 
     code = SVC_ERROR_INTERMITTENT + 110
-    userMessage = "There was an error with the file '${file_name}'. Please refresh the page and try again."
-    devMessage = "Unexpected error on file '${file_name}', possibly caused by concurrent actions."
+    userMessage = "There was an error with the file '{file_name}'. Please refresh the page and try again."
+    devMessage = "Unexpected error on file '{file_name}', possibly caused by concurrent actions."
 
     def __init__(self, exception=None, file_name=ERROR_NOT_AVAILABLE):
         super().__init__(
             userMessage=self.userMessage.format(file_name=file_name),
             devMessage=self.devMessage.format(file_name=file_name),
+            exception=exception,
+        )
+
+
+class IntermittentSettingExistsError(ServiceError):
+    """An operation failed because one or more project settings does not exist.
+
+    It may be a synchronization error happening when two or more concurrent operations overlap
+    and one tries to work on content already deleted from another one.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 111
+    userMessage = "There was an error with the setting '{setting_name}'. Please refresh the page and try again."
+    devMessage = "Unexpected error on setting '{setting_name}', possibly caused by concurrent actions."
+
+    def __init__(self, exception=None, setting_name=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(setting_name=setting_name),
+            devMessage=self.devMessage.format(setting_name=setting_name),
             exception=exception,
         )
 

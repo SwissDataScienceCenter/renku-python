@@ -22,9 +22,11 @@ from functools import wraps
 
 from marshmallow import ValidationError
 
-from renku.core.errors import GitError
+from renku.core.errors import GitError, ParameterError
 from renku.service.errors import (
+    IntermittentSettingExistsError,
     ProgramInvalidGenericFieldsError,
+    ProgramProjectCorruptError,
     ProgramProjectCreationError,
     UserInvalidGenericFieldsError,
     UserProjectCreationError,
@@ -97,7 +99,43 @@ def handle_project_write_errors(f):
         except UserInvalidGenericFieldsError as e:
             if "Unknown field" in str(e):
                 raise ProgramInvalidGenericFieldsError(e)
-            else:
-                raise
+            raise
+
+    return decorated_function
+
+
+def handle_config_read_errors(f):
+    """Wrapper which handles reading config errors."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except Exception as e:
+            if str(e).startswith("Source contains parsing errors"):
+                raise ProgramProjectCorruptError(e)
+            raise
+
+    return decorated_function
+
+
+@handle_config_read_errors
+def handle_config_write_errors(f):
+    """Wrapper which handles setting config errors."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except ParameterError as e:
+            if "Invalid parameter value" in str(e):
+                parameter = None
+                match = re.search('Key "(.*)" not found', str(e))
+                if len(match.groups()) > 0:
+                    parameter = match.group(1)
+                raise IntermittentSettingExistsError(e, parameter)
+            raise
 
     return decorated_function
