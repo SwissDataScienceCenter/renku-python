@@ -18,6 +18,7 @@
 """Client for handling a local repository."""
 
 import os
+import shutil
 from contextlib import contextmanager
 from uuid import uuid4
 

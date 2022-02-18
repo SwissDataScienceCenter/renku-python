@@ -125,6 +125,10 @@ def _init(
     communication.echo("Initializing Git repository...")
     client.init_repository(force, None, initial_branch=initial_branch)
 
+    # Initialize an empty database
+    database_gateway = inject.instance(IDatabaseGateway)
+    database_gateway.initialize()
+
     templates_source = fetch_templates_source(source=template_source, reference=template_ref)
     template = select_template(templates_source=templates_source, id=template_id)
 
@@ -170,10 +174,6 @@ def _init(
             communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 
     branch_name = create_backup_branch(path=path)
-
-    # Initialize an empty database
-    database_gateway = inject.instance(IDatabaseGateway)
-    database_gateway.initialize()
 
     # add metadata.yml for backwards compatibility
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
