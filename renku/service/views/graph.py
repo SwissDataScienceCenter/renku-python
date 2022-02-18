@@ -20,14 +20,14 @@ from flask import request
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.graph_export import GraphExportCtrl
-from renku.service.views.api_versions import V1_0, VersionedBlueprint
+from renku.service.views.api_versions import V1_0, V1_1, VersionedBlueprint
 from renku.service.views.decorators import accepts_json, handle_common_except, optional_identity, requires_cache
 
 GRAPH_BLUEPRINT_TAG = "graph"
 graph_blueprint = VersionedBlueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@graph_blueprint.route("/graph.export", methods=["GET"], provide_automatic_options=False, versions=[V1_0])
+@graph_blueprint.route("/graph.export", methods=["GET"], provide_automatic_options=False, versions=[V1_0, V1_1])
 @handle_common_except
 @requires_cache
 @accepts_json

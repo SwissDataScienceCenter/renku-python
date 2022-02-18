@@ -19,20 +19,19 @@
 
 import concurrent.futures
 import fnmatch
+import glob
 import imghdr
 import os
 import shutil
 import time
 import urllib
 import uuid
-from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 from urllib.request import urlretrieve
 
 import attr
-from wcmatch import glob
 
 from renku.core import errors
 from renku.core.management import RENKU_HOME
@@ -57,6 +56,7 @@ from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.utils.metadata import is_external_file
+from renku.core.utils.os import get_absolute_path, get_files, get_relative_path, is_subpath
 from renku.core.utils.urls import get_slug, remove_credentials
 
 
@@ -308,7 +308,7 @@ class DatasetsApiMixin(object):
         urls,
         force=False,
         overwrite=False,
-        sources=(),
+        sources: List[str] = None,
         destination="",
         ref=None,
         external=False,
@@ -319,19 +319,21 @@ class DatasetsApiMixin(object):
         clear_files_before=False,
     ):
         """Import the data into the data directory."""
-        dataset_datadir = get_dataset_data_dir(self, dataset)
+        sources = sources or ()
+
+        dataset_datadir = self.path / get_dataset_data_dir(self, dataset)
+        # NOTE: Make sure that dataset's data dir exists because we check for existence of a destination later to decide
+        # what will be its name
+        dataset_datadir.mkdir(parents=True, exist_ok=True)
 
         destination = destination or Path(".")
         destination = self._resolve_path(dataset_datadir, destination)
-        destination = self.path / dataset_datadir / destination
-
-        if destination.exists() and not destination.is_dir():
-            raise errors.ParameterError(f'Destination is not a directory: "{destination}"')
+        destination = dataset_datadir / destination
 
         self.check_external_storage()
 
         files = []
-        if all_at_once:  # Importing a dataset
+        if all_at_once:  # Importing a non-git dataset
             files = self._add_from_urls(
                 urls=urls, destination_names=destination_names, destination=destination, extract=extract
             )
@@ -339,20 +341,18 @@ class DatasetsApiMixin(object):
             for url in urls:
                 is_remote, is_git, url = _check_url(url)
                 if is_git and is_remote:  # Remote repository
-                    sources = sources or ()
                     new_files = self._add_from_git(
                         url=url, sources=sources, destination=destination, ref=ref, repository=repository
                     )
                 else:
                     if sources:
-                        raise errors.UsageError('Cannot use "--source" with URLs or local files.')
+                        raise errors.UsageError("Cannot use '-s/--src/--source' with URLs or local files.")
 
                     if not is_remote:  # Local path, might be a repository
                         if is_git:
                             communication.warn(
-                                "Adding data from local Git repository: "
-                                + "Use remote's Git URL instead to enable "
-                                + "lineage information and updates."
+                                "Adding data from local Git repository: Use remote's Git URL instead to enable lineage "
+                                "information and updates."
                             )
                         u = urllib.parse.urlparse(url)
                         new_files = self._add_from_local(
@@ -421,7 +421,7 @@ class DatasetsApiMixin(object):
 
             src, dst, action = operation
 
-            # Remove existing file if any
+            # Remove existing file if any; required as a safety-net to avoid corrupting external files
             self.remove_file(dst)
             dst.parent.mkdir(parents=True, exist_ok=True)
 
@@ -476,59 +476,71 @@ class DatasetsApiMixin(object):
 
         return False
 
-    def _add_from_local(self, dataset, path, external, destination):
+    def _add_from_local(self, dataset, path, external, destination) -> List[Dict]:
         """Add a file or directory from a local filesystem."""
-        src = Path(os.path.abspath(path))
-
-        if not src.exists():
-            raise errors.ParameterError(f"Cannot find file/directory: {path}")
-
-        dst = destination / src.name
-
-        # if we have a directory, recurse
-        if src.is_dir():
-            if dst.exists() and not dst.is_dir():
-                raise errors.ParameterError(f'Cannot copy directory to a file: "{dst}"')
-            if src == (self.path / get_dataset_data_dir(self, dataset)).resolve():
-                raise errors.ParameterError(f"Cannot add dataset's data directory recursively: {path}")
-
-            if self.is_protected_path(src):
-                raise errors.ProtectedFiles([src])
-
-            files = []
-            for f in src.iterdir():
-                files.extend(
-                    self._add_from_local(dataset=dataset, path=os.path.abspath(f), external=external, destination=dst)
-                )
-            return files
-        else:
-            # Check if file is in the project and return it
-            path_in_repo = None
-            if is_external_file(path=src, client_path=self.path):
-                path_in_repo = path
-            else:
-                try:
-                    path_in_repo = src.relative_to(self.path)
-                except ValueError:
-                    pass
-                else:
-                    if self.is_protected_path(src):
-                        raise errors.ProtectedFiles([src])
-
-            if path_in_repo:
-                return [{"path": path_in_repo, "source": path_in_repo, "parent": self}]
-
         action = "symlink" if external else "copy"
-        return [
-            {
-                "path": dst.relative_to(self.path),
-                "source": os.path.relpath(str(src), str(self.path)),
-                "parent": self,
-                "operation": (src, dst, action),
-            }
-        ]
+        absolute_dataset_data_dir = (self.path / get_dataset_data_dir(self, dataset)).resolve()
+        source_root = Path(get_absolute_path(path))
+        is_with_repo = is_subpath(path=source_root, base=self.path)
+
+        def check_recursive_addition(src: Path):
+            if src.resolve() == absolute_dataset_data_dir:
+                raise errors.ParameterError(f"Cannot recursively add path containing dataset's data directory: {path}")
+
+        def get_destination_root():
+            destination_exists = destination.exists()
+            destination_is_dir = destination.is_dir()
+
+            if self.is_protected_path(source_root):
+                raise errors.ProtectedFiles([source_root])
+
+            check_recursive_addition(source_root)
+
+            if not source_root.exists():
+                raise errors.ParameterError(f"Cannot find source file: {path}")
+            if source_root.is_dir() and destination_exists and not destination_is_dir:
+                raise errors.ParameterError(f"Cannot copy directory '{path}' to non-directory '{destination}'")
+
+            return destination / source_root.name if destination_exists and destination_is_dir else destination
+
+        def get_metadata(src) -> Dict:
+            if is_with_repo:
+                path_in_repo = src.relative_to(self.path)
+                return {"path": path_in_repo, "source": path_in_repo, "parent": self}
+            else:
+                relative_path = src.relative_to(source_root)
+                dst = destination_root / relative_path
+
+                return {
+                    "path": dst.relative_to(self.path),
+                    "source": os.path.relpath(src, self.path),
+                    "parent": self,
+                    "operation": (src, dst, action),
+                }
+
+        destination_root = get_destination_root()
+
+        if source_root.is_dir():
+            metadata = []
+            for file in source_root.rglob("*"):
+                if self.is_protected_path(file):
+                    raise errors.ProtectedFiles([file])
+
+                if file.is_dir():
+                    check_recursive_addition(file)
+                    continue
+                metadata.append(get_metadata(file))
+
+            return metadata
+        else:
+            return [get_metadata(source_root)]
 
     def _add_from_urls(self, urls, destination, destination_names, extract):
+        if destination.exists() and not destination.is_dir():
+            raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
+
+        destination.mkdir(parents=True, exist_ok=True)
+
         listeners = communication.get_listeners()
 
         def subscribe_communication_listeners(function, **kwargs):
@@ -581,6 +593,15 @@ class DatasetsApiMixin(object):
         except errors.RequestError as e:  # pragma nocover
             raise errors.OperationError("Cannot download from {}".format(url)) from e
 
+        paths = [p for p in paths if not p.is_dir()]
+
+        if len(paths) > 1:
+            if destination.exists() and not destination.is_dir():
+                raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
+            destination.mkdir(parents=True, exist_ok=True)
+        elif len(paths) == 1:
+            tmp_root = paths[0].parent
+
         paths = [(src, destination / src.relative_to(tmp_root)) for src in paths if not src.is_dir()]
         return [
             {
@@ -596,9 +617,69 @@ class DatasetsApiMixin(object):
         """Process adding resources from another git repository."""
         from renku.core.management.client import LocalClient
 
-        u = urllib.parse.urlparse(url)
+        destination_exists = destination.exists()
+        destination_is_dir = destination.is_dir()
 
-        sources = self._resolve_paths(u.path, sources)
+        def check_sources_are_within_remote_repo():
+            for source in sources:
+                if get_relative_path(path=source, base=repository.path) is None:
+                    raise errors.ParameterError(f"Path '{source}' is not within the repository")
+
+        def get_paths_from_remote_repo() -> Set[Path]:
+            """Return all paths from the repo that match a source pattern."""
+            if not sources:
+                return set(repository.path.glob("*"))
+
+            paths = set()
+            for source in sources:
+                # NOTE: Normalized source to resolve .. references (if any). This preserves wildcards.
+                normalized_source = os.path.normpath(source)
+                absolute_source = os.path.join(repository.path, normalized_source)
+                # NOTE: Path.glob("root/**") does not return correct results (e.g. it include ``root`` in the result)
+                subpaths = set(Path(p) for p in glob.glob(absolute_source))
+                if len(subpaths) == 0:
+                    raise errors.ParameterError("No such file or directory", param_hint=str(source))
+                paths |= subpaths
+
+            return paths
+
+        def get_destination_root(n_paths, path: Path):
+            has_multiple_paths = n_paths > 1
+            multiple_sources = has_multiple_paths or path.is_dir()
+
+            if multiple_sources and destination_exists and not destination_is_dir:
+                raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
+
+            return (
+                destination / path.name
+                if has_multiple_paths or (destination_exists and destination_is_dir)
+                else destination
+            )
+
+        def get_metadata(src, dst) -> Optional[Dict]:
+            path_in_src_repo = src.relative_to(repository.path)
+            path_in_dst_repo = dst.relative_to(self.path)
+
+            if path_in_dst_repo in new_files:  # A path with the same destination is already copied
+                return
+
+            new_files.add(path_in_dst_repo)
+
+            if is_external_file(path=src, client_path=repository.path):
+                operation = (src.resolve(), dst, "symlink")
+            else:
+                operation = (src, dst, "move")
+
+            checksum = repository.get_object_hash(revision="HEAD", path=path_in_src_repo)
+            based_on = RemoteEntity(checksum=checksum, path=path_in_src_repo, url=url)
+
+            return {
+                "path": path_in_dst_repo,
+                "source": remove_credentials(url),
+                "parent": self,
+                "based_on": based_on,
+                "operation": operation,
+            }
 
         if not repository:
             repository = clone_repository(
@@ -609,56 +690,25 @@ class DatasetsApiMixin(object):
                 clean=True,
             )
 
-        repo_path = repository.path
+        check_sources_are_within_remote_repo()
+        paths = get_paths_from_remote_repo()
+        n_paths = len(paths)
 
-        # Get all files from repo that match sources
-        files = set()
-        used_sources = set()
-        for file in repository.head.commit.traverse():
-            path = file.path
-            result = self._get_src_and_dst(path, repo_path, sources, destination, used_sources)
+        LocalClient(repository.path).pull_paths_from_storage(*paths)
 
-            if result:
-                files.add(result)
-
-        unused_sources = set(sources.keys()) - used_sources
-        if unused_sources:
-            unused_sources = {str(s) for s in unused_sources}
-            raise errors.ParameterError("No such file or directory", param_hint=unused_sources)
-
-        # Create metadata and move files to dataset
         results = []
-        remote_client = LocalClient(repo_path)
+        new_files = set()
+        for path in paths:
+            dst_root = get_destination_root(n_paths=n_paths, path=path)
 
-        remote_client.pull_paths_from_storage(*(src for _, src, _ in files))
+            for file in get_files(path):
+                src = file
+                relative_path = file.relative_to(path)
+                dst = dst_root / relative_path
 
-        new_files = []
-
-        for path, src, dst in files:
-            if not src.is_dir():
-                path_in_dst_repo = dst.relative_to(self.path)
-                if path_in_dst_repo in new_files:  # A path with the same destination is already copied
-                    continue
-
-                new_files.append(path_in_dst_repo)
-
-                if is_external_file(path=src, client_path=remote_client.path):
-                    operation = (src.resolve(), dst, "symlink")
-                else:
-                    operation = (src, dst, "move")
-
-                checksum = remote_client.repository.get_object_hash(revision="HEAD", path=path)
-                based_on = RemoteEntity(checksum=checksum, path=path, url=url)
-
-                results.append(
-                    {
-                        "path": path_in_dst_repo,
-                        "source": remove_credentials(url),
-                        "parent": self,
-                        "based_on": based_on,
-                        "operation": operation,
-                    }
-                )
+                metadata = get_metadata(src, dst)
+                if metadata:
+                    results.append(metadata)
 
         return results
 
@@ -689,67 +739,16 @@ class DatasetsApiMixin(object):
 
         return urllib.parse.urlunparse(url)
 
-    def _resolve_paths(self, root_path, paths):
-        """Check if paths are within a root path and resolve them."""
-        result = OrderedDict()  # Used as an ordered-set
-        for path in paths:
-            r = self._resolve_path(root_path, path)
-            result[r] = None
-        return result
-
     @staticmethod
     def _resolve_path(root_path, path):
         """Check if a path is within a root path and resolve it."""
         try:
+            # NOTE: Path.resolve also works with paths with wildcards
             root_path = Path(root_path).resolve()
             path = os.path.abspath(root_path / path)
             return Path(path).relative_to(root_path)
         except ValueError:
             raise errors.ParameterError("File {} is not within path {}".format(path, root_path))
-
-    @staticmethod
-    def _get_src_and_dst(path, repo_path, sources, dst_root, used_sources):
-        is_wildcard = False
-        matched_pattern = None
-
-        if not sources:
-            source = Path(".")
-        else:
-            source = None
-            for s in sources.keys():
-                try:
-                    Path(path).relative_to(s)
-                except ValueError:
-                    if glob.globmatch(path, str(s), flags=glob.GLOBSTAR):
-                        is_wildcard = True
-                        source = Path(path)
-                        used_sources.add(s)
-                        matched_pattern = str(s)
-                        break
-                else:
-                    source = Path(s)
-                    used_sources.add(source)
-                    break
-
-            if not source:
-                return
-
-        if is_wildcard:
-            # Search to see if a parent of the path matches the pattern and return it
-            while glob.globmatch(str(source.parent), matched_pattern, flags=glob.GLOBSTAR) and source != source.parent:
-                source = source.parent
-
-        src = repo_path / path
-        source_name = source.name
-        relative_path = Path(path).relative_to(source)
-
-        if src.is_dir() and is_wildcard:
-            sources[source] = None
-            used_sources.add(source)
-
-        dst = dst_root / source_name / relative_path
-
-        return path, src, dst
 
     def move_files(self, files, to_dataset):
         """Move files and their metadata from one or more datasets to a target dataset."""
