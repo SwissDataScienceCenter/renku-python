@@ -227,7 +227,7 @@ class Template:
     def validate(self, skip_files):
         """Validate a template."""
         for attribute in self.REQUIRED_ATTRIBUTES:
-            if not getattr(self, attribute):
+            if not getattr(self, attribute, None):
                 raise errors.InvalidTemplateError(f"Template '{self.id}' does not have a '{attribute}' attribute")
 
         for parameter in self.parameters:
@@ -320,7 +320,7 @@ class TemplateParameter:
         self.name: str = name
         self.description: str = description or ""
         self.type: Optional[str] = type
-        self.possible_values: List[str] = possible_values or []
+        self.possible_values: List[Union[int, float, str, bool]] = possible_values or []
         self.default = default
 
     @classmethod

@@ -21,8 +21,7 @@ import json
 import re
 import shutil
 import tempfile
-from enum import Enum
-from functools import total_ordering
+from enum import Enum, IntEnum, auto
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -56,13 +55,12 @@ TEMPLATE_INIT_APPEND_FILES = [".gitignore"]
 class TemplateAction(Enum):
     """Types of template rendering."""
 
-    INITIALIZE = 1
-    SET = 2
-    UPDATE = 3
+    INITIALIZE = auto()
+    SET = auto()
+    UPDATE = auto()
 
 
-@total_ordering
-class FileAction(Enum):
+class FileAction(IntEnum):
     """Types of operation when copying a template to a project."""
 
     APPEND = 1
@@ -73,11 +71,6 @@ class FileAction(Enum):
     KEEP = 6
     OVERWRITE = 7
     RECREATE = 8
-
-    def __lt__(self, other):
-        if self.__class__ is other.__class__:
-            return self.value < other.value
-        return NotImplemented
 
 
 def fetch_templates_source(source: Optional[str], reference: Optional[str]) -> TemplatesSource:
@@ -347,7 +340,7 @@ def set_template_parameters(
         raise errors.TemplateUpdateError(f"Can't update template, it now requires variable(s): {missing_values_str}")
 
     # NOTE: Ignore internal variables, i.e. __\w__
-    internal_keys = re.compile(r"__\w+__$")
+    internal_keys = re.compile(r"^__\w+__$")
     metadata_variables = {v for v in template_metadata.metadata if not internal_keys.match(v)} | set(
         input_parameters.keys()
     )
@@ -392,7 +385,7 @@ class EmbeddedTemplates(TemplatesSource):
         return [self.version] if template_exists else []
 
     def get_latest_version(self, id: str, reference: Optional[str], version: Optional[str]) -> Optional[str]:
-        """Return True if a newer version of template available."""
+        """Return latest version number of a template."""
         if version is None:
             return
 
@@ -462,7 +455,7 @@ class RepositoryTemplates(TemplatesSource):
         return [str(v) for v in sorted(versions)]
 
     def get_latest_version(self, id: str, reference: Optional[str], version: Optional[str]) -> Optional[str]:
-        """Return True if a newer version of template available."""
+        """Return latest version number of a template."""
         if version is None:
             return
 
