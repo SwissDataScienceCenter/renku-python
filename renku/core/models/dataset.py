@@ -294,6 +294,8 @@ class DatasetFile(Slots):
 class Dataset(Persistent):
     """Represent a dataset."""
 
+    date_modified: Optional[datetime] = None
+
     def __init__(
         self,
         *,
@@ -342,6 +344,7 @@ class Dataset(Persistent):
         # `dataset_files` includes existing files and those that have been removed in the previous version
         self.dataset_files: List[DatasetFile] = dataset_files or []
         self.date_created: datetime = date_created
+        self.date_modified: datetime = local_now()
         self.date_published: datetime = fix_datetime(date_published)
         self.date_removed: datetime = fix_datetime(date_removed)
         self.derived_from: Url = derived_from
@@ -435,6 +438,7 @@ class Dataset(Persistent):
         self.derived_from = Url(url_id=dataset.id)
         self.same_as = None
         self.date_created = date_created or local_now()
+        self.date_modified = local_now()
         self.date_published = None
 
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):

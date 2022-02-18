@@ -1875,7 +1875,7 @@ def test_datasets_provenance_after_multiple_adds(
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree / "file1")]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
 
         assert 1 == len(provenance)
 
@@ -1899,7 +1899,7 @@ def test_datasets_provenance_after_add_with_overwrite(
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
 
         assert 1 == len(provenance)
 
@@ -1947,7 +1947,7 @@ def test_datasets_provenance_after_remove(
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         current_version = datasets_provenance.get_by_name("my-data")
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
 
     assert current_version is None
     # NOTE: We only keep the tail of provenance chain for each dataset in the provenance
@@ -1984,7 +1984,7 @@ def test_datasets_provenance_after_adding_tag(
     assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "42.0"]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
         current_version = datasets_provenance.get_by_name("my-data")
 
     assert 1 == len(provenance)
@@ -2006,7 +2006,7 @@ def test_datasets_provenance_after_removing_tag(
     assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "my-data", "42.0"]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
         current_version = datasets_provenance.get_by_name("my-data")
 
     assert 1 == len(provenance)
@@ -2028,7 +2028,7 @@ def test_datasets_provenance_multiple(
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         tail_dataset = datasets_provenance.get_by_name("my-data", immutable=True)
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
 
         # NOTE: We only keep the tail of provenance chain for each dataset in the provenance
         assert 1 == len(provenance)

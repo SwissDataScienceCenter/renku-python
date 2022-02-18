@@ -37,7 +37,7 @@ class DatasetsProvenance:
     @property
     def datasets(self) -> List[Dataset]:
         """Return an iterator of datasets."""
-        return self.dataset_gateway.get_all_datasets()
+        return self.dataset_gateway.get_all_active_datasets()
 
     def get_by_id(self, id: str, immutable: bool = False) -> Optional[Dataset]:
         """Return a dataset by its id."""
@@ -62,9 +62,9 @@ class DatasetsProvenance:
 
         return dataset.copy()
 
-    def get_provenance(self):
+    def get_provenance_tails(self):
         """Return the provenance for all datasets."""
-        return self.dataset_gateway.get_provenance()
+        return self.dataset_gateway.get_provenance_tails()
 
     def get_previous_version(self, dataset: Dataset) -> Optional[Dataset]:
         """Return the previous version of a dataset if any."""

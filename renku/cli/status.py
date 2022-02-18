@@ -50,6 +50,7 @@ cutting and pasting to other commands).
 
 import click
 
+import renku.cli.utils.color as color
 from renku.cli.utils.callback import ClickCallback
 
 
@@ -66,7 +67,7 @@ def status(ctx, paths):
     stales, stale_activities, modified, deleted = result.output
 
     if not stales and not deleted and not stale_activities:
-        click.secho("Everything is up-to-date.", fg="green")
+        click.secho("Everything is up-to-date.", fg=color.GREEN)
         return
 
     if stales:
@@ -78,11 +79,11 @@ def status(ctx, paths):
         )
         for k in sorted(stales.keys()):
             v = stales[k]
-            paths = click.style(", ".join(sorted(v)), fg="blue", bold=True)
-            output = click.style(k, fg="red", bold=True)
+            paths = click.style(", ".join(sorted(v)), fg=color.BLUE, bold=True)
+            output = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{output}: {paths}")
     else:
-        click.secho("All files were generated from the latest inputs.", fg="green")
+        click.secho("All files were generated from the latest inputs.", fg=color.GREEN)
 
     click.echo()
 
@@ -93,21 +94,21 @@ def status(ctx, paths):
             # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
         )
         for v in sorted(modified):
-            click.echo(click.style(f"\t{v}", fg="blue", bold=True))
+            click.echo(click.style(f"\t{v}", fg=color.BLUE, bold=True))
         click.echo()
 
     if deleted:
         click.echo("Deleted files used to generate outputs:\n")
         for v in sorted(deleted):
-            click.echo(click.style(f"\t{v}", fg="blue", bold=True))
+            click.echo(click.style(f"\t{v}", fg=color.BLUE, bold=True))
         click.echo()
 
     if stale_activities:
         click.echo(f"Outdated activities that have no outputs({len(stale_activities)}):\n")
         for k in sorted(stale_activities.keys()):
             v = stale_activities[k]
-            paths = click.style(", ".join(sorted(v)), fg="blue", bold=True)
-            activity = click.style(k, fg="red", bold=True)
+            paths = click.style(", ".join(sorted(v)), fg=color.BLUE, bold=True)
+            activity = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{activity}: {paths}")
         click.echo()
 
