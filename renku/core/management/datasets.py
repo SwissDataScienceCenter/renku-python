@@ -563,6 +563,7 @@ class DatasetsApiMixin(object):
                     destination=destination,
                     extract=extract,
                     filename=name,
+                    multiple=True,
                 )
                 for url, name in zip(urls, destination_names)
             }
@@ -572,7 +573,7 @@ class DatasetsApiMixin(object):
 
         return files
 
-    def _add_from_url(self, url, destination, extract, filename=None):
+    def _add_from_url(self, url, destination, extract, filename=None, multiple: bool = False):
         """Process adding from url and return the location on disk."""
         from renku.core.utils import requests
 
@@ -595,12 +596,12 @@ class DatasetsApiMixin(object):
 
         paths = [p for p in paths if not p.is_dir()]
 
-        if len(paths) > 1:
+        if len(paths) > 1 or multiple:
             if destination.exists() and not destination.is_dir():
                 raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
             destination.mkdir(parents=True, exist_ok=True)
         elif len(paths) == 1:
-            tmp_root = paths[0].parent
+            tmp_root = paths[0].parent if destination.exists() else paths[0]
 
         paths = [(src, destination / src.relative_to(tmp_root)) for src in paths if not src.is_dir()]
         return [
