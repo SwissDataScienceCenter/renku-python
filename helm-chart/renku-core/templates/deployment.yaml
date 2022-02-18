@@ -21,7 +21,6 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "renku-core.name" $ }}
         app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/deploymentVersion: {{ $version.name }}
         {{ .Values.global.redis.clientLabel | toYaml | nindent 8 }}
     spec:
     {{- with .Values.imagePullSecrets }}
@@ -80,8 +79,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.redis.existingSecret }}
                   key: {{ .Values.global.redis.existingSecretPasswordKey }}
-            - name: REDIS_NAMESPACE
-              value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ .Values.cacheDirectory }}
             - name: PROJECT_CLONE_DEPTH_DEFAULT
@@ -151,8 +148,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.redis.existingSecret }}
                   key: {{ .Values.global.redis.existingSecretPasswordKey }}
-            - name: REDIS_NAMESPACE
-              value: {{ $version.name }}
             - name: RENKU_JWT_TOKEN_SECRET
               value: {{ .Values.jwtTokenSecret }}
             - name: CACHE_DIR
@@ -199,8 +194,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.redis.existingSecret }}
                   key: {{ .Values.global.redis.existingSecretPasswordKey }}
-            - name: REDIS_NAMESPACE
-              value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ .Values.cacheDirectory }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
@@ -245,8 +238,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.redis.existingSecret }}
                   key: {{ .Values.global.redis.existingSecretPasswordKey }}
-            - name: REDIS_NAMESPACE
-              value: {{ $version.name }}
             - name: CACHE_DIR
               value: {{ .Values.cacheDirectory | quote }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
