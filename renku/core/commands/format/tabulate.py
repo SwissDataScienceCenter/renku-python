@@ -23,7 +23,7 @@ from operator import attrgetter
 from renku.core import errors
 
 
-def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort=True, reverse=False):
+def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort=True, reverse=False) -> str:
     """Format collection with a tabular output."""
     from renku.core.models.tabulate import tabulate as tabulate_
 

@@ -22,6 +22,7 @@ import hashlib
 import importlib
 import io
 import json
+from enum import Enum
 from pathlib import Path
 from types import BuiltinFunctionType, FunctionType
 from typing import Dict, List, Optional, Union
@@ -864,6 +865,10 @@ class ObjectReader:
                 new_object = cls.__new__(cls)
                 new_object._p_oid = oid
                 self.set_ghost_state(new_object, data)
+            elif issubclass(cls, Enum):
+                # NOTE: Enum replaces __new__ on classes with its own versions that validates entries
+                new_object = cls.__new__(cls, data["_value_"])
+                return new_object
             else:
                 new_object = cls.__new__(cls)
 

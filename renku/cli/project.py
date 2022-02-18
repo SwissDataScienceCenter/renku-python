@@ -62,6 +62,7 @@ from pathlib import Path
 
 import click
 
+import renku.cli.utils.color as color
 from renku.cli.utils.callback import ClickCallback
 
 
@@ -114,19 +115,21 @@ def edit(description, keyword, creator, metadata):
 
 def _print_project(project):
     """Print project metadata."""
-    click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(project.id, bold=True))
-    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(project.name, bold=True))
-    click.echo(click.style("Description: ", bold=True, fg="magenta") + click.style(project.description, bold=True))
-    click.echo(click.style("Creator: ", bold=True, fg="magenta") + click.style(project.creator_str, bold=True))
-    click.echo(click.style("Created: ", bold=True, fg="magenta") + click.style(project.created_str, bold=True))
-    click.echo(click.style("Keywords: ", bold=True, fg="magenta") + click.style(project.keywords_str, bold=True))
-    click.echo(click.style("Renku Version: ", bold=True, fg="magenta") + click.style(project.agent, bold=True))
+    click.echo(click.style("Id: ", bold=True, fg=color.MAGENTA) + click.style(project.id, bold=True))
+    click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(project.name, bold=True))
+    click.echo(click.style("Description: ", bold=True, fg=color.MAGENTA) + click.style(project.description, bold=True))
+    click.echo(click.style("Creator: ", bold=True, fg=color.MAGENTA) + click.style(project.creator_str, bold=True))
+    click.echo(click.style("Created: ", bold=True, fg=color.MAGENTA) + click.style(project.created_str, bold=True))
+    click.echo(click.style("Keywords: ", bold=True, fg=color.MAGENTA) + click.style(project.keywords_str, bold=True))
+    click.echo(click.style("Renku Version: ", bold=True, fg=color.MAGENTA) + click.style(project.agent, bold=True))
     click.echo(
-        click.style("Project Template: ", bold=True, fg="magenta") + click.style(project.template_info, bold=True)
+        click.style("Project Template: ", bold=True, fg=color.MAGENTA) + click.style(project.template_info, bold=True)
     )
 
     if project.annotations:
-        click.echo(click.style("Annotations: ", bold=True, fg="magenta") + click.style(project.annotations, bold=True))
+        click.echo(
+            click.style("Annotations: ", bold=True, fg=color.MAGENTA) + click.style(project.annotations, bold=True)
+        )
 
 
 @project.command()
