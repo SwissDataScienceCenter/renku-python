@@ -335,7 +335,7 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
 
         result = isolated_runner.invoke(cli, ["--no-external-storage"] + failing_command)
         assert 2 == result.exit_code
-        assert 'Cannot use "--source" with URLs' in result.output
+        assert "Cannot use '-s/--src/--source' with URLs" in result.output
 
 
 def test_file_tracking(isolated_runner, project_init):

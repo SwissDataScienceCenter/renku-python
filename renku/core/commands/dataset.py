@@ -46,6 +46,7 @@ from renku.core.management.dataset.usecase import (
     update_dataset_custom_metadata,
     update_dataset_git_files,
     update_dataset_local_files,
+    update_external_files,
 )
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
@@ -575,7 +576,7 @@ def _import_dataset(
         sources = []
 
         if record.datadir_exists:
-            sources = [f"{dataset.data_dir}/**"]
+            sources = [f"{dataset.data_dir}/*"]
 
         for file in dataset.files:
             try:
@@ -731,7 +732,7 @@ def _update_datasets(
 
     if external_files:
         if external:
-            client.update_external_files(external_files)
+            update_external_files(client, external_files)
         else:
             communication.echo("To update external files run update command with '--external' flag.")
 

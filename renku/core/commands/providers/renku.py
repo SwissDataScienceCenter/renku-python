@@ -392,6 +392,7 @@ class _RenkuRecordSerializer:
             raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
 
         self._dataset.data_dir = get_dataset_data_dir(self._remote_client, self._dataset)
+        self._dataset.derived_from = None
 
         files_info = []
         for file in self._dataset.files:

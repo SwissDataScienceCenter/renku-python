@@ -178,7 +178,7 @@ def migrate(
 
 
 def _remove_untracked_renku_files(renku_path):
-    from renku.core.management.dataset.usecase import CACHE
+    from renku.core.management.dataset.constant import CACHE
 
     untracked_paths = [RENKU_TMP, CACHE, "vendors"]
     for path in untracked_paths:

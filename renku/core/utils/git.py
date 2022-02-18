@@ -99,7 +99,9 @@ def get_oauth_url(url, gitlab_token):
 
 def get_cache_directory_for_repository(client, url) -> Path:
     """Return a path to client's cache directory."""
-    return client.renku_path / client.CACHE / get_full_repository_path(url)
+    from renku.core.management.dataset.constant import CACHE
+
+    return client.renku_path / CACHE / get_full_repository_path(url)
 
 
 def parse_git_url(url: Optional[str]) -> GitURL:

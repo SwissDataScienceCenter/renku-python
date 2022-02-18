@@ -212,8 +212,7 @@ them.
 
 You can use ``--destination`` or ``-d`` flag to set the location where the new
 data is copied to. This location be will under the dataset's data directory and
-will be created if does not exists. You will get an error message if the
-destination exists and is a file.
+will be created if does not exists.
 
 .. code-block:: console
 

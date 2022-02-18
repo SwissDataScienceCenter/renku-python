@@ -66,7 +66,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         target_path = os.path.join(DATA_DIR, "dataset", "file1")
 
         with open(target_path) as f:
-            assert f.read() == "123"
+            assert f.read() == "file1 content"
 
         assert d.find_file(target_path)
 

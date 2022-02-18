@@ -19,12 +19,13 @@
 
 import os
 from pathlib import Path
+from typing import List
 
 import pytest
 
 
 @pytest.fixture
-def directory_tree_files():
+def directory_tree_files() -> List[str]:
     """List of files for ``directory_tree`` fixture."""
     return ["file1", os.path.join("dir1", "file2"), os.path.join("dir1", "file3")]
 
@@ -39,11 +40,11 @@ def directory_tree(tmp_path, directory_tree_files) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         if str(path).endswith("file1"):
-            path.write_text("123")
+            path.write_text("file1 content")
         elif str(path).endswith("file2"):
-            path.write_text("456")
+            path.write_text("file2 content")
         elif str(path).endswith("file3"):
-            path.write_text("789")
+            path.write_text("file3 content")
 
     return base
 
