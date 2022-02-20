@@ -64,6 +64,7 @@ endpoints are removed.
 
 import click
 
+import renku.cli.utils.color as color
 from renku.cli.utils.callback import ClickCallback
 
 
@@ -77,7 +78,7 @@ def login(endpoint, git, yes):
 
     communicator = ClickCallback()
     login_command().with_communicator(communicator).build().execute(endpoint=endpoint, git_login=git, yes=yes)
-    click.secho("Successfully logged in.", fg="green")
+    click.secho("Successfully logged in.", fg=color.GREEN)
 
 
 @click.command()
@@ -88,7 +89,7 @@ def logout(endpoint):
 
     communicator = ClickCallback()
     logout_command().with_communicator(communicator).build().execute(endpoint=endpoint)
-    click.secho("Successfully logged out.", fg="green")
+    click.secho("Successfully logged out.", fg=color.GREEN)
 
 
 @click.command(hidden=True)

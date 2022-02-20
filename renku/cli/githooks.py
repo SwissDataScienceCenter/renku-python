@@ -40,6 +40,8 @@ some output file is manually modified.
 
 import click
 
+import renku.cli.utils.color as color
+
 
 @click.group()
 def githooks():
@@ -55,7 +57,7 @@ def install(force):
 
     communicator = ClickCallback()
     install_githooks_command().with_communicator(communicator).build().execute(force)
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @githooks.command()
@@ -64,4 +66,4 @@ def uninstall():
     from renku.core.commands.githooks import uninstall_githooks_command
 
     uninstall_githooks_command().build().execute()
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)

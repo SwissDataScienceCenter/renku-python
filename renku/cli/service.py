@@ -28,6 +28,7 @@ from pathlib import Path
 import click
 import psutil
 
+import renku.cli.utils.color as color
 from renku.core.commands.echo import ERROR
 from renku.core.models.tabulate import tabulate
 from renku.core.utils.contexts import chdir
@@ -329,7 +330,7 @@ def all_start(ctx, daemon, runtime_dir):
         start_new_session=True,
     )
 
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @service.command(name="down")
@@ -347,7 +348,7 @@ def all_stop():
             continue
 
     if processes:
-        click.secho("OK", fg="green")
+        click.secho("OK", fg=color.GREEN)
     else:
         click.echo("Nothing to shut down.")
 
@@ -362,7 +363,7 @@ def all_restart():
         os.kill(proc["pid"], signal.SIGKILL)
 
     if processes:
-        click.secho("OK", fg="green")
+        click.secho("OK", fg=color.GREEN)
     else:
         click.echo("Nothing to restart.")
 

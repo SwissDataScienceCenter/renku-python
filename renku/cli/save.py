@@ -78,6 +78,7 @@ You can also specify which paths to save:
 
 import click
 
+import renku.cli.utils.color as color
 from renku.cli.utils.callback import ClickCallback
 
 
@@ -110,4 +111,4 @@ def save(message, destination, paths):
     else:
         click.echo("There were no changes to save.")
 
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)

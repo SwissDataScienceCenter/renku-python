@@ -53,6 +53,8 @@ the stored credentials when available.
 
 import click
 
+import renku.cli.utils.color as color
+
 
 @click.command()
 @click.option("--no-pull-data", is_flag=True, help="Do not pull data from Git-LFS.", default=False)
@@ -67,4 +69,4 @@ def clone(no_pull_data, url, path):
     project_clone_command().build().execute(
         url=url, path=path, skip_smudge=no_pull_data, progress=get_git_progress_instance(), use_renku_credentials=True
     )
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
