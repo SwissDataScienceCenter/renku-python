@@ -276,9 +276,9 @@ vcs = "git"
 dirty = true
 format-jinja = """
     {%- if distance == 0 -%}
-        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}
+        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}{{"-dirty" if dirty else ""}}
     {%- else -%}
-        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}.dev{{distance}}+g{{commit}}
+        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}.dev{{distance}}+g{{commit}}{{"-dirty" if dirty else ""}}
     {%- endif -%}
 """
 pattern = """
