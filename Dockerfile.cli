@@ -30,10 +30,18 @@ RUN pip wheel --wheel-dir /wheels . && \
 
 FROM base
 
+RUN addgroup -gid 1000 shuhitsu && \
+    useradd -m -u 1000 -g shuhitsu shuhitsu
+
 RUN apt-get install -y git-lfs && \
     git lfs install
 
 COPY --from=builder /pythonroot/ /
+
+# shuhitsu (執筆): The "secretary" of the renga, as it were, who is responsible for
+# writing down renga verses and for the proceedings of the renga.
+# todo: #2705 avoid code duplication between service and CLI dockerfiles
+USER shuhitsu
 
 ENV RENKU_DISABLE_VERSION_CHECK=1
 
