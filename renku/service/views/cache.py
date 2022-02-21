@@ -30,11 +30,11 @@ from renku.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprin
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
-    handle_migration_except,
     optional_identity,
     requires_cache,
     requires_identity,
 )
+from renku.service.views.error_handlers import handle_migration_errors
 from renku.service.views.v0_9.cache import add_v0_9_specific_endpoints
 from renku.service.views.v1_0.cache import add_v1_0_specific_endpoints
 
@@ -162,7 +162,7 @@ def list_projects_view(user_data, cache):
 
 @cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False, versions=[V1_1])
 @handle_common_except
-@handle_migration_except
+@handle_migration_errors
 @accepts_json
 @requires_cache
 @requires_identity

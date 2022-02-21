@@ -22,7 +22,16 @@ from functools import wraps
 
 from marshmallow import ValidationError
 
-from renku.core.errors import DatasetExistsError, DatasetImageError, GitError, ParameterError, RenkuException
+from renku.core.errors import (
+    DatasetExistsError,
+    DatasetImageError,
+    DockerfileUpdateError,
+    GitError,
+    MigrationError,
+    ParameterError,
+    RenkuException,
+    TemplateUpdateError,
+)
 from renku.service.errors import (
     IntermittentDatasetExistsError,
     IntermittentFileNotExistsError,
@@ -35,6 +44,7 @@ from renku.service.errors import (
     UserDatasetsUnreachableImageError,
     UserInvalidGenericFieldsError,
     UserMissingFieldError,
+    UserOutdatedProjectError,
     UserProjectCreationError,
     UserRepoBranchInvalidError,
     UserRepoUrlInvalidError,
@@ -195,5 +205,19 @@ def handle_datasets_unlink_errors(f):
             if "one of the filters must be specified" in str(e):
                 raise UserDatasetsUnlinkError(e)
             raise
+
+    return decorated_function
+
+
+def handle_migration_errors(f):
+    """Wrapper which handles migrations exceptions."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except (TemplateUpdateError, DockerfileUpdateError, MigrationError) as e:
+            raise UserOutdatedProjectError(e)
 
     return decorated_function

@@ -34,11 +34,6 @@ DOCS_URL_BASE = "https://renku.readthedocs.io/projects/renku-python/en/latest/"
 DOCS_URL_ERRORS = "service_errors.html#renku.service.errors."
 ERROR_NOT_AVAILABLE = "Unknown"
 
-# TODO: #2100 the git access error should have its own error code
-RENKU_EXCEPTION_ERROR_CODE = -32100
-REDIS_EXCEPTION_ERROR_CODE = -32200
-INVALID_PARAMS_ERROR_CODE = -32602
-
 SERVICE_NAME = "Renku Service"
 OPENAPI_VERSION = "3.0.3"
 API_VERSION = "v1"

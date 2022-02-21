@@ -640,7 +640,7 @@ class IntermittentTimeoutError(ServiceError):
 
     code = SVC_ERROR_INTERMITTENT + 200
     userMessage = "The operation was taking too long. Please try it again."
-    devMessage = "Timeout error. See Sentry exceptions for the details."
+    devMessage = "Timeout error. See Sentry exceptions for details."
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
@@ -651,7 +651,18 @@ class IntermittentLockError(ServiceError):
 
     code = SVC_ERROR_INTERMITTENT + 201
     userMessage = "The operation was taking too long. Please try it again."
-    devMessage = "Deadlocked operation. See Sentry exceptions for the details."
+    devMessage = "Deadlocked operation. See Sentry exceptions for details."
 
     def __init__(self, exception=None, message=ERROR_NOT_AVAILABLE):
+        super().__init__(exception=exception)
+
+
+class IntermittentRedisError(ServiceError):
+    """An error occured when interacting with Redis."""
+
+    code = SVC_ERROR_INTERMITTENT + 202
+    userMessage = "The servers could not run the request operation. Please try it again."
+    devMessage = "Redis error. See Sentry exceptions for details."
+
+    def __init__(self, exception=None):
         super().__init__(exception=exception)

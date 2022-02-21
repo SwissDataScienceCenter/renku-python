@@ -20,27 +20,18 @@ import os
 import re
 from functools import wraps
 
-from flask import jsonify, request
+from flask import request
 from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
 from redis import RedisError
-from sentry_sdk import capture_exception, set_context
+from sentry_sdk import set_context
 
-from renku.core.errors import (
-    DockerfileUpdateError,
-    GitCommandError,
-    GitError,
-    MigrationError,
-    MigrationRequired,
-    RenkuException,
-    TemplateUpdateError,
-    UninitializedProject,
-)
+from renku.core.errors import GitCommandError, GitError, MigrationRequired, RenkuException, UninitializedProject
 from renku.service.cache import cache
-from renku.service.config import INVALID_PARAMS_ERROR_CODE, REDIS_EXCEPTION_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.errors import (
     IntermittentAuthenticationError,
     IntermittentProjectIdError,
+    IntermittentRedisError,
     ProgramContentTypeError,
     ProgramGitError,
     ProgramInternalError,
@@ -103,9 +94,7 @@ def handle_redis_except(f):
             except (Exception, BaseException):
                 pass
 
-            capture_exception(e)
-
-            return jsonify(error={"code": REDIS_EXCEPTION_ERROR_CODE, "reason": e.messages})
+            raise IntermittentRedisError(e)
 
     return decorated_function
 
@@ -118,25 +107,6 @@ def requires_cache(f):
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
         return f(cache, *args, **kwargs)
-
-    return decorated_function
-
-
-def handle_schema_except(f):
-    """Wrapper which handles Schema.load exceptions."""
-    # noqa
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        """Represents decorated function."""
-        try:
-            return f(*args, **kwargs)
-        except KeyError as e:
-            capture_exception(e)
-
-            if e.args and len(e.args) > 0:
-                return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": f'missing parameter "{e.args[0]}"'})
-
-            raise
 
     return decorated_function
 
@@ -199,28 +169,6 @@ def handle_renku_except(f):
                 pass
 
             raise ProgramRenkuError(e)
-
-    return decorated_function
-
-
-def handle_migration_except(f):
-    """Wrapper which handles exceptions during migrations."""
-    # noqa
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        """Represents decorated function."""
-        try:
-            return f(*args, **kwargs)
-        except (TemplateUpdateError, DockerfileUpdateError, MigrationError) as e:
-            err_response = {
-                "code": RENKU_EXCEPTION_ERROR_CODE,
-                "reason": str(e),
-                "template_update_failed": isinstance(e, TemplateUpdateError),
-                "dockerfile_update_failed": isinstance(e, DockerfileUpdateError),
-                "migrations_failed": isinstance(e, MigrationError),
-            }
-
-            return jsonify(error=err_response)
 
     return decorated_function
 
