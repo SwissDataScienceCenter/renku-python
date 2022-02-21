@@ -18,6 +18,7 @@
 """Renku service templates read manifest controller tests."""
 import pytest
 
+from renku.core.errors import GitError
 from renku.service.errors import UserRepoUrlInvalidError
 
 
@@ -63,5 +64,5 @@ def test_found_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_client_wi
 
     ctrl = TemplatesReadManifestCtrl(cache, user_data, template_params)
 
-    with pytest.raises(UserRepoUrlInvalidError):
+    with pytest.raises(GitError):
         ctrl.to_response()
