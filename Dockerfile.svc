@@ -30,8 +30,7 @@ RUN pip wheel --wheel-dir /wheels .[service] && \
 
 FROM base
 
-RUN addgroup -gid 2000 debug && \
-    addgroup -gid 1000 shuhitsu && \
+RUN addgroup -gid 1000 shuhitsu && \
     useradd -m -u 1000 -g shuhitsu shuhitsu && \
     mkdir /svc && chown shuhitsu:shuhitsu /svc
 
@@ -39,10 +38,6 @@ RUN apt-get install -y git-lfs && \
     git lfs install
 
 COPY --from=builder /pythonroot/ /
-COPY --from=builder /code/renku /code/renku
-
-# Only allow 'debug' group to modify the code
-RUN chown -R root:debug /code/renku && chmod -R 775 /code/renku
 
 # shuhitsu (執筆): The "secretary" of the renga, as it were, who is responsible for
 # writing down renga verses and for the proceedings of the renga.
@@ -51,7 +46,4 @@ USER shuhitsu
 ENV RENKU_SVC_NUM_WORKERS 4
 ENV RENKU_SVC_NUM_THREADS 8
 
-WORKDIR /code/renku
-
-COPY entrypoint-svc.sh /code/renku/
-ENTRYPOINT ["./entrypoint-svc.sh"]
+ENTRYPOINT [ "renku", "service"]
