@@ -8,3 +8,4 @@ updates:
       prefix: "build(deps): "
       include: "scope"
     target-branch: "dependabot-updates"
+    open-pull-requests-limit: 1
