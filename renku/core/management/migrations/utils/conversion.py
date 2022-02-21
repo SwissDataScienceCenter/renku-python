@@ -22,9 +22,19 @@ from typing import List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 from renku.core.management.migrations.models import v9 as old_datasets
-from renku.core.models.dataset import Dataset, DatasetFile, DatasetTag, ImageObject, Language, RemoteEntity, Url
+from renku.core.models.dataset import (
+    Dataset,
+    DatasetFile,
+    DatasetTag,
+    ImageObject,
+    Language,
+    RemoteEntity,
+    Url,
+    is_dataset_name_valid,
+)
 from renku.core.models.provenance import agent as new_agents
 from renku.core.utils.git import get_entity_from_revision
+from renku.core.utils.urls import get_slug
 
 
 def _convert_dataset_identifier(identifier: str) -> str:
@@ -168,6 +178,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
         return str(license)
 
     tags = [_convert_dataset_tag(tag) for tag in (dataset.tags or [])]
+    name = get_slug(dataset.name) if not is_dataset_name_valid(dataset.name) else dataset.name
 
     return (
         Dataset(
@@ -184,7 +195,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             in_language=_convert_language(dataset.in_language),
             keywords=dataset.keywords,
             license=convert_license(dataset.license),
-            name=dataset.name,
+            name=name,
             project_id=client.project.id,
             initial_identifier=_convert_dataset_identifier(dataset.initial_identifier),
             same_as=_convert_same_as(dataset.same_as),

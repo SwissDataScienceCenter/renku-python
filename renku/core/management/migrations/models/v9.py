@@ -61,7 +61,7 @@ from renku.core.management.migrations.utils import (
 )
 from renku.core.metadata.repository import Commit
 from renku.core.models import jsonld as jsonld
-from renku.core.models.dataset import generate_default_name, is_dataset_name_valid
+from renku.core.models.dataset import generate_default_name
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import fix_datetime, parse_date
 from renku.core.utils.doi import extract_doi, is_doi
@@ -1536,13 +1536,6 @@ class Dataset(Entity, CreatorMixin):
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
-
-    @name.validator
-    def name_validator(self, attribute, value):
-        """Validate name."""
-        # name might have been escaped and have '%' in it
-        if value and not is_dataset_name_valid(value):
-            raise errors.ParameterError(f"Invalid name: `{value}`")
 
     @property
     def short_id(self):
