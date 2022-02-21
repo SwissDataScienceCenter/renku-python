@@ -22,7 +22,12 @@ from renku.service.config import SVC_ERROR_GENERIC
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-def error_response_new(serviceError):
+def result_response(serializer, data):
+    """Construct flask response."""
+    return current_app.response_class(response=serializer.dumps({"result": data}), mimetype="application/json")
+
+
+def error_response(serviceError):
     """Construct error response."""
     error = {}
     error["code"] = getattr(serviceError, "code", SVC_ERROR_GENERIC)
@@ -36,15 +41,3 @@ def error_response_new(serviceError):
         error["sentry"] = serviceError.sentry
 
     return current_app.response_class(response=JsonRPCResponse().dumps({"error": error}), mimetype="application/json")
-
-
-def result_response(serializer, data):
-    """Construct flask response."""
-    return current_app.response_class(response=serializer.dumps({"result": data}), mimetype="application/json")
-
-
-def error_response(code, reason):
-    """Construct error response."""
-    return current_app.response_class(
-        response=JsonRPCResponse().dumps({"error": {"code": code, "reason": reason}}), mimetype="application/json"
-    )

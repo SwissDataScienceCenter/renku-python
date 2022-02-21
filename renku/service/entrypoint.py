@@ -40,7 +40,7 @@ from renku.service.errors import (
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
-from renku.service.views import error_response_new
+from renku.service.views import error_response
 from renku.service.views.apispec import apispec_blueprint
 from renku.service.views.cache import cache_blueprint
 from renku.service.views.config import config_blueprint
@@ -135,11 +135,11 @@ def register_exceptions(app):
             else:
                 error = ProgramHttpServerError(e, code)
 
-            return error_response_new(error)
+            return error_response(error)
 
         # NOTE: Werkzeug exceptions should be covered above, the following line is for
         #   unexpected HTTP server errors.
-        return error_response_new(e)
+        return error_response(e)
 
 
 def build_routes(app):

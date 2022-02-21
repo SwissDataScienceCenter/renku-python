@@ -31,6 +31,7 @@ from renku.service.errors import (
     ProgramProjectCorruptError,
     ProgramProjectCreationError,
     UserDatasetsMultipleImagesError,
+    UserDatasetsUnlinkError,
     UserDatasetsUnreachableImageError,
     UserInvalidGenericFieldsError,
     UserMissingFieldError,
@@ -148,7 +149,7 @@ def handle_config_write_errors(f):
 
 
 def handle_datasets_write_errors(f):
-    """Wrapper which handles datasets errors."""
+    """Wrapper which handles datasets write errors."""
     # noqa
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -173,6 +174,26 @@ def handle_datasets_write_errors(f):
         except RenkuException as e:
             if str(e).startswith("invalid file reference"):
                 raise IntermittentFileNotExistsError(e)
+            raise
+
+    return decorated_function
+
+
+def handle_datasets_unlink_errors(f):
+    """Wrapper which handles datasets unlink errors."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except RenkuException as e:
+            if str(e).startswith("Invalid parameter") and "No records found" in str(e):
+                raise UserDatasetsUnlinkError(e)
+            raise
+        except ValueError as e:
+            if "one of the filters must be specified" in str(e):
+                raise UserDatasetsUnlinkError(e)
             raise
 
     return decorated_function

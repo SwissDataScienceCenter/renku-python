@@ -18,7 +18,6 @@
 """Renku service exceptions."""
 import os
 
-from renku.core.errors import RenkuException
 from renku.service.config import (
     DOCS_URL_BASE,
     DOCS_URL_ERRORS,
@@ -310,10 +309,21 @@ class UserDatasetsUnreachableImageError(ServiceError):
         super().__init__(exception=exception)
 
 
+class UserDatasetsUnlinkError(ServiceError):
+    """Dataset unlink parameters not valid."""
+
+    code = SVC_ERROR_USER + 132
+    userMessage = "Please provide valid unlink parameter."
+    devMessage = "Unlink parameters not valid."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
 class UserOutdatedProjectError(ServiceError):
     """The operation can be done only after updating the target project."""
 
-    code = SVC_ERROR_USER + 200
+    code = SVC_ERROR_USER + 140
     userMessage = "This operation requires to update the project first."
     devMessage = "The requested operation can only be performed on an up-to-date project."
 
@@ -625,44 +635,23 @@ class IntermittentDatasetExistsError(ServiceError):
         super().__init__(exception=exception)
 
 
-# NOTE: old errors
+class IntermittentTimeoutError(ServiceError):
+    """An operation timed out."""
+
+    code = SVC_ERROR_INTERMITTENT + 200
+    userMessage = "The operation was taking too long. Please try it again."
+    devMessage = "Timeout error. See Sentry exceptions for the details."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
 
 
-class IdentificationError(RenkuException):
-    """User identification not found or failed validation."""
+class IntermittentLockError(ServiceError):
+    """An operation was deadlocked."""
 
-    def __init__(self, message):
-        """Build a custom message."""
-        super(IdentificationError, self).__init__(message)
+    code = SVC_ERROR_INTERMITTENT + 201
+    userMessage = "The operation was taking too long. Please try it again."
+    devMessage = "Deadlocked operation. See Sentry exceptions for the details."
 
-
-class OperationNotSupported(RenkuException):
-    """Operation not supported exception."""
-
-    def __init__(self, reason):
-        message = f'operation not supported: "{reason}"'
-        super(OperationNotSupported, self).__init__(message)
-
-
-class AuthenticationTokenMissing(RenkuException):
-    """Authentication token is missing."""
-
-    def __init__(self):
-        message = "authentication token is missing"
-        super(AuthenticationTokenMissing, self).__init__(message)
-
-
-class RenkuOpTimeoutError(RenkuException):
-    """Renku operation timeout error."""
-
-    def __init__(self):
-        message = "renku operation timed out"
-        super(RenkuOpTimeoutError, self).__init__(message)
-
-
-class RenkuServiceLockError(RenkuException):
-    """Renku operation lock error."""
-
-    def __init__(self):
-        message = "renku operation couldn't get a lock on the project"
-        super(RenkuOpTimeoutError, self).__init__(message)
+    def __init__(self, exception=None, message=ERROR_NOT_AVAILABLE):
+        super().__init__(exception=exception)

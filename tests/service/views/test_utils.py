@@ -16,22 +16,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service rpc serializers."""
+from renku.service.errors import ProgramRenkuError
 from renku.service.serializers.datasets import DatasetListResponseRPC
 from renku.service.views import error_response, result_response
 
 
 def test_error_response(svc_client):
     """Test error response utility."""
-    err_code = 0
     err_reason = "test error"
-    response = error_response(err_code, err_reason).json
+    error = Exception(err_reason)
+    test_error = ProgramRenkuError(error)
+
+    response = error_response(test_error).json
 
     assert response
     assert {"error"} == set(response.keys())
-    assert {"code", "reason"} == set(response["error"].keys())
-
-    assert err_code == response["error"]["code"]
-    assert err_reason == response["error"]["reason"]
+    assert {"code", "userMessage", "devMessage", "devReference"} == set(response["error"].keys())
+    assert err_reason in response["error"]["devMessage"]
 
 
 def test_result_response(svc_client):

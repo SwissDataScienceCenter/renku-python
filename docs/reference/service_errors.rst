@@ -51,9 +51,9 @@ Intermittent errors
 
 *Error codes: from 3000 to 3999*
 
-This category includes errors that may temporarily affect the user, but they don't depend
-on a wrong input not can be classified as a bug. Repeating the same action after some
-time should be enough to solve the problem.
+This category includes errors that may temporarily affect the user, but they don't
+necessarily depend on a wrong input not can be classified as a bug. Repeating the same
+action after some time may be enough to solve the problem.
 An example could be a temporarily unavailable backend service (E.G. the GitLab instance)
 or a transient network problem.
 
@@ -66,5 +66,3 @@ List of available errors
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :exclude-members: AuthenticationTokenMissing, IdentificationError, OperationNotSupported,
-       RenkuOpTimeoutError, RenkuServiceLockError

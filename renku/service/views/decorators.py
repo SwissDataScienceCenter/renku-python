@@ -57,7 +57,7 @@ from renku.service.errors import (
 )
 from renku.service.serializers.headers import OptionalIdentityHeaders, RequiredIdentityHeaders
 from renku.service.utils.squash import squash
-from renku.service.views import error_response_new
+from renku.service.views import error_response
 
 
 def requires_identity(f):
@@ -286,14 +286,14 @@ def handle_base_except(f):
 
         # NOTE: HTTPException are now handled in the entrypoint
         except ServiceError as e:
-            return error_response_new(e)
+            return error_response(e)
         except GitError as e:
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):
                 pass
 
-            return error_response_new(ProgramGitError(e, e.message if e.message else None))
+            return error_response(ProgramGitError(e, e.message if e.message else None))
 
         except (Exception, BaseException, OSError, IOError) as e:
             try:
@@ -305,7 +305,7 @@ def handle_base_except(f):
             else:
                 error_message = str(e)
 
-            return error_response_new(ProgramInternalError(e, error_message))
+            return error_response(ProgramInternalError(e, error_message))
 
     return decorated_function
 

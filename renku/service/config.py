@@ -35,21 +35,9 @@ DOCS_URL_ERRORS = "service_errors.html#renku.service.errors."
 ERROR_NOT_AVAILABLE = "Unknown"
 
 # TODO: #2100 the git access error should have its own error code
-GIT_ACCESS_DENIED_ERROR_CODE = -32000
-GIT_UNKNOWN_ERROR_CODE = -32001
-
 RENKU_EXCEPTION_ERROR_CODE = -32100
 REDIS_EXCEPTION_ERROR_CODE = -32200
-
-# TODO: #2100 according to the JSON-RPC spec this code is reserved for "method not
-# found" - the invalid headers code should either be a custom code or lumped
-# under invalid params code
-INVALID_HEADERS_ERROR_CODE = -32601
 INVALID_PARAMS_ERROR_CODE = -32602
-INTERNAL_FAILURE_ERROR_CODE = -32603
-
-HTTP_SERVER_ERROR = -32000
-
 
 SERVICE_NAME = "Renku Service"
 OPENAPI_VERSION = "3.0.3"

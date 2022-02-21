@@ -39,7 +39,7 @@ jwt_scheme = {"type": "apiKey", "name": "Renku-User", "in": "header"}
 gitlab_token_scheme = {"type": "apiKey", "name": "Authorization", "in": "header"}
 
 TOP_LEVEL_DESCRIPTION = """
-This is the API specification of the renku core service. The API follows the
+This is the API specification of the renku core service. The API loosely follows the
 [JSON-RPC 2.0](https://www.jsonrpc.org/specification) specifications and mirrors
 the functionality of the renku CLI.
 
@@ -66,24 +66,11 @@ either a `result` or an `error` object. If the call succeeds, the returned
 `result` follows the schema documented in the individual methods. In the case of
 an error, the [`error`
 object](https://www.jsonrpc.org/specification#error_object), contains a code and
-a message describing the nature of the error. In addition to the [standard JSON-RPC
-response codes](https://www.jsonrpc.org/specification#error_object), we define application-specific
-codes:
-
-```
-GIT_ACCESS_DENIED_ERROR_CODE = -32000
-GIT_UNKNOWN_ERROR_CODE = -32001
-
-RENKU_EXCEPTION_ERROR_CODE = -32100
-REDIS_EXCEPTION_ERROR_CODE = -32200
-
-INVALID_HEADERS_ERROR_CODE = -32601
-INVALID_PARAMS_ERROR_CODE = -32602
-INTERNAL_FAILURE_ERROR_CODE = -32603
-
-HTTP_SERVER_ERROR = -32000
-```
-
+two messages describing the nature of the error. One targets the user, while the
+other targets the developers. Instead of following the [standard JSON-RPC
+response codes](https://www.jsonrpc.org/specification#error_object), we define
+our own application-specific codes. Those can be found in the definition of the
+error service classes.
 """
 
 
