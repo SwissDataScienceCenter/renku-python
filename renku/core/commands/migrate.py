@@ -16,10 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrate project to the latest Renku version."""
-
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.template.usecase import check_for_template_update
 
 SUPPORTED_RENKU_PROJECT = 1
 MIGRATION_REQUIRED = 2
@@ -84,24 +84,20 @@ def template_migration_check():
 
 def _template_migration_check(client):
     """Return template migration status."""
-    from renku.core.management.migrate import is_template_update_possible
-
-    newer_template_available, current_version, new_version = is_template_update_possible()
+    update_available, update_allowed, current_version, new_version = check_for_template_update(client)
 
     try:
         template_source = client.project.template_source
         template_ref = client.project.template_ref
         template_id = client.project.template_id
-        automated_update = bool(client.project.automated_update)
     except ValueError:
         template_source = None
         template_ref = None
         template_id = None
-        automated_update = False
 
     return {
-        "automated_template_update": automated_update,
-        "newer_template_available": newer_template_available,
+        "automated_template_update": update_allowed,
+        "newer_template_available": update_available,
         "project_template_version": current_version,
         "latest_template_version": new_version,
         "template_source": template_source,
@@ -184,7 +180,6 @@ def _check_project(client_dispatcher: IClientDispatcher):
         is_migration_required,
         is_project_unsupported,
         is_renku_project,
-        is_template_update_possible,
     )
 
     client = client_dispatcher.current_client
@@ -199,12 +194,11 @@ def _check_project(client_dispatcher: IClientDispatcher):
     except ValueError:
         return MIGRATION_REQUIRED
 
-    status = 0
+    # NOTE: ``project.automated_update`` is deprecated and we always allow template update for a project
+    status = AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
 
-    if is_template_update_possible()[0]:
+    if check_for_template_update(client)[0]:
         status |= TEMPLATE_UPDATE_POSSIBLE
-    if client.project.automated_update:
-        status |= AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
     if is_docker_update_possible()[0]:
         status |= DOCKERFILE_UPDATE_POSSIBLE
 

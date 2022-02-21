@@ -64,6 +64,7 @@ import os
 import sys
 import uuid
 from pathlib import Path
+from typing import List
 
 import click
 import yaml
@@ -91,6 +92,7 @@ from renku.cli.save import save
 from renku.cli.service import service
 from renku.cli.status import status
 from renku.cli.storage import storage
+from renku.cli.template import template
 from renku.cli.update import update
 from renku.cli.workflow import workflow
 from renku.core.commands.echo import WARNING
@@ -116,7 +118,7 @@ def get_entry_points(name: str):
         return all_entry_points.get(name, [])
 
 
-WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service", "credentials", "env"]
+WARNING_UNPROTECTED_COMMANDS = ["clone", "credentials", "env", "help", "init", "login", "logout", "service"]
 
 
 def _uuid_representer(dumper, data):
@@ -139,7 +141,22 @@ def print_global_config_path(ctx, param, value):
 
 def is_allowed_command(ctx):
     """Check if invoked command contains help command."""
-    return ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS or "-h" in sys.argv or "--help" in sys.argv
+
+    def is_allowed_subcommands(command: str, subcommands: List[str]):
+        args = sys.argv
+
+        if ctx.invoked_subcommand != command or command not in args:
+            return False
+
+        subcommand_index = args.index(command) + 1
+        return subcommand_index < len(args) and args[subcommand_index] in subcommands
+
+    return (
+        ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS
+        or is_allowed_subcommands("template", ["ls", "show"])
+        or "-h" in sys.argv
+        or "--help" in sys.argv
+    )
 
 
 @with_plugins(get_entry_points("renku.cli_plugins"))
@@ -182,8 +199,10 @@ def cli(ctx, path, external_storage_requested):
     renku_path = Path(path) / RENKU_HOME
     old_metadata = renku_path / OLD_METADATA_PATH
     new_metadata = renku_path / RepositoryApiMixin.DATABASE_PATH / Database.ROOT_OID
+    is_command_allowed = is_allowed_command(ctx)
+    is_renku_project = old_metadata.exists() or new_metadata.exists()
 
-    if not old_metadata.exists() and not new_metadata.exists() and not is_allowed_command(ctx):
+    if not is_renku_project and not is_command_allowed:
         raise UsageError(
             (
                 "`{0}` is not a renku repository.\n"
@@ -194,7 +213,7 @@ def cli(ctx, path, external_storage_requested):
 
     ctx.obj = LocalClient(path=path, external_storage_requested=external_storage_requested)
 
-    if path != os.getcwd() and ctx.invoked_subcommand not in WARNING_UNPROTECTED_COMMANDS:
+    if is_renku_project and path != os.getcwd() and not is_command_allowed:
         click.secho(WARNING + "Run CLI commands only from project's root directory.\n", err=True)
 
 
@@ -206,8 +225,10 @@ def help(ctx):
 
 
 # Register subcommands:
+cli.add_command(check_immutable_template_files)
 cli.add_command(clone)
 cli.add_command(config)
+cli.add_command(credentials)
 cli.add_command(dataset)
 cli.add_command(doctor)
 cli.add_command(env)
@@ -219,7 +240,6 @@ cli.add_command(login)
 cli.add_command(logout)
 cli.add_command(migrate)
 cli.add_command(migrationscheck)
-cli.add_command(check_immutable_template_files)
 cli.add_command(move)
 cli.add_command(project)
 cli.add_command(remove)
@@ -227,9 +247,9 @@ cli.add_command(rerun)
 cli.add_command(rollback)
 cli.add_command(run)
 cli.add_command(save)
+cli.add_command(service)
 cli.add_command(status)
 cli.add_command(storage)
-cli.add_command(credentials)
+cli.add_command(template)
 cli.add_command(update)
 cli.add_command(workflow)
-cli.add_command(service)
