@@ -37,6 +37,7 @@ from renku.core.management import RENKU_HOME
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
+from renku.core.utils.template_vars import TemplateVariableFormatter
 from renku.core.workflow.types import PATH_OBJECTS, Directory, File
 from renku.domain_model.datastructures import DirectoryTree
 from renku.domain_model.workflow.parameter import (
@@ -96,19 +97,16 @@ class PlanFactory:
             raise errors.UsageError("Working Directory must exist.")
 
         if isinstance(command_line, (list, tuple)):
-            self.command_line = list(command_line)
+            self._command_line = list(command_line)
         else:
-            self.command_line = shlex.split(command_line)
+            self._command_line = shlex.split(command_line)
 
         self.success_codes = success_codes or []
+        self.template_engine = TemplateVariableFormatter()
 
-        self.explicit_inputs: List[Tuple[str, str]] = (
-            [(get_absolute_path(path), name) for path, name in explicit_inputs] if explicit_inputs else []
-        )
-        self.explicit_outputs: List[Tuple[str, str]] = (
-            [(get_absolute_path(path), name) for path, name in explicit_outputs] if explicit_outputs else []
-        )
-        self.explicit_parameters = explicit_parameters if explicit_parameters else []
+        self.explicit_inputs = explicit_inputs or []
+        self.explicit_outputs = explicit_outputs or []
+        self.explicit_parameters = explicit_parameters or []
 
         self.stdin = stdin
         self.stdout = stdout
@@ -123,14 +121,38 @@ class PlanFactory:
 
         self.add_inputs_and_parameters(*detected_arguments)
 
+    @property
+    def command_line(self):
+        cmd = []
+        if self.base_command:
+            cmd.extend(self.base_command)
+
+        arguments = chain(self.inputs, self.outputs, self.parameters)
+
+        arguments = filter(lambda x: x.position and not getattr(x, "mapped_to", None), arguments)
+        arguments = sorted(arguments, key=lambda x: x.position)
+
+        for a in arguments:
+            v = str(a.actual_value) if not isinstance(a.actual_value, str) else a.actual_value
+            if a.prefix:
+                if a.prefix.endswith(" "):
+                    cmd.append(a.prefix[:-1])
+                    cmd.append(v)
+                    continue
+                else:
+                    v = f"{a.prefix}{v}"
+            cmd.append(v)
+
+        return cmd
+
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
-        existing_subpath = self._resolve_existing_subpath(self.command_line[0])
+        existing_subpath = self._resolve_existing_subpath(self._command_line[0])
         if existing_subpath is not None:
-            return [], list(self.command_line)
+            return [], list(self._command_line)
 
-        cmd = [self.command_line[0]]
-        args = list(self.command_line[1:])
+        cmd = [self._command_line[0]]
+        args = list(self._command_line[1:])
 
         if len(args) < 2:
             # only guess subcommand for more arguments
@@ -225,7 +247,10 @@ class PlanFactory:
                     prefix = argument
 
             else:
-                default, type = self.guess_type(argument, ignore_filenames=output_streams)
+                argument_value = self.template_engine.apply(argument)
+                default, type = self.guess_type(argument_value, ignore_filenames=output_streams)
+                if argument_value == argument:
+                    argument_value = None
 
                 position += 1
 
@@ -240,7 +265,9 @@ class PlanFactory:
                         encoding_format=[DIRECTORY_MIME_TYPE] if type == "Directory" else default.mime_type,
                     )
                 else:
-                    self.add_command_parameter(default_value=default, prefix=prefix, position=position)
+                    self.add_command_parameter(
+                        default_value=argument, actual_value=argument_value, prefix=prefix, position=position
+                    )
                 prefix = None
 
         if prefix:
@@ -274,11 +301,11 @@ class PlanFactory:
 
         for parameter in self.parameters:
             # NOTE: find parameters that might actually be outputs
-            if any(parameter.default_value == value for value, _ in self.explicit_parameters):
+            if any(parameter.actual_value == value for value, _ in self.explicit_parameters):
                 continue
 
             try:
-                path = self.directory / str(parameter.default_value)
+                path = self.directory / str(parameter.actual_value)
                 input_path = Path(os.path.abspath(path)).relative_to(self.working_dir)
             except FileNotFoundError:
                 continue
@@ -408,6 +435,7 @@ class PlanFactory:
     def add_command_output(
         self,
         default_value: Any,
+        actual_value: Optional[str] = None,
         prefix: Optional[str] = None,
         position: Optional[int] = None,
         postfix: Optional[str] = None,
@@ -443,19 +471,31 @@ class PlanFactory:
             postfix=mapped_stream.stream_type if mapped_stream else postfix,
         )
 
-        self.outputs.append(
-            CommandOutput(
-                id=id,
-                default_value=default_value,
-                prefix=prefix,
-                position=position,
-                mapped_to=mapped_stream,
-                encoding_format=encoding_format,
-                postfix=postfix,
-                create_folder=create_folder,
-                name=name,
-            )
+        params_map = TemplateVariableFormatter.to_map(
+            chain(self.inputs, self.parameters, self.explicit_inputs, self.explicit_parameters)
         )
+        for eo, _ in self.explicit_outputs:
+            if default_value == self.template_engine.apply(eo, params_map):
+                actual_value = default_value
+                default_value = eo
+                break
+
+        output = CommandOutput(
+            id=id,
+            default_value=default_value,
+            prefix=prefix,
+            position=position,
+            postfix=mapped_stream.stream_type if mapped_stream else postfix,
+            mapped_to=mapped_stream,
+            encoding_format=encoding_format,
+            postfix=postfix,
+            create_folder=create_folder,
+            name=name,
+        )
+        if actual_value:
+            output.actual_value = actual_value
+
+        self.outputs.append(output)
 
     def add_command_output_from_input(self, input: CommandInput, name):
         """Create a CommandOutput from an input."""
@@ -474,10 +514,11 @@ class PlanFactory:
     def add_command_output_from_parameter(self, parameter: CommandParameter, name):
         """Create a CommandOutput from a parameter."""
         self.parameters.remove(parameter)
-        value = Path(self._path_relative_to_root(parameter.default_value))
+        value = Path(self._path_relative_to_root(parameter.actual_value))
         encoding_format = [DIRECTORY_MIME_TYPE] if value.is_dir() else self._get_mimetype(value)
         self.add_command_output(
-            default_value=str(value),
+            default_value=parameter.default_value,
+            actual_value=parameter.actual_value if parameter.actual_value_set else None,
             prefix=parameter.prefix,
             position=parameter.position,
             encoding_format=encoding_format,
@@ -490,17 +531,20 @@ class PlanFactory:
         prefix: Optional[str] = None,
         position: Optional[int] = None,
         name: Optional[str] = None,
+        actual_value: Optional[str] = None,
     ):
         """Create a CommandParameter."""
-        self.parameters.append(
-            CommandParameter(
-                id=CommandParameter.generate_id(plan_id=self.plan_id, position=position),
-                default_value=default_value,
-                prefix=prefix,
-                position=position,
-                name=name,
-            )
+
+        param = CommandParameter(
+            id=CommandParameter.generate_id(plan_id=self.plan_id, position=position),
+            default_value=default_value,
+            prefix=prefix,
+            position=position,
+            name=name,
         )
+        if actual_value:
+            param.actual_value = actual_value
+        self.parameters.append(param)
 
     def add_explicit_inputs(self):
         """Add explicit inputs ."""
@@ -599,6 +643,8 @@ class PlanFactory:
 
             candidates: Set[Tuple[Union[Path, str], Optional[str]]] = set()
 
+            params_map = TemplateVariableFormatter.to_map(chain(self.inputs, self.parameters))
+
             if not self.no_output_detection:
                 # Calculate possible output paths.
                 # Capture newly created files through redirects.
@@ -615,7 +661,8 @@ class PlanFactory:
 
             # Include explicit outputs
             candidates |= {
-                (str(Path(path).relative_to(self.working_dir)), name) for path, name in self.explicit_outputs
+                (str(Path(self.template_engine.apply(path, params_map)).resolve().relative_to(self.working_dir)), name)
+                for path, name in self.explicit_outputs
             }
 
             candidates = {(path, name) for path, name in candidates if is_path_safe(path)}
@@ -634,8 +681,8 @@ class PlanFactory:
                     output_paths.append(stream)
 
             for output in self.outputs:
-                if output.default_value not in output_paths:
-                    output_paths.append(output.default_value)
+                if output.actual_value not in output_paths:
+                    output_paths.append(output.actual_value)
 
             if unmodified:
                 raise errors.UnmodifiedOutputs(repository, unmodified)
@@ -688,7 +735,7 @@ class PlanFactory:
     def iter_input_files(self, basedir):
         """Yield tuples with input id and path."""
         for input_ in self.inputs:
-            yield input_.id, os.path.normpath(os.path.join(basedir, input_.default_value))
+            yield input_.id, os.path.normpath(os.path.join(basedir, input_.actual_value))
 
     @staticmethod
     def _is_explicit(path: Union[Path, str], explicits_collection: List[Tuple[str, str]]) -> bool:

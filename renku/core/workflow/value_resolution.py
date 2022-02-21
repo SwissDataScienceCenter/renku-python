@@ -22,6 +22,7 @@ from itertools import chain
 from typing import Any, Dict, Optional, Set
 
 from renku.core import errors
+from renku.core.utils.template_vars import TemplateVariableFormatter
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import ParameterMapping
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
@@ -34,6 +35,7 @@ class ValueResolver(ABC):
         self._values = values
         self.missing_parameters: Set[str] = set()
         self._plan = plan
+        self._template_engine = TemplateVariableFormatter()
 
     @abstractmethod
     def apply(self) -> AbstractPlan:
@@ -77,10 +79,13 @@ class PlanValueResolver(ValueResolver):
             return self._plan
 
         values_keys = set(self._values.keys())
-        for param in chain(self._plan.inputs, self._plan.outputs, self._plan.parameters):
+        for param in chain(self._plan.inputs, self._plan.parameters, self._plan.outputs):
             if param.name in self._values:
                 param.actual_value = self._values[param.name]
                 values_keys.discard(param.name)
+            param.actual_value = self._template_engine.apply(
+                param.actual_value, TemplateVariableFormatter.to_map(chain(self._plan.inputs, self._plan.parameters))
+            )
 
         self.missing_parameters = values_keys
 
