@@ -254,8 +254,8 @@ class UserTemplateInvalidError(ServiceError):
     userMessage = "The target repository is not a valid RenkuLab template repository."
     devMessage = "Target repository is not a valid template."
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
 
 
 class UserProjectCreationError(ServiceError):
