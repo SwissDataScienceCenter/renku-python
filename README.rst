@@ -322,15 +322,11 @@ Service
 -------
 
 Developing the service and testing its APIs can be done with ``docker compose`` (see
-"Deploying Locally" above). To enable live reloading of the code, set the environment
-variable ``DEBUG_MODE=true`` either in your shell or in the ``.env`` file. Note that in
-this case the local directory is mounted in the docker container and renku is re-installed
-so it may take a few minutes before the container is ready.
+"Deploying Locally" above).
 
 If you have a full RenkuLab deployment at your disposal, you can
 use `telepresence <https://www.telepresence.io/>`__ v1 to develop and debug locally.
-Just run the `start-telepresence.sh` script and follow the instructions. You can also
-attach a remote debugger using the "remote attach" method described later.
+Just run the `start-telepresence.sh` script and follow the instructions.
 Mind that the script doesn't work with telepresence v2.
 
 
@@ -389,41 +385,3 @@ If using Visual Studio Code, you may also want to set the ``Remote Attach`` conf
             }
         ]
     }
-
-
-Kubernetes
-~~~~~~~~~~
-
-To debug a running renku-core service in a Kubernetes cluster, the service has to be deployed with the
- `core.debug` flag set to `true`, like:
- ::
-
-    core:
-      debug: true
-
-Also, if you want to be able to modify the files remotely, you need to change
-the `security context` on the `deployment.yaml` file for the renku-core component
-from `runAsUser: 1000` to `runAsGroup: 2000`.
-
-Then install the `Kubernetes extension <https://github.com/Azure/vscode-kubernetes-tools>`_
-and configure your local kubectl with the credentials needed for your cluster.
-
-Add a `.vscode/settings.json` in the renku-python project root and set the following two values:
-
-::
-
-    {
-        "vs-kubernetes": {
-            "vs-kubernetes.python-autodetect-remote-root": true,
-            "vs-kubernetes.python-remote-root": "/code/renku",
-        }
-    }
-
-You might also need to run the `Kubernetes: Use Namespace` commandlet in VSCode to pick the correct
-Kubernetes namespace.
-
-Once this is done, go to the `Kubernetes` tab in VSCode, right-click on your cluster -> Workloads -> Pods -> *-renku-core-*
-entry (not the *-renku-core-redis-* one) and pick `Debug (attach)`, select `core` and `python` and you should be good to go.
-
-You can also select `Attach Visual Studio Code` in the context menu to open a new instance of VSCode with write access to
-the source code in the remote pod.
