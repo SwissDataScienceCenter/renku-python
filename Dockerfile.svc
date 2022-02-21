@@ -8,7 +8,7 @@ FROM base as builder
 
 # The python install is done in two steps to avoid re-installing all dependencies every
 # time the code changes
-COPY pyproject.toml poetry.lock README.rst CHANGES.rst /code/renku/
+COPY pyproject.toml poetry.lock README.rst CHANGES.rst Makefile /code/renku/
 WORKDIR /code/renku
 RUN poetry export --without-hashes -f requirements.txt --output /tmp/requirements.txt && \
     pip install -r /tmp/requirements.txt && \

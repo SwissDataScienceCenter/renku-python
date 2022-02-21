@@ -1,14 +1,14 @@
-FROM python:3.7-slim as base
+FROM python:3.9-slim as base
 
 RUN apt-get update && \
-    apt-get install -y git make && \
+    apt-get install -y git make gcc python3-dev && \
     pip install --no-cache --upgrade pip poetry
 
 FROM base as builder
 
 # The python install is done in two steps to avoid re-installing all dependencies every
 # time the code changes
-COPY pyproject.toml poetry.lock README.rst CHANGES.rst /code/renku/
+COPY pyproject.toml poetry.lock README.rst CHANGES.rst Makefile /code/renku/
 WORKDIR /code/renku
 RUN poetry export --without-hashes -f requirements.txt --output /tmp/requirements.txt && \
     pip install -r /tmp/requirements.txt && \
@@ -34,5 +34,7 @@ RUN apt-get install -y git-lfs && \
     git lfs install
 
 COPY --from=builder /pythonroot/ /
+
+ENV RENKU_DISABLE_VERSION_CHECK=1
 
 ENTRYPOINT ["renku"]
