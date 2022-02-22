@@ -24,6 +24,7 @@ import pytest
 from renku.service.config import SVC_ERROR_PROGRAMMING
 from renku.service.errors import (
     IntermittentProjectIdError,
+    IntermittentTimeoutError,
     ProgramContentTypeError,
     UserAnonymousError,
     UserNonRenkuProjectError,
@@ -32,8 +33,7 @@ from renku.service.errors import (
     UserRepoUrlInvalidError,
 )
 from tests.fixtures.config import IT_PROTECTED_REMOTE_REPO_URL
-from tests.service.views.test_dataset_views import assert_rpc_response
-from tests.utils import retry_failed
+from tests.utils import assert_rpc_response, retry_failed
 
 
 @pytest.mark.service
@@ -207,14 +207,18 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
         "https://www.test.com/test2/test3",
     ],
 )
-def test_invalid_git_remote(git_url, svc_client_with_templates):
+def test_invalid_git_remote(git_url, svc_client_with_user):
     """Test error on invalid repository URL while reading template manifest file."""
-    svc_client, headers, template_params = svc_client_with_templates
-    template_params["url"] = git_url
-    response = svc_client.get("/templates.read_manifest", query_string=template_params, headers=headers)
+    svc_client, headers, _, _ = svc_client_with_user
+    params = {"git_url": git_url}
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
 
+    code_invalid = UserRepoUrlInvalidError().code
+    code_timeout = IntermittentTimeoutError().code
     assert_rpc_response(response, "error")
-    assert UserRepoUrlInvalidError().code == response.json["error"]["code"]
+    response_code = response.json["error"]["code"]
+    # NOTE: depending on local git client settings, timeout may occur for non valid repos
+    assert response_code == code_invalid or response_code == code_timeout
 
 
 @pytest.mark.service

@@ -27,8 +27,7 @@ from marshmallow import EXCLUDE
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
 from renku.service.serializers.templates import ProjectTemplateRequest
-from tests.service.views.test_dataset_views import assert_rpc_response
-from tests.utils import modified_environ, retry_failed
+from tests.utils import assert_rpc_response, modified_environ, retry_failed
 
 
 @pytest.mark.service
@@ -49,7 +48,6 @@ def test_cleanup_old_files(datapack_zip, svc_client_with_repo, service_job):
     assert response
 
     assert_rpc_response(response)
-    assert 200 == response.status_code
     assert 4 == len(response.json["result"]["files"])
 
     cache_files_cleanup()
@@ -57,7 +55,6 @@ def test_cleanup_old_files(datapack_zip, svc_client_with_repo, service_job):
 
     assert response
     assert_rpc_response(response)
-    assert 200 == response.status_code
     assert 0 == len(response.json["result"]["files"])
 
 
@@ -83,19 +80,12 @@ def test_cleanup_files_old_keys(svc_client_with_user, service_job, tmp_path):
     cache.set_file(user, file_upload)
 
     response = svc_client.get("/cache.files_list", headers=headers)
-    assert response
-
     assert_rpc_response(response)
-    assert 200 == response.status_code
     assert 1 == len(response.json["result"]["files"])
 
     cache_files_cleanup()
     response = svc_client.get("/cache.files_list", headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
-    assert 200 == response.status_code
     assert 0 == len(response.json["result"]["files"])
 
 
@@ -110,20 +100,13 @@ def test_cleanup_old_project(datapack_zip, svc_client_with_repo, service_job):
 
     response = svc_client.get("/cache.project_list", headers=headers)
 
-    assert response
-
     assert_rpc_response(response)
-    assert 200 == response.status_code
     assert 1 == len(response.json["result"]["projects"])
 
     cache_project_cleanup()
-
     response = svc_client.get("/cache.project_list", headers=headers)
 
-    assert response
-
     assert_rpc_response(response)
-    assert 200 == response.status_code
     assert 0 == len(response.json["result"]["projects"])
 
 
@@ -148,19 +131,14 @@ def test_cleanup_project_old_keys(svc_client_with_user, service_job):
     os.makedirs(str(project.abs_path), exist_ok=True)
 
     response = svc_client.get("/cache.project_list", headers=headers)
-    assert response
 
     assert_rpc_response(response)
-    assert 200 == response.status_code
     assert 1 == len(response.json["result"]["projects"])
 
     cache_project_cleanup()
     response = svc_client.get("/cache.project_list", headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
-    assert 200 == response.status_code
     assert 0 == len(response.json["result"]["projects"])
 
 
@@ -191,7 +169,6 @@ def test_job_constructor_lock(svc_client_with_user, service_job):
     assert job.job_id
     assert project.project_id == job.project_id
     assert user.user_id == job.user_id
-
     assert project.project_id in {_id.decode("utf-8") for _id in job.locked.members()}
 
 

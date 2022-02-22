@@ -19,7 +19,6 @@
 import io
 import json
 import os
-import re
 import shutil
 import uuid
 from pathlib import Path
@@ -43,15 +42,7 @@ from renku.service.errors import (
     UserRepoNoAccessError,
 )
 from renku.service.serializers.headers import encode_b64
-from tests.utils import make_dataset_add_payload, retry_failed
-
-
-def assert_rpc_response(response, with_key="result"):
-    """Check rpc result in response."""
-    assert response and 200 == response.status_code
-
-    response_text = re.sub(r"http\S+", "", json.dumps(response.json))
-    assert with_key in response_text
+from tests.utils import assert_rpc_response, make_dataset_add_payload, retry_failed
 
 
 def upload_file(svc_client, headers, filename) -> str:
@@ -65,9 +56,7 @@ def upload_file(svc_client, headers, filename) -> str:
         headers=headers,
     )
 
-    assert 200 == response.status_code
     assert_rpc_response(response)
-
     assert 1 == len(response.json["result"]["files"])
 
     file_id = response.json["result"]["files"][0]["file_id"]

@@ -32,6 +32,7 @@ from renku.service.errors import (
     IntermittentAuthenticationError,
     IntermittentProjectIdError,
     IntermittentRedisError,
+    IntermittentTimeoutError,
     ProgramContentTypeError,
     ProgramGitError,
     ProgramInternalError,
@@ -129,6 +130,8 @@ def handle_validation_except(f):
                 reasons.append(f"'{key}': {', '.join(value)}")
 
             error_message = f"{'; '.join(reasons)}"
+            if "Invalid `git_url`" in error_message:
+                raise UserRepoUrlInvalidError(e, error_message)
             if "Unknown field" in error_message:
                 raise ProgramInvalidGenericFieldsError(e, error_message)
             raise UserInvalidGenericFieldsError(e, error_message)
@@ -194,6 +197,8 @@ def handle_git_except(f):
                 raise UserRepoNoAccessError(e, error_message_safe)
             elif "is this a git repository?" in error_message or "not found" in error_message:
                 raise UserRepoUrlInvalidError(e, error_message_safe)
+            elif "connection timed out" in error_message:
+                raise IntermittentTimeoutError(e)
             else:
                 raise ProgramRepoUnknownError(e, error_message_safe)
 
