@@ -22,7 +22,8 @@ from renku.service.errors import IntermittentProjectIdError
 from renku.service.serializers.jobs import JobDetailsResponseRPC, JobListResponseRPC
 from renku.service.views import result_response
 from renku.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
-from renku.service.views.decorators import handle_common_except, requires_cache, requires_identity
+from renku.service.views.decorators import requires_cache, requires_identity
+from renku.service.views.error_handlers import handle_common_except
 
 JOBS_BLUEPRINT_TAG = "jobs"
 jobs_blueprint = VersionedBlueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)

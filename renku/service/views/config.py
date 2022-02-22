@@ -22,14 +22,12 @@ from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.config_set import SetConfigCtrl
 from renku.service.controllers.config_show import ShowConfigCtrl
 from renku.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
-from renku.service.views.decorators import (
-    accepts_json,
+from renku.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
+from renku.service.views.error_handlers import (
     handle_common_except,
-    optional_identity,
-    requires_cache,
-    requires_identity,
+    handle_config_read_errors,
+    handle_config_write_errors,
 )
-from renku.service.views.error_handlers import handle_config_read_errors, handle_config_write_errors
 
 CONFIG_BLUEPRINT_TAG = "config"
 config_blueprint = VersionedBlueprint("config", __name__, url_prefix=SERVICE_PREFIX)

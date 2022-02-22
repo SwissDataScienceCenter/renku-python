@@ -23,8 +23,8 @@ from renku.service.controllers.project_edit import ProjectEditCtrl
 from renku.service.controllers.project_lock_status import ProjectLockStatusCtrl
 from renku.service.controllers.project_show import ProjectShowCtrl
 from renku.service.views.api_versions import V1_0, V1_1, VersionedBlueprint
-from renku.service.views.decorators import accepts_json, handle_common_except, requires_cache, requires_identity
-from renku.service.views.error_handlers import handle_project_write_errors
+from renku.service.views.decorators import accepts_json, requires_cache, requires_identity
+from renku.service.views.error_handlers import handle_common_except, handle_project_write_errors
 
 PROJECT_BLUEPRINT_TAG = "project"
 project_blueprint = VersionedBlueprint(PROJECT_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)

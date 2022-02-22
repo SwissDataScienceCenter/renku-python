@@ -28,14 +28,12 @@ from renku.service.controllers.datasets_list import DatasetsListCtrl
 from renku.service.controllers.datasets_remove import DatasetsRemoveCtrl
 from renku.service.controllers.datasets_unlink import DatasetsUnlinkCtrl
 from renku.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
-from renku.service.views.decorators import (
-    accepts_json,
+from renku.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
+from renku.service.views.error_handlers import (
     handle_common_except,
-    optional_identity,
-    requires_cache,
-    requires_identity,
+    handle_datasets_unlink_errors,
+    handle_datasets_write_errors,
 )
-from renku.service.views.error_handlers import handle_datasets_unlink_errors, handle_datasets_write_errors
 
 DATASET_BLUEPRINT_TAG = "datasets"
 dataset_blueprint = VersionedBlueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)

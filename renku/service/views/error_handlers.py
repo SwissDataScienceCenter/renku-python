@@ -20,7 +20,10 @@
 import re
 from functools import wraps
 
+from git import GitCommandError
+from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
+from redis import RedisError
 from requests import RequestException
 
 from renku.core.errors import (
@@ -30,30 +33,187 @@ from renku.core.errors import (
     GitError,
     InvalidTemplateError,
     MigrationError,
+    MigrationRequired,
     ParameterError,
     RenkuException,
     TemplateUpdateError,
+    UninitializedProject,
 )
 from renku.service.errors import (
+    IntermittentAuthenticationError,
     IntermittentDatasetExistsError,
     IntermittentFileNotExistsError,
+    IntermittentProjectIdError,
+    IntermittentRedisError,
     IntermittentSettingExistsError,
+    IntermittentTimeoutError,
+    ProgramGitError,
     ProgramGraphCorruptError,
+    ProgramInternalError,
     ProgramInvalidGenericFieldsError,
     ProgramProjectCorruptError,
     ProgramProjectCreationError,
+    ProgramRenkuError,
+    ProgramRepoUnknownError,
+    ServiceError,
     UserDatasetsMultipleImagesError,
     UserDatasetsUnlinkError,
     UserDatasetsUnreachableImageError,
     UserInvalidGenericFieldsError,
     UserMissingFieldError,
+    UserNonRenkuProjectError,
     UserOutdatedProjectError,
     UserProjectCreationError,
     UserRepoBranchInvalidError,
+    UserRepoNoAccessError,
     UserRepoUrlInvalidError,
     UserTemplateInvalidError,
 )
 from renku.service.utils.squash import squash
+from renku.service.views import error_response
+
+
+def handle_redis_except(f):
+    """Wrapper which handles Redis exceptions."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except (RedisError, OSError) as e:
+            raise IntermittentRedisError(e)
+
+    return decorated_function
+
+
+def handle_validation_except(f):
+    """Wrapper which handles marshmallow `ValidationError`."""
+
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except ValidationError as e:
+            items = squash(e.messages).items()
+            reasons = []
+            for key, value in items:
+                if key == "project_id":
+                    raise IntermittentProjectIdError(e)
+                reasons.append(f"'{key}': {', '.join(value)}")
+
+            error_message = f"{'; '.join(reasons)}"
+            if "Invalid `git_url`" in error_message:
+                raise UserRepoUrlInvalidError(e, error_message)
+            if "Unknown field" in error_message:
+                raise ProgramInvalidGenericFieldsError(e, error_message)
+            raise UserInvalidGenericFieldsError(e, error_message)
+
+    return decorated_function
+
+
+def handle_jwt_except(f):
+    """Wrapper which handles invalid JWT."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except (ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError) as e:
+            raise IntermittentAuthenticationError(e)
+
+    return decorated_function
+
+
+def handle_renku_except(f):
+    """Wrapper which handles `RenkuException`."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except MigrationRequired as e:
+            raise UserOutdatedProjectError(e)
+        except UninitializedProject as e:
+            raise UserNonRenkuProjectError(e)
+        except RenkuException as e:
+            raise ProgramRenkuError(e)
+
+    return decorated_function
+
+
+def handle_git_except(f):
+    """Wrapper which handles `RenkuException`."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except GitCommandError as e:
+            error_message = e.stderr.lower() if e.stderr else ""
+            error_message_safe = format(" ".join(error_message.strip().split("\n")))
+            error_message_safe = re.sub("^(.+oauth2:)[^@]+(@.+)$", r"\1<token-hidden>\2", error_message_safe)
+            if "access denied" in error_message:
+                raise UserRepoNoAccessError(e, error_message_safe)
+            elif "is this a git repository?" in error_message or "not found" in error_message:
+                raise UserRepoUrlInvalidError(e, error_message_safe)
+            elif "connection timed out" in error_message:
+                raise IntermittentTimeoutError(e)
+            else:
+                raise ProgramRepoUnknownError(e, error_message_safe)
+
+    return decorated_function
+
+
+def handle_base_except(f):
+    """Wrapper which handles base exceptions."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+
+        # NOTE: HTTPException are now handled in the entrypoint
+        except ServiceError as e:
+            return error_response(e)
+        # NOTE: GitError here may not be necessary anymore
+        except GitError as e:
+            return error_response(ProgramGitError(e, e.message if e.message else None))
+        except (Exception, BaseException, OSError, IOError) as e:
+            if hasattr(e, "stderr"):
+                error_message = " ".join(e.stderr.strip().split("\n"))
+            else:
+                error_message = str(e)
+
+            return error_response(ProgramInternalError(e, error_message))
+
+    return decorated_function
+
+
+def handle_common_except(f):
+    """Handle common exceptions."""
+    # noqa
+    @wraps(f)
+    def dec(*args, **kwargs):
+        """Decorated function."""
+
+        @handle_base_except
+        @handle_validation_except
+        @handle_renku_except
+        @handle_git_except
+        @handle_jwt_except
+        def _wrapped(*args_, **kwargs_):
+            return f(*args_, **kwargs_)
+
+        return _wrapped(*args, **kwargs)
+
+    return dec
 
 
 def handle_templates_read_errors(f):

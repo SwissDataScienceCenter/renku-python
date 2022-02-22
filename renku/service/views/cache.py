@@ -27,14 +27,8 @@ from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
 from renku.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
-from renku.service.views.decorators import (
-    accepts_json,
-    handle_common_except,
-    optional_identity,
-    requires_cache,
-    requires_identity,
-)
-from renku.service.views.error_handlers import handle_migration_errors
+from renku.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
+from renku.service.views.error_handlers import handle_common_except, handle_migration_errors
 from renku.service.views.v0_9.cache import add_v0_9_specific_endpoints
 from renku.service.views.v1_0.cache import add_v1_0_specific_endpoints
 

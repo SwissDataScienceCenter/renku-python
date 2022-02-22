@@ -22,8 +22,12 @@ from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 from renku.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
-from renku.service.views.decorators import accepts_json, handle_common_except, requires_cache, requires_identity
-from renku.service.views.error_handlers import handle_templates_create_errors, handle_templates_read_errors
+from renku.service.views.decorators import accepts_json, requires_cache, requires_identity
+from renku.service.views.error_handlers import (
+    handle_common_except,
+    handle_templates_create_errors,
+    handle_templates_read_errors,
+)
 
 TEMPLATES_BLUEPRINT_TAG = "templates"
 templates_blueprint = VersionedBlueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)

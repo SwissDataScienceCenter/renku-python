@@ -18,7 +18,7 @@
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.version import VersionCtrl
 from renku.service.views.api_versions import MAXIMUM_VERSION, MINIMUM_VERSION, V0_9, V1_0, V1_1, VersionedBlueprint
-from renku.service.views.decorators import handle_common_except
+from renku.service.views.error_handlers import handle_common_except
 
 VERSION_BLUEPRINT_TAG = "version"
 version_blueprint = VersionedBlueprint("version", __name__, url_prefix=SERVICE_PREFIX)

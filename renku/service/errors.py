@@ -88,8 +88,17 @@ class ServiceError(Exception):
         from sentry_sdk import capture_exception, set_context, set_tag, set_user
 
         if SENTRY_ENABLED:
+            # NOTE: Trap the process working directory when internal error occurs.
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
+
+            # NOTE: try to set user details when available
             user = self._get_user()
             set_user(user)
+
+            # NOTE: set erro code tag and details section
             set_tag("error_code", self.code)
             details = {"code": self.code}
             if hasattr(self, "devMessage"):
@@ -102,6 +111,7 @@ class ServiceError(Exception):
                 details["user_reference"] = self.userReference
             set_context("details", details)
 
+            # NOTE: add the sentry URL to the exception
             try:
                 sentry = capture_exception(self)
                 SENTRY_URL = os.getenv("SENTRY_URL", None)
