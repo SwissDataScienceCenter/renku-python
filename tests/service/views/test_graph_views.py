@@ -19,8 +19,8 @@
 import json
 
 import pytest
-from renku.service.errors import ProgramGraphCorruptError
 
+from renku.service.errors import ProgramGraphCorruptError
 from tests.service.views.test_dataset_views import assert_rpc_response
 from tests.utils import retry_failed
 
