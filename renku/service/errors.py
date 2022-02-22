@@ -358,7 +358,7 @@ class ProgramRepoUnknownError(ServiceError):
     """
 
     code = SVC_ERROR_PROGRAMMING + 10
-    userMessage = "Fatal error occured while working on the repository."
+    userMessage = "Fatal error occurred while working on the repository."
     devMessage = "Unexpected repository error. Git error message: {error_message}"
 
     def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
@@ -374,7 +374,7 @@ class ProgramGitError(ServiceError):
     """
 
     code = SVC_ERROR_PROGRAMMING + 20
-    userMessage = "Fatal error occured while processing a git operation on the repository."
+    userMessage = "Fatal error occurred while processing a git operation on the repository."
     devMessage = "Unexpected git error. Git error message: {error_message}"
 
     def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
@@ -509,7 +509,7 @@ class ProgramHttpServerError(ServiceError):
     """
 
     code = SVC_ERROR_PROGRAMMING
-    userMessage = "Fatal error occured while working on the repository."
+    userMessage = "Fatal error occurred while working on the repository."
     devMessage = "Unexpected repository error. Please check sentry to get more information."
 
     def __init__(self, exception=None, http_error_code=599):
@@ -540,7 +540,7 @@ class IntermittentProjectIdError(ServiceError):
     """
 
     code = SVC_ERROR_INTERMITTENT + 1
-    userMessage = "An unexpcted error occured. This may be a temporary problem. Please try again in a few minutes."
+    userMessage = "An unexpcted error occurred. This may be a temporary problem. Please try again in a few minutes."
     devMessage = (
         "Project id cannot be found. It may be a temporary problem. Check the sentry exception for further details."
     )
@@ -658,7 +658,7 @@ class IntermittentLockError(ServiceError):
 
 
 class IntermittentRedisError(ServiceError):
-    """An error occured when interacting with Redis."""
+    """An error occurred when interacting with Redis."""
 
     code = SVC_ERROR_INTERMITTENT + 202
     userMessage = "The servers could not run the request operation. Please try it again."
