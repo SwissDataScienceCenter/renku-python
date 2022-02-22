@@ -152,7 +152,6 @@ def edit_dataset(
     keywords: List[str] = None,
     images: List[ImageRequestModel] = None,
     skip_image_update: bool = False,
-    safe_image_paths: List[str] = None,
     custom_metadata: Dict = None,
 ):
     """Edit dataset metadata."""
@@ -178,7 +177,6 @@ def edit_dataset(
     if skip_image_update:
         images_updated = False
     else:
-        safe_image_paths.append(client.path)
         images_updated = set_dataset_images(client, dataset, images)
 
     if images_updated:
@@ -496,7 +494,7 @@ def update_datasets(
 
     ignored_datasets = []
 
-    all_datasets = dataset_gateway.get_all_datasets()
+    all_datasets = dataset_gateway.get_all_active_datasets()
 
     if (include or exclude) and names and any(d.same_as for d in all_datasets if d.name in names):
         raise errors.UsageError("--include/--exclude is incompatible with datasets created by 'renku dataset import'")
@@ -666,7 +664,7 @@ def move_files(
     """Move files and their metadata from one or more datasets to a target dataset."""
     client = client_dispatcher.current_client
 
-    datasets = [d.copy() for d in dataset_gateway.get_all_datasets()]
+    datasets = [d.copy() for d in dataset_gateway.get_all_active_datasets()]
     if to_dataset:
         # NOTE: Use the same dataset object or otherwise a race happens if dataset is in both source and destination
         to_dataset: Dataset = next(d for d in datasets if d.name == to_dataset)
@@ -950,7 +948,7 @@ def filter_dataset_files(
 
     records = []
     unused_names = set(names)
-    for dataset in dataset_gateway.get_all_datasets():
+    for dataset in dataset_gateway.get_all_active_datasets():
         if not immutable:
             dataset = dataset.copy()
         if (not names or dataset.name in names) and (not ignore or dataset.name not in ignore):

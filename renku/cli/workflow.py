@@ -634,6 +634,7 @@ from typing import TYPE_CHECKING
 import click
 from lazy_object_proxy import Proxy
 
+import renku.cli.utils.color as color
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.plugins import available_workflow_providers, supported_formats
 from renku.core import errors
@@ -660,17 +661,17 @@ def _print_plan(plan: "PlanViewModel"):
     """Print a plan to stdout."""
     from renku.core.utils.os import print_markdown
 
-    click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(plan.id, bold=True))
-    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(plan.name, bold=True))
+    click.echo(click.style("Id: ", bold=True, fg=color.MAGENTA) + click.style(plan.id, bold=True))
+    click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(plan.name, bold=True))
 
     if plan.description:
         print_markdown(plan.description)
 
-    click.echo(click.style("Command: ", bold=True, fg="magenta") + click.style(plan.full_command, bold=True))
-    click.echo(click.style("Success Codes: ", bold=True, fg="magenta") + click.style(plan.success_codes, bold=True))
+    click.echo(click.style("Command: ", bold=True, fg=color.MAGENTA) + click.style(plan.full_command, bold=True))
+    click.echo(click.style("Success Codes: ", bold=True, fg=color.MAGENTA) + click.style(plan.success_codes, bold=True))
 
     if plan.inputs:
-        click.echo(click.style("Inputs: ", bold=True, fg="magenta"))
+        click.echo(click.style("Inputs: ", bold=True, fg=color.MAGENTA))
         for run_input in plan.inputs:
             click.echo(click.style(f"\t- {run_input.name}:", bold=True))
 
@@ -678,22 +679,23 @@ def _print_plan(plan: "PlanViewModel"):
                 click.echo(click.style(f"\t\t{run_input.description}"))
 
             click.echo(
-                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                click.style("\t\tDefault Value: ", bold=True, fg=color.MAGENTA)
                 + click.style(run_input.default_value, bold=True)
             )
 
             if run_input.position:
                 click.echo(
-                    click.style("\t\tPosition: ", bold=True, fg="magenta") + click.style(run_input.position, bold=True)
+                    click.style("\t\tPosition: ", bold=True, fg=color.MAGENTA)
+                    + click.style(run_input.position, bold=True)
                 )
 
             if run_input.prefix:
                 click.echo(
-                    click.style("\t\tPrefix: ", bold=True, fg="magenta") + click.style(run_input.prefix, bold=True)
+                    click.style("\t\tPrefix: ", bold=True, fg=color.MAGENTA) + click.style(run_input.prefix, bold=True)
                 )
 
     if plan.outputs:
-        click.echo(click.style("Outputs: ", bold=True, fg="magenta"))
+        click.echo(click.style("Outputs: ", bold=True, fg=color.MAGENTA))
         for run_output in plan.outputs:
             click.echo(click.style(f"\t- {run_output.name}:", bold=True))
 
@@ -701,22 +703,23 @@ def _print_plan(plan: "PlanViewModel"):
                 click.echo(click.style(f"\t\t{run_output.description}"))
 
             click.echo(
-                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                click.style("\t\tDefault Value: ", bold=True, fg=color.MAGENTA)
                 + click.style(run_output.default_value, bold=True)
             )
 
             if run_output.position:
                 click.echo(
-                    click.style("\t\tPosition: ", bold=True, fg="magenta") + click.style(run_output.position, bold=True)
+                    click.style("\t\tPosition: ", bold=True, fg=color.MAGENTA)
+                    + click.style(run_output.position, bold=True)
                 )
 
             if run_output.prefix:
                 click.echo(
-                    click.style("\t\tPrefix: ", bold=True, fg="magenta") + click.style(run_output.prefix, bold=True)
+                    click.style("\t\tPrefix: ", bold=True, fg=color.MAGENTA) + click.style(run_output.prefix, bold=True)
                 )
 
     if plan.parameters:
-        click.echo(click.style("Parameters: ", bold=True, fg="magenta"))
+        click.echo(click.style("Parameters: ", bold=True, fg=color.MAGENTA))
         for run_parameter in plan.parameters:
             click.echo(click.style(f"\t- {run_parameter.name}:", bold=True))
 
@@ -724,19 +727,20 @@ def _print_plan(plan: "PlanViewModel"):
                 click.echo(click.style(f"\t\t{run_parameter.description}"))
 
             click.echo(
-                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                click.style("\t\tDefault Value: ", bold=True, fg=color.MAGENTA)
                 + click.style(run_parameter.default_value, bold=True)
             )
 
             if run_parameter.position:
                 click.echo(
-                    click.style("\t\tPosition: ", bold=True, fg="magenta")
+                    click.style("\t\tPosition: ", bold=True, fg=color.MAGENTA)
                     + click.style(run_parameter.position, bold=True)
                 )
 
             if run_parameter.prefix:
                 click.echo(
-                    click.style("\t\tPrefix: ", bold=True, fg="magenta") + click.style(run_parameter.prefix, bold=True)
+                    click.style("\t\tPrefix: ", bold=True, fg=color.MAGENTA)
+                    + click.style(run_parameter.prefix, bold=True)
                 )
 
 
@@ -744,19 +748,19 @@ def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
     """Print a CompositePlan to stdout."""
     from renku.core.utils.os import print_markdown
 
-    click.echo(click.style("Id: ", bold=True, fg="magenta") + click.style(composite_plan.id, bold=True))
-    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(composite_plan.name, bold=True))
+    click.echo(click.style("Id: ", bold=True, fg=color.MAGENTA) + click.style(composite_plan.id, bold=True))
+    click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(composite_plan.name, bold=True))
 
     if composite_plan.description:
         print_markdown(composite_plan.description)
 
-    click.echo(click.style("Steps: ", bold=True, fg="magenta"))
+    click.echo(click.style("Steps: ", bold=True, fg=color.MAGENTA))
     for step in composite_plan.steps:
         click.echo(click.style(f"\t- {step.name}:", bold=True))
-        click.echo(click.style("\t\tId: ", bold=True, fg="magenta") + click.style(f"{step.id}", bold=True))
+        click.echo(click.style("\t\tId: ", bold=True, fg=color.MAGENTA) + click.style(f"{step.id}", bold=True))
 
     if composite_plan.mappings:
-        click.echo(click.style("Mappings: ", bold=True, fg="magenta"))
+        click.echo(click.style("Mappings: ", bold=True, fg=color.MAGENTA))
         for mapping in composite_plan.mappings:
             click.echo(click.style(f"\t- {mapping.name}:", bold=True))
 
@@ -764,18 +768,18 @@ def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
                 click.echo(click.style(f"\t\t{mapping.description}"))
 
             click.echo(
-                click.style("\t\tDefault Value: ", bold=True, fg="magenta")
+                click.style("\t\tDefault Value: ", bold=True, fg=color.MAGENTA)
                 + click.style(mapping.default_value, bold=True)
             )
-            click.echo(click.style("\tMaps to: ", bold=True, fg="magenta"))
+            click.echo(click.style("\tMaps to: ", bold=True, fg=color.MAGENTA))
             for maps_to in mapping.maps_to:
                 click.echo(click.style(f"\t\t{maps_to}", bold=True))
 
     if composite_plan.links:
-        click.echo(click.style("Links: ", bold=True, fg="magenta"))
+        click.echo(click.style("Links: ", bold=True, fg=color.MAGENTA))
         for link in composite_plan.links:
-            click.echo(click.style("\t- From: ", bold=True, fg="magenta") + click.style(link.source, bold=True))
-            click.echo(click.style("\t\t To: ", bold=True, fg="magenta"))
+            click.echo(click.style("\t- From: ", bold=True, fg=color.MAGENTA) + click.style(link.source, bold=True))
+            click.echo(click.style("\t\t To: ", bold=True, fg=color.MAGENTA))
             for sink in link.sinks:
                 click.echo(click.style(f"\t\t- {sink}", bold=True))
 
@@ -1116,7 +1120,9 @@ def execute(
 
     if result.output:
         click.echo(
-            "Unchanged files:\n\n\t{0}".format("\n\t".join(click.style(path, fg="yellow") for path in result.output))
+            "Unchanged files:\n\n\t{0}".format(
+                "\n\t".join(click.style(path, fg=color.YELLOW) for path in result.output)
+            )
         )
 
 

@@ -28,15 +28,12 @@ When executing a migration, the migration file is imported as a module and the
 project version and any migration which has a higher version is applied to the
 project.
 """
-import hashlib
+
 import importlib
-import json
-import os
 import re
 import shutil
 from pathlib import Path
 
-from jinja2 import Template
 from packaging.version import Version
 
 from renku.core.errors import (
@@ -86,11 +83,6 @@ def is_project_unsupported():
     return is_renku_project() and get_project_version() > SUPPORTED_PROJECT_VERSION
 
 
-def is_template_update_possible():
-    """Check if the project can be updated to a newer version of the project template."""
-    return _update_template(check_only=True)
-
-
 def is_docker_update_possible():
     """Check if the Dockerfile can be updated to a new version of renku-python."""
     return _update_dockerfile(check_only=True)
@@ -121,14 +113,9 @@ def migrate(
     except ValueError:
         project = None
 
-    if (
-        not skip_template_update
-        and project
-        and project.template_source
-        and (force_template_update or project.automated_update)
-    ):
+    if not skip_template_update and project and project.template_source:
         try:
-            template_updated, _, _ = _update_template()
+            template_updated = _update_template(client=client)
         except TemplateUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -186,126 +173,20 @@ def _remove_untracked_renku_files(renku_path):
         shutil.rmtree(path, ignore_errors=True)
 
 
-@inject.autoparams()
-def _update_template(client_dispatcher: IClientDispatcher, project_gateway: IProjectGateway, check_only=False):
+def _update_template(client) -> bool:
     """Update local files from the remote template."""
-    from renku.core.commands.init import fetch_template
-
-    client = client_dispatcher.current_client
+    from renku.core.management.template.usecase import update_template
 
     try:
         project = client.project
     except ValueError:
         # NOTE: Old project, we don't know the status until it is migrated
-        return False, None, None
+        return False
 
     if not project.template_version:
-        return False, None, None
+        return False
 
-    template_manifest, template_folder, template_source, template_version = fetch_template(
-        project.template_source, project.template_ref
-    )
-
-    if template_source == "renku":
-        template_version = Version(template_version)
-        current_version = Version(project.template_version)
-        if template_version <= current_version:
-            return False, str(project.template_version), str(current_version)
-    else:
-        if template_version == project.template_version:
-            return False, str(project.template_version), str(template_version)
-
-    if check_only:
-        return True, str(project.template_version), str(template_version)
-
-    communication.echo("Updating project from template...")
-
-    template_filtered = [
-        template_elem for template_elem in template_manifest if template_elem["folder"] == project.template_id
-    ]
-    if len(template_filtered) == 1:
-        template_data = template_filtered[0]
-    else:
-        raise TemplateUpdateError(f'The template with id "{project.template_id}" is not available.')
-
-    template_path = template_folder / template_data["folder"]
-
-    metadata = json.loads(project.template_metadata)
-
-    template_variables = set(template_data.get("variables", {}).keys())
-    metadata_keys = set(metadata.keys())
-    missing_keys = ", ".join(template_variables - metadata_keys)
-    if missing_keys:
-        raise TemplateUpdateError(
-            f"Can't update template, it now requires variable(s) {missing_keys} which were not present on project "
-            "creation."
-        )
-
-    if not os.path.exists(client.template_checksums):
-        raise TemplateUpdateError("Can't update template as there are no template checksums set on the project.")
-
-    with open(client.template_checksums, "r") as checksum_file:
-        checksums = json.load(checksum_file)
-
-    updated_files = []
-
-    for file in template_path.glob("**/*"):
-        rel_path = file.relative_to(template_path)
-        destination = client.path / rel_path
-
-        # NOTE: the path could contain template variables, we need to template it
-        destination = Path(Template(str(destination)).render(metadata))
-
-        try:
-            # parse file and process it
-            template = Template(file.read_text())
-            rendered_content = template.render(metadata)
-            sha256_hash = hashlib.sha256()
-            content_bytes = rendered_content.encode("utf-8")
-            blocksize = 4096
-            blocks = (len(content_bytes) - 1) // blocksize + 1
-            for i in range(blocks):
-                byte_block = content_bytes[i * blocksize : (i + 1) * blocksize]
-                sha256_hash.update(byte_block)
-            new_template_hash = sha256_hash.hexdigest()
-
-            if not destination.exists() and str(rel_path) not in checksums:
-                # NOTE: new file in template
-                local_changes = False
-                remote_changes = True
-            else:
-                current_hash = None  # NOTE: None if user deleted file locally
-
-                if destination.exists():
-                    current_hash = client._content_hash(destination)
-
-                local_changes = str(rel_path) not in checksums or current_hash != checksums[str(rel_path)]
-                remote_changes = str(rel_path) not in checksums or new_template_hash != checksums[str(rel_path)]
-
-            if local_changes:
-                if remote_changes and str(rel_path) in project.immutable_template_files:
-                    # NOTE: There are local changes in a file that should not be changed by users,
-                    # and the file was updated in the template as well. So the template can't be updated.
-                    raise TemplateUpdateError(
-                        f"Can't update template as immutable template file {rel_path} has local changes."
-                    )
-                continue
-            elif not remote_changes:
-                continue
-
-            destination.write_text(rendered_content)
-        except IsADirectoryError:
-            destination.mkdir(parents=True, exist_ok=True)
-        except TypeError:
-            shutil.copy(file, destination)
-
-    updated = "\n".join(updated_files)
-    communication.echo(f"Updated project from template, updated files:\n{updated}")
-
-    project.template_version = str(template_version)
-    project_gateway.update_project(project)
-
-    return True, project.template_version, template_version
+    return bool(update_template(interactive=False, force=False, dry_run=False))
 
 
 @inject.autoparams()

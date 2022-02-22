@@ -15,33 +15,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Check your system and repository for potential problems.
+"""General utility functions."""
 
-.. cheatsheet::
-   :group: Misc
-   :command: $ renku doctor
-   :description: Check your system and repository for potential problems.
-   :extended:
-"""
-import textwrap
+from typing import Any, Optional
 
-import click
-
-import renku.cli.utils.color as color
+from packaging.version import Version
 
 
-@click.command()
-@click.pass_context
-def doctor(ctx):
-    """Check your system and repository for potential problems."""
-    from renku.core.commands.doctor import DOCTOR_INFO, doctor_check_command
+def to_string(value: Any) -> str:
+    """Return a string representation of value and return an empty string for None."""
+    return str(value) if value is not None else ""
 
-    click.secho("\n".join(textwrap.wrap(DOCTOR_INFO)) + "\n", bold=True)
-    is_ok, problems = doctor_check_command().build().execute().output
 
-    if is_ok:
-        click.secho("Everything seems to be ok.", fg=color.GREEN)
-        ctx.exit(0)
-
-    click.secho(problems)
-    ctx.exit(1)
+def to_semantic_version(value: str) -> Optional[Version]:
+    """Convert value to SemVer."""
+    try:
+        return Version(value)
+    except ValueError:
+        return

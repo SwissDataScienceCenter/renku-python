@@ -78,7 +78,7 @@ def check_datasets_structure(client, dataset_gateway: IDatasetGateway):
 
     problems = [f"{WARNING}Invalid structure of dataset metadata"]
 
-    for dataset in dataset_gateway.get_all_datasets():
+    for dataset in dataset_gateway.get_all_active_datasets():
         data = dump_dataset_as_jsonld(dataset)
         try:
             conform, graph, t = _check_shacl_structure(data)

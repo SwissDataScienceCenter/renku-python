@@ -16,10 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helpers functions for metadata management/parsing."""
+
 import os
+import re
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
+
+from packaging.version import Version
 
 from renku.core import errors
 from renku.core.utils.os import is_subpath
@@ -169,3 +173,25 @@ def is_external_file(path: Union[Path, str], client_path: Path):
 
     pointer = os.readlink(path)
     return str(os.path.join(RENKU_HOME, POINTERS)) in pointer
+
+
+def get_renku_version(client) -> Optional[str]:
+    """Return project's Renku version from its Dockerfile."""
+    return read_renku_version_from_dockerfile(client.docker_path)
+
+
+def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
+    """Read RENKU_VERSION from the content of path if a valid version is available."""
+    path = Path(path)
+    if not path.exists():
+        return
+
+    docker_content = path.read_text()
+    m = re.search(r"^\s*ARG RENKU_VERSION=(.+)$", docker_content, flags=re.MULTILINE)
+    if not m:
+        return
+
+    try:
+        return str(Version(m.group(1)))
+    except ValueError:
+        return

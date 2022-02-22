@@ -55,7 +55,7 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
 
     # 1. Update dataset metadata files.
     progress_text = "Updating dataset metadata"
-    all_datasets = dataset_gateway.get_all_datasets()
+    all_datasets = dataset_gateway.get_all_active_datasets()
     communication.start_progress(progress_text, total=len(all_datasets))
     try:
         for dataset in all_datasets:

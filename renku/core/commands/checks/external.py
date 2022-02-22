@@ -28,7 +28,7 @@ def check_missing_external_files(client, dataset_gateway: IDatasetGateway):
     """Find external files that are missing."""
     missing = []
 
-    for dataset in dataset_gateway.get_all_datasets():
+    for dataset in dataset_gateway.get_all_active_datasets():
         for file_ in dataset.files:
             if file_.is_external:
                 target = (client.path / file_.entity.path).resolve()

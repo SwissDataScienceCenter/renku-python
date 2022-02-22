@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets edit controller."""
 from renku.core.commands.dataset import edit_dataset_command
+from renku.core.management.dataset.request_model import ImageRequestModel
 from renku.service.cache.models.job import Job
 from renku.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
@@ -51,6 +52,16 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
             set_url_for_uploaded_images(images=images, cache=self.cache, user=self.user)
         user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
 
+        images = [
+            ImageRequestModel(
+                content_url=img["content_url"],
+                position=img["position"],
+                mirror_locally=img["mirror_locally"],
+                safe_image_paths=[user_cache_dir],
+            )
+            for img in images
+        ]
+
         result = (
             edit_dataset_command()
             .with_commit_message(self.ctx["commit_message"])
@@ -61,9 +72,8 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 self.ctx.get("description"),
                 self.ctx.get("creators"),
                 keywords=self.ctx.get("keywords"),
-                images=self.ctx.get("images"),
+                images=images,
                 custom_metadata=self.ctx.get("custom_metadata"),
-                safe_image_paths=[user_cache_dir],
             )
         )
 

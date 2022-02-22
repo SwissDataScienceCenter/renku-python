@@ -806,7 +806,7 @@ def test_cache_gets_synchronized(
     remote_repo_checkout.pull()
 
     with client_database_injection_manager(client):
-        datasets = DatasetGateway().get_all_datasets()
+        datasets = DatasetGateway().get_all_active_datasets()
         assert 2 == len(datasets)
 
     assert any(d.name == "my_dataset" for d in datasets)

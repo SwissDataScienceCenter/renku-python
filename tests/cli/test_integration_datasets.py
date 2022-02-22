@@ -325,7 +325,7 @@ def test_dataset_import_renku_provider(runner, client, uri, load_dataset_with_in
 
 
 @pytest.mark.integration
-@retry_failed
+# @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
     "uri",
@@ -372,7 +372,7 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client, cli
     assert "bla" in result.output
 
     with client_database_injection_manager(client):
-        dataset = [d for d in DatasetGateway().get_all_datasets()][0]
+        dataset = [d for d in DatasetGateway().get_all_active_datasets()][0]
     assert 2 == len(dataset.images)
     img1 = next((i for i in dataset.images if i.position == 1))
     img2 = next((i for i in dataset.images if i.position == 2))
