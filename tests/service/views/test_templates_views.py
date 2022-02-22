@@ -32,7 +32,6 @@ from renku.service.errors import (
     ProgramProjectCreationError,
     UserAnonymousError,
     UserProjectCreationError,
-    UserRepoBranchInvalidError,
     UserRepoUrlInvalidError,
     UserTemplateInvalidError,
 )
@@ -100,21 +99,18 @@ def test_compare_manifests(svc_client_with_templates):
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.parametrize(
-    "template_url,error,falsifyBranch",
+    "template_url,error",
     [
-        ("definitely_no_a_valid_URL", UserRepoUrlInvalidError, False),
-        ("https://renkulabnonexistingwebsite.io", UserRepoUrlInvalidError, False),
-        ("https://datascience.ch", UserRepoUrlInvalidError, False),
-        ("https://github.com/SwissDataScienceCenter/renku-python", UserRepoBranchInvalidError, True),
-        ("https://github.com/SwissDataScienceCenter/renku-python", UserTemplateInvalidError, False),
+        ("definitely_not_a_valid_URL", UserRepoUrlInvalidError),
+        ("https://renkulabnonexistingwebsite.io", UserRepoUrlInvalidError),
+        ("https://datascience.ch", UserRepoUrlInvalidError),
+        ("https://github.com/SwissDataScienceCenter/renku-python", UserTemplateInvalidError),
     ],
 )
-def test_read_manifest_from_wrong_template(svc_client_with_templates, template_url, error, falsifyBranch):
+def test_read_manifest_from_wrong_template(svc_client_with_templates, template_url, error):
     """Check reading manifest template."""
     svc_client, headers, template_params = svc_client_with_templates
     template_params["url"] = template_url
-    if falsifyBranch:
-        template_params["ref"] = "__FAKE_BRANCH__"
 
     response = svc_client.get("/templates.read_manifest", query_string=template_params, headers=headers)
 

@@ -27,6 +27,7 @@ from renku.core.errors import (
     DatasetImageError,
     DockerfileUpdateError,
     GitError,
+    InvalidTemplateError,
     MigrationError,
     ParameterError,
     RenkuException,
@@ -61,6 +62,8 @@ def handle_templates_read_errors(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
+        except InvalidTemplateError as e:
+            raise UserTemplateInvalidError(e)
         except GitError as e:
             error_message = str(e)
             if "Cannot clone repo from" in error_message:

@@ -241,14 +241,7 @@ class UserMissingFieldError(ServiceError):
 
 
 class UserTemplateInvalidError(ServiceError):
-    """The provided URL doesn't lead to a valid template repository.
-
-    There are many possibilities:
-
-    * The URL is wrong
-    * The target is not a valid git repository
-    * The target may temporarily be unavailable.
-    """
+    """The provided URL doesn't lead to a valid template repository."""
 
     code = SVC_ERROR_USER + 101
     userMessage = "The target repository is not a valid RenkuLab template repository."
