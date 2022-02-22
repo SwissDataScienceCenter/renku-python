@@ -428,16 +428,24 @@ class WorkflowRerunError(RenkuException):
         super(WorkflowRerunError, self).__init__(msg)
 
 
-class InvalidTemplateError(RenkuException):
-    """Raised when using a non-valid template."""
-
-
 class ExportError(RenkuException):
     """Raised when a dataset cannot be exported."""
 
 
-class TemplateUpdateError(RenkuException):
+class TemplateError(RenkuException):
+    """Base class for template-related exceptions."""
+
+
+class InvalidTemplateError(TemplateError):
+    """Raised when using a non-valid template."""
+
+
+class TemplateUpdateError(TemplateError):
     """Raised when a project couldn't be updated from its template."""
+
+
+class TemplateNotFoundError(TemplateError):
+    """Raised when a template cannot be found in a template source or at a specific reference."""
 
 
 class DockerfileUpdateError(RenkuException):

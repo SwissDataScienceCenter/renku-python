@@ -48,7 +48,7 @@ class ServiceCallback(CommunicationCallback):
         """Write an error message."""
         self.errors.append(msg)
 
-    def confirm(self, msg, abort=False, warning=False):
+    def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action using a prompt."""
         return False
 

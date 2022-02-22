@@ -108,6 +108,6 @@ def test_remote_project_context():
         assert result["template_status"]["template_source"] is None
         assert result["template_status"]["template_ref"] is None
         assert result["template_status"]["template_id"] is None
-        assert result["template_status"]["automated_template_update"] is False
+        assert result["template_status"]["automated_template_update"] is True
         assert result["dockerfile_renku_status"]["automated_dockerfile_update"] is False
         assert result["project_supported"] is True

@@ -17,16 +17,11 @@
 # limitations under the License.
 """Project initialization logic."""
 
-import json
-import re
-from collections import OrderedDict, namedtuple
 from pathlib import Path
-from tempfile import mkdtemp
+from typing import Dict
 from uuid import uuid4
 
 import attr
-import click
-import yaml
 
 from renku.core import errors
 from renku.core.commands.git import set_git_home
@@ -36,70 +31,20 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.database_gateway import IDatabaseGateway
 from renku.core.management.migrations.utils import OLD_METADATA_PATH
-from renku.core.management.repository import INIT_APPEND_FILES, INIT_KEEP_FILES
-from renku.core.metadata.repository import Repository
-from renku.core.models.tabulate import tabulate
+from renku.core.management.template.template import (
+    FileAction,
+    RenderedTemplate,
+    TemplateAction,
+    copy_template_to_client,
+    fetch_templates_source,
+    get_file_actions,
+    set_template_parameters,
+)
+from renku.core.management.template.usecase import select_template
+from renku.core.models.template import Template, TemplateMetadata
 from renku.core.utils import communication
-from renku.core.utils.git import clone_repository
+from renku.core.utils.os import is_path_empty
 from renku.version import __version__, is_release
-
-try:
-    import importlib_resources
-except ImportError:
-    import importlib.resources as importlib_resources
-
-TEMPLATE_MANIFEST = "manifest.yaml"
-
-
-def create_template_sentence(templates, describe=False, instructions=False):
-    """Create templates choice sentence.
-
-    :ref templates: list of templates coming from manifest file
-    :ref instructions: add instructions
-    """
-    Template = namedtuple("Template", ["index", "id", "description", "variables"])
-
-    def extract_description(template_elem):
-        """Extract description from template manifest."""
-        if describe:
-            return template_elem["description"]
-        return None
-
-    def extract_variables(template_elem):
-        """Extract variables from template manifest."""
-        if describe:
-            descriptions = []
-            for name, variable in template_elem.get("variables", {}).items():
-                variable_type = f', type: {variable["type"]}' if "type" in variable else ""
-                enum_values = f', options: {variable["enum"]}' if "enum" in variable else ""
-                default_value = f', default: {variable["default_value"]}' if "default_value" in variable else ""
-                description = variable["description"]
-
-                descriptions.append(f"{name}: {description}{variable_type}{enum_values}{default_value}")
-            return "\n".join(descriptions)
-
-        return ",".join(template_elem.get("variables", {}).keys())
-
-    templates_friendly = [
-        Template(
-            index=index + 1,
-            id=template_elem["folder"],
-            description=extract_description(template_elem),
-            variables=extract_variables(template_elem),
-        )
-        for index, template_elem in enumerate(templates)
-    ]
-
-    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters")))
-
-    if describe:
-        table_headers["description"] = "Description"
-
-    text = tabulate(templates_friendly, headers=table_headers)
-
-    if not instructions:
-        return text
-    return "{0}\nPlease choose a template by typing the index".format(text)
 
 
 def store_directory(value):
@@ -108,194 +53,6 @@ def store_directory(value):
     value.mkdir(parents=True, exist_ok=True)
     set_git_home(value)
     return value
-
-
-def is_path_empty(path):
-    """Check if path contains files.
-
-    :ref path: target path
-    """
-    gen = Path(path).glob("**/*")
-    return not any(gen)
-
-
-def select_template_from_manifest(
-    template_manifest, template_id=None, template_index=None, describe=False, prompt=True
-):
-    """Select a template from a template manifest."""
-    repeat = False
-    template_data = None
-    if template_id:
-        if template_index:
-            raise errors.ParameterError("Use either --template-id or --template-index, not both", '"--template-index"')
-        template_filtered = [
-            template_elem for template_elem in template_manifest if template_elem["folder"] == template_id
-        ]
-        if len(template_filtered) == 1:
-            template_data = template_filtered[0]
-        else:
-            communication.echo(f'The template with id "{template_id}" is not available.')
-            repeat = True
-
-    if template_index is not None:
-        if 0 < template_index <= len(template_manifest):
-            template_data = template_manifest[template_index - 1]
-        else:
-            communication.echo(f"The template at index {template_index} is not available.")
-            repeat = True
-
-    # NOTE: prompt user in case of wrong or missing selection criteria
-    if prompt and (repeat or not (template_id or template_index)):
-        templates = [template_elem for template_elem in template_manifest]
-        if len(templates) == 1:
-            if describe:
-                communication.echo(create_template_sentence(templates, describe=describe, instructions=False))
-            template_data = templates[0]
-        else:
-            template_index = communication.prompt(
-                msg=create_template_sentence(templates, describe=describe, instructions=True),
-                type=click.IntRange(1, len(templates)),
-                show_default=False,
-                show_choices=False,
-            )
-            template_data = templates[template_index - 1]
-
-        template_id = template_data["folder"]
-
-    return template_data, template_id
-
-
-def validate_template_variable_value(name, template_variable, value):
-    """Validates template values by type."""
-    if "type" not in template_variable:
-        return True, None, value
-
-    variable_type = template_variable["type"]
-    valid = True
-
-    if variable_type == "string":
-        if not isinstance(value, str):
-            valid = False
-    elif variable_type == "number":
-        try:
-            value = int(value)
-            is_int = True
-        except ValueError:
-            is_int = False
-
-        try:
-            value = float(value)
-            is_float = True
-        except ValueError:
-            is_float = False
-
-        if not is_float and not is_int:
-            valid = False
-    elif variable_type == "boolean":
-        truthy = [True, 1, "1", "true", "True"]
-        falsy = [False, 0, "0", "false", "False"]
-        if value not in truthy and value not in falsy:
-            valid = False
-        else:
-            value = True if value in truthy else False
-    elif variable_type == "enum":
-        if "enum" not in template_variable:
-            raise errors.InvalidTemplateError(
-                f'Template contains variable {name} of type enum but does not provide a corresponding "enum" list.'
-            )
-        possible_values = template_variable["enum"]
-        if value not in possible_values:
-            return (
-                False,
-                f"Value '{value}' is not in list of possible values {possible_values} for template parameter {name}.",
-                value,
-            )
-    else:
-        raise errors.InvalidTemplateError(
-            f"Template contains variable {name} of type {variable_type} which is not supported."
-        )
-
-    if not valid:
-        return False, f"Value '{value}' is not of type {variable_type} required by {name}.", value
-
-    return True, None, value
-
-
-def prompt_for_value(name, template_variable):
-    """Prompt the user for a template value."""
-    valid = False
-    while not valid:
-        variable_type = f', type: {template_variable["type"]}' if "type" in template_variable else ""
-        enum_values = f', options: {template_variable["enum"]}' if "enum" in template_variable else ""
-        default_value = template_variable["default_value"] if "default_value" in template_variable else ""
-
-        value = communication.prompt(
-            msg=(
-                f'The template requires a value for "{name}" ({template_variable["description"]}'
-                f"{variable_type}{enum_values})"
-            ),
-            default=default_value,
-            show_default=bool(default_value),
-        )
-
-        valid, msg, value = validate_template_variable_value(name, template_variable, value)
-
-        if msg:
-            communication.info(msg)
-
-    return value
-
-
-def verify_template_variables(template_data, metadata):
-    """Verifies that template variables are correctly set."""
-    template_variables = template_data.get("variables", {})
-    template_variables_keys = set(template_variables.keys())
-    input_parameters_keys = set(metadata.keys())
-
-    for key in template_variables:
-        if "description" not in template_variables[key]:
-            raise errors.InvalidTemplateError(f"Template parameter {key} does not contain a description.")
-
-    for key in sorted(template_variables_keys.intersection(input_parameters_keys)):
-        valid, msg, metadata[key] = validate_template_variable_value(key, template_variables[key], metadata[key])
-
-        if not valid:
-            communication.info(msg)
-
-            metadata[key] = prompt_for_value(key, template_variables[key])
-
-    for key in template_variables_keys - input_parameters_keys:
-        metadata[key] = prompt_for_value(key, template_variables[key])
-
-    # ignore internal variables, i.e. __\w__
-    internal_keys = re.compile(r"__\w+__$")
-    input_parameters_keys = set([i for i in input_parameters_keys if not internal_keys.match(i)])
-    unused_variables = input_parameters_keys - template_variables_keys
-    if len(unused_variables) > 0:
-        communication.info(
-            "These parameters are not used by the template and were "
-            "ignored:\n\t{}".format("\n\t".join(unused_variables))
-        )
-
-    return metadata
-
-
-@inject.autoparams()
-def get_existing_template_files(template_path, metadata, client_dispatcher: IClientDispatcher, force=False):
-    """Gets files in the template that already exists in the repository."""
-    client = client_dispatcher.current_client
-
-    template_files = list(client.get_template_files(template_path, metadata))
-
-    existing = []
-
-    for rel_path in template_files:
-        destination = client.path / rel_path
-
-        if destination.exists():
-            existing.append(str(rel_path))
-
-    return existing
 
 
 @inject.autoparams()
@@ -340,14 +97,11 @@ def _init(
     description,
     keywords,
     template_id,
-    template_index,
     template_source,
     template_ref,
-    metadata,
+    input_parameters,
     custom_metadata,
-    list_templates,
     force,
-    describe,
     data_dir,
     initial_branch,
     client_dispatcher: IClientDispatcher,
@@ -355,23 +109,6 @@ def _init(
 ):
     """Initialize a renku project."""
     client = client_dispatcher.current_client
-
-    template_manifest, template_folder, template_source, template_version = fetch_template(
-        template_source, template_ref
-    )
-
-    template_data, template_id = select_template_from_manifest(
-        template_manifest, template_id, template_index, describe, prompt=not list_templates
-    )
-
-    if list_templates:
-        if template_data:
-            communication.echo(create_template_sentence([template_data], describe=describe))
-        else:
-            communication.echo(create_template_sentence(template_manifest, describe=describe))
-        return
-
-    metadata = verify_template_variables(template_data, metadata)
 
     # NOTE: set local path and storage
     store_directory(path)
@@ -388,7 +125,15 @@ def _init(
     communication.echo("Initializing Git repository...")
     client.init_repository(force, None, initial_branch=initial_branch)
 
-    # NOTE: supply additional metadata
+    # Initialize an empty database
+    database_gateway = inject.instance(IDatabaseGateway)
+    database_gateway.initialize()
+
+    templates_source = fetch_templates_source(source=template_source, reference=template_ref)
+    template = select_template(templates_source=templates_source, id=template_id)
+
+    metadata = dict()
+    # NOTE: supply metadata
     metadata["__template_source__"] = template_source
     metadata["__template_ref__"] = template_ref
     metadata["__template_id__"] = template_id
@@ -401,34 +146,34 @@ def _init(
         metadata["__renku_version__"] = __version__
     metadata["name"] = name  # NOTE: kept for backwards compatibility
     metadata["__name__"] = name
+    metadata["__template_version__"] = template.version
+    metadata["__automated_update__"] = True  # TODO: This should come from a command line flag
 
-    template_path = template_folder / template_data["folder"]
+    template_metadata = TemplateMetadata.from_dict(metadata=metadata)
+    template_metadata.update(template=template)
+    # TODO: Validate input_parameters to make sure they don't contain __\w+__ keys
+    set_template_parameters(template=template, template_metadata=template_metadata, input_parameters=input_parameters)
 
-    existing = get_existing_template_files(template_path=template_path, metadata=metadata, force=force)
+    rendered_template = template.render(metadata=template_metadata)
+    actions = get_file_actions(
+        rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, client=client, interactive=False
+    )
 
-    append = list(filter(lambda x: x.lower() in INIT_APPEND_FILES, existing))
-    existing = list(filter(lambda x: x.lower() not in INIT_APPEND_FILES + INIT_KEEP_FILES, existing))
+    if not force:
+        appends = [k for k, v in actions.items() if v == FileAction.APPEND]
+        overwrites = [k for k, v in actions.items() if v == FileAction.OVERWRITE]
 
-    if (existing or append) and not force:
         message = ""
-
-        if existing:
-            existing = sorted(existing)
-            existing_paths = "\n\t".join(existing)
-            message += f"The following files exist in the directory and will be overwritten:\n\t{existing_paths}\n"
-
-        if append:
-            append = sorted(append)
-            append_paths = "\n\t".join(append)
-            message += f"The following files exist in the directory and will be appended to:\n\t{append_paths}\n"
-
-        communication.confirm(f"{message}Proceed?", abort=True, warning=True)
+        if overwrites:
+            overwrites = "\n\t".join(sorted(overwrites))
+            message += f"The following files exist in the directory and will be overwritten:\n\t{overwrites}\n"
+        if appends:
+            appends = "\n\t".join(sorted(appends))
+            message += f"The following files exist in the directory and will be appended to:\n\t{appends}\n"
+        if message:
+            communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 
     branch_name = create_backup_branch(path=path)
-
-    # Initialize an empty database
-    database_gateway = inject.instance(IDatabaseGateway)
-    database_gateway.initialize()
 
     # add metadata.yml for backwards compatibility
     metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
@@ -443,14 +188,11 @@ def _init(
     with client.lock:
         try:
             create_from_template(
-                template_path=template_path,
+                rendered_template=rendered_template,
+                actions=actions,
                 client=client,
                 name=name,
-                metadata=metadata,
                 custom_metadata=custom_metadata,
-                template_version=template_version,
-                immutable_template_files=template_data.get("immutable_template_files", []),
-                automated_update=template_data.get("allow_template_update", False),
                 force=force,
                 data_dir=data_dir,
                 description=description,
@@ -473,143 +215,12 @@ def init_command():
     return Command().command(_init).with_database()
 
 
-def fetch_template_from_git(source, ref=None, tempdir=None):
-    """Fetch the template from a git repository and checkout the relevant data.
-
-    :param source: url or full path of the templates repository
-    :param ref: reference for git checkout - branch, commit or tag
-    :param tempdir: temporary work directory path
-    :return: tuple of (template folder, template version)
-    """
-    template_repository = clone_repository(url=source, path=tempdir, checkout_revision=ref, install_lfs=False)
-
-    # checkout the manifest
-    try:
-        template_repository.checkout(TEMPLATE_MANIFEST)
-    except errors.GitCommandError as e:
-        raise errors.GitError(f"Cannot checkout manifest file {TEMPLATE_MANIFEST}") from e
-
-    return template_repository.path / TEMPLATE_MANIFEST, template_repository.head.commit.hexsha
-
-
-def fetch_template(template_source, template_ref):
-    """Fetches a local or remote template.
-
-    :param template_source: url or full path of the templates repository
-    :param template_ref: reference for git checkout - branch, commit or tag
-    :return: tuple of (template manifest, template folder, template source, template version)
-    """
-    if template_source and template_source != "renku":
-        communication.echo("Fetching template from {0}@{1}... ".format(template_source, template_ref or ""))
-        template_folder = Path(mkdtemp())
-        _, template_version = fetch_template_from_git(template_source, template_ref, template_folder)
-        template_manifest = read_template_manifest(template_folder, checkout=True)
-        communication.echo("OK")
-    else:
-        from renku import __version__
-
-        if template_ref and template_ref != "master":
-            raise errors.ParameterError("Templates included in renku don't support specifying a template_ref")
-
-        ref = importlib_resources.files("renku") / "templates"
-        with importlib_resources.as_file(ref) as folder:
-            template_folder = folder
-        template_manifest = read_template_manifest(template_folder)
-        template_source = "renku"
-        template_version = str(__version__)
-
-    return template_manifest, template_folder, template_source, template_version
-
-
-def validate_template(template_path):
-    """Validate a local template.
-
-    :param template_path: path of the template to validate
-    """
-    # TODO: implement a better check
-    required_folders = [RENKU_HOME]
-    required_files = ["{0}/renku.ini".format(RENKU_HOME), "Dockerfile"]
-    for folder in required_folders:
-        if not Path(template_path, folder).is_dir():
-            raise errors.InvalidTemplateError("Folder {0} is required for the template to be valid".format(folder))
-    for file in required_files:
-        if not Path(template_path, file).is_file():
-            raise errors.InvalidTemplateError("File {0} is required for the template to be valid".format(file))
-    return True
-
-
-def validate_template_manifest(manifest):
-    """Validate manifest content.
-
-    :param manifest: manifest file content
-    """
-    if not isinstance(manifest, list):
-        raise errors.InvalidTemplateError(
-            ("The repository doesn't contain a valid", '"{0}" file'.format(TEMPLATE_MANIFEST))
-        )
-    for template in manifest:
-        if not isinstance(template, dict) or "name" not in template:
-            raise errors.InvalidTemplateError((f'Every template listed in "{TEMPLATE_MANIFEST}"', " must have a name"))
-        for attribute in ["folder", "description"]:
-            if attribute not in template:
-                raise errors.InvalidTemplateError(
-                    ('Template "{0}" doesn\'t have a {1} attribute'.format(template["name"], attribute))
-                )
-
-        if "variables" in template:
-            for key, variable in template["variables"].items():
-                if isinstance(variable, str):
-                    # NOTE: Backwards compatibility
-                    template["variables"][key] = {"description": variable}
-    return True
-
-
-def read_template_manifest(folder, checkout=False):
-    """Extract template metadata from the manifest file.
-
-    :param folder: path where to find the template manifest file
-    :param checkout: checkout the template folder from local repo
-    """
-    folder = Path(folder)
-    manifest_path = folder / TEMPLATE_MANIFEST
-    try:
-        manifest = yaml.safe_load(manifest_path.read_text())
-    except FileNotFoundError as e:
-        raise errors.InvalidTemplateError('There is no manifest file "{0}"'.format(TEMPLATE_MANIFEST)) from e
-    validate_template_manifest(manifest)
-
-    if checkout:
-        repository = Repository(folder)
-        template_folders = [template["folder"] for template in manifest]
-        template_icons = [template["icon"] for template in manifest if "icon" in template]
-        if len(template_folders) < 1:
-            raise errors.InvalidTemplateError("Cannot find any valid template in manifest file")
-        for template_folder in template_folders:
-            template_path = folder / template_folder
-            try:
-                repository.checkout(template_folder)
-            except errors.GitCommandError as e:
-                raise errors.InvalidTemplateError('Cannot checkout the folder "{0}"'.format(template_folder)) from e
-            validate_template(template_path)
-
-        for template_icon in template_icons:
-            try:
-                repository.checkout(template_icon)
-            except errors.GitCommandError as e:
-                raise errors.InvalidTemplateError('Cannot checkout the icon "{0}"'.format(template_icon)) from e
-
-    return manifest
-
-
 def create_from_template(
-    template_path,
+    rendered_template: RenderedTemplate,
+    actions: Dict[str, FileAction],
     client,
     name=None,
-    metadata={},
     custom_metadata=None,
-    template_version=None,
-    immutable_template_files=[],
-    automated_update=False,
     force=None,
     data_dir=None,
     user=None,
@@ -618,10 +229,7 @@ def create_from_template(
     keywords=None,
 ):
     """Initialize a new project from a template."""
-
-    template_files = list(client.get_template_files(template_path, metadata))
-
-    commit_only = [f"{RENKU_HOME}/"] + template_files
+    commit_only = [f"{RENKU_HOME}/", str(client.template_checksums)] + list(rendered_template.get_files())
 
     if data_dir:
         data_path = client.path / data_dir
@@ -630,23 +238,13 @@ def create_from_template(
         keep.touch(exist_ok=True)
         commit_only.append(keep)
 
-    if "__name__" not in metadata:
-        metadata["name"] = name
-        metadata["__name__"] = name
-
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
         with client.with_metadata(
             name=name, description=description, custom_metadata=custom_metadata, keywords=keywords
         ) as project:
-            project.template_source = metadata["__template_source__"]
-            project.template_ref = metadata["__template_ref__"]
-            project.template_id = metadata["__template_id__"]
-            project.template_version = template_version
-            project.immutable_template_files = immutable_template_files
-            project.automated_update = automated_update
-            project.template_metadata = json.dumps(metadata)
-
-            client.import_from_template(template_path, metadata, force)
+            copy_template_to_client(
+                rendered_template=rendered_template, client=client, project=project, actions=actions
+            )
 
         if data_dir:
             client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
@@ -657,12 +255,12 @@ def _create_from_template_local(
     template_path,
     name,
     client_dispatcher: IClientDispatcher,
-    metadata={},
+    metadata=None,
     custom_metadata=None,
-    default_metadata={},
+    default_metadata=None,
     template_version=None,
-    immutable_template_files=[],
-    automated_template_update=False,
+    immutable_template_files=None,
+    automated_template_update=True,
     user=None,
     source=None,
     ref=None,
@@ -673,8 +271,10 @@ def _create_from_template_local(
     keywords=None,
 ):
     """Initialize a new project from a template."""
-
     client = client_dispatcher.current_client
+
+    metadata = metadata or {}
+    default_metadata = default_metadata or {}
 
     metadata = {**default_metadata, **metadata}
 
@@ -684,15 +284,42 @@ def _create_from_template_local(
     database_gateway = inject.instance(IDatabaseGateway)
     database_gateway.initialize()
 
+    if "__name__" not in metadata:
+        metadata["name"] = name
+        metadata["__name__"] = name
+
+    metadata["__template_version__"] = template_version
+
+    template = Template(
+        id=metadata["__template_id__"],
+        name="",
+        description="",
+        parameters={},
+        icon="",
+        immutable_files=immutable_template_files,
+        allow_update=automated_template_update,
+        source=metadata["__template_source__"],
+        reference=metadata["__template_ref__"],
+        version=template_version,
+        path=template_path,
+        templates_source=None,
+    )
+
+    template_metadata = TemplateMetadata.from_dict(metadata=metadata)
+    template_metadata.update(template=template)
+    set_template_parameters(template=template, template_metadata=template_metadata, input_parameters={})
+
+    rendered_template = template.render(metadata=template_metadata)
+    actions = get_file_actions(
+        rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, client=client, interactive=False
+    )
+
     create_from_template(
-        template_path=template_path,
+        rendered_template=rendered_template,
+        actions=actions,
         client=client,
         name=name,
-        metadata=metadata,
         custom_metadata=custom_metadata,
-        template_version=template_version,
-        immutable_template_files=immutable_template_files,
-        automated_update=automated_template_update,
         force=False,
         user=user,
         commit_message=commit_message,

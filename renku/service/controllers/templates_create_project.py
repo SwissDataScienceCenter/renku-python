@@ -17,11 +17,13 @@
 # limitations under the License.
 """Renku service template create project controller."""
 import shutil
+from pathlib import Path
 
 from marshmallow import EXCLUDE
 
-from renku.core.commands.init import create_from_template_local_command, read_template_manifest
+from renku.core.commands.init import create_from_template_local_command
 from renku.core.metadata.repository import Repository
+from renku.core.models.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.core.utils.contexts import click_context
 from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
@@ -112,7 +114,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     def setup_template(self):
         """Reads template manifest."""
         project = user_project_clone(self.user_data, self.ctx)
-        templates = read_template_manifest(project.abs_path)
+        templates = TemplatesManifest.from_path(Path(project.abs_path) / TEMPLATE_MANIFEST).get_raw_content()
         identifier = self.ctx["identifier"]
         self.template = next((template for template in templates if template["folder"] == identifier), None)
         if self.template is None:
@@ -153,7 +155,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 custom_metadata=self.ctx["project_custom_metadata"],
                 template_version=self.template_version,
                 immutable_template_files=self.template.get("immutable_template_files", []),
-                automated_template_update=self.template.get("allow_template_update", False),
+                automated_template_update=self.template.get("allow_template_update", True),
                 user=self.git_user,
                 source=self.ctx["url"],
                 ref=self.ctx["ref"],
