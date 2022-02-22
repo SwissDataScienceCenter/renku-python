@@ -20,7 +20,6 @@
 import re
 from functools import wraps
 
-from git import GitCommandError
 from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
 from redis import RedisError
@@ -30,6 +29,7 @@ from renku.core.errors import (
     DatasetExistsError,
     DatasetImageError,
     DockerfileUpdateError,
+    GitCommandError,
     GitError,
     InvalidTemplateError,
     MigrationError,
