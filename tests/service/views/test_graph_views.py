@@ -19,6 +19,7 @@
 import json
 
 import pytest
+from renku.service.errors import ProgramGraphCorruptError
 
 from tests.service.views.test_dataset_views import assert_rpc_response
 from tests.utils import retry_failed
@@ -42,6 +43,27 @@ def test_graph_export_view(svc_client_cache, it_remote_repo_url):
 
     assert_rpc_response(response)
     assert {"result": {"graph": None}} == response.json
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_graph_export_view_failures(it_non_renku_repo_url, svc_client_cache):
+    """Test failures when accessing an invalid project."""
+    svc_client, headers, _ = svc_client_cache
+
+    payload = {
+        "git_url": it_non_renku_repo_url,
+        "revision": "HEAD",
+        "callback_url": "https://webhook.site",
+        "migrate_project": True,
+    }
+
+    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
+
+    assert_rpc_response(response, "error")
+    assert ProgramGraphCorruptError().code == response.json["error"]["code"]
+    # TODO: add more errors
 
 
 @pytest.mark.service

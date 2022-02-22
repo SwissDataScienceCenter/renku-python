@@ -415,6 +415,17 @@ class ProgramProjectCorruptError(ServiceError):
         super().__init__(exception=exception)
 
 
+class ProgramGraphCorruptError(ServiceError):
+    """Error triggered by an unexpected failure while exporting the graph ."""
+
+    code = SVC_ERROR_PROGRAMMING + 121
+    userMessage = "The Renku project seems partially corrupted, and the graph could not be generated."
+    devMessage = "Could not generate the project graph. Check the Sentry exception for further details."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
 class ProgramRenkuError(ServiceError):
     """Renku error unexpected at service level for a specific operation."""
 
@@ -498,12 +509,12 @@ class ProgramHttpServerError(ServiceError):
     """Any other HTTP error.
 
     Most of the times (always?) this will be a 50x error.
-    The only way to get more details is to access the sentry exception.
+    The only way to get more details is to access the Sentry exception.
     """
 
     code = SVC_ERROR_PROGRAMMING
     userMessage = "Fatal error occurred while working on the repository."
-    devMessage = "Unexpected repository error. Please check sentry to get more information."
+    devMessage = "Unexpected repository error. Check the Sentry exception for further details."
 
     def __init__(self, exception=None, http_error_code=599):
         super().__init__(exception=exception, code=self.code + http_error_code)
@@ -513,7 +524,7 @@ class ProgramInternalError(ServiceError):
     """Unknown internal error.
 
     This is an unexpected exception probably triggered at the core level.
-    Please use sentry to get more information.
+    Please use Sentry to get more information.
     """
 
     code = SVC_ERROR_PROGRAMMING + 900
@@ -535,7 +546,7 @@ class IntermittentProjectIdError(ServiceError):
     code = SVC_ERROR_INTERMITTENT + 1
     userMessage = "An unexpcted error occurred. This may be a temporary problem. Please try again in a few minutes."
     devMessage = (
-        "Project id cannot be found. It may be a temporary problem. Check the sentry exception for further details."
+        "Project id cannot be found. It may be a temporary problem. Check the Sentry exception for further details."
     )
 
     def __init__(self, exception=None):

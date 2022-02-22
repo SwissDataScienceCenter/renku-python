@@ -21,6 +21,7 @@ import re
 from functools import wraps
 
 from marshmallow import ValidationError
+from requests import RequestException
 
 from renku.core.errors import (
     DatasetExistsError,
@@ -37,6 +38,7 @@ from renku.service.errors import (
     IntermittentDatasetExistsError,
     IntermittentFileNotExistsError,
     IntermittentSettingExistsError,
+    ProgramGraphCorruptError,
     ProgramInvalidGenericFieldsError,
     ProgramProjectCorruptError,
     ProgramProjectCreationError,
@@ -222,5 +224,20 @@ def handle_migration_errors(f):
             return f(*args, **kwargs)
         except (TemplateUpdateError, DockerfileUpdateError, MigrationError) as e:
             raise UserOutdatedProjectError(e)
+
+    return decorated_function
+
+
+def handle_graph_errors(f):
+    """Wrapper which handles graph exceptions."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        # TODO: handle user and program errors separately
+        except (MemoryError, RenkuException, RequestException) as e:
+            raise ProgramGraphCorruptError(e)
 
     return decorated_function
