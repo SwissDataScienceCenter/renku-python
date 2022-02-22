@@ -516,10 +516,10 @@ from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMA
 
 
 def _complete_datasets(ctx, param, incomplete):
-    from renku.core.commands.dataset import search_datasets
+    from renku.core.commands.dataset import search_datasets_command
 
     try:
-        result = search_datasets().build().execute(name=incomplete)
+        result = search_datasets_command().build().execute(name=incomplete)
         return result.output
     except Exception:
         return []
@@ -543,10 +543,14 @@ def dataset():
 )
 def list_dataset(format, columns):
     """List datasets."""
-    from renku.core.commands.dataset import list_datasets
+    from renku.core.commands.dataset import list_datasets_command
 
-    result = list_datasets().lock_dataset().build().execute(format=format, columns=columns)
-    click.echo(result.output)
+    if format not in DATASETS_FORMATS:
+        raise click.BadParameter(f"format '{format}' not supported")
+
+    result = list_datasets_command().lock_dataset().build().execute(format=format, columns=columns)
+
+    click.echo(DATASETS_FORMATS[format](result.output, columns=columns))
 
 
 @dataset.command()
@@ -572,6 +576,7 @@ def list_dataset(format, columns):
 def create(name, title, description, creators, metadata, keyword):
     """Create an empty dataset in the current repo."""
     from renku.core.commands.dataset import create_dataset_command
+    from renku.core.utils.metadata import construct_creators
 
     communicator = ClickCallback()
     creators = creators or ()
@@ -580,6 +585,9 @@ def create(name, title, description, creators, metadata, keyword):
 
     if metadata:
         custom_metadata = json.loads(Path(metadata).read_text())
+
+    if creators:
+        creators, _ = construct_creators(creators)
 
     result = (
         create_dataset_command()
@@ -623,18 +631,23 @@ def create(name, title, description, creators, metadata, keyword):
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
 def edit(name, title, description, creators, metadata, keyword):
     """Edit dataset metadata."""
-    from renku.core.commands.dataset import edit_dataset
+    from renku.core.commands.dataset import edit_dataset_command
+    from renku.core.utils.metadata import construct_creators
 
     creators = creators or ()
     keywords = keyword or ()
 
     custom_metadata = None
+    no_email_warnings = False
+
+    if creators:
+        creators, no_email_warnings = construct_creators(creators, ignore_email=True)
 
     if metadata:
         custom_metadata = json.loads(Path(metadata).read_text())
 
-    result = (
-        edit_dataset()
+    updated = (
+        edit_dataset_command()
         .build()
         .execute(
             name=name,
@@ -645,9 +658,7 @@ def edit(name, title, description, creators, metadata, keyword):
             skip_image_update=True,
             custom_metadata=custom_metadata,
         )
-    )
-
-    updated, no_email_warnings = result.output
+    ).output
 
     if not updated:
         click.echo(
@@ -667,10 +678,10 @@ def edit(name, title, description, creators, metadata, keyword):
 @click.argument("name", shell_complete=_complete_datasets)
 def show(name):
     """Show metadata of a dataset."""
-    from renku.core.commands.dataset import show_dataset
+    from renku.core.commands.dataset import show_dataset_command
     from renku.core.utils.os import print_markdown
 
-    result = show_dataset().build().execute(name=name)
+    result = show_dataset_command().build().execute(name=name)
     ds = result.output
 
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(ds["name"], bold=True))
@@ -716,12 +727,12 @@ def show(name):
 @click.option("--ref", default=None, help="Add files from a specific commit/tag/branch.")
 def add(name, urls, external, force, overwrite, create, sources, destination, ref):
     """Add data to a dataset."""
-    from renku.core.commands.dataset import add_to_dataset
+    from renku.core.commands.dataset import add_to_dataset_command
 
     communicator = ClickCallback()
-    add_to_dataset().with_communicator(communicator).build().execute(
+    add_to_dataset_command().with_communicator(communicator).build().execute(
         urls=urls,
-        name=name,
+        dataset_name=name,
         external=external,
         force=force,
         overwrite=overwrite,
@@ -753,15 +764,19 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 )
 def ls_files(names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    from renku.core.commands.dataset import list_files
+    from renku.core.commands.dataset import list_files_command
+
+    if format not in DATASETS_FORMATS:
+        raise click.BadParameter(f"Format '{format}' not supported")
 
     result = (
-        list_files()
+        list_files_command()
         .lock_dataset()
         .build()
-        .execute(datasets=names, creators=creators, include=include, exclude=exclude, format=format, columns=columns)
+        .execute(datasets=names, creators=creators, include=include, exclude=exclude)
     )
-    click.echo(result.output)
+
+    click.echo(DATASET_FILES_FORMATS[format](result.output, columns=columns))
 
 
 @dataset.command()
@@ -771,10 +786,12 @@ def ls_files(names, creators, include, exclude, format, columns):
 @click.option("-y", "--yes", is_flag=True, help="Confirm unlinking of all files.")
 def unlink(name, include, exclude, yes):
     """Remove matching files from a dataset."""
-    from renku.core.commands.dataset import file_unlink
+    from renku.core.commands.dataset import file_unlink_command
 
     communicator = ClickCallback()
-    file_unlink().with_communicator(communicator).build().execute(name=name, include=include, exclude=exclude, yes=yes)
+    file_unlink_command().with_communicator(communicator).build().execute(
+        name=name, include=include, exclude=exclude, yes=yes
+    )
     click.secho("OK", fg="green")
 
 
@@ -782,9 +799,9 @@ def unlink(name, include, exclude, yes):
 @click.argument("name")
 def remove(name):
     """Delete a dataset."""
-    from renku.core.commands.dataset import remove_dataset
+    from renku.core.commands.dataset import remove_dataset_command
 
-    remove_dataset().build().execute(name)
+    remove_dataset_command().build().execute(name)
     click.secho("OK", fg="green")
 
 
@@ -797,7 +814,7 @@ def tag(name, tag, description, force):
     """Create a tag for a dataset."""
     from renku.core.commands.dataset import add_dataset_tag_command
 
-    add_dataset_tag_command().build().execute(name=name, tag=tag, description=description, force=force)
+    add_dataset_tag_command().build().execute(dataset_name=name, tag=tag, description=description, force=force)
     click.secho("OK", fg="green")
 
 
@@ -808,7 +825,7 @@ def remove_tags(name, tags):
     """Remove tags from a dataset."""
     from renku.core.commands.dataset import remove_dataset_tags_command
 
-    remove_dataset_tags_command().build().execute(name=name, tags=tags)
+    remove_dataset_tags_command().build().execute(dataset_name=name, tags=tags)
     click.secho("OK", fg="green")
 
 
@@ -819,7 +836,7 @@ def ls_tags(name, format):
     """List all tags of a dataset."""
     from renku.core.commands.dataset import list_tags_command
 
-    result = list_tags_command().lock_dataset().build().execute(name=name, format=format)
+    result = list_tags_command().lock_dataset().build().execute(dataset_name=name, format=format)
     click.echo(result.output)
 
 
@@ -829,7 +846,7 @@ def export_provider_argument(*param_decls, **attrs):
     def wrapper(f):
         from click import argument
 
-        from renku.core.commands.providers import ProviderFactory
+        from renku.core.management.dataset.providers import ProviderFactory
 
         providers = [k.lower() for k, p in ProviderFactory.providers().items() if p.supports_export]
         f = argument("provider", type=click.Choice(providers))(f)
@@ -844,7 +861,7 @@ def export_provider_options(*param_decls, **attrs):
     def wrapper(f):
         from click_option_group import optgroup
 
-        from renku.core.commands.providers import ProviderFactory
+        from renku.core.management.dataset.providers import ProviderFactory
 
         providers = [
             (k, v) for k, v in ProviderFactory.providers().items() if v.supports_export and v.export_parameters()
@@ -878,11 +895,11 @@ def export_provider_options(*param_decls, **attrs):
 def export_(name, provider, publish, tag, **kwargs):
     """Export data to 3rd party provider."""
     from renku.core import errors
-    from renku.core.commands.dataset import export_dataset
+    from renku.core.commands.dataset import export_dataset_command
 
     try:
         communicator = ClickCallback()
-        export_dataset().lock_dataset().with_communicator(communicator).build().execute(
+        export_dataset_command().lock_dataset().with_communicator(communicator).build().execute(
             name=name, provider_name=provider, publish=publish, tag=tag, **kwargs
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, errors.RequestError) as e:
@@ -901,10 +918,12 @@ def import_(uri, name, extract, yes):
 
     Supported providers: [Dataverse, Renku, Zenodo]
     """
-    from renku.core.commands.dataset import import_dataset
+    from renku.core.commands.dataset import import_dataset_command
 
     communicator = ClickCallback()
-    import_dataset().with_communicator(communicator).build().execute(uri=uri, name=name, extract=extract, yes=yes)
+    import_dataset_command().with_communicator(communicator).build().execute(
+        uri=uri, name=name, extract=extract, yes=yes
+    )
 
     click.secho(" " * 79 + "\r", nl=False)
     click.secho("OK", fg="green")
@@ -923,10 +942,10 @@ def import_(uri, name, extract, yes):
 @click.option("-e", "--external", is_flag=True, help="Update external data.")
 def update(names, creators, include, exclude, ref, delete, external):
     """Updates files in dataset from a remote Git repo."""
-    from renku.core.commands.dataset import update_datasets
+    from renku.core.commands.dataset import update_datasets_command
 
     communicator = ClickCallback()
-    update_datasets().with_communicator(communicator).build().execute(
+    update_datasets_command().with_communicator(communicator).build().execute(
         names=list(names),
         creators=creators,
         include=include,

@@ -407,7 +407,7 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, cli
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
 def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
-    from renku.core.commands.providers import renku
+    from renku.core.management.dataset.providers import renku
 
     def clone_renku_repository_mock(*_, **__):
         raise errors.GitError

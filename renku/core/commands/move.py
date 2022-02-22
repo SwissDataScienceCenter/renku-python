@@ -23,8 +23,8 @@ from pathlib import Path
 from renku.core import errors
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
+from renku.core.management.dataset.dataset import move_files
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.dataset.usecase import move_files
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
 

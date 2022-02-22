@@ -21,8 +21,8 @@ from contextlib import contextmanager
 
 import pytest
 
-from renku.core.management.dataset.context import DatasetContext
-from renku.core.management.dataset.usecase import add_data_to_dataset, create_dataset
+from renku.core.management.dataset.dataset import create_dataset
+from renku.core.management.dataset.dataset_add import add_data_to_dataset
 
 
 @pytest.fixture
@@ -64,11 +64,9 @@ def client_with_datasets(client, directory_tree, client_database_injection_manag
     with client_database_injection_manager(client):
         create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
 
-        with DatasetContext(name="dataset-2", create=True, commit_database=True) as dataset:
-            dataset.keywords = ["dataset", "2"]
-            dataset.creators = [person_1, person_2]
-
-            add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
+        dataset = add_data_to_dataset("dataset-2", urls=[str(p) for p in directory_tree.glob("*")], create=True)
+        dataset.keywords = ["dataset", "2"]
+        dataset.creators = [person_1, person_2]
 
     client.repository.add(all=True)
     client.repository.commit("add files to datasets")

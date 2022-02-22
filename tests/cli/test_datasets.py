@@ -30,11 +30,11 @@ from renku.cli import cli
 from renku.core import errors
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
-from renku.core.commands.providers import ProviderFactory
-from renku.core.commands.providers.dataverse import DataverseProvider
-from renku.core.commands.providers.zenodo import ZenodoProvider
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.dataset.constant import renku_pointers_path
+from renku.core.management.dataset.providers import ProviderFactory
+from renku.core.management.dataset.providers.dataverse import DataverseProvider
+from renku.core.management.dataset.providers.zenodo import ZenodoProvider
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.dataset import Dataset
 from renku.core.models.refs import LinkReference

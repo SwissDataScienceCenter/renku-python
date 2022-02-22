@@ -29,9 +29,9 @@ import attr
 
 from renku.core import errors
 from renku.core.commands.login import read_renku_token
-from renku.core.commands.providers.api import ProviderApi
 from renku.core.management.command_builder.command import inject
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.dataset.providers.api import ProviderApi
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.metadata.immutable import DynamicProxy

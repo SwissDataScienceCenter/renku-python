@@ -20,8 +20,8 @@ from typing import Optional
 
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
+from renku.core.management.dataset.dataset import create_dataset
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.dataset.usecase import create_dataset
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.models.dataset import Dataset
 from renku.core.models.provenance.agent import Person

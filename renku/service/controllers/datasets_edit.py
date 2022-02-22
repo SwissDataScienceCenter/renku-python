@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets edit controller."""
-from renku.core.commands.dataset import edit_dataset
+from renku.core.commands.dataset import edit_dataset_command
 from renku.service.cache.models.job import Job
 from renku.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
@@ -52,7 +52,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
 
         result = (
-            edit_dataset()
+            edit_dataset_command()
             .with_commit_message(self.ctx["commit_message"])
             .build()
             .execute(

@@ -23,8 +23,6 @@ from renku.core.management import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.models.refs import LinkReference
 
-SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
-
 POINTERS = "pointers"
 """Directory for storing external pointer files."""
 

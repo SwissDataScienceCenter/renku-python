@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku service datasets list controller."""
 
-from renku.core.commands.dataset import list_datasets
+from renku.core.commands.dataset import list_datasets_command
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.serializers.datasets import DatasetListRequest, DatasetListResponseRPC
@@ -42,7 +42,7 @@ class DatasetsListCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        result = list_datasets().build().execute()
+        result = list_datasets_command().build().execute()
         return result.output
 
     def to_response(self):
