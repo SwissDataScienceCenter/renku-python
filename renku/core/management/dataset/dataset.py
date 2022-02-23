@@ -112,9 +112,6 @@ def create_dataset(
     if not title:
         title = name
 
-    if creators is None:
-        creators = [get_git_user(client.repository)]
-
     keywords = keywords or []
 
     annotations = None
@@ -625,6 +622,10 @@ def set_dataset_images(client: "LocalClient", dataset: Dataset, images: List[Ima
 
         if not img_object:
             continue
+
+        if any(i.position == img_object.position for i in dataset.images):
+            raise errors.DatasetImageError(f"Duplicate dataset image specified for position {img_object.position}")
+
         dataset.images.append(img_object)
         images_updated = True
 

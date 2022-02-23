@@ -53,6 +53,7 @@ class ImageRequestModel:
         """Convert request model to ``ImageObject``."""
         client = client_dispatcher.current_client
         image_type = None
+        self.safe_image_paths.append(client.path)
 
         image_folder = renku_dataset_images_path(client) / dataset.initial_identifier
         image_folder.mkdir(exist_ok=True, parents=True)
@@ -102,7 +103,7 @@ class ImageRequestModel:
             img_path = path
 
         return ImageObject(
-            content_url=str(img_path.relative_to(self.path)),
+            content_url=str(img_path.relative_to(client.path)),
             position=self.position,
             id=ImageObject.generate_id(dataset=dataset, position=self.position),
         )
