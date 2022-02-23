@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service exceptions."""
 import os
+from urllib.parse import urlparse
 
 from renku.service.config import (
     DOCS_URL_BASE,
@@ -90,7 +91,8 @@ class ServiceError(Exception):
         if SENTRY_ENABLED:
             # NOTE: Trap the process working directory when internal error occurs.
             try:
-                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+                path = os.readlink(f"/proc/{os.getpid()}/cwd")
+                set_context("pwd", {"path": path})
             except (Exception, BaseException):
                 pass
 
@@ -114,9 +116,15 @@ class ServiceError(Exception):
             # NOTE: add the sentry URL to the exception
             try:
                 sentry = capture_exception(self)
-                SENTRY_URL = os.getenv("SENTRY_URL", None)
-                if SENTRY_URL is not None:
-                    sentry = f"{SENTRY_URL}?query={sentry}"
+                sentry_dsn = os.getenv("SENTRY_DSN", None)
+                if sentry_dsn is not None:
+                    try:
+                        sentry_url = urlparse(sentry_dsn)
+                        sentry_target = sentry_url.netloc.split("@")[-1]
+                        # NOTE: sentry doesn't support a global search. A proper link would require the specific org
+                        sentry = f"{sentry_url.scheme }://{sentry_target}/organizations/sentry?query={sentry}"
+                    except Exception:
+                        pass
             except KeyError as e:
                 sentry = f"Unexpected error while reporting to Sentry: {str(e)}"
         else:
