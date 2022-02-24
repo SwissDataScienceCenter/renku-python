@@ -94,7 +94,7 @@ patool = "==1.12"
 pexpect = { version = "<4.9.0,>=4.8.0", optional = true }
 pillow = { version = "<9.1,>=9.0.0", optional = true }
 pluggy = "==1.0.0"
-portalocker = "<2.4,>=2.2.1"
+portalocker = ">=2.2.1,<2.5"
 psutil = ">=5.4.7,<5.9.1,"
 ptvsd = { version = "<4.4.0,>=4.3.0", optional = true }
 pyasn1 = "<=0.4.8,>=0.4.5"
