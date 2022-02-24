@@ -18,7 +18,8 @@
 """Renku exceptions."""
 
 import os
-from typing import List
+from pathlib import Path
+from typing import List, Union
 
 import click
 
@@ -106,7 +107,7 @@ class DirtyRenkuDirectory(RenkuException):
 class ProtectedFiles(RenkuException):
     """Raise when trying to work with protected files."""
 
-    def __init__(self, ignored):
+    def __init__(self, ignored: List[Union[Path, str]]):
         """Build a custom message."""
         super(ProtectedFiles, self).__init__(
             "The following paths are protected as part of renku:"
@@ -427,16 +428,24 @@ class WorkflowRerunError(RenkuException):
         super(WorkflowRerunError, self).__init__(msg)
 
 
-class InvalidTemplateError(RenkuException):
-    """Raised when using a non-valid template."""
-
-
 class ExportError(RenkuException):
     """Raised when a dataset cannot be exported."""
 
 
-class TemplateUpdateError(RenkuException):
+class TemplateError(RenkuException):
+    """Base class for template-related exceptions."""
+
+
+class InvalidTemplateError(TemplateError):
+    """Raised when using a non-valid template."""
+
+
+class TemplateUpdateError(TemplateError):
     """Raised when a project couldn't be updated from its template."""
+
+
+class TemplateNotFoundError(TemplateError):
+    """Raised when a template cannot be found in a template source or at a specific reference."""
 
 
 class DockerfileUpdateError(RenkuException):

@@ -30,7 +30,7 @@ def dataset_responses():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as response:
 
         def request_callback(request):
-            return 200, {"Content-Type": "application/text"}, "123"
+            return 200, {"Content-Type": "application/text"}, "file1 content"
 
         response.add_callback(responses.GET, "http://example.com/file1", callback=request_callback)
         response.add_callback(responses.GET, "https://example.com/file1", callback=request_callback)

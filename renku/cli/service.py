@@ -28,6 +28,7 @@ from pathlib import Path
 import click
 import psutil
 
+import renku.cli.utils.color as color
 from renku.core.commands.echo import ERROR
 from renku.core.models.tabulate import tabulate
 from renku.core.utils.contexts import chdir
@@ -38,7 +39,7 @@ RENKU_DAEMON_ERR_FILE = "renku.err"
 SERVICE_COMPONENT_TAGS = ["api", "scheduler", "worker"]
 
 
-def run_api(addr="0.0.0.0", port=8080, timeout=600, is_debug=False):
+def run_api(addr="0.0.0.0", port=8080, timeout=600):
     """Run service JSON-RPC API."""
     from gunicorn.app.wsgiapp import run
 
@@ -46,9 +47,6 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600, is_debug=False):
     svc_num_threads = os.getenv("RENKU_SVC_NUM_THREADS", "2")
 
     loading_opt = "--preload"
-    if is_debug:
-        loading_opt = "--reload"
-        svc_num_workers = "1"
 
     sys.argv = [
         "gunicorn",
@@ -231,10 +229,9 @@ def service(ctx, env):
     show_default=True,
     help="Request silent for more than this many seconds are dropped.",
 )
-@click.option("-d", "--debug", default=False, is_flag=True, help="Start API in debug mode.")
-def api_start(addr, port, timeout, debug):
+def api_start(addr, port, timeout):
     """Start service JSON-RPC API in active shell session."""
-    run_api(addr, port, timeout, debug)
+    run_api(addr, port, timeout)
 
 
 @service.command(name="scheduler")
@@ -333,7 +330,7 @@ def all_start(ctx, daemon, runtime_dir):
         start_new_session=True,
     )
 
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @service.command(name="down")
@@ -351,7 +348,7 @@ def all_stop():
             continue
 
     if processes:
-        click.secho("OK", fg="green")
+        click.secho("OK", fg=color.GREEN)
     else:
         click.echo("Nothing to shut down.")
 
@@ -366,7 +363,7 @@ def all_restart():
         os.kill(proc["pid"], signal.SIGKILL)
 
     if processes:
-        click.secho("OK", fg="green")
+        click.secho("OK", fg=color.GREEN)
     else:
         click.echo("Nothing to restart.")
 

@@ -22,6 +22,7 @@ import sys
 import click
 from tqdm import tqdm
 
+import renku.cli.utils.color as color
 from renku.core.utils.communication import CommunicationCallback
 
 
@@ -53,7 +54,7 @@ class StandardOutput(CommunicationCallback):
         with CommunicationCallback.lock:
             print(msg, file=sys.stderr)
 
-    def confirm(self, msg, abort=False, warning=False):
+    def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action."""
         return False
 
@@ -96,9 +97,9 @@ class StandardOutput(CommunicationCallback):
 class ClickCallback(StandardOutput):
     """CommunicationCallback implementation for ``click`` messages."""
 
-    INFO = click.style("Info: ", bold=True, fg="blue")
-    WARNING = click.style("Warning: ", bold=True, fg="yellow")
-    ERROR = click.style("Error: ", bold=True, fg="red")
+    INFO = click.style("Info: ", bold=True, fg=color.BLUE)
+    WARNING = click.style("Warning: ", bold=True, fg=color.YELLOW)
+    ERROR = click.style("Error: ", bold=True, fg=color.RED)
 
     def echo(self, msg, end="\n"):
         """Write a message."""
@@ -124,10 +125,10 @@ class ClickCallback(StandardOutput):
         """Return True if communicator provides a direct prompt to users."""
         return True
 
-    def confirm(self, msg, abort=False, warning=False):
+    def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action using a prompt."""
         prefix = self.WARNING if warning else ""
-        return click.confirm(prefix + msg, abort=abort)
+        return click.confirm(prefix + msg, abort=abort, default=default)
 
     def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt from the first callback that has a prompt."""

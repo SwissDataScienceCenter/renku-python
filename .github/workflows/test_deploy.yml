@@ -351,6 +351,9 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu jammy main restricted multiverse universe"
+          sudo apt-get update -y
+          sudo apt-get install -y --allow-downgrades -t jammy git-lfs=3.0.2-1
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -839,6 +842,19 @@ jobs:
           POETRY_VIRTUALENVS_CREATE: false
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: make publish-lock-package
+
+  update-develop-branch:
+    runs-on: ubuntu-latest
+    if: "startsWith(github.ref, 'refs/tags/')"
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: 'develop'
+      - name: merge changes from master
+        run: |
+          git merge master
+          git push
 
   build-images:
     runs-on: ubuntu-latest

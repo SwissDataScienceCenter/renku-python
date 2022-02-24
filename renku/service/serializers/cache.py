@@ -222,6 +222,8 @@ class ProjectMigrateResponse(RenkuSyncSchema):
     template_migrated = fields.Boolean()
     docker_migrated = fields.Boolean()
     messages = fields.List(fields.String)
+    warnings = fields.List(fields.String)
+    errors = fields.List(fields.String)
 
 
 class ProjectMigrateResponseRPC(JsonRPCResponse):

@@ -90,5 +90,6 @@ def test_rollback(client, runner, project):
     assert 0 == result.exit_code, format_result_exception(result)
     assert 2 == len(result.output.splitlines())
     result = runner.invoke(cli, ["log"])
+
     assert 0 == result.exit_code, format_result_exception(result)
-    assert 2 == len(result.output.splitlines())
+    assert 1 == len(result.output.splitlines())
