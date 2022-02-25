@@ -262,7 +262,7 @@ class UserTemplateInvalidError(ServiceError):
     """The provided URL doesn't lead to a valid template repository."""
 
     code = SVC_ERROR_USER + 101
-    userMessage = "The target repository is not a valid RenkuLab template repository."
+    userMessage = "The target repository is not a valid Renku template repository."
     devMessage = "Target repository is not a valid template."
 
     def __init__(self, exception=None):
@@ -313,7 +313,7 @@ class UserDatasetsUnreachableImageError(ServiceError):
     """Dataset image not reachable."""
 
     code = SVC_ERROR_USER + 131
-    userMessage = "Cannot get the dataset image."
+    userMessage = "Cannot download the dataset image."
     devMessage = "The dataset image is no reachable."
 
     def __init__(self, exception=None):

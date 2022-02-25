@@ -119,7 +119,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         self.template = next((template for template in templates if template["folder"] == identifier), None)
         if self.template is None:
             raise UserProjectCreationError(
-                error_message=f"the template '{identifier}' does not exist in the target templates repository"
+                error_message=f"the template '{identifier}' does not exist in the target template's repository"
             )
 
         repository = Repository(project.abs_path)
