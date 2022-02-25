@@ -55,6 +55,7 @@ from renku.service.errors import (
     ProgramProjectCreationError,
     ProgramRenkuError,
     ProgramRepoUnknownError,
+    ProgramUpdateProjectError,
     ServiceError,
     UserDatasetsMultipleImagesError,
     UserDatasetsUnlinkError,
@@ -383,7 +384,7 @@ def handle_migration_errors(f):
         try:
             return f(*args, **kwargs)
         except (TemplateUpdateError, DockerfileUpdateError, MigrationError) as e:
-            raise UserOutdatedProjectError(e)
+            raise ProgramUpdateProjectError(e)
 
     return decorated_function
 

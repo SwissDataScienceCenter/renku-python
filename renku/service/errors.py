@@ -299,11 +299,11 @@ class UserNonRenkuProjectError(ServiceError):
 
 
 class UserDatasetsMultipleImagesError(ServiceError):
-    """Multiple images have been set for the same dataset."""
+    """Multiple images dataset have the same priority."""
 
     code = SVC_ERROR_USER + 130
-    userMessage = "Cannot set multiple images for the dataset."
-    devMessage = "The parameters specified multiple images  for the dataset."
+    userMessage = "Multiple dataset images must have different priorities."
+    devMessage = "The input parameters contain multiple dataset images with the same priority."
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
@@ -314,7 +314,7 @@ class UserDatasetsUnreachableImageError(ServiceError):
 
     code = SVC_ERROR_USER + 131
     userMessage = "Cannot download the dataset image."
-    devMessage = "The dataset image is no reachable."
+    devMessage = "The remote dataset image is not reachable."
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
@@ -439,6 +439,17 @@ class ProgramGraphCorruptError(ServiceError):
     code = SVC_ERROR_PROGRAMMING + 121
     userMessage = "The Renku project seems partially corrupted, and the graph could not be generated."
     devMessage = "Could not generate the project graph. Check the Sentry exception for further details."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
+class ProgramUpdateProjectError(ServiceError):
+    """Updating the project failed."""
+
+    code = SVC_ERROR_USER + 140
+    userMessage = "Our servers could not update the project succesfully. You could try doing it manually in a session."
+    devMessage = "Updating the target project failed. Check the Sentry exception for further details."
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
