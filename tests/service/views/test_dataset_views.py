@@ -100,7 +100,7 @@ def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert UserOutdatedProjectError().code == response.json["error"]["code"]
+    assert UserOutdatedProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -135,7 +135,7 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert IntermittentProjectIdError().code == response.json["error"]["code"]
+    assert IntermittentProjectIdError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -236,7 +236,7 @@ def test_create_dataset_with_images(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert UserDatasetsMultipleImagesError().code == response.json["error"]["code"]
+    assert UserDatasetsMultipleImagesError.code == response.json["error"]["code"]
 
     payload = {
         "project_id": project_id,
@@ -341,7 +341,7 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert UserDatasetsUnreachableImageError().code == response.json["error"]["code"]
+    assert UserDatasetsUnreachableImageError.code == response.json["error"]["code"]
 
     payload = {
         "project_id": project_id,
@@ -435,7 +435,7 @@ def test_create_dataset_invalid_creator(svc_client_with_repo):
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response, "error")
-    assert UserMissingFieldError().code == response.json["error"]["code"]
+    assert UserMissingFieldError.code == response.json["error"]["code"]
     assert "creators.0.name" in response.json["error"]["userMessage"]
 
 
@@ -456,7 +456,7 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert IntermittentDatasetExistsError().code == response.json["error"]["code"]
+    assert IntermittentDatasetExistsError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -471,7 +471,7 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert ProgramInvalidGenericFieldsError().code == response.json["error"]["code"]
+    assert ProgramInvalidGenericFieldsError.code == response.json["error"]["code"]
     assert unknown_field in response.json["error"]["devMessage"]
 
 
@@ -493,7 +493,7 @@ def test_create_dataset_with_no_identity(svc_client_with_repo):
     )
 
     assert_rpc_response(response, "error")
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -513,7 +513,7 @@ def test_add_file_view_with_no_identity(svc_client_with_repo):
     )
 
     assert_rpc_response(response, "error")
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -576,7 +576,7 @@ def test_add_file_failure(svc_client_with_repo):
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response, "error")
-    assert IntermittentFileNotExistsError().code == response.json["error"]["code"]
+    assert IntermittentFileNotExistsError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -621,14 +621,14 @@ def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
 
     response = svc_client.get("/datasets.list", query_string=params, headers={})
     assert_rpc_response(response, "error")
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
     params = {
         "git_url": it_remote_repo_url,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers={})
     assert_rpc_response(response, "error")
-    assert UserRepoNoAccessError().code == response.json["error"]["code"]
+    assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
     params = {
         "git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku",
@@ -638,7 +638,7 @@ def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     assert_rpc_response(response, "error")
     # NOTE: We don't migrate remote projects; the fact that this operation fails with a migration error means that the
     # project could be cloned for the anonymous user
-    assert UserOutdatedProjectError().code == response.json["error"]["code"]
+    assert UserOutdatedProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -682,7 +682,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 
     response = svc_client.get("/datasets.list", query_string=params)
     assert_rpc_response(response, "error")
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -696,13 +696,13 @@ def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
     assert_rpc_response(response, "error")
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
     params = {"git_url": it_remote_repo_url, "name": "ds1"}
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
     assert_rpc_response(response, "error")
-    assert UserRepoNoAccessError().code == response.json["error"]["code"]
+    assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
     params = {"git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku", "name": "mydata"}
 
@@ -710,7 +710,7 @@ def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     assert_rpc_response(response, "error")
     # NOTE: We don't migrate remote projects; the fact that this operation fails with a migration error means that the
     # project could be cloned for the anonymous user
-    assert UserOutdatedProjectError().code == response.json["error"]["code"]
+    assert UserOutdatedProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -1326,7 +1326,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response, "error")
-    assert UserDatasetsMultipleImagesError().code == response.json["error"]["code"]
+    assert UserDatasetsMultipleImagesError.code == response.json["error"]["code"]
 
     # NOTE: test edit remove images
     edit_payload = {
@@ -1431,7 +1431,7 @@ def test_unlink_file_no_filter_error(unlink_file_setup):
     response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers)
 
     assert_rpc_response(response, "error")
-    assert UserInvalidGenericFieldsError().code == response.json["error"]["code"]
+    assert UserInvalidGenericFieldsError.code == response.json["error"]["code"]
 
 
 @pytest.mark.integration
@@ -1445,4 +1445,4 @@ def test_unlink_file_exclude(unlink_file_setup):
     response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers)
 
     assert_rpc_response(response, "error")
-    assert UserDatasetsUnlinkError().code == response.json["error"]["code"]
+    assert UserDatasetsUnlinkError.code == response.json["error"]["code"]

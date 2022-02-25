@@ -71,7 +71,7 @@ def test_auth_headers_exc(service_allowed_endpoint):
 
     response = client_method(request["url"], headers=request["headers"])
     assert_rpc_response(response, "error")
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -95,7 +95,7 @@ def test_content_type_headers_exc(svc_client_with_repo):
 
     response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert ProgramContentTypeError().code == response.json["error"]["code"]
+    assert ProgramContentTypeError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -112,7 +112,7 @@ def test_migration_required_flag(svc_client_setup):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert UserOutdatedProjectError().code == response.json["error"]["code"]
+    assert UserOutdatedProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -169,7 +169,7 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert_rpc_response(response, "error")
-    assert UserNonRenkuProjectError().code == response.json["error"]["code"]
+    assert UserNonRenkuProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -192,7 +192,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert_rpc_response(response, "error")
-    assert UserNonRenkuProjectError().code == response.json["error"]["code"]
+    assert UserNonRenkuProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -213,8 +213,8 @@ def test_invalid_git_remote(git_url, svc_client_with_user):
     params = {"git_url": git_url}
     response = svc_client.get("/config.show", query_string=params, headers=headers)
 
-    code_invalid = UserRepoUrlInvalidError().code
-    code_timeout = IntermittentTimeoutError().code
+    code_invalid = UserRepoUrlInvalidError.code
+    code_timeout = IntermittentTimeoutError.code
     assert_rpc_response(response, "error")
     response_code = response.json["error"]["code"]
     # NOTE: depending on local git client settings, timeout may occur for non valid repos
@@ -234,7 +234,7 @@ def test_invalid_project_id(svc_client_with_repo):
     response = svc_client.post("/project.show", data=json.dumps(show_payload), headers=headers)
 
     assert_rpc_response(response, "error")
-    assert IntermittentProjectIdError().code == response.json["error"]["code"]
+    assert IntermittentProjectIdError.code == response.json["error"]["code"]
 
 
 @pytest.mark.integration
@@ -251,4 +251,4 @@ def test_user_without_permissons(svc_client_with_user):
     )
 
     assert_rpc_response(response, "error")
-    assert UserRepoNoAccessError().code == response.json["error"]["code"]
+    assert UserRepoNoAccessError.code == response.json["error"]["code"]

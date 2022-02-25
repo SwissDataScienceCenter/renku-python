@@ -67,7 +67,7 @@ def test_list_upload_files_all_no_auth(svc_client):
     assert 200 == response.status_code
 
     assert {"error"} == set(response.json.keys())
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -110,7 +110,7 @@ def test_file_upload_override(svc_client, identity_headers):
 
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert IntermittentFileExistsError().code == response.json["error"]["code"]
+    assert IntermittentFileExistsError.code == response.json["error"]["code"]
 
     response = svc_client.post(
         "/cache.files_upload",
@@ -149,7 +149,7 @@ def test_file_upload_same_file(svc_client, identity_headers):
 
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert IntermittentFileExistsError().code == response.json["error"]["code"]
+    assert IntermittentFileExistsError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -161,7 +161,7 @@ def test_file_upload_no_auth(svc_client):
     assert 200 == response.status_code
 
     assert {"error"} == set(response.json.keys())
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -230,7 +230,7 @@ def test_clone_projects_no_auth(svc_client, identity_headers, it_remote_repo_url
 
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
     assert 200 == response.status_code
@@ -321,7 +321,7 @@ def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote
     )
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
     response = svc_client.get("/cache.project_list", headers=identity_headers)
 
@@ -354,7 +354,7 @@ def test_clone_projects_invalid_headers(svc_client, identity_headers, it_remote_
     )
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserAnonymousError().code == response.json["error"]["code"]
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
     response = svc_client.get("/cache.project_list", headers=identity_headers)
 

@@ -57,7 +57,7 @@ def test_config_view_show_errors(svc_client_with_user, it_non_renku_repo_url):
 
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserNonRenkuProjectError().code == response.json["error"]["code"]
+    assert UserNonRenkuProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -150,7 +150,7 @@ def test_config_view_set_failures(svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert IntermittentSettingExistsError().code == response.json["error"]["code"]
+    assert IntermittentSettingExistsError.code == response.json["error"]["code"]
     assert non_existing_param in response.json["error"]["devMessage"]
 
 
@@ -176,7 +176,7 @@ def test_config_view_set_and_show_failures(svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert ProgramProjectCorruptError().code == response.json["error"]["code"]
+    assert ProgramProjectCorruptError.code == response.json["error"]["code"]
 
 
 @pytest.mark.integration

@@ -108,7 +108,7 @@ def test_edit_project_view_failures(svc_client_with_repo):
     response = svc_client.post("/project.edit", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response, "error")
-    assert ProgramInvalidGenericFieldsError().code == response.json["error"]["code"]
+    assert ProgramInvalidGenericFieldsError.code == response.json["error"]["code"]
 
 
 @pytest.mark.integration

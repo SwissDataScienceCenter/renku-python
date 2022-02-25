@@ -62,7 +62,7 @@ def test_graph_export_view_failures(it_non_renku_repo_url, svc_client_cache):
     response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response, "error")
-    assert ProgramGraphCorruptError().code == response.json["error"]["code"]
+    assert ProgramGraphCorruptError.code == response.json["error"]["code"]
     # TODO: add more errors
 
 
