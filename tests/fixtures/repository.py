@@ -177,9 +177,3 @@ def injection_binder(request):
         return
 
     return _binder
-
-
-@pytest.fixture
-def injected_client(client, client_injection_bindings, injection_binder):
-    """Inject a client."""
-    injection_binder(client_injection_bindings(client))

@@ -61,7 +61,7 @@ from renku.core.management.migrations.utils import (
 )
 from renku.core.metadata.repository import Commit
 from renku.core.models import jsonld as jsonld
-from renku.core.models.dataset import generate_default_name, is_dataset_name_valid
+from renku.core.models.dataset import generate_default_name
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import fix_datetime, parse_date
 from renku.core.utils.doi import extract_doi, is_doi
@@ -146,7 +146,7 @@ class Project:
 
     immutable_template_files = attr.ib(factory=list)
 
-    automated_update = attr.ib(converter=bool, default=False)
+    automated_update = attr.ib(converter=bool, default=True)
 
     client = attr.ib(default=None)
 
@@ -1537,13 +1537,6 @@ class Dataset(Entity, CreatorMixin):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
 
-    @name.validator
-    def name_validator(self, attribute, value):
-        """Validate name."""
-        # name might have been escaped and have '%' in it
-        if value and not is_dataset_name_valid(value):
-            raise errors.ParameterError(f"Invalid name: `{value}`")
-
     @property
     def short_id(self):
         """Shorter version of identifier."""
@@ -1834,7 +1827,7 @@ class ProjectSchema(JsonLDSchema):
     template_version = fields.String(renku.templateVersion, missing=None)
     template_metadata = fields.String(renku.templateMetadata, missing=None)
     immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
-    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=False)
+    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=True)
     creator = Nested(schema.creator, OldPersonSchema, missing=None)
     _id = fields.Id(init_name="id", missing=None)
 

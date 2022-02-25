@@ -68,7 +68,7 @@ services:
       - "8081:8080"
     volumes:
       - ${PWD}:/code/renku
-    command: "api --debug"
+    command: "api"
     labels:
       - "traefik.http.routers.renku-svc.rule=PathPrefix(`/api/renku`)"
       - "traefik.http.middlewares.stripprefix.stripprefix.prefixes=/api"

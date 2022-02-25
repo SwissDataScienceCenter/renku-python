@@ -17,12 +17,15 @@
 # limitations under the License.
 """OS utility functions."""
 
+import hashlib
 import os
 import re
 from pathlib import Path
 from typing import Generator, List, Optional, Union
 
 from renku.core import errors
+
+BLOCK_SIZE = 4096
 
 
 def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
@@ -38,6 +41,19 @@ def get_absolute_path(path: Union[Path, str], base: Union[Path, str] = None) -> 
 
     # NOTE: Do not use os.path.realpath or Path.resolve() because they resolve symlinks
     return os.path.abspath(path)
+
+
+def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Path:
+    """Return a relative path to the base and check path is within base with all symlinks resolved.
+
+    NOTE: This is used to prevent path traversal attack.
+    """
+    try:
+        base = Path(base).resolve()
+        absolute_path = base / path
+        return absolute_path.resolve().relative_to(base)
+    except ValueError:
+        raise ValueError(f"Path '{path}' is not with base directory '{base}'")
 
 
 def get_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Optional[Path]:
@@ -85,6 +101,15 @@ def are_paths_related(a, b) -> bool:
     return absolute_common_path == os.path.abspath(a) or absolute_common_path == os.path.abspath(b)
 
 
+def is_path_empty(path: Union[Path, str]) -> bool:
+    """Check if path contains files.
+
+    :ref path: target path
+    """
+    subpaths = Path(path).rglob("*")
+    return not any(subpaths)
+
+
 def print_markdown(text: str):
     """Print markdown text to console."""
     from rich.console import Console
@@ -124,3 +149,31 @@ def delete_file(path: Union[Path, str], ignore_errors: bool = True):
     except OSError:
         if not ignore_errors:
             raise
+
+
+def hash_file(path: Union[Path, str]) -> Optional[str]:
+    """Calculate the sha256 hash of a file."""
+    if not os.path.exists(path):
+        return
+
+    sha256_hash = hashlib.sha256()
+
+    with open(path, "rb") as f:
+        for byte_block in iter(lambda: f.read(BLOCK_SIZE), b""):
+            sha256_hash.update(byte_block)
+
+    return sha256_hash.hexdigest()
+
+
+def hash_str(content: str):
+    """Calculate the sha256 hash of a string."""
+    sha256_hash = hashlib.sha256()
+
+    content_bytes = content.encode("utf-8")
+
+    blocks = (len(content_bytes) - 1) // BLOCK_SIZE + 1
+    for i in range(blocks):
+        byte_block = content_bytes[i * BLOCK_SIZE : (i + 1) * BLOCK_SIZE]
+        sha256_hash.update(byte_block)
+
+    return sha256_hash.hexdigest()

@@ -152,15 +152,30 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
         ),
         (
             "https://github.com/SwissDataScienceCenter",
-            {"error": {"code": -32100, "reason": "Cannot clone repo from https://github.com/SwissDataScienceCenter"}},
+            {
+                "error": {
+                    "code": -32100,
+                    "reason": "Cannot clone template repository from https://github.com/SwissDataScienceCenter",
+                }
+            },
         ),
         (
-            "https://test.com/test2/test3",
-            {"error": {"code": -32100, "reason": "Cannot clone repo from https://test.com/test2/test3"}},
+            "https://example.com/test2/test3",
+            {
+                "error": {
+                    "code": -32100,
+                    "reason": "Cannot clone template repository from https://example.com/test2/test3",
+                }
+            },
         ),
         (
-            "https://www.test.com/test2/test3",
-            {"error": {"code": -32100, "reason": "Cannot clone repo from https://www.test.com/test2/test3"}},
+            "https://www.example.com/test2/test3",
+            {
+                "error": {
+                    "code": -32100,
+                    "reason": "Cannot clone template repository from https://www.example.com/test2/test3",
+                }
+            },
         ),
     ],
 )

@@ -16,16 +16,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku common fixtures."""
+
 import shutil
-from pathlib import Path
+import textwrap
+from typing import List, Optional, Tuple
 
 import pytest
+from packaging.version import Version
 
 from renku.version import __version__ as renku_version
 
 
 @pytest.fixture
-def template():
+def template_metadata():
+    """Default template metadata."""
+    yield {
+        "__template_source__": "renku",
+        "__template_ref__": "master",
+        "__template_id__": "python-minimal",
+        "__namespace__": "",
+        "__repository__": "",
+        "__project_description__": "no description",
+        "__project_slug__": "",
+        "__renku_version__": renku_version,
+    }
+
+
+@pytest.fixture
+def template(template_metadata):
     """Yield template data."""
     template = {
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
@@ -34,16 +52,7 @@ def template():
         "ref": "master",
         # TODO: Add template parameters here once parameters are added to the template.
         "metadata": {},
-        "default_metadata": {
-            "__template_source__": "renku",
-            "__template_ref__": "master",
-            "__template_id__": "python-minimal",
-            "__namespace__": "",
-            "__repository__": "",
-            "__project_description__": "nodesc",
-            "__project_slug__": "",
-            "__renku_version__": renku_version,
-        },
+        "default_metadata": template_metadata,
     }
 
     yield template
@@ -77,7 +86,6 @@ def project_init(template):
         "id": ["--template-id", template["id"]],
         "index": ["--template-index", template["index"]],
         "force": ["--force"],
-        "list": ["--list-templates"],
         "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
         "parameters_equal_missing": ["--parameter", "p3:v3"],
         "parameters_equal_early": ["--parameter", "=p4v3"],
@@ -89,74 +97,188 @@ def project_init(template):
 
 
 @pytest.fixture
-def template_update(tmpdir, local_client, mocker, monkeypatch, template, client_database_injection_manager):
-    """Create a mocked template for updates."""
+def source_template(tmp_path):
+    """A dummy Template."""
+    from renku.core.models.template import Template
 
-    def _template_update(immutable_files=None, docker=False, after_template_version="0.0.2"):
-        """Fetches an updatable template with various options."""
-        from renku.core.commands.init import create_from_template, read_template_manifest
+    templates_source_root = tmp_path / "templates_source"
+    dummy_template_root = templates_source_root / "dummy"
 
-        try:
-            import importlib_resources
-        except ImportError:
-            import importlib.resources as importlib_resources
+    (dummy_template_root / ".renku").mkdir(parents=True, exist_ok=True)
 
-        # NOTE: get template
-        tempdir = tmpdir.mkdir("template")
-        temppath = Path(tempdir) / "local"
+    (dummy_template_root / "{{ __name__ }}.dummy").touch()
+    (dummy_template_root / "README.md").write_text("""A Renku project: {{ __project_description__ }}\n""")
+    (dummy_template_root / "immutable.file").write_text("immutable content")
+    (dummy_template_root / ".gitignore").write_text(".swp")
+    (dummy_template_root / ".renku" / "renku.ini").touch()
+    (dummy_template_root / "Dockerfile").write_text(
+        textwrap.dedent(
+            """
+            ARG RENKU_BASE_IMAGE=renku/renkulab-r:4.1.2-0.11.0
+            FROM ${RENKU_BASE_IMAGE}
+            # Docker content
+            ARG RENKU_VERSION={{ __renku_version__ | default("0.42.0") }}
+            # More content
+            """
+        )
+    )
 
-        ref = importlib_resources.files("renku") / "templates"
-        with importlib_resources.as_file(ref) as template_local:
-            shutil.copytree(str(template_local), str(temppath))
+    yield Template(
+        id="dummy",
+        name="Dummy Template",
+        description="A dummy template",
+        source="dummy",
+        reference="1.0.0",
+        version="1.0.0",
+        allow_update=True,
+        parameters={},
+        immutable_files=["immutable.file"],
+        path=dummy_template_root,
+        icon="",
+        templates_source=None,
+    )
 
-        manifest = read_template_manifest(temppath)
-        template_path = temppath / manifest[0]["folder"]
 
-        if docker:
-            monkeypatch.setattr("renku.__version__", "0.0.1")
+@pytest.fixture
+def templates_source(tmp_path, monkeypatch):
+    """A dummy TemplatesSource."""
+    from renku.core import errors
+    from renku.core.models.template import Template, TemplateParameter, TemplatesSource
 
-            # TODO: remove this once the renku template contains RENKU_VERSION
-            dockerfile_path = template_path / "Dockerfile"
-            dockerfile = dockerfile_path.read_text()
-            dockerfile_path.write_text(f"ARG RENKU_VERSION=0.0.1\n{dockerfile}")
+    templates_source_root = tmp_path / "templates_source"
 
-        local_client.init_repository()
+    (templates_source_root / "manifest.yaml").write_text(
+        textwrap.dedent(
+            """
+            - id: dummy
+              name: Dummy Template
+              description: A dummy template
+              immutable_template_files:
+                - immutable.file
+            """
+        )
+    )
 
-        # NOTE: init project from template
-        with client_database_injection_manager(local_client):
-            create_from_template(
-                template_path,
-                local_client,
-                "name",
-                {**template["default_metadata"], **template["metadata"]},
-                template_version="0.0.1",
-                immutable_template_files=immutable_files or [],
-                automated_update=True,
-            )
+    class DummyTemplatesSource(TemplatesSource):
+        """Base class for Renku template sources."""
 
-        project_files = [
-            f
-            for f in local_client.path.glob("**/*")
-            if ".git" not in str(f)
-            and ".renku/metadata" not in str(f)
-            and not str(f).endswith(".renku/template_checksums.json")
-        ]
+        def __init__(self, path, source, reference, version):
+            super().__init__(path=path, source=source, reference=reference, version=version)
+            self._versions = [Version(version)]
 
-        template_files = []
-        for project_file in project_files:
-            expected_file = template_path / project_file.relative_to(local_client.path)
-            template_files.append(expected_file)
-            assert expected_file.exists()
+        @classmethod
+        def fetch(cls, source: Optional[str], reference: Optional[str]) -> "TemplatesSource":
+            raise NotImplementedError
 
-        fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
-        fetch_template.return_value = (manifest, temppath, "renku", after_template_version)
+        def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
+            """Return True if an update is available along with the latest version of a template."""
+            latest_version = self.get_latest_version(id=id, reference=reference, version=version)
 
-        return {
-            "template_files": template_files,
-            "project_files": project_files,
-            "manifest": manifest,
-            "manifest_path": temppath,
-            "template_path": template_path,
-        }
+            return latest_version != version, latest_version
 
-    yield _template_update
+        def get_all_versions(self, id) -> List[str]:
+            """Return all available versions for a template id."""
+            return [str(v) for v in self._versions]
+
+        def get_latest_version(self, id: str, reference: Optional[str], version: Optional[str]) -> Optional[str]:
+            """Return latest version number of a template."""
+            _ = self.get_template(id=id, reference=reference)
+            return str(max(self._versions))
+
+        def get_template(self, id, reference: Optional[str]) -> Optional[Template]:
+            """Return a template at a specific reference."""
+            if not reference:
+                reference = self.reference
+            elif Version(reference) not in self._versions:
+                raise errors.InvalidTemplateError(f"Cannot find reference '{reference}'")
+
+            try:
+                template = next(t for t in self.templates if t.id == id)
+            except StopIteration:
+                raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available.")
+            else:
+                template.version = reference
+                template.reference = reference
+
+                return template
+
+        def update(self, id, version, content="# modification", parameters: List[TemplateParameter] = None):
+            """Update all files of a template."""
+            template = self.get_template(id=id, reference=None)
+
+            for relative_path in template.get_files():
+                path = template.path / relative_path
+                path.write_text(f"{path.read_text()}\n{content}")
+
+            template.parameters = parameters or []
+
+            self._versions.append(Version(version))
+
+    dummy_templates_source = DummyTemplatesSource(
+        path=templates_source_root, source="dummy", reference="1.0.0", version="1.0.0"
+    )
+
+    with monkeypatch.context() as monkey:
+        import renku.core.management.template.usecase
+
+        def mocked_fetch_templates_source(source: Optional[str], reference: Optional[str]):
+            return dummy_templates_source
+
+        monkey.setattr(renku.core.management.template.usecase, "fetch_templates_source", mocked_fetch_templates_source)
+
+        yield dummy_templates_source
+
+
+@pytest.fixture
+def rendered_template(source_template, template_metadata):
+    """A dummy RenderedTemplate."""
+    from renku.core.models.template import TemplateMetadata
+
+    rendered_template = source_template.render(metadata=TemplateMetadata.from_dict(template_metadata))
+
+    yield rendered_template
+
+
+@pytest.fixture
+def client_with_template(client, rendered_template, client_database_injection_manager):
+    """A client with a dummy template."""
+    from renku.core.management.template.template import FileAction, copy_template_to_client
+
+    with client_database_injection_manager(client):
+        actions = {f: FileAction.OVERWRITE for f in rendered_template.get_files()}
+
+        copy_template_to_client(
+            rendered_template=rendered_template, client=client, project=client.project, actions=actions
+        )
+
+        client.template_files = [client.path / f for f in rendered_template.get_files()]
+
+    client.repository.add(all=True)
+    client.repository.commit("Set a dummy template")
+
+    yield client
+
+
+@pytest.fixture
+def rendered_template_with_update(tmp_path, rendered_template):
+    """An updated RenderedTemplate.
+
+    This fixture modifies these files: ``immutable.file``, ``.gitignore``, ``Dockerfile``, ``README.md``.
+    """
+    from renku.core.models.template import RenderedTemplate
+
+    updated_template_root = tmp_path / "rendered_template_with_update"
+
+    shutil.copytree(str(rendered_template.path), str(updated_template_root))
+
+    (updated_template_root / "immutable.file").write_text("updated immutable content")
+    (updated_template_root / ".gitignore").write_text(".swp\n.idea")
+    dockerfile = updated_template_root / "Dockerfile"
+    dockerfile.write_text(f"{dockerfile.read_text()}\n# Updated Dockerfile")
+    (updated_template_root / "README.md").write_text("""Updated README: {{ __project_description__ }}\n""")
+
+    updated_rendered_template = RenderedTemplate(
+        path=updated_template_root, template=rendered_template.template, metadata=rendered_template.metadata
+    )
+
+    yield updated_rendered_template

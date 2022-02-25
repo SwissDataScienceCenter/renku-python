@@ -19,7 +19,7 @@
 import pytest
 from marshmallow import ValidationError
 
-from renku.core.errors import GitError
+from renku.core import errors
 
 
 def test_template_read_manifest_ctrl(ctrl_init, svc_client_with_templates, mocker):
@@ -53,7 +53,7 @@ def test_validation_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_clie
 
 @pytest.mark.service
 @pytest.mark.integration
-@pytest.mark.parametrize("git_url", ["https://test.com/test2/test3", "https://www.test.com/test2/test3"])
+@pytest.mark.parametrize("git_url", ["https://example.com/test2/test3", "https://www.example.com/test2/test3"])
 def test_found_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_client_with_templates, mocker):
     """Test git command exception on template read manifest controller."""
     from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
@@ -64,5 +64,5 @@ def test_found_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_client_wi
 
     ctrl = TemplatesReadManifestCtrl(cache, user_data, template_params)
 
-    with pytest.raises(GitError):
+    with pytest.raises(errors.InvalidTemplateError):
         ctrl.to_response()
