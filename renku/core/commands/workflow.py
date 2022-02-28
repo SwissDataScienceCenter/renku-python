@@ -759,12 +759,15 @@ def _iterate_workflow(
                     f"The value of '{param_name}' parameter is neither a list nor templated variable!"
                 )
 
-            if len(param_value) == 1:
+            if isinstance(param_value, list) and len(param_value) == 1:
                 communication.warn(
                     f"The parameter '{param_name}' has only one element '{param_value}', "
                     "changing it to be a fixed parameter!"
                 )
                 workflow_params[param_name] = param_value[0]
+                continue
+            elif not isinstance(param_value, list):
+                workflow_params[param_name] = param_value
                 continue
 
             if TAG_SEPARATOR in param_name:
