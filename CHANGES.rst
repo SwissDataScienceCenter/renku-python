@@ -18,6 +18,19 @@
 Changes
 =======
 
+`0.16.5 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.4...v0.16.5>`__ (2022-02-28)
+----------------------------------------------------------------------------------------------------------
+
+This is a backport release that contains changes necessary for compatibility with a global highly-avaialble
+Renku Redis distribution.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Work with redis sentinel
+   (`#2700 <https://github.com/SwissDataScienceCenter/renku-python/issues/2700>`__)
+   (`2ea18c6 <https://github.com/SwissDataScienceCenter/renku-python/commit/2ea18c69efb9b2601da86208c1da7d987ae54521>`__)
+
 `0.16.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.3...v0.16.4>`__ (2022-01-25)
 ----------------------------------------------------------------------------------------------------------
 
