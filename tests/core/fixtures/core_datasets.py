@@ -63,6 +63,13 @@ def client_with_datasets(client, directory_tree, client_database_injection_manag
 
     with client_database_injection_manager(client):
         create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+# =======
+#         client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+#
+#         with client.with_dataset(name="dataset-2", create=True) as dataset:
+#             dataset.keywords = ["dataset", "2"]
+#             dataset.creators = [person_1, person_2]
+# >>>>>>> 90a88d70 (feat(core): add check for invalid imported datasets)
 
         dataset = add_data_to_dataset("dataset-2", urls=[str(p) for p in directory_tree.glob("*")], create=True)
         dataset.keywords = ["dataset", "2"]

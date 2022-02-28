@@ -86,6 +86,9 @@ class Url:
         if not self.id or self.id.startswith("_:"):
             self.id = Url.generate_id(url_str=self.url_str, url_id=self.url_id)
 
+    def __repr__(self) -> str:
+        return f"<Url {self.value}>"
+
     @staticmethod
     def generate_id(url_str, url_id):
         """Generate an identifier for Url."""
@@ -397,6 +400,10 @@ class Dataset(Persistent):
         """Comma-separated list of keywords associated with dataset."""
         return ", ".join(self.keywords)
 
+    def is_derivation(self) -> bool:
+        """Return if a dataset has correct derived_form."""
+        return self.derived_from and not self.same_as and self.id != self.derived_from.url_id
+
     def copy(self) -> "Dataset":
         """Return a clone of this dataset."""
         try:
@@ -431,6 +438,8 @@ class Dataset(Persistent):
     ):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"
+        assert self is not dataset, f"Cannot derive from the same dataset '{self.name}:{self.identifier}'"
+        assert not identifier or self.id != identifier, f"Cannot derive from the same id '{self.name}:{identifier}'"
 
         self._assign_new_identifier(identifier)
         # NOTE: Setting `initial_identifier` is required for migration of broken projects

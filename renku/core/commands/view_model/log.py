@@ -156,7 +156,7 @@ class LogViewModel:
         if not dataset.derived_from and not dataset.same_as:
             descriptions.append("created")
             details.created = True
-        elif not dataset.derived_from and dataset.same_as:
+        elif dataset.same_as:
             descriptions.append("imported")
             details.imported = True
             details.source = dataset.same_as.value
@@ -166,7 +166,7 @@ class LogViewModel:
 
         previous_dataset = None
 
-        if dataset.derived_from:
+        if dataset.is_derivation():
             previous_dataset = dataset_gateway.get_by_id(dataset.derived_from.url_id)
 
         current_files = {f for f in dataset.dataset_files if not f.date_removed}
