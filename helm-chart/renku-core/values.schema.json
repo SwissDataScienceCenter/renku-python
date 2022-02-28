@@ -168,10 +168,6 @@
           "description": "Affinity for deployment",
           "type": "object"
       },
-      "redis": {
-          "description": "Settings for the redis subchart",
-          "type": "object"
-      },
       "sentry": {
           "description": "Definition of sentry instance to use to log warnings/errors",
           "properties": {
@@ -204,7 +200,6 @@
         "service",
         "ingress",
         "metrics",
-        "redis",
         "sentry"
     ],
     "title": "Values",
