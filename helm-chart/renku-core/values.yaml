@@ -117,6 +117,6 @@ versions:
     nameOverride: ""
     fullnameOverride: ""
     image:
-      repository: olevski90/renku-core
-      tag: "847d1a6a"
+      repository: renku/renku-core
+      tag: "v0.16.5"
       pullPolicy: IfNotPresent
