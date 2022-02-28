@@ -137,7 +137,7 @@ class LogViewModel:
 
         return ActivityLogViewModel(
             id=activity.id,
-            date=activity.ended_at_time,
+            date=activity.ended_at_time or activity.started_at_time or datetime.utcfromtimestamp(0),
             description=command,
             details=details,
             agents=[a.full_identity for a in activity.agents],
@@ -256,7 +256,11 @@ class LogViewModel:
 
         return DatasetLogViewModel(
             id=dataset.name,
-            date=dataset.date_removed if dataset.date_removed else dataset.date_modified,
+            date=dataset.date_removed
+            if dataset.date_removed
+            else (
+                dataset.date_modified or dataset.date_created or dataset.date_published or datetime.utcfromtimestamp(0)
+            ),
             description=descriptions[0] + ", ".join(descriptions[1:]),
             details=details,
             agents=[c.full_identity for c in dataset.creators],
