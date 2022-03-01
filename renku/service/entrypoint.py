@@ -170,30 +170,6 @@ def after_request(response):
     return response
 
 
-app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
-
-if app.debug:
-    import ptvsd
-
-    service_log.debug("Registered routes:")
-    for rule in app.url_map.iter_rules():
-        service_log.debug(rule)
-
-    ptvsd.enable_attach()
-    app.logger.setLevel(logging.DEBUG)
-    app.logger.debug("debug mode enabled")
-    reloadable = os.environ.get("DEBUG_RELOAD", "false") == "true"
-    if reloadable:
-        app.logger.debug("Debug mode - reloadable:")
-        app.logger.debug("Changes to the code will be instantly applied, but you won't be able to attach a debugger.")
-    else:
-        ptvsd.enable_attach()
-        app.logger.debug("Debug mode - no reload:")
-        app.logger.debug(
-            "The service allows attaching external debuggers, but changes to the code won't be instantly"
-            "applied. You may need to manually restart the service whenever required."
-        )
-
 if __name__ == "__main__":
     if len(JWT_TOKEN_SECRET) < 32:
         raise InvalidTokenError("web token must be greater or equal to 32 bytes")
