@@ -20,13 +20,13 @@ r"""Renku API Workflow Models.
 Input and Output classes can be used to define inputs and outputs of a script
 within the same script. Paths defined with these classes are added to explicit
 inputs and outputs in the workflow's metadata. For example, the following
-mark a ``data/data.csv`` as an input to the script:
+mark a ``data/data.csv`` as an input with name ``my-input`` to the script:
 
 .. code-block:: python
 
     from renku.api import Input
 
-    with open(Input("data/data.csv")) as input_data:
+    with open(Input("my-input", "data/data.csv")) as input_data:
         for line in input_data:
             print(line)
 
