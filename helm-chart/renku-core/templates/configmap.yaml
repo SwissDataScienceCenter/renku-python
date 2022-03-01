@@ -40,9 +40,14 @@ data:
     }
   versions.json: |
     {
-      {{- $printComma := false -}}
-      {{- range $key, $version := .Values.versions }}
-      {{- if $printComma }},{{ else }} {{- $printComma = true }} {{ end }}
-      "{{ $version.prefix }}": "{{ include "renku-core.fullname" $ }}-{{ $version.name }}"
-      {{- end }}
+      "name": "renku-core",
+      "versions": [
+        {{- $printComma := false -}}
+        {{- range $key, $version := .Values.versions }}
+        {{- if $printComma }},{{ else }} {{- $printComma = true }} {{ end }}
+        {
+          "version": "{{ $version.image.tag }}"
+        }
+        {{- end }}
+      ]
     }

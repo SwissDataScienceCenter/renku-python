@@ -24,7 +24,7 @@ VERSION_BLUEPRINT_TAG = "version"
 version_blueprint = VersionedBlueprint("version", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@version_blueprint.route("/version", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1])
+@version_blueprint.route("/apiversion", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1])
 @handle_validation_except
 def version():
     """
