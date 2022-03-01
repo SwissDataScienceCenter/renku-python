@@ -462,10 +462,16 @@ def execute_workflow(
     """Execute a Run with/without subprocesses."""
     client = client_dispatcher.current_client
 
+    inputs = [i.actual_value for p in dag.nodes for i in p.inputs]
     # NOTE: Pull inputs from Git LFS or other storage backends
     if client.check_external_storage():
-        inputs = [i.actual_value for p in dag.nodes for i in p.inputs]
         client.pull_paths_from_storage(*inputs)
+
+    # check whether the none generated inputs of workflows are available
+    outputs = set([o.actual_value for p in dag.nodes for o in p.outputs])
+    for i in set(inputs) - outputs:
+        if not Path(i).exists():
+            raise errors.ParameterError(f"Input '{i}' for the workflow does not exists!")
 
     delete_indirect_files_list(client.path)
 
