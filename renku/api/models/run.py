@@ -48,6 +48,7 @@ Once a Parameter is tracked like this, it can be set normally in commands like
 import re
 from os import PathLike, environ
 from pathlib import Path
+from typing import Union
 
 from renku.api.models.project import ensure_project_context
 from renku.core import errors
@@ -58,17 +59,30 @@ from renku.core.management.workflow.plan_factory import (
 )
 from renku.core.plugins.provider import RENKU_ENV_PREFIX
 
+name_pattern = re.compile("[a-zA-Z0-9-_]+")
+
 
 class _PathBase(PathLike):
     @ensure_project_context
-    def __init__(self, path, project):
-        self._path = Path(path)
+    def __init__(self, name: str, path: Union[str, Path], project):
+        if name and not name_pattern.match(name):
+            raise errors.ParameterError(
+                f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
+            )
+        self.name = name
 
-        indirect_list_path = self._get_indirect_list_path(project.path)
-        indirect_list_path.parent.mkdir(exist_ok=True, parents=True)
-        with open(indirect_list_path, "a") as file_:
-            file_.write(str(path))
-            file_.write("\n")
+        env_value = environ.get(f"{RENKU_ENV_PREFIX}{name}", None)
+
+        if env_value:
+            self._path = Path(env_value)
+        else:
+            self._path = Path(path)
+
+            indirect_list_path = self._get_indirect_list_path(project.path)
+            indirect_list_path.parent.mkdir(exist_ok=True, parents=True)
+            with open(indirect_list_path, "a") as file_:
+                file_.write(f"{path}:::{name}")
+                file_.write("\n")
 
     @staticmethod
     def _get_indirect_list_path(project_path):
@@ -103,7 +117,7 @@ class Output(_PathBase):
 @ensure_project_context
 def parameter(name, value, project):
     """Store parameter's name and value."""
-    if not re.match("[a-zA-Z0-9-_]+", name):
+    if not name_pattern.match(name):
         raise errors.ParameterError(
             f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
         )

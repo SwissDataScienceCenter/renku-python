@@ -599,6 +599,10 @@ class PlanFactory:
                 # Capture modified files through redirects.
                 candidates |= {(o.b_path, None) for o in repository.unstaged_changes if not o.deleted}
 
+                # Filter out explicit outputs
+                explicit_output_paths = {str(path.relative_to(self.working_dir)) for path, _ in self.explicit_outputs}
+                candidates = {c for c in candidates if c[0] not in explicit_output_paths}
+
             # Include explicit outputs
             candidates |= {(str(path.relative_to(self.working_dir)), name) for path, name in self.explicit_outputs}
 
@@ -651,10 +655,10 @@ class PlanFactory:
         """Read indirect inputs list and add them to explicit inputs."""
         indirect_inputs_list = get_indirect_inputs_path(self.working_dir)
 
-        for indirect_input in self._read_files_list(indirect_inputs_list):
+        for indirect_input, name in self._read_files_list(indirect_inputs_list):
             # treat indirect inputs like explicit inputs
             path = Path(os.path.abspath(indirect_input))
-            self.explicit_inputs.append((path, None))
+            self.explicit_inputs.append((path, name))
 
         # add new explicit inputs (if any) to inputs
         self.add_explicit_inputs()
@@ -663,10 +667,10 @@ class PlanFactory:
         """Read indirect outputs list and add them to explicit outputs."""
         indirect_outputs_list = get_indirect_outputs_path(self.working_dir)
 
-        for indirect_output in self._read_files_list(indirect_outputs_list):
+        for indirect_output, name in self._read_files_list(indirect_outputs_list):
             # treat indirect outputs like explicit outputs
             path = Path(os.path.abspath(indirect_output))
-            self.explicit_outputs.append((path, None))
+            self.explicit_outputs.append((path, name))
 
     def iter_input_files(self, basedir):
         """Yield tuples with input id and path."""
@@ -682,7 +686,11 @@ class PlanFactory:
                 for line in f:
                     line = line.strip()
                     if line:
-                        yield Path(os.path.abspath(line))
+                        if ":::" in line:
+                            indirect_path, name = line.rsplit(":::", 1)
+                            yield Path(os.path.abspath(indirect_path)), name
+                        else:
+                            yield Path(os.path.abspath(line)), None
         except FileNotFoundError:
             return
 

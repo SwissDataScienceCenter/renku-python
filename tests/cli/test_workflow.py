@@ -625,6 +625,66 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
     assert "goodbye\n" == output.read_text()
 
 
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, client, provider):
+    """Test executing a workflow with --set for a renku.api.Parameter."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+    input = client.path / "input"
+    input.write_text("input string")
+    other_input = client.path / "other_input"
+    other_input.write_text("my other input string")
+
+    with client.commit():
+        script.write_text(
+            f"from renku.api import Input\nwith open(Input('my-input', '{input.name}'), 'r') as f:\n    print(f.read())"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name} > {output.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "input string\n" == output.read_text()
+    result = run_shell(f"renku workflow execute -p {provider} --set my-input={other_input.name} run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "my other input string\n" == output.read_text()
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, client, provider):
+    """Test executing a workflow with --set for a renku.api.Parameter."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+    other_output = client.path / "other_output"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.api import Output\nwith open(Output('my-output', '{output.name}'), 'w') as f:\n"
+            "    f.write('test')"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "test" == output.read_text()
+    result = run_shell(f"renku workflow execute -p {provider} --set my-output={other_output.name} run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "test" == other_output.read_text()
+
+
 def test_workflow_visualize_non_interactive(runner, project, client, workflow_graph):
     """Test renku workflow visualize in non-interactive mode."""
 

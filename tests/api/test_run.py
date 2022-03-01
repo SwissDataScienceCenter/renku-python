@@ -33,12 +33,12 @@ def test_indirect_inputs(client):
     path_2 = "relative/path"
     path_3 = "a/path with white-spaces/"
 
-    input_1 = Input(path_1)
+    input_1 = Input("input-1", path_1)
 
     with Project() as project:
-        input_2 = Input(path_2)
+        input_2 = Input("input-2", path_2)
 
-    input_3 = Input(path_3)
+    input_3 = Input("input-3", path_3)
 
     assert Path(path_1) == input_1.path
     assert Path(path_2) == input_2.path
@@ -46,7 +46,8 @@ def test_indirect_inputs(client):
 
     content = get_indirect_inputs_path(project.path).read_text()
 
-    assert {path_1, path_2, path_3} == {line for line in content.split("\n") if line}
+    assert {path_1, path_2, path_3} == {line.split(":::")[0] for line in content.split("\n") if line}
+    assert {input_1.name, input_2.name, input_3.name} == {line.split(":::")[1] for line in content.split("\n") if line}
 
 
 def test_indirect_outputs(client):
@@ -55,12 +56,12 @@ def test_indirect_outputs(client):
     path_2 = "relative/path"
     path_3 = "a/path with white-spaces/"
 
-    input_1 = Output(path_1)
+    input_1 = Output("output-1", path_1)
 
     with Project() as project:
-        input_2 = Output(path_2)
+        input_2 = Output("output-1", path_2)
 
-    input_3 = Output(path_3)
+    input_3 = Output("output-1", path_3)
 
     assert Path(path_1) == input_1.path
     assert Path(path_2) == input_2.path
@@ -68,7 +69,8 @@ def test_indirect_outputs(client):
 
     content = get_indirect_outputs_path(project.path).read_text()
 
-    assert {path_1, path_2, path_3} == {line for line in content.split("\n") if line}
+    assert {path_1, path_2, path_3} == {line.split(":::")[0] for line in content.split("\n") if line}
+    assert {input_1.name, input_2.name, input_3.name} == {line.split(":::")[1] for line in content.split("\n") if line}
 
 
 def test_indirect_inputs_outputs(client):
@@ -76,19 +78,21 @@ def test_indirect_inputs_outputs(client):
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
 
-    input_1 = Input(path_1)
-    output_2 = Output(path_2)
+    input_1 = Input("input-1", path_1)
+    output_2 = Output("output-1", path_2)
 
     assert Path(path_1) == input_1.path
     assert Path(path_2) == output_2.path
 
-    assert path_1 == get_indirect_inputs_path(client.path).read_text().strip()
-    assert path_2 == get_indirect_outputs_path(client.path).read_text().strip()
+    assert path_1 == get_indirect_inputs_path(client.path).read_text().strip().split(":::")[0]
+    assert input_1.name == get_indirect_inputs_path(client.path).read_text().strip().split(":::")[1]
+    assert path_2 == get_indirect_outputs_path(client.path).read_text().strip().split(":::")[0]
+    assert output_2.name == get_indirect_outputs_path(client.path).read_text().strip().split(":::")[1]
 
 
 def test_open_inputs(client):
     """Test inputs can be passed to open function."""
-    with open(Input("input.txt"), "w") as f:
+    with open(Input("input-1", "input.txt"), "w") as f:
         f.write("some data")
 
     assert "some data" == (client.path / "input.txt").read_text()
@@ -96,7 +100,7 @@ def test_open_inputs(client):
 
 def test_open_outputs(client):
     """Test outputs can be passed to open function."""
-    with open(Output("output.txt"), "w") as f:
+    with open(Output("output-1", "output.txt"), "w") as f:
         f.write("some data")
 
     assert "some data" == (client.path / "output.txt").read_text()
