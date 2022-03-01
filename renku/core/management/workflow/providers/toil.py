@@ -97,13 +97,13 @@ class AbstractToilJob(Job):
             )
             _read_input(i.actual_value, file_metadata)
 
-            self._environment[f"{RENKU_ENV_PREFIX}{i.name}"] = i.actual_value
+            self._environment[f"{RENKU_ENV_PREFIX}{i.name}"] = str(i.actual_value)
 
             if i.mapped_to:
                 mapped_std[i.mapped_to.stream_type] = i.actual_value
 
         for o in self.workflow.outputs:
-            self._environment[f"{RENKU_ENV_PREFIX}{o.name}"] = o.actual_value
+            self._environment[f"{RENKU_ENV_PREFIX}{o.name}"] = str(o.actual_value)
             output_path = Path(o.actual_value)
             if len(output_path.parts) > 1:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -112,7 +112,7 @@ class AbstractToilJob(Job):
                 mapped_std[o.mapped_to.stream_type] = o.actual_value
 
         for p in self.workflow.parameters:
-            self._environment[f"{RENKU_ENV_PREFIX}{p.name}"] = p.actual_value
+            self._environment[f"{RENKU_ENV_PREFIX}{p.name}"] = str(p.actual_value)
 
         # construct cmd
         cmd = []
@@ -206,7 +206,6 @@ def process_children(parent: Job, dag: nx.DiGraph, jobs: Dict[str, Job], basedir
 
 def initialize_jobs(job, basedir, dag):
     """Creates the Toil execution plan for the given workflow DAG."""
-
     job.fileStore.logToMaster("executing renku DAG")
     outputs = list()
     jobs = {id(n): SubprocessToilJob(n) for n in dag.nodes}
