@@ -66,11 +66,6 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
             path = str(directory_tree / "file1")
 
         dataset = add_data_to_dataset("dataset", [f"{scheme}{path}"], overwrite=overwrite, create=True)
-# =======
-#         with client_with_injection.with_dataset(name="dataset", create=True) as d:
-#             d.creators = [Person(name="me", email="me@example.com", id="me_id")]
-#             client_with_injection.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=overwrite)
-# >>>>>>> 90a88d70 (feat(core): add check for invalid imported datasets)
 
         target_path = os.path.join(DATA_DIR, "dataset", "file1")
 
@@ -85,13 +80,9 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         # check the linking
         if scheme in ("", "file://"):
             shutil.rmtree("./data/dataset")
-            dataset = add_data_to_dataset("dataset", [f"{scheme}{path}"], overwrite=True)
-# =======
-#             with client_with_injection.with_dataset(name="dataset") as d:
-#                 d = d.copy()
-#                 d.creators = [Person(name="me", email="me@example.com", id="me_id")]
-#                 client_with_injection.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=True)
-# >>>>>>> 90a88d70 (feat(core): add check for invalid imported datasets)
+            # NOTE: To simulate loading from persistent storage like what a separate renku command would do
+            dataset.freeze()
+            add_data_to_dataset("dataset", [f"{scheme}{path}"], overwrite=True)
             assert os.path.exists(target_path)
 
 
@@ -117,20 +108,16 @@ def test_creator_parse():
         Dataset(name="dataset", creators=["name"])
 
 
-# def test_creators_with_same_email(client_with_injection, load_dataset_with_injection):
-#     """Test creators with different names and same email address."""
-# <<<<<<< HEAD
-#     with DatasetContext(name="dataset", create=True, commit_database=True) as dataset:
-# =======
-#     with client_with_injection.with_dataset(name="dataset", create=True) as dataset:
-# >>>>>>> 90a88d70 (feat(core): add check for invalid imported datasets)
-#         dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
-#         DatasetsProvenance().add_or_update(dataset)
-#
-#     dataset = load_dataset("dataset")
-#
-#     assert 2 == len(dataset.creators)
-#     assert {c.name for c in dataset.creators} == {"me", "me2"}
+def test_creators_with_same_email(client_with_injection, load_dataset_with_injection):
+    """Test creators with different names and same email address."""
+    with DatasetContext(name="dataset", create=True) as dataset:
+        dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
+        DatasetsProvenance().add_or_update(dataset)
+
+    dataset = load_dataset("dataset")
+
+    assert 2 == len(dataset.creators)
+    assert {c.name for c in dataset.creators} == {"me", "me2"}
 
 
 def test_create_dataset_command_custom_message(project):

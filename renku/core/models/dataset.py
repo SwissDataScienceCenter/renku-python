@@ -400,6 +400,9 @@ class Dataset(Persistent):
         """Comma-separated list of keywords associated with dataset."""
         return ", ".join(self.keywords)
 
+    def __repr__(self) -> str:
+        return f"<Dataset {self.identifier} {self.name}>"
+
     def is_derivation(self) -> bool:
         """Return if a dataset has correct derived_form."""
         return self.derived_from and not self.same_as and self.id != self.derived_from.url_id
