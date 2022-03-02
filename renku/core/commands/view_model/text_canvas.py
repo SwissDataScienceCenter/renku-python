@@ -18,8 +18,9 @@
 """Activity graph view model."""
 
 from collections import defaultdict, namedtuple
+from copy import deepcopy
 from io import StringIO
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from click import style
@@ -44,17 +45,26 @@ class RectangleShape(Shape):
 
     UNICODE_CHARACTERS_DOUBLE = {"edge": ["╔", "╚", "╗", "╝"], "horizontal": "═", "vertical": "║"}
 
-    def __init__(self, start: Point, end: Point, double_border=False):
+    def __init__(self, start: Point, end: Point, double_border=False, color: Optional[str] = None):
         self.start = start
         self.end = end
         self.double_border = double_border
+        self.color = color
 
     def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
         """Return the indices and values to draw this shape onto the canvas."""
         if not ascii and self.double_border:
-            characters = self.UNICODE_CHARACTERS_DOUBLE
+            characters = deepcopy(self.UNICODE_CHARACTERS_DOUBLE)
         else:
-            characters = self.ASCII_CHARACTERS if ascii else self.UNICODE_CHARACTERS
+            characters = deepcopy(self.ASCII_CHARACTERS if ascii else self.UNICODE_CHARACTERS)
+
+        if color and self.color:
+            # NOTE: Add color to border characters
+            for key, value in list(characters.items()):
+                if isinstance(value, list):
+                    characters[key] = [style(v, fg=self.color) for v in value]
+                else:
+                    characters[key] = style(value, fg=self.color)
 
         # first set corners
         xs = np.array([self.start.x, self.start.x, self.end.x - 1, self.end.x - 1])
@@ -98,10 +108,11 @@ class RectangleShape(Shape):
 class TextShape(Shape):
     """A text object."""
 
-    def __init__(self, text: str, point: Point, bold=False):
+    def __init__(self, text: str, point: Point, bold: bool = False, color: Optional[str] = None):
         self.point = point
         self.text = text.splitlines()
         self.bold = bold
+        self.color = color
 
     def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
         """Return the indices and values to draw this shape onto the canvas."""
@@ -116,10 +127,17 @@ class TextShape(Shape):
             for char in line:
                 xs.append(current_x)
                 ys.append(current_y)
+                kwargs = dict()
                 if self.bold:
-                    vals.append(style(char, bold=True))
+                    kwargs["bold"] = True
+                if color and self.color:
+                    kwargs["fg"] = self.color
+
+                if kwargs:
+                    vals.append(style(char, **kwargs))
                 else:
                     vals.append(char)
+
                 current_x += 1
             current_x = self.point.x
             current_y += 1
@@ -137,15 +155,16 @@ class TextShape(Shape):
 class NodeShape(Shape):
     """An activity node shape."""
 
-    def __init__(self, text: str, point: Point, double_border=False):
+    def __init__(self, text: str, point: Point, double_border=False, color: Optional[str] = None):
         self.point = Point(round(point.x), round(point.y - len(text.splitlines())))
-        self.text_shape = TextShape(text, self.point, bold=double_border)
+        self.text_shape = TextShape(text, self.point, bold=double_border, color=color)
 
         text_extent = self.text_shape.extent
         self.box_shape = RectangleShape(
             Point(text_extent[0].x - 1, text_extent[0].y - 1),
             Point(text_extent[1].x + 1, text_extent[1].y + 1),
             double_border=double_border,
+            color=color,
         )
 
         # move width/2 to the left to center on coordinate
@@ -174,7 +193,7 @@ class NodeShape(Shape):
 class EdgeShape(Shape):
     """An edge between two activities."""
 
-    EDGE_COLORS = ["red", "green", "yellow", "blue", "magenta", "cyan"]
+    COLORS = ["red", "green", "yellow", "blue", "magenta", "cyan"]
     CURRENT_COLOR = 0
 
     def __init__(self, start: Point, end: Point, color: str):
@@ -186,8 +205,8 @@ class EdgeShape(Shape):
     @staticmethod
     def next_color() -> str:
         """Get the next color in the color rotation."""
-        EdgeShape.CURRENT_COLOR = (EdgeShape.CURRENT_COLOR + 1) % len(EdgeShape.EDGE_COLORS)
-        return EdgeShape.EDGE_COLORS[EdgeShape.CURRENT_COLOR]
+        EdgeShape.CURRENT_COLOR = (EdgeShape.CURRENT_COLOR + 1) % len(EdgeShape.COLORS)
+        return EdgeShape.COLORS[EdgeShape.CURRENT_COLOR]
 
     def _line_indices(self, start: Point, end: Point):
         """Interpolate a line."""
