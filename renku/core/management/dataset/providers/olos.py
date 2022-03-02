@@ -26,8 +26,8 @@ from uuid import UUID, uuid4
 import attr
 
 from renku.core import errors
-from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.management.command_builder import inject
+from renku.core.management.dataset.providers.api import ExporterApi, ProviderApi
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
 

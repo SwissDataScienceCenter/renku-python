@@ -100,8 +100,8 @@ def doi_responses():
     """Responses for doi.org requests."""
     import responses
 
-    from renku.core.commands.providers.dataverse import DATAVERSE_API_PATH, DATAVERSE_VERSION_API
-    from renku.core.commands.providers.doi import DOI_BASE_URL
+    from renku.core.management.dataset.providers.dataverse import DATAVERSE_API_PATH, DATAVERSE_VERSION_API
+    from renku.core.management.dataset.providers.doi import DOI_BASE_URL
 
     with responses.RequestsMock(assert_all_requests_are_fired=False) as response:
 
