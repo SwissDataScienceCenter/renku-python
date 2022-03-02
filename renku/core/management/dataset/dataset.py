@@ -70,7 +70,7 @@ def search_datasets(name: str) -> List[str]:
     return list(filter(lambda x: x.startswith(name), map(lambda x: x.name, datasets_provenance.datasets)))
 
 
-def list_datasets(format: str = None, columns: str = None):
+def list_datasets():
     """List all datasets."""
     datasets_provenance = DatasetsProvenance()
     datasets = [DynamicProxy(d) for d in datasets_provenance.datasets]
@@ -199,7 +199,6 @@ def list_dataset_files(
     creators=None,
     include=None,
     exclude=None,
-    format=None,
 ):
     """List dataset files."""
     from renku.core.commands.format.dataset_files import get_lfs_file_sizes, get_lfs_tracking
@@ -288,9 +287,6 @@ def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClient
     config_key_secret = "access_token"
 
     dataset = datasets_provenance.get_by_name(name, strict=True, immutable=True)
-
-    if not dataset:
-        raise errors.DatasetNotFound(name=name)
 
     try:
         provider = ProviderFactory.from_id(provider_name)

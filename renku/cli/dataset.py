@@ -549,7 +549,7 @@ def list_dataset(format, columns):
     if format not in DATASETS_FORMATS:
         raise click.BadParameter(f"format '{format}' not supported")
 
-    result = list_datasets_command().lock_dataset().build().execute(format=format, columns=columns)
+    result = list_datasets_command().lock_dataset().build().execute()
 
     click.echo(DATASETS_FORMATS[format](result.output, columns=columns))
 
