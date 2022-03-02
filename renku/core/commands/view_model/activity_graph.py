@@ -19,6 +19,12 @@
 
 from collections import namedtuple
 from textwrap import shorten
+from typing import TYPE_CHECKING, List, Tuple
+
+if TYPE_CHECKING:
+    from grandalf.graphs import Edge
+
+    from renku.core.commands.view_model.text_canvas import TextCanvas
 
 Point = namedtuple("Point", ["x", "y"])
 
@@ -71,7 +77,7 @@ class ActivityGraphViewModel:
 
         columns = [ACTIVITY_GRAPH_COLUMNS[c] for c in columns.split(",")]
 
-        self.layouts = []
+        self.layouts: List[SugiyamaLayout] = []
 
         components = networkx.weakly_connected_components(self.graph)
         subgraphs = [self.graph.subgraph(component).copy() for component in components]
@@ -98,7 +104,7 @@ class ActivityGraphViewModel:
 
             layout = SugiyamaLayout(graph.C[0])
             layout.init_all(roots=roots, optimize=True)
-            layout.xspace = shortest_node_width / 2
+            layout.xspace = max(shortest_node_width / 2, 20)
             layout.yspace = shortest_node_height
 
             # space between beginning of one node and beginning of next
@@ -108,27 +114,31 @@ class ActivityGraphViewModel:
             layout.draw(5)
             self.layouts.append(layout)
 
-    def _add_edge_to_canvas(self, edge, canvas, edges, min_y):
+    def _add_edges_to_canvas(
+        self, edges: List["Edge"], canvas: "TextCanvas", existing_edges: List["Edge"], min_y
+    ) -> Tuple[int, str]:
         """Add an edge to a canvas object.
 
         Makes sure overlapping edges don't have the same color.
         """
         from renku.core.commands.view_model.text_canvas import EdgeShape
 
-        points = edge.view._pts
         edge_color = EdgeShape.next_color()
         new_edges = []
         max_y = 0
-        for index in range(len(points) - 1):
-            start = points[index]
-            end = points[index + 1]
-            max_y = max(max_y, end[1])
-            new_edges.append(
-                EdgeShape(Point(start[0], start[1] + min_y), Point(end[0], end[1] + min_y), color=edge_color)
-            )
+
+        for edge in edges:
+            points = edge.view._pts
+            for index in range(len(points) - 1):
+                start = points[index]
+                end = points[index + 1]
+                max_y = max(max_y, end[1])
+                new_edges.append(
+                    EdgeShape(Point(start[0], start[1] + min_y), Point(end[0], end[1] + min_y), color=edge_color)
+                )
 
         # figure out if this edge crosses any existing edge with the same color, if so, change the color
-        same_color_edges = [e for e in edges if e.color == edge_color]
+        same_color_edges = [e for e in existing_edges if e.color == edge_color]
 
         if same_color_edges:
             # check for intersections
@@ -143,14 +153,15 @@ class ActivityGraphViewModel:
                     e.color = edge_color
 
         [canvas.add_shape(e, layer=0) for e in new_edges]
-        edges.extend(new_edges)
-        return max_y
+        existing_edges.extend(new_edges)
+        return max_y, edge_color
 
     def text_representation(self, columns: str, color: bool = True, ascii=False):
         """Return an ascii representation of the graph."""
         from grandalf.layouts import DummyVertex
 
         from renku.core.commands.view_model.text_canvas import NodeShape, TextCanvas
+        from renku.core.models.provenance.activity import Activity
 
         self.layout_graph(columns=columns)
 
@@ -168,19 +179,47 @@ class ActivityGraphViewModel:
             max_y = 0
             existing_edges = []
 
-            # sort edges to have consistent coloring
-            edges = sorted(layout.g.sE, key=lambda e: e.view._pts[0])
-
-            for edge in edges:
-                max_y = max(max_y, self._add_edge_to_canvas(edge, canvas, existing_edges, min_y))
-
             for layer in layout.layers:
                 layer_nodes = []
+
                 for node in layer:
                     if isinstance(node, DummyVertex):
                         continue
+
+                    node_color = None
+
+                    if node.data[2] and isinstance(node.data[2], Activity):
+                        # NOTE: get edges for node
+                        connected_edges = list(layout.g.E(cond=lambda e: e.v[0] == node or e.v[1] == node))
+
+                        visited_edges = set()
+                        visited_nodes = {node}
+
+                        # NOTE: Follow all edges connected to the node (might have DummyNode's in between)
+                        while connected_edges:
+                            current_edge = connected_edges.pop()
+                            visited_edges.add(current_edge)
+
+                            dummy_node = None
+
+                            if isinstance(current_edge.v[0], DummyVertex) and current_edge.v[0] not in visited_nodes:
+                                dummy_node = current_edge.v[0]
+                            elif isinstance(current_edge.v[1], DummyVertex) and current_edge.v[0] not in visited_nodes:
+                                dummy_node = current_edge.v[1]
+
+                            if dummy_node:
+                                connected_edges.extend(e for e in dummy_node.e if e not in visited_edges)
+                                visited_nodes.add(dummy_node)
+
+                        local_max_y, node_color = self._add_edges_to_canvas(
+                            visited_edges, canvas, existing_edges, min_y
+                        )
+                        max_y = max(max_y, local_max_y)
+
                     xy = node.view.xy
-                    node_shape = NodeShape(node.data[0], Point(xy[0], xy[1] + min_y), double_border=node.data[1])
+                    node_shape = NodeShape(
+                        node.data[0], Point(xy[0], xy[1] + min_y), double_border=node.data[1], color=node_color
+                    )
                     canvas.add_shape(node_shape, layer=1)
                     max_y = max(max_y, node_shape.extent[0][1])
 
@@ -214,4 +253,5 @@ ACTIVITY_GRAPH_COLUMNS = {
     "command": lambda a: " ".join(a.plan_with_values.to_argv(with_streams=True)),
     "id": lambda a: a.id,
     "date": lambda a: a.ended_at_time.isoformat(),
+    "plan": lambda a: a.plan_with_values.name,
 }
