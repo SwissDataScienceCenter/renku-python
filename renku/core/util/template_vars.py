@@ -19,13 +19,14 @@
 
 import datetime
 from string import Formatter
-
 from typing import Dict, Iterable
 
 from renku.core.models.workflow.parameter import CommandParameterBase
 
 
 class TemplateVariableFormatter(Formatter):
+    """Template variable formatter for `CommandParameterBase`."""
+
     def __init__(self):
         super(TemplateVariableFormatter, self).__init__()
 

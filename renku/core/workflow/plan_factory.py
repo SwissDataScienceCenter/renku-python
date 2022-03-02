@@ -123,6 +123,7 @@ class PlanFactory:
 
     @property
     def command_line(self):
+        """Command line of the `Plan`."""
         cmd = []
         if self.base_command:
             cmd.extend(self.base_command)
