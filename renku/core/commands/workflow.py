@@ -462,10 +462,16 @@ def execute_workflow(
     """Execute a Run with/without subprocesses."""
     client = client_dispatcher.current_client
 
+    inputs = {i.actual_value for p in dag.nodes for i in p.inputs}
     # NOTE: Pull inputs from Git LFS or other storage backends
     if client.check_external_storage():
-        inputs = [i.actual_value for p in dag.nodes for i in p.inputs]
         client.pull_paths_from_storage(*inputs)
+
+    # check whether the none generated inputs of workflows are available
+    outputs = {o.actual_value for p in dag.nodes for o in p.outputs}
+    for i in inputs - outputs:
+        if not Path(i).exists():
+            raise errors.ParameterError(f"Input '{i}' for the workflow does not exists!")
 
     delete_indirect_files_list(client.path)
 
@@ -759,12 +765,15 @@ def _iterate_workflow(
                     f"The value of '{param_name}' parameter is neither a list nor templated variable!"
                 )
 
-            if len(param_value) == 1:
+            if isinstance(param_value, list) and len(param_value) == 1:
                 communication.warn(
                     f"The parameter '{param_name}' has only one element '{param_value}', "
                     "changing it to be a fixed parameter!"
                 )
                 workflow_params[param_name] = param_value[0]
+                continue
+            elif not isinstance(param_value, list):
+                workflow_params[param_name] = param_value
                 continue
 
             if TAG_SEPARATOR in param_name:
