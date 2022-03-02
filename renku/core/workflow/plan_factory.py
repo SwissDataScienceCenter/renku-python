@@ -135,6 +135,8 @@ class PlanFactory:
 
         for a in arguments:
             v = str(a.actual_value) if not isinstance(a.actual_value, str) else a.actual_value
+            if isinstance(a, CommandInput):
+                v = str((self.working_dir / v).resolve())
             if a.prefix:
                 if a.prefix.endswith(" "):
                     cmd.append(a.prefix[:-1])
@@ -518,8 +520,8 @@ class PlanFactory:
         value = Path(self._path_relative_to_root(parameter.actual_value))
         encoding_format = [DIRECTORY_MIME_TYPE] if value.is_dir() else self._get_mimetype(value)
         self.add_command_output(
-            default_value=parameter.default_value,
-            actual_value=parameter.actual_value if parameter.actual_value_set else None,
+            default_value=parameter.default_value if parameter.actual_value_set else str(value),
+            actual_value=str(value) if parameter.actual_value_set else None,
             prefix=parameter.prefix,
             position=parameter.position,
             encoding_format=encoding_format,
@@ -549,11 +551,15 @@ class PlanFactory:
 
     def add_explicit_inputs(self):
         """Add explicit inputs ."""
-        input_paths = [input.default_value for input in self.inputs]
+        input_paths = [input.actual_value for input in self.inputs]
         input_id = len(self.inputs) + len(self.parameters)
 
+        params_map = TemplateVariableFormatter.to_map(
+            chain(self.inputs, self.explicit_inputs, self.parameters, self.explicit_parameters)
+        )
         for explicit_input, name in self.explicit_inputs:
             try:
+                explicit_input = Path(self.template_engine.apply(explicit_input, params_map)).resolve()
                 relative_explicit_input = get_relative_path(explicit_input, base=self.working_dir, strict=True)
             except errors.ParameterError:
                 raise errors.UsageError(
@@ -563,7 +569,7 @@ class PlanFactory:
 
             if relative_explicit_input in input_paths:
                 if name:
-                    existing_inputs = [i for i in self.inputs if i.default_value == relative_explicit_input]
+                    existing_inputs = [i for i in self.inputs if i.actual_value == relative_explicit_input]
 
                     for existing_input in existing_inputs:
                         existing_input.name = name

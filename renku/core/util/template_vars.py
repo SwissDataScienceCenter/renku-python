@@ -19,13 +19,15 @@
 
 import datetime
 from string import Formatter
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Tuple, Union
 
 from renku.core.models.workflow.parameter import CommandParameterBase
 
 
 class TemplateVariableFormatter(Formatter):
     """Template variable formatter for `CommandParameterBase`."""
+
+    RESERVED_KEYS = ["iter_index"]
 
     def __init__(self):
         super(TemplateVariableFormatter, self).__init__()
@@ -34,7 +36,18 @@ class TemplateVariableFormatter(Formatter):
         """Renders the parameter template into its final value."""
         return super().vformat(param, args=[datetime.datetime.now()], kwargs=parameters)
 
+    def get_value(self, key, args, kwargs):
+        """Ignore some special keys when formatting the variable."""
+        if key in self.RESERVED_KEYS:
+            return key
+        return super().get_value(key, args, kwargs)
+
     @staticmethod
-    def to_map(parameters: Iterable[CommandParameterBase]) -> Dict[str, str]:
+    def to_map(parameters: Iterable[Union[CommandParameterBase, Tuple[str, str]]]) -> Dict[str, str]:
         """Converts a list of `CommandParameterBase` into parameter name-value dictionary."""
-        return dict(map(lambda x: (x.name, x.actual_value), parameters))
+        return dict(
+            map(
+                lambda x: (x.name, x.actual_value) if isinstance(x, CommandParameterBase) else (x[1], str(x[0])),
+                parameters,
+            )
+        )
