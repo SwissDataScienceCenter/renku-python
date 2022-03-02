@@ -7,4 +7,5 @@
 !entrypoint-svc.sh
 !.git
 !.gitignore
+!Makefile
 .git/config
