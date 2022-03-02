@@ -21,6 +21,8 @@ from collections import defaultdict
 
 import click
 
+from renku.core.management.command_builder import inject
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.management.migrations.utils import get_pre_0_3_4_datasets_metadata
 
 from ..echo import WARNING
@@ -43,11 +45,12 @@ def check_dataset_metadata(client):
     return False, problems
 
 
-def check_missing_files(client):
+@inject.autoparams()
+def check_missing_files(client, dataset_gateway: IDatasetGateway):
     """Find missing files listed in datasets."""
     missing = defaultdict(list)
 
-    for dataset in client.datasets.values():
+    for dataset in dataset_gateway.get_all_active_datasets():
         for file_ in dataset.files:
             path = client.path / file_.entity.path
             file_exists = path.exists() or (file_.is_external and os.path.lexists(path))

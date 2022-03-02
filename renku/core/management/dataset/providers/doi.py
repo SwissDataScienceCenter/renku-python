@@ -20,8 +20,8 @@ import urllib
 
 import attr
 
-from renku.core.commands.providers.api import ProviderApi
 from renku.core.errors import RenkuImportError
+from renku.core.management.dataset.providers.api import ProviderApi
 from renku.core.utils.doi import extract_doi, is_doi
 
 DOI_BASE_URL = "https://dx.doi.org"

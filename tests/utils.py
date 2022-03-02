@@ -152,7 +152,7 @@ def with_dataset(
     commit_database: bool = False,
 ):
     """Yield an editable metadata object for a dataset."""
-    dataset = client.get_dataset(name=name, strict=True, immutable=True)
+    dataset = DatasetsProvenance().get_by_name(name=name, strict=True, immutable=True)
     dataset.unfreeze()
 
     yield dataset

@@ -18,9 +18,9 @@
 """Dataverse unit tests."""
 import pytest
 
-from renku.core.commands.providers.dataverse import DataverseExporter, _DataverseDeposition
-from renku.core.commands.providers.doi import DOIProvider
 from renku.core.errors import RenkuImportError
+from renku.core.management.dataset.providers.dataverse import DataverseExporter, _DataverseDeposition
+from renku.core.management.dataset.providers.doi import DOIProvider
 
 
 def test_dataverse_exporter_init():

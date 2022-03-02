@@ -21,8 +21,9 @@ from datetime import datetime
 from typing import Dict, List
 from urllib.parse import quote
 
+import persistent
+
 from renku.core import errors
-from renku.core.metadata.database import persistent
 from renku.core.models.provenance.agent import Person
 from renku.core.models.provenance.annotation import Annotation
 from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date

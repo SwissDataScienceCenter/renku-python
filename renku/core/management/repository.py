@@ -20,6 +20,7 @@
 import os
 import shutil
 from contextlib import contextmanager
+from fnmatch import fnmatch
 from uuid import uuid4
 
 import attr
@@ -296,6 +297,19 @@ class RepositoryApiMixin(GitCore):
 
         # verify if git user information is available
         _ = self.repository.get_user()
+
+    def is_protected_path(self, path):
+        """Checks if a path is a protected path."""
+        try:
+            path_in_repo = str(path.relative_to(self.path))
+        except ValueError:
+            return False
+
+        for protected_path in self.RENKU_PROTECTED_PATHS:
+            if fnmatch(path_in_repo, protected_path):
+                return True
+
+        return False
 
 
 DATABASE_METADATA_PATH = [
