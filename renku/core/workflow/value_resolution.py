@@ -83,9 +83,12 @@ class PlanValueResolver(ValueResolver):
             if param.name in self._values:
                 param.actual_value = self._values[param.name]
                 values_keys.discard(param.name)
-            param.actual_value = self._template_engine.apply(
-                param.actual_value, TemplateVariableFormatter.to_map(chain(self._plan.inputs, self._plan.parameters))
-            )
+
+            if isinstance(param.actual_value, str):
+                param.actual_value = self._template_engine.apply(
+                    param.actual_value,
+                    TemplateVariableFormatter.to_map(chain(self._plan.inputs, self._plan.parameters)),
+                )
 
         self.missing_parameters = values_keys
 
