@@ -24,6 +24,8 @@ import uuid
 import jwt
 import pytest
 
+from renku.core.management.dataset.context import DatasetContext
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
@@ -775,7 +777,7 @@ def test_cache_gets_synchronized(
 
     with client_database_injection_manager(client):
         with client.commit(commit_message="Create dataset"):
-            with client.with_dataset(name="my_dataset", create=True, commit_database=True) as dataset:
+            with DatasetContext(name="my_dataset", create=True, commit_database=True) as dataset:
                 dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote_repo_checkout.push()
@@ -804,7 +806,7 @@ def test_cache_gets_synchronized(
     remote_repo_checkout.pull()
 
     with client_database_injection_manager(client):
-        datasets = client.datasets.values()
+        datasets = DatasetGateway().get_all_active_datasets()
         assert 2 == len(datasets)
 
     assert any(d.name == "my_dataset" for d in datasets)

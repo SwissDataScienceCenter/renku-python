@@ -20,7 +20,7 @@ from renku.core.commands.echo import ERROR, WARNING
 from renku.core.management.migrate import is_migration_required, is_project_unsupported
 
 
-def check_migration(client):
+def check_migration(client, fix):
     """Check for project version."""
     if is_migration_required():
         problems = WARNING + "Project requires migration.\n" + '  (use "renku migrate" to fix this issue)\n'

@@ -29,7 +29,7 @@ except ImportError:
     import importlib.resources as importlib_resources
 
 
-def check_git_hooks_installed(client):
+def check_git_hooks_installed(client, fix):
     """Checks if all necessary hooks are installed."""
     for hook in HOOKS:
         hook_path = get_hook_path(name=hook, repository=client.repository)

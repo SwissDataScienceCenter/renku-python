@@ -21,7 +21,7 @@ import urllib
 from urllib3.exceptions import HTTPError
 
 from renku.core import errors
-from renku.core.commands.dataset import add_to_dataset, import_dataset
+from renku.core.commands.dataset import add_to_dataset_command, import_dataset_command
 from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
 from renku.core.utils.contexts import click_context
@@ -51,7 +51,7 @@ def dataset_import(
 
             gitlab_token = user.token if _is_safe_to_pass_gitlab_token(project.git_url, dataset_uri) else None
 
-            command = import_dataset().with_commit_message(commit_message)
+            command = import_dataset_command().with_commit_message(commit_message)
             command.with_communicator(communicator).build().execute(
                 uri=dataset_uri, name=name, extract=extract, yes=True, gitlab_token=gitlab_token
             )
@@ -95,8 +95,8 @@ def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset
             urls = url if isinstance(url, list) else [url]
 
             worker_log.debug(f"adding files {urls} to dataset {name}")
-            command = add_to_dataset().with_commit_message(commit_message).build()
-            result = command.execute(urls=urls, name=name, create=create_dataset)
+            command = add_to_dataset_command().with_commit_message(commit_message).build()
+            result = command.execute(dataset_name=name, urls=urls, create=create_dataset)
             if result.error:
                 raise result.error
 

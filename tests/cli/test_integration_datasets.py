@@ -28,6 +28,7 @@ import pytest
 from renku.cli import cli
 from renku.core import errors
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Url, get_dataset_data_dir
 from renku.core.utils.contexts import chdir
@@ -371,7 +372,7 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client, cli
     assert "bla" in result.output
 
     with client_database_injection_manager(client):
-        dataset = [d for d in client.datasets.values()][0]
+        dataset = [d for d in DatasetGateway().get_all_active_datasets()][0]
     assert 2 == len(dataset.images)
     img1 = next((i for i in dataset.images if i.position == 1))
     img2 = next((i for i in dataset.images if i.position == 2))
@@ -406,7 +407,7 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, cli
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
 def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
-    from renku.core.commands.providers import renku
+    from renku.core.management.dataset.providers import renku
 
     def clone_renku_repository_mock(*_, **__):
         raise errors.GitError

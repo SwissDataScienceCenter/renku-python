@@ -27,7 +27,28 @@ This API is built on top of Git and Git-LFS.
 Datasets
 --------
 
-.. automodule:: renku.core.management.datasets
+.. automodule:: renku.core.management.dataset.dataset
+   :members:
+
+.. automodule:: renku.core.management.dataset.dataset_add
+   :members:
+
+.. automodule:: renku.core.management.dataset.constant
+   :members:
+
+.. automodule:: renku.core.management.dataset.context
+   :members:
+
+.. automodule:: renku.core.management.dataset.pointer_file
+   :members:
+
+.. automodule:: renku.core.management.dataset.request_model
+   :members:
+
+.. automodule:: renku.core.management.dataset.tag
+   :members:
+
+.. automodule:: renku.core.management.dataset.datasets_provenance
    :members:
 
 Repository

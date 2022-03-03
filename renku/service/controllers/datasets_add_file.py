@@ -20,7 +20,7 @@ import json
 import os
 from pathlib import Path
 
-from renku.core.commands.dataset import add_to_dataset
+from renku.core.commands.dataset import add_to_dataset_command
 from renku.core.errors import RenkuException
 from renku.service.cache.models.job import Job
 from renku.service.config import MESSAGE_PREFIX
@@ -110,8 +110,11 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
             raise RenkuException("no files processed")
 
         if local_paths:
-            add_to_dataset().with_commit_message(self.ctx["commit_message"]).build().execute(
-                urls=local_paths, name=self.ctx["name"], create=self.ctx["create_dataset"], force=self.ctx["force"]
+            add_to_dataset_command().with_commit_message(self.ctx["commit_message"]).build().execute(
+                dataset_name=self.ctx["name"],
+                urls=local_paths,
+                create=self.ctx["create_dataset"],
+                force=self.ctx["force"],
             )
 
         return local_paths, enqueued_paths

@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets remove controller."""
-from renku.core.commands.dataset import remove_dataset
+from renku.core.commands.dataset import remove_dataset_command
 from renku.service.cache.models.job import Job
 from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
@@ -45,7 +45,9 @@ class DatasetsRemoveCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        result = remove_dataset().with_commit_message(self.ctx["commit_message"]).build().execute(self.ctx["name"])
+        result = (
+            remove_dataset_command().with_commit_message(self.ctx["commit_message"]).build().execute(self.ctx["name"])
+        )
         return result.output
 
     def to_response(self):

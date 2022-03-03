@@ -19,13 +19,16 @@
 import click
 
 from renku.core.commands.echo import WARNING
+from renku.core.management.command_builder import inject
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
 
 
-def check_missing_external_files(client):
+@inject.autoparams()
+def check_missing_external_files(client, fix, dataset_gateway: IDatasetGateway):
     """Find external files that are missing."""
     missing = []
 
-    for path, dataset in client.datasets.items():
+    for dataset in dataset_gateway.get_all_active_datasets():
         for file_ in dataset.files:
             if file_.is_external:
                 target = (client.path / file_.entity.path).resolve()
