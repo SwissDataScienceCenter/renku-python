@@ -24,7 +24,7 @@ from renku.core.management.interface.dataset_gateway import IDatasetGateway
 
 
 @inject.autoparams()
-def check_missing_external_files(client, dataset_gateway: IDatasetGateway):
+def check_missing_external_files(client, fix, dataset_gateway: IDatasetGateway):
     """Find external files that are missing."""
     missing = []
 
