@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2017-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,13 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Plugin hooks for renku workflow customization."""
-from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import pluggy
 
-from renku.core.management.client import LocalClient
-from renku.core.models.session import ISessionProvider, Session
+from renku.core.models.session import ISessionProvider
 
 hookspec = pluggy.HookspecMarker("renku")
 
@@ -36,41 +34,9 @@ def session_provider() -> Tuple[ISessionProvider, str]:
     pass
 
 
-# FIXME: we might just want to return all the plugins results at once.
-@hookspec(firstresult=True)
-def session_list(self, config: Optional[Path], client: LocalClient) -> List[Session]:
-    """Lists all the sessions currently running by the given session provider.
-
-    :returns: a list of sessions.
-    """
-    pass
-
-
-@hookspec(firstresult=True)
-def session_start(self, config: Path, image_name: Optional[str], client: LocalClient) -> str:
-    """Creates an interactive session.
-
-    :returns: a unique id for the created interactive sesssion.
-    """
-    pass
-
-
-@hookspec(firstresult=True)
-def session_stop(self, client: LocalClient, session_name: Optional[str], stop_all: bool):
-    """Stops all or a given interactive session."""
-    pass
-
-
-@hookspec(firstresult=True)
-def session_url(self, session_name: str) -> str:
-    """Get the given sessions URL."""
-    pass
-
-
-def supported_session_providers() -> List[str]:
-    """Returns the currently available interactive session provider types."""
+def supported_session_providers() -> List[Tuple[str, str]]:
+    """Returns the currently available interactive session providers."""
     from renku.core.plugins.pluginmanager import get_plugin_manager
 
     pm = get_plugin_manager()
-    supported_providers = pm.hook.session_provider()
-    return [e[1] for e in supported_providers]
+    return pm.hook.session_provider()

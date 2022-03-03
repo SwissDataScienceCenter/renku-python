@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -39,6 +39,27 @@ class ISessionProvider(metaclass=ABCMeta):
     """Abstract class for a interactive session provider."""
 
     @abstractmethod
+    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Path]) -> Optional[str]:
+        """Builds the container image.
+
+        :param image_descriptor: Path to the container image descriptor file.
+        :param image_name: Container image name.
+        :param config: Path to the session provider specific configuration YAML.
+        :returns: a unique id for the created interactive sesssion.
+        """
+        pass
+
+    @abstractmethod
+    def find_image(self, image_name: str, config: Optional[Path]) -> bool:
+        """Search for the given container image.
+
+        :param image_name: Container image name.
+        :param config: Path to the session provider specific configuration YAML.
+        :returns: True if the given container images is available locally.
+        """
+        pass
+
+    @abstractmethod
     def session_provider(self) -> Tuple["ISessionProvider", str]:
         """Supported session provider.
 
@@ -47,33 +68,35 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_list(self, config: Optional[Path], client: LocalClient) -> List[Session]:
+    def session_list(self, project_name: str, config: Optional[Path]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
+        :param project_name: Renku project name.
         :param config: Path to the session provider specific configuration YAML.
-        :param client: Renku client.
         :returns: a list of sessions.
         """
         pass
 
     @abstractmethod
-    def session_start(self, config: Optional[Path], image_name: Optional[str], client: LocalClient) -> str:
+    def session_start(self, image_name: str, project_name: str, config: Optional[Path], client: LocalClient) -> str:
         """Creates an interactive session.
 
-        :param config: Path to the session provider specific configuration YAML.
         :param image_name: Container image name to be used for the interactive session.
+        :param project_name: The project identifier.
+        :param config: Path to the session provider specific configuration YAML.
         :param client: Renku client.
         :returns: a unique id for the created interactive sesssion.
         """
         pass
 
     @abstractmethod
-    def session_stop(self, client: LocalClient, session_name: Optional[str], stop_all: bool):
+    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
         """Stops all or a given interactive session.
 
         :param client: Renku client.
         :param session_name: The unique id of the interactive session.
         :param stop_all: Specifies whether or not to stop all the running interactive sessions.
+        :returns: True in case session(s) has been successfully stopped
         """
         pass
 

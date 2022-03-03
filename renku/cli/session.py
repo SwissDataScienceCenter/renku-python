@@ -37,8 +37,7 @@ def session():
     "-p",
     "--provider",
     type=click.Choice(Proxy(supported_session_providers)),
-    default="docker",
-    show_default=True,
+    default=None,
     help="Backend to use for listing interactive sessions.",
 )
 @click.option(
@@ -87,7 +86,7 @@ def start(provider, config, image):
         .build()
         .execute(provider=provider, config=config, image_name=image)
     )
-    click.echo(result.output[0])
+    click.echo(result.output)
 
 
 @session.command("stop")

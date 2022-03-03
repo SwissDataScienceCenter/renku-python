@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,39 +17,52 @@
 # limitations under the License.
 """Renku session commands."""
 
+import webbrowser
+from itertools import chain
 from typing import Optional
 
-import webbrowser
+from yaspin import yaspin
 
 from renku.core import errors
 from renku.core.commands.format.session import SESSION_FORMATS
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
+from renku.core.models.session import ISessionProvider
+from renku.core.plugins.session import supported_session_providers
+from renku.core.utils import communication
 from renku.core.utils.os import safe_read_yaml
 
 
-def _get_provider_command(provider: str, cmd: str):
-    """Returns the session command implementation for a given session provider."""
-    from renku.core.plugins.pluginmanager import get_plugin_manager
-
-    pm = get_plugin_manager()
-    providers = pm.hook.session_provider()
-    provider_impl = next(filter(lambda x: provider == x[1], providers), None)
-    if not provider_impl:
-        raise errors.ParameterError(f"The specified session provider '{provider}' is not available.")
-
-    providers.remove(provider_impl)
-    return pm.subset_hook_caller(cmd, list(map(lambda x: x[0], providers)))
-
-
 @inject.autoparams()
-def _session_list(provider: str, config: str, client_dispatcher: IClientDispatcher, format="tabular"):
+def _get_renku_project_name(client_dispatcher: IClientDispatcher) -> str:
     client = client_dispatcher.current_client
-    lister = _get_provider_command(provider, "session_list")
+    return f"{client.remote['owner']}/{client.remote['name']}" if client.remote["name"] else f"{client.path.name}"
+
+
+def _safe_get_provider(provider: str) -> ISessionProvider:
+    providers = supported_session_providers()
+    p = next(filter(lambda x: x[1] == provider, providers), None)
+
+    if p is None:
+        raise errors.ParameterError(f"Session provider '{provider}' is not available!")
+    return p[0]
+
+
+def _session_list(config: str, format="tabular", provider: Optional[str] = None):
+    project_name = _get_renku_project_name()
     if config:
         config = safe_read_yaml(config)
-    return SESSION_FORMATS[format](lister(config=config, client=client)[0])
+
+    providers = supported_session_providers()
+    if provider:
+        providers = list(filter(lambda x: x[1] == provider, providers))
+
+    if len(providers) == 0:
+        raise errors.ParameterError("No session provider is available!")
+
+    sessions_list = list(chain(*map(lambda x: x[0].session_list(config=config, project_name=project_name), providers)))
+    return SESSION_FORMATS[format](sessions_list)
 
 
 def session_list_command():
@@ -60,10 +73,34 @@ def session_list_command():
 @inject.autoparams()
 def _session_start(provider: str, config: str, client_dispatcher: IClientDispatcher, image_name: str = None):
     client = client_dispatcher.current_client
-    session_starter = _get_provider_command(provider, "session_start")
+
+    project_config = client.load_config()
+    pinned_image = project_config.get("interactive", "image", fallback=None)
+    if pinned_image and image_name is None:
+        image_name = pinned_image
+
+    provider = _safe_get_provider(provider)
     if config:
         config = safe_read_yaml(config)
-    return session_starter(config=config, client=client, image_name=image_name)
+
+    project_name = _get_renku_project_name()
+    if image_name is None:
+        tag = client.repository.head.commit.hexsha[:7]
+        image_name = f"{project_name}:{tag}"
+
+        if not provider.find_image(image_name, config):
+            communication.confirm(
+                f"The container image '{image_name}' does not exists. Would you like to build it?",
+                abort=True,
+            )
+
+            with yaspin(text="Building image"):
+                _ = provider.build_image(client.docker_path.parent, image_name, config)
+    else:
+        if not provider.find_image(image_name, config):
+            raise errors.ParameterError(f"Cannot find the provided container image '{image_name}'!")
+
+    return provider.session_start(config=config, project_name=project_name, image_name=image_name, client=client)
 
 
 def session_start_command():
@@ -71,21 +108,21 @@ def session_start_command():
     return Command().command(_session_start)
 
 
-@inject.autoparams()
-def _session_stop(
-    session_name: str, client_dispatcher: IClientDispatcher, stop_all: bool = False, provider: Optional[str] = None
-):
-    from renku.core.plugins.pluginmanager import get_plugin_manager
-
-    client = client_dispatcher.current_client
+def _session_stop(session_name: str, stop_all: bool = False, provider: Optional[str] = None):
+    project_name = _get_renku_project_name()
     if provider:
-        session_stopper = _get_provider_command(provider, "session_stop")
-        results = session_stopper(client=client, session_name=session_name, stop_all=stop_all)
+        p = _safe_get_provider(provider)
+        is_stopped = p.session_stop(project_name=project_name, session_name=session_name, stop_all=stop_all)
     else:
-        pm = get_plugin_manager()
-        results = pm.hook.session_stop(client=client, session_name=session_name, stop_all=stop_all)
+        providers = supported_session_providers()
+        is_stopped = any(
+            map(
+                lambda x: x[0].session_stop(project_name=project_name, session_name=session_name, stop_all=stop_all),
+                providers,
+            )
+        )
 
-    if not any(results):
+    if not is_stopped:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
 
 
@@ -94,21 +131,23 @@ def session_stop_command():
     return Command().command(_session_stop)
 
 
-@inject.autoparams()
-def _session_open(session_name: str, client_dispatcher: IClientDispatcher, provider: Optional[str] = None):
-    from renku.core.plugins.pluginmanager import get_plugin_manager
-
-    client = client_dispatcher.current_client
+def _session_open(session_name: str, provider: Optional[str] = None):
     if provider:
-        get_session_url = _get_provider_command(provider, "session_url")
-        urls = get_session_url(client=client, session_name=session_name)
+        p = _safe_get_provider(provider)
+        url = p.session_url(session_name=session_name)
     else:
-        pm = get_plugin_manager()
-        urls = pm.hook.session_url(client=client, session_name=session_name)
+        providers = supported_session_providers()
+        url = next(
+            filter(
+                lambda x: x is not None,
+                map(lambda p: p[0].session_url(session_name=session_name), providers),
+            ),
+            None,
+        )
 
-    if len(urls) == 0:
+    if url is None:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
-    webbrowser.open(urls[0])
+    webbrowser.open(url)
 
 
 def session_open_command():

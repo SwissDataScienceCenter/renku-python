@@ -36,4 +36,4 @@ def supported_session_providers():
     """Deferred import as plugins are slow."""
     from renku.core.plugins.session import supported_session_providers
 
-    return supported_session_providers()
+    return list(map(lambda p: p[1], supported_session_providers()))
