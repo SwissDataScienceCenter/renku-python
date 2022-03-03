@@ -65,7 +65,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         if path == "temp":
             path = str(directory_tree / "file1")
 
-        dataset = add_data_to_dataset("dataset", ["{}{}".format(scheme, path)], overwrite=overwrite, create=True)
+        dataset = add_data_to_dataset("dataset", [f"{scheme}{path}"], overwrite=overwrite, create=True)
 
         target_path = os.path.join(DATA_DIR, "dataset", "file1")
 
@@ -80,8 +80,9 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         # check the linking
         if scheme in ("", "file://"):
             shutil.rmtree("./data/dataset")
-            dataset = add_data_to_dataset("dataset", ["{}{}".format(scheme, path)], overwrite=True)
-
+            # NOTE: To simulate loading from persistent storage like what a separate renku command would do
+            dataset.freeze()
+            add_data_to_dataset("dataset", [f"{scheme}{path}"], overwrite=True)
             assert os.path.exists(target_path)
 
 
@@ -109,7 +110,7 @@ def test_creator_parse():
 
 def test_creators_with_same_email(client_with_injection, load_dataset_with_injection):
     """Test creators with different names and same email address."""
-    with DatasetContext(name="dataset", create=True, commit_database=True) as dataset:
+    with DatasetContext(name="dataset", create=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
         DatasetsProvenance().add_or_update(dataset)
 

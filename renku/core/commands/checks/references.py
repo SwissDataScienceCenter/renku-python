@@ -22,7 +22,7 @@ import click
 from ..echo import WARNING
 
 
-def check_missing_references(client):
+def check_missing_references(client, fix):
     """Find missing references."""
     from renku.core.models.refs import LinkReference
 
