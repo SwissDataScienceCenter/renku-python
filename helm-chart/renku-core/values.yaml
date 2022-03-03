@@ -16,7 +16,6 @@ global:
       tag: '0.0.1'
     customCAs: []
       # - secret:
-  
   ## Redis configuration. This is where renku-core expects to find
   ## a functioning redis instance and credentials to connect to it.
   redis:
@@ -27,7 +26,7 @@ global:
       coreService: "1"
     host: renku-redis
     port: 26379
-    clientLabel: 
+    clientLabel:
       renku-redis-host: "true"
     existingSecret: redis-secret
     existingSecretPasswordKey: redis-password
