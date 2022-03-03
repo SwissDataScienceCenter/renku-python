@@ -24,7 +24,7 @@ import time
 from contextlib import contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import click
 import yaml
@@ -45,6 +45,7 @@ from renku.domain_model.workflow.parameter import (
     CommandInput,
     CommandOutput,
     CommandParameter,
+    CommandParameterBase,
     MappedIOStream,
 )
 from renku.domain_model.workflow.plan import Plan
@@ -281,7 +282,11 @@ class PlanFactory:
             position += 1
             default, type = self.guess_type(str(self.working_dir / self.stdin), ignore_filenames=output_streams)
             assert isinstance(default, File)
-            self.add_command_input(default_value=str(default), encoding_format=default.mime_type, position=position)
+            self.add_command_input(
+                default_value=self._path_relative_to_root(default.path),
+                encoding_format=default.mime_type,
+                position=position,
+            )
 
     def add_outputs(self, candidates: Set[Tuple[Union[Path, str], Optional[str]]]):
         """Yield detected output and changed command input parameter."""
@@ -770,6 +775,17 @@ class PlanFactory:
             project_id=project_gateway.get_project().id,
             success_codes=self.success_codes,
         )
+
+    def _get_template_value(
+        self, param: str, variables: Iterable[Union[CommandParameterBase, Tuple[str, str]]] = None
+    ) -> str:
+        """Substitutes the template variable for a parameter."""
+        variables_map = (
+            TemplateVariableFormatter.to_map(variables)
+            if variables
+            else chain(self.inputs, self.parameters, self.explicit_inputs, self.explicit_parameters)
+        )
+        return self.template_engine.apply(param, variables_map)
 
 
 def read_files_list(files_list: Path):
