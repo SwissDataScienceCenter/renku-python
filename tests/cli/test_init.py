@@ -340,9 +340,8 @@ def test_init_with_parameters(isolated_runner, project_init, template):
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["parameters"], commands["confirm"]
     )
-    assert 0 == result.exit_code
-    assert "The template requires a value for" in result.output
-    for param in set(template["metadata"].keys()):
+    assert 0 == result.exit_code, result.output
+    for param in ("p1", "p2"):
         assert param in result.output
     assert "These parameters are not used by the template and were ignored:" in result.output
 

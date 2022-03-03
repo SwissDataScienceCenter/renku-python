@@ -24,7 +24,7 @@ def test_version(svc_client):
     """Test expected response from version endpoint."""
     from renku import __version__
 
-    response = svc_client.get("/version")
+    response = svc_client.get("/apiversion")
     assert "result" in response.json
     data = response.json["result"]
 
@@ -36,7 +36,7 @@ def test_version(svc_client):
     assert MINIMUM_VERSION.name == data["minimum_api_version"]
     assert MAXIMUM_VERSION.name == data["maximum_api_version"]
 
-    response = svc_client.get("/0.9/version")
+    response = svc_client.get("/0.9/apiversion")
     assert "result" in response.json
     data = response.json["result"]
 

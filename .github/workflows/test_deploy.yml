@@ -159,6 +159,9 @@ jobs:
       run: |
         sudo apt-get update -y
         sudo apt-get install -y libyaml-0-2 libyaml-dev
+        sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu impish main restricted multiverse universe"
+        sudo apt-get update -y
+        sudo apt-get install -y --allow-downgrades -t impish git-lfs=2.13.2-1
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -205,6 +208,9 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu impish main restricted multiverse universe"
+          sudo apt-get update -y
+          sudo apt-get install -y --allow-downgrades -t impish git-lfs=2.13.2-1
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -436,6 +442,9 @@ jobs:
       run: |
         sudo apt-get update -y
         sudo apt-get install -y libyaml-0-2 libyaml-dev
+        sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu impish main restricted multiverse universe"
+        sudo apt-get update -y
+        sudo apt-get install -y --allow-downgrades -t impish git-lfs=2.13.2-1
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
