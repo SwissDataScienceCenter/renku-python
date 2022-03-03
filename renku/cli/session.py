@@ -92,15 +92,23 @@ def start(provider, config, image):
 
 @session.command("stop")
 @click.argument("session_name", metavar="<name>", required=False)
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    type=click.Choice(Proxy(supported_session_providers)),
+    default=None,
+    help="Session provider to use.",
+)
 @click.option("stop_all", "--all", is_flag=True, help="Stops all the running containers.")
-def stop(session_name, stop_all):
+def stop(session_name, stop_all, provider):
     """Stop a interactive sessions."""
     from renku.core.commands.session import session_stop_command
 
     if not stop_all and session_name is None:
         raise errors.ParameterError("Please specify either a session ID or the '--all' flag.")
 
-    session_stop_command().build().execute(session_name=session_name, stop_all=stop_all)
+    session_stop_command().build().execute(session_name=session_name, stop_all=stop_all, provider=provider)
     if stop_all:
         click.echo("All running interactive sessions for this project have been stopped.")
     else:
@@ -109,8 +117,16 @@ def stop(session_name, stop_all):
 
 @session.command("open")
 @click.argument("session_name", metavar="<name>", required=False)
-def open(session_name):
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    type=click.Choice(Proxy(supported_session_providers)),
+    default=None,
+    help="Session provider to use.",
+)
+def open(session_name, provider):
     """Stop a interactive sessions."""
     from renku.core.commands.session import session_open_command
 
-    session_open_command().build().execute(session_name=session_name)
+    session_open_command().build().execute(session_name=session_name, provider=provider)

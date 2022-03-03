@@ -55,13 +55,13 @@ def session_start(self, config: Path, image_name: Optional[str], client: LocalCl
     pass
 
 
-@hookspec
+@hookspec(firstresult=True)
 def session_stop(self, client: LocalClient, session_name: Optional[str], stop_all: bool):
     """Stops all or a given interactive session."""
     pass
 
 
-@hookspec
+@hookspec(firstresult=True)
 def session_url(self, session_name: str) -> str:
     """Get the given sessions URL."""
     pass

@@ -17,6 +17,8 @@
 # limitations under the License.
 """Renku session commands."""
 
+from typing import Optional
+
 import webbrowser
 
 from renku.core import errors
@@ -70,12 +72,19 @@ def session_start_command():
 
 
 @inject.autoparams()
-def _session_stop(session_name: str, client_dispatcher: IClientDispatcher, stop_all: bool = False):
+def _session_stop(
+    session_name: str, client_dispatcher: IClientDispatcher, stop_all: bool = False, provider: Optional[str] = None
+):
     from renku.core.plugins.pluginmanager import get_plugin_manager
 
     client = client_dispatcher.current_client
-    pm = get_plugin_manager()
-    results = pm.hook.session_stop(client=client, session_name=session_name, stop_all=stop_all)
+    if provider:
+        session_stopper = _get_provider_command(provider, "session_stop")
+        results = session_stopper(client=client, session_name=session_name, stop_all=stop_all)
+    else:
+        pm = get_plugin_manager()
+        results = pm.hook.session_stop(client=client, session_name=session_name, stop_all=stop_all)
+
     if not any(results):
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
 
@@ -86,12 +95,17 @@ def session_stop_command():
 
 
 @inject.autoparams()
-def _session_open(session_name: str, client_dispatcher: IClientDispatcher):
+def _session_open(session_name: str, client_dispatcher: IClientDispatcher, provider: Optional[str] = None):
     from renku.core.plugins.pluginmanager import get_plugin_manager
 
     client = client_dispatcher.current_client
-    pm = get_plugin_manager()
-    urls = pm.hook.session_url(client=client, session_name=session_name)
+    if provider:
+        get_session_url = _get_provider_command(provider, "session_url")
+        urls = get_session_url(client=client, session_name=session_name)
+    else:
+        pm = get_plugin_manager()
+        urls = pm.hook.session_url(client=client, session_name=session_name)
+
     if len(urls) == 0:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
     webbrowser.open(urls[0])
