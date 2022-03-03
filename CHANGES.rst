@@ -18,10 +18,22 @@
 Changes
 =======
 
+`0.16.6 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.5...v0.16.6>`__ (2022-03-03)
+----------------------------------------------------------------------------------------------------------
+
+This is a backport release that contains changes necessary for 1.0.0 `/version` endpoint compatibility.
+
+Features
+~~~~~~~~
+
+-  **service:** Rename /version to /apiversion
+   (`#2593 <https://github.com/SwissDataScienceCenter/renku-python/issues/2593>`__)
+   (`2ddc46da <https://github.com/SwissDataScienceCenter/renku-python/commit/2ddc46dad2bb8b7ab006c6d5bccbecd01ef53a41>`__)
+
 `0.16.5 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.16.4...v0.16.5>`__ (2022-02-28)
 ----------------------------------------------------------------------------------------------------------
 
-This is a backport release that contains changes necessary for compatibility with a global highly-avaialble
+This is a backport release that contains changes necessary for compatibility with a global highly-available
 Renku Redis distribution.
 
 Bug Fixes
