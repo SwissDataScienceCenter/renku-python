@@ -44,6 +44,9 @@ an interactive session. By default two different providers are shipped with Renk
  - renkulab
 The provider specific configuration values can be specified by using the `--config <config.yaml>` flag.
 
+The resource related options of the command (`--cpu`, `--memory` etc.) will override the default values
+of the provider as well as the [project level resource settings](https://renku.readthedocs.io/en/latest/reference/templates.html#renku).
+
 ##### Detailed Parameter Description
 
 ```
