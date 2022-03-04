@@ -75,7 +75,7 @@ def list(provider, config):
     help="YAML file containing configuration for the provider.",
 )
 @click.option("--image", type=click.STRING, metavar="<image_name>", help="Docker image to use for the session.")
-@click.option("--cpu", type=click.STRING, metavar="<cpu quota>", help="CPUs quota for the session.")
+@click.option("--cpu", type=click.FLOAT, metavar="<cpu quota>", help="CPUs quota for the session.")
 @click.option("--disk", type=click.STRING, metavar="<disk size>", help="Amount of disk space required for the session.")
 @click.option("--gpu", type=click.STRING, metavar="<GPU quota>", help="GPU quota for the session.")
 @click.option("--memory", type=click.STRING, metavar="<memory size>", help="Amount of memory required for the session.")

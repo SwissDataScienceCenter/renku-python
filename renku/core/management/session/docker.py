@@ -103,7 +103,7 @@ class DockerSessionProvider(ISessionProvider):
         project_name: str,
         config: Optional[Path],
         client: LocalClient,
-        cpu_request: Optional[str] = None,
+        cpu_request: Optional[float] = None,
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
         gpu_request: Optional[str] = None,
@@ -128,7 +128,7 @@ class DockerSessionProvider(ISessionProvider):
             resource_requests = dict()
             if cpu_request:
                 # based on the docker go cli: func ParseCPUs
-                resource_requests["nano_cpus"] = int(float(cpu_request) * 10 ** 9)
+                resource_requests["nano_cpus"] = int(cpu_request * 10**9)
 
             if mem_request:
                 resource_requests["mem_limit"] = mem_request

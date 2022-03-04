@@ -76,7 +76,7 @@ def _session_start(
     config: str,
     client_dispatcher: IClientDispatcher,
     image_name: str = None,
-    cpu_request: Optional[str] = None,
+    cpu_request: Optional[float] = None,
     mem_request: Optional[str] = None,
     disk_request: Optional[str] = None,
     gpu_request: Optional[str] = None,
