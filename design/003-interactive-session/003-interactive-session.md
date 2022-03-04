@@ -118,21 +118,89 @@ renku session open <name>
 One of the major drawback of the current design is the dependency on docker. Namely, to only support local
 interactive session if docker is available. Many HPC environments do not support docker, but they support
 other container formats, like [runC](https://github.com/opencontainers/runc). As a long term goal of this
-effort it would be good to consider support for different container engines, hence the design and implementation
-of the initial `renku session` should take this into consideration.
+effort, support for different container engines is essential. In order to allow extending the `renku session`
+command with different container engines a very simple API is defined.
 
-## Rationale and Alternatives
+The interface requires that the container engine support the following functionalities:
+ - finding a specific container image. Both locally (cached) and as well in a remote repository.
+ - building a container image based on an image specs file.
+ - starting a container using a specific image.
+ - stopping a running container.
+ - get the URL of the interactive session of a running container.
 
-> Why is this design the best in the space of possible designs?
+The implementation of this interface in detail:
 
-> What other designs have been considered and what is the rationale for not choosing them?
+```python
+class ISessionProvider:
 
-> What is the impact of not doing this?
+    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]) -> Optional[str]:
+        """Builds the container image.
+        :param image_descriptor: Path to the container image descriptor file.
+        :param image_name: Container image name.
+        :param config: Path to the session provider specific configuration YAML.
+        :returns: a unique id for the created interactive sesssion.
+        """
+        pass
 
-## Unresolved questions
+    def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
+        """Search for the given container image.
+        :param image_name: Container image name.
+        :param config: Path to the session provider specific configuration YAML.
+        :returns: True if the given container images is available locally.
+        """
+        pass
 
-> What parts of the design do you expect to resolve through the RFC process before this gets merged?
+    def session_provider(self) -> Tuple["ISessionProvider", str]:
+        """Supported session provider.
+        :returns: a tuple of ``self`` and engine type name.
+        """
+        pass
 
-> What parts of the design do you expect to resolve through the implementation of this feature before stabilisation?
+    def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
+        """Lists all the sessions currently running by the given session provider.
+        :param project_name: Renku project name.
+        :param config: Path to the session provider specific configuration YAML.
+        :returns: a list of sessions.
+        """
+        pass
 
-> What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?
+    def session_start(
+        self,
+        image_name: str,
+        project_name: str,
+        config: Optional[Dict[str, Any]],
+        client: LocalClient,
+        cpu_request: Optional[float] = None,
+        mem_request: Optional[str] = None,
+        disk_request: Optional[str] = None,
+        gpu_request: Optional[str] = None,
+    ) -> str:
+        """Creates an interactive session.
+        :param image_name: Container image name to be used for the interactive session.
+        :param project_name: The project identifier.
+        :param config: Path to the session provider specific configuration YAML.
+        :param client: Renku client.
+        :param cpu_request: CPU request for the session.
+        :param mem_request: Memory size request for the session.
+        :param disk_request: Disk size request for the session.
+        :param gpu_request: GPU device request for the session.
+        :returns: a unique id for the created interactive sesssion.
+        """
+        pass
+
+    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
+        """Stops all or a given interactive session.
+        :param client: Renku client.
+        :param session_name: The unique id of the interactive session.
+        :param stop_all: Specifies whether or not to stop all the running interactive sessions.
+        :returns: True in case session(s) has been successfully stopped
+        """
+        pass
+
+    def session_url(self, session_name: str) -> str:
+        """Get the given session's URL.
+        :param session_name: The unique id of the interactive session.
+        :returns: URL of the interactive session.
+        """
+        pass
+```
