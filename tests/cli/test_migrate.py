@@ -29,6 +29,7 @@ from renku.core.management.client import LocalClient
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.core.management.workflow.plan_factory import RENKU_TMP
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import RemoteEntity
 from tests.utils import format_result_exception
@@ -100,9 +101,10 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
 
     client = LocalClient(path=old_project.path)
     with client_database_injection_manager(client):
-        assert client.datasets
+        datasets = DatasetGateway().get_all_active_datasets()
+        assert datasets
 
-        for ds in client.datasets.values():
+        for ds in datasets:
             for file in ds.files:
                 path = Path(file.entity.path)
                 assert path.exists()
@@ -406,21 +408,6 @@ def test_commands_work_on_old_repository(isolated_runner, old_repository_with_su
     """Test commands that do not require migration."""
     result = isolated_runner.invoke(cli, command)
     assert "Project version is outdated and a migration is required" not in result.output
-
-
-def test_commit_hook_with_immutable_modified_files(runner, local_client, mocker, template_update):
-    """Test repository update from a template with modified local immutable files."""
-    from renku.core.utils.contexts import chdir
-
-    template_update(immutable_files=["README.md"])
-
-    with chdir(local_client.path):
-        result = runner.invoke(cli, ["check-immutable-template-files", "Dockerfile"])
-        assert result.exit_code == 0
-
-        result = runner.invoke(cli, ["check-immutable-template-files", "README.md"])
-        assert result.exit_code == 1
-        assert "README.md" in result.output
 
 
 @pytest.mark.migration

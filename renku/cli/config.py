@@ -121,6 +121,7 @@ The following values are available for the ``renku config`` command:
 """
 import click
 
+import renku.cli.utils.color as color
 from renku.cli.utils.click import MutuallyExclusiveOption
 
 
@@ -189,7 +190,7 @@ def set_(key, value, global_only):
     from renku.core.commands.config import update_config
 
     update_config().build().execute(key, value=value, global_only=global_only)
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)
 
 
 @config.command()
@@ -203,4 +204,4 @@ def remove(key, global_only):
     from renku.core.commands.config import update_config
 
     update_config().build().execute(key, remove=True, global_only=global_only)
-    click.secho("OK", fg="green")
+    click.secho("OK", fg=color.GREEN)

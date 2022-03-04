@@ -27,10 +27,10 @@ class ProviderFactory:
     @staticmethod
     def providers():
         """Returns all supported providers."""
-        from renku.core.commands.providers.dataverse import DataverseProvider
-        from renku.core.commands.providers.olos import OLOSProvider
-        from renku.core.commands.providers.renku import RenkuProvider
-        from renku.core.commands.providers.zenodo import ZenodoProvider
+        from renku.core.management.dataset.providers.dataverse import DataverseProvider
+        from renku.core.management.dataset.providers.olos import OLOSProvider
+        from renku.core.management.dataset.providers.renku import RenkuProvider
+        from renku.core.management.dataset.providers.zenodo import ZenodoProvider
 
         return {"OLOS": OLOSProvider, "Renku": RenkuProvider, "Zenodo": ZenodoProvider, "Dataverse": DataverseProvider}
 

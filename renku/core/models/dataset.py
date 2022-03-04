@@ -40,7 +40,7 @@ from renku.core.utils.metadata import is_external_file
 from renku.core.utils.urls import get_path, get_slug
 
 
-def is_dataset_name_valid(name):
+def is_dataset_name_valid(name: str) -> bool:
     """Check if name is a valid slug."""
     return name and name == get_slug(name, lowercase=False)
 
@@ -85,6 +85,9 @@ class Url:
 
         if not self.id or self.id.startswith("_:"):
             self.id = Url.generate_id(url_str=self.url_str, url_id=self.url_id)
+
+    def __repr__(self) -> str:
+        return f"<Url {self.value}>"
 
     @staticmethod
     def generate_id(url_str, url_id):
@@ -294,6 +297,8 @@ class DatasetFile(Slots):
 class Dataset(Persistent):
     """Represent a dataset."""
 
+    date_modified: Optional[datetime] = None
+
     def __init__(
         self,
         *,
@@ -342,6 +347,7 @@ class Dataset(Persistent):
         # `dataset_files` includes existing files and those that have been removed in the previous version
         self.dataset_files: List[DatasetFile] = dataset_files or []
         self.date_created: datetime = date_created
+        self.date_modified: datetime = local_now()
         self.date_published: datetime = fix_datetime(date_published)
         self.date_removed: datetime = fix_datetime(date_removed)
         self.derived_from: Url = derived_from
@@ -394,6 +400,13 @@ class Dataset(Persistent):
         """Comma-separated list of keywords associated with dataset."""
         return ", ".join(self.keywords)
 
+    def __repr__(self) -> str:
+        return f"<Dataset {self.identifier} {self.name}>"
+
+    def is_derivation(self) -> bool:
+        """Return if a dataset has correct derived_form."""
+        return self.derived_from and not self.same_as and self.id != self.derived_from.url_id
+
     def copy(self) -> "Dataset":
         """Return a clone of this dataset."""
         try:
@@ -428,6 +441,8 @@ class Dataset(Persistent):
     ):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"
+        assert self is not dataset, f"Cannot derive from the same dataset '{self.name}:{self.identifier}'"
+        assert not identifier or self.id != identifier, f"Cannot derive from the same id '{self.name}:{identifier}'"
 
         self._assign_new_identifier(identifier)
         # NOTE: Setting `initial_identifier` is required for migration of broken projects
@@ -435,6 +450,7 @@ class Dataset(Persistent):
         self.derived_from = Url(url_id=dataset.id)
         self.same_as = None
         self.date_created = date_created or local_now()
+        self.date_modified = local_now()
         self.date_published = None
 
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):

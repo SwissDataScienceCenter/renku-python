@@ -161,7 +161,8 @@ def test_move_in_the_same_dataset(runner, client_with_datasets, args, load_datas
     """Test move and overwrite a file in the same dataset."""
     src = os.path.join("data", "dataset-2", "file1")
     dst = os.path.join("data", "dataset-2", "dir1", "file2")
-    file_before = load_dataset_with_injection("dataset-2", client_with_datasets).find_file(dst)
+    dataset = load_dataset_with_injection("dataset-2", client_with_datasets)
+    file_before = dataset.find_file(dst)
 
     result = runner.invoke(cli, ["mv", "-f", src, dst] + args)
     assert 0 == result.exit_code, format_result_exception(result)
@@ -172,7 +173,7 @@ def test_move_in_the_same_dataset(runner, client_with_datasets, args, load_datas
     file_after = dataset.find_file(dst)
     assert file_after.entity.checksum != file_before.entity.checksum
     assert dst == file_after.entity.path
-    assert "123" == Path(dst).read_text()
+    assert "file1 content" == Path(dst).read_text()
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)

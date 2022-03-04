@@ -36,12 +36,6 @@ def tabular(records, *, columns=None):
     if not columns:
         columns = "added,creators,dataset,full_path"
 
-    if "size" in columns.split(","):
-        _get_lfs_file_sizes(records)
-
-    if "lfs" in columns.split(","):
-        _get_lfs_tracking(records)
-
     for record in records:
         record.creators = record.dataset.creators
 
@@ -54,7 +48,7 @@ def tabular(records, *, columns=None):
 
 
 @inject.autoparams()
-def _get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
+def get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
     """Check if files are tracked in git lfs."""
     client = client_dispatcher.current_client
 
@@ -69,7 +63,7 @@ def _get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
 
 
 @inject.autoparams()
-def _get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
+def get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
     """Try to get file size from Git LFS."""
     from humanize import naturalsize  # Slow import
 
@@ -126,9 +120,6 @@ def json(records, **kwargs):
     """
     from renku.core.models.dataset import DatasetFileDetailsJson
     from renku.core.models.json import dumps
-
-    _get_lfs_file_sizes(records)
-    _get_lfs_tracking(records)
 
     for record in records:
         record.creators = record.dataset.creators

@@ -21,6 +21,9 @@ from contextlib import contextmanager
 
 import pytest
 
+from renku.core.management.dataset.dataset import create_dataset
+from renku.core.management.dataset.dataset_add import add_data_to_dataset
+
 
 @pytest.fixture
 def dataset_responses():
@@ -30,7 +33,7 @@ def dataset_responses():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as response:
 
         def request_callback(request):
-            return 200, {"Content-Type": "application/text"}, "123"
+            return 200, {"Content-Type": "application/text"}, "file1 content"
 
         response.add_callback(responses.GET, "http://example.com/file1", callback=request_callback)
         response.add_callback(responses.GET, "https://example.com/file1", callback=request_callback)
@@ -59,13 +62,11 @@ def client_with_datasets(client, directory_tree, client_database_injection_manag
     person_2 = Person.from_string("P2 <p2@example.com>")
 
     with client_database_injection_manager(client):
-        client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+        create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
 
-        with client.with_dataset(name="dataset-2", create=True, commit_database=True) as dataset:
-            dataset.keywords = ["dataset", "2"]
-            dataset.creators = [person_1, person_2]
-
-            client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
+        dataset = add_data_to_dataset("dataset-2", urls=[str(p) for p in directory_tree.glob("*")], create=True)
+        dataset.keywords = ["dataset", "2"]
+        dataset.creators = [person_1, person_2]
 
     client.repository.add(all=True)
     client.repository.commit("add files to datasets")
@@ -92,7 +93,7 @@ def get_datasets_provenance_with_injection(client_database_injection_manager):
 
     @contextmanager
     def _inner(client):
-        from renku.core.management.datasets import DatasetsProvenance
+        from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 
         with client_database_injection_manager(client):
             yield DatasetsProvenance()

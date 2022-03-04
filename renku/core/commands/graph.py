@@ -139,14 +139,14 @@ def _get_graph_for_all_objects(
 
     objects.append(project)
 
-    datasets = dataset_gateway.get_all_datasets()
+    datasets = dataset_gateway.get_all_active_datasets()
     objects.extend(datasets)
 
     for dataset in datasets:
         objects.extend(dataset_gateway.get_all_tags(dataset))
 
         current_dataset = dataset
-        while current_dataset.derived_from:
+        while current_dataset.is_derivation():
             current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)
             objects.append(current_dataset)
 

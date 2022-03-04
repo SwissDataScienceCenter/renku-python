@@ -23,6 +23,7 @@ import shutil
 
 import pytest
 
+from renku.core.management.client import LocalClient
 from renku.core.metadata.repository import Repository
 from tests.utils import format_result_exception
 
@@ -122,9 +123,8 @@ def project(repository):
 
 
 @pytest.fixture
-def client(project, global_config_dir):
+def client(project, global_config_dir) -> LocalClient:
     """Return a Renku repository."""
-    from renku.core.management.client import LocalClient
     from renku.core.models.enums import ConfigFilter
 
     original_get_value = LocalClient.get_value
@@ -177,9 +177,3 @@ def injection_binder(request):
         return
 
     return _binder
-
-
-@pytest.fixture
-def injected_client(client, client_injection_bindings, injection_binder):
-    """Inject a client."""
-    injection_binder(client_injection_bindings(client))

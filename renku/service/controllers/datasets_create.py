@@ -16,7 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets create controller."""
-from renku.core.commands.dataset import create_dataset
+from renku.core.commands.dataset import create_dataset_command
+from renku.core.management.dataset.request_model import ImageRequestModel
+from renku.core.utils.metadata import construct_creators
 from renku.service.cache.models.job import Job
 from renku.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
@@ -48,22 +50,35 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
         """Renku operation for the controller."""
         images = self.ctx.get("images")
         if images:
+            user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
             set_url_for_uploaded_images(images=images, cache=self.cache, user=self.user)
-        user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
+
+            images = [
+                ImageRequestModel(
+                    content_url=img["content_url"],
+                    position=img["position"],
+                    mirror_locally=img.get("mirror_locally", False),
+                    safe_image_paths=[user_cache_dir],
+                )
+                for img in images
+            ]
+
+        creators = self.ctx.get("creators")
+        if creators:
+            creators, _ = construct_creators(creators)
 
         return (
-            create_dataset()
+            create_dataset_command()
             .with_commit_message(self.ctx["commit_message"])
             .build()
             .execute(
                 name=self.ctx["name"],
                 title=self.ctx.get("title"),
-                creators=self.ctx.get("creators"),
+                creators=creators,
                 description=self.ctx.get("description"),
                 keywords=self.ctx.get("keywords"),
-                images=self.ctx.get("images"),
+                images=images,
                 custom_metadata=self.ctx.get("custom_metadata"),
-                safe_image_paths=[user_cache_dir],
             )
         )
 

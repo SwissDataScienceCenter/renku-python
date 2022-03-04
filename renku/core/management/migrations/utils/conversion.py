@@ -22,9 +22,19 @@ from typing import List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 from renku.core.management.migrations.models import v9 as old_datasets
-from renku.core.models.dataset import Dataset, DatasetFile, DatasetTag, ImageObject, Language, RemoteEntity, Url
+from renku.core.models.dataset import (
+    Dataset,
+    DatasetFile,
+    DatasetTag,
+    ImageObject,
+    Language,
+    RemoteEntity,
+    Url,
+    is_dataset_name_valid,
+)
 from renku.core.models.provenance import agent as new_agents
 from renku.core.utils.git import get_entity_from_revision
+from renku.core.utils.urls import get_slug
 
 
 def _convert_dataset_identifier(identifier: str) -> str:
@@ -143,9 +153,11 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
 
         return dataset_files
 
-    def convert_derived_from(derived_from: Optional[old_datasets.Url]) -> Optional[Url]:
+    def convert_derived_from(
+        derived_from: Optional[old_datasets.Url], same_as: Optional[old_datasets.Url]
+    ) -> Optional[Url]:
         """Return Dataset.id from `derived_from` url."""
-        if not derived_from:
+        if not derived_from or same_as:
             return
 
         url = derived_from.url.get("@id")
@@ -168,6 +180,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
         return str(license)
 
     tags = [_convert_dataset_tag(tag) for tag in (dataset.tags or [])]
+    name = get_slug(dataset.name) if not is_dataset_name_valid(dataset.name) else dataset.name
 
     return (
         Dataset(
@@ -176,7 +189,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             date_created=dataset.date_created,
             date_published=dataset.date_published,
             date_removed=None,
-            derived_from=convert_derived_from(dataset.derived_from),
+            derived_from=convert_derived_from(dataset.derived_from, dataset.same_as),
             description=dataset.description,
             id=None,
             identifier=_convert_dataset_identifier(dataset.identifier),
@@ -184,7 +197,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             in_language=_convert_language(dataset.in_language),
             keywords=dataset.keywords,
             license=convert_license(dataset.license),
-            name=dataset.name,
+            name=name,
             project_id=client.project.id,
             initial_identifier=_convert_dataset_identifier(dataset.initial_identifier),
             same_as=_convert_same_as(dataset.same_as),

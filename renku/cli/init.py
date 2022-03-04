@@ -52,15 +52,15 @@ when you initialize a project. You can check them by typing:
 
 .. code-block:: console
 
-    $ renku init --list-templates
+    $ renku template ls
 
     INDEX ID     DESCRIPTION                     PARAMETERS
     ----- ------ ------------------------------- -----------------------------
     1     python The simplest Python-based [...] description: project des[...]
     2     R      R-based renku project with[...] description: project des[...]
 
-If you know which template you are going to use, you can provide either the id
-``--template-id`` or the template index number ``--template-index``.
+If you know which template you are going to use, you can provide its id using
+``--template-id``.
 
 You can use a newer version of the templates or even create your own one and
 provide it to the ``init`` command by specifying the target template repository
@@ -91,7 +91,7 @@ Provide parameters
 ~~~~~~~~~~~~~~~~~-
 
 Some templates require parameters to properly initialize a new project. You
-can check them by listing the templates ``--list-templates``.
+can check them by listing the templates ``renku template ls --verbose``.
 
 To provide parameters, use the ``--parameter`` option and provide each
 parameter using ``--parameter "param1"="value1"``.
@@ -197,11 +197,6 @@ import click
 from renku.core import errors
 from renku.core.commands.options import option_external_storage_requested
 
-_GITLAB_CI = ".gitlab-ci.yml"
-_DOCKERFILE = "Dockerfile"
-_REQUIREMENTS = "requirements.txt"
-CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
-
 INVALID_DATA_DIRS = [".", ".renku", ".git"]
 """Paths that cannot be used as data directory name."""
 
@@ -256,7 +251,7 @@ def resolve_data_directory(data_dir, path):
     help="Data directory within the project",
 )
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
-@click.option("-i", "--template-index", help="Provide the index number of the template to use.", type=int)
+@click.option("-i", "--template-index", help="Deprecated", type=int)
 @click.option("-s", "--template-source", help="Provide the templates repository url or path.")
 @click.option(
     "-r", "--template-ref", default=None, help="Specify the reference to checkout on remote template repository."
@@ -311,12 +306,20 @@ def init(
     from renku.core.commands.init import init_command
     from renku.core.utils.git import check_global_git_user_is_configured
 
+    if template_ref and not template_source:
+        raise errors.ParameterError("Can't use '--template-ref' without specifying '--template-source'")
+    if describe:
+        raise errors.ParameterError("'-d/--describe' is deprecated: Use 'renku template show' instead.")
+    if list_templates:
+        raise errors.ParameterError("'-l/--list-templates' is deprecated: Use 'renku template ls' instead.")
+    if template_index:
+        raise errors.ParameterError(
+            "'-i/--template-index' is deprecated: Use '-t/--template-id' to pass a template id."
+        )
+
     data_dir = resolve_data_directory(data_dir, path)
 
     check_global_git_user_is_configured()
-
-    if template_ref and not template_source:
-        raise errors.ParameterError("Can't use '--template-ref' without specifying '--template-source'")
 
     custom_metadata = None
     if metadata:
@@ -331,20 +334,14 @@ def init(
         description=description,
         keywords=keyword,
         template_id=template_id,
-        template_index=template_index,
         template_source=template_source,
         template_ref=template_ref,
-        metadata=parameters,
+        input_parameters=parameters,
         custom_metadata=custom_metadata,
-        list_templates=list_templates,
         force=force,
-        describe=describe,
         data_dir=data_dir,
         initial_branch=initial_branch,
     )
-
-    if list_templates:
-        return
 
     # Install git hooks
     from .githooks import install

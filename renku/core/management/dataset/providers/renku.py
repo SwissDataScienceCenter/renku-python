@@ -29,8 +29,9 @@ import attr
 
 from renku.core import errors
 from renku.core.commands.login import read_renku_token
-from renku.core.commands.providers.api import ProviderApi
 from renku.core.management.command_builder.command import inject
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.management.dataset.providers.api import ProviderApi
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.metadata.immutable import DynamicProxy
@@ -382,7 +383,7 @@ class _RenkuRecordSerializer:
             self._migrate_project()
             self._project_repo = repository
 
-            self._dataset = self._remote_client.get_dataset(self._name)
+            self._dataset = DatasetsProvenance().get_by_name(self._name)
         finally:
             database_dispatcher.pop_database()
             client_dispatcher.pop_client()
@@ -391,6 +392,7 @@ class _RenkuRecordSerializer:
             raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
 
         self._dataset.data_dir = get_dataset_data_dir(self._remote_client, self._dataset)
+        self._dataset.derived_from = None
 
         files_info = []
         for file in self._dataset.files:

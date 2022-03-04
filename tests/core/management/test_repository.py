@@ -17,10 +17,9 @@
 # limitations under the License.
 """Repository tests."""
 
-import tempfile
 from pathlib import Path
 
-from renku.core.commands.dataset import create_dataset
+from renku.core.commands.dataset import create_dataset_command
 from renku.core.management.client import LocalClient
 from renku.core.metadata.repository import Repository
 
@@ -29,7 +28,7 @@ def test_latest_version(project, client_database_injection_manager):
     """Test returning the latest version of `SoftwareAgent`."""
     from renku import __version__
 
-    create_dataset().build().execute("ds1", title="", description="", creators=[])
+    create_dataset_command().build().execute("ds1", title="", description="", creators=[])
 
     client = LocalClient(project)
     with client_database_injection_manager(client):
@@ -41,7 +40,7 @@ def test_latest_version_user_commits(project, client_database_injection_manager)
     """Test retrieval of `SoftwareAgent` with latest non-renku command."""
     from renku import __version__
 
-    create_dataset().build().execute("ds1", title="", description="", creators=[])
+    create_dataset_command().build().execute("ds1", title="", description="", creators=[])
 
     file = Path("my-file")
     file.write_text("123")
@@ -62,38 +61,3 @@ def test_init_repository(local_client):
     assert (local_client.path / ".git").exists()
     assert (local_client.path / ".git" / "HEAD").exists()
     assert not (local_client.path / ".renku").exists()
-
-
-def test_import_from_template(local_client):
-    """Test importing data from template."""
-    output_file = "metadata.yml"
-    local_client.init_repository()
-    with tempfile.TemporaryDirectory() as tempdir:
-        template_path = Path(tempdir)
-        fake_template_file = template_path / output_file
-        with fake_template_file.open("w") as dest:
-            dest.writelines(
-                [
-                    "name: {{ __name__ }}",
-                    "description: {{ description }}",
-                    "created: {{ date_created }}",
-                    "updated: {{ date_updated }}",
-                ]
-            )
-            metadata = {
-                "__name__": "name",
-                "description": "description",
-                "date_created": "now",
-                "date_updated": "now",
-                "__template_source__": "renku",
-                "__template_ref__": "master",
-                "__template_id__": "python-minimal",
-                "__namespace__": "",
-                "__repository__": "",
-                "__project_slug__": "",
-            }
-        local_client.import_from_template(template_path, metadata)
-        compiled_file = local_client.path / output_file
-        compiled_content = compiled_file.read_text()
-        expected_content = "name: name" "description: description" "created: now" "updated: now"
-        assert expected_content == compiled_content

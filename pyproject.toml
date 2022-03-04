@@ -68,17 +68,17 @@ cwl-utils = ">=0.12"
 cwltool = "==3.1.20211107152837"
 deepmerge = "==1.0.1"
 environ-config = "<21.3.0,>=18.2.0"
-fakeredis = { version = "<1.7.1,>=1.4.1", optional = true }
-filelock = "<3.4.3,>=3.0.0"
+fakeredis = { version = ">=1.4.1,<1.7.2", optional = true }
+filelock = ">=3.0.0,<3.6.1"
 flake8 = { version = "<4.0,>=3.8", optional = true }                             #wait for https://github.com/flakehell/flakehell/pull/23 to be merged before bumping
 flakehell = { version = ">=0.9.0,<1.0.*", optional = true }
 flaky = { version = "==3.7.0", optional = true }
-flask = { version = "==2.0.2", optional = true }
+flask = { version = "==2.0.3", optional = true }
 freezegun = { version = "<1.1.1,>=0.3.12", optional = true }
 gitpython = "==3.1.26"
 grandalf = "==0.7"
 gunicorn = { optional = true, version = "*" }
-humanize = "<3.15.0,>=3.0.0"
+humanize = ">=3.0.0,<4.1.0"
 importlib-metadata = { version = "<4.12.0,>=4.8.1", python = "<3.8.0" }
 importlib-resources = { version = "<5.5.0,>=5.4.0", python = "<3.9.0" }
 inject = "<4.4.0,>=4.3.0"
@@ -94,7 +94,7 @@ patool = "==1.12"
 pexpect = { version = "<4.9.0,>=4.8.0", optional = true }
 pillow = { version = "<9.1,>=9.0.0", optional = true }
 pluggy = "==1.0.0"
-portalocker = "<2.4,>=2.2.1"
+portalocker = ">=2.2.1,<2.5"
 psutil = ">=5.4.7,<5.9.1,"
 ptvsd = { version = "<4.4.0,>=4.3.0", optional = true }
 pyasn1 = "<=0.4.8,>=0.4.5"
@@ -104,7 +104,7 @@ pyld = "==2.0.3"
 pyopenssl = ">=19.0.0,<22.1.0"
 pyshacl = ">=0.17.2,<0.18.2"
 pyte = { version = ">=0.8.0<0.9.0", optional = true }
-pytest = { version = ">=4.0.0,<7.0.1", optional = true }
+pytest = { version = ">=4.0.0,<7.0.2", optional = true }
 pytest-black = { version = "<0.3.13,>=0.3.10", optional = true }
 pytest-cache = { version = "==1.0", optional = true }
 pytest-cov = { version = "<3.1.0,>=2.5.1", optional = true }
@@ -276,9 +276,9 @@ vcs = "git"
 dirty = true
 format-jinja = """
     {%- if distance == 0 -%}
-        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}
+        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}{{"-dirty" if dirty else ""}}
     {%- else -%}
-        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}.dev{{distance}}+g{{commit}}
+        {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}.dev{{distance}}+g{{commit}}{{"-dirty" if dirty else ""}}
     {%- endif -%}
 """
 pattern = """

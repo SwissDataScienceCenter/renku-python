@@ -30,10 +30,11 @@ from renku.cli import cli
 from renku.core import errors
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
-from renku.core.commands.providers import ProviderFactory
-from renku.core.commands.providers.dataverse import DataverseProvider
-from renku.core.commands.providers.zenodo import ZenodoProvider
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.dataset.constant import renku_pointers_path
+from renku.core.management.dataset.providers import ProviderFactory
+from renku.core.management.dataset.providers.dataverse import DataverseProvider
+from renku.core.management.dataset.providers.zenodo import ZenodoProvider
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.dataset import Dataset
 from renku.core.models.refs import LinkReference
@@ -473,6 +474,28 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client, load_dataset_
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+def test_add_with_relative_path(runner, client, directory_tree, subdirectory):
+    """Test adding data with relative path."""
+    relative_path = os.path.relpath(directory_tree / "file1", os.getcwd())
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", relative_path])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    path = client.path / client.data_dir / "local" / "file1"
+    assert path.exists()
+    assert "file1 content" == path.read_text()
+
+
+def test_add_an_empty_directory(runner, client, directory_tree):
+    """Test adding an empty directory to a dataset."""
+    path = directory_tree / "empty-directory"
+    path.mkdir()
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", str(path)])
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "Error: There is nothing to commit." in result.output
+
+
 def test_repository_file_to_dataset(runner, client, subdirectory, load_dataset_with_injection):
     """Test adding a file from the repository into a dataset."""
     # create a dataset
@@ -527,8 +550,8 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory, load_d
 @pytest.mark.parametrize(
     "params,message",
     [
-        (["-s", "file", "https://renkulab.io/"], 'Cannot use "--source" with URLs or local files.'),
-        (["-s", "file", "/some/local/path"], 'Cannot use "--source" with URLs or local files.'),
+        (["-s", "file", "https://renkulab.io/"], "Cannot use '-s/--src/--source' with URLs or local files."),
+        (["-s", "file", "/some/local/path"], "Cannot use '-s/--src/--source' with URLs or local files."),
     ],
 )
 def test_usage_error_in_add_from_url(runner, client, params, message):
@@ -552,7 +575,7 @@ def test_add_data_directory(runner, client, directory_tree):
 
     result = runner.invoke(cli, ["dataset", "add", "new-dataset", "data/new-dataset"], catch_exceptions=False)
     assert 2 == result.exit_code
-    assert "Cannot add dataset's data directory recursively" in result.output
+    assert "Cannot recursively add path containing dataset's data directory" in result.output
 
 
 def test_dataset_add_with_copy(tmpdir, runner, project, client, load_dataset_with_injection):
@@ -873,7 +896,7 @@ def test_datasets_ls_files_correct_size(runner, client, directory_tree, large_fi
     line = next(line for line in result.output.split("\n") if "file1" in line)
     size = int(line.split()[0])
 
-    assert 3 == size
+    assert 13 == size
 
 
 @pytest.mark.skip(reason="FIXME: We don't have commit shas for files. What should be listed here?")
@@ -1125,7 +1148,7 @@ def test_dataset_tag(tmpdir, runner, client, subdirectory, get_datasets_provenan
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(
-        cli, ["dataset", "tag", "my-dataset", "A", "-d", "short descriptiön"], catch_exceptions=False
+        cli, ["dataset", "tag", "my-dataset", "A", "-d", "short description"], catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -1560,14 +1583,34 @@ def test_overwrite_external_file(runner, client, directory_tree, subdirectory):
     # Can add the same file with --overwrite
     result = runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
-    pointer_files_deleted = list(client.renku_pointers_path.rglob("*")) == []
+    pointer_files_deleted = list(renku_pointers_path(client).rglob("*")) == []
     assert pointer_files_deleted
 
     # Can add the same external file
     result = runner.invoke(cli, ["dataset", "add", "--external", "my-data", "--overwrite", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
-    pointer_files_exist = len(list(client.renku_pointers_path.rglob("*"))) > 0
+    pointer_files_exist = len(list(renku_pointers_path(client).rglob("*"))) > 0
     assert pointer_files_exist
+
+
+def test_overwrite_external_file_keeps_original_content(runner, client, directory_tree):
+    """Check overwriting external files doesn't corrupt original content."""
+    origin = directory_tree / "file1"
+
+    assert 0 == runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(origin)]).exit_code
+
+    path = client.path / DATA_DIR / "my-data" / "file1"
+    assert "file1 content" == path.read_text()
+    assert path.is_symlink()
+
+    new_data = directory_tree / "dir1" / "file2"
+    # Can add another file to the same destination
+    result = runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", "-d", "file1", str(new_data)])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert "file2 content" == path.read_text()
+    assert not path.is_symlink()
+    assert "file1 content" == origin.read_text()
 
 
 def test_remove_external_file(runner, client, directory_tree, subdirectory):
@@ -1575,13 +1618,13 @@ def test_remove_external_file(runner, client, directory_tree, subdirectory):
     result = runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    targets_before = {str(p.resolve()) for p in client.renku_pointers_path.rglob("*")}
+    targets_before = {str(p.resolve()) for p in renku_pointers_path(client).rglob("*")}
     path = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
 
     result = runner.invoke(cli, ["rm", str(path)])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    targets_after = {str(p.resolve()) for p in client.renku_pointers_path.rglob("*")}
+    targets_after = {str(p.resolve()) for p in renku_pointers_path(client).rglob("*")}
 
     removed = targets_before - targets_after
     assert 1 == len(removed)
@@ -1833,7 +1876,7 @@ def test_datasets_provenance_after_multiple_adds(
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree / "file1")]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
 
         assert 1 == len(provenance)
 
@@ -1857,7 +1900,7 @@ def test_datasets_provenance_after_add_with_overwrite(
     assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", "--overwrite", str(directory_tree)]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
 
         assert 1 == len(provenance)
 
@@ -1905,7 +1948,7 @@ def test_datasets_provenance_after_remove(
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         current_version = datasets_provenance.get_by_name("my-data")
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
 
     assert current_version is None
     # NOTE: We only keep the tail of provenance chain for each dataset in the provenance
@@ -1942,7 +1985,7 @@ def test_datasets_provenance_after_adding_tag(
     assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "42.0"]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
         current_version = datasets_provenance.get_by_name("my-data")
 
     assert 1 == len(provenance)
@@ -1964,7 +2007,7 @@ def test_datasets_provenance_after_removing_tag(
     assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "my-data", "42.0"]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
         current_version = datasets_provenance.get_by_name("my-data")
 
     assert 1 == len(provenance)
@@ -1986,7 +2029,7 @@ def test_datasets_provenance_multiple(
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         tail_dataset = datasets_provenance.get_by_name("my-data", immutable=True)
-        provenance = datasets_provenance.get_provenance()
+        provenance = datasets_provenance.get_provenance_tails()
 
         # NOTE: We only keep the tail of provenance chain for each dataset in the provenance
         assert 1 == len(provenance)
