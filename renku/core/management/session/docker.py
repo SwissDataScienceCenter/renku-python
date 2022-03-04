@@ -97,7 +97,17 @@ class DockerSessionProvider(ISessionProvider):
             )
         )
 
-    def session_start(self, image_name: str, project_name: str, config: Optional[Path], client: LocalClient) -> str:
+    def session_start(
+        self,
+        image_name: str,
+        project_name: str,
+        config: Optional[Path],
+        client: LocalClient,
+        cpu_request: Optional[str] = None,
+        mem_request: Optional[str] = None,
+        disk_request: Optional[str] = None,
+        gpu_request: Optional[str] = None,
+    ) -> str:
         """Creates an interactive session.
 
         :returns: a unique id for the created interactive sesssion.
@@ -114,6 +124,28 @@ class DockerSessionProvider(ISessionProvider):
             project_config = client.load_config()
             default_url = project_config.get("interactive", "default_url")
 
+            # resource requests
+            resource_requests = dict()
+            if cpu_request:
+                # based on the docker go cli: func ParseCPUs
+                resource_requests["nano_cpus"] = int(float(cpu_request) * 10 ** 9)
+
+            if mem_request:
+                resource_requests["mem_limit"] = mem_request
+
+            if disk_request:
+                resource_requests["storage_opt"] = {"size": disk_request}
+
+            if gpu_request:
+                if gpu_request == "all":
+                    resource_requests["device_requests"] = [
+                        docker.types.DeviceRequest(count=-1, capabilities=[["compute", "utility"]])
+                    ]
+                else:
+                    resource_requests["device_requests"] = [
+                        docker.types.DeviceRequest(count=[gpu_request], capabilities=[["compute", "utility"]])
+                    ]
+
             container = self.docker_client().containers.run(
                 image_name,
                 f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}'
@@ -124,6 +156,7 @@ class DockerSessionProvider(ISessionProvider):
                 ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": None},
                 remove=True,
                 volumes=[f"{str(client.path.resolve())}:/home/jovyan/work"],
+                **resource_requests,
             )
 
             if not container.ports:

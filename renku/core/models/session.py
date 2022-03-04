@@ -78,13 +78,27 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_start(self, image_name: str, project_name: str, config: Optional[Path], client: LocalClient) -> str:
+    def session_start(
+        self,
+        image_name: str,
+        project_name: str,
+        config: Optional[Path],
+        client: LocalClient,
+        cpu_request: Optional[str] = None,
+        mem_request: Optional[str] = None,
+        disk_request: Optional[str] = None,
+        gpu_request: Optional[str] = None,
+    ) -> str:
         """Creates an interactive session.
 
         :param image_name: Container image name to be used for the interactive session.
         :param project_name: The project identifier.
         :param config: Path to the session provider specific configuration YAML.
         :param client: Renku client.
+        :param cpu_request: CPU request for the session.
+        :param mem_request: Memory size request for the session.
+        :param disk_request: Disk size request for the session.
+        :param gpu_request: GPU device request for the session.
         :returns: a unique id for the created interactive sesssion.
         """
         pass

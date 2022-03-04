@@ -70,8 +70,17 @@ def session_list_command():
     return Command().command(_session_list)
 
 
-@inject.autoparams()
-def _session_start(provider: str, config: str, client_dispatcher: IClientDispatcher, image_name: str = None):
+@inject.autoparams("client_dispatcher")
+def _session_start(
+    provider: str,
+    config: str,
+    client_dispatcher: IClientDispatcher,
+    image_name: str = None,
+    cpu_request: Optional[str] = None,
+    mem_request: Optional[str] = None,
+    disk_request: Optional[str] = None,
+    gpu_request: Optional[str] = None,
+):
     client = client_dispatcher.current_client
 
     project_config = client.load_config()
@@ -100,7 +109,22 @@ def _session_start(provider: str, config: str, client_dispatcher: IClientDispatc
         if not provider.find_image(image_name, config):
             raise errors.ParameterError(f"Cannot find the provided container image '{image_name}'!")
 
-    return provider.session_start(config=config, project_name=project_name, image_name=image_name, client=client)
+    # set resource settings
+    cpu_limit = cpu_request or project_config.get("interactive", "cpu_request", fallback=None)
+    disk_limit = disk_request or project_config.get("interactive", "disk_request", fallback=None)
+    mem_limit = mem_request or project_config.get("interactive", "mem_request", fallback=None)
+    gpu = gpu_request or project_config.get("interactive", "gpu_request", fallback=None)
+
+    return provider.session_start(
+        config=config,
+        project_name=project_name,
+        image_name=image_name,
+        client=client,
+        cpu_request=cpu_limit,
+        mem_request=mem_limit,
+        disk_request=disk_limit,
+        gpu_request=gpu,
+    )
 
 
 def session_start_command():
