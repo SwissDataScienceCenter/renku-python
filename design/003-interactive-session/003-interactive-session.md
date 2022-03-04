@@ -70,9 +70,10 @@ One can shut down all the currently running interactive sessions at once with th
 ```
 renku session stop [OPTIONS] <name>
 
-<name>      Name of the session that the user wants to stop.
+<name>      				Name of the session that the user wants to stop.
 
---all       Stops all the running containers.
+--all       				Stops all the running containers.
+-p|--provider [docker|renkulab] 	Use the specified backend for starting an interactive session.
 
 ```
 
@@ -97,6 +98,17 @@ renku session list [OPTIONS]
 
 Note, it is possible that the user is running renku on a remote machine via SSH. In this case this command
 might fail, unless for example X-Fowarding is not enabled.
+
+##### Detailed Parameter Description
+
+```
+renku session open <name>
+
+<name>      				Name of the session that the user wants to stop.
+
+-p|--provider [docker|renkulab] 	Use the specified backend for listing the interactive sessions.
+
+```
 
 ## Drawbacks
 
