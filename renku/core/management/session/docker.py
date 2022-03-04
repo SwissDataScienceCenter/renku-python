@@ -18,7 +18,7 @@
 """Docker based interactive session provider."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 from uuid import uuid4
 
 import docker
@@ -47,20 +47,20 @@ class DockerSessionProvider(ISessionProvider):
         return self._docker_client
 
     @staticmethod
-    def _get_jupyter_urls(ports: Dict[str, Any], auth_token: str, jupyter_port: int = 8888) -> List[str]:
+    def _get_jupyter_urls(ports: Dict[str, Any], auth_token: str, jupyter_port: int = 8888) -> Iterable[str]:
         port_key = f"{jupyter_port}/tcp"
         if port_key not in ports:
-            return None
+            return list()
         return map(lambda x: f'http://{x["HostIp"]}:{x["HostPort"]}/?token={auth_token}', ports[port_key])
 
     def _get_docker_containers(self, project_name: str) -> List[docker.models.containers.Container]:
         return self.docker_client().containers.list(filters={"label": f"renku_project={project_name}"})
 
-    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Path]):
+    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image."""
         self.docker_client().images.build(path=str(image_descriptor), tag=image_name)
 
-    def find_image(self, image_name: str, config: Optional[Path]) -> bool:
+    def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Find the given container image."""
         try:
             _ = self.docker_client().images.get(image_name)
@@ -80,7 +80,7 @@ class DockerSessionProvider(ISessionProvider):
         """
         return (self, "docker")
 
-    def session_list(self, project_name: str, config: Optional[Path]) -> List[Session]:
+    def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         :returns: a list of sessions.
@@ -101,7 +101,7 @@ class DockerSessionProvider(ISessionProvider):
         self,
         image_name: str,
         project_name: str,
-        config: Optional[Path],
+        config: Optional[Dict[str, Any]],
         client: LocalClient,
         cpu_request: Optional[float] = None,
         mem_request: Optional[str] = None,

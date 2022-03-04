@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from renku.core.management.client import LocalClient
 
@@ -39,7 +39,7 @@ class ISessionProvider(metaclass=ABCMeta):
     """Abstract class for a interactive session provider."""
 
     @abstractmethod
-    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Path]) -> Optional[str]:
+    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]) -> Optional[str]:
         """Builds the container image.
 
         :param image_descriptor: Path to the container image descriptor file.
@@ -50,7 +50,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def find_image(self, image_name: str, config: Optional[Path]) -> bool:
+    def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Search for the given container image.
 
         :param image_name: Container image name.
@@ -68,7 +68,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_list(self, project_name: str, config: Optional[Path]) -> List[Session]:
+    def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         :param project_name: Renku project name.
@@ -82,7 +82,7 @@ class ISessionProvider(metaclass=ABCMeta):
         self,
         image_name: str,
         project_name: str,
-        config: Optional[Path],
+        config: Optional[Dict[str, Any]],
         client: LocalClient,
         cpu_request: Optional[float] = None,
         mem_request: Optional[str] = None,

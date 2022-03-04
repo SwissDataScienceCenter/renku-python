@@ -34,7 +34,7 @@ def session_provider() -> Tuple[ISessionProvider, str]:
     pass
 
 
-def supported_session_providers() -> List[Tuple[str, str]]:
+def supported_session_providers() -> List[Tuple[ISessionProvider, str]]:
     """Returns the currently available interactive session providers."""
     from renku.core.plugins.pluginmanager import get_plugin_manager
 

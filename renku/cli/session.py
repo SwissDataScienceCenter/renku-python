@@ -52,7 +52,7 @@ def list(provider, config):
     """List interactive sessions."""
     from renku.core.commands.session import session_list_command
 
-    result = session_list_command().build().execute(provider=provider, config=config)
+    result = session_list_command().build().execute(provider=provider, config_path=config)
     click.echo(result.output)
 
 
@@ -90,7 +90,7 @@ def start(provider, config, image, cpu, disk, gpu, memory):
         .build()
         .execute(
             provider=provider,
-            config=config,
+            config_path=config,
             image_name=image,
             cpu_request=cpu,
             mem_request=memory,

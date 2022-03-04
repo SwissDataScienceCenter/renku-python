@@ -49,10 +49,9 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
     return p[0]
 
 
-def _session_list(config: str, format="tabular", provider: Optional[str] = None):
+def _session_list(config_path: str, format="tabular", provider: Optional[str] = None):
     project_name = _get_renku_project_name()
-    if config:
-        config = safe_read_yaml(config)
+    config = safe_read_yaml(config_path) if config_path else dict()
 
     providers = supported_session_providers()
     if provider:
@@ -73,7 +72,7 @@ def session_list_command():
 @inject.autoparams("client_dispatcher")
 def _session_start(
     provider: str,
-    config: str,
+    config_path: str,
     client_dispatcher: IClientDispatcher,
     image_name: str = None,
     cpu_request: Optional[float] = None,
@@ -88,25 +87,24 @@ def _session_start(
     if pinned_image and image_name is None:
         image_name = pinned_image
 
-    provider = _safe_get_provider(provider)
-    if config:
-        config = safe_read_yaml(config)
+    provider_api = _safe_get_provider(provider)
+    config = safe_read_yaml(config_path) if config_path else dict()
 
     project_name = _get_renku_project_name()
     if image_name is None:
         tag = client.repository.head.commit.hexsha[:7]
         image_name = f"{project_name}:{tag}"
 
-        if not provider.find_image(image_name, config):
+        if not provider_api.find_image(image_name, config):
             communication.confirm(
                 f"The container image '{image_name}' does not exists. Would you like to build it?",
                 abort=True,
             )
 
             with yaspin(text="Building image"):
-                _ = provider.build_image(client.docker_path.parent, image_name, config)
+                _ = provider_api.build_image(client.docker_path.parent, image_name, config)
     else:
-        if not provider.find_image(image_name, config):
+        if not provider_api.find_image(image_name, config):
             raise errors.ParameterError(f"Cannot find the provided container image '{image_name}'!")
 
     # set resource settings
@@ -115,7 +113,7 @@ def _session_start(
     mem_limit = mem_request or project_config.get("interactive", "mem_request", fallback=None)
     gpu = gpu_request or project_config.get("interactive", "gpu_request", fallback=None)
 
-    return provider.session_start(
+    return provider_api.session_start(
         config=config,
         project_name=project_name,
         image_name=image_name,
