@@ -59,10 +59,10 @@ spec:
           {{ if .Values.debug }}
           args: ["api", "--debug"]
           securityContext:
-            runAsGroup: 2000
-          {{ else }}
-          args: ["api"]
-          {{ end }}
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+          args: ["service", "api"]
           env:
             - name: REDIS_HOST
               value: {{ .Values.global.redis.host | quote }}
@@ -127,11 +127,11 @@ spec:
               path: /health
               port: http
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-        - name: {{ .Chart.Name }}-datasets-workers
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: ["worker"]
+            {{- toYaml $.Values.resources | nindent 12 }}
+        - name: {{ $.Chart.Name }}-datasets-workers
+          image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
+          imagePullPolicy: {{ $version.image.pullPolicy }}
+          args: ["service", "worker"]
           env:
             - name: REDIS_HOST
               value: {{ .Values.global.redis.host | quote }}
@@ -174,10 +174,10 @@ spec:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
 
-        - name: {{ .Chart.Name }}-management-workers
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: ["worker"]
+        - name: {{ $.Chart.Name }}-management-workers
+          image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
+          imagePullPolicy: {{ $version.image.pullPolicy }}
+          args: ["service", "worker"]
           env:
             - name: REDIS_HOST
               value: {{ .Values.global.redis.host | quote }}
@@ -218,10 +218,10 @@ spec:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
 
-        - name: {{ .Chart.Name }}-scheduler
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: ["scheduler"]
+        - name: {{ $.Chart.Name }}-scheduler
+          image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
+          imagePullPolicy: {{ $version.image.pullPolicy }}
+          args: ["service", "scheduler"]
           env:
             - name: REDIS_HOST
               value: {{ .Values.global.redis.host | quote }}

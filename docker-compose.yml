@@ -57,7 +57,9 @@ services:
   renku-svc:
     build:
       context: .
-      dockerfile: Dockerfile.svc
+      dockerfile: Dockerfile
+      args:
+        BUILD_CORE_SERVICE: 1
     networks:
       - net
     env_file: .env
@@ -68,7 +70,7 @@ services:
       - "8080:8080"
     volumes:
       - ${PWD}:/code/renku
-    command: "api --debug"
+    command: ["service", "api"]
     labels:
       - "traefik.http.routers.renku-svc.rule=PathPrefix(`/api/renku`)"
       - "traefik.http.middlewares.stripprefix.stripprefix.prefixes=/api"
@@ -88,8 +90,10 @@ services:
   renku-scheduler:
     build:
       context: .
-      dockerfile: Dockerfile.svc
-    command: "scheduler"
+      dockerfile: Dockerfile
+      args:
+        BUILD_CORE_SERVICE: 1
+    command: ["service", "scheduler"]
     depends_on:
       - redis
     networks:
@@ -99,8 +103,10 @@ services:
   renku-worker:
     build:
       context: .
-      dockerfile: Dockerfile.svc
-    command: "worker"
+      dockerfile: Dockerfile
+      args:
+        BUILD_CORE_SERVICE: 1
+    command: ["service", "worker"]
     depends_on:
       - redis
     networks:

@@ -37,7 +37,35 @@ docker-login:
 	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}
 
 service:
-	docker build -f Dockerfile.svc -t $(DOCKER_PREFIX)renku-core:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
+	docker build -f Dockerfile -t $(DOCKER_PREFIX)renku-core:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 --build-arg BUILD_CORE_SERVICE=1 .
 
 cli:
-	docker build -f Dockerfile.cli -t $(DOCKER_PREFIX)renku-python:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
+	docker build -f Dockerfile -t $(DOCKER_PREFIX)renku-python:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
+
+download-templates:
+	@echo "Downloading templates"
+	rm -rf $(TEMPLATE_DIR)
+	mkdir -p $(TEMPLATE_DIR)
+	git clone $(TEMPLATE_URL) $(TEMPLATE_DIR)
+	git --git-dir=$(TEMPLATE_DIR).git --work-tree=$(TEMPLATE_DIR) checkout $(TEMPLATE_REFERENCE)
+	rm -rf $(TEMPLATE_DIR).git
+
+build-package: download-templates
+	@echo "Building package"
+	poetry build
+
+publish-package: build-package
+	@echo "Publishing package"
+	poetry config pypi-token.pypi ${PYPI_TOKEN}
+	poetry publish
+
+build-lock-package: download-templates
+	@echo "Building package"
+	poetry-dynamic-versioning
+	poetry run poetry-lock-package --build
+	sed -i --regexp-extended 's/^version\s=\s"[^"]+"/version = "0.0.0"/gm' pyproject.toml
+	sed -i --regexp-extended 's/^__version__\s=\s"[^"]+"/__version__ = "0.0.0"/gm' renku/version.py
+
+publish-lock-package: build-lock-package
+	@echo "Publishing package"
+	twine upload -u __token__ -p ${PYPI_TOKEN} dist/renku_lock*
