@@ -627,7 +627,7 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, client, provider):
-    """Test executing a workflow with --set for a renku.api.Parameter."""
+    """Test executing a workflow with --set for a renku.api.Input."""
     script = client.path / "script.py"
     output = client.path / "output"
     input = client.path / "input"
@@ -658,7 +658,7 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, client, provider):
-    """Test executing a workflow with --set for a renku.api.Parameter."""
+    """Test executing a workflow with --set for a renku.api.Output."""
     script = client.path / "script.py"
     output = client.path / "output"
     other_output = client.path / "other_output"
@@ -686,7 +686,7 @@ def test_workflow_execute_command_with_api_output_set(runner, run_shell, project
 
 
 def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, project, capsys, client):
-    """Test executing a workflow with --set for a renku.api.Parameter."""
+    """Test executing a workflow with duplicate output with differing path."""
     script = client.path / "script.py"
     output = client.path / "output"
     other_output = client.path / "other_output"
@@ -700,13 +700,11 @@ def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, p
     result = run_shell(f"renku run --name run1 -- python {script.name}")
 
     # Assert expected empty stdout.
-    assert (
-        b"Error: Invalid parameter value - Duplicate input, output or parameter names found: my-output\n" == result[0]
-    )
+    assert b"Error: Invalid parameter value - Duplicate input/output name found: my-output\n" in result[0]
 
 
 def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_shell, project, capsys, client):
-    """Test executing a workflow with --set for a renku.api.Parameter."""
+    """Test executing a workflow with duplicate output with same path."""
     script = client.path / "script.py"
     output = client.path / "output"
 
@@ -726,32 +724,32 @@ def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_sh
 
 
 def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, project, capsys, client):
-    """Test executing a workflow with --set for a renku.api.Parameter."""
+    """Test executing a workflow with duplicate input with differing path."""
     script = client.path / "script.py"
     input = client.path / "input"
     other_input = client.path / "other_input"
 
     with client.commit():
         script.write_text(
-            f"from renku.api import Output\nopen(Output('my-input', '{input.name}'), 'w')\n"
-            f"open(Output('my-input', '{other_input.name}'), 'w')"
+            f"from renku.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
+            f"open(Input('my-input', '{other_input.name}'), 'w')"
         )
 
     result = run_shell(f"renku run --no-output --name run1 -- python {script.name}")
 
     # Assert expected empty stdout.
-    assert b"Error: Invalid parameter value - Duplicate input, output or parameter names found: my-input\n" == result[0]
+    assert b"Error: Invalid parameter value - Duplicate input/output name found: my-input\n" in result[0]
 
 
 def test_workflow_execute_command_with_api_valid_duplicate_input(runner, run_shell, project, capsys, client):
-    """Test executing a workflow with --set for a renku.api.Parameter."""
+    """Test executing a workflow with duplicate input with same path."""
     script = client.path / "script.py"
     input = client.path / "input"
 
     with client.commit():
         script.write_text(
-            f"from renku.api import Output\nopen(Output('my-input', '{input.name}'), 'w')\n"
-            f"open(Output('my-input', '{input.name}'), 'w')"
+            f"from renku.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
+            f"open(Input('my-input', '{input.name}'), 'w')"
         )
 
     result = run_shell(f"renku run --no-output --name run1 -- python {script.name}")

@@ -655,7 +655,7 @@ class PlanFactory:
         """Read indirect inputs list and add them to explicit inputs."""
         indirect_inputs_list = get_indirect_inputs_path(self.working_dir)
 
-        for indirect_input, name in self._read_files_list(indirect_inputs_list):
+        for name, indirect_input in read_files_list(indirect_inputs_list).items():
             # treat indirect inputs like explicit inputs
             path = Path(os.path.abspath(indirect_input))
             self.explicit_inputs.append((path, name))
@@ -667,7 +667,7 @@ class PlanFactory:
         """Read indirect outputs list and add them to explicit outputs."""
         indirect_outputs_list = get_indirect_outputs_path(self.working_dir)
 
-        for indirect_output, name in self._read_files_list(indirect_outputs_list):
+        for name, indirect_output in read_files_list(indirect_outputs_list).items():
             # treat indirect outputs like explicit outputs
             path = Path(os.path.abspath(indirect_output))
             self.explicit_outputs.append((path, name))
@@ -676,23 +676,6 @@ class PlanFactory:
         """Yield tuples with input id and path."""
         for input_ in self.inputs:
             yield input_.id, os.path.normpath(os.path.join(basedir, input_.default_value))
-
-    @staticmethod
-    def _read_files_list(files_list):
-        """Read files list where each line is a filepath."""
-        try:
-            path = str(files_list)
-            with open(path, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        if ":::" in line:
-                            indirect_path, name = line.rsplit(":::", 1)
-                            yield Path(os.path.abspath(indirect_path)), name
-                        else:
-                            yield Path(os.path.abspath(line)), None
-        except FileNotFoundError:
-            return
 
     @inject.autoparams("project_gateway")
     def to_plan(
@@ -717,6 +700,35 @@ class PlanFactory:
         )
 
 
+def read_files_list(files_list: Path):
+    """Read files list yaml containing name:path pairs."""
+
+    if not files_list.exists():
+        return {}
+
+    data = yaml.safe_load(files_list.read_text())
+
+    if not isinstance(data, dict):
+        raise errors.OperationError("Run parameters must be a dictionary.")
+
+    return data
+
+
+def add_to_files_list(file_list_path: Path, name: str, path: Union[str, Path]):
+    """Add a parameter to indirect parameters."""
+    data = read_files_list(file_list_path)
+
+    if name in data and data[name] != str(path):
+        raise errors.ParameterError(f"Duplicate input/output name found: {name}")
+
+    data[name] = str(path)
+
+    yaml_data = yaml.dump(data)
+
+    file_list_path.parent.mkdir(exist_ok=True, parents=True)
+    file_list_path.write_text(yaml_data)
+
+
 def delete_indirect_files_list(working_dir):
     """Remove indirect inputs, outputs, and parameters list."""
     paths = [
@@ -734,13 +746,13 @@ def delete_indirect_files_list(working_dir):
 def get_indirect_inputs_path(client_path):
     """Return path to file that contains indirect inputs list."""
     parent = _get_indirect_parent_path(client_path)
-    return parent / "inputs.txt"
+    return parent / "inputs.yml"
 
 
 def get_indirect_outputs_path(client_path):
     """Return path to file that contains indirect outputs list."""
     parent = _get_indirect_parent_path(client_path)
-    return parent / "outputs.txt"
+    return parent / "outputs.yml"
 
 
 def get_indirect_parameters_path(client_path):
@@ -781,6 +793,9 @@ def read_indirect_parameters(working_dir):
 def add_indirect_parameter(working_dir, name, value):
     """Add a parameter to indirect parameters."""
     data = read_indirect_parameters(working_dir)
+
+    if name in data and data[name] != value:
+        raise errors.ParameterError(f"Duplicate parameter names found: {name}")
     data[name] = value
 
     yaml_data = yaml.dump(data)

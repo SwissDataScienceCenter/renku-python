@@ -54,6 +54,7 @@ from renku.api.models.project import ensure_project_context
 from renku.core import errors
 from renku.core.management.workflow.plan_factory import (
     add_indirect_parameter,
+    add_to_files_list,
     get_indirect_inputs_path,
     get_indirect_outputs_path,
 )
@@ -64,7 +65,10 @@ name_pattern = re.compile("[a-zA-Z0-9-_]+")
 
 class _PathBase(PathLike):
     @ensure_project_context
-    def __init__(self, name: str, path: Union[str, Path], project):
+    def __init__(self, name: str, path: Union[str, Path], project=None):
+        if not name:
+            raise errors.ParameterError("'name' must be set.")
+
         if name and not name_pattern.match(name):
             raise errors.ParameterError(
                 f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
@@ -79,10 +83,8 @@ class _PathBase(PathLike):
             self._path = Path(path)
 
             indirect_list_path = self._get_indirect_list_path(project.path)
-            indirect_list_path.parent.mkdir(exist_ok=True, parents=True)
-            with open(indirect_list_path, "a") as file_:
-                file_.write(f"{path}:::{name}")
-                file_.write("\n")
+
+            add_to_files_list(indirect_list_path, name, self._path)
 
     @staticmethod
     def _get_indirect_list_path(project_path):
@@ -117,6 +119,9 @@ class Output(_PathBase):
 @ensure_project_context
 def parameter(name, value, project):
     """Store parameter's name and value."""
+    if not name:
+        raise errors.ParameterError("'name' must be set.")
+
     if not name_pattern.match(name):
         raise errors.ParameterError(
             f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
