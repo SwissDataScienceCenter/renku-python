@@ -93,16 +93,6 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _LFS_HEADER = "version https://git-lfs.github.com/spec/"
 
-    RENKU_PROTECTED_PATHS = [
-        "/.renku",
-        "/.renku/**",
-        "Dockerfile*",
-        RENKU_LFS_IGNORE_PATH,
-        ".dockerignore",
-        ".gitignore",
-        "*.yml",
-    ]
-
     @cached_property
     def storage_installed(self):
         """Verify that git-lfs is installed and on system PATH."""

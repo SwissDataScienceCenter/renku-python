@@ -45,5 +45,5 @@ def test_renku_in_lfs_migrate_exclude_filter(client):
     """Test .renku directory is in exclude filter of `lfs migrate info`."""
     _, excludes = client.get_lfs_migrate_filters()
 
-    assert ",/.renku," in excludes[1]
-    assert ",/.renku/**," in excludes[1]
+    assert ",.renku," in excludes[1]
+    assert ",.renku/**," in excludes[1]
