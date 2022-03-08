@@ -27,7 +27,7 @@ from collections import defaultdict
 from pathlib import Path
 from shutil import move, which
 from subprocess import PIPE, STDOUT, check_output, run
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import attr
 import pathspec
@@ -93,6 +93,16 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _LFS_HEADER = "version https://git-lfs.github.com/spec/"
 
+    RENKU_PROTECTED_PATHS = [
+        "/.renku",
+        "/.renku/**",
+        "Dockerfile*",
+        RENKU_LFS_IGNORE_PATH,
+        ".dockerignore",
+        ".gitignore",
+        "*.yml",
+    ]
+
     @cached_property
     def storage_installed(self):
         """Verify that git-lfs is installed and on system PATH."""
@@ -123,13 +133,12 @@ class StorageApiMixin(RepositoryApiMixin):
     def renku_lfs_ignore(self):
         """Gets pathspec for files to not add to LFS."""
         ignore_path = self.path / self.RENKU_LFS_IGNORE_PATH
-        renku_protected_paths = ["/.renku"]
 
         if not os.path.exists(ignore_path):
-            return pathspec.PathSpec.from_lines("renku_gitwildmatch", renku_protected_paths)
+            return pathspec.PathSpec.from_lines("renku_gitwildmatch", self.RENKU_PROTECTED_PATHS)
         with ignore_path.open("r") as f:
             # NOTE: Append `renku_protected_paths` at the end to give it the highest priority
-            lines = itertools.chain(f, renku_protected_paths)
+            lines = itertools.chain(f, self.RENKU_PROTECTED_PATHS)
             return pathspec.PathSpec.from_lines("renku_gitwildmatch", lines)
 
     @property
@@ -418,7 +427,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
         return track_paths
 
-    def get_lfs_migrate_filters(self):
+    def get_lfs_migrate_filters(self) -> Tuple[List[str], List[str]]:
         """Gets include, exclude and above filters for lfs migrate."""
         includes = []
         excludes = []
@@ -432,27 +441,34 @@ class StorageApiMixin(RepositoryApiMixin):
 
             if p.include:  # File ignored by LFS
                 excludes.append(pattern)
+                if pattern not in self.RENKU_PROTECTED_PATHS:
+                    excludes.append(f"{pattern.strip()}/**")
             else:
                 includes.append(pattern)
+                if pattern not in self.RENKU_PROTECTED_PATHS:
+                    includes.append(f"{pattern.strip()}/**")
 
         if excludes:
             excludes = ["--exclude", ",".join(excludes)]
         if includes:
             includes = ["--include", ",".join(includes)]
 
-        above = ["--above", str(self.minimum_lfs_file_size)]
+        return includes, excludes
 
-        return includes, excludes, above
-
-    def check_lfs_migrate_info(self, everything=False):
+    def check_lfs_migrate_info(self, everything=False, use_size_filter=True):
         """Return list of file groups in history should be in LFS."""
         ref = ["--everything"] if everything else ["--include-ref", self.repository.active_branch.name]
 
-        includes, excludes, above = self.get_lfs_migrate_filters()
+        includes, excludes = self.get_lfs_migrate_filters()
 
         ignore_pointers = ["--pointers", "ignore"]
 
-        command = self._CMD_STORAGE_MIGRATE_INFO + ref + above + includes + excludes
+        command = self._CMD_STORAGE_MIGRATE_INFO + ref + includes + excludes
+
+        # NOTE: ``lfs migrate info`` supports ``--above`` while ``lfs migrate import`` doesn't.
+        if use_size_filter:
+            above = ["--above", str(self.minimum_lfs_file_size)]
+            command += above
 
         try:
             lfs_output = run(
@@ -479,28 +495,26 @@ class StorageApiMixin(RepositoryApiMixin):
             if match:
                 groups.append(match.groups()[0])
 
+        if groups and use_size_filter:
+            # NOTE: Since there are some large files, remove the size filter so that users get list of all files that
+            # will be moved to LFS.
+            return self.check_lfs_migrate_info(everything=everything, use_size_filter=False)
+
         return groups
 
     def migrate_files_to_lfs(self, paths):
         """Migrate files to Git LFS."""
-        if not self.has_graph_files:
-            raise errors.OperationError(
-                "This command is only supported with the new graph metadata, which doesn't exist. "
-                "Create it by running `renku graph generate`."
-            )
-
         if paths:
             includes = ["--include", ",".join(paths)]
             excludes = []
-            above = []
         else:
-            includes, excludes, above = self.get_lfs_migrate_filters()
+            includes, excludes = self.get_lfs_migrate_filters()
 
         tempdir = Path(tempfile.mkdtemp())
         map_path = tempdir / "objectmap.csv"
         object_map = [f"--object-map={map_path}"]
 
-        command = self._CMD_STORAGE_MIGRATE_IMPORT + above + includes + excludes + object_map
+        command = self._CMD_STORAGE_MIGRATE_IMPORT + includes + excludes + object_map
 
         try:
             lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True)
