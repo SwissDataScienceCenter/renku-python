@@ -26,9 +26,17 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
-from renku.core.commands.dataset import add_to_dataset, create_dataset, file_unlink, list_datasets, list_files
+from renku.core.commands.dataset import (
+    add_to_dataset_command,
+    create_dataset_command,
+    file_unlink_command,
+    list_datasets_command,
+    list_files_command,
+)
 from renku.core.errors import ParameterError
-from renku.core.management.datasets import DatasetsProvenance
+from renku.core.management.dataset.context import DatasetContext
+from renku.core.management.dataset.dataset_add import add_data_to_dataset
+from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Dataset, is_dataset_name_valid
@@ -57,16 +65,14 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         if path == "temp":
             path = str(directory_tree / "file1")
 
-        with client_with_injection.with_dataset(name="dataset", create=True, commit_database=True) as d:
-            d.creators = [Person(name="me", email="me@example.com", id="me_id")]
-            client_with_injection.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=overwrite)
+        dataset = add_data_to_dataset("dataset", [f"{scheme}{path}"], overwrite=overwrite, create=True)
 
         target_path = os.path.join(DATA_DIR, "dataset", "file1")
 
         with open(target_path) as f:
             assert f.read() == "file1 content"
 
-        assert d.find_file(target_path)
+        assert dataset.find_file(target_path)
 
         # check that the imported file is read-only
         assert not os.access(target_path, stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -74,19 +80,17 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         # check the linking
         if scheme in ("", "file://"):
             shutil.rmtree("./data/dataset")
-            with client_with_injection.with_dataset(name="dataset") as d:
-                d.creators = [Person(name="me", email="me@example.com", id="me_id")]
-                client_with_injection.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=True)
+            # NOTE: To simulate loading from persistent storage like what a separate renku command would do
+            dataset.freeze()
+            add_data_to_dataset("dataset", [f"{scheme}{path}"], overwrite=True)
             assert os.path.exists(target_path)
 
 
 def test_data_add_recursive(directory_tree, client_with_injection):
     """Test recursive data imports."""
-    with client_with_injection.with_dataset(name="dataset", create=True) as dataset:
-        dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
-        client_with_injection.add_data_to_dataset(dataset, [str(directory_tree / "dir1")])
+    dataset = add_data_to_dataset("dataset", [str(directory_tree / "dir1")], create=True)
 
-        assert os.path.basename(os.path.dirname(dataset.files[0].entity.path)) == "dir1"
+    assert os.path.basename(os.path.dirname(dataset.files[0].entity.path)) == "dir1"
 
 
 def test_creator_parse():
@@ -106,7 +110,7 @@ def test_creator_parse():
 
 def test_creators_with_same_email(client_with_injection, load_dataset_with_injection):
     """Test creators with different names and same email address."""
-    with client_with_injection.with_dataset(name="dataset", create=True, commit_database=True) as dataset:
+    with DatasetContext(name="dataset", create=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
         DatasetsProvenance().add_or_update(dataset)
 
@@ -116,9 +120,9 @@ def test_creators_with_same_email(client_with_injection, load_dataset_with_injec
     assert {c.name for c in dataset.creators} == {"me", "me2"}
 
 
-def test_create_dataset_custom_message(project):
+def test_create_dataset_command_custom_message(project):
     """Test create dataset custom message."""
-    create_dataset().with_commit_message("my dataset").with_database(write=True).build().execute(
+    create_dataset_command().with_commit_message("my dataset").with_database(write=True).build().execute(
         "ds1", title="", description="", creators=[]
     )
 
@@ -128,11 +132,11 @@ def test_create_dataset_custom_message(project):
 
 def test_list_datasets_default(project):
     """Test a default dataset listing."""
-    create_dataset().with_commit_message("my dataset").with_database(write=True).build().execute(
+    create_dataset_command().with_commit_message("my dataset").with_database(write=True).build().execute(
         "ds1", title="", description="", creators=[]
     )
 
-    datasets = list_datasets().with_database().build().execute().output
+    datasets = list_datasets_command().with_database().build().execute().output
 
     assert isinstance(datasets, list)
     assert "ds1" in [dataset.title for dataset in datasets]
@@ -140,14 +144,14 @@ def test_list_datasets_default(project):
 
 def test_list_files_default(project, tmpdir):
     """Test a default file listing."""
-    create_dataset().with_commit_message("my dataset").with_database(write=True).build().execute(
+    create_dataset_command().with_commit_message("my dataset").with_database(write=True).build().execute(
         "ds1", title="", description="", creators=[]
     )
     data_file = tmpdir / Path("some-file")
     data_file.write_text("1,2,3", encoding="utf-8")
 
-    add_to_dataset().build().execute([str(data_file)], "ds1")
-    files = list_files().build().execute(datasets=["ds1"]).output
+    add_to_dataset_command().build().execute("ds1", [str(data_file)])
+    files = list_files_command().build().execute(datasets=["ds1"]).output
 
     assert isinstance(files, list)
     assert "some-file" in [Path(f.entity.path).name for f in files]
@@ -156,11 +160,13 @@ def test_list_files_default(project, tmpdir):
 def test_unlink_default(directory_tree, client):
     """Test unlink default behaviour."""
     with chdir(client.path):
-        create_dataset().with_database(write=True).build().execute("dataset")
-        add_to_dataset().with_database(write=True).build().execute([str(directory_tree / "dir1")], "dataset")
+        create_dataset_command().with_database(write=True).build().execute("dataset")
+        add_to_dataset_command().with_database(write=True).build().execute(
+            dataset_name="dataset", urls=[str(directory_tree / "dir1")]
+        )
 
     with pytest.raises(ParameterError):
-        file_unlink().build().execute("dataset", (), ())
+        file_unlink_command().build().execute("dataset", (), ())
 
 
 @pytest.mark.xfail

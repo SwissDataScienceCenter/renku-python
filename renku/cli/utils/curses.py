@@ -250,6 +250,8 @@ class CursesActivityGraphViewer:
                 f"{agents}\n\n"
                 "Plan Id:\n"
                 f"{self.selected_activity.association.plan.id}\n\n"
+                "Plan Name:\n"
+                f"{self.selected_activity.association.plan.name}\n\n"
                 "Inputs:\n"
                 f"{usages}\n\n"
                 "Outputs:\n"

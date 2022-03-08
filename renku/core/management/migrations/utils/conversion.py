@@ -153,9 +153,11 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
 
         return dataset_files
 
-    def convert_derived_from(derived_from: Optional[old_datasets.Url]) -> Optional[Url]:
+    def convert_derived_from(
+        derived_from: Optional[old_datasets.Url], same_as: Optional[old_datasets.Url]
+    ) -> Optional[Url]:
         """Return Dataset.id from `derived_from` url."""
-        if not derived_from:
+        if not derived_from or same_as:
             return
 
         url = derived_from.url.get("@id")
@@ -187,7 +189,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             date_created=dataset.date_created,
             date_published=dataset.date_published,
             date_removed=None,
-            derived_from=convert_derived_from(dataset.derived_from),
+            derived_from=convert_derived_from(dataset.derived_from, dataset.same_as),
             description=dataset.description,
             id=None,
             identifier=_convert_dataset_identifier(dataset.identifier),

@@ -165,14 +165,14 @@ def add_activity_if_recent(activity: "Activity", activities: Set["Activity"]):
 def is_external_file(path: Union[Path, str], client_path: Path):
     """Checks if a path is an external file."""
     from renku.core.management import RENKU_HOME
-    from renku.core.management.datasets import DatasetsApiMixin
+    from renku.core.management.dataset.constant import POINTERS
 
     path = client_path / path
     if not path.is_symlink() or not is_subpath(path=path, base=client_path):
         return False
 
     pointer = os.readlink(path)
-    return str(os.path.join(RENKU_HOME, DatasetsApiMixin.POINTERS)) in pointer
+    return str(os.path.join(RENKU_HOME, POINTERS)) in pointer
 
 
 def get_renku_version(client) -> Optional[str]:

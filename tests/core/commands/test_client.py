@@ -56,19 +56,15 @@ def test_safe_class_attributes(tmpdir):
 
     # NOTE: attributes that are allowed on LocalClient
     safe_attributes = [
-        "CACHE",
         "CONFIG_NAME",
         "DATABASE_PATH",
-        "DATASET_IMAGES",
         "DATA_DIR_CONFIG_KEY",
         "DEPENDENCY_GRAPH",
         "DOCKERFILE",
         "LOCK_SUFFIX",
         "METADATA",
-        "POINTERS",
         "RENKU_LFS_IGNORE_PATH",
         "RENKU_PROTECTED_PATHS",
-        "SUPPORTED_SCHEMES",
         "TEMPLATE_CHECKSUMS",
         "_CMD_STORAGE_CHECKOUT",
         "_CMD_STORAGE_CLEAN",

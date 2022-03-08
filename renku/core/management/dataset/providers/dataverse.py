@@ -29,14 +29,14 @@ import attr
 from tqdm import tqdm
 
 from renku.core import errors
-from renku.core.commands.providers.api import ExporterApi, ProviderApi
-from renku.core.commands.providers.dataverse_metadata_templates import (
+from renku.core.management.command_builder import inject
+from renku.core.management.dataset.providers.api import ExporterApi, ProviderApi
+from renku.core.management.dataset.providers.dataverse_metadata_templates import (
     AUTHOR_METADATA_TEMPLATE,
     CONTACT_METADATA_TEMPLATE,
     DATASET_METADATA_TEMPLATE,
 )
-from renku.core.commands.providers.doi import DOIProvider
-from renku.core.management.command_builder import inject
+from renku.core.management.dataset.providers.doi import DOIProvider
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils import communication
@@ -44,7 +44,7 @@ from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.file_size import bytes_to_unit
 
 if TYPE_CHECKING:
-    from renku.core.commands.providers.models import ProviderDataset
+    from renku.core.management.dataset.providers.models import ProviderDataset
 
 DATAVERSE_API_PATH = "api/v1"
 
@@ -314,8 +314,8 @@ class DataverseRecordSerializer:
 
         from marshmallow import pre_load
 
-        from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
         from renku.core.commands.schema.agent import PersonSchema
+        from renku.core.management.dataset.providers.models import ProviderDataset, ProviderDatasetSchema
         from renku.core.models.dataset import DatasetFile
 
         class _DataverseDatasetSchema(ProviderDatasetSchema):
