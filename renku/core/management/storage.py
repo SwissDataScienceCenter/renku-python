@@ -419,6 +419,16 @@ class StorageApiMixin(RepositoryApiMixin):
 
     def get_lfs_migrate_filters(self) -> Tuple[List[str], List[str]]:
         """Gets include, exclude and above filters for lfs migrate."""
+
+        def add_migrate_pattern(pattern, collection):
+            if pattern in self.RENKU_PROTECTED_PATHS:
+                return
+            pattern = pattern.strip()
+            if pattern.endswith("*"):
+                return
+            pattern = pattern.rstrip("/")
+            collection.append(f"{pattern}/**")
+
         includes = []
         excludes = []
         for p in self.renku_lfs_ignore.patterns:
@@ -431,12 +441,10 @@ class StorageApiMixin(RepositoryApiMixin):
 
             if p.include:  # File ignored by LFS
                 excludes.append(pattern)
-                if pattern not in self.RENKU_PROTECTED_PATHS:
-                    excludes.append(f"{pattern.strip()}/**")
+                add_migrate_pattern(pattern, excludes)
             else:
                 includes.append(pattern)
-                if pattern not in self.RENKU_PROTECTED_PATHS:
-                    includes.append(f"{pattern.strip()}/**")
+                add_migrate_pattern(pattern, includes)
 
         if excludes:
             excludes = ["--exclude", ",".join(excludes)]
