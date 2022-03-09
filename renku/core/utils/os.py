@@ -202,8 +202,9 @@ def hash_str(content: str):
 def safe_read_yaml(file: str) -> Dict[str, Any]:
     """Parse a YAML file.
 
-    :returns: In case of success a dictionary of the YAML's content,
-    otherwise raises a ParameterError exception.
+    Returns:
+        In case of success a dictionary of the YAML's content,
+        otherwise raises a ParameterError exception.
     """
     try:
         from renku.core.models import jsonld as jsonld

@@ -78,14 +78,16 @@ class DockerSessionProvider(ISessionProvider):
     def session_provider(self) -> Tuple[ISessionProvider, str]:
         """Supported session provider.
 
-        :returns: a tuple of ``self`` and provider name.
+        Returns:
+            a tuple of ``self`` and provider name.
         """
         return (self, "docker")
 
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
-        :returns: a list of sessions.
+        Returns:
+            list: a list of sessions.
         """
 
         return list(
@@ -112,7 +114,8 @@ class DockerSessionProvider(ISessionProvider):
     ) -> str:
         """Creates an interactive session.
 
-        :returns: a unique id for the created interactive sesssion.
+        Returns:
+            str: a unique id for the created interactive sesssion.
         """
 
         try:

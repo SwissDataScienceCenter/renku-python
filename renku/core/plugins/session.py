@@ -29,7 +29,8 @@ hookspec = pluggy.HookspecMarker("renku")
 def session_provider() -> Tuple[ISessionProvider, str]:
     """Plugin Hook for ``session`` sub-command.
 
-    :returns: A tuple of the plugin itself and the name of the plugin.
+    Returns:
+        A tuple of the plugin itself and the name of the plugin.
     """
     pass
 

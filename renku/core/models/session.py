@@ -42,10 +42,13 @@ class ISessionProvider(metaclass=ABCMeta):
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]) -> Optional[str]:
         """Builds the container image.
 
-        :param image_descriptor: Path to the container image descriptor file.
-        :param image_name: Container image name.
-        :param config: Path to the session provider specific configuration YAML.
-        :returns: a unique id for the created interactive sesssion.
+        Args:
+            image_descriptor: Path to the container image descriptor file.
+            image_name: Container image name.
+            config: Path to the session provider specific configuration YAML.
+
+        Returns:
+            str: a unique id for the created interactive sesssion.
         """
         pass
 
@@ -53,9 +56,12 @@ class ISessionProvider(metaclass=ABCMeta):
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Search for the given container image.
 
-        :param image_name: Container image name.
-        :param config: Path to the session provider specific configuration YAML.
-        :returns: True if the given container images is available locally.
+        Args:
+            image_name: Container image name.
+            config: Path to the session provider specific configuration YAML.
+
+        Returns:
+            bool: True if the given container images is available locally.
         """
         pass
 
@@ -63,7 +69,8 @@ class ISessionProvider(metaclass=ABCMeta):
     def session_provider(self) -> Tuple["ISessionProvider", str]:
         """Supported session provider.
 
-        :returns: a tuple of ``self`` and engine type name.
+        Returns:
+            a tuple of ``self`` and engine type name.
         """
         pass
 
@@ -71,9 +78,12 @@ class ISessionProvider(metaclass=ABCMeta):
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
-        :param project_name: Renku project name.
-        :param config: Path to the session provider specific configuration YAML.
-        :returns: a list of sessions.
+        Args:
+            project_name: Renku project name.
+            config: Path to the session provider specific configuration YAML.
+
+        Returns:
+            a list of sessions.
         """
         pass
 
@@ -91,15 +101,18 @@ class ISessionProvider(metaclass=ABCMeta):
     ) -> str:
         """Creates an interactive session.
 
-        :param image_name: Container image name to be used for the interactive session.
-        :param project_name: The project identifier.
-        :param config: Path to the session provider specific configuration YAML.
-        :param client: Renku client.
-        :param cpu_request: CPU request for the session.
-        :param mem_request: Memory size request for the session.
-        :param disk_request: Disk size request for the session.
-        :param gpu_request: GPU device request for the session.
-        :returns: a unique id for the created interactive sesssion.
+        Args:
+            image_name: Container image name to be used for the interactive session.
+            project_name: The project identifier.
+            config: Path to the session provider specific configuration YAML.
+            client: Renku client.
+            cpu_request: CPU request for the session.
+            mem_request: Memory size request for the session.
+            disk_request: Disk size request for the session.
+            gpu_request: GPU device request for the session.
+
+        Returns:
+            str: a unique id for the created interactive sesssion.
         """
         pass
 
@@ -107,10 +120,14 @@ class ISessionProvider(metaclass=ABCMeta):
     def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
         """Stops all or a given interactive session.
 
-        :param client: Renku client.
-        :param session_name: The unique id of the interactive session.
-        :param stop_all: Specifies whether or not to stop all the running interactive sessions.
-        :returns: True in case session(s) has been successfully stopped
+        Args:
+            client: Renku client.
+            session_name: The unique id of the interactive session.
+            stop_all: Specifies whether or not to stop all the running interactive sessions.
+
+
+        Returns:
+            bool: True in case session(s) has been successfully stopped
         """
         pass
 
@@ -118,7 +135,10 @@ class ISessionProvider(metaclass=ABCMeta):
     def session_url(self, session_name: str) -> str:
         """Get the given session's URL.
 
-        :param session_name: The unique id of the interactive session.
-        :returns: URL of the interactive session.
+        Args:
+            session_name: The unique id of the interactive session.
+
+        Returns:
+            URL of the interactive session.
         """
         pass
