@@ -514,7 +514,7 @@ def clone_repository(
 
             if remote and have_same_remote(remote.url, url):
                 repository.reset(hard=True)
-                repository.fetch(all=True)
+                repository.fetch(all=True, tags=True)
                 # NOTE: By default we checkout remote repository's HEAD since the local HEAD might not point to
                 # the default branch.
                 default_checkout_revision = checkout_revision or "origin/HEAD"

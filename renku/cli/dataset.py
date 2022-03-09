@@ -260,7 +260,7 @@ Updating a dataset:
 
 After adding files from a remote Git repository or importing a dataset from a
 provider like Dataverse or Zenodo, you can check for updates in those files by
-using ``renku dataset update`` command. For Git repositories, this command
+using ``renku dataset update --all`` command. For Git repositories, this command
 checks all remote files and copies over new content if there is any. It does
 not delete files from the local dataset if they are deleted from the remote Git
 repository; to force the delete use ``--delete`` argument. You can update to a
@@ -292,13 +292,16 @@ updates only CSV files from ``my-dataset``:
 Note that putting glob patterns in quotes is needed to tell Unix shell not
 to expand them.
 
-External data are not updated automatically because they require a checksum
-calculation which can take a long time when data is large. To update external
-files pass ``--external`` or ``-e`` to the update command:
+External data are also updated automatically. Since they require a checksum
+calculation which can take a long time when data is large, you can exclude them
+from an update by passing ``--no-external`` flag to the update command:
 
 .. code-block:: console
 
-    $ renku dataset update -e
+    $ renku dataset update --all --no-external
+
+You can use ``--dry-run`` flag to get a preview of what files/datasets will be
+updated by an update operation.
 
 Tagging a dataset:
 
@@ -940,19 +943,66 @@ def import_(uri, name, extract, yes):
 @click.option("-X", "--exclude", default=None, multiple=True, help="Exclude files matching given pattern.")
 @click.option("--ref", default=None, help="Update to a specific commit/tag/branch.")
 @click.option("--delete", is_flag=True, help="Delete local files that are deleted from remote.")
-@click.option("-e", "--external", is_flag=True, help="Update external data.")
-def update(names, creators, include, exclude, ref, delete, external):
+@click.option("-e", "--external", is_flag=True, help="Deprecated")
+@click.option("--no-external", is_flag=True, help="Skip updating external data.")
+@click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all datasets.")
+@click.option("-n", "--dry-run", is_flag=True, help="Show what would have been changed")
+def update(names, creators, include, exclude, ref, delete, external, no_external, update_all, dry_run):
     """Updates files in dataset from a remote Git repo."""
+    from renku.core import errors
     from renku.core.commands.dataset import update_datasets_command
 
     communicator = ClickCallback()
-    update_datasets_command().with_communicator(communicator).build().execute(
-        names=list(names),
-        creators=creators,
-        include=include,
-        exclude=exclude,
-        ref=ref,
-        delete=delete,
-        external=external,
+
+    if external and no_external:
+        raise errors.ParameterError("Cannot pass both '--external' and '--no-external'")
+    elif external:
+        communicator.warn("'-e/--external' argument is deprecated")
+
+    result = (
+        update_datasets_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(
+            names=list(names),
+            creators=creators,
+            include=include,
+            exclude=exclude,
+            ref=ref,
+            delete=delete,
+            no_external=no_external,
+            update_all=update_all,
+            dry_run=dry_run,
+        )
     )
-    click.secho("OK", fg=color.GREEN)
+
+    if dry_run:
+        datasets, dataset_files = result.output
+
+        def get_dataset_files(records):
+            from renku.core.commands.format.tabulate import tabulate
+
+            columns = {"path": ("path", None), "dataset": ("dataset.name", None), "external": ("external", None)}
+            return tabulate(collection=records, columns="path,dataset,external", columns_mapping=columns)
+
+        if not datasets and not dataset_files:
+            click.secho("Everything is up-to-date", fg=color.GREEN)
+            return
+
+        if datasets:
+            names = "\n\t".join(sorted([d.name for d in datasets]))
+            click.echo(f"The following imported datasets will be updated:\n\t{names}\n")
+
+        if not dataset_files:
+            return
+
+        files = [f for f in dataset_files if not f.deleted]
+        if files:
+            files = get_dataset_files(files)
+            click.echo(f"The following files will be updated:\n\n{files}\n")
+
+        deleted_files = [f for f in dataset_files if f.deleted]
+        if deleted_files:
+            files = get_dataset_files(deleted_files)
+            message = " (pass '--delete' to remove them from datasets' metadata)" if not delete else ""
+            click.echo(f"The following files will be deleted{message}:\n\n{files}\n")

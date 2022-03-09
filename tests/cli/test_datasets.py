@@ -1643,9 +1643,9 @@ def test_unavailable_external_files(runner, client, directory_tree, subdirectory
     assert not path.exists()
 
     # Update won't work
-    result = runner.invoke(cli, ["dataset", "update", "--external"])
-    assert 2 == result.exit_code
-    assert "External file not found" in result.output
+    result = runner.invoke(cli, ["dataset", "update", "--all"])
+    assert 1 == result.exit_code
+    assert "Cannot find external file" in result.output
 
     # Renku doctor shows inaccessible files
     result = runner.invoke(cli, ["doctor"])
@@ -1694,7 +1694,7 @@ def test_workflow_with_external_file(runner, client, directory_tree, run, subdir
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["dataset", "update", "--external", "my-data"])
+    result = runner.invoke(cli, ["dataset", "update", "my-data"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["status"])
@@ -1758,7 +1758,8 @@ def test_immutability_after_external_update(runner, client, directory_tree, load
     old_dataset = load_dataset_with_injection("my-data", client)
 
     directory_tree.joinpath("file1").write_text("some updates")
-    assert 0 == runner.invoke(cli, ["dataset", "update", "--external"]).exit_code
+    result = runner.invoke(cli, ["dataset", "update", "my-data"])
+    assert 0 == result.exit_code, result.output
     dataset = load_dataset_with_injection("my-data", client)
 
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
@@ -1769,7 +1770,7 @@ def test_immutability_after_no_update(runner, client, directory_tree, load_datas
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)]).exit_code
     old_dataset = load_dataset_with_injection("my-data", client)
 
-    assert 0 == runner.invoke(cli, ["dataset", "update", "--external"]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
     dataset = load_dataset_with_injection("my-data", client)
 
     assert dataset.id == old_dataset.id
@@ -1966,7 +1967,7 @@ def test_datasets_provenance_after_update(runner, client, directory_tree, get_da
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)]).exit_code
 
     directory_tree.joinpath("file1").write_text("some updates")
-    assert 0 == runner.invoke(cli, ["dataset", "update", "--external"]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         current_version = datasets_provenance.get_by_name("my-data")
@@ -2066,7 +2067,7 @@ def test_immutability_of_dataset_files(runner, client, directory_tree, load_data
 
     # DatasetFile changes when Entity is changed
     write_and_commit_file(client.repository, file1, "changed content")
-    assert 0 == runner.invoke(cli, ["dataset", "update"]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
     v2 = load_dataset_with_injection("my-data", client).find_file(file1)
 
     assert v1.id != v2.id
@@ -2140,10 +2141,23 @@ def test_update_local_file(runner, client, directory_tree, load_dataset_with_inj
     client.repository.commit("file2")
     new_checksum_file2 = client.repository.get_object_hash(file2)
 
+    commit_sha_after_file1_delete = client.repository.head.commit.hexsha
+
     old_dataset = load_dataset_with_injection("my-data", client)
 
     assert new_checksum_file1 != old_dataset.find_file(file1).entity.checksum
     assert new_checksum_file2 != old_dataset.find_file(file2).entity.checksum
+
+    # NOTE: Update dry run
+    result = runner.invoke(cli, ["dataset", "update", "my-data", "--dry-run"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following files will be updated" in result.output
+    assert "The following files will be deleted" not in result.output
+    assert str(file1) in result.output
+    assert str(file2) in result.output
+    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
+    assert not client.repository.is_dirty(untracked_files=True)
 
     result = runner.invoke(cli, ["dataset", "update", "my-data"])
 
@@ -2164,10 +2178,21 @@ def test_update_local_deleted_file(runner, client, directory_tree, load_dataset_
     client.repository.commit("deleted file1")
     commit_sha_after_file1_delete = client.repository.head.commit.hexsha
 
+    # NOTE: Update dry run
+    result = runner.invoke(cli, ["dataset", "update", "--all", "--dry-run"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following files will be updated" not in result.output
+    assert "The following files will be deleted" in result.output
+    assert str(file1) in result.output
+    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
+    assert not client.repository.is_dirty(untracked_files=True)
+
+    # NOTE: Update without `--delete`
     result = runner.invoke(cli, ["dataset", "update", "my-data"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Some files are deleted." in result.output
+    assert "Some files are deleted:" in result.output
     assert "Updated 0 files" in result.output
     assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
     old_dataset = load_dataset_with_injection("my-data", client)
@@ -2187,3 +2212,31 @@ def test_update_local_deleted_file(runner, client, directory_tree, load_dataset_
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Updated 0 files and deleted 0 files" in result.output
+
+
+def test_update_mixed_types(runner, client, directory_tree, load_dataset_with_injection):
+    """Check updating datasets with mixed local and external files."""
+    external_file = directory_tree / "file1"
+    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", "-e", str(external_file)]).exit_code
+
+    local_file = directory_tree / "dir1" / "file2"
+    assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(local_file)]).exit_code
+
+    # Update files
+    external_file.write_text("some external updates")
+
+    file2 = Path(DATA_DIR) / "my-data" / "file2"
+    write_and_commit_file(client.repository, file2, "some updates")
+    new_checksum_file2 = client.repository.get_object_hash(file2)
+
+    old_dataset = load_dataset_with_injection("my-data", client)
+
+    result = runner.invoke(cli, ["dataset", "update", "my-data"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    file1 = Path(DATA_DIR) / "my-data" / "file1"
+    assert "some external updates" == file1.read_text()
+
+    dataset = load_dataset_with_injection("my-data", client)
+    assert new_checksum_file2 == dataset.find_file(file2).entity.checksum
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)

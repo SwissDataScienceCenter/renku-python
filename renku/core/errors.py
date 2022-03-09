@@ -260,6 +260,14 @@ class DatasetNotFound(RenkuException):
         super().__init__(msg)
 
 
+class ExternalFileNotFound(RenkuException):
+    """Raise when an external file is not found."""
+
+    def __init__(self, path):
+        """Build a custom message."""
+        super().__init__(f"Cannot find external file '{path}'")
+
+
 class DatasetExistsError(RenkuException):
     """Raise when trying to create an existing dataset."""
 

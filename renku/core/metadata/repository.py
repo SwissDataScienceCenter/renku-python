@@ -195,6 +195,7 @@ class BaseRepository:
         remote: Union["Remote", str] = None,
         refspec: Union["Branch", str] = None,
         all: bool = False,
+        tags: bool = False,
         unshallow: bool = False,
         depth: int = None,
     ):
@@ -203,7 +204,7 @@ class BaseRepository:
             assert remote is None and refspec is None, "Cannot fetch all while a reference is passed"
 
         self.run_git_command(
-            "fetch", _to_string(remote), _to_string(refspec), all=all, unshallow=unshallow, depth=depth
+            "fetch", _to_string(remote), _to_string(refspec), all=all, unshallow=unshallow, depth=depth, tags=tags
         )
 
     def move(self, *sources: Union[Path, str], destination: Union[Path, str], force: bool = False):

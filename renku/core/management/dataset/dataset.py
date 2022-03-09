@@ -17,22 +17,26 @@
 # limitations under the License.
 """Dataset business logic."""
 
-
 import os
 import re
 import shutil
 import urllib
 from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import patoolib
 
 from renku.core import errors
+from renku.core.commands.view_model.dataset import DatasetFileViewModel, DatasetViewModel
 from renku.core.management.command_builder.command import inject
 from renku.core.management.dataset.constant import renku_dataset_images_path, renku_pointers_path
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.dataset.pointer_file import create_external_file, update_pointer_file
+from renku.core.management.dataset.pointer_file import (
+    create_external_file,
+    is_external_file_updated,
+    update_external_file,
+)
 from renku.core.management.dataset.providers import ProviderFactory
 from renku.core.management.dataset.request_model import ImageRequestModel
 from renku.core.management.dataset.tag import add_dataset_tag, prompt_access_token, prompt_tag_selection
@@ -54,6 +58,7 @@ from renku.core.models.provenance.agent import Person
 from renku.core.models.provenance.annotation import Annotation
 from renku.core.models.tabulate import tabulate
 from renku.core.utils import communication
+from renku.core.utils.datetime8601 import local_now
 from renku.core.utils.doi import is_doi
 from renku.core.utils.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.utils.metadata import is_external_file
@@ -478,19 +483,30 @@ def update_datasets(
     exclude,
     ref,
     delete,
+    no_external,
+    update_all,
+    dry_run,
     client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
-    external=False,
-):
+) -> Tuple[List[DatasetViewModel], List[DatasetFileViewModel]]:
     """Update dataset files."""
+    if not update_all and not names and not include and not exclude and not dry_run:
+        raise errors.ParameterError("Either NAMES, -a/--all, -n/--dry-run, or --include/--exclude should be specified")
+
     client = client_dispatcher.current_client
 
-    ignored_datasets = []
+    imported_datasets: List[Dataset] = []
 
     all_datasets = dataset_gateway.get_all_active_datasets()
 
-    if (include or exclude) and names and any(d.same_as for d in all_datasets if d.name in names):
-        raise errors.UsageError("--include/--exclude is incompatible with datasets created by 'renku dataset import'")
+    if names and update_all:
+        raise errors.ParameterError("Cannot pass dataset names with -a/--all")
+    elif (include or exclude) and update_all:
+        raise errors.ParameterError("Cannot pass --include/--exclude with -a/--all")
+    elif (include or exclude) and names and any(d.same_as for d in all_datasets if d.name in names):
+        raise errors.ParameterError(
+            "--include/--exclude is incompatible with datasets created by 'renku dataset import'"
+        )
 
     names_provided = bool(names)
 
@@ -513,51 +529,54 @@ def update_datasets(
             if record.is_last_version(uri) and record.version == dataset.version:
                 continue
 
-            uri = record.latest_uri
+            if not dry_run:
+                uri = record.latest_uri
 
-            # NOTE: set extract to false if there are any archives present in the dataset
-            extract = True
-            for f in dataset.files:
-                try:
-                    patoolib.get_archive_format(f.entity.path)
-                except patoolib.util.PatoolError:
-                    continue
-                else:
-                    extract = False
-                    break
+                # NOTE: set extract to false if there are any archives present in the dataset
+                extract = True
+                for f in dataset.files:
+                    try:
+                        patoolib.get_archive_format(f.entity.path)
+                    except patoolib.util.PatoolError:
+                        continue
+                    else:
+                        extract = False
+                        break
 
-            import_dataset(
-                uri=uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
-            )
+                import_dataset(
+                    uri=uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
+                )
 
-            communication.echo(f"Updated dataset '{dataset.name}' from remote provider")
+                communication.echo(f"Updated dataset '{dataset.name}' from remote provider")
 
             if names:
                 names.remove(dataset.name)
-            ignored_datasets.append(dataset.name)
+            imported_datasets.append(dataset)
     else:
-        ignored_datasets = [d.name for d in all_datasets if d.same_as]
+        imported_datasets = [d for d in all_datasets if d.same_as]
+
+    imported_datasets_view_models = [DatasetViewModel.from_dataset(d) for d in imported_datasets]
 
     if names_provided and not names:
-        return
+        return imported_datasets_view_models, []
 
     records = filter_dataset_files(
-        names=names, creators=creators, include=include, exclude=exclude, ignore=ignored_datasets
+        names=names, creators=creators, include=include, exclude=exclude, ignore=[d.name for d in imported_datasets]
     )
 
     if not records:
-        if ignored_datasets:
-            return
+        if imported_datasets:
+            return imported_datasets_view_models, []
         raise errors.ParameterError("No files matched the criteria.")
 
-    possible_updates = []
+    git_files = []
     unique_remotes = set()
     external_files = []
     local_files = []
 
     for file in records:
         if file.based_on:
-            possible_updates.append(file)
+            git_files.append(file)
             unique_remotes.add(file.based_on.url)
         elif file.is_external:
             external_files.append(file)
@@ -570,30 +589,46 @@ def update_datasets(
             "Limit list of files to be updated to one repository. See 'renku dataset update -h' for more information."
         )
 
-    if external_files:
-        if external:
-            update_external_files(client, external_files)
-        else:
-            communication.echo("To update external files run update command with '--external' flag.")
-
     updated_files = []
     deleted_files = []
 
-    if possible_updates:
-        updated_files, deleted_files = update_dataset_git_files(files=possible_updates, ref=ref, delete=delete)
+    if external_files and not no_external:
+        updated = update_external_files(client, external_files, dry_run=dry_run)
+        updated_files.extend(updated)
 
-    if local_files:
-        updated, deleted = update_dataset_local_files(records=local_files, delete=delete)
+    if git_files:
+        updated, deleted = update_dataset_git_files(files=git_files, ref=ref, delete=delete, dry_run=dry_run)
         updated_files.extend(updated)
         deleted_files.extend(deleted)
 
-    if deleted_files and not delete:
-        communication.echo("Some files are deleted. To also delete them from datasets' metadata use '--delete' flag.")
+    if local_files:
+        updated, deleted = update_dataset_local_files(records=local_files, delete=delete, dry_run=dry_run)
+        updated_files.extend(updated)
+        deleted_files.extend(deleted)
 
-    message = f"Updated {len(updated_files)} files"
-    if delete:
-        message += f" and deleted {len(deleted_files)} files"
-    communication.echo(message)
+    if not dry_run:
+        if deleted_files and not delete:
+            communication.echo("Some files are deleted: Pass '--delete' to remove them from datasets' metadata")
+        if updated_files or (deleted_files and delete):
+            file_paths = {str(client.path / f.entity.path) for f in updated_files}
+            # Force-add to include possible ignored files that are in datasets
+            client.repository.add(*file_paths, force=True)
+            client.repository.add(renku_pointers_path(client), force=True)
+
+            _update_datasets_files_metadata(client, updated_files, deleted_files, delete)
+
+        message = f"Updated {len(updated_files)} files"
+        if delete:
+            message += f" and deleted {len(deleted_files)} files"
+        communication.echo(message)
+    else:
+        for file in deleted_files:
+            file.date_removed = local_now()
+
+    dataset_files_view_models = [
+        DatasetFileViewModel.from_dataset_file(f, f.dataset) for f in updated_files + deleted_files
+    ]
+    return imported_datasets_view_models, dataset_files_view_models
 
 
 def show_dataset(name):
@@ -706,7 +741,9 @@ def move_files(
 
 
 @inject.autoparams("client_dispatcher")
-def update_dataset_local_files(client_dispatcher: IClientDispatcher, records: List[DynamicProxy], delete: bool = False):
+def update_dataset_local_files(
+    client_dispatcher: IClientDispatcher, records: List[DynamicProxy], delete: bool, dry_run: bool
+) -> Tuple[List[DynamicProxy], List[DynamicProxy]]:
     """Update files metadata from the git history."""
     client = client_dispatcher.current_client
 
@@ -742,9 +779,6 @@ def update_dataset_local_files(client_dispatcher: IClientDispatcher, records: Li
                 updated_files.append(file)
     finally:
         communication.finalize_progress(progress_text)
-
-    if updated_files or (deleted_files and delete):
-        _update_datasets_files_metadata(client, updated_files, deleted_files, delete)
 
     return updated_files, deleted_files
 
@@ -786,7 +820,7 @@ def _update_datasets_files_metadata(
             client=client, path=file.entity.path, based_on=file.based_on, source=file.source
         )
         modified_datasets[file.dataset.name] = file.dataset
-        file.dataset.add_or_update_files([new_file])
+        file.dataset.add_or_update_files(new_file)
 
     if delete:
         for file in deleted_files:
@@ -800,8 +834,8 @@ def _update_datasets_files_metadata(
 
 @inject.autoparams("client_dispatcher")
 def update_dataset_git_files(
-    client_dispatcher: IClientDispatcher, files: List[DynamicProxy], ref: str, delete: bool = False
-):
+    client_dispatcher: IClientDispatcher, files: List[DynamicProxy], ref: str, delete: bool, dry_run: bool
+) -> Tuple[List[DynamicProxy], List[DynamicProxy]]:
     """Update files and dataset metadata according to their remotes.
 
     :param files: List of files to be updated
@@ -844,25 +878,22 @@ def update_dataset_git_files(
             src = remote_repository.path / based_on.path
             dst = client.renku_path.parent / file.entity.path
 
-            if changed:
-                if src.exists():
+            if not found:
+                if not dry_run and delete:
+                    delete_file(dst, follow_symlinks=True)
+                    client.repository.add(dst, force=True)
+                deleted_files.append(file)
+            elif changed:
+                if not dry_run:
                     # Fetch file if it is tracked by Git LFS
                     remote_client.pull_paths_from_storage(remote_client.path / based_on.path)
                     if is_external_file(path=src, client_path=remote_client.path):
                         delete_file(dst, follow_symlinks=True)
-                        create_external_file(client, src.resolve(), dst)
+                        create_external_file(client=client, target=src.resolve(), path=dst)
                     else:
                         shutil.copy(src, dst)
                     file.based_on = RemoteEntity(checksum=checksum, path=based_on.path, url=based_on.url)
-                    updated_files.append(file)
-                else:
-                    # File was removed or renamed
-                    found = False
-
-            if not found:
-                if delete:
-                    delete_file(dst, follow_symlinks=True)
-                deleted_files.append(file)
+                updated_files.append(file)
     finally:
         communication.finalize_progress(progress_text)
 
@@ -870,50 +901,29 @@ def update_dataset_git_files(
         # Nothing to commit or update
         return [], deleted_files
 
-    # Commit changes in files
-
-    file_paths = {str(client.path / f.entity.path) for f in updated_files + deleted_files}
-    # Force-add to include possible ignored files that are in datasets
-    client.repository.add(*file_paths, force=True)
-
-    _update_datasets_files_metadata(client, updated_files, deleted_files, delete)
-
     return updated_files, deleted_files
 
 
-def update_external_files(client: "LocalClient", records: List[DynamicProxy]):
+def update_external_files(client: "LocalClient", records: List[DynamicProxy], dry_run: bool) -> List[DynamicProxy]:
     """Update files linked to external storage."""
-    updated_files_paths = []
-    updated_datasets = {}
+    updated_files = []
 
     for file in records:
         if file.is_external:
-            path = client.path / file.entity.path
-            link = path.parent / os.readlink(path)
-            pointer_file = client.path / link
-            pointer_file = update_pointer_file(client, pointer_file)
-            if pointer_file is not None:
-                relative = os.path.relpath(pointer_file, path.parent)
-                os.remove(path)
-                os.symlink(relative, path)
-                updated_files_paths.append(str(path))
-                updated_datasets[file.dataset.name] = file.dataset
+            try:
+                updated, checksum = is_external_file_updated(client_path=client.path, path=file.entity.path)
+            except errors.ExternalFileNotFound as e:
+                if not dry_run:
+                    raise
+                communication.warn(str(e))
+                continue
 
-    if not updated_files_paths:
-        return
+            if updated:
+                if not dry_run:
+                    update_external_file(client=client, path=file.entity.path, checksum=checksum)
+                updated_files.append(file)
 
-    client.repository.add(*updated_files_paths, force=True)
-    client.repository.add(renku_pointers_path(client), force=True)
-
-    datasets_provenance = DatasetsProvenance()
-
-    for dataset in updated_datasets.values():
-        for file in dataset.files:
-            if str(client.path / file.entity.path) in updated_files_paths:
-                new_file = DatasetFile.from_path(client=client, path=file.entity.path, source=file.source)
-                dataset.add_or_update_files(new_file)
-
-        datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+    return updated_files
 
 
 @inject.autoparams()
