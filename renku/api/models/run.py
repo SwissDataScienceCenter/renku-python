@@ -80,7 +80,7 @@ class _PathBase(PathLike):
 
     @property
     def path(self):
-        """ """
+        """Return path of file."""
         return self._path
 
 

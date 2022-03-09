@@ -38,7 +38,14 @@ def get_status_command():
 @inject.autoparams()
 def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivityGateway, paths=None):
     def get_dependant_activities_from(start_activity):
-        """Return a set of activity and all its downstream activities."""
+        """Return a set of activity and all its downstream activities.
+
+        Args:
+            start_activity: Root activity to start from.
+
+        Returns:
+            Root activity and all its downstream activities.
+        """
         all_activities = activity_gateway.get_downstream_activities(start_activity)
         all_activities.add(start_activity)
         return all_activities
@@ -86,7 +93,16 @@ def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivit
 
 
 def _get_modified_paths(activity_gateway, repository) -> Tuple[Set[Tuple[Activity, Entity]], Set[str]]:
-    """Get modified and deleted usages/inputs of a list of activities."""
+    """Get modified and deleted usages/inputs of a list of activities.
+
+    Args:
+        activity_gateway: Activity gateway.
+        repository: Current ``Repository``.
+
+    Returns:
+        Tuple[Set[Tuple[Activity, Entity]], Set[str]]: Tuple of Activities with their modified paths
+            and deleted paths.
+    """
     all_activities = activity_gateway.get_all_activities()
 
     relevant_activities = filter_overridden_activities(all_activities)

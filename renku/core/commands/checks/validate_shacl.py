@@ -29,7 +29,14 @@ from renku.core.utils.shacl import validate_graph
 
 
 def _shacl_graph_to_string(graph):
-    """Converts a shacl validation graph into human readable format."""
+    """Converts a shacl validation graph into human readable format.
+
+    Args:
+        graph:  SHACL validation output graph.
+
+    Returns:
+        Text describing problems found in validation.
+    """
     from rdflib.namespace import Namespace
     from rdflib.term import BNode
 
@@ -58,7 +65,15 @@ def _shacl_graph_to_string(graph):
 
 
 def check_project_structure(client, fix):
-    """Validate project metadata against SHACL."""
+    """Validate project metadata against SHACL.
+
+    Args:
+        client: ``LocalClient``.
+        fix: Whether to fix found issues.
+
+    Returns:
+        Tuple of whether project structure is valid and string of found problems.
+    """
     data = ProjectSchema().dump(client.project)
 
     conform, graph, t = _check_shacl_structure(data)
@@ -73,7 +88,16 @@ def check_project_structure(client, fix):
 
 @inject.autoparams()
 def check_datasets_structure(client, fix, dataset_gateway: IDatasetGateway):
-    """Validate dataset metadata against SHACL."""
+    """Validate dataset metadata against SHACL.
+
+    Args:
+        client:
+        fix:
+        dataset_gateway(IDatasetGateway):
+
+    Returns:
+
+    """
     ok = True
 
     problems = [f"{WARNING}Invalid structure of dataset metadata"]
@@ -107,7 +131,14 @@ def _check_shacl_structure_for_path(path):
 
 
 def _check_shacl_structure(data):
-    """Validates all metadata against the SHACL schema."""
+    """Validates all metadata against the SHACL schema.
+
+    Args:
+        data:
+
+    Returns:
+
+    """
     rdf = pyld.jsonld.to_rdf(data, options={"format": "application/n-quads", "produceGeneralizedRdf": True})
 
     return validate_graph(rdf)

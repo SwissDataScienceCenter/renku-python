@@ -338,3 +338,7 @@ autoclass_content = "both"
 autodoc_mock_imports = ["persistent", "ZODB"]
 autodoc_typehints = "none"
 autodoc_typehints_description_target = "documented"
+
+# Napoleon (Google style) settings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False

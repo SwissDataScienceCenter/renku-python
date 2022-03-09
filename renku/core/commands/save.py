@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku save commands."""
 
+from typing import List, Tuple
 from renku.core import errors
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
@@ -24,8 +25,20 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
 
 @inject.autoparams()
-def _save_and_push(client_dispatcher: IClientDispatcher, message=None, remote=None, paths=None):
-    """Save and push local changes."""
+def _save_and_push(
+    client_dispatcher: IClientDispatcher, message=None, remote=None, paths=None
+) -> Tuple[List[str], str]:
+    """Save and push local changes.
+
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        message: The commit message (Default value = None).
+        remote: The remote to push to (Default value = None).
+        paths: The paths to include in the commit (Default value = None).
+
+    Returns:
+        Tuple[List[str], str]: Tuple of paths that were committed and branch that was pushed.
+    """
     from renku.core.utils.git import commit_changes, get_remote, push_changes
 
     client = client_dispatcher.current_client

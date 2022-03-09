@@ -24,7 +24,19 @@ from renku.core import errors
 
 
 def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort=True, reverse=False) -> str:
-    """Format collection with a tabular output."""
+    """Format collection with a tabular output.
+
+    Args:
+        collection: Collection to format.
+        columns: Columns to show.
+        columns_mapping: Mapping of collection fields to columns.
+        columns_alignments: Column alignment (Default value = None).
+        sort: Whether to sort by first column or not (Default value = True).
+        reverse: Whether to sort in reverse (Default value = False).
+
+    Returns:
+
+    """
     from renku.core.models.tabulate import tabulate as tabulate_
 
     if not columns:

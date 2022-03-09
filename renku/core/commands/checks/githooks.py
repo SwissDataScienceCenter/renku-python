@@ -30,7 +30,15 @@ except ImportError:
 
 
 def check_git_hooks_installed(client, fix):
-    """Checks if all necessary hooks are installed."""
+    """Checks if all necessary hooks are installed.
+
+    Args:
+        client: ``LocalClient``.
+        fix: Whether to fix found issues.
+
+    Returns:
+        Tuple of whether git hooks are valid and string of found problems.
+    """
     for hook in HOOKS:
         hook_path = get_hook_path(name=hook, repository=client.repository)
         if not hook_path.exists():

@@ -44,6 +44,18 @@ def _rerun(
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
 ):
+    """Rerun a previously run workflow.
+
+    Args:
+        dry_run (bool): Whether or not to actually execute the workflow or just show
+            what would be executed.
+        sources (List[str]): Input files to start execution from.
+        paths (List[str]): Output paths to recreate.
+        provider (str): Name of the workflow provider to use for execution.
+        config (str): Path to configuration for the workflow provider.
+        client_dispatcher (IClientDispatcher): Injected client dispatcher.
+        activity_gateway (IActivityGateway): Injected activity gateway.
+    """
     client = client_dispatcher.current_client
 
     sources = sources or []
@@ -65,4 +77,4 @@ def _rerun(
         return activities, set(sources)
 
     graph = ExecutionGraph([a.plan_with_values for a in activities], virtual_links=True)
-    execute_workflow(dag=graph.workflow_graph, command_name="rerun", provider=provider, config=config)
+    execute_workflow(dag=graph.workflow_graph, provider=provider, config=config)

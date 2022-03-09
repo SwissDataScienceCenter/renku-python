@@ -116,7 +116,7 @@ class Dataset:
 
     @property
     def files(self):
-        """ """
+        """Return list of existing files."""
         return self._files
 
 

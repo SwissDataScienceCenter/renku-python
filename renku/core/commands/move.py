@@ -36,7 +36,16 @@ def move_command():
 
 @inject.autoparams()
 def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: IClientDispatcher):
-    """Move files and check repository for potential problems."""
+    """Move files and check repository for potential problems.
+
+    Args:
+        sources: Source file(s) to move.
+        destination: Destination to move files to.
+        force: Whether or not to overwrite destination files.
+        verbose: Toggle verbose output.
+        to_dataset: Target dataset to move files into.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+    """
     client = client_dispatcher.current_client
 
     if to_dataset:
@@ -100,7 +109,14 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
 
 
 def _traverse_path(path):
-    """Recursively yield all files and directories within a path."""
+    """Recursively yield all files and directories within a path.
+
+    Args:
+        path: Root path.
+
+    Returns:
+        Iterator of all paths in root path.
+    """
     path = Path(path)
 
     if path.is_dir():
@@ -116,7 +132,15 @@ def _get_dst(path, src_root, dst_root, is_rename):
 
 @inject.autoparams()
 def _get_absolute_path(path, client_dispatcher: IClientDispatcher):
-    """Resolve path and raise if path is outside the repo or is protected."""
+    """Resolve path and raise if path is outside the repo or is protected.
+
+    Args:
+        path: Path to make absolute.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        Absolute path.
+    """
     client = client_dispatcher.current_client
 
     abs_path = Path(os.path.abspath(path))
@@ -157,7 +181,12 @@ def _warn_about_ignored_destinations(destinations, client_dispatcher: IClientDis
 
 @inject.autoparams()
 def _warn_about_git_filters(files, client_dispatcher: IClientDispatcher):
-    """Check if there are any git attributes for files including LFS."""
+    """Check if there are any git attributes for files including LFS.
+
+    Args:
+        files: Files to check.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+    """
     client = client_dispatcher.current_client
 
     src_attrs = []

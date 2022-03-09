@@ -50,8 +50,8 @@ REFERENCE_TYPE = "reference"
 SET_TYPE = "set"
 FROZEN_SET_TYPE = "frozenset"
 MARKER = object()
+"""These are used as _p_serial to mark if an object was read from storage or is new"""
 
-"""NOTE: These are used as _p_serial to mark if an object was read from storage or is new"""
 NEW = z64  # NOTE: Do not change this value since this is the default when a Persistent object is created
 PERSISTED = b"1" * 8
 

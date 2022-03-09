@@ -37,7 +37,14 @@ def migrations_check():
 
 @inject.autoparams()
 def _migrations_check(client_dispatcher: IClientDispatcher):
-    """Check migration status of project."""
+    """Check migration status of project.
+
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        Dictionary of project migrations, template and dockerfile status.
+    """
     from renku.core.management.migrate import is_project_unsupported
 
     client = client_dispatcher.current_client
@@ -61,7 +68,14 @@ def migrations_versions():
 
 @inject.autoparams()
 def _migrations_versions(client_dispatcher: IClientDispatcher):
-    """Return source and destination migration versions."""
+    """Return source and destination migration versions.
+
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        Tuple of current version and project version.
+    """
     from renku import __version__
 
     client = client_dispatcher.current_client
@@ -83,7 +97,14 @@ def template_migration_check():
 
 
 def _template_migration_check(client):
-    """Return template migration status."""
+    """Return template migration status.
+
+    Args:
+        client: ``LocalClient``.
+
+    Returns:
+        Dictionary of template migration status.
+    """
     update_available, update_allowed, current_version, new_version = check_for_template_update(client)
 
     try:
@@ -112,7 +133,14 @@ def dockerfile_migration_check():
 
 
 def _dockerfile_migration_check(client):
-    """Return Dockerfile migration status."""
+    """Return Dockerfile migration status.
+
+    Args:
+        client: ``LocalClient``.
+
+    Returns:
+        Dictionary of Dockerfile migration status.
+    """
     from renku import __version__
     from renku.core.management.migrate import is_docker_update_possible
 
@@ -132,7 +160,14 @@ def metadata_migration_check():
 
 
 def _metadata_migration_check(client):
-    """Return metadata migration status."""
+    """Return metadata migration status.
+
+    Args:
+        client: ``LocalClient``.
+
+    Returns:
+        Dictionary of metadata migration status.
+    """
     from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_project_version, is_migration_required
 
     return {
@@ -155,7 +190,19 @@ def _migrate_project(
     strict=False,
     preserve_identifiers=False,
 ):
-    """Migrate all project's entities."""
+    """Migrate all project's entities.
+
+    Args:
+        force_template_update: Whether to force update the template  (Default value = False).
+        skip_template_update: Whether to skip updating the template (Default value = False).
+        skip_docker_update: Whether to skip updating the Dockerfile (Default value = False).
+        skip_migrations: Whether to skip migrating project metadata (Default value = False).
+        strict: Whether to fail on errors (Default value = False).
+        preserve_identifiers: Whether to preserve ids when migrating metadata (Default value = False).
+
+    Returns:
+        Dictionary of project migration status.
+    """
     from renku.core.management.migrate import migrate
 
     return migrate(
@@ -210,7 +257,15 @@ def _check_project(client_dispatcher: IClientDispatcher):
 
 @inject.autoparams()
 def _check_immutable_template_files(paths, client_dispatcher: IClientDispatcher):
-    """Check paths and return a list of those that are marked immutable in the project template."""
+    """Check paths and return a list of those that are marked immutable in the project template.
+
+    Args:
+        paths: Paths to check.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        List of immutable template files.
+    """
     client = client_dispatcher.current_client
 
     if not client.project.immutable_template_files:

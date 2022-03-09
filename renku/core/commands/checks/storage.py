@@ -21,7 +21,15 @@ from renku.core.commands.echo import WARNING
 
 
 def check_lfs_info(client, fix):
-    """Checks if files in history should be in LFS."""
+    """Checks if files in history should be in LFS.
+
+    Args:
+        client: ``LocalClient``
+        fix: Whether to fix found problems or not.
+
+    Returns:
+        Tuple of whether project structure is valid and string of found problems.
+    """
     if not client.check_external_storage():
         return True, None
 

@@ -30,7 +30,15 @@ from renku.core.models.git import GitURL
 
 @inject.autoparams()
 def detect_registry_url(client_dispatcher: IClientDispatcher, auto_login=True):
-    """Return a URL of the Docker registry."""
+    """Return a URL of the Docker registry.
+
+    Args:
+        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+        auto_login: Whether to log in automatically (Default value = True).
+
+    Returns:
+        The remote URL.
+    """
     repository = client_dispatcher.current_client.repository
     config = repository.get_configuration()
 

@@ -31,7 +31,15 @@ from renku.core.utils import communication
 
 
 def check_dataset_old_metadata_location(client, fix):
-    """Check location of dataset metadata."""
+    """Check location of dataset metadata.
+
+    Args:
+        client: ``LocalClient``.
+        fix: Whether to fix found issues.
+
+    Returns:
+        Tuple of whether dataset metadata location is valid and string of found problems.
+    """
     old_metadata = get_pre_0_3_4_datasets_metadata(client)
 
     if not old_metadata:
@@ -49,7 +57,15 @@ def check_dataset_old_metadata_location(client, fix):
 
 @inject.autoparams()
 def check_missing_files(client, fix, dataset_gateway: IDatasetGateway):
-    """Find missing files listed in datasets."""
+    """Find missing files listed in datasets.
+
+    Args:
+        client: ``LocalClient``.
+        fix: Whether to fix found issues.
+
+    Returns:
+        Tuple of whether all dataset files are there and string of found problems.
+    """
     missing = defaultdict(list)
 
     for dataset in dataset_gateway.get_all_active_datasets():
@@ -77,7 +93,15 @@ def check_missing_files(client, fix, dataset_gateway: IDatasetGateway):
 
 @inject.autoparams()
 def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGateway):
-    """Remove ``derived_from`` from import datasets."""
+    """Remove ``derived_from`` from import datasets.
+
+    Args:
+        client: ``LocalClient``.
+        fix: Whether to fix found issues.
+
+    Returns:
+        Tuple of whether dataset derivations are valid and string of found problems.
+    """
     invalid_datasets = []
 
     def fix_or_report(dataset):

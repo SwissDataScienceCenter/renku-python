@@ -138,7 +138,17 @@ def _set_git_credential_helper(repository: "Repository", hostname):
 
 
 def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote_url: str, hostname: str):
-    """Set renku repository URL for ``remote_name``."""
+    """Set renku repository URL for ``remote_name``.
+
+    Args:
+        repository("Repository"): Current ``Repository``.
+        remote_name(str): Name of the remote.
+        remote_url(str): Url of the remote.
+        hostname(str): Hostname.
+
+    Raises:
+        errors.GitCommandError: If remote doesn't exist.
+    """
     new_remote_url = get_renku_repo_url(remote_url, deployment_hostname=hostname)
 
     try:
@@ -149,7 +159,15 @@ def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote
 
 @inject.autoparams()
 def read_renku_token(endpoint, client_dispatcher: IClientDispatcher):
-    """Read renku token from renku config file."""
+    """Read renku token from renku config file.
+
+    Args:
+        endpoint:  Endpoint to get token for.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        Token for endpoint.
+    """
     try:
         parsed_endpoint = _parse_endpoint(endpoint)
     except errors.ParameterError:
