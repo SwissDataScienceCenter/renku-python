@@ -82,8 +82,7 @@ def _session_start(
 ):
     client = client_dispatcher.current_client
 
-    project_config = client.load_config()
-    pinned_image = project_config.get("interactive", "image", fallback=None)
+    pinned_image = client.get_value("interactive", "image")
     if pinned_image and image_name is None:
         image_name = pinned_image
 

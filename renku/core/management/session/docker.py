@@ -68,6 +68,7 @@ class DockerSessionProvider(ISessionProvider):
         except docker.errors.ImageNotFound:
             try:
                 _ = self.docker_client().images.pull(image_name)
+                return True
             except docker.errors.ImageNotFound:
                 pass
         return False
