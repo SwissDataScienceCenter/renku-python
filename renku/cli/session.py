@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,6 +23,7 @@ from lazy_object_proxy import Proxy
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.plugins import supported_session_providers
 from renku.core import errors
+from renku.core.commands.format.session import SESSION_FORMATS
 
 
 @click.group()
@@ -48,12 +49,13 @@ def session():
     metavar="<config file>",
     help="YAML file containing configuration for the provider.",
 )
-def list(provider, config):
+@click.option("--format", type=click.Choice(SESSION_FORMATS), default="tabular", help="Choose an output format.")
+def list(provider, config, format):
     """List interactive sessions."""
     from renku.core.commands.session import session_list_command
 
     result = session_list_command().build().execute(provider=provider, config_path=config)
-    click.echo(result.output)
+    click.echo(SESSION_FORMATS[format](result.output))
 
 
 @session.command("start")

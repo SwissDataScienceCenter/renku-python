@@ -37,6 +37,7 @@ class DockerSessionProvider(ISessionProvider):
     def __init__(self):
         self._docker_client = None
 
+    @property
     def docker_client(self) -> docker.client.DockerClient:
         """Get the docker client."""
         if self._docker_client is None:
@@ -54,20 +55,20 @@ class DockerSessionProvider(ISessionProvider):
         return map(lambda x: f'http://{x["HostIp"]}:{x["HostPort"]}/?token={auth_token}', ports[port_key])
 
     def _get_docker_containers(self, project_name: str) -> List[docker.models.containers.Container]:
-        return self.docker_client().containers.list(filters={"label": f"renku_project={project_name}"})
+        return self.docker_client.containers.list(filters={"label": f"renku_project={project_name}"})
 
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image."""
-        self.docker_client().images.build(path=str(image_descriptor), tag=image_name)
+        self.docker_client.images.build(path=str(image_descriptor), tag=image_name)
 
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Find the given container image."""
         try:
-            _ = self.docker_client().images.get(image_name)
+            _ = self.docker_client.images.get(image_name)
             return True
         except docker.errors.ImageNotFound:
             try:
-                _ = self.docker_client().images.pull(image_name)
+                _ = self.docker_client.images.pull(image_name)
                 return True
             except docker.errors.ImageNotFound:
                 pass
@@ -115,15 +116,14 @@ class DockerSessionProvider(ISessionProvider):
         """
 
         try:
-            docker_is_running = self.docker_client().ping()
+            docker_is_running = self.docker_client.ping()
             if not docker_is_running:
                 raise errors.DockerError(
                     "Could not communicate with the docker instance. Please make sure it is running!"
                 )
 
             auth_token = uuid4().hex
-            project_config = client.load_config()
-            default_url = project_config.get("interactive", "default_url")
+            default_url = client.get_value("interactive", "default_url")
 
             # resource requests
             resource_requests = dict()
@@ -147,7 +147,7 @@ class DockerSessionProvider(ISessionProvider):
                         docker.types.DeviceRequest(count=[gpu_request], capabilities=[["compute", "utility"]])
                     ]
 
-            container = self.docker_client().containers.run(
+            container = self.docker_client.containers.run(
                 image_name,
                 f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}'
                 f' --NotebookApp.token="{auth_token}" --NotebookApp.default_url="{default_url}"'
@@ -178,7 +178,7 @@ class DockerSessionProvider(ISessionProvider):
             docker_containers = (
                 self._get_docker_containers(project_name)
                 if all
-                else self.docker_client().containers.list(filters={"id": session_name})
+                else self.docker_client.containers.list(filters={"id": session_name})
             )
 
             if len(docker_containers) == 0:
@@ -191,7 +191,7 @@ class DockerSessionProvider(ISessionProvider):
 
     def session_url(self, session_name: str) -> Optional[str]:
         """Get the URL of the interactive session."""
-        for c in self.docker_client().containers.list():
+        for c in self.docker_client.containers.list():
             if c.short_id == session_name and f"{DockerSessionProvider.JUPYTER_PORT}/tcp" in c.ports:
                 host = c.ports[f"{DockerSessionProvider.JUPYTER_PORT}/tcp"][0]
                 return f'http://{host["HostIp"]}:{host["HostPort"]}/?token={c.labels["jupyter_token"]}'
