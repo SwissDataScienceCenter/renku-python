@@ -81,6 +81,7 @@ gitlabClientSecret
 GraphQL
 Homebrew
 hostname
+hotfix
 https
 hyperkit
 hypervisor
