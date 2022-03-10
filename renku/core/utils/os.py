@@ -21,7 +21,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
-from typing import Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from renku.core import errors
 
@@ -197,3 +197,18 @@ def hash_str(content: str):
         sha256_hash.update(byte_block)
 
     return sha256_hash.hexdigest()
+
+
+def safe_read_yaml(file: str) -> Dict[str, Any]:
+    """Parse a YAML file.
+
+    Returns:
+        In case of success a dictionary of the YAML's content,
+        otherwise raises a ParameterError exception.
+    """
+    try:
+        from renku.core.models import jsonld as jsonld
+
+        return jsonld.read_yaml(file)
+    except Exception as e:
+        raise errors.ParameterError(e)
