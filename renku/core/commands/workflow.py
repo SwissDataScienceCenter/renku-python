@@ -50,7 +50,7 @@ from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.plugins.provider import execute
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import local_now
-from renku.core.utils.os import are_paths_related, get_relative_paths
+from renku.core.utils.os import are_paths_related, get_relative_paths, safe_read_yaml
 
 
 def _ref(name):
@@ -62,15 +62,6 @@ def _deref(ref):
     """Remove workflows prefix."""
     assert ref.startswith("workflows/")
     return ref[len("workflows/") :]
-
-
-def _safe_read_yaml(file: str) -> Dict[str, Any]:
-    try:
-        from renku.core.models import jsonld as jsonld
-
-        return jsonld.read_yaml(file)
-    except Exception as e:
-        raise errors.ParameterError(e)
 
 
 @inject.autoparams()
@@ -359,7 +350,7 @@ def _export_workflow(
         output = Path(output)
 
     if values:
-        values = _safe_read_yaml(values)
+        values = safe_read_yaml(values)
         rv = ValueResolver.get(workflow, values)
         workflow = rv.apply()
         if rv.missing_parameters:
@@ -476,7 +467,7 @@ def execute_workflow(
     delete_indirect_files_list(client.path)
 
     if config:
-        config = _safe_read_yaml(config)
+        config = safe_read_yaml(config)
 
     started_at_time = local_now()
 
@@ -510,7 +501,7 @@ def _execute_workflow(
     # apply the provided parameter settings provided by user
     override_params = dict()
     if values:
-        override_params.update(_safe_read_yaml(values))
+        override_params.update(safe_read_yaml(values))
 
     if set_params:
         from deepmerge import always_merger
@@ -750,7 +741,7 @@ def _iterate_workflow(
     iter_params = {"indexed": {}, "params": {}, "tagged": {}}
     workflow_params = {}
     if mapping_path:
-        mapping = _safe_read_yaml(mapping_path)
+        mapping = safe_read_yaml(mapping_path)
         iter_params, workflow_params = _extract_iterate_parameters(mapping, index_pattern, tag_separator=TAG_SEPARATOR)
 
     for m in mappings:

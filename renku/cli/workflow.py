@@ -22,10 +22,10 @@ Runs and Plans
 
 Renku records two different kinds of metadata when a workflow is executed,
 ``Run`` and ``Plan``.
-Plans describe a recipe for a command, they function as a template that
+Plans describe a recipe for a command. They function as a template that
 can be used directly or combined with other workflow templates to create more
 complex recipes.
-These Plans can be run in various ways, on creation with ``renku run`,`
+These Plans can be run in various ways, on creation with ``renku run``,
 doing a ``renku rerun`` or ``renku update`` or manually using ``renku workflow
 execute``.
 

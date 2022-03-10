@@ -91,7 +91,7 @@ if:
    the arguments that are passed on the command line. Files or directories
    specified with this option will not be passed as input arguments to the
    script.
-   You can specify ``--input name=path`` or just `--input path``, the former
+   You can specify ``--input name=path`` or just ``--input path``, the former
    of which would also set the name of the input on the resulting Plan.
 
 .. topic:: Specifying auxiliary parameters (``--param``)
