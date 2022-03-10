@@ -43,7 +43,6 @@ def check_migrated_activity_ids(
             communication.info(f"Fixing activity '{activity.id}'")
 
             old_id = activity.id
-            # current_database.remove_from_cache(activity)
 
             # NOTE: Remove activity relations
             tok = current_database["activity-catalog"].tokenizeQuery
