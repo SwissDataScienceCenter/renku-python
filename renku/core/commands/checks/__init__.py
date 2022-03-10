@@ -17,6 +17,7 @@
 # limitations under the License.
 """Define repository checks for :program:`renku doctor`."""
 
+from .activities import check_migrated_activity_ids
 from .datasets import check_dataset_old_metadata_location, check_invalid_datasets_derivation, check_missing_files
 from .external import check_missing_external_files
 from .githooks import check_git_hooks_installed
@@ -33,6 +34,7 @@ __all__ = (
     "check_git_hooks_installed",
     "check_invalid_datasets_derivation",
     "check_lfs_info",
+    "check_migrated_activity_ids",
     "check_migration",
     "check_missing_external_files",
     "check_missing_files",
