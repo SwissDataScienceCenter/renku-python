@@ -101,8 +101,10 @@ def modified_environ(*remove, **update):
 
     The ``os.environ`` dictionary is updated in-place so that the modification
     is sure to work in all situations.
-    :param remove: Environment variables to remove.
-    :param update: Dictionary of environment variables and values to add/update.
+
+    Args:
+        remove: Environment variables to remove.
+        update: Dictionary of environment variables and values to add/update.
     """
     env = os.environ
     update = update or {}
@@ -166,7 +168,8 @@ def retry_failed(fn=None, extended: bool = False):
     """
     Decorator to run flaky with same number of max and min repetitions across all tests.
 
-    :param extended: allow more repetitions than usual.
+    Args:
+        extended (bool, optional): allow more repetitions than usual (Default value = False).
     """
 
     def decorate(fn):

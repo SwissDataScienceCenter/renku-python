@@ -36,10 +36,11 @@ class Commit(Command):
     ) -> None:
         """__init__ of Commit.
 
-        :param message: The commit message. Auto-generated if left empty.
-        :param commit_if_empty: Whether to commit if there are no modified files .
-        :param raise_if_empty: Whether to raise an exception if there are no modified files.
-        :param commit_only: Only commit the supplied paths.
+        Args:
+            message (str): The commit message. Auto-generated if left empty (Default value = None).
+            commit_if_empty (bool): Whether to commit if there are no modified files (Default value = None).
+            raise_if_empty (bool): Whether to raise an exception if there are no modified files (Default value = None).
+            commit_only (bool): Only commit the supplied paths (Default value = None).
         """
         self._builder = builder
         self._message = message
@@ -48,7 +49,12 @@ class Commit(Command):
         self._commit_filter_paths = commit_only
 
     def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
-        """Hook to create a commit transaction."""
+        """Hook to create a commit transaction.
+
+        Args:
+            builder(Command): The current ``CommandBuilder``.
+            context(dict): The current context object.
+        """
         if "client_dispatcher" not in context:
             raise ValueError("Commit builder needs a IClientDispatcher to be set.")
         if "stack" not in context:
@@ -61,7 +67,13 @@ class Commit(Command):
         )
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
-        """Hook that commits changes."""
+        """Hook that commits changes.
+
+        Args:
+            builder(Command):The current ``CommandBuilder``.
+            context(dict): The current context object.
+            result(CommandResult): The result of the command execution.
+        """
         from renku.core.management.git import finalize_commit
 
         if result.error:
@@ -82,7 +94,11 @@ class Commit(Command):
 
     @check_finalized
     def build(self) -> Command:
-        """Build the command."""
+        """Build the command.
+
+        Returns:
+            Command: Finalized version of this command.
+        """
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
         self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
 
@@ -90,7 +106,14 @@ class Commit(Command):
 
     @check_finalized
     def with_commit_message(self, message: str) -> Command:
-        """Set a new commit message."""
+        """Set a new commit message.
+
+        Args:
+            message(str): Commit message to set.
+
+        Returns:
+            Command: This command with commit message applied.
+        """
         self._message = message
 
         return self
@@ -106,14 +129,23 @@ class RequireClean(Command):
         self._builder = builder
 
     def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
-        """Check if repo is clean."""
+        """Check if repo is clean.
+
+        Args:
+            builder(Command): Current ``CommandBuilder``.
+            context(dict): Current context.
+        """
         if "client_dispatcher" not in context:
             raise ValueError("Commit builder needs a IClientDispatcher to be set.")
         context["client_dispatcher"].current_client.ensure_clean(ignore_std_streams=not builder._track_std_streams)
 
     @check_finalized
     def build(self) -> Command:
-        """Build the command."""
+        """Build the command.
+
+        Returns:
+            Command: Finalized version of this command.
+        """
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 
         return self._builder.build()
@@ -132,7 +164,12 @@ class Isolation(Command):
         self._builder = builder
 
     def _injection_pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
-        """Hook to setup dependency injection for commit transaction."""
+        """Hook to setup dependency injection for commit transaction.
+
+        Args:
+            builder(Command): Current ``CommandBuilder``.
+            context(dict): Current context.
+        """
         if "client_dispatcher" not in context:
             raise ValueError("Commit builder needs a IClientDispatcher to be set.")
         from renku.core.management.git import prepare_worktree
@@ -146,7 +183,12 @@ class Isolation(Command):
         context["client_dispatcher"].push_created_client_to_stack(self.new_client)
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
-        """Hook that commits changes."""
+        """Hook that commits changes.
+
+        Args:
+            builder(Command): Current ``CommandBuilder``.
+            context(dict): Current context.
+        """
         from renku.core.management.git import finalize_worktree
 
         context["client_dispatcher"].pop_client()
@@ -167,7 +209,11 @@ class Isolation(Command):
 
     @check_finalized
     def build(self) -> Command:
-        """Build the command."""
+        """Build the command.
+
+        Returns:
+            Command: Finalized version of this command.
+        """
         self._builder.add_injection_pre_hook(self.DEFAULT_ORDER, self._injection_pre_hook)
         self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
 

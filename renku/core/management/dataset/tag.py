@@ -34,7 +34,8 @@ def add_dataset_tag(dataset_name: str, tag: str, description="", force=False):
     Validates if the tag already exists and that the tag follows the same rules as docker tags.
     See https://docs.docker.com/engine/reference/commandline/tag/ for a documentation of docker tag syntax.
 
-    :raises: ``errors.ParameterError``
+    Raises:
+        ``errors.ParameterError``: If tag is too long or contains invalid characters.
     """
     if len(tag) > 128:
         raise errors.ParameterError("Tags can be at most 128 characters long.")
@@ -92,7 +93,8 @@ def remove_dataset_tags(dataset_name: str, tags: List[str]):
 def prompt_access_token(exporter):
     """Prompt user for an access token for a provider.
 
-    :return: The new access token
+    Returns:
+        The new access token
     """
     text_prompt = "You must configure an access token\n"
     text_prompt += "Create one at: {0}\n".format(exporter.access_token_url())

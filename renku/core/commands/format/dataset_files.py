@@ -121,10 +121,6 @@ def jsonld(records, **kwargs):
 
     Args:
         records: Filtered collection.
-        **kwargs:
-
-    Returns:
-
     """
     from renku.core.models.json import dumps
 

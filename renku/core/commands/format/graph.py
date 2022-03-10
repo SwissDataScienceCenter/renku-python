@@ -24,38 +24,8 @@ import click
 from renku.core.errors import OperationError, SHACLValidationError
 
 
-def ascii(graph, strict=False):
-    """Format graph as an ASCII art.
-
-    Args:
-        graph:
-        strict:  (Default value = False)
-
-    Returns:
-
-    """
-    from ..ascii import DAG
-    from ..echo import echo_via_pager
-
-    if strict:
-        raise SHACLValidationError("--strict not supported for ascii")
-
-    echo_via_pager(str(DAG(graph)))
-
-
 def _jsonld(graph, format, *args, **kwargs):
-    """Return formatted graph in JSON-LD ``format`` function.
-
-    Args:
-        graph:
-        format:
-        *args:
-        **kwargs:
-
-    Returns:
-
-
-    """
+    """Return formatted graph in JSON-LD ``format`` function."""
     import json
 
     import pyld
@@ -65,32 +35,14 @@ def _jsonld(graph, format, *args, **kwargs):
 
 
 def _conjunctive_graph(graph):
-    """Convert a renku ``Graph`` to an rdflib ``ConjunctiveGraph``.
-
-    Args:
-        graph:
-
-    Returns:
-
-    """
+    """Convert a renku ``Graph`` to an rdflib ``ConjunctiveGraph``."""
     from rdflib import ConjunctiveGraph
 
     return ConjunctiveGraph().parse(data=_jsonld(graph, "expand"), format="json-ld")
 
 
 def dot(graph, simple=True, debug=False, landscape=False, strict=False):
-    """Format graph as a dot file.
-
-    Args:
-        graph:
-        simple:  (Default value = True)
-        debug:  (Default value = False)
-        landscape:  (Default value = False)
-        strict:  (Default value = False)
-
-    Returns:
-
-    """
+    """Format graph as a dot file."""
     import sys
 
     from rdflib.tools.rdf2dot import rdf2dot
@@ -126,16 +78,7 @@ dot_debug = functools.partial(dot, debug=True)
 
 
 def _rdf2dot_simple(g, stream, graph=None):
-    """Create a simple graph of processes and artifacts.
-
-    Args:
-        g:
-        stream:
-        graph:  (Default value = None)
-
-    Returns:
-
-    """
+    """Create a simple graph of processes and artifacts."""
     import re
     from itertools import chain
 
@@ -250,13 +193,6 @@ def _rdf2dot_reduced(g, stream):
 
     Adapted from original source:
     https://rdflib.readthedocs.io/en/stable/_modules/rdflib/tools/rdf2dot.html
-
-    Args:
-        g:
-        stream:
-
-    Returns:
-
     """
     import collections
     import html
@@ -269,27 +205,11 @@ def _rdf2dot_reduced(g, stream):
     nodes = {}
 
     def node(x):
-        """Return a name of the given node.
-
-        Args:
-            x:
-
-        Returns:
-
-
-        """
+        """Return a name of the given node."""
         return nodes.setdefault(x, "node{0}".format(len(nodes)))
 
     def label(x, g):
-        """Generate a label for the node.
-
-        Args:
-            x:
-            g:
-
-        Returns:
-
-        """
+        """Generate a label for the node."""
         for labelProp in LABEL_PROPERTIES:
             label_ = g.value(x, labelProp)
             if label_:
@@ -301,15 +221,7 @@ def _rdf2dot_reduced(g, stream):
             return x
 
     def formatliteral(literal, g):
-        """Format and escape literal.
-
-        Args:
-            literal:
-            g:
-
-        Returns:
-
-        """
+        """Format and escape literal."""
         v = html.escape(literal)
         if literal.datatype:
             return "&quot;%s&quot;^^%s" % (v, qname(literal.datatype, g))
@@ -318,15 +230,7 @@ def _rdf2dot_reduced(g, stream):
         return "&quot;%s&quot;" % v
 
     def qname(x, g):
-        """Compute qname.
-
-        Args:
-            x:
-            g:
-
-        Returns:
-
-        """
+        """Compute qname."""
         try:
             q = g.compute_qname(x)
             return q[0] + ":" + q[2]
@@ -334,14 +238,7 @@ def _rdf2dot_reduced(g, stream):
             return x
 
     def color(p):
-        """Choose node color.
-
-        Args:
-            p:
-
-        Returns:
-
-        """
+        """Choose node color."""
         return "BLACK"
 
     # filter out nodes and edges created for directories
@@ -396,42 +293,16 @@ def _rdf2dot_reduced(g, stream):
     stream.write("}\n")
 
 
-def makefile(graph, strict=False):
-    """Format graph as Makefile.
-
-    Args:
-        graph:
-        strict:  (Default value = False)
-
-    Returns:
-
-    """
-    from renku.core.models.provenance.activity import Activity
-
-    if strict:
-        raise SHACLValidationError("--strict not supported for makefile")
-
-    for activity in graph:
-        if not isinstance(activity, Activity):
-            continue
-
-        plan = activity.association.plan
-        inputs = [i.default_value for i in plan.inputs]
-        outputs = [o.default_value for o in plan.outputs]
-        click.echo(" ".join(outputs) + ": " + " ".join(inputs))
-        click.echo("\t@" + " ".join(plan.to_argv()) + " " + " ".join(plan.to_stream_repr()))
-
-
 def jsonld(graph, strict=False, to_stdout=True):
     """Format graph as JSON-LD file.
 
     Args:
-        graph:
-        strict:  (Default value = False)
-        to_stdout:  (Default value = True)
+        graph: The graph to output.
+        strict: Whether to validate the graph before output (Default value = False).
+        to_stdout: Whether to echo to stdout or return data (Default value = True).
 
     Returns:
-
+        dict: JSON-LD dict or None if printed to stdout.
     """
     from renku.core.utils.shacl import validate_graph
 
@@ -454,11 +325,8 @@ def nt(graph, strict=False):
     """Format graph as n-tuples.
 
     Args:
-        graph:
-        strict:  (Default value = False)
-
-    Returns:
-
+        graph: The graph to output.
+        strict: Whether to validate the graph before output (Default value = False).
     """
     from renku.core.utils.shacl import validate_graph
 
@@ -476,11 +344,8 @@ def rdf(graph, strict=False):
     """Output the graph as RDF.
 
     Args:
-        graph:
-        strict:  (Default value = False)
-
-    Returns:
-
+        graph: The graph to output.
+        strict: Whether to validate the graph before output (Default value = False).
     """
     from renku.core.utils.shacl import validate_graph
 
@@ -493,14 +358,6 @@ def rdf(graph, strict=False):
 
     click.echo(xml)
 
-
-FORMATS = {
-    "ascii": ascii,
-    "makefile": makefile,
-    "dot": dot,
-    "dot-landscape": dot_landscape,
-}
-"""Valid formatting options."""
 
 GRAPH_FORMATS = {
     "jsonld": jsonld,

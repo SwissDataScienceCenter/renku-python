@@ -57,14 +57,30 @@ PERSISTED = b"1" * 8
 
 
 def _is_module_allowed(module_name: str, type_name: str):
-    """Checks whether it is allowed to import from the given module for security purposes."""
+    """Checks whether it is allowed to import from the given module for security purposes.
+
+    Args:
+        module_name(str): The module name to check.
+        type_name(str): The type within the module to check.
+
+    Raises:
+        TypeError: If the type is now allowed in the database.
+    """
 
     if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
         raise TypeError(f"Objects of type '{type_name}' are not allowed")
 
 
 def get_type_name(object) -> Optional[str]:
-    """Return fully-qualified object's type name."""
+    """Return fully-qualified object's type name.
+
+    Args:
+        object:  The object to get the type name for.
+
+    Returns:
+        Optional[str]: The fully qualified type name.
+
+    """
     if object is None:
         return None
 
@@ -73,7 +89,15 @@ def get_type_name(object) -> Optional[str]:
 
 
 def get_class(type_name: Optional[str]) -> Optional[type]:
-    """Return the class for a fully-qualified type name."""
+    """Return the class for a fully-qualified type name.
+
+    Args:
+        type_name(Optional[str]): The name of the class to get.
+
+    Returns:
+        Optional[type]: The class.
+
+    """
     if type_name is None:
         return None
 
@@ -88,7 +112,15 @@ def get_class(type_name: Optional[str]) -> Optional[type]:
 
 
 def get_attribute(object, name: Union[List[str], str]):
-    """Return an attribute of an object."""
+    """Return an attribute of an object.
+
+    Args:
+        object: The object to get an attribute on.
+        name(Union[List[str], str): The name of the attribute to get.
+
+    Returns:
+        The value of the attribute.
+    """
     import sys
 
     components = name.split(".") if isinstance(name, str) else name
@@ -191,13 +223,27 @@ class Database:
 
     @classmethod
     def from_path(cls, path: Union[Path, str]) -> "Database":
-        """Create a Storage and Database using the given path."""
+        """Create a Storage and Database using the given path.
+
+        Args:
+            path(Union[pathlib.Path, str]): The path of the database.
+
+        Returns:
+            The database object.
+        """
         storage = Storage(path)
         return Database(storage=storage)
 
     @staticmethod
     def generate_oid(object: persistent.Persistent) -> OID_TYPE:
-        """Generate an ``oid`` for a ``persistent.Persistent`` object based on its id."""
+        """Generate an ``oid`` for a ``persistent.Persistent`` object based on its id.
+
+        Args:
+            object(persistent.Persistent): The object to create an oid for.
+
+        Returns:
+            An oid for the object.
+        """
         oid = getattr(object, "_p_oid")
         if oid:
             assert isinstance(oid, OID_TYPE)
@@ -211,7 +257,14 @@ class Database:
 
     @staticmethod
     def hash_id(id: str) -> OID_TYPE:
-        """Return ``oid`` from id."""
+        """Return ``oid`` from id.
+
+        Args:
+            id(str): The id to hash.
+
+        Returns:
+            OID_TYPE: The hashed if.
+        """
         return hashlib.sha3_256(id.encode("utf-8")).hexdigest()
 
     @staticmethod
@@ -245,7 +298,17 @@ class Database:
                 self.register(self._root)
 
     def add_index(self, name: str, object_type: type, attribute: str = None, key_type: type = None) -> "Index":
-        """Add an index."""
+        """Add an index.
+
+        Args:
+            name(str): The name of the index.
+            object_type(type): The type contained within the index.
+            attribute(str, optional): The attribute of the contained object to create a key from (Default value = None).
+            key_type(type, optional): The type of the key (Default value = None).
+
+        Returns:
+            Index: The created ``Index`` object.
+        """
         assert name not in self._root, f"Index or object already exists: '{name}'"
 
         index = Index(name=name, object_type=object_type, attribute=attribute, key_type=key_type)
@@ -256,7 +319,12 @@ class Database:
         return index
 
     def add_root_object(self, name: str, obj: Persistent):
-        """Add an object to the DB root."""
+        """Add an object to the DB root.
+
+        Args:
+            name(str): The key of the object.
+            obj(Persistent): The object to store.
+        """
         assert name not in self._root, f"Index or object already exists: '{name}'"
 
         obj._p_jar = self
@@ -269,6 +337,10 @@ class Database:
 
         NOTE: Normally, we add objects to indexes but this method adds objects directly to Dataset's root. Use it only
         for singleton objects that have no Index defined for them (e.g. Project).
+
+        Args:
+            object(Persistent): The object to add.
+            oid(OID_TYPE, optional): The oid for the object (Default value = None).
         """
         assert not oid or isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
         object._p_oid = oid
@@ -279,6 +351,9 @@ class Database:
         """Register a persistent.Persistent object to be stored.
 
         NOTE: When a persistent.Persistent object is changed it calls this method.
+
+        Args:
+            object(persistent.Persistent): The object to register with the database.
         """
         assert isinstance(object, persistent.Persistent), f"Cannot add non-Persistent object: '{object}'"
 
@@ -296,7 +371,14 @@ class Database:
         self._objects_to_commit[object._p_oid] = object
 
     def get(self, oid: OID_TYPE) -> persistent.Persistent:
-        """Get the object by ``oid``."""
+        """Get the object by ``oid``.
+
+        Args:
+            oid(OID_TYPE): The oid of the object to get.
+
+        Returns:
+            persistent.Persistent: The object.
+        """
         if oid != Database.ROOT_OID and oid in self._root:  # NOTE: Avoid looping if getting "root"
             return self._root[oid]
         object = self.get_cached(oid)
@@ -318,12 +400,26 @@ class Database:
         return object
 
     def get_by_id(self, id: str) -> persistent.Persistent:
-        """Return an object by its id."""
+        """Return an object by its id.
+
+        Args:
+            id(str): The id to look up.
+
+        Returns:
+            persistent.Persistent: The object with the given id.
+        """
         oid = Database.hash_id(id)
         return self.get(oid)
 
     def get_cached(self, oid: OID_TYPE) -> Optional[persistent.Persistent]:
-        """Return an object if it is in the cache or will be committed."""
+        """Return an object if it is in the cache or will be committed.
+
+        Args:
+            oid(OID_TYPE): The id of the object to look up.
+
+        Returns:
+            Optional[persistent.Persistent]: The cached object.
+        """
         object = self._cache.get(oid)
         if object is not None:
             return object
@@ -337,7 +433,11 @@ class Database:
             return object
 
     def remove_root_object(self, name: str) -> None:
-        """Remove a root object from the database."""
+        """Remove a root object from the database.
+
+        Args:
+            name(str): The name of the root object to remove.
+        """
         assert name in self._root, f"Index or object doesn't exist in root: '{name}'"
 
         obj = self.get(name)
@@ -346,12 +446,21 @@ class Database:
         del self._root[name]
 
     def new_ghost(self, oid: OID_TYPE, object: persistent.Persistent):
-        """Create a new ghost object."""
+        """Create a new ghost object.
+
+        Args:
+            oid(OID_TYPE): The oid of the new ghost object.
+            object(persistent.Persistent): The object to create a new ghost entry for.
+        """
         object._p_jar = self
         self._cache.new_ghost(oid, object)
 
     def setstate(self, object: persistent.Persistent):
-        """Load the state for a ghost object."""
+        """Load the state for a ghost object.
+
+        Args:
+            object(persistent.Persistent): The object to set the state on.
+        """
         data = self._storage.load(filename=self._get_filename_from_oid(object._p_oid))
         self._reader.set_ghost_state(object, data)
         object._p_serial = PERSISTED
@@ -376,7 +485,11 @@ class Database:
         object._p_serial = PERSISTED
 
     def remove_from_cache(self, object: persistent.Persistent):
-        """Remove an object from cache."""
+        """Remove an object from cache.
+
+        Args:
+            object(persistent.Persistent): The object to remove.
+        """
         oid = object._p_oid
 
         def remove_from(cache):
@@ -389,7 +502,11 @@ class Database:
         remove_from(self._objects_to_commit)
 
     def readCurrent(self, object):
-        """We don't use this method but some Persistent logic require its existence."""
+        """We don't use this method but some Persistent logic require its existence.
+
+        Args:
+            object: The object to read.
+        """
         assert object._p_jar is self
         assert object._p_oid is not None
 
@@ -435,11 +552,28 @@ class Cache:
         self._entries.clear()
 
     def pop(self, oid, default=MARKER):
-        """Remove and return an object."""
+        """Remove and return an object.
+
+        Args:
+            oid: The oid of the object to remove from the cache.
+            default: Default value to return (Default value = MARKER).
+        Raises:
+            KeyError: If object wasn't found and no default was given.
+        Returns:
+            The removed object or the default value if it doesn't exist.
+        """
         return self._entries.pop(oid) if default is MARKER else self._entries.pop(oid, default)
 
     def get(self, oid, default=None):
-        """See ``IPickleCache``."""
+        """See ``IPickleCache``.
+
+        Args:
+            oid: The oid of the object to get.
+            default: Default value to return if object wasn't found (Default value = None).
+
+        Returns:
+            The object or default value if the object wasn't found.
+        """
         assert isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"
         return self._entries.get(oid, default)
 
@@ -460,13 +594,15 @@ class Index(persistent.Persistent):
     """Database index."""
 
     def __init__(self, *, name: str, object_type, attribute: Optional[str], key_type=None):
-        """
-        Create an index where keys are extracted using `attribute` from an object or a key.
+        """Create an index where keys are extracted using `attribute` from an object or a key.
 
-        :param name: Index's name
-        :param object_type: Type of objects that the index points to
-        :param attribute: Name of an attribute to be used to automatically generate a key (e.g. `entity.path`)
-        :param key_type: Type of keys. If not None then a key must be provided when updating the index
+        Args:
+            name (str): Index's name.
+            object_type: Type of objects that the index points to.
+            attribute (Optional[str], optional): Name of an attribute to be used to automatically generate a key
+                (e.g. `entity.path`).
+            key_type: Type of keys. If not None then a key must be provided when updating the index
+                (Default value = None).
         """
         assert name == name.lower(), f"Index name must be all lowercase: '{name}'."
 
@@ -523,11 +659,27 @@ class Index(persistent.Persistent):
         return self._object_type
 
     def get(self, key, default=None):
-        """Return an entry based on its key."""
+        """Return an entry based on its key.
+
+        Args:
+            key: The key of the entry to get.
+            default: Default value to return of entry wasn't found (Default value = None).
+
+        Returns:
+            The found entry or the default value if it wasn't found.
+        """
         return self._entries.get(key, default)
 
     def pop(self, key, default=MARKER):
-        """Remove and return an object."""
+        """Remove and return an object.
+
+        Args:
+            key: The key of the entry to remove.
+            default: Default value to return of entry wasn't found (Default value = MARKER).
+
+        Returns:
+            The removed entry or the default value if it wasn't found.
+        """
         if not key:
             return
         return self._entries.pop(key) if default is MARKER else self._entries.pop(key, default)
@@ -549,6 +701,12 @@ class Index(persistent.Persistent):
 
         If `Index._attribute` is not None then key is automatically generated.
         Key is extracted from `key_object` if it is not None; otherwise, it's extracted from `object`.
+
+        Args:
+            object(persistent.Persistent): Object to add.
+            key(Optional[str], optional): Key to use in the index (Default value = None).
+            key_object: Object to use to extract a key from (Default value = None).
+            verify: Whether to check if the key is valid (Default value = True).
         """
         assert isinstance(object, self._object_type), f"Cannot add objects of type '{type(object)}'"
         key = self._verify_and_get_key(
@@ -560,6 +718,13 @@ class Index(persistent.Persistent):
         """Return index key for an object.
 
         Key is extracted from `key_object` if it is not None; otherwise, it's extracted from `object`.
+
+        Args:
+            object(persistent.Persistent): The object to generate a key for.
+            key_object: The object to derive a key from (Default value = None).
+
+        Returns:
+            A key for object.
         """
         return self._verify_and_get_key(object=object, key_object=key_object, key=None, missing_key_object_ok=False)
 
@@ -598,7 +763,13 @@ class Storage:
         self.zstd_decompressor = zstd.ZstdDecompressor()
 
     def store(self, filename: str, data: Union[Dict, List], compress=False):
-        """Store object."""
+        """Store object.
+
+        Args:
+            filename(str): Target file name to store data in.
+            data(Union[Dict, List]): The data to store.
+            compress: Whether to compress the data or store it as plain json (Default value = False).
+        """
         assert isinstance(filename, str)
 
         is_oid_path = len(filename) == Storage.OID_FILENAME_LENGTH
@@ -618,7 +789,14 @@ class Storage:
                 json.dump(data, f, ensure_ascii=False, sort_keys=True, indent=2)
 
     def load(self, filename: str):
-        """Load data for object with object id oid."""
+        """Load data for object with object id oid.
+
+        Args:
+            filename(str): The file name of the data to load.
+
+        Returns:
+            The loaded data in dictionary form.
+        """
         assert isinstance(filename, str)
 
         is_oid_path = len(filename) == Storage.OID_FILENAME_LENGTH
@@ -648,7 +826,14 @@ class ObjectWriter:
         self._database: Database = database
 
     def serialize(self, object: persistent.Persistent):
-        """Convert an object to JSON."""
+        """Convert an object to JSON.
+
+        Args:
+            object(persistent.Persistent): Object to serialize.
+
+        Returns:
+            dict: Dictionary containing serialized data.
+        """
         assert isinstance(object, persistent.Persistent), f"Cannot serialize object of type '{type(object)}': {object}"
         assert object._p_oid, f"Object does not have an oid: '{object}'"
         assert object._p_jar is not None, f"Object is not associated with a Database: '{object}'"
@@ -771,7 +956,12 @@ class ObjectReader:
         return cls
 
     def set_ghost_state(self, object: persistent.Persistent, data: Dict):
-        """Set state of a Persistent ghost object."""
+        """Set state of a Persistent ghost object.
+
+        Args:
+            object(persistent.Persistent): Object to set state on.
+            data(Dict): State to set on the object.
+        """
         previous_cache = self._deserialization_cache
         self._deserialization_cache = []
 
@@ -781,7 +971,14 @@ class ObjectReader:
         self._deserialization_cache = previous_cache
 
     def deserialize(self, data):
-        """Convert JSON to Persistent object."""
+        """Convert JSON to Persistent object.
+
+        Args:
+            data: Data to deserialize.
+
+        Returns:
+            Deserialized object.
+        """
         oid = data["@renku_oid"]
 
         self._deserialization_cache = []

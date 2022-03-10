@@ -39,7 +39,8 @@ class ValueResolver(ABC):
     def apply(self) -> AbstractPlan:
         """Applies values and default_values to a potentially nested workflow.
 
-        :returns: The ``AbstractPlan`` with the user provided values set.
+        Returns:
+            AbstractPlan: The ``AbstractPlan`` with the user provided values set.
         """
         pass
 
@@ -47,9 +48,12 @@ class ValueResolver(ABC):
     def get(plan: AbstractPlan, values: Dict[str, Any]) -> "ValueResolver":
         """Factory method to obtain the specific ValueResolver for a workflow.
 
-        :param plan: a workflow.
-        :param values: user defined dictionary of runtime values for the provided workflow.
-        :returns: A ValueResolver object
+        Args:
+            plan(AbstractPlan): a workflow.
+            values(Dict[str, Any]): user defined dictionary of runtime values for the provided workflow.
+
+        Returns:
+            "ValueResolver": A ValueResolver object.
         """
         return PlanValueResolver(plan, values) if isinstance(plan, Plan) else CompositePlanValueResolver(plan, values)
 
@@ -64,7 +68,11 @@ class PlanValueResolver(ValueResolver):
         super(PlanValueResolver, self).__init__(plan, values)
 
     def apply(self) -> AbstractPlan:
-        """Applies values and default_values to a ``Plan``."""
+        """Applies values and default_values to a ``Plan``.
+
+        Returns:
+            A Plan with values applied.
+        """
         if not self._values:
             return self._plan
 
@@ -96,7 +104,11 @@ class CompositePlanValueResolver(ValueResolver):
         super(CompositePlanValueResolver, self).__init__(plan, values)
 
     def apply(self) -> AbstractPlan:
-        """Applies values and default_values to a ``CompositePlan``."""
+        """Applies values and default_values to a ``CompositePlan``.
+
+        Returns:
+            A ``CompositePlan`` with values applied.
+        """
 
         if self._values:
             self._apply_parameters_values()
@@ -119,7 +131,11 @@ class CompositePlanValueResolver(ValueResolver):
         return self._plan
 
     def _apply_parameter_defaults(self, mapping: ParameterMapping) -> None:
-        """Apply default values to a mapping and contained params if they're not set already."""
+        """Apply default values to a mapping and contained params if they're not set already.
+
+        Args:
+            mapping(ParameterMapping): The mapping to apply values to.
+        """
 
         if not mapping.actual_value_set and mapping.default_value:
             mapping.actual_value = mapping.default_value
@@ -144,7 +160,11 @@ class CompositePlanValueResolver(ValueResolver):
 
 
 def apply_parameter_links(workflow: CompositePlan) -> None:
-    """Apply values from parameter links."""
+    """Apply values from parameter links.
+
+    Args:
+        workflow(CompositePlan): The workflow whose links values should be applied on.
+    """
     for link in workflow.links:
         for sink in link.sinks:
             sink.actual_value = link.source.actual_value

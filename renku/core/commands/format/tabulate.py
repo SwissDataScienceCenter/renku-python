@@ -33,9 +33,6 @@ def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort
         columns_alignments: Column alignment (Default value = None).
         sort: Whether to sort by first column or not (Default value = True).
         reverse: Whether to sort in reverse (Default value = False).
-
-    Returns:
-
     """
     from renku.core.models.tabulate import tabulate as tabulate_
 

@@ -496,7 +496,7 @@ def _workflow_inputs(activity_gateway: IActivityGateway, paths: List[str] = None
         paths(List[str], optional): List of paths to consider as inputs (Default value = None).
 
     Returns:
-
+        Set[str]: Set of input file paths.
     """
     usage_paths = activity_gateway.get_all_usage_paths()
 
@@ -520,7 +520,7 @@ def _workflow_outputs(activity_gateway: IActivityGateway, paths: List[str] = Non
         paths(List[str], optional): List of paths to consider as outputs (Default value = None).
 
     Returns:
-
+        Set[str]: Set of output file paths.
     """
     generation_paths = activity_gateway.get_all_generation_paths()
 

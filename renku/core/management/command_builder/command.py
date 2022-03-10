@@ -34,7 +34,14 @@ _LOCAL = threading.local()
 
 
 def check_finalized(f):
-    """Decorator to prevent modification of finalized builders."""
+    """Decorator to prevent modification of finalized builders.
+
+    Args:
+        f: Decorated function.
+
+    Returns:
+        Wrapped function.
+    """
 
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -65,7 +72,15 @@ def _patched_get_injector_or_die() -> inject.Injector:
 def _patched_configure(
     config: typing.Optional[inject.BinderCallable] = None, bind_in_runtime: bool = True
 ) -> inject.Injector:
-    """Create an injector with a callable config or raise an exception when already configured."""
+    """Create an injector with a callable config or raise an exception when already configured.
+
+    Args:
+        config(typing.Optional[inject.BinderCallable], optional): Injection binding config (Default value = None).
+        bind_in_runtime(bool, optional): Whether to allow binding at runtime (Default value = True).
+
+    Returns:
+        Injector: Threadsafe injector with bindings applied.
+    """
 
     if getattr(_LOCAL, "injector", None):
         raise inject.InjectorException("Injector is already configured")
@@ -87,7 +102,12 @@ def remove_injector():
 
 @contextlib.contextmanager
 def replace_injection(bindings, constructor_bindings=None):
-    """Temporarily inject various test objects."""
+    """Temporarily inject various test objects.
+
+    Args:
+        bindings: New normal injection bindings to apply.
+        constructor_bindings: New constructor bindings to apply (Default value = None).
+    """
     constructor_bindings = constructor_bindings or {}
 
     def bind(binder):
@@ -114,6 +134,10 @@ def update_injected_client(new_client, update_database: bool = True):
     """Update the injected client instance.
 
     Necessary because we sometimes use attr.evolve to modify a client and this doesn't affect the injected instance.
+
+    Args:
+        new_client: New ``LocalClient`` to inject.
+        update_database(bool, optional): Whether to also update bound database (Default value = True).
     """
     from renku.core.management.client import LocalClient
     from renku.core.metadata.database import Database
@@ -161,7 +185,12 @@ class Command:
         object.__setattr__(self, name, value)
 
     def _injection_pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
-        """Setup dependency injections."""
+        """Setup dependency injections.
+
+        Args:
+            builder("Command"): Current ``CommandBuilder``.
+            context(dict): Current context dictionary.
+        """
         from renku.core.management.client import LocalClient
         from renku.core.management.command_builder.client_dispatcher import ClientDispatcher
         from renku.core.management.interface.client_dispatcher import IClientDispatcher
@@ -182,13 +211,24 @@ class Command:
         context["click_context"] = ctx
 
     def _pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
-        """Setup local client."""
+        """Setup local client.
+
+        Args:
+            builder("Command"): Current ``CommandBuilder``.
+            context(dict): Current context dictionary.
+        """
 
         stack = contextlib.ExitStack()
         context["stack"] = stack
 
     def _post_hook(self, builder: "Command", context: dict, result: "CommandResult", *args, **kwargs) -> None:
-        """Post-hook method."""
+        """Post-hook method.
+
+        Args:
+            builder("Command"): Current ``CommandBuilder``.
+            context(dict): Current context dictionary.
+            result("CommandResult"): Result of command execution.
+        """
         remove_injector()
 
         if result.error:
@@ -200,6 +240,9 @@ class Command:
         First executes `pre_hooks` in ascending `order`, passing a read/write context between them.
         It then calls the wrapped `operation`. The result of the operation then gets pass to all the `post_hooks`,
         but in descending `order`. It then returns the result or error if there was one.
+
+        Returns:
+            CommandResult: Result of execution of command.
         """
         if not self.finalized:
             raise errors.CommandNotFinalizedError("Call `build()` before executing a command")
@@ -268,8 +311,9 @@ class Command:
     def add_injection_pre_hook(self, order: int, hook: typing.Callable):
         """Add a pre-execution hook for dependency injection.
 
-        :param order: Determines the order of executed hooks, lower numbers get executed first.
-        :param hook: The hook to add
+        Args:
+            order(int): Determines the order of executed hooks, lower numbers get executed first.
+            hook(typing.Callable): The hook to add.
         """
         if hasattr(self, "_builder"):
             self._builder.add_injection_pre_hook(order, hook)
@@ -280,8 +324,9 @@ class Command:
     def add_pre_hook(self, order: int, hook: typing.Callable):
         """Add a pre-execution hook.
 
-        :param order: Determines the order of executed hooks, lower numbers get executed first.
-        :param hook: The hook to add
+        Args:
+            order(int): Determines the order of executed hooks, lower numbers get executed first.
+            hook(typing.Callable): The hook to add.
         """
         if hasattr(self, "_builder"):
             self._builder.add_pre_hook(order, hook)
@@ -292,8 +337,9 @@ class Command:
     def add_post_hook(self, order: int, hook: typing.Callable):
         """Add a post-execution hook.
 
-        :param order: Determines the order of executed hooks, lower numbers get executed first.
-        :param hook: The hook to add
+        Args:
+            order(int): Determines the order of executed hooks, lower numbers get executed first.
+            hook(typing.Callable): The hook to add.
         """
         if hasattr(self, "_builder"):
             self._builder.add_post_hook(order, hook)
@@ -302,7 +348,11 @@ class Command:
 
     @check_finalized
     def build(self) -> "Command":
-        """Build (finalize) the command."""
+        """Build (finalize) the command.
+
+        Returns:
+            Command: Finalized command that cannot be modified.
+        """
         if not self._operation:
             raise errors.ConfigurationError("`Command` needs to have a wrapped `command` set")
         self.add_injection_pre_hook(self.CLIENT_HOOK_ORDER, self._injection_pre_hook)
@@ -317,7 +367,11 @@ class Command:
     def command(self, operation: typing.Callable):
         """Set the wrapped command.
 
-        :param operation: The function to wrap in the command builder.
+        Args:
+            operation(typing.Callable): The function to wrap in the command builder.
+
+        Returns:
+            Command: This command.
         """
         self._operation = operation
 
@@ -327,7 +381,11 @@ class Command:
     def working_directory(self, directory: str) -> "Command":
         """Set the working directory for the command.
 
-        :param directory: The working directory to work in.
+        Args:
+            directory(str): The working directory to work in.
+
+        Returns:
+            Command: This command.
         """
         self._working_directory = directory
 
@@ -335,7 +393,11 @@ class Command:
 
     @check_finalized
     def track_std_streams(self) -> "Command":
-        """Whether to track STD streams or not."""
+        """Whether to track STD streams or not.
+
+        Returns:
+            Command: This command.
+        """
         self._track_std_streams = True
 
         return self
@@ -353,10 +415,12 @@ class Command:
     ) -> "Command":
         """Create a commit.
 
-        :param message: The commit message. Auto-generated if left empty.
-        :param commit_if_empty: Whether to commit if there are no modified files .
-        :param raise_if_empty: Whether to raise an exception if there are no modified files.
-        :param commit_only: Only commit the supplied paths.
+        Args:
+            message(str, optional): The commit message. Auto-generated if left empty (Default value = None).
+            commit_if_empty(bool, optional): Whether to commit if there are no modified files (Default value = False).
+            raise_if_empty(bool, optional): Whether to raise an exception if there are no modified files
+                (Default value = False).
+            commit_only(bool, optional): Only commit the supplied paths (Default value = None).
         """
         from renku.core.management.command_builder.repo import Commit
 
@@ -392,14 +456,24 @@ class Command:
 
     @check_finalized
     def with_communicator(self, communicator: CommunicationCallback) -> "Command":
-        """Create a communicator."""
+        """Create a communicator.
+
+        Args:
+            communicator(CommunicationCallback): Communicator to use for writing to user.
+        """
         from renku.core.management.command_builder.communication import Communicator
 
         return Communicator(self, communicator)
 
     @check_finalized
     def with_database(self, write: bool = False, path: str = None, create: bool = False) -> "Command":
-        """Provide an object database connection."""
+        """Provide an object database connection.
+
+        Args:
+            write(bool, optional): Whether or not to persist changes to the database (Default value = False).
+            path(str, optional): Location of the database (Default value = None).
+            create(bool, optional): Whether the database should be created if it doesn't exist (Default value = False).
+        """
         from renku.core.management.command_builder.database import DatabaseCommand
 
         return DatabaseCommand(self, write, path, create)

@@ -96,7 +96,7 @@ def check_datasets_structure(client, fix, dataset_gateway: IDatasetGateway):
         dataset_gateway(IDatasetGateway):
 
     Returns:
-
+        Tuple[bool, str]: Tuple of whether structure is valid and of problems that might have been found.
     """
     ok = True
 
@@ -134,10 +134,10 @@ def _check_shacl_structure(data):
     """Validates all metadata against the SHACL schema.
 
     Args:
-        data:
+        data: JSON-LD data to validate.
 
     Returns:
-
+        Validation result.
     """
     rdf = pyld.jsonld.to_rdf(data, options={"format": "application/n-quads", "produceGeneralizedRdf": True})
 

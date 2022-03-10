@@ -65,7 +65,14 @@ if TYPE_CHECKING:
 
 
 def search_datasets(name: str) -> List[str]:
-    """Get all the datasets whose name starts with the given string."""
+    """Get all the datasets whose name starts with the given string.
+
+    Args:
+        name(str): Beginning of dataset name to search for.
+
+    Returns:
+        List[str]: List of found dataset names.
+    """
     datasets_provenance = DatasetsProvenance()
     return list(filter(lambda x: x.startswith(name), map(lambda x: x.name, datasets_provenance.datasets)))
 
@@ -94,7 +101,23 @@ def create_dataset(
     update_provenance: bool = True,
     custom_metadata: Optional[Dict[str, Any]] = None,
 ):
-    """Create a dataset."""
+    """Create a dataset.
+
+    Args:
+        name(str): Name of the dataset
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        title(Optional[str], optional): Dataset title (Default value = None).
+        description(Optional[str], optional): Dataset description (Default value = None).
+        creators(Optional[List[Person]], optional): Dataset creators (Default value = None).
+        keywords(Optional[List[str]], optional): Dataset keywords (Default value = None).
+        images(Optional[List[ImageRequestModel]], optional): Dataset images (Default value = None).
+        update_provenance(bool, optional): Whether to add this dataset to dataset provenance
+            (Default value = True).
+        custom_metadata(Optional[Dict[str, Any]], optional): Custom JSON-LD metadata (Default value = None).
+
+    Returns:
+        Dataset: The created dataset.
+    """
     client = client_dispatcher.current_client
 
     if not creators:
@@ -151,7 +174,22 @@ def edit_dataset(
     skip_image_update: bool = False,
     custom_metadata: Dict = None,
 ):
-    """Edit dataset metadata."""
+    """Edit dataset metadata.
+
+    Args:
+        name(str): Name of the dataset to edit
+        title(str): New title for the dataset.
+        description(str): New description for the dataset.
+        creators(List[Person]): New creators for the dataset.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        keywords(List[str], optional): New keywords for dataset (Default value = None).
+        images(List[ImageRequestModel], optional): New images for dataset (Default value = None).
+        skip_image_update(bool, optional): Whether or not to skip updating dataset images (Default value = False).
+        custom_metadata(Dict, optional): Custom JSON-LD metadata (Default value = None).
+
+    Returns:
+        bool: True if updates were performed.
+    """
     client = client_dispatcher.current_client
 
     possible_updates = {
@@ -200,7 +238,18 @@ def list_dataset_files(
     include=None,
     exclude=None,
 ):
-    """List dataset files."""
+    """List dataset files.
+
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        datasets: Datasets to list files for (Default value = None).
+        creators: Creators to filter by (Default value = None).
+        include: Include filters for file paths (Default value = None).
+        exclude: Exclude filters for file paths (Default value = None).
+
+    Returns:
+        List[DynamicProxy]: Filtered dataset files.
+    """
     from renku.core.commands.format.dataset_files import get_lfs_file_sizes, get_lfs_tracking
 
     client = client_dispatcher.current_client
@@ -225,7 +274,18 @@ def list_dataset_files(
 
 @inject.autoparams()
 def file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, yes=False):
-    """Remove matching files from a dataset."""
+    """Remove matching files from a dataset.
+
+    Args:
+        name: Dataset name.
+        include: Include filter for files.
+        exclude: Exclude filter for files.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        yes: Whether to skip user confirmation or not (Default value = False).
+
+    Returns:
+        List[DynamicProxy]: List of files that were removed.
+    """
     client = client_dispatcher.current_client
 
     if not include and not exclude:
@@ -266,7 +326,11 @@ def file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, ye
 
 
 def remove_dataset(name):
-    """Delete a dataset."""
+    """Delete a dataset.
+
+    Args:
+        name: Name of dataset to delete.
+    """
     datasets_provenance = DatasetsProvenance()
     dataset = datasets_provenance.get_by_name(name=name, strict=True)
     datasets_provenance.remove(dataset=dataset)
@@ -276,7 +340,12 @@ def remove_dataset(name):
 def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClientDispatcher, **kwargs):
     """Export data to 3rd party provider.
 
-    :raises: ``ParameterError``, ``HTTPError``, ``InvalidAccessToken``, ``DatasetNotFound``
+    Args:
+        name: Name of dataset to export.
+        provider_name: Provider to use for export.
+        publish: Whether to export as proper version or draft.
+        tag: Dataset tag from which to export.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
     client = client_dispatcher.current_client
     datasets_provenance = DatasetsProvenance()
@@ -349,7 +418,19 @@ def import_dataset(
     delete=False,
     gitlab_token=None,
 ):
-    """Import data from a 3rd party provider or another renku project."""
+    """Import data from a 3rd party provider or another renku project.
+
+    Args:
+        uri: DOI or URL of dataset to import.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
+        name: Name to give imported dataset (Default value = "").
+        extract: Whether to extract compressed dataset data (Default value = False).
+        yes: Whether to skip user confirmation (Default value = False).
+        previous_dataset: Previously imported dataset version (Default value = None).
+        delete: Whether to delete files that don't exist anymore (Default value = False).
+        gitlab_token: Gitlab OAuth2 token (Default value = None).
+    """
     from renku.core.management.dataset.dataset_add import add_data_to_dataset
 
     client = client_dispatcher.current_client
@@ -482,7 +563,19 @@ def update_datasets(
     dataset_gateway: IDatasetGateway,
     external=False,
 ):
-    """Update dataset files."""
+    """Update dataset files.
+
+    Args:
+        names: Names of datasets to update.
+        creators: Creators to filter dataset files by.
+        include: Include filter for paths to update.
+        exclude: Exclude filter for paths to update.
+        ref: Git reference to use for update.
+        delete: Whether to delete files that don't exist on remote anymore.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        dataset_gateway(IDatasetGateway): Injected dataset gateway.
+        external: Whether to also update external files (Default value = False).
+    """
     client = client_dispatcher.current_client
 
     ignored_datasets = []
@@ -597,13 +690,29 @@ def update_datasets(
 
 
 def show_dataset(name):
-    """Show detailed dataset information."""
+    """Show detailed dataset information.
+
+    Args:
+        name: Name of dataset to show details for.
+
+    Returns:
+        dict: JSON dictionary of dataset details.
+    """
     dataset = DatasetsProvenance().get_by_name(name)
     return DatasetDetailsJson().dump(dataset)
 
 
 def set_dataset_images(client: "LocalClient", dataset: Dataset, images: List[ImageRequestModel]):
-    """Set a dataset's images."""
+    """Set a dataset's images.
+
+    Args:
+        client("LocalClient"): The ``LocalClient``.
+        dataset(Dataset): The dataset to set images on.
+        images(List[ImageRequestModel]): The images to set.
+
+    Returns:
+        True if images were set/modified.
+    """
     if not images:
         images = []
 
@@ -642,7 +751,12 @@ def set_dataset_images(client: "LocalClient", dataset: Dataset, images: List[Ima
 
 
 def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Dict):
-    """Update custom metadata on a dataset."""
+    """Update custom metadata on a dataset.
+
+    Args:
+        dataset(Dataset): The dataset to update.
+        custom_metadata(Dict): Custom JSON-LD metadata to set.
+    """
 
     existing_metadata = [a for a in dataset.annotations if a.source != "renku"]
 
@@ -658,7 +772,14 @@ def move_files(
     files: Dict[Path, Path],
     to_dataset: Optional[str] = None,
 ):
-    """Move files and their metadata from one or more datasets to a target dataset."""
+    """Move files and their metadata from one or more datasets to a target dataset.
+
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        dataset_gateway(IDatasetGateway):Injected dataset gateway.
+        files(Dict[Path, Path]): Files to move
+        to_dataset(Optional[str], optional): Target dataset (Default value = None)
+    """
     client = client_dispatcher.current_client
 
     datasets = [d.copy() for d in dataset_gateway.get_all_active_datasets()]
@@ -707,7 +828,16 @@ def move_files(
 
 @inject.autoparams("client_dispatcher")
 def update_dataset_local_files(client_dispatcher: IClientDispatcher, records: List[DynamicProxy], delete: bool = False):
-    """Update files metadata from the git history."""
+    """Update files metadata from the git history.
+
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        records(List[DynamicProxy]): File records to update.
+        delete(bool, optional): Whether to delete non existing files (Default value = False).
+
+    Returns:
+        Tuple[List[DynamicProxy], List[DynamicProxy]]: Tuple of updated and deleted file records.
+    """
     client = client_dispatcher.current_client
 
     updated_files: List[DynamicProxy] = []
@@ -753,7 +883,18 @@ def update_dataset_local_files(client_dispatcher: IClientDispatcher, records: Li
 def _update_datasets_metadata(
     new_dataset: Dataset, previous_dataset, delete, same_as, client_dispatcher: IClientDispatcher
 ):
-    """Update metadata and remove files that exists in ``previous_dataset`` but not in ``new_dataset``."""
+    """Update metadata and remove files that exists in ``previous_dataset`` but not in ``new_dataset``.
+
+    Args:
+        new_dataset(Dataset): Dataset to update.
+        previous_dataset: Dataset to update from.
+        delete: Whether to delete non existing files.
+        same_as: Source of the dataset.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        Dataset: Dataset with updated values.
+    """
     client = client_dispatcher.current_client
 
     current_paths = set(str(f.entity.path) for f in new_dataset.files)
@@ -804,10 +945,14 @@ def update_dataset_git_files(
 ):
     """Update files and dataset metadata according to their remotes.
 
-    :param files: List of files to be updated
-    :param delete: Indicates whether to delete files or not
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        files(List[DynamicProxy]): List of files to be updated.
+        ref(str): Reference to use for update.
+        delete(bool, optional): Indicates whether to delete files or not (Default value = False).
 
-    :return: List of files that should be deleted
+    Returns:
+        Tuple[List[DynamicProxy], List[DynamicProxy]]: Tuple of updated and deleted file records.
     """
     from renku.core.management.client import LocalClient
 
@@ -882,7 +1027,12 @@ def update_dataset_git_files(
 
 
 def update_external_files(client: "LocalClient", records: List[DynamicProxy]):
-    """Update files linked to external storage."""
+    """Update files linked to external storage.
+
+    Args:
+        client("LocalClient"): The ``LocalCLient``.
+        records(List[DynamicProxy]): File records to update.
+    """
     updated_files_paths = []
     updated_datasets = {}
 
@@ -929,12 +1079,18 @@ def filter_dataset_files(
 ) -> List[DynamicProxy]:
     """Filter dataset files by specified filters.
 
-    :param names: Filter by specified dataset names.
-    :param creators: Filter by creators.
-    :param include: Include files matching file pattern.
-    :param exclude: Exclude files matching file pattern.
-    :param ignore: Ignored datasets.
-    :param immutable: Return immutable copies of dataset objects.
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        dataset_gateway(IDatasetGateway):Injected dataset gateway.
+        names: Filter by specified dataset names. (Default value = None).
+        creators: Filter by creators. (Default value = None).
+        include: Include files matching file pattern. (Default value = None).
+        exclude: Exclude files matching file pattern. (Default value = None).
+        ignore: Ignored datasets. (Default value = None).
+        immutable: Return immutable copies of dataset objects. (Default value = False).
+
+    Returns:
+        List[DynamicProxy]: List of filtered files sorted by date added.
     """
     client = client_dispatcher.current_client
 
@@ -976,9 +1132,13 @@ def filter_dataset_files(
 def _include_exclude(file_path, include=None, exclude=None):
     """Check if file matches one of include filters and not in exclude filter.
 
-    :param file_path: Path to the file.
-    :param include: Tuple containing patterns to which include from result.
-    :param exclude: Tuple containing patterns to which exclude from result.
+    Args:
+        file_path: Path to the file.
+        include: Tuple containing patterns to which include from result (Default value = None).
+        exclude: Tuple containing patterns to which exclude from result (Default value = None).
+
+    Returns:
+        bool: True if a file should be included, False otherwise.
     """
     if exclude is not None and exclude:
         for pattern in exclude:

@@ -1628,7 +1628,9 @@ class Dataset(Entity, CreatorMixin):
     def unlink_file(self, path, missing_ok=False):  # FIXME: Remove unused code
         """Unlink a file from dataset.
 
-        :param path: Relative path used as key inside files container.
+        Args:
+            path: Relative path used as key inside files container.
+            missing_ok (bool): Whether to ignore missing files or raise an error (Default value = False).
         """
         index = self.find_file(path, return_index=True)
         if index is not None:

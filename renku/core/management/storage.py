@@ -47,8 +47,9 @@ from .repository import RepositoryApiMixin
 def check_external_storage_wrapper(fn):
     """Check availability of external storage on methods that need it.
 
-    :raises: ``errors.ExternalStorageNotInstalled``
-    :raises: ``errors.ExternalStorageDisabled``
+    Raises:
+        ``errors.ExternalStorageNotInstalled``: If external storage isn't installed.
+        ``errors.ExternalStorageDisabled``: If external storage isn't enabled.
     """
     # noqa
     @functools.wraps(fn)
@@ -107,8 +108,9 @@ class StorageApiMixin(RepositoryApiMixin):
     def check_external_storage(self):
         """Check if repository has external storage enabled.
 
-        :raises: ``errors.ExternalStorageNotInstalled``
-        :raises: ``errors.ExternalStorageDisabled``
+        Raises:
+            ``errors.ExternalStorageNotInstalled``: If external storage isn't installed.
+            ``errors.ExternalStorageDisabled``: If external storage isn't enabled.
         """
         storage_installed = self.storage_installed_locally and self.storage_installed
         if self.external_storage_requested and not storage_installed:

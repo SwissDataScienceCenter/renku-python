@@ -1419,11 +1419,12 @@ def _find_previous_commit_helper(
 ) -> Optional[Commit]:
     """Return a previous commit for a given path starting from ``revision``.
 
-    :param path: relative path to the file
-    :param revision: revision to start from, defaults to ``HEAD``
-    :param first: show the first commit in the history
-    :param full_history: search full history
-    :param submodules: search in submodules if not found in the main repository
+    Args:
+        path (Union[Path, str]): relative path to the file.
+        revision (str, optional): revision to start from, defaults to ``HEAD`` (Default value = None).
+        first (bool, optional): show the first commit in the history (Default value = False).
+        full_history (bool, optional): search full history (Default value = False).
+        submodules (bool, optional): search in submodules if not found in the main repository (Default value = False).
     """
     absolute_path = get_absolute_path(path, repository.path)
     revision = revision or "HEAD"
