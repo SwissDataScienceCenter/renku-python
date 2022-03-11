@@ -20,7 +20,6 @@
 from marshmallow import EXCLUDE
 
 from renku.core.commands.schema.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
-from renku.core.models.provenance.parameter import ParameterValue
 from renku.core.models.workflow.parameter import (
     CommandInput,
     CommandOutput,
@@ -30,22 +29,6 @@ from renku.core.models.workflow.parameter import (
     ParameterLink,
     ParameterMapping,
 )
-
-
-class ParameterValueSchema(JsonLDSchema):
-    """ParameterValue schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = [renku.ParameterValue, schema.PropertyValue]
-        model = ParameterValue
-        unknown = EXCLUDE
-
-    id = fields.Id()
-
-    parameter = fields.IRI(schema.valueReference, attribute="parameter_id")
-    value = fields.Raw(schema.value)
 
 
 class MappedIOStreamSchema(JsonLDSchema):
