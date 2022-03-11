@@ -602,7 +602,7 @@ def update_datasets(
         deleted_files.extend(deleted)
 
     if local_files:
-        updated, deleted = update_dataset_local_files(records=local_files, delete=delete, dry_run=dry_run)
+        updated, deleted = update_dataset_local_files(records=local_files)
         updated_files.extend(updated)
         deleted_files.extend(deleted)
 
@@ -742,7 +742,7 @@ def move_files(
 
 @inject.autoparams("client_dispatcher")
 def update_dataset_local_files(
-    client_dispatcher: IClientDispatcher, records: List[DynamicProxy], delete: bool, dry_run: bool
+    client_dispatcher: IClientDispatcher, records: List[DynamicProxy]
 ) -> Tuple[List[DynamicProxy], List[DynamicProxy]]:
     """Update files metadata from the git history."""
     client = client_dispatcher.current_client
