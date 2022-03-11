@@ -61,7 +61,7 @@ class Project:
 
     @property
     def client(self):
-        """Return path of file."""
+        """Return the LocalClient instance."""
         return self._client
 
     @property
