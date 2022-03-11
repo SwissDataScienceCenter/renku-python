@@ -455,24 +455,24 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-    "uri, name",
+    "uri, message",
     [
         (
             "https://dev.renku.ch/projects/renku-test-projects/dataset-import/datasets/non-existing-dataset",
-            "non-existing-dataset",
+            "Cannot fetch dataset with name 'non-existing-dataset'",
         ),
         (
             "https://dev.renku.ch/projects/invalid/project-path/datasets/860f6b5b46364c83b6a9b38ef198bcc0",
-            "remote-dataset",
+            "Cannot find project in the knowledge graph:",
         ),
     ],
 )
-def test_dataset_import_renku_provider_errors(runner, project, uri, name):
+def test_dataset_import_renku_provider_errors(runner, project, uri, message):
     """Test errors in Renku dataset import due to invalid project or dataset name."""
     result = runner.invoke(cli, ["dataset", "import", uri])
 
     assert 1 == result.exit_code
-    assert f"Cannot fetch dataset with name '{name}'" in result.output
+    assert message in result.output
 
     assert 0 == runner.invoke(cli, ["dataset", "ls"]).exit_code
 

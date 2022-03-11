@@ -2122,7 +2122,7 @@ def test_authorized_import(mock_kg, client, runner):
 
     assert 1 == result.exit_code
     assert "Unauthorized access to knowledge graph" not in result.output
-    assert "Resource not found in knowledge graph" in result.output
+    assert "Cannot find project in the knowledge graph" in result.output
 
 
 def test_update_local_file(runner, client, directory_tree, load_dataset_with_injection):

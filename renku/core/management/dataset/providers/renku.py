@@ -150,7 +150,10 @@ class RenkuProvider(ProviderApi):
 
     def _fetch_dataset_info_from_project(self, project_kg_url, dataset_name):
         datasets_kg_url = f"{project_kg_url}/datasets"
-        response = self._query_knowledge_graph(datasets_kg_url)
+        try:
+            response = self._query_knowledge_graph(datasets_kg_url)
+        except errors.NotFound:
+            raise errors.NotFound(f"Cannot find project in the knowledge graph: {project_kg_url}")
 
         dataset = next((d for d in response if d.get("name") == dataset_name), None)
         if not dataset:
