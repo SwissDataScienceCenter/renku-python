@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,25 +15,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utility functions for plugins."""
+"""Serializers for sessions."""
+
+from .tabulate import tabulate
 
 
-def supported_formats():
-    """Deferred import as plugins are slow."""
-    from renku.core.plugins.workflow import supported_formats
+def tabular(sessions, *, columns=None):
+    """Format workflows with a tabular output."""
+    if not columns:
+        columns = "id,status,url"
 
-    return supported_formats()
-
-
-def available_workflow_providers():
-    """Deferred import as plugins are slow."""
-    from renku.core.plugins.provider import available_workflow_providers
-
-    return available_workflow_providers()
+    return tabulate(collection=sessions, columns=columns, columns_mapping=SESSION_COLUMNS)
 
 
-def supported_session_providers():
-    """Deferred import as plugins are slow."""
-    from renku.core.plugins.session import supported_session_providers
+SESSION_FORMATS = {"tabular": tabular}
+"""Valid formatting options."""
 
-    return list(map(lambda p: p[1], supported_session_providers()))
+SESSION_COLUMNS = {
+    "id": ("id", "id"),
+    "status": ("status", "status"),
+    "url": ("url", "url"),
+}
