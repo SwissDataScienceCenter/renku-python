@@ -17,6 +17,21 @@ global:
     customCAs: []
       # - secret:
 
+  ## Redis configuration. This is where renku-core expects to find
+  ## a functioning redis instance and credentials to connect to it.
+  redis:
+    sentinel:
+      enabled: true
+      masterSet: mymaster
+    dbIndex:
+      coreService: "1"
+    host: renku-redis
+    port: 26379
+    clientLabel:
+      renku-redis-host: "true"
+    existingSecret: redis-secret
+    existingSecretPasswordKey: redis-password
+
 # base path - this is the reverse proxy base path
 apiBasePath: /api
 
@@ -78,24 +93,6 @@ resources: {}
 
 # affinity: {}
 
-## The renku core service deploys its own redis as a dependency. These values
-## do probably not need to be changed.
-redis:
-  nameOverride: core-redis
-
-  cluster:
-    enabled: false
-
-  usePassword: false
-
-  master:
-    persistence:
-      enabled: false
-
-  networkPolicy:
-    enabled: true
-    allowExternal: false
-
 ## Add sentry configuration
 sentry:
   enabled: false
@@ -112,7 +109,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.0.6"
+      tag: "v1.1.1"
       pullPolicy: IfNotPresent
   v8:
     name: v8
@@ -121,5 +118,5 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v0.16.4"
+      tag: "v0.16.5"
       pullPolicy: IfNotPresent

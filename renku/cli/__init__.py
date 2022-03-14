@@ -90,6 +90,7 @@ from renku.cli.rollback import rollback
 from renku.cli.run import run
 from renku.cli.save import save
 from renku.cli.service import service
+from renku.cli.session import session
 from renku.cli.status import status
 from renku.cli.storage import storage
 from renku.cli.template import template
@@ -248,6 +249,7 @@ cli.add_command(rollback)
 cli.add_command(run)
 cli.add_command(save)
 cli.add_command(service)
+cli.add_command(session)
 cli.add_command(status)
 cli.add_command(storage)
 cli.add_command(template)

@@ -17,11 +17,13 @@
 # limitations under the License.
 """Renku plugin implementations."""
 
+from renku.core.management.session.docker import DockerSessionProvider
 from renku.core.management.workflow.converters.cwl import CWLExporter
 from renku.core.management.workflow.providers.cwltool import CWLToolProvider
 
 __all__ = []
 
+session_providers = [DockerSessionProvider]
 workflow_exporters = [CWLExporter]
 workflow_providers = [CWLToolProvider]
 

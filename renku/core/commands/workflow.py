@@ -50,7 +50,7 @@ from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.plugins.provider import execute
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import local_now
-from renku.core.utils.os import are_paths_related, get_relative_paths
+from renku.core.utils.os import are_paths_related, get_relative_paths, safe_read_yaml
 
 
 def _ref(name):
@@ -62,15 +62,6 @@ def _deref(ref):
     """Remove workflows prefix."""
     assert ref.startswith("workflows/")
     return ref[len("workflows/") :]
-
-
-def _safe_read_yaml(file: str) -> Dict[str, Any]:
-    try:
-        from renku.core.models import jsonld as jsonld
-
-        return jsonld.read_yaml(file)
-    except Exception as e:
-        raise errors.ParameterError(e)
 
 
 @inject.autoparams()
@@ -359,7 +350,7 @@ def _export_workflow(
         output = Path(output)
 
     if values:
-        values = _safe_read_yaml(values)
+        values = safe_read_yaml(values)
         rv = ValueResolver.get(workflow, values)
         workflow = rv.apply()
         if rv.missing_parameters:
@@ -462,15 +453,21 @@ def execute_workflow(
     """Execute a Run with/without subprocesses."""
     client = client_dispatcher.current_client
 
+    inputs = {i.actual_value for p in dag.nodes for i in p.inputs}
     # NOTE: Pull inputs from Git LFS or other storage backends
     if client.check_external_storage():
-        inputs = [i.actual_value for p in dag.nodes for i in p.inputs]
         client.pull_paths_from_storage(*inputs)
+
+    # check whether the none generated inputs of workflows are available
+    outputs = {o.actual_value for p in dag.nodes for o in p.outputs}
+    for i in inputs - outputs:
+        if not Path(i).exists():
+            raise errors.ParameterError(f"Input '{i}' for the workflow does not exists!")
 
     delete_indirect_files_list(client.path)
 
     if config:
-        config = _safe_read_yaml(config)
+        config = safe_read_yaml(config)
 
     started_at_time = local_now()
 
@@ -504,7 +501,7 @@ def _execute_workflow(
     # apply the provided parameter settings provided by user
     override_params = dict()
     if values:
-        override_params.update(_safe_read_yaml(values))
+        override_params.update(safe_read_yaml(values))
 
     if set_params:
         from deepmerge import always_merger
@@ -744,7 +741,7 @@ def _iterate_workflow(
     iter_params = {"indexed": {}, "params": {}, "tagged": {}}
     workflow_params = {}
     if mapping_path:
-        mapping = _safe_read_yaml(mapping_path)
+        mapping = safe_read_yaml(mapping_path)
         iter_params, workflow_params = _extract_iterate_parameters(mapping, index_pattern, tag_separator=TAG_SEPARATOR)
 
     for m in mappings:
@@ -759,12 +756,15 @@ def _iterate_workflow(
                     f"The value of '{param_name}' parameter is neither a list nor templated variable!"
                 )
 
-            if len(param_value) == 1:
+            if isinstance(param_value, list) and len(param_value) == 1:
                 communication.warn(
                     f"The parameter '{param_name}' has only one element '{param_value}', "
                     "changing it to be a fixed parameter!"
                 )
                 workflow_params[param_name] = param_value[0]
+                continue
+            elif not isinstance(param_value, list):
+                workflow_params[param_name] = param_value
                 continue
 
             if TAG_SEPARATOR in param_name:

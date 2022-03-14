@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets unlink controller."""
-from renku.core.commands.dataset import file_unlink
+from renku.core.commands.dataset import file_unlink_command
 from renku.service.cache.models.job import Job
 from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
@@ -56,7 +56,7 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def renku_op(self):
         """Renku operation for the controller."""
         result = (
-            file_unlink()
+            file_unlink_command()
             .with_commit_message(self.ctx["commit_message"])
             .build()
             .execute(

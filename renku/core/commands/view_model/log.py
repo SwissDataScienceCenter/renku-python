@@ -137,7 +137,7 @@ class LogViewModel:
 
         return ActivityLogViewModel(
             id=activity.id,
-            date=activity.ended_at_time,
+            date=activity.ended_at_time or activity.started_at_time or datetime.utcfromtimestamp(0),
             description=command,
             details=details,
             agents=[a.full_identity for a in activity.agents],
@@ -156,7 +156,7 @@ class LogViewModel:
         if not dataset.derived_from and not dataset.same_as:
             descriptions.append("created")
             details.created = True
-        elif not dataset.derived_from and dataset.same_as:
+        elif dataset.same_as:
             descriptions.append("imported")
             details.imported = True
             details.source = dataset.same_as.value
@@ -166,7 +166,7 @@ class LogViewModel:
 
         previous_dataset = None
 
-        if dataset.derived_from:
+        if dataset.is_derivation():
             previous_dataset = dataset_gateway.get_by_id(dataset.derived_from.url_id)
 
         current_files = {f for f in dataset.dataset_files if not f.date_removed}
@@ -256,7 +256,11 @@ class LogViewModel:
 
         return DatasetLogViewModel(
             id=dataset.name,
-            date=dataset.date_removed if dataset.date_removed else dataset.date_modified,
+            date=dataset.date_removed
+            if dataset.date_removed
+            else (
+                dataset.date_modified or dataset.date_created or dataset.date_published or datetime.utcfromtimestamp(0)
+            ),
             description=descriptions[0] + ", ".join(descriptions[1:]),
             details=details,
             agents=[c.full_identity for c in dataset.creators],

@@ -19,7 +19,8 @@
 from pathlib import Path
 
 from renku.cli import cli
-from tests.utils import format_result_exception
+from renku.core.models.dataset import Url
+from tests.utils import format_result_exception, with_dataset
 
 
 def test_new_project_is_ok(runner, project):
@@ -92,3 +93,52 @@ def test_lfs_broken_history(runner, client, tmp_path):
     result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Git history contains large files" not in result.output
+
+
+def test_check_invalid_imported_dataset(runner, client_with_datasets, client_database_injection_manager):
+    """Test checking imported datasets that have both derived_form and same_as set."""
+    with client_database_injection_manager(client_with_datasets):
+        with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
+            # NOTE: Set both same_as and derived_from for a dataset
+            dataset.same_as = Url(url_str="http://example.com")
+            dataset.derived_from = Url(url_id="datasets/non-existing-id")
+
+    result = runner.invoke(cli, ["doctor"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "There are invalid dataset metadata in the project" in result.output
+    assert "dataset-1" in result.output
+
+    result = runner.invoke(cli, ["graph", "export", "--full"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["log", "--datasets"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_fix_invalid_imported_dataset(runner, client_with_datasets, client_database_injection_manager):
+    """Test fixing imported datasets that have both derived_form and same_as set."""
+    with client_database_injection_manager(client_with_datasets):
+        with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
+            # NOTE: Set both same_as and derived_from for a dataset
+            dataset.same_as = Url(url_str="http://example.com")
+            dataset.derived_from = Url(url_id="datasets/non-existing-id")
+
+    client_with_datasets.repository.add(all=True)
+    client_with_datasets.repository.commit("modified dataset")
+
+    before_commit_sha = client_with_datasets.repository.head.commit.hexsha
+
+    result = runner.invoke(cli, ["doctor", "--fix"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Fixing dataset 'dataset-1'" in result.output
+
+    assert before_commit_sha != client_with_datasets.repository.head.commit.hexsha
+    assert not client_with_datasets.repository.is_dirty(untracked_files=True)
+
+    with client_database_injection_manager(client_with_datasets):
+        with with_dataset(client_with_datasets, name="dataset-1") as dataset:
+            # NOTE: Set both same_as and derived_from for a dataset
+            assert dataset.same_as.value == "http://example.com"
+            assert dataset.derived_from is None

@@ -29,6 +29,7 @@ from renku.core.management.client import LocalClient
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.core.management.workflow.plan_factory import RENKU_TMP
+from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import RemoteEntity
 from tests.utils import format_result_exception
@@ -100,9 +101,10 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
 
     client = LocalClient(path=old_project.path)
     with client_database_injection_manager(client):
-        assert client.datasets
+        datasets = DatasetGateway().get_all_active_datasets()
+        assert datasets
 
-        for ds in client.datasets.values():
+        for ds in datasets:
             for file in ds.files:
                 path = Path(file.entity.path)
                 assert path.exists()

@@ -81,6 +81,7 @@ gitlabClientSecret
 GraphQL
 Homebrew
 hostname
+hotfix
 https
 hyperkit
 hypervisor
@@ -235,6 +236,7 @@ versioning
 Versioning
 vertices
 vm
+wasDerivedFrom
 webhook
 webhooks
 whitespace

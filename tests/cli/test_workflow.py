@@ -630,7 +630,7 @@ def test_workflow_visualize_non_interactive(runner, project, client, workflow_gr
 
     # We don't use pytest paramtrization for performance reasons, so we don't need to build the workflow_graph fixture
     # for each execution
-    columns = [[], ["-c", "command"], ["-c", "command,id,date"]]
+    columns = [[], ["-c", "command"], ["-c", "command,id,date,plan"]]
     from_command = [
         ([], set()),
         (["--from", "B"], {"A", "Z", "H", "J"}),

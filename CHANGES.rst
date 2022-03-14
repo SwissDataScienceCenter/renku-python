@@ -18,6 +18,55 @@
 Changes
 =======
 
+`1.1.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.0...v1.1.1>`__ (2022-03-10)
+-------------------------------------------------------------------------------------------------------
+
+This is a hotfix release fixing an issue with id generation for activities.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Add doctor fix and on-the-fly migration for wrong activity ids
+   (`#2747 <https://github.com/SwissDataScienceCenter/renku-python/issues/2747>`__)
+
+`1.1.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.6...v1.1.0>`__ (2022-03-04)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **dataset:** unset wasDerivedFrom for imported datasets
+   (`#2686 <https://github.com/SwissDataScienceCenter/renku-python/issues/2686>`__)
+   (`89023d2 <https://github.com/SwissDataScienceCenter/renku-python/commit/89023d266fc0dde237e8e8164f2cde16e41e342c>`__)
+-  **core:** avoid migration failure for invalid dataset names
+   (`#2703 <https://github.com/SwissDataScienceCenter/renku-python/issues/2703>`__)
+   (`ee607ac <https://github.com/SwissDataScienceCenter/renku-python/commit/ee607acbb374b97c526e9d6c87c08eda735fbb2a>`__)
+-  **core:** fix workflow iterate working with int parameters
+   (`#2720 <https://github.com/SwissDataScienceCenter/renku-python/issues/2720>`__)
+   (`2358962 <https://github.com/SwissDataScienceCenter/renku-python/commit/235896295e60f678e40f989ab9a144b51fbf94e8>`__)
+-  **core:** check workflow execute inputs
+   (`#2727 <https://github.com/SwissDataScienceCenter/renku-python/issues/2727>`__)
+   (`0bfceaf <https://github.com/SwissDataScienceCenter/renku-python/commit/0bfceafa4e6b4750439ab0ed20c61b0a6ba03a1f>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** add template command
+   (`#2590 <https://github.com/SwissDataScienceCenter/renku-python/issues/2590>`__)
+   (`4ff9c4f <https://github.com/SwissDataScienceCenter/renku-python/commit/4ff9c4f77462dcf74083de0f6abad88b286bc6b4>`__)
+-  **dataset:** use posix move semantics when adding with destination
+   (`#2612 <https://github.com/SwissDataScienceCenter/renku-python/issues/2612>`__)
+   (`24f843a <https://github.com/SwissDataScienceCenter/renku-python/commit/24f843a485d46f6e9627ec02e661ffa63d8c69c9>`__)
+-  **core:** add dataset entries to renku log
+   (`#2633 <https://github.com/SwissDataScienceCenter/renku-python/issues/2633>`__)
+   (`f92fbac <https://github.com/SwissDataScienceCenter/renku-python/commit/f92fbac86e042077dec5a7425aa2dd2a2a3607c5>`__)
+-  **core:** color edges on a per-node basis
+   (`#2719 <https://github.com/SwissDataScienceCenter/renku-python/issues/2719>`__)
+   (`ffa10fb <https://github.com/SwissDataScienceCenter/renku-python/commit/ffa10fb759e0092d49f29e7c99738e5406cf5481>`__)
+-  **core:** add check for invalid imported datasets
+   (`#2726 <https://github.com/SwissDataScienceCenter/renku-python/issues/2726>`__)
+   (`9223886 <https://github.com/SwissDataScienceCenter/renku-python/commit/9223886a72369394c33e64149c7d440ea06f8515>`__)
+
 `1.0.6 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.5...v1.0.6>`__ (2022-02-15)
 -------------------------------------------------------------------------------------------------------
 

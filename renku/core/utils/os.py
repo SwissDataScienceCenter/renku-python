@@ -21,7 +21,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
-from typing import Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from renku.core import errors
 
@@ -37,6 +37,7 @@ def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
 def get_absolute_path(path: Union[Path, str], base: Union[Path, str] = None) -> str:
     """Return absolute normalized path without resolving symlinks."""
     if base is not None:
+        base = Path(base).resolve()
         path = os.path.join(base, path)
 
     # NOTE: Do not use os.path.realpath or Path.resolve() because they resolve symlinks
@@ -56,12 +57,14 @@ def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Pa
         raise ValueError(f"Path '{path}' is not with base directory '{base}'")
 
 
-def get_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Optional[Path]:
+def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bool = False) -> Optional[Path]:
     """Return a relative path to the base if path is within base without resolving symlinks."""
     try:
         absolute_path = get_absolute_path(path=path, base=base)
         return Path(absolute_path).relative_to(base)
     except ValueError:
+        if strict:
+            raise errors.ParameterError("File {} is not within path {}".format(path, base))
         return
 
 
@@ -142,13 +145,30 @@ def normalize_to_ascii(input_string, sep="-"):
     )
 
 
-def delete_file(path: Union[Path, str], ignore_errors: bool = True):
-    """Delete a file."""
+def delete_file(filepath: Union[Path, str], ignore_errors: bool = True, follow_symlinks: bool = False):
+    """Remove a file/symlink and its pointer file (for external files)."""
+    path = Path(filepath)
+    link = None
     try:
-        os.unlink(path)
+        link = path.parent / os.readlink(path)
+    except FileNotFoundError:
+        if not ignore_errors:
+            raise
+        return
+    except OSError:  # not a symlink but a normal file
+        pass
+
+    try:
+        os.remove(path)
     except OSError:
         if not ignore_errors:
             raise
+
+    if follow_symlinks and link:
+        try:
+            os.remove(link)
+        except FileNotFoundError:
+            pass
 
 
 def hash_file(path: Union[Path, str]) -> Optional[str]:
@@ -177,3 +197,18 @@ def hash_str(content: str):
         sha256_hash.update(byte_block)
 
     return sha256_hash.hexdigest()
+
+
+def safe_read_yaml(file: str) -> Dict[str, Any]:
+    """Parse a YAML file.
+
+    Returns:
+        In case of success a dictionary of the YAML's content,
+        otherwise raises a ParameterError exception.
+    """
+    try:
+        from renku.core.models import jsonld as jsonld
+
+        return jsonld.read_yaml(file)
+    except Exception as e:
+        raise errors.ParameterError(e)

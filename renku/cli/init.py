@@ -88,7 +88,7 @@ You can take inspiration from the
     Please choose a template by typing the index:
 
 Provide parameters
-~~~~~~~~~~~~~~~~~-
+~~~~~~~~~~~~~~~~~~
 
 Some templates require parameters to properly initialize a new project. You
 can check them by listing the templates ``renku template ls --verbose``.

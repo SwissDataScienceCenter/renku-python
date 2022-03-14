@@ -28,9 +28,9 @@ from urllib.parse import urlparse
 import attr
 from tqdm import tqdm
 
-from renku.core.commands.providers.api import ExporterApi, ProviderApi
-from renku.core.commands.providers.doi import DOIProvider
 from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
+from renku.core.management.dataset.providers.api import ExporterApi, ProviderApi
+from renku.core.management.dataset.providers.doi import DOIProvider
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils.file_size import bytes_to_unit
 
@@ -235,8 +235,8 @@ class ZenodoRecordSerializer:
         """Deserialize `ZenodoRecordSerializer` to `Dataset`."""
         from marshmallow import pre_load
 
-        from renku.core.commands.providers.models import ProviderDataset, ProviderDatasetSchema
         from renku.core.commands.schema.agent import PersonSchema
+        from renku.core.management.dataset.providers.models import ProviderDataset, ProviderDatasetSchema
         from renku.core.models.dataset import DatasetFile
 
         class _ZenodoDatasetSchema(ProviderDatasetSchema):
