@@ -47,7 +47,14 @@ def _fix_lfs(paths, client_dispatcher: IClientDispatcher):
 
 def fix_lfs_command():
     """Fix lfs command."""
-    return Command().command(_fix_lfs).require_clean().with_database(write=True).with_commit(commit_if_empty=False)
+    return (
+        Command()
+        .command(_fix_lfs)
+        .require_clean()
+        .require_migration()
+        .with_database(write=True)
+        .with_commit(commit_if_empty=False)
+    )
 
 
 @inject.autoparams()
