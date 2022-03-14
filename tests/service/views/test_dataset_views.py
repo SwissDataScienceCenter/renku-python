@@ -19,7 +19,6 @@
 import io
 import json
 import os
-import re
 import shutil
 import uuid
 from pathlib import Path
@@ -28,22 +27,22 @@ import pytest
 from werkzeug.utils import secure_filename
 
 from renku.core.utils.os import normalize_to_ascii
-from renku.service.config import (
-    GIT_ACCESS_DENIED_ERROR_CODE,
-    INVALID_HEADERS_ERROR_CODE,
-    INVALID_PARAMS_ERROR_CODE,
-    RENKU_EXCEPTION_ERROR_CODE,
+from renku.service.errors import (
+    IntermittentDatasetExistsError,
+    IntermittentFileNotExistsError,
+    IntermittentProjectIdError,
+    ProgramInvalidGenericFieldsError,
+    UserAnonymousError,
+    UserDatasetsMultipleImagesError,
+    UserDatasetsUnlinkError,
+    UserDatasetsUnreachableImageError,
+    UserInvalidGenericFieldsError,
+    UserMissingFieldError,
+    UserOutdatedProjectError,
+    UserRepoNoAccessError,
 )
 from renku.service.serializers.headers import encode_b64
-from tests.utils import make_dataset_add_payload, retry_failed
-
-
-def assert_rpc_response(response, with_key="result"):
-    """Check rpc result in response."""
-    assert response and 200 == response.status_code
-
-    response_text = re.sub(r"http\S+", "", json.dumps(response.json))
-    assert with_key in response_text
+from tests.utils import assert_rpc_response, make_dataset_add_payload, retry_failed
 
 
 def upload_file(svc_client, headers, filename) -> str:
@@ -57,10 +56,7 @@ def upload_file(svc_client, headers, filename) -> str:
         headers=headers,
     )
 
-    assert response
-    assert 200 == response.status_code
     assert_rpc_response(response)
-
     assert 1 == len(response.json["result"]["files"])
 
     file_id = response.json["result"]["files"][0]["file_id"]
@@ -84,7 +80,6 @@ def test_create_dataset_view(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
     assert_rpc_response(response)
 
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
@@ -104,9 +99,8 @@ def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-    assert_rpc_response(response, with_key="error")
-    assert {"code", "migration_required", "reason"} == set(response.json["error"].keys())
+    assert_rpc_response(response, "error")
+    assert UserOutdatedProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -123,9 +117,7 @@ def test_delay_create_dataset_view(svc_client_cache, it_remote_repo_url):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
-    assert_rpc_response(response, with_key="result")
+    assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
 
@@ -142,11 +134,8 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
-    assert {
-        "error": {"code": RENKU_EXCEPTION_ERROR_CODE, "reason": 'project_id "ref does not exist" not found'}
-    } == response.json
+    assert_rpc_response(response, "error")
+    assert IntermittentProjectIdError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -169,8 +158,7 @@ def test_remove_dataset_view(svc_client_with_repo):
 
     # NOTE: Ensure that dataset does not exists in this project anymore!
     response = svc_client.get("/datasets.list", query_string={"project_id": project_id}, headers=headers)
-    assert "result" in response.json
-
+    assert_rpc_response(response)
     datasets = [ds["name"] for ds in response.json["result"]["datasets"]]
     assert payload["name"] not in datasets
 
@@ -186,7 +174,7 @@ def test_remote_remove_view(svc_client, it_remote_repo_url, identity_headers):
         headers=identity_headers,
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
 
@@ -209,9 +197,7 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -220,11 +206,8 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
-
     assert payload["title"] == ds["title"]
     assert payload["name"] == ds["name"]
     assert payload["description"] == ds["description"]
@@ -252,9 +235,8 @@ def test_create_dataset_with_images(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
-    assert {"error"} == response.json.keys()
+    assert_rpc_response(response, "error")
+    assert UserDatasetsMultipleImagesError.code == response.json["error"]["code"]
 
     payload = {
         "project_id": project_id,
@@ -269,8 +251,6 @@ def test_create_dataset_with_images(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
@@ -280,8 +260,6 @@ def test_create_dataset_with_images(svc_client_with_repo):
         "project_id": project_id,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
@@ -321,8 +299,6 @@ def test_create_dataset_with_custom_metadata(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
@@ -332,8 +308,6 @@ def test_create_dataset_with_custom_metadata(svc_client_with_repo):
         "project_id": project_id,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
@@ -366,8 +340,8 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-    assert {"error"} == response.json.keys()
+    assert_rpc_response(response, "error")
+    assert UserDatasetsUnreachableImageError.code == response.json["error"]["code"]
 
     payload = {
         "project_id": project_id,
@@ -379,10 +353,7 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -390,8 +361,6 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
         "project_id": project_id,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
@@ -422,10 +391,7 @@ def test_create_dataset_with_uploaded_images(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -433,8 +399,6 @@ def test_create_dataset_with_uploaded_images(svc_client_with_repo):
         "project_id": project_id,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
 
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
@@ -470,11 +434,9 @@ def test_create_dataset_invalid_creator(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
-    assert response
-    assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
-
-    expected_err = "Validation error: `creators.0.name` - Field may not be null."
-    assert expected_err == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert UserMissingFieldError.code == response.json["error"]["code"]
+    assert "creators.0.name" in response.json["error"]["userMessage"]
 
 
 @pytest.mark.service
@@ -490,15 +452,11 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-    assert "result" in response.json.keys()
+    assert_rpc_response(response)
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-    assert_rpc_response(response, with_key="error")
-
-    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
-    assert "Dataset exists" in response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert IntermittentDatasetExistsError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -508,17 +466,13 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
     """Create new dataset by specifying unknown parameters."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    payload = {"project_id": project_id, "name": "mydata", "remote_name": "origin"}
+    unknown_field = "remote_name"
+    payload = {"project_id": project_id, "name": "mydata", unknown_field: "origin"}
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
-    assert response
-    assert_rpc_response(response, with_key="error")
-
-    assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
-
-    expected_reason = "Validation error: `remote_name` - Unknown field."
-    assert expected_reason == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert ProgramInvalidGenericFieldsError.code == response.json["error"]["code"]
+    assert unknown_field in response.json["error"]["devMessage"]
 
 
 @pytest.mark.service
@@ -535,19 +489,11 @@ def test_create_dataset_with_no_identity(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        "/datasets.create",
-        data=json.dumps(payload),
-        headers={"Content-Type": headers["Content-Type"]}
-        # no user identity, expect error
+        "/datasets.create", data=json.dumps(payload), headers={"Content-Type": headers["Content-Type"]}
     )
 
-    assert response
-    assert_rpc_response(response, with_key="error")
-
-    assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
-
-    err_message = "user identification is incorrect or missing"
-    assert err_message == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -563,18 +509,11 @@ def test_add_file_view_with_no_identity(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        "/datasets.add",
-        data=json.dumps(payload),
-        headers={"Content-Type": headers["Content-Type"]}
-        # no user identity, expect error
+        "/datasets.add", data=json.dumps(payload), headers={"Content-Type": headers["Content-Type"]}
     )
-    assert response
-    assert_rpc_response(response, with_key="error")
 
-    assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
-
-    err_message = "user identification is incorrect or missing"
-    assert err_message == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -595,11 +534,8 @@ def test_add_file_view(svc_client_with_repo):
 
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "project_id", "files", "remote_branch"} == set(response.json["result"].keys())
-
     assert 1 == len(response.json["result"]["files"])
     assert file_id == response.json["result"]["files"][0]["file_id"]
 
@@ -617,7 +553,7 @@ def test_remote_add_view(svc_client, it_remote_repo_url, identity_headers):
         headers=identity_headers,
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
 
@@ -639,11 +575,8 @@ def test_add_file_failure(svc_client_with_repo):
     }
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
-    assert response
-    assert_rpc_response(response, with_key="error")
-
-    assert {"code", "reason"} == set(response.json["error"].keys())
-    assert "invalid file reference" in response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert IntermittentFileNotExistsError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -658,13 +591,9 @@ def test_list_datasets_view(svc_client_with_repo):
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
     assert {"datasets"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
-
     assert {
         "version",
         "description",
@@ -691,34 +620,25 @@ def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers={})
-    assert_rpc_response(response, with_key="error")
-    assert {"code", "reason"} == set(response.json["error"].keys())
-    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
-
-    expected_reason = "Cannot execute user operation while anonymous - user identification is missing."
-    assert expected_reason == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
     params = {
         "git_url": it_remote_repo_url,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers={})
-    assert_rpc_response(response, with_key="error")
-    assert {"code", "reason"} == set(response.json["error"].keys())
-    assert GIT_ACCESS_DENIED_ERROR_CODE == response.json["error"]["code"]
-
-    expected_reason = "Repository could not be accessed - Do you have access rights?"
-    assert expected_reason == response.json["error"]["reason"]
+    assert_rpc_response(response, "error")
+    assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
     params = {
         "git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku",
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers={})
-    assert response
-    assert_rpc_response(response, with_key="error")
+    assert_rpc_response(response, "error")
     # NOTE: We don't migrate remote projects; the fact that this operation fails with a migration error means that the
     # project could be cloned for the anonymous user
-    assert {"code", "migration_required", "reason"} == set(response.json["error"].keys())
+    assert UserOutdatedProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -732,12 +652,9 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
 
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"datasets"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
-
     assert {
         "version",
         "description",
@@ -764,9 +681,8 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
     }
 
     response = svc_client.get("/datasets.list", query_string=params)
-
-    assert response
-    assert_rpc_response(response, with_key="error")
+    assert_rpc_response(response, "error")
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -777,31 +693,24 @@ def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     params = {"project_id": project_id, "name": "ds1"}
-    response = svc_client.get("/datasets.files_list", query_string=params, headers={})
-    assert_rpc_response(response, with_key="error")
-    assert {"code", "reason"} == set(response.json["error"].keys())
-    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
 
-    expected_reason = "Cannot execute user operation while anonymous - user identification is missing."
-    assert expected_reason == response.json["error"]["reason"]
+    response = svc_client.get("/datasets.files_list", query_string=params, headers={})
+    assert_rpc_response(response, "error")
+    assert UserAnonymousError.code == response.json["error"]["code"]
 
     params = {"git_url": it_remote_repo_url, "name": "ds1"}
-    response = svc_client.get("/datasets.files_list", query_string=params, headers={})
-    assert_rpc_response(response, with_key="error")
-    assert {"code", "reason"} == set(response.json["error"].keys())
-    assert GIT_ACCESS_DENIED_ERROR_CODE == response.json["error"]["code"]
 
-    expected_reason = "Repository could not be accessed - Do you have access rights?"
-    assert expected_reason == response.json["error"]["reason"]
+    response = svc_client.get("/datasets.files_list", query_string=params, headers={})
+    assert_rpc_response(response, "error")
+    assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
     params = {"git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku", "name": "mydata"}
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
-    assert response
-    assert_rpc_response(response, with_key="error")
+    assert_rpc_response(response, "error")
     # NOTE: We don't migrate remote projects; the fact that this operation fails with a migration error means that the
     # project could be cloned for the anonymous user
-    assert {"code", "migration_required", "reason"} == set(response.json["error"].keys())
+    assert UserOutdatedProjectError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -815,11 +724,8 @@ def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo_url):
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"files", "name"} == set(response.json["result"].keys())
-
     assert 0 != len(response.json["result"]["files"])
     assert "ds1" == response.json["result"]["name"]
 
@@ -835,7 +741,7 @@ def test_remote_create_view(svc_client, it_remote_repo_url, identity_headers):
         headers=identity_headers,
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
 
@@ -853,8 +759,6 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-
     assert_rpc_response(response)
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
@@ -864,8 +768,6 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
     }
 
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
-
-    assert response
     assert_rpc_response(response)
     assert {"datasets"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
@@ -902,10 +804,7 @@ def test_list_dataset_files(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
     assert file_id == response.json["result"]["files"][0]["file_id"]
 
@@ -915,11 +814,8 @@ def test_list_dataset_files(svc_client_with_repo):
     }
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers)
-    assert response
-
     assert_rpc_response(response)
     assert {"name", "files"} == set(response.json["result"].keys())
-
     assert params["name"] == response.json["result"]["name"]
     assert file_name in [file["name"] for file in response.json["result"]["files"]]
     assert {"name", "path", "added"} == response.json["result"]["files"][0].keys()
@@ -940,12 +836,8 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
         headers=headers,
     )
 
-    assert response
     assert_rpc_response(response)
-
-    assert 200 == response.status_code
     assert response.json["result"]["files"]
-
     mm = {}
     for file_ in response.json["result"]["files"]:
         assert not file_["is_archive"]
@@ -964,19 +856,14 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     headers["Content-Type"] = content_type
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
     payload = {"project_id": project_id, "name": payload["name"], "files": [{"file_id": file_["file_id"]}]}
-
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
     assert file_["file_id"] == response.json["result"]["files"][0]["file_id"]
 
@@ -984,14 +871,10 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
         "project_id": project_id,
         "name": payload["name"],
     }
-
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "files"} == set(response.json["result"].keys())
-
     assert params["name"] == response.json["result"]["name"]
     assert file_["file_name"] in [file["name"] for file in response.json["result"]["files"]]
 
@@ -1011,12 +894,8 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
         headers=headers,
     )
 
-    assert response
-
     assert_rpc_response(response)
-    assert 200 == response.status_code
     assert response.json["result"]["files"]
-
     mm = {}
     for file_ in response.json["result"]["files"]:
         assert not file_["is_archive"]
@@ -1027,20 +906,16 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
         mm[file_["file_name"]] = file_
 
     file_ = mm["file2"]
-
     files = [{"file_id": file_["file_id"]} for file_ in response.json["result"]["files"]]
 
     payload = {
         "project_id": project_id,
         "name": uuid.uuid4().hex,
     }
-
     headers["Content-Type"] = content_type
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -1049,12 +924,9 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
         "name": payload["name"],
         "files": files,
     }
-
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
     assert files == response.json["result"]["files"]
 
@@ -1062,14 +934,9 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
         "project_id": project_id,
         "name": payload["name"],
     }
-
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "files"} == set(response.json["result"].keys())
-
     assert params["name"] == response.json["result"]["name"]
     assert file_["file_name"] in [file["name"] for file in response.json["result"]["files"]]
 
@@ -1084,11 +951,9 @@ def test_add_existing_file(svc_client_with_repo):
         "project_id": project_id,
         "name": uuid.uuid4().hex,
     }
-
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert response
-    assert_rpc_response(response)
 
+    assert_rpc_response(response)
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -1098,14 +963,9 @@ def test_add_existing_file(svc_client_with_repo):
         "name": payload["name"],
         "files": files,
     }
-
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
-
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
-
     assert files == response.json["result"]["files"]
 
 
@@ -1181,7 +1041,7 @@ def test_remote_import_dataset_job(doi, svc_client, it_remote_repo_url, identity
         headers=identity_headers,
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
 
@@ -1271,15 +1131,11 @@ def test_add_remote_and_local_file(svc_client_with_repo):
     )
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
-
     for pair in zip(response.json["result"]["files"], payload["files"]):
         if "job_id" in pair[0]:
             assert pair[0].pop("job_id")
-
         assert set(pair[0].values()) == set(pair[1].values())
 
 
@@ -1298,19 +1154,15 @@ def test_edit_datasets_view(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
     params_list = {
         "project_id": project_id,
     }
-
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
 
-    assert response
     assert_rpc_response(response)
 
     edit_payload = {
@@ -1328,9 +1180,7 @@ def test_edit_datasets_view(svc_client_with_repo):
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
     assert {
         "title": "my new title",
@@ -1364,9 +1214,7 @@ def test_edit_datasets_view_without_modification(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -1376,18 +1224,14 @@ def test_edit_datasets_view_without_modification(svc_client_with_repo):
 
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     edit_payload = {
         "project_id": project_id,
         "name": name,
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
     assert {} == response.json["result"]["edited"]
 
@@ -1397,10 +1241,8 @@ def test_edit_datasets_view_without_modification(svc_client_with_repo):
 
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
 
-    assert response
     assert_rpc_response(response)
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
-
     assert payload["title"] == ds["title"]
     assert payload["name"] == ds["name"]
     assert payload["description"] == ds["description"]
@@ -1431,9 +1273,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
@@ -1442,9 +1282,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     file_id = upload_file(svc_client, headers, "image2.jpg")
 
     # NOTE: test edit reordering and add
@@ -1460,9 +1298,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
     assert {"images"} == response.json["result"]["edited"].keys()
 
@@ -1489,8 +1325,8 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
-    assert response
-    assert {"error"} == response.json.keys()
+    assert_rpc_response(response, "error")
+    assert UserDatasetsMultipleImagesError.code == response.json["error"]["code"]
 
     # NOTE: test edit remove images
     edit_payload = {
@@ -1500,9 +1336,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
     assert {"images"} == response.json["result"]["edited"].keys()
     assert 0 == len(response.json["result"]["edited"]["images"])
@@ -1515,9 +1349,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
     assert 0 == len(response.json["result"]["edited"].keys())
 
@@ -1533,7 +1365,7 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
         headers=identity_headers,
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
 
@@ -1552,7 +1384,6 @@ def test_protected_branch(svc_protected_repo):
         "project_id": response.json["result"]["project_id"],
         "name": uuid.uuid4().hex,
     }
-
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
@@ -1568,8 +1399,7 @@ def test_unlink_file(unlink_file_setup):
     svc_client, headers, unlink_payload = unlink_file_setup
     response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers)
 
-    assert_rpc_response(response, with_key="result")
-
+    assert_rpc_response(response)
     assert {"unlinked", "remote_branch"} == set(response.json["result"].keys())
     assert ["README.md"] == response.json["result"]["unlinked"]
 
@@ -1585,7 +1415,7 @@ def test_remote_unlink_view(svc_client, it_remote_repo_url, identity_headers):
         headers=identity_headers,
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
 
@@ -1596,12 +1426,12 @@ def test_remote_unlink_view(svc_client, it_remote_repo_url, identity_headers):
 def test_unlink_file_no_filter_error(unlink_file_setup):
     """Check for correct exception raise when no filters specified."""
     svc_client, headers, unlink_payload = unlink_file_setup
-    unlink_payload.pop("include_filters")
 
+    unlink_payload.pop("include_filters")
     response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers)
 
-    expected_reason = "Validation error: `schema` - one of the filters must be specified"
-    assert {"error": {"code": -32602, "reason": expected_reason}} == response.json
+    assert_rpc_response(response, "error")
+    assert UserInvalidGenericFieldsError.code == response.json["error"]["code"]
 
 
 @pytest.mark.integration
@@ -1614,6 +1444,5 @@ def test_unlink_file_exclude(unlink_file_setup):
 
     response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers)
 
-    assert {
-        "error": {"code": RENKU_EXCEPTION_ERROR_CODE, "reason": "Invalid parameter value - No records found."}
-    } == response.json
+    assert_rpc_response(response, "error")
+    assert UserDatasetsUnlinkError.code == response.json["error"]["code"]

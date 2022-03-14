@@ -66,14 +66,34 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
     methods = {
         "GET": svc_client.get,
         "POST": svc_client.post,
-        "HEAD": svc_client.head,
+    }
+
+    yield methods, request.param, svc_client
+
+
+@pytest.fixture(
+    params=[
+        {
+            "url": "/cache.files_list",
+            "allowed_method": "GET",
+            "headers": {"Content-Type": "application/json", "accept": "application/json"},
+        },
+        {
+            "url": "/cache.project_clone",
+            "allowed_method": "POST",
+            "headers": {"Content-Type": "application/json", "accept": "application/json"},
+        },
+    ]
+)
+def service_unallowed_endpoint(request, svc_client):
+    """Ensure not allawed methods do not crash the app."""
+    methods = {
         "PUT": svc_client.put,
         "DELETE": svc_client.delete,
         "OPTIONS": svc_client.options,
         "TRACE": svc_client.trace,
         "PATCH": svc_client.patch,
     }
-
     yield methods, request.param, svc_client
 
 

@@ -80,7 +80,7 @@ def test_template_show(isolated_runner):
         result = isolated_runner.invoke(cli, command + ["R-minimal"])
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "Name: Basic R (4.0.5) Project" in result.output
+        assert "Name: Basic R (4.1.2) Project" in result.output
     finally:
         sys.argv = argv
 

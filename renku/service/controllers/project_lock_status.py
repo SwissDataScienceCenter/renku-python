@@ -23,7 +23,7 @@ from renku.core import errors
 from renku.service.cache.models.project import Project
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
-from renku.service.errors import ProjectNotFound
+from renku.service.errors import IntermittentProjectIdError
 from renku.service.serializers.project import ProjectLockStatusRequest, ProjectLockStatusResponseRPC
 from renku.service.views import result_response
 
@@ -50,7 +50,7 @@ class ProjectLockStatusCtrl(ServiceCtrl, RenkuOperationMixin):
         if "project_id" in self.context:
             try:
                 project = self.cache.get_project(self.user, self.context["project_id"])
-            except ProjectNotFound:
+            except IntermittentProjectIdError:
                 return False
         elif "git_url" in self.context and "user_id" in self.user_data:
             try:

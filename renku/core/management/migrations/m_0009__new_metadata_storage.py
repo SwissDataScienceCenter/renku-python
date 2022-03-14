@@ -389,7 +389,7 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
         if suffix:
             original_id += suffix
 
-        return sha1(original_id.encode("utf-8")).hexdigest()
+        return Activity.generate_id(sha1(original_id.encode("utf-8")).hexdigest())
 
     assert not isinstance(process_run, old_schema.WorkflowRun)
 
@@ -405,7 +405,6 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun, client: Loc
     activities = []
     for i, run in enumerate(runs):
         activity_id = generate_activity_id(process_run._id, suffix=str(i) if i else None)
-
         plan = _convert_run_to_plan(run, project_id=project_id)
 
         agents = [_old_agent_to_new_agent(a) for a in process_run.agents or []]
