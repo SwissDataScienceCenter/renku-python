@@ -95,9 +95,9 @@ class RepositoryApiMixin(GitCore):
         ".gitignore",
         ".gitlab-ci.yml",
         ".renku",
-        ".renku/*",
+        ".renku/**",
         ".renkulfsignore",
-        "Dockerfile",
+        "Dockerfile*",
         "environment.yml",
         "requirements.txt",
     ]
