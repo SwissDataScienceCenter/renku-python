@@ -338,7 +338,7 @@ class Command:
         """Add a post-execution hook.
 
         Args:
-            order(int): Determines the order of executed hooks, lower numbers get executed first.
+            order(int): Determines the order of executed hooks, higher numbers get executed first.
             hook(typing.Callable): The hook to add.
         """
         if hasattr(self, "_builder"):

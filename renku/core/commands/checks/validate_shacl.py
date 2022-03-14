@@ -91,9 +91,9 @@ def check_datasets_structure(client, fix, dataset_gateway: IDatasetGateway):
     """Validate dataset metadata against SHACL.
 
     Args:
-        client:
-        fix:
-        dataset_gateway(IDatasetGateway):
+        client: The ``LocalClient``.
+        fix: Whether to fix found issues.
+        dataset_gateway(IDatasetGateway): The injected dataset gateway.
 
     Returns:
         Tuple[bool, str]: Tuple of whether structure is valid and of problems that might have been found.

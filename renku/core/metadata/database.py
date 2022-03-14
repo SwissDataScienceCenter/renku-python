@@ -263,7 +263,7 @@ class Database:
             id(str): The id to hash.
 
         Returns:
-            OID_TYPE: The hashed if.
+            OID_TYPE: The hashed id.
         """
         return hashlib.sha3_256(id.encode("utf-8")).hexdigest()
 

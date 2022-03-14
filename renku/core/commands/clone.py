@@ -47,7 +47,7 @@ def _project_clone(
         database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
         path: Path to clone to (Default value = None).
         install_githooks: Whether to install the pre-commit hook or not (Default value = True).
-        skip_smudge: Whether to pull files from LFS (Default value = True).
+        skip_smudge: Whether to skip pulling files from LFS (Default value = True).
         recursive: Recursively clone (Default value = True).
         depth: Clone depth (commits from HEAD) (Default value = None).
         progress: Git progress object (Default value = None).
