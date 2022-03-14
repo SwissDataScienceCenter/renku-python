@@ -22,7 +22,6 @@ from pathlib import Path
 from marshmallow import EXCLUDE
 
 from renku.core.commands.init import create_from_template_local_command
-from renku.core.errors import RenkuException
 from renku.core.metadata.repository import Repository
 from renku.core.models.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.core.utils.contexts import click_context
@@ -30,6 +29,7 @@ from renku.service.config import MESSAGE_PREFIX
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
+from renku.service.errors import UserProjectCreationError
 from renku.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
 from renku.service.utils import new_repo_push
 from renku.service.views import result_response
@@ -115,9 +115,12 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         """Reads template manifest."""
         project = user_project_clone(self.user_data, self.ctx)
         templates = TemplatesManifest.from_path(Path(project.abs_path) / TEMPLATE_MANIFEST).get_raw_content()
-        self.template = next((template for template in templates if template["folder"] == self.ctx["identifier"]), None)
+        identifier = self.ctx["identifier"]
+        self.template = next((template for template in templates if template["folder"] == identifier), None)
         if self.template is None:
-            raise RenkuException("invalid identifier for target repository")
+            raise UserProjectCreationError(
+                error_message=f"the template '{identifier}' does not exist in the target template's repository"
+            )
 
         repository = Repository(project.abs_path)
         self.template_version = repository.head.commit.hexsha
@@ -127,7 +130,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         provided_parameters = {p["key"]: p["value"] for p in self.ctx["parameters"]}
         missing_keys = list(template_parameters.keys() - provided_parameters.keys())
         if len(missing_keys) > 0:
-            raise RenkuException(f"missing parameter: {missing_keys[0]}")
+            raise UserProjectCreationError(error_message=f"the template requires a value for '${missing_keys[0]}'")
 
         return project, provided_parameters
 

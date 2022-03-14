@@ -77,4 +77,5 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
+
         return result_response(TemplatesReadManifestCtrl.RESPONSE_SERIALIZER, {"templates": self.template_manifest()})

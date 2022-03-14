@@ -17,7 +17,9 @@
 # limitations under the License.
 """Test utility functions."""
 import contextlib
+import json
 import os
+import re
 import traceback
 import uuid
 from contextlib import contextmanager
@@ -275,3 +277,11 @@ def clone_compressed_repository(base_path, name) -> Repository:
     repository = Repository.clone_from(bare_path, repository_path)
 
     return repository
+
+
+def assert_rpc_response(response, with_key="result"):
+    """Check rpc result in response."""
+    assert response and 200 == response.status_code
+
+    response_text = re.sub(r"http\S+", "", json.dumps(response.json))
+    assert with_key in response_text
