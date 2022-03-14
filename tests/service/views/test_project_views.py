@@ -17,20 +17,13 @@
 # limitations under the License.
 """Renku service project view tests."""
 import json
-import re
 
 import portalocker
 import pytest
 
+from renku.service.errors import ProgramInvalidGenericFieldsError
+from tests.service.views.test_dataset_views import assert_rpc_response
 from tests.utils import retry_failed
-
-
-def assert_rpc_response(response, with_key="result"):
-    """Check rpc result in response."""
-    assert response and 200 == response.status_code
-
-    response_text = re.sub(r"http\S+", "", json.dumps(response.json))
-    assert with_key in response_text
 
 
 @pytest.mark.service
@@ -43,11 +36,9 @@ def test_show_project_view(svc_client_with_repo):
     show_payload = {
         "project_id": project_id,
     }
-    response = svc_client.post("/1.1/project.show", data=json.dumps(show_payload), headers=headers)
+    response = svc_client.post("/project.show", data=json.dumps(show_payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {
         "id",
         "name",
@@ -79,11 +70,9 @@ def test_edit_project_view(svc_client_with_repo):
             "https://schema.org/property2": "test",
         },
     }
-    response = svc_client.post("/1.1/project.edit", data=json.dumps(edit_payload), headers=headers)
+    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-
     assert {"warning", "edited", "remote_branch"} == set(response.json["result"])
     assert {
         "description": "my new title",
@@ -97,18 +86,43 @@ def test_edit_project_view(svc_client_with_repo):
     } == response.json["result"]["edited"]
 
 
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_edit_project_view_failures(svc_client_with_repo):
+    """Test failures when editing project metadata providing wrong data."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = {
+        "project_id": project_id,
+        "description": "my new title",
+        "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
+        "custom_metadata": {
+            "@id": "http://example.com/metadata12",
+            "@type": "https://schema.org/myType",
+            "https://schema.org/property1": 1,
+            "https://schema.org/property2": "test",
+        },
+    }
+    payload["FAKE_FIELD"] = "FAKE_VALUE"
+    response = svc_client.post("/project.edit", data=json.dumps(payload), headers=headers)
+
+    assert_rpc_response(response, "error")
+    assert ProgramInvalidGenericFieldsError.code == response.json["error"]["code"]
+
+
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
 def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed edit."""
     response = svc_client.post(
-        "/1.1/project.edit",
+        "/project.edit",
         data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True)),
         headers=identity_headers,
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert response.json["result"]["created_at"]
     assert response.json["result"]["job_id"]
 
@@ -123,7 +137,7 @@ def test_get_lock_status_unlocked(svc_client_setup):
         "/1.1/project.lock_status", query_string={"project_id": project_id}, headers=headers, content_type="text/xml"
     )
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert {"locked"} == set(response.json["result"].keys())
     assert response.json["result"]["locked"] is False
 
@@ -140,7 +154,7 @@ def test_get_lock_status_locked(svc_client_setup):
     with mock_lock():
         response = svc_client.get("/1.1/project.lock_status", query_string={"project_id": project_id}, headers=headers)
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert {"locked"} == set(response.json["result"].keys())
     assert response.json["result"]["locked"] is True
 
@@ -152,6 +166,6 @@ def test_get_lock_status_for_project_not_in_cache(svc_client, identity_headers, 
     """Test getting lock status for an unlocked project which is not cached."""
     response = svc_client.get("/1.1/project.lock_status", query_string=query_params, headers=identity_headers)
 
-    assert 200 == response.status_code
+    assert_rpc_response(response)
     assert {"locked"} == set(response.json["result"].keys())
     assert response.json["result"]["locked"] is False
