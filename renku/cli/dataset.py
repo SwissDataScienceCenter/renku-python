@@ -790,7 +790,17 @@ def ls_files(names, creators, include, exclude, format, columns):
 @click.option("-y", "--yes", is_flag=True, help="Confirm unlinking of all files.")
 def unlink(name, include, exclude, yes):
     """Remove matching files from a dataset."""
+    from renku.core import errors
     from renku.core.commands.dataset import file_unlink_command
+
+    if not include and not exclude:
+        raise errors.ParameterError(
+            (
+                "include or exclude filters not found.\n"
+                "Check available filters with 'renku dataset unlink --help'\n"
+                "Hint: 'renku dataset unlink my-dataset -I path'"
+            )
+        )
 
     communicator = ClickCallback()
     file_unlink_command().with_communicator(communicator).build().execute(
@@ -958,6 +968,14 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
         raise errors.ParameterError("Cannot pass both '--external' and '--no-external'")
     elif external:
         communicator.warn("'-e/--external' argument is deprecated")
+
+    if not update_all and not names and not include and not exclude and not dry_run:
+        raise errors.ParameterError("Either NAMES, -a/--all, -n/--dry-run, or --include/--exclude should be specified")
+
+    if names and update_all:
+        raise errors.ParameterError("Cannot pass dataset names with -a/--all")
+    elif (include or exclude) and update_all:
+        raise errors.ParameterError("Cannot pass --include/--exclude with -a/--all")
 
     result = (
         update_datasets_command()

@@ -78,11 +78,14 @@ def search_datasets(name: str) -> List[str]:
 def list_datasets():
     """List all datasets."""
     datasets_provenance = DatasetsProvenance()
-    datasets = [DynamicProxy(d) for d in datasets_provenance.datasets]
-    for dataset in datasets:
+    datasets = []
+
+    for dataset in datasets_provenance.datasets:
         tags = datasets_provenance.get_all_tags(dataset)
+        dataset = DynamicProxy(dataset)
         dataset.tags = tags
         dataset.tags_csv = ",".join(tag.name for tag in tags)
+        datasets.append(dataset)
 
     return list(datasets)
 
@@ -234,13 +237,7 @@ def file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, ye
     client = client_dispatcher.current_client
 
     if not include and not exclude:
-        raise errors.ParameterError(
-            (
-                "include or exclude filters not found.\n"
-                "Check available filters with 'renku dataset unlink --help'\n"
-                "Hint: 'renku dataset unlink my-dataset -I path'"
-            )
-        )
+        raise errors.ParameterError("include or exclude filters not specified.")
 
     datasets_provenance = DatasetsProvenance()
 
@@ -491,7 +488,7 @@ def update_datasets(
 ) -> Tuple[List[DatasetViewModel], List[DatasetFileViewModel]]:
     """Update dataset files."""
     if not update_all and not names and not include and not exclude and not dry_run:
-        raise errors.ParameterError("Either NAMES, -a/--all, -n/--dry-run, or --include/--exclude should be specified")
+        raise errors.ParameterError("No update criteria is specified")
 
     client = client_dispatcher.current_client
 
@@ -500,13 +497,11 @@ def update_datasets(
     all_datasets = dataset_gateway.get_all_active_datasets()
 
     if names and update_all:
-        raise errors.ParameterError("Cannot pass dataset names with -a/--all")
+        raise errors.ParameterError("Cannot pass dataset names when updating all datasets")
     elif (include or exclude) and update_all:
-        raise errors.ParameterError("Cannot pass --include/--exclude with -a/--all")
+        raise errors.ParameterError("Cannot specify include and exclude filters when updating all datasets")
     elif (include or exclude) and names and any(d.same_as for d in all_datasets if d.name in names):
-        raise errors.ParameterError(
-            "--include/--exclude is incompatible with datasets created by 'renku dataset import'"
-        )
+        raise errors.IncompatibleParametersError(a="--include/--exclude", b="imported datasets")
 
     names_provided = bool(names)
 
@@ -585,7 +580,7 @@ def update_datasets(
 
     if ref and len(unique_remotes) > 1:
         raise errors.ParameterError(
-            "Cannot use '--ref' with more than one Git repository.\n"
+            "Cannot specify a reference with more than one Git repository.\n"
             "Limit list of files to be updated to one repository. See 'renku dataset update -h' for more information."
         )
 
