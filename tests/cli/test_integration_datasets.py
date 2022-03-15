@@ -1517,7 +1517,7 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
     # update data to a later version
     result = runner.invoke(cli, ["dataset", "update", "--ref", "any-value", "dataset"])
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert "Cannot use '--ref' with more than one Git repo" in result.output
+    assert "Cannot specify a reference with more than one Git repository" in result.output
 
 
 @pytest.mark.integration
