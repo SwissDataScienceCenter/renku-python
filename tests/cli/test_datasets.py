@@ -568,6 +568,46 @@ def test_add_from_local_repo_warning(runner, client, data_repository, directory_
     assert "Use remote's Git URL instead to enable lineage " in result.output
 
 
+def test_add_untracked_file(runner, project, client, load_dataset_with_injection):
+    """Test adding an untracked file to a dataset."""
+    untracked = client.path / "untracked"
+    untracked.write_text("untracked")
+
+    result = runner.invoke(cli, ["dataset", "add", "my-dataset", "--create", str(untracked)])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert not client.repository.is_dirty(untracked_files=True)
+    assert client.repository.contains(untracked)
+    assert load_dataset_with_injection("my-dataset", client).find_file("untracked")
+
+
+def test_add_untracked_file_as_external(runner, project, client, load_dataset_with_injection):
+    """Test adding an untracked directory to a dataset as external."""
+    untracked = client.path / "untracked"
+    untracked.mkdir(exist_ok=True)
+    some_file = untracked / "some-file"
+    some_file.write_text("untracked file")
+
+    result = runner.invoke(cli, ["dataset", "add", "my-dataset", "--create", "--external", str(untracked)])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    path = client.path / DATA_DIR / "my-dataset" / "untracked" / "some-file"
+
+    assert client.repository.is_dirty(untracked_files=True)
+    assert not client.repository.contains(untracked)
+    assert load_dataset_with_injection("my-dataset", client).find_file(path.relative_to(client.path))
+    assert path.is_symlink()
+    assert path.resolve() == some_file.resolve()
+
+    pointer_file = path.parent / os.readlink(path)
+    assert pointer_file.is_symlink()
+    # NOTE: Make sure that pointer file is a relative symlink and not an absolute one
+    link = os.readlink(pointer_file)
+    assert link.startswith("..")
+
+
 def test_add_data_directory(runner, client, directory_tree):
     """Test adding a dataset's data directory to it prints an error."""
     result = runner.invoke(cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)])
@@ -1448,7 +1488,7 @@ def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
 @pytest.mark.parametrize("external", [False, True])
 def test_add_existing_files(runner, client, directory_tree, external, no_lfs_size_limit, load_dataset_with_injection):
     """Check adding/overwriting existing files."""
-    param = ["-e"] if external else []
+    param = ["--external"] if external else []
 
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", str(directory_tree)] + param)
 
@@ -1477,7 +1517,7 @@ def test_add_existing_files(runner, client, directory_tree, external, no_lfs_siz
 @pytest.mark.parametrize("external", [False, True])
 def test_add_existing_and_new_files(runner, client, directory_tree, external):
     """Check adding/overwriting existing files."""
-    param = ["-e"] if external else []
+    param = ["--external"] if external else []
 
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", str(directory_tree)] + param).exit_code
 
@@ -1611,6 +1651,19 @@ def test_overwrite_external_file_keeps_original_content(runner, client, director
     assert "file2 content" == path.read_text()
     assert not path.is_symlink()
     assert "file1 content" == origin.read_text()
+
+
+def test_add_project_files_as_external(runner, client):
+    """Test adding files that are in the git repo as external files."""
+    path = os.path.join(DATA_DIR, "some-data")
+    write_and_commit_file(client.repository, path, "some-content")
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", path])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert "Warning: No new file was added to project" in result.output
+    assert "Warning: The following files cannot be added as external" in result.output
+    assert path in result.output
 
 
 def test_remove_external_file(runner, client, directory_tree, subdirectory):

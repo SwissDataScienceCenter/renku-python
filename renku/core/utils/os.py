@@ -64,8 +64,7 @@ def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bo
         return Path(absolute_path).relative_to(base)
     except ValueError:
         if strict:
-            raise errors.ParameterError("File {} is not within path {}".format(path, base))
-        return
+            raise errors.ParameterError(f"File {path} is not within path {base}")
 
 
 def is_subpath(path: Union[Path, str], base: Union[Path, str]) -> bool:
