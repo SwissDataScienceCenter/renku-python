@@ -1517,7 +1517,7 @@ testing = ["fields", "hunter", "process-tests", "six", "pytest-xdist", "virtuale
 
 [[package]]
 name = "pytest-flake8"
-version = "1.0.7"
+version = "1.1.0"
 description = "pytest plugin to check FLAKE8 requirements"
 category = "main"
 optional = true
@@ -2516,7 +2516,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "927c348a842265724807195060299aff829966afbde89285841b8c289a2d750b"
+content-hash = "11facf3eb528c80ace17bc92c8c4d35e881cd8f4e9ec0feffa45f87b99057436"
 
 [metadata.files]
 addict = [
@@ -3597,8 +3597,8 @@ pytest-cov = [
     {file = "pytest_cov-3.0.0-py3-none-any.whl", hash = "sha256:578d5d15ac4a25e5f961c938b85a05b09fdaae9deef3bb6de9a6e766622ca7a6"},
 ]
 pytest-flake8 = [
-    {file = "pytest-flake8-1.0.7.tar.gz", hash = "sha256:f0259761a903563f33d6f099914afef339c085085e643bee8343eb323b32dd6b"},
-    {file = "pytest_flake8-1.0.7-py2.py3-none-any.whl", hash = "sha256:c28cf23e7d359753c896745fd4ba859495d02e16c84bac36caa8b1eec58f5bc1"},
+    {file = "pytest-flake8-1.1.0.tar.gz", hash = "sha256:358d449ca06b80dbadcb43506cd3e38685d273b4968ac825da871bd4cc436202"},
+    {file = "pytest_flake8-1.1.0-py2.py3-none-any.whl", hash = "sha256:f1b19dad0b9f0aa651d391c9527ebc20ac1a0f847aa78581094c747462bfa182"},
 ]
 pytest-forked = [
     {file = "pytest-forked-1.4.0.tar.gz", hash = "sha256:8b67587c8f98cbbadfdd804539ed5455b6ed03802203485dd2f53c1422d7440e"},
@@ -4185,9 +4185,12 @@ zodbpickle = [
     {file = "zodbpickle-2.2.0-cp27-cp27m-win32.whl", hash = "sha256:45bb1b0701d7fffbf0a594a5ea4572fedd60b084a579f9605054fba9c832cae7"},
     {file = "zodbpickle-2.2.0-cp27-cp27m-win_amd64.whl", hash = "sha256:1f148b90c562af56cbb385d1b897aa6126acc7aa0048dd4a0e0ec4a3be87ba57"},
     {file = "zodbpickle-2.2.0-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:2191008a102785396eced7f026f7e9f5857afc3f53a76c4d449e90e1b3689afd"},
+    {file = "zodbpickle-2.2.0-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:78cfb28b39b815daee1beac37f8966e3e172313b47b9bfc3713fff1dced04942"},
     {file = "zodbpickle-2.2.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e6c1dc9460bf2d732ebc3bef086a129a0ca2d10c9c7646ccab7c21a5d6ad4111"},
     {file = "zodbpickle-2.2.0-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:0e7ba6e065a1a29d8de8cc4b5e2bdacaeaa3927833892df6bfbbf6d820478227"},
     {file = "zodbpickle-2.2.0-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:e0640e426416fb9efa23b2b2a08fe5472fa361de78322e444072f4d73dc1996e"},
+    {file = "zodbpickle-2.2.0-cp310-cp310-win32.whl", hash = "sha256:cae05054de6eb5cd708ff9275db7cc99410328541f82569215c3046805287cc4"},
+    {file = "zodbpickle-2.2.0-cp310-cp310-win_amd64.whl", hash = "sha256:4882612fa8b4177a914dca001aa4126f3bfba15102df017752b794e718caedd6"},
     {file = "zodbpickle-2.2.0-cp35-cp35m-win32.whl", hash = "sha256:e33639e1db54b0d049cd50b924cc3ce61f62bbab2f68fc0831805cacef02cad2"},
     {file = "zodbpickle-2.2.0-cp35-cp35m-win_amd64.whl", hash = "sha256:5811d503db8995642d9dca18a396c5054366d26e1e633b249e151f80d88151b0"},
     {file = "zodbpickle-2.2.0-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:d163877427b574633c867f981c7657c595e293a4bf3e5639d895b1e644bc526a"},
@@ -4209,6 +4212,7 @@ zodbpickle = [
     {file = "zodbpickle-2.2.0-cp38-cp38-win32.whl", hash = "sha256:3f33cd0f3c941f65ef65568f32a5552d54daead0e7d3039e28f9508be800c46e"},
     {file = "zodbpickle-2.2.0-cp38-cp38-win_amd64.whl", hash = "sha256:b3360b47b9968f16519edc9aaca49689bd1ee4926fb5cc1e6088fc20355238fb"},
     {file = "zodbpickle-2.2.0-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:1706674abc6fc63d0db81ba3bf641c088591f89927058c1915d316873cd477d7"},
+    {file = "zodbpickle-2.2.0-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:84c65732868b29bde9bcde9611b62a072f4ebae6907467a1713df3c5f00924ca"},
     {file = "zodbpickle-2.2.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ff95ffabbee1751ae793f969fadcf1a78244bb451d1274ac49aaf62dba7379f7"},
     {file = "zodbpickle-2.2.0-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:3bc7adcfe38b9632876f3b993d19f12bd69ef801789faa5f2384b88201891023"},
     {file = "zodbpickle-2.2.0-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:8126ab6e18478a5aa4b4fee066bdf3615a61f91924492162c471453a0340877c"},
