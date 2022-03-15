@@ -48,7 +48,14 @@ from renku.version import __version__, is_release
 
 
 def store_directory(value):
-    """Store directory as a new Git home."""
+    """Store directory as a new Git home.
+
+    Args:
+        value: Path to new git home.
+
+    Returns:
+        Path to new git home.
+    """
     value = Path(value)
     value.mkdir(parents=True, exist_ok=True)
     set_git_home(value)
@@ -57,7 +64,15 @@ def store_directory(value):
 
 @inject.autoparams()
 def create_backup_branch(path, client_dispatcher: IClientDispatcher):
-    """Creates a backup branch of the repository."""
+    """Creates a backup branch of the repository.
+
+    Args:
+        path: Repository path.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        Name of the backup branch.
+    """
     client = client_dispatcher.current_client
 
     branch_name = None
@@ -107,7 +122,26 @@ def _init(
     client_dispatcher: IClientDispatcher,
     database_dispatcher: IDatabaseDispatcher,
 ):
-    """Initialize a renku project."""
+    """Initialize a renku project.
+
+    Args:
+        ctx: Current click context.
+        external_storage_requested: Whether or not external storage should be used.
+        path: Path to initialize repository at.
+        name: Name of the project.
+        description: Description of the project.
+        keywords: keywords for the project.
+        template_id: id of the template to use.
+        template_source: Source to get the template from.
+        template_ref: Reference to use to get the template.
+        input_parameters: Template parameters.
+        custom_metadata: Custom JSON-LD metadata for project.
+        force: Whether to overwrite existing files and delete existing metadata.
+        data_dir: Where to store dataset data.
+        initial_branch: Default git branch.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
+    """
     client = client_dispatcher.current_client
 
     # NOTE: set local path and storage
@@ -228,7 +262,21 @@ def create_from_template(
     description=None,
     keywords=None,
 ):
-    """Initialize a new project from a template."""
+    """Initialize a new project from a template.
+
+    Args:
+        rendered_template(RenderedTemplate): Rendered template.
+        actions(Dict[str, FileAction]): mapping of paths and actions to take.
+        client: ``LocalClient``.
+        name: Name of the project (Default value = None).
+        custom_metadata: Custom JSON-LD metadata (Default value = None).
+        force: Whether to overwrite files (Default value = None).
+        data_dir: Where to store dataset data (Default value = None).
+        user: Current user (Default value = None).
+        commit_message: Message for initial commit (Default value = None).
+        description: Description of the project (Default value = None).
+        keywords: Keywords for project (Default value = None).
+    """
     commit_only = [f"{RENKU_HOME}/", str(client.template_checksums)] + list(rendered_template.get_files())
 
     if data_dir:
@@ -270,7 +318,27 @@ def _create_from_template_local(
     description=None,
     keywords=None,
 ):
-    """Initialize a new project from a template."""
+    """Initialize a new project from a template.
+
+    Args:
+        template_path: Path to template.
+        name: project name.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        metadata: Project metadata (Default value = None).
+        custom_metadata: Custom JSON-LD metadata (Default value = None).
+        default_metadata: Default project metadata (Default value = None).
+        template_version: Version of the template (Default value = None).
+        immutable_template_files: Immutable template files (Default value = None).
+        automated_template_update: If template can be updated automatically (Default value = True).
+        user: Git user (Default value = None).
+        source: Template source. (Default value = None).
+        ref: Template reference (Default value = None).
+        invoked_from: Where this was invoked from (Default value = None).
+        initial_branch: Name of initial/main branch (Default value = None).
+        commit_message: Message of initial commit (Default value = None).
+        description: Project description (Default value = None).
+        keywords: Project keywords (Default value = None).
+    """
     client = client_dispatcher.current_client
 
     metadata = metadata or {}

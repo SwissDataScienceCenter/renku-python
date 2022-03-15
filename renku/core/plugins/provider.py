@@ -36,7 +36,8 @@ hookspec = pluggy.HookspecMarker("renku")
 def workflow_provider() -> Tuple[IWorkflowProvider, str]:
     """Plugin Hook to get providers for ``workflow execute`` call.
 
-    :returns: A tuple of the provider itself and the workflow executor backends name.
+    Returns:
+        Tuple[IWorkflowProvider,str]: A tuple of the provider itself and the workflow executor backends name.
     """
     raise NotImplementedError
 
@@ -47,14 +48,20 @@ def workflow_execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any]):
 
     Can be used to execute renku workflows with different workflow executors.
 
-    :param workflow: a ``AbstractPlan`` object that describes the given workflow.
-    :param config: a configuration for the provider.
+    Args:
+        dag("nx.DiGraph"): The workflow graph to execute.
+        basedir(Path): The base directory.
+        config(Dict[str, Any]): a configuration for the provider.
     """
     raise NotImplementedError
 
 
 def available_workflow_providers() -> List[str]:
-    """Returns the currently available workflow execution providers."""
+    """Returns the currently available workflow execution providers.
+
+    Returns:
+        The list of available execution providers.
+    """
     from renku.core.plugins.pluginmanager import get_plugin_manager
 
     pm = get_plugin_manager()
@@ -65,11 +72,14 @@ def available_workflow_providers() -> List[str]:
 def execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any], provider: str = "cwltool") -> List[str]:
     """Executes a given workflow using the selected provider.
 
-    :param workflow: Workflow to be executed.
-    :param basedir: The root directory of the renku project.
-    :param config: Configuration values for the workflow provider.
-    :param provider: The workflow executor engine to be used.
-    :returns: List of paths that has been modified.
+    Args:
+        dag("nx.DiGraph"): The workflow graph to execute.
+        basedir(Path): The root directory of the renku project.
+        config(Dict[str, Any]): Configuration values for the workflow provider.
+        provider(str, optional): The workflow executor engine to be used (Default value = "cwltool").
+
+    Returns:
+        List[str]: List of paths that has been modified.
     """
     from renku.core.plugins.pluginmanager import get_plugin_manager
 

@@ -63,7 +63,7 @@ class RepositoryApiMixin(GitCore):
     """Client for handling a local repository."""
 
     renku_home = attr.ib(default=RENKU_HOME)
-    """Define a name of the Renku folder (default: ``.renku``)."""
+    """Define a name of the Renku folder (Default value = '.renku')."""
 
     renku_path = attr.ib(init=False)
     """Store a ``Path`` instance of the Renku folder."""

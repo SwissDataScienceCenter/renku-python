@@ -26,7 +26,15 @@ from renku.core.utils.os import are_paths_related
 
 
 def tabulate_activities(activities: List[Activity], modified_inputs: Set[str]):
-    """Return some info about the activities in a tabular form."""
+    """Return some info about the activities in a tabular form.
+
+    Args:
+        activities(List[Activity]): Activities to convert.
+        modified_inputs(Set[str]): Set of modified inputs for activities.
+
+    Returns:
+        String of activities in tabular representation.
+    """
     collection = []
     fields = "plan, execution_date, modified_inputs, outputs, command"
     ActivityDisplay = namedtuple("ActivityDisplay", fields)

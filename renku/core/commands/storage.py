@@ -25,7 +25,15 @@ from renku.core.utils import communication
 
 @inject.autoparams()
 def _check_lfs(client_dispatcher: IClientDispatcher, everything=False):
-    """Check if large files are not in lfs."""
+    """Check if large files are not in lfs.
+
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        everything: Whether to check whole history (Default value = False).
+
+    Returns:
+        List of large files.
+    """
     files = client_dispatcher.current_client.check_lfs_migrate_info(everything)
 
     if files:
@@ -41,7 +49,12 @@ def check_lfs_command():
 
 @inject.autoparams()
 def _fix_lfs(paths, client_dispatcher: IClientDispatcher):
-    """Migrate large files into lfs."""
+    """Migrate large files into lfs.
+
+    Args:
+        paths: Paths to migrate to LFS.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+    """
     client_dispatcher.current_client.migrate_files_to_lfs(paths)
 
 
@@ -59,7 +72,12 @@ def fix_lfs_command():
 
 @inject.autoparams()
 def _pull(paths, client_dispatcher: IClientDispatcher):
-    """Pull the specified paths from external storage."""
+    """Pull the specified paths from external storage.
+
+    Args:
+        paths: Paths to pull from LFS.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+    """
     client_dispatcher.current_client.pull_paths_from_storage(*paths)
 
 
@@ -70,7 +88,12 @@ def pull_command():
 
 @inject.autoparams()
 def _clean(paths, client_dispatcher: IClientDispatcher):
-    """Remove files from lfs cache/turn them back into pointer files."""
+    """Remove files from lfs cache/turn them back into pointer files.
+
+    Args:
+        paths: Paths to turn back to pointer files.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+    """
     untracked_paths, local_only_paths = client_dispatcher.current_client.clean_storage_cache(*paths)
 
     if untracked_paths:
@@ -93,7 +116,15 @@ def clean_command():
 
 @inject.autoparams()
 def _check_lfs_hook(paths, client_dispatcher: IClientDispatcher):
-    """Pull the specified paths from external storage."""
+    """Check if paths should be in LFS.
+
+    Args:
+        paths: Paths to check
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        List of files that should be in LFS.
+    """
     return client_dispatcher.current_client.check_requires_tracking(*paths)
 
 

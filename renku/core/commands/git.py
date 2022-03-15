@@ -28,13 +28,25 @@ GIT_ISOLATION = "renku.worktree"
 
 
 def set_git_home(value: Path):
-    """Set Git path."""
+    """Set Git path.
+
+    Args:
+        value(Path): Git path.
+    """
     ctx = click.get_current_context()
     ctx.meta[GIT_KEY] = value
 
 
 def get_git_home(path=".") -> Path:
-    """Get Git path from the current context."""
+    """Get Git path from the current context.
+
+    Args:
+        path: Path to start from (Default value = ".").
+    Raises:
+        ValueError: If not inside a git repository.
+    Returns:
+        Git root path
+    """
     from renku.core.metadata.repository import Repository
 
     ctx = click.get_current_context(silent=True)
@@ -48,7 +60,14 @@ def get_git_home(path=".") -> Path:
 
 
 def set_git_isolation(value):
-    """Set Git isolation."""
+    """Set Git isolation.
+
+    Args:
+        value: Git isolation level.
+
+    Returns:
+        The value passed.
+    """
     ctx = click.get_current_context()
     ctx.meta[GIT_ISOLATION] = value
 

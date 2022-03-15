@@ -26,7 +26,12 @@ from renku.core.utils import communication
 
 @inject.autoparams()
 def _install_githooks(force, client_dispatcher: IClientDispatcher):
-    """Install Git hooks."""
+    """Install Git hooks.
+
+    Args:
+        force: Don't prompt user.
+        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+    """
     client = client_dispatcher.current_client
 
     warning_messages = install(force=force, repository=client.repository)

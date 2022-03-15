@@ -28,7 +28,18 @@ from renku.core.utils.metadata import construct_creator
 
 @inject.autoparams()
 def _edit_project(description, creator, keywords, custom_metadata, project_gateway: IProjectGateway):
-    """Edit dataset metadata."""
+    """Edit dataset metadata.
+
+    Args:
+        description: New description.
+        creator: New creators.
+        keywords: New keywords.
+        custom_metadata: Custom JSON-LD metadata.
+        project_gateway(IProjectGateway): Injected project gateway.
+
+    Returns:
+        Tuple of fields that were updated and dictionary of warnings.
+    """
     possible_updates = {
         "creator": creator,
         "description": description,
@@ -57,8 +68,15 @@ def edit_project_command():
 
 
 @inject.autoparams()
-def _show_project(client_dispatcher: IClientDispatcher):
-    """Show project metadata."""
+def _show_project(client_dispatcher: IClientDispatcher) -> ProjectViewModel:
+    """Show project metadata.
+
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        Project view model.
+    """
     return ProjectViewModel.from_project(client_dispatcher.current_client.project)
 
 

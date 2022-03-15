@@ -29,9 +29,11 @@ def run_shell():
     def run_(cmd, return_ps=None, sleep_for=None):
         """Spawn subprocess and execute shell command.
 
-        :param return_ps: Return process object.
-        :param sleep_for: After executing command sleep for n seconds.
-        :returns: Process object or tuple (stdout, stderr).
+        Args:
+            return_ps: Return process object.
+            sleep_for: After executing command sleep for n seconds.
+        Returns:
+            Process object or tuple (stdout, stderr).
         """
         ps = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 

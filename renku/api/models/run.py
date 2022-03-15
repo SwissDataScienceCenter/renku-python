@@ -102,7 +102,16 @@ class Output(_PathBase):
 
 @ensure_project_context
 def parameter(name, value, project):
-    """Store parameter's name and value."""
+    """Store parameter's name and value.
+
+    Args:
+        name (str): The name of the parameter.
+        value (Any): The value of the parameter.
+        project: The current project.
+
+    Returns:
+        The supplied value or a value set on workflow execution.
+    """
     if not re.match("[a-zA-Z0-9-_]+", name):
         raise errors.ParameterError(
             f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."

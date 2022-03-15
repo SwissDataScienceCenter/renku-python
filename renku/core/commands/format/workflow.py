@@ -24,7 +24,15 @@ from .tabulate import tabulate
 
 
 def tabular(workflows, *, columns=None):
-    """Format workflows with a tabular output."""
+    """Format workflows with a tabular output.
+
+    Args:
+        workflows: Workflows to format.
+        columns: Columns to show (Default value = None).
+
+    Returns:
+        Workflows in tabular format.
+    """
     if not columns:
         columns = "id,name,keywords"
 
@@ -40,7 +48,14 @@ def _create_workflow_short_description(workflows):
 
 
 def jsonld(workflows, **kwargs):
-    """Format workflow as JSON-LD."""
+    """Format workflow as JSON-LD.
+
+    Args:
+        workflows: Workflows to convert.
+
+    Returns:
+        JSON-LD string of workflows.
+    """
     from renku.core.commands.schema.plan import PlanSchema
 
     data = [PlanSchema().dump(workflow) for workflow in workflows]
@@ -48,7 +63,14 @@ def jsonld(workflows, **kwargs):
 
 
 def json(workflows, **kwargs):
-    """Format workflow as JSON."""
+    """Format workflow as JSON.
+
+    Args:
+        workflows: Workflows to convert.
+
+    Returns:
+        String of JSON data.
+    """
     from renku.core.models.workflow.plan import PlanDetailsJson
 
     data = [PlanDetailsJson().dump(workflow) for workflow in workflows]

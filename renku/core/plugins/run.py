@@ -25,9 +25,13 @@ hookspec = pluggy.HookspecMarker("renku")
 def process_run_annotations(run):
     """Plugin Hook to add ``Annotation`` entry list to a ``Activity``.
 
-    :param run: A ``Activity`` object to get annotations for.
-    :returns: A list of ``renku.core.models.provenance.annotation.Annotation``
-              objects.
+    Args:
+        run: A ``Activity`` object to get annotations for.
+
+    Returns:
+        A list of ``renku.core.models.provenance.annotation.Annotation``
+        objects.
+
     """
     pass
 
@@ -36,9 +40,13 @@ def process_run_annotations(run):
 def activity_annotations(activity):
     """Plugin Hook to add ``Annotation`` entry list to a ``Activity``.
 
-    :param activity: An ``Activity`` object to get annotations for.
-    :returns: A list of ``renku.core.models.provenance.annotation.Annotation``
-              objects.
+    Args:
+        activity: An ``Activity`` object to get annotations for.
+
+    Returns:
+        A list of ``renku.core.models.provenance.annotation.Annotation``
+        objects.
+
     """
     pass
 
@@ -47,9 +55,13 @@ def activity_annotations(activity):
 def cmdline_tool_annotations(tool):
     """Plugin Hook to add ``Annotation`` entry list to a ``WorkflowTool``.
 
-    :param run: A ``WorkflowTool`` object to get annotations for.
-    :returns: A list of ``renku.core.models.provenance.annotation.Annotation``
-              objects.
+    Args:
+        tool:
+
+    Returns:
+        A list of ``renku.core.models.provenance.annotation.Annotation``
+        objects.
+
     """
     pass
 
@@ -60,7 +72,7 @@ def pre_run(tool):
 
     Can be used to setup plugins that get executed during the run.
 
-    :param run: A ``WorkflowTool`` object that will get executed by
-                ``renku run``.
+    Args:
+        tool (``PlanFactory``): The plan factory that captured the run.
     """
     pass

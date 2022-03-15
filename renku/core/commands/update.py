@@ -73,12 +73,22 @@ def _update(
         return activities, modified_paths
 
     graph = ExecutionGraph([a.plan_with_values for a in activities], virtual_links=True)
-    execute_workflow(dag=graph.workflow_graph, command_name="update", provider=provider, config=config)
+    execute_workflow(dag=graph.workflow_graph, provider=provider, config=config)
 
 
 @inject.autoparams()
 def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_dispatcher: IClientDispatcher) -> bool:
-    """Return whether this plan has been deleted."""
+    """Return whether this plan is current and has not been deleted.
+
+    Args:
+        activity(Activity): The Activity whose Plan should be checked.
+        plan_gateway(IPlanGateway): The injected Plan gateway.
+        client_dispatcher(IClientDispatcher): The injected client dispatcher.
+
+    Returns:
+        bool: True if the activities' Plan is still valid, False otherwise.
+
+    """
     client = client_dispatcher.current_client
 
     for usage in activity.usages:
@@ -107,7 +117,16 @@ def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_di
 
 
 def _get_modified_activities_and_paths(repository, activity_gateway) -> Tuple[Set[Activity], Set[str]]:
-    """Return latest activities that one of their inputs is modified."""
+    """Return latest activities that one of their inputs is modified.
+
+    Args:
+        repository: The current ``Repository``.
+        activity_gateway: The injected Activity gateway.
+
+    Returns:
+        Tuple[Set[Activity],Set[str]]: Tuple of modified activites and modified paths.
+
+    """
     all_activities = activity_gateway.get_all_activities()
     relevant_activities = filter_overridden_activities(all_activities)
     modified, _ = get_modified_activities(activities=list(relevant_activities), repository=repository)
@@ -117,7 +136,17 @@ def _get_modified_activities_and_paths(repository, activity_gateway) -> Tuple[Se
 def _get_downstream_activities(
     starting_activities: Set[Activity], activity_gateway: IActivityGateway, paths: List[str]
 ) -> Set[Activity]:
-    """Return an ordered list of activities so that an activities comes before all its downstream activities."""
+    """Return activities downstream of passed activities.
+
+    Args:
+        starting_activities(Set[Activity]): Activities to use as starting/upstream nodes.
+        activity_gateway(IActivityGateway): The injected Activity gateway.
+        paths(List[str]): Optional gnerated paths to end downstream chains at.
+
+    Returns:
+        Set[Activity]: All activites and their downstream activities.
+
+    """
     all_activities = defaultdict(set)
 
     def include_newest_activity(activity):
