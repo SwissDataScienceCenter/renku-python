@@ -578,7 +578,7 @@ def update_datasets(
         delete: Whether to delete files that don't exist on remote anymore.
         no_external: Whether to exclude external files from the update.
         update_all: Whether to update all datasets.
-        dry_run: Whether to return a preview of what whould be updated.
+        dry_run: Whether to return a preview of what would be updated.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
     """
@@ -1051,7 +1051,7 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
     Args:
         client("LocalClient"): The ``LocalCLient``.
         records(List[DynamicProxy]): File records to update.
-        dry_run(bool): Whether to return a preview of what whould be updated.
+        dry_run(bool): Whether to return a preview of what would be updated.
     """
     updated_files = []
 
