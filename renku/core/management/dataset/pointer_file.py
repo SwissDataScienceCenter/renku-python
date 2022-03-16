@@ -17,14 +17,14 @@
 # limitations under the License.
 """Pointer file business logic."""
 
-
 import os
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from renku.core import errors
 from renku.core.management.dataset.constant import renku_pointers_path
+from renku.core.metadata.repository import Repository
 
 if TYPE_CHECKING:
     from renku.core.management.client import LocalClient
@@ -35,7 +35,7 @@ def create_pointer_file(client: "LocalClient", target: Union[str, Path], checksu
     target = Path(target).resolve()
 
     if checksum is None:
-        checksum = client.repository.hash_object(target)
+        checksum = Repository.hash_object(target)
         assert checksum is not None, f"Cannot calculate checksum for '{target}'"
 
     while True:
@@ -47,34 +47,53 @@ def create_pointer_file(client: "LocalClient", target: Union[str, Path], checksu
     try:
         os.symlink(target, path)
     except FileNotFoundError:
-        raise errors.ParameterError("Cannot find external file {}".format(target))
+        raise errors.ExternalFileNotFound(target)
 
     return path
 
 
-def update_pointer_file(client: "LocalClient", pointer_file_path: Path):
-    """Update a pointer file."""
+def is_external_file_updated(client_path: Path, path: Union[Path, str]) -> Tuple[bool, str]:
+    """Check if an update to an external file is available."""
+    pointer_file = get_pointer_file(client_path, path)
+
     try:
-        target = pointer_file_path.resolve(strict=True)
+        target = pointer_file.resolve(strict=True)
     except FileNotFoundError:
-        target = pointer_file_path.resolve()
-        raise errors.ParameterError("External file not found: {}".format(target))
+        target = pointer_file.resolve()
+        raise errors.ExternalFileNotFound(target)
 
-    checksum = client.repository.hash_object(target)
-    current_checksum = pointer_file_path.name.split("-")[-1]
+    new_checksum = Repository.hash_object(target)
+    old_checksum = pointer_file.name.split("-")[-1]
 
-    if checksum == current_checksum:
-        return
+    updated = new_checksum != old_checksum
 
-    os.remove(pointer_file_path)
-    return create_pointer_file(client, target, checksum=checksum)
+    return updated, new_checksum
 
 
-def create_external_file(client: "LocalClient", src: Path, dst: Path):
+def update_external_file(client: "LocalClient", path: Union[Path, str], checksum: Optional[str]):
+    """Delete existing external file and create a new one."""
+    pointer_file = get_pointer_file(client.path, path)
+    target = pointer_file.resolve()
+
+    os.remove(pointer_file)
+    absolute_path = client.path / path
+    os.remove(absolute_path)
+
+    create_external_file(client=client, target=target, path=absolute_path, checksum=checksum)
+
+
+def create_external_file(client: "LocalClient", target: Path, path: Union[Path, str], checksum: str = None):
     """Create a new external file."""
     try:
-        pointer_file = create_pointer_file(client, target=src)
-        relative = os.path.relpath(pointer_file, dst.parent)
-        os.symlink(relative, dst)
+        pointer_file = create_pointer_file(client, target=target, checksum=checksum)
+        relative = os.path.relpath(pointer_file, Path(path).parent)
+        os.symlink(relative, path)
     except OSError as e:
         raise errors.OperationError("Could not create symbolic link") from e
+
+
+def get_pointer_file(client_path: Path, path: Union[Path, str]) -> Path:
+    """Return pointer file from an external file."""
+    absolute_path = client_path / path
+    link = absolute_path.parent / os.readlink(absolute_path)
+    return client_path / link
