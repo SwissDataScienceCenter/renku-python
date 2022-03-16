@@ -15,7 +15,7 @@ Report bugs on our issue tracker_.
 If you want to submit a bug, improvement or feature suggestions feel free to open a
 corresponding issue on GitHub.
 
-If you are reporting a bug, please help us to speed up the diagnosing a problem
+If you are reporting a bug, please help us to speed up diagnosing the problem
 by providing us with as much as information as possible.
 Ideally, that would include a step by step process on how to reproduce the bug.
 
@@ -69,6 +69,9 @@ Get Started!
 ------------
 
 Ready to contribute? Here's how to set up `renku` for local development.
+For an in-depth look at how `renku` is structured and what to pay attention to,
+take a look at `developing-reference`_, which details the architecture and
+common patterns.
 
 1. Fork the `SwissDataScienceCenter/renku-python` repo on GitHub.
 2. Clone your fork locally:
@@ -78,14 +81,16 @@ Ready to contribute? Here's how to set up `renku` for local development.
       $ git clone git@github.com:your_name_here/renku.git
 
 3. Ensure you have your development environment set up. For this we
-encourage usage of `pipenv` and `pyenv`:
+encourage usage of `poetry` and `pyenv`:
 
    .. code-block:: console
 
-      $ pyenv install 3.7.5rc1
+      $ pyenv install 3.8.12
       $ cd renku/
-      $ pipenv install --python  ~/.pyenv/versions/3.7.5rc1/bin/python
-      $ pipenv shell
+      $ poetry env use ~/.pyenv/versions/3.8.12/bin/python
+      $ poetry install
+      $ pre-commit install
+      $ poetry shell
 
 4. Create a branch for local development:
 
@@ -99,33 +104,23 @@ encourage usage of `pipenv` and `pyenv`:
 
    .. code-block:: console
 
-      $ pipenv run tests
+      $ ./run-tests
 
    The tests will provide you with test coverage and also check PEP8
    (code style), PEP257 (documentation), flake8 as well as build the Sphinx
    documentation and run doctests.
 
-   Before you submit a pull request, please reformat the code using black_.
+   Before you submit a pull request, please reformat the code using black_,
+   unless you installed `pre-commit` as mentioned above, in which case this
+   is done automatically when you commit.
 
    .. code-block:: console
 
       $ black .
 
-   You may want to set up black_ styling as a pre-commit hook to do this
-   automatically. Install pre-commit_ and run the following command in the
-   root of the `renku-python` repository:
-
-   .. code-block:: console
-
-      $ pre-commit install
-
-   See https://github.com/psf/black#version-control-integration for more
-   information. Make sure to remove other formatting hooks (e.g. yapf_) if you
-   already have them set up.
-
-   .. _pre-commit: https://pre-commit.com/
    .. _black: https://github.com/psf/black/
-   .. _yapf: https://github.com/google/yapf/
+
+   Also feel free to add yourself to the `authors-reference`_ file.
 
 6. Commit your changes and push your branch to GitHub:
 
@@ -140,27 +135,9 @@ encourage usage of `pipenv` and `pyenv`:
           -m "* Changes something that should not be visible in release notes."
       $ git push origin name-of-your-bugfix-or-feature
 
-7. Submit a pull request through the GitHub website.
-
-
-Code comment guidelines
------------------------
-
-To make comments more easily readable and allow automated styling/parsing in editors, all code comments
-should start with one of these tags:
-
-* :code:`TODO`: An informal task.
-* :code:`FIXME`: Same as :code:`TODO`, but for bugs.
-* :code:`NOTE`: Something to pay attention to regarding the code.
-* :code:`INFO`: Explanation of what a section of code does (For more complicated pieces of code).
-* :code:`WARNING`: Similar to :code:`NOTE` but higher severity (where disregarding can cause errors).
-* :code:`HACK`: Ugly code that is needed for things to work.
-
-So a comment should look like:
-
-   .. code-block:: python
-
-      # TODO: some message
+7. Submit a pull request through the GitHub website (See `Commit message
+   guidelines` below for how to structure commit messages and pull request
+   titles.
 
 
 Commit message guidelines
