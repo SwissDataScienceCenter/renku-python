@@ -72,7 +72,14 @@ class Dataset:
 
     @classmethod
     def _from_dataset(cls, dataset: core_dataset.Dataset):
-        """Create an instance from Dataset metadata."""
+        """Create an instance from Dataset metadata.
+
+        Args:
+            dataset(core_dataset.Dataset): The core dataset to wrap.
+
+        Returns:
+            An API ``Dataset`` wrapping a core dataset.
+        """
         self = cls()
         self._dataset = dataset
         self._files = [DatasetFile._from_dataset_file(f) for f in self._dataset.files]
@@ -82,7 +89,14 @@ class Dataset:
     @staticmethod
     @ensure_project_context
     def list(project):
-        """List all datasets in a project."""
+        """List all datasets in a project.
+
+        Args:
+            project: The current project
+
+        Returns:
+            A list of all datasets in the supplied project.
+        """
         client = project.client
         if not client or not client.has_graph_files():
             return []
@@ -102,7 +116,7 @@ class Dataset:
 
     @property
     def files(self):
-        """Return a list of dataset files."""
+        """Return list of existing files."""
         return self._files
 
 
@@ -114,7 +128,15 @@ class DatasetFile:
     @classmethod
     @ensure_project_context
     def _from_dataset_file(cls, dataset_file: core_dataset.DatasetFile, project):
-        """Create an instance from Dataset metadata."""
+        """Create an instance from Dataset metadata.
+
+        Args:
+            dataset_file(core_dataset.DatasetFile): The ``DatasetFile`` to wrap.
+            project: The current project.
+
+        Returns:
+            An API ``DatasetFile`` wrapping a core dataset file.
+        """
         self = cls()
         self._dataset_file = dataset_file
         self.full_path = project.path / dataset_file.entity.path

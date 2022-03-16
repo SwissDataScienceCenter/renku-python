@@ -351,9 +351,6 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
-          sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu jammy main restricted multiverse universe"
-          sudo apt-get update -y
-          sudo apt-get install -y --allow-downgrades -t jammy git-lfs=3.0.2-1
       - uses: actions/cache@master
         id: dependency-cache
         with:

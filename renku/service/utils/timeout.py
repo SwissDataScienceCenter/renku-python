@@ -18,7 +18,7 @@
 """Utilities for renku service controllers."""
 import signal
 
-from renku.service.errors import RenkuOpTimeoutError
+from renku.service.errors import IntermittentTimeoutError
 
 
 def timeout(fn, fn_args=None, fn_kwargs=None, timeout_duration=3600, default=None):
@@ -27,7 +27,7 @@ def timeout(fn, fn_args=None, fn_kwargs=None, timeout_duration=3600, default=Non
     fn_kwargs = fn_kwargs or {}
 
     def signal_handler(signum, frame):
-        raise RenkuOpTimeoutError()
+        raise IntermittentTimeoutError()
 
     # NOTE: Set the timeout handler.
     signal.signal(signal.SIGALRM, signal_handler)
@@ -35,7 +35,7 @@ def timeout(fn, fn_args=None, fn_kwargs=None, timeout_duration=3600, default=Non
 
     try:
         result = fn(*fn_args, **fn_kwargs)
-    except RenkuOpTimeoutError:
+    except IntermittentTimeoutError:
         result = default
     finally:
         signal.alarm(0)

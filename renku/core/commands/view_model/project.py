@@ -55,7 +55,14 @@ class ProjectViewModel:
 
     @classmethod
     def from_project(cls, project: Project):
-        """Create view model from ``Project``."""
+        """Create view model from ``Project``.
+
+        Args:
+            project(Project): The project to convert.
+
+        Returns:
+            View model for project.
+        """
         template_info = ""
 
         if project.template_source:

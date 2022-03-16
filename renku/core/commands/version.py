@@ -27,7 +27,13 @@ import lockfile
 
 
 def print_version(ctx, param, value):
-    """Print version number."""
+    """Print version number.
+
+    Args:
+        ctx: Current click context.
+        param: Not used.
+        value: Not used.
+    """
     if not value or ctx.resilient_parsing:
         return
 
@@ -37,8 +43,16 @@ def print_version(ctx, param, value):
     ctx.exit()
 
 
-def find_latest_version(name, allow_prereleases=False):
-    """Find a latest version on PyPI."""
+def find_latest_version(name: str, allow_prereleases: bool = False):
+    """Find a latest version on PyPI.
+
+    Args:
+        name (str): Package name.
+        allow_prereleases (bool): Whether to also check for prereleases (Default value = False).
+
+    Returns:
+        Version: Newest version of package.
+    """
     from renku.core.utils import requests
 
     response = requests.get("https://pypi.org/pypi/{name}/json".format(name=name))
@@ -86,7 +100,14 @@ class VersionCache:
 
     @classmethod
     def _cache(cls, app_name):
-        """Return cache file."""
+        """Return cache file.
+
+        Args:
+            app_name: Current application name.
+
+        Returns:
+            Directory of the cache.
+        """
         from pathlib import Path
 
         from appdirs import user_cache_dir
@@ -98,7 +119,14 @@ class VersionCache:
 
     @classmethod
     def load(cls, app_name):
-        """Load information from a cache."""
+        """Load information from a cache.
+
+        Args:
+            app_name:Current application name.
+
+        Returns:
+            Cache object.
+        """
         cache = cls._cache(app_name)
 
         try:
@@ -108,7 +136,11 @@ class VersionCache:
             return cls()
 
     def dump(self, app_name):
-        """Store information in a cache."""
+        """Store information in a cache.
+
+        Args:
+            app_name: Current application name.
+        """
         cache = self._cache(app_name)
 
         # Attempt to write out our version check file

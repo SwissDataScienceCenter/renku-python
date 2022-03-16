@@ -25,7 +25,14 @@ from renku.core.models.enums import ConfigFilter
 
 
 def _split_section_and_key(key):
-    """Return a tuple with config section and key."""
+    """Return a tuple with config section and key.
+
+    Args:
+        key: The config key.
+
+    Returns:
+        Tuple of "renku" and the supplied key.
+    """
     parts = key.split(".")
     if len(parts) > 1:
         return "{0}".format(parts[0]), ".".join(parts[1:])
@@ -33,7 +40,13 @@ def _split_section_and_key(key):
 
 
 def _update_multiple_config(values, global_only=False, commit_message=None):
-    """Add, update, or remove multiple configuration values."""
+    """Add, update, or remove multiple configuration values.
+
+    Args:
+        values: Dictionary of config key values to update.
+        global_only: Whether to only update global config (Default value = False).
+        commit_message: Commit message for change (Default value = None).
+    """
     for k, v in values.items():
         if v is not None:
             _update_config(k, value=v, global_only=global_only)
@@ -56,7 +69,20 @@ def update_multiple_config():
 def _update_config(
     key, client_dispatcher: IClientDispatcher, *, value=None, remove=False, global_only=False, commit_message=None
 ):
-    """Add, update, or remove configuration values."""
+    """Add, update, or remove configuration values.
+
+    Args:
+        key: Config key.
+        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+        value: Config value (Default value = None).
+        remove: Whether to remove values (Default value = False).
+        global_only: Whether to only update global config (Default value = False).
+        commit_message: Commit message for change (Default value = None).
+    Raises:
+        errors.ParameterError: If key wasn't found.
+    Returns:
+        The modified/removed value.
+    """
     client = client_dispatcher.current_client
     section, section_key = _split_section_and_key(key)
     if remove:
@@ -81,7 +107,17 @@ def update_config():
 
 @inject.autoparams()
 def _read_config(key, client_dispatcher: IClientDispatcher, config_filter=ConfigFilter.ALL, as_string=True):
-    """Read configuration."""
+    """Read configuration.
+
+    Args:
+        key: Config key.
+        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+        config_filter: Which config files to read from (Default value = ConfigFilter.ALL).
+        as_string: Whether to return a string or dictionary (Default value = True).
+
+    Returns:
+        String or dictionary containing configuration values.
+    """
     client = client_dispatcher.current_client
     if key:
         section, section_key = _split_section_and_key(key)

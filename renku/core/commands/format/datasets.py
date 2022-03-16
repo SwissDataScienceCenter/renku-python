@@ -25,7 +25,15 @@ from renku.core.models.json import dumps
 
 
 def tabular(datasets, *, columns=None):
-    """Format datasets with a tabular output."""
+    """Format datasets with a tabular output.
+
+    Args:
+        datasets: Datasets to format.
+        columns: Columns to show (Default value = None).
+
+    Returns:
+        String representation of datasets in tabular form.
+    """
     if not columns:
         columns = "id,date_created,name,creators,tags,version"
 
@@ -42,13 +50,27 @@ def _create_dataset_short_description(datasets):
 
 
 def jsonld(datasets, **kwargs):
-    """Format datasets as JSON-LD."""
+    """Format datasets as JSON-LD.
+
+    Args:
+        datasets: Datasets to format.
+
+    Returns:
+        String of datasets in JSON-LD format.
+    """
     data = [dump_dataset_as_jsonld(dataset) for dataset in datasets]
     return dumps(data, indent=2)
 
 
 def json(datasets, **kwargs):
-    """Format datasets as JSON."""
+    """Format datasets as JSON.
+
+    Args:
+        datasets: Datasets to format.
+
+    Returns:
+        String of datasets as JSON data.
+    """
     from renku.core.models.dataset import DatasetDetailsJson
 
     data = [DatasetDetailsJson().dump(dataset) for dataset in datasets]

@@ -27,7 +27,15 @@ from renku.core.models.dataset import Dataset, DatasetFile, DatasetTag, ImageObj
 
 
 def dump_dataset_as_jsonld(dataset: Dataset) -> dict:
-    """Return JSON-LD representation of a dataset."""
+    """Return JSON-LD representation of a dataset.
+
+    Args:
+        dataset(Dataset): The dataset to convert.
+
+    Returns:
+        dict: JSON-LD data of dataset.
+
+    """
     return DatasetSchema(flattened=True).dump(dataset)
 
 

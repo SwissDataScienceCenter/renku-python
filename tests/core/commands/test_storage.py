@@ -122,6 +122,12 @@ def test_lfs_migrate(runner, project, client):
     assert "workflow_file" in result.output
     assert "regular_file" in result.output
     assert "*.ini" not in result.output
+    assert "*.yml" not in result.output
+    assert "Dockerfile" not in result.output
+    assert ".dockerignore" not in result.output
+    assert ".gitignore" not in result.output
+    assert ".renkulfsignore" not in result.output
+    assert ".renku" not in result.output
 
     # TODO: Make sure that this test fails
     assert previous_head != client.repository.head.commit.hexsha

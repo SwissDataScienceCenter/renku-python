@@ -52,7 +52,17 @@ class RectangleShape(Shape):
         self.color = color
 
     def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
-        """Return the indices and values to draw this shape onto the canvas."""
+        """Return the indices and values to draw this shape onto the canvas.
+
+        Args:
+            color(bool, optional): Whether or not to render in color (Default value = True).
+            ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
+
+        Returns:
+            Tuple[List[Tuple[int]],List[str]]: Tuple of list of coordinates and list if characters
+                at those coordinates.
+
+        """
         if not ascii and self.double_border:
             characters = deepcopy(self.UNICODE_CHARACTERS_DOUBLE)
         else:
@@ -101,7 +111,11 @@ class RectangleShape(Shape):
 
     @property
     def extent(self) -> Tuple[Tuple[int]]:
-        """The extent of this shape."""
+        """The extent of this shape.
+
+        Returns:
+            Bounds of this shape.
+        """
         return self.start, self.end
 
 
@@ -115,7 +129,16 @@ class TextShape(Shape):
         self.color = color
 
     def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
-        """Return the indices and values to draw this shape onto the canvas."""
+        """Return the indices and values to draw this shape onto the canvas.
+
+        Args:
+            color(bool, optional): Whether or not to render in color (Default value = True).
+            ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
+
+        Returns:
+            Tuple[List[Tuple[int]],List[str]]: Tuple of list of coordinates and list if characters
+                at those coordinates.
+        """
         xs = []
         ys = []
         vals = []
@@ -146,7 +169,11 @@ class TextShape(Shape):
 
     @property
     def extent(self) -> Tuple[Tuple[int]]:
-        """The extent of this shape."""
+        """The extent of this shape.
+
+        Returns:
+            Bounds of this shape.
+        """
         max_line_len = max(len(line) for line in self.text)
         num_lines = len(self.text)
         return (self.point, Point(self.point.x + max_line_len, self.point.y + num_lines - 1))
@@ -171,7 +198,16 @@ class NodeShape(Shape):
         self.x_offset = round((text_extent[1].x - text_extent[0].x) / 2)
 
     def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
-        """Return the indices and values to draw this shape onto the canvas."""
+        """Return the indices and values to draw this shape onto the canvas.
+
+        Args:
+            color(bool, optional): Whether or not to render in color (Default value = True).
+            ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
+
+        Returns:
+            Tuple[List[Tuple[int]],List[str]]: Tuple of list of coordinates and list if characters
+                at those coordinates.
+        """
         xs, ys, vals = self.box_shape.draw(color, ascii)
 
         text_xs, text_ys, text_vals = self.text_shape.draw(color, ascii)
@@ -182,7 +218,11 @@ class NodeShape(Shape):
 
     @property
     def extent(self) -> Tuple[Tuple[int]]:
-        """The extent of this shape."""
+        """The extent of this shape.
+
+        Returns:
+            Bounds of this shape.
+        """
         box_extent = self.box_shape.extent
         return Point(box_extent[0].x - self.x_offset, box_extent[0].y), Point(
             box_extent[1].x - self.x_offset,
@@ -204,12 +244,24 @@ class EdgeShape(Shape):
 
     @staticmethod
     def next_color() -> str:
-        """Get the next color in the color rotation."""
+        """Get the next color in the color rotation.
+
+        Returns:
+            Next color string to use.
+        """
         EdgeShape.CURRENT_COLOR = (EdgeShape.CURRENT_COLOR + 1) % len(EdgeShape.COLORS)
         return EdgeShape.COLORS[EdgeShape.CURRENT_COLOR]
 
     def _line_indices(self, start: Point, end: Point):
-        """Interpolate a line."""
+        """Interpolate a line.
+
+        Args:
+            start(Point): Starting point of line.
+            end(Point): Ending point of line.
+
+        Returns:
+            Tuple of all x,y coordinates of points in this line.
+        """
         if abs(end.y - start.y) < abs(end.x - start.x):
             # swap x and y, then swap back
             xs, ys = self._line_indices(Point(start.y, start.x), Point(end.y, end.x))
@@ -225,14 +277,31 @@ class EdgeShape(Shape):
         return (np.floor(y).astype(int), x.astype(int))
 
     def intersects_with(self, other_edge: "EdgeShape") -> bool:
-        """Checks whether this edge intersects with other edges."""
+        """Checks whether this edge intersects with other edges.
+
+        Args:
+            other_edge("EdgeShape"): Edge to check intersection with.
+
+        Returns:
+            bool: True if this edge intersects ``other_edge``, False otherwise.
+        """
         coordinates = set(map(tuple, np.column_stack(self.line_indices)))
         other_coordinates = set(map(tuple, np.column_stack(other_edge.line_indices)))
 
         return coordinates.intersection(other_coordinates)
 
     def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
-        """Return the indices and values to draw this shape onto the canvas."""
+        """Return the indices and values to draw this shape onto the canvas.
+
+        Args:
+            color(bool, optional): Whether or not to render in color (Default value = True).
+            ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
+
+        Returns:
+            Tuple[List[Tuple[int]],List[str]]: Tuple of list of coordinates and list if characters
+                at those coordinates.
+
+        """
         xs, ys = self.line_indices
         char = "*"
 
@@ -243,7 +312,11 @@ class EdgeShape(Shape):
 
     @property
     def extent(self) -> Tuple[Tuple[int]]:
-        """The extent of this shape."""
+        """The extent of this shape.
+
+        Returns:
+            Bounds of this shape.
+        """
         return Point(min(self.start.x, self.end.x), min(self.start.y, self.end.y)), Point(
             max(self.start.x, self.end.x), max(self.start.y, self.end.y)
         )
@@ -257,15 +330,32 @@ class TextCanvas:
         self._canvas = None
 
     def add_shape(self, shape: Shape, layer: int = 0) -> None:
-        """Add a shape to the canvas."""
+        """Add a shape to the canvas.
+
+        Args:
+            shape(Shape): The shape to add.
+            layer(int, optional): The layer to add the shape to (Default value = 0).
+        """
         self.shapes[layer].append(shape)
 
-    def get_coordinates(self, point: Point):
-        """Get actual, transformed coordinates of a node."""
+    def get_coordinates(self, point: Point) -> Point:
+        """Get actual, transformed coordinates of a node.
+
+        Args:
+            point(Point): The point to get coordinates for.
+
+        Returns:
+            Point: Coordinates in parent coordinate system.
+        """
         return Point(point.x - self.offset[1], point.y - self.offset[0])
 
     def render(self, color: bool = True, ascii=False):
-        """Render contained shapes onto canvas."""
+        """Render contained shapes onto canvas.
+
+        Args:
+            color(bool, optional): Whether or not to render in color (Default value = True).
+            ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
+        """
         extent = (Point(2**64, 2**64), Point(-(2**64), -(2**64)))
 
         layers = sorted(self.shapes.keys())
@@ -290,7 +380,11 @@ class TextCanvas:
 
     @property
     def text(self) -> str:
-        """Get the text of the canvas."""
+        """Get the text of the canvas.
+
+        Returns:
+            String containing rendered canvas.
+        """
         if self._canvas is None:
             raise ValueError("Call render() before getting text.")
         string_buffer = StringIO()

@@ -47,7 +47,14 @@ class CommandInputViewModel:
 
     @classmethod
     def from_input(cls, input: CommandInput):
-        """Create view model from ``CommandInput``."""
+        """Create view model from ``CommandInput``.
+
+        Args:
+            input(CommandInput): Command input to convert.
+
+        Returns:
+            View model for command input.
+        """
         return cls(
             name=input.name,
             description=input.description,
@@ -79,7 +86,14 @@ class CommandOutputViewModel:
 
     @classmethod
     def from_output(cls, output: CommandOutput):
-        """Create view model from ``CommandOutput``."""
+        """Create view model from ``CommandOutput``.
+
+        Args:
+            output(CommandOutput): Command output to convert.
+
+        Returns:
+            View model for command output.
+        """
         return cls(
             name=output.name,
             description=output.description,
@@ -109,7 +123,14 @@ class CommandParameterViewModel:
 
     @classmethod
     def from_parameter(cls, parameter: CommandParameter):
-        """Create view model from ``CommandParameter``."""
+        """Create view model from ``CommandParameter``.
+
+        Args:
+            parameter(CommandParameter): Command parameter to convert.
+
+        Returns:
+            View model for command parameter.
+        """
         return cls(
             name=parameter.name,
             description=parameter.description,
@@ -144,7 +165,14 @@ class PlanViewModel:
 
     @classmethod
     def from_plan(cls, plan: Plan):
-        """Create view model from ``Plan``."""
+        """Create view model from ``Plan``.
+
+        Args:
+            plan(Plan): The plan to convert.
+
+        Returns:
+            View model for plan.
+        """
         return cls(
             id=plan.id,
             name=plan.name,
@@ -158,7 +186,14 @@ class PlanViewModel:
 
 
 def plan_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewModel]:
-    """Convert an ``CompositePlan`` or ``Plan`` to a ``ViewModel``."""
+    """Convert an ``CompositePlan`` or ``Plan`` to a ``ViewModel``.
+
+    Args:
+        workflow(AbstractPlan): Plan to convert.
+
+    Returns:
+        View model for converted Plan.
+    """
     if isinstance(workflow, CompositePlan):
         return CompositePlanViewModel.from_composite_plan(workflow)
     return PlanViewModel.from_plan(workflow)

@@ -26,7 +26,11 @@ from renku.core.models.tabulate import tabulate
 def tabular(tags):
     """Format dataset tags with a tabular output.
 
-    :param tags: Dataset tags.
+    Args:
+        tags: Dataset tags.
+
+    Returns:
+        String of tags in tabular representation.
     """
     return tabulate(
         tags,
@@ -48,7 +52,11 @@ def tabular(tags):
 def jsonld(tags):
     """Format dataset tags as JSON-LD.
 
-    :param tags: Dataset tags.
+    Args:
+        tags: Dataset tags.
+
+    Returns:
+        String of tags in JSON-LD representation.
     """
     from renku.core.models.json import dumps
 

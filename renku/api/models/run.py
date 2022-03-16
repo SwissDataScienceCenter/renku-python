@@ -118,7 +118,16 @@ class Output(_PathBase):
 
 @ensure_project_context
 def parameter(name, value, project):
-    """Store parameter's name and value."""
+    """Store parameter's name and value.
+
+    Args:
+        name (str): The name of the parameter.
+        value (Any): The value of the parameter.
+        project: The current project.
+
+    Returns:
+        The supplied value or a value set on workflow execution.
+    """
     if not name:
         raise errors.ParameterError("'name' must be set.")
 

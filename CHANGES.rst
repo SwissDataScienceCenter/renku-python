@@ -18,6 +18,17 @@
 Changes
 =======
 
+`1.1.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.0...v1.1.1>`__ (2022-03-10)
+-------------------------------------------------------------------------------------------------------
+
+This is a hotfix release fixing an issue with id generation for activities.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Add doctor fix and on-the-fly migration for wrong activity ids
+   (`#2747 <https://github.com/SwissDataScienceCenter/renku-python/issues/2747>`__)
+
 `1.1.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.0.6...v1.1.0>`__ (2022-03-04)
 -------------------------------------------------------------------------------------------------------
 
