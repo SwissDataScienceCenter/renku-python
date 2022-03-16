@@ -27,6 +27,7 @@ from renku.core.errors import RenkuException
 from renku.service.config import CACHE_UPLOADS_PATH, SUPPORTED_ARCHIVES
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import RenkuOperationMixin
+from renku.service.errors import IntermittentFileExistsError
 from renku.service.serializers.cache import FileUploadRequest, FileUploadResponseRPC, extract_file
 from renku.service.views import result_response
 
@@ -65,7 +66,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
             if self.response_builder.get("override_existing", False):
                 file_path.unlink()
             else:
-                raise RenkuException("file exists")
+                raise IntermittentFileExistsError(file_name=self.file.filename)
 
         self.file.save(str(file_path))
 

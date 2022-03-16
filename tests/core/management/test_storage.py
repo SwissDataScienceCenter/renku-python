@@ -43,6 +43,7 @@ def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path,
 
 def test_renku_in_lfs_migrate_exclude_filter(client):
     """Test .renku directory is in exclude filter of `lfs migrate info`."""
-    _, excludes, _ = client.get_lfs_migrate_filters()
+    _, excludes = client.get_lfs_migrate_filters()
 
-    assert excludes[1].endswith(".renku")
+    assert ",.renku," in excludes[1]
+    assert ",.renku/**," in excludes[1]

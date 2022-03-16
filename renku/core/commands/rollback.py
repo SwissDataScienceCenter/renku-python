@@ -21,6 +21,7 @@
 import os.path
 import re
 from itertools import islice
+from typing import Tuple
 
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
@@ -64,8 +65,16 @@ def _rollback_command(client_dispatcher: IClientDispatcher, database_dispatcher:
     current_client.repository.reset(checkpoint[1], hard=True)
 
 
-def _get_confirmation_message(diff, client):
-    """Create a confirmation message for changes that would be done by a rollback."""
+def _get_confirmation_message(diff, client) -> Tuple[str, bool]:
+    """Create a confirmation message for changes that would be done by a rollback.
+
+    Args:
+        diff: Diff between two commits.
+        client: Current ``LocalClient``.
+
+    Returns:
+        Tuple[str, bool]: Tuple of confirmation message and if there would be changes.
+    """
     modifications = _get_modifications_from_diff(client, diff)
 
     has_changes = False
@@ -104,7 +113,15 @@ def _get_confirmation_message(diff, client):
 
 
 def _get_modifications_from_diff(client, diff):
-    """Get all modifications from a diff."""
+    """Get all modifications from a diff.
+
+    Args:
+        client: Current ``LocalClient``.
+        diff: Diff between two commits.
+
+    Returns:
+        List of metadata modifications made in diff.
+    """
     modifications = {
         "metadata": {"restored": [], "modified": [], "removed": []},
         "files": {"restored": [], "modified": [], "removed": []},
@@ -149,7 +166,14 @@ def _get_modifications_from_diff(client, diff):
 
 
 def _prompt_for_checkpoint(commits):
-    """Ask to select a checkpoint to rollback to."""
+    """Ask to select a checkpoint to rollback to.
+
+    Args:
+        commits: Commits a user can choose from.
+
+    Returns:
+        Commit chosen by user.
+    """
     checkpoint_iterator = _checkpoint_iterator(commits)
 
     all_checkpoints = []
@@ -217,7 +241,15 @@ def _prompt_for_checkpoint(commits):
 
 @inject.autoparams()
 def _get_modification_type_from_db(path: str, database_dispatcher: IDatabaseDispatcher):
-    """Get the modification type for an entry in the database."""
+    """Get the modification type for an entry in the database.
+
+    Args:
+        path(str): Path to database object.
+        database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
+
+    Returns:
+        Change information for object.
+    """
     database = database_dispatcher.current_database
     db_object = database.get(os.path.basename(path))
 
@@ -263,7 +295,14 @@ def _get_modification_type_from_db(path: str, database_dispatcher: IDatabaseDisp
 
 
 def _checkpoint_iterator(commits):
-    """Iterate through commits to create checkpoints."""
+    """Iterate through commits to create checkpoints.
+
+    Args:
+        commits: Commits to iterate through.
+
+    Returns:
+        Iterator of commits that can be a checkpoint.
+    """
     transaction_pattern = re.compile(r"\n\nrenku-transaction:\s([0-9a-g]+)$")
 
     current_checkpoint = None

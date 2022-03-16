@@ -38,10 +38,27 @@ def _log(
     workflows_only: bool = False,
     datasets_only: bool = False,
 ) -> List[LogViewModel]:
-    """Get a log of renku commands."""
+    """Get a log of renku commands.
+
+    Args:
+        activity_gateway(IActivityGateway): Injected activity gateway.
+        dataset_gateway(IDatasetGateway): Injected dataset gateway.
+        workflows_only(bool, optional): Whether to show logs for workflows only (Default value = False).
+        datasets_only(bool, optional): Whether to show logs for datasets only (Default value = False).
+
+    Returns:
+        List of log entries.
+    """
 
     def _get_all_dataset_versions(dataset: Dataset):
-        """Get all datasets provenance for a dataset."""
+        """Get all datasets provenance for a dataset.
+
+        Args:
+            dataset(Dataset): Head dataset to get versions for.
+
+        Returns:
+            Iterator of all versions of a dataset.
+        """
 
         current_dataset = dataset
 

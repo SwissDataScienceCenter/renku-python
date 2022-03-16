@@ -24,17 +24,6 @@ import click
 from renku.core.errors import OperationError, SHACLValidationError
 
 
-def ascii(graph, strict=False):
-    """Format graph as an ASCII art."""
-    from ..ascii import DAG
-    from ..echo import echo_via_pager
-
-    if strict:
-        raise SHACLValidationError("--strict not supported for ascii")
-
-    echo_via_pager(str(DAG(graph)))
-
-
 def _jsonld(graph, format, *args, **kwargs):
     """Return formatted graph in JSON-LD ``format`` function."""
     import json
@@ -200,8 +189,7 @@ def _rdf2dot_simple(g, stream, graph=None):
 
 
 def _rdf2dot_reduced(g, stream):
-    """
-    A reduced dot graph.
+    """A reduced dot graph.
 
     Adapted from original source:
     https://rdflib.readthedocs.io/en/stable/_modules/rdflib/tools/rdf2dot.html
@@ -305,26 +293,17 @@ def _rdf2dot_reduced(g, stream):
     stream.write("}\n")
 
 
-def makefile(graph, strict=False):
-    """Format graph as Makefile."""
-    from renku.core.models.provenance.activity import Activity
-
-    if strict:
-        raise SHACLValidationError("--strict not supported for makefile")
-
-    for activity in graph:
-        if not isinstance(activity, Activity):
-            continue
-
-        plan = activity.association.plan
-        inputs = [i.default_value for i in plan.inputs]
-        outputs = [o.default_value for o in plan.outputs]
-        click.echo(" ".join(outputs) + ": " + " ".join(inputs))
-        click.echo("\t@" + " ".join(plan.to_argv()) + " " + " ".join(plan.to_stream_repr()))
-
-
 def jsonld(graph, strict=False, to_stdout=True):
-    """Format graph as JSON-LD file."""
+    """Format graph as JSON-LD file.
+
+    Args:
+        graph: The graph to output.
+        strict: Whether to validate the graph before output (Default value = False).
+        to_stdout: Whether to echo to stdout or return data (Default value = True).
+
+    Returns:
+        dict: JSON-LD dict or None if printed to stdout.
+    """
     from renku.core.utils.shacl import validate_graph
 
     ld = _jsonld(graph, "flatten")
@@ -343,7 +322,12 @@ def jsonld(graph, strict=False, to_stdout=True):
 
 
 def nt(graph, strict=False):
-    """Format graph as n-tuples."""
+    """Format graph as n-tuples.
+
+    Args:
+        graph: The graph to output.
+        strict: Whether to validate the graph before output (Default value = False).
+    """
     from renku.core.utils.shacl import validate_graph
 
     nt = _conjunctive_graph(graph).serialize(format="nt")
@@ -357,7 +341,12 @@ def nt(graph, strict=False):
 
 
 def rdf(graph, strict=False):
-    """Output the graph as RDF."""
+    """Output the graph as RDF.
+
+    Args:
+        graph: The graph to output.
+        strict: Whether to validate the graph before output (Default value = False).
+    """
     from renku.core.utils.shacl import validate_graph
 
     xml = _conjunctive_graph(graph).serialize(format="application/rdf+xml")
@@ -369,14 +358,6 @@ def rdf(graph, strict=False):
 
     click.echo(xml)
 
-
-FORMATS = {
-    "ascii": ascii,
-    "makefile": makefile,
-    "dot": dot,
-    "dot-landscape": dot_landscape,
-}
-"""Valid formatting options."""
 
 GRAPH_FORMATS = {
     "jsonld": jsonld,

@@ -21,17 +21,12 @@ from flask import request
 from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.service.serializers.v1_0.cache import ProjectMigrateResponseRPC_1_0
 from renku.service.views.api_versions import V0_9, V1_0
-from renku.service.views.decorators import (
-    accepts_json,
-    handle_common_except,
-    handle_migration_except,
-    requires_cache,
-    requires_identity,
-)
+from renku.service.views.decorators import accepts_json, requires_cache, requires_identity
+from renku.service.views.error_handlers import handle_common_except, handle_migration_errors
 
 
 @handle_common_except
-@handle_migration_except
+@handle_migration_errors
 @accepts_json
 @requires_cache
 @requires_identity

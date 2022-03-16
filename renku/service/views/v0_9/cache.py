@@ -22,7 +22,8 @@ from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.service.serializers.v0_9.cache import ProjectMigrationCheckResponseRPC_0_9
 from renku.service.views.api_versions import V0_9
-from renku.service.views.decorators import handle_common_except, optional_identity, requires_cache
+from renku.service.views.decorators import optional_identity, requires_cache
+from renku.service.views.error_handlers import handle_common_except
 
 
 @handle_common_except

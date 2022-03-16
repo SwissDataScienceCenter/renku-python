@@ -24,8 +24,7 @@ from pathlib import Path
 
 import portalocker
 
-from renku.core import errors
-from renku.core.errors import RenkuException, UninitializedProject
+from renku.core.errors import GitCommandError, GitConfigurationError, RenkuException, UninitializedProject
 from renku.core.management import RENKU_HOME
 from renku.core.metadata.repository import Repository
 from renku.core.utils.contexts import click_context
@@ -36,10 +35,10 @@ from renku.service.cache.models.user import User
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT, PROJECT_CLONE_NO_DEPTH
 from renku.service.controllers.utils.remote_project import RemoteProject
 from renku.service.errors import (
-    AuthenticationTokenMissing,
-    IdentificationError,
-    OperationNotSupported,
-    RenkuServiceLockError,
+    IntermittentAuthenticationError,
+    IntermittentLockError,
+    ProgramRenkuError,
+    UserAnonymousError,
 )
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
@@ -55,7 +54,7 @@ def local_identity(method):
     def _impl(self, *method_args, **method_kwargs):
         """Implementation of method wrapper."""
         if not hasattr(self, "user") and not isinstance(getattr(self, "user", None), User):
-            raise IdentificationError("Cannot execute user operation while anonymous - user identification is missing.")
+            raise UserAnonymousError()
 
         return method(self, *method_args, **method_kwargs)
 
@@ -219,7 +218,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                                     try:
                                         with repository.get_configuration(writable=True) as config:
                                             config.remove_value(f"remote.{origin}.fetch", f"origin.{branch}$")
-                                    except errors.GitConfigurationError:
+                                    except GitConfigurationError:
                                         pass
                 else:
                     self.reset_local_repo(project)
@@ -265,7 +264,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                             # NOTE: It could happen that repository is already un-shallowed,
                             # in this case we don't want to leak git exception, but still want to fetch.
                             repository.fetch("origin", repository.active_branch, unshallow=True)
-                        except errors.GitCommandError:
+                        except GitCommandError:
                             repository.fetch("origin", repository.active_branch)
 
                         repository.reset(f"{origin}/{repository.active_branch}", hard=True)
@@ -276,13 +275,14 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
         except (portalocker.LockException, portalocker.AlreadyLocked) as e:
-            raise RenkuServiceLockError() from e
+            raise IntermittentLockError() from e
 
     @local_identity
     def local(self):
         """Execute renku operation against service cache."""
         if self.user is None or self.cache is None:
-            raise OperationNotSupported("local execution is disabled")
+            error = Exception("local execution is disabled")
+            raise ProgramRenkuError(error)
 
         project = self.cache.get_project(self.user, self.context["project_id"])
 
@@ -309,12 +309,12 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                     with click_context(self.project_path, "renku_op"):
                         return self.renku_op()
         except (portalocker.LockException, portalocker.AlreadyLocked) as e:
-            raise RenkuServiceLockError() from e
+            raise IntermittentLockError() from e
 
     def remote(self):
         """Execute renku operation against remote project."""
         if self.user_data and "token" not in self.user_data:
-            raise AuthenticationTokenMissing()
+            raise IntermittentAuthenticationError()
 
         project = RemoteProject(self.user_data, self.request_data)
 

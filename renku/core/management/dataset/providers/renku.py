@@ -70,9 +70,11 @@ class RenkuProvider(ProviderApi):
     def find_record(self, uri, **kwargs):
         """Retrieves a dataset from Renku.
 
-        :raises: ``NotFound``, ``OperationError``, ``ParameterError``
-        :param uri: URL
-        :return: ``_RenkuRecordSerializer``
+        Args:
+            uri: URL to search for.
+
+        Returns:
+            _RenkuRecordSerializer: Serializer containing record data.
         """
         self._uri = uri
         self._gitlab_token = kwargs.get("gitlab_token")
@@ -282,7 +284,7 @@ class _RenkuRecordSerializer:
     def files_info(self) -> List[DynamicProxy]:
         """Return list of dataset file proxies.
 
-        NOTE: This is only valid after a call to ``as_dataset``.
+        This is only valid after a call to ``as_dataset``.
         """
         return self._files_info
 
