@@ -709,7 +709,7 @@ def read_files_list(files_list: Path):
     data = yaml.safe_load(files_list.read_text())
 
     if not isinstance(data, dict):
-        raise errors.OperationError("Run parameters must be a dictionary.")
+        raise errors.OperationError("Inputs/outputs files list must be a YAML dictionary.")
 
     return data
 

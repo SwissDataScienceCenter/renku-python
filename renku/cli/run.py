@@ -199,7 +199,8 @@ that it is accessing in ``inputs.yml`` and ``outputs.yml``. This YAML file
 should be of the format
 .. code-block:: YAML
 
-   - name: path
+   name1: path1
+   name2: path2
 
 where name is the user-defined name of the input/output and path is the path.
 When the program is finished, Renku will look for existence of these two files
