@@ -56,6 +56,15 @@ class ParameterError(RenkuException):
         super().__init__(message)
 
 
+class IncompatibleParametersError(ParameterError):
+    """Raise in case of incompatible parameters/flags."""
+
+    def __init__(self, a: str = None, b: str = None):
+        """Build a custom message."""
+        message = f"{a} is incompatible with {b}" if a is not None and b is not None else "Incompatible parameters"
+        super().__init__(message)
+
+
 class InvalidFileOperation(RenkuException):
     """Raise when trying to perform invalid file operation."""
 
@@ -258,6 +267,14 @@ class DatasetNotFound(RenkuException):
         else:
             msg = "Dataset is not found."
         super().__init__(msg)
+
+
+class ExternalFileNotFound(RenkuException):
+    """Raise when an external file is not found."""
+
+    def __init__(self, path):
+        """Build a custom message."""
+        super().__init__(f"Cannot find external file '{path}'")
 
 
 class DatasetExistsError(RenkuException):
