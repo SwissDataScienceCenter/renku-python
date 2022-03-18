@@ -205,6 +205,8 @@ submodules
 subpath
 substep
 substeps
+subsubcommand
+subsubcommands
 sudo
 supertype
 supertypes
