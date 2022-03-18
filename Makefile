@@ -22,7 +22,7 @@ DOCKER_PREFIX:=${DOCKER_REGISTRY}$(DOCKER_REPOSITORY)
 GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short --verify HEAD)
 
 TEMPLATE_URL:=https://github.com/SwissDataScienceCenter/renku-project-template
-TEMPLATE_REFERENCE:=$(shell sed -n --regexp-extended 's/^__template_version__\s=\s"([^"]+)"/\1/p' renku/version.py)
+TEMPLATE_REFERENCE:=$(shell sed -n -E 's/^__template_version__ = "([^"]+)"/\1/p' renku/version.py)
 TEMPLATE_DIR:=renku/templates/
 
 .PHONY: service cli docker-tag docker-push docker-login
