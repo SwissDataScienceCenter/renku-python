@@ -1367,7 +1367,7 @@
             },
             {
                "sh:class": {
-                  "@id": "renku:MappingParameter"
+                  "@id": "renku:ParameterMapping"
                },
                "path": "renku:hasMappings"
             },
