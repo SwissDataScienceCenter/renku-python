@@ -622,6 +622,7 @@ def _process_datasets(
     changed_paths = [c.b_path for c in changes if not c.deleted]
     paths = [p for p in changed_paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
     deleted_paths = [c.a_path for c in changes if c.deleted]
+    deleted_paths = [p for p in deleted_paths if len(Path(p).parents) == 4]
 
     datasets, deleted_datasets = _fetch_datasets(
         client=client, revision=commit.hexsha, paths=paths, deleted_paths=deleted_paths
@@ -693,7 +694,7 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
         existing = []
         deleted = []
 
-        for path in paths:
+        for path in chain(paths, deleted_paths):
             rev = revision
             if path in deleted_paths:
                 rev = client.repository.get_previous_commit(path, revision=f"{revision}~", submodule=True)
