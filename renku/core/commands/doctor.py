@@ -32,7 +32,15 @@ and if in doubt ask an expert around or file an issue. Thanks!
 
 @inject.autoparams()
 def _doctor_check(fix, client_dispatcher: IClientDispatcher):
-    """Check your system and repository for potential problems."""
+    """Check your system and repository for potential problems.
+
+    Args:
+        fix: Whether to apply fixes or just check.
+        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+
+    Returns:
+        Tuple of whether the project is ok or not and list of problems found.
+    """
     from renku.core.commands import checks
 
     client = client_dispatcher.current_client
@@ -57,7 +65,14 @@ def _doctor_check(fix, client_dispatcher: IClientDispatcher):
 
 
 def doctor_check_command(with_fix):
-    """Command to check your system and repository for potential problems."""
+    """Command to check your system and repository for potential problems.
+
+    Args:
+        with_fix: Whether to fix found problems or just check.
+
+    Returns:
+        Tuple of whether the project is ok or not and list of problems found.
+    """
     if with_fix:
         return (
             Command()

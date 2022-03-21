@@ -49,7 +49,14 @@ ZENODO_NEW_DEPOSIT_URL = "depositions"
 
 
 def make_records_url(record_id):
-    """Create URL to access record by ID."""
+    """Create URL to access record by ID.
+
+    Args:
+        record_id:  The id of the record.
+
+    Returns:
+        str: Full URL for the record.
+    """
     return urllib.parse.urljoin(ZENODO_BASE_URL, pathlib.posixpath.join(ZENODO_API_PATH, "records", record_id))
 
 
@@ -134,7 +141,14 @@ class ZenodoMetadataSerializer:
 
 
 def _metadata_converter(data):
-    """Convert dict to ZenodoMetadata instance."""
+    """Convert dict to ZenodoMetadata instance.
+
+    Args:
+        data: The dict data to convert.
+
+    Returns:
+        ZenodoMetadataSerializer: Serializer containing data in deserialized form.
+    """
     all_keys = set(vars(ZenodoMetadataSerializer()).keys())
 
     _data = {key: data.get(key) for key in all_keys}
@@ -199,10 +213,7 @@ class ZenodoRecordSerializer:
 
     @property
     def files_info(self) -> List[DynamicProxy]:
-        """Return list of dataset file proxies.
-
-        NOTE: This is only valid after a call to ``as_dataset``.
-        """
+        """Return list of dataset file proxies."""
         return self._files_info
 
     def is_last_version(self, uri):
@@ -440,7 +451,7 @@ class ZenodoExporter(ExporterApi):
         self.access_token = access_token
 
     def access_token_url(self):
-        """Return endpoint for creation of access token."""
+        """Endpoint for creation of access token."""
         return urllib.parse.urlparse("https://zenodo.org/account/settings/applications/tokens/new/").geturl()
 
     @property
@@ -531,9 +542,13 @@ class ZenodoProvider(ProviderApi):
     def find_record(self, uri, client=None, **kwargs):
         """Retrieves a record from Zenodo.
 
-        :raises: ``LookupError``
-        :param uri: DOI or URL
-        :return: ``ZenodoRecord``
+        Args:
+            uri: DOI or URL.
+            client: The ``LocalClient`` (Default value = None).
+
+        Returns:
+            ZenodoRecord: Record found.
+
         """
         if self.is_doi:
             return self.find_record_by_doi(uri)

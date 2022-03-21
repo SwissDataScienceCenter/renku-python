@@ -22,7 +22,7 @@ DOCKER_PREFIX:=${DOCKER_REGISTRY}$(DOCKER_REPOSITORY)
 GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short --verify HEAD)
 
 TEMPLATE_URL:=https://github.com/SwissDataScienceCenter/renku-project-template
-TEMPLATE_REFERENCE:=0.2.1
+TEMPLATE_REFERENCE:=0.3.0
 TEMPLATE_DIR:=renku/templates/
 
 .PHONY: service cli docker-tag docker-push docker-login
@@ -41,10 +41,10 @@ docker-login:
 	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}
 
 service:
-	docker build -f Dockerfile.svc -t $(DOCKER_PREFIX)renku-core:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
+	docker build -f Dockerfile -t $(DOCKER_PREFIX)renku-core:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 --build-arg BUILD_CORE_SERVICE=1 .
 
 cli:
-	docker build -f Dockerfile.cli -t $(DOCKER_PREFIX)renku-python:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
+	docker build -f Dockerfile -t $(DOCKER_PREFIX)renku-python:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
 
 download-templates:
 	@echo "Downloading templates"

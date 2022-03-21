@@ -35,7 +35,14 @@ class ParameterMappingViewModel:
 
     @classmethod
     def from_mapping(cls, mapping: ParameterMapping):
-        """Create view model from ``ParameterMapping``."""
+        """Create view model from ``ParameterMapping``.
+
+        Args:
+            mapping(ParameterMapping): Mapping to create view model from.
+
+        Returns:
+            View model of mapping.
+        """
         return cls(
             name=mapping.name,
             default_value=str(mapping.default_value),
@@ -53,7 +60,15 @@ class ParameterLinkViewModel:
 
     @classmethod
     def from_link(cls, link: ParameterLink, plan: AbstractPlan):
-        """Create view model from ``ParameterLink``."""
+        """Create view model from ``ParameterLink``.
+
+        Args:
+            link(ParameterLink): Link to get view model from.
+            plan(AbstractPlan): Parent plan.
+
+        Returns:
+            View model for link.
+        """
         source_path = plan.get_parameter_path(link.source)
         source_path.append(link.source)
         source_path = ".".join(p.name for p in source_path[1:])
@@ -98,7 +113,14 @@ class CompositePlanViewModel:
 
     @classmethod
     def from_composite_plan(cls, plan: CompositePlan):
-        """Create view model from ``Plan``."""
+        """Create view model from ``Plan``.
+
+        Args:
+            plan(CompositePlan): Composite Plan to get view model from.
+
+        Returns:
+            View model of composite Plan.
+        """
         return cls(
             id=plan.id,
             name=plan.name,

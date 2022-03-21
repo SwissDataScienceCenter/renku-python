@@ -139,6 +139,7 @@ walrus = { version = ">=0.8.2,<0.10.0", optional = true }
 wcmatch = "<8.3,>=6.0.0"
 werkzeug = "<2.0.4,>=1.0.0"
 yagup = ">=0.1.1"
+yaspin = "==2.1.0"
 "zc.relation" = "<1.2,>=1.1"
 zodb = "==5.6.0"
 zstandard = ">=0.16.0,<0.18.0"

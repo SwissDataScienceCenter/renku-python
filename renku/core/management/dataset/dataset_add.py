@@ -302,7 +302,7 @@ def move_files_to_dataset(client: "LocalClient", files: List[Dict]):
         elif action == "move":
             shutil.move(src, dst, copy_function=shutil.copy)
         elif action == "symlink":
-            create_external_file(client, src, dst)
+            create_external_file(client=client, target=src, path=dst)
             data["is_external"] = True
         else:
             raise errors.OperationError(f"Invalid action {action}")

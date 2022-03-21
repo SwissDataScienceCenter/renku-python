@@ -28,12 +28,11 @@ from renku.service.controllers.datasets_list import DatasetsListCtrl
 from renku.service.controllers.datasets_remove import DatasetsRemoveCtrl
 from renku.service.controllers.datasets_unlink import DatasetsUnlinkCtrl
 from renku.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
-from renku.service.views.decorators import (
-    accepts_json,
+from renku.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
+from renku.service.views.error_handlers import (
     handle_common_except,
-    optional_identity,
-    requires_cache,
-    requires_identity,
+    handle_datasets_unlink_errors,
+    handle_datasets_write_errors,
 )
 
 DATASET_BLUEPRINT_TAG = "datasets"
@@ -100,6 +99,7 @@ def list_dataset_files_view(user_data, cache):
     "/datasets.add", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
 )
 @handle_common_except
+@handle_datasets_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
@@ -130,6 +130,7 @@ def add_file_to_dataset_view(user_data, cache):
     "/datasets.create", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
 )
 @handle_common_except
+@handle_datasets_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
@@ -220,6 +221,7 @@ def import_dataset_view(user_data, cache):
     "/datasets.edit", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
 )
 @handle_common_except
+@handle_datasets_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
@@ -250,6 +252,7 @@ def edit_dataset_view(user_data, cache):
     "/datasets.unlink", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
 )
 @handle_common_except
+@handle_datasets_unlink_errors
 @accepts_json
 @requires_cache
 @requires_identity

@@ -55,7 +55,14 @@ class TemplateViewModel:
 
     @classmethod
     def from_template(cls, template: Template) -> "TemplateViewModel":
-        """Create view model from ``Template``."""
+        """Create view model from ``Template``.
+
+        Args:
+            template(Template): The input template.
+
+        Returns:
+            TemplateViewModel: View model for a template.
+        """
         return cls(
             source=template.source,
             reference=template.reference,
@@ -89,7 +96,14 @@ class TemplateParameterViewModel:
 
     @classmethod
     def from_template_parameter(cls, parameter: TemplateParameter) -> "TemplateParameterViewModel":
-        """Create view model from ``Template``."""
+        """Create view model from ``Template``.
+
+        Args:
+            parameter(TemplateParameter): The input template parameter.
+
+        Returns:
+            TemplateParameterViewModel: View model for a template parameter.
+        """
         return cls(
             name=parameter.name,
             description=parameter.description,
@@ -111,7 +125,15 @@ class TemplateChangeViewModel:
 
     @classmethod
     def from_template(cls, template: RenderedTemplate, actions: Dict[str, FileAction]) -> "TemplateChangeViewModel":
-        """Create view model from ``Template``."""
+        """Create view model from ``Template``.
+
+        Args:
+            template(RenderedTemplate): Input rendered template.
+            actions(Dict[str, FileAction]): Mapping of paths to actions taken when rendering the template.
+
+        Returns:
+            TemplateChangeViewModel: View model for the template change.
+        """
         actions_mapping: Dict[FileAction, str] = {
             FileAction.APPEND: "Append to",
             FileAction.CREATE: "Initialize",

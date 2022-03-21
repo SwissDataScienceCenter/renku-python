@@ -22,7 +22,12 @@ from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 from renku.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
-from renku.service.views.decorators import accepts_json, handle_common_except, requires_cache, requires_identity
+from renku.service.views.decorators import accepts_json, requires_cache, requires_identity
+from renku.service.views.error_handlers import (
+    handle_common_except,
+    handle_templates_create_errors,
+    handle_templates_read_errors,
+)
 
 TEMPLATES_BLUEPRINT_TAG = "templates"
 templates_blueprint = VersionedBlueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
@@ -32,6 +37,7 @@ templates_blueprint = VersionedBlueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_
     "/templates.read_manifest", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
 )
 @handle_common_except
+@handle_templates_read_errors
 @requires_cache
 @requires_identity
 def read_manifest_from_template(user_data, cache):
@@ -71,6 +77,7 @@ def read_manifest_from_template(user_data, cache):
     "/templates.create_project", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
 )
 @handle_common_except
+@handle_templates_create_errors
 @accepts_json
 @requires_cache
 @requires_identity

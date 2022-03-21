@@ -19,7 +19,7 @@
 
 from datetime import datetime
 from itertools import chain
-from typing import List, Union
+from typing import List, Optional, Union
 from uuid import uuid4
 
 from werkzeug.utils import cached_property
@@ -117,6 +117,9 @@ class Activity(Persistent):
         self.project_id: str = project_id
         self.started_at_time: datetime = started_at_time
         self.usages: List[Usage] = usages or []
+
+        if not self.id.startswith("/activities/"):
+            self.id = f"/activities/{self.id}"
 
         # TODO: _was_informed_by = attr.ib(kw_only=True)
         # TODO: influenced = attr.ib(kw_only=True)
@@ -220,10 +223,11 @@ class Activity(Persistent):
         return plan
 
     @staticmethod
-    def generate_id() -> str:
+    def generate_id(uuid: Optional[str] = None) -> str:
         """Generate an identifier for an activity."""
-        # TODO: make id generation idempotent
-        return f"/activities/{uuid4().hex}"
+        if uuid is None:
+            uuid = uuid4().hex
+        return f"/activities/{uuid}"
 
     def has_identical_inputs_and_outputs_as(self, other: "Activity"):
         """Return true if all input and outputs paths are identical regardless of the order."""

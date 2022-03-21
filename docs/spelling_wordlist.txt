@@ -53,6 +53,7 @@ deployer
 deserialization
 deserialize
 Deserialize
+Deserialized
 discoverable
 Dockerfile
 dockerfiles
@@ -81,6 +82,7 @@ gitlabClientSecret
 GraphQL
 Homebrew
 hostname
+hotfix
 https
 hyperkit
 hypervisor
@@ -203,6 +205,8 @@ submodules
 subpath
 substep
 substeps
+subsubcommand
+subsubcommands
 sudo
 supertype
 supertypes
@@ -235,6 +239,7 @@ versioning
 Versioning
 vertices
 vm
+wasDerivedFrom
 webhook
 webhooks
 whitespace

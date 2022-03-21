@@ -201,19 +201,22 @@
                "path": "renku:hasDataset",
                "sh:class": {
                   "@id": "schema:Dataset"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/datasets/[0-9a-g]+"
             },
             {
                "path": "renku:hasPlan",
                "sh:class": {
                   "@id": "prov:Plan"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-g\\-]+"
             },
             {
                "path": "renku:hasActivity",
                "sh:class": {
                   "@id": "prov:Activity"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -383,7 +386,8 @@
                "path": "schema:hasPart",
                "sh:class": {
                   "@id": "schema:DigitalDocument"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/dataset\\-files/[0-9a-g]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -737,7 +741,8 @@
                "path": "prov:qualifiedAssociation",
                "sh:class": {
                   "@id": "prov:Association"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+/association"
             },
             {
                "nodeKind": "sh:Literal",
@@ -752,7 +757,8 @@
                "path": "prov:qualifiedGeneration",
                "sh:class": {
                   "@id": "prov:Generation"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+/generation/[0-9a-g]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -765,7 +771,8 @@
                "path": "prov:qualifiedUsage",
                "sh:class": {
                   "@id": "prov:Usage"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+/usages/[0-9a-g]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -780,7 +787,8 @@
                "path": "renku:parameter",
                "sh:class": {
                   "@id": "renku:ParameterValue"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+/parameter-value/[0-9a-g]+"
             }
          ]
       },
@@ -904,7 +912,8 @@
                "sh:class": {
                   "@id": "renku:CommandParameter"
                },
-               "path": "renku:hasArguments"
+               "path": "renku:hasArguments",
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-g\\-]+/parameters/[0-9a-z]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -924,7 +933,8 @@
                "sh:class": {
                   "@id": "renku:CommandInput"
                },
-               "path": "renku:hasInputs"
+               "path": "renku:hasInputs",
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-g\\-]+/inputs/[0-9a-z]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -939,7 +949,8 @@
                "sh:class": {
                   "@id": "renku:CommandOutput"
                },
-               "path": "renku:hasOutputs"
+               "path": "renku:hasOutputs",
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-g\\-]+/outputs/[0-9a-z]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1356,7 +1367,7 @@
             },
             {
                "sh:class": {
-                  "@id": "renku:MappingParameter"
+                  "@id": "renku:ParameterMapping"
                },
                "path": "renku:hasMappings"
             },

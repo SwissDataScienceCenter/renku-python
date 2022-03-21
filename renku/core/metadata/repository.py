@@ -195,6 +195,7 @@ class BaseRepository:
         remote: Union["Remote", str] = None,
         refspec: Union["Branch", str] = None,
         all: bool = False,
+        tags: bool = False,
         unshallow: bool = False,
         depth: int = None,
     ):
@@ -203,7 +204,7 @@ class BaseRepository:
             assert remote is None and refspec is None, "Cannot fetch all while a reference is passed"
 
         self.run_git_command(
-            "fetch", _to_string(remote), _to_string(refspec), all=all, unshallow=unshallow, depth=depth
+            "fetch", _to_string(remote), _to_string(refspec), all=all, unshallow=unshallow, depth=depth, tags=tags
         )
 
     def move(self, *sources: Union[Path, str], destination: Union[Path, str], force: bool = False):
@@ -1419,11 +1420,12 @@ def _find_previous_commit_helper(
 ) -> Optional[Commit]:
     """Return a previous commit for a given path starting from ``revision``.
 
-    :param path: relative path to the file
-    :param revision: revision to start from, defaults to ``HEAD``
-    :param first: show the first commit in the history
-    :param full_history: search full history
-    :param submodules: search in submodules if not found in the main repository
+    Args:
+        path (Union[Path, str]): relative path to the file.
+        revision (str, optional): revision to start from, defaults to ``HEAD`` (Default value = None).
+        first (bool, optional): show the first commit in the history (Default value = False).
+        full_history (bool, optional): search full history (Default value = False).
+        submodules (bool, optional): search in submodules if not found in the main repository (Default value = False).
     """
     absolute_path = get_absolute_path(path, repository.path)
     revision = revision or "HEAD"

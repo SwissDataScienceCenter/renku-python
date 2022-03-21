@@ -29,8 +29,12 @@ from renku.core.management.interface.client_dispatcher import IClientDispatcher
 def tabular(records, *, columns=None):
     """Format dataset files with a tabular output.
 
-    :param records: Filtered collection.
-    :param columns: List of columns to display
+    Args:
+        records: Filtered collection.
+        columns: List of columns to display (Default value = None)
+
+    Returns:
+        String of records in tabular representation.
     """
 
     if not columns:
@@ -49,7 +53,12 @@ def tabular(records, *, columns=None):
 
 @inject.autoparams()
 def get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
-    """Check if files are tracked in git lfs."""
+    """Check if files are tracked in git lfs.
+
+    Args:
+        records: File records to check.
+        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+    """
     client = client_dispatcher.current_client
 
     paths = (r.path for r in records)
@@ -64,7 +73,12 @@ def get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
 
 @inject.autoparams()
 def get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
-    """Try to get file size from Git LFS."""
+    """Try to get file size from Git LFS.
+
+    Args:
+        records: File records tog et size for.
+        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+    """
     from humanize import naturalsize  # Slow import
 
     client = client_dispatcher.current_client
@@ -105,7 +119,8 @@ def get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
 def jsonld(records, **kwargs):
     """Format dataset files as JSON-LD.
 
-    :param records: Filtered collection.
+    Args:
+        records: Filtered collection.
     """
     from renku.core.models.json import dumps
 
@@ -116,7 +131,11 @@ def jsonld(records, **kwargs):
 def json(records, **kwargs):
     """Format dataset files as JSON.
 
-    :param records: Filtered collection.
+    Args:
+        records: Filtered collection.
+
+    Returns:
+        String of records in JSON representation.
     """
     from renku.core.models.dataset import DatasetFileDetailsJson
     from renku.core.models.json import dumps

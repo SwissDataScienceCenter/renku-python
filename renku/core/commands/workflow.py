@@ -24,7 +24,7 @@ from collections import defaultdict
 from datetime import datetime
 from functools import reduce
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from networkx import DiGraph
@@ -50,32 +50,20 @@ from renku.core.models.workflow.plan import AbstractPlan, Plan
 from renku.core.plugins.provider import execute
 from renku.core.utils import communication
 from renku.core.utils.datetime8601 import local_now
-from renku.core.utils.os import are_paths_related, get_relative_paths
-
-
-def _ref(name):
-    """Return workflow reference name."""
-    return "workflows/{0}".format(name)
-
-
-def _deref(ref):
-    """Remove workflows prefix."""
-    assert ref.startswith("workflows/")
-    return ref[len("workflows/") :]
-
-
-def _safe_read_yaml(file: str) -> Dict[str, Any]:
-    try:
-        from renku.core.models import jsonld as jsonld
-
-        return jsonld.read_yaml(file)
-    except Exception as e:
-        raise errors.ParameterError(e)
+from renku.core.utils.os import are_paths_related, get_relative_paths, safe_read_yaml
 
 
 @inject.autoparams()
 def _search_workflows(name: str, plan_gateway: IPlanGateway) -> List[str]:
-    """Get all the workflows whose Plan.name are greater than or equal to the given name."""
+    """Get all the workflows whose Plan.name start with the given name.
+
+    Args:
+        name(str): The name to search for.
+        plan_gateway(IPlanGateway): Injected Plan gateway.
+
+    Returns:
+        All Plans whose name starts with ``name``.
+    """
     return plan_gateway.list_by_name(starts_with=name)
 
 
@@ -95,7 +83,16 @@ def _find_workflow(name_or_id: str, plan_gateway: IPlanGateway) -> AbstractPlan:
 
 @inject.autoparams()
 def _list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str]):
-    """List or manage workflows with subcommands."""
+    """List or manage workflows with subcommands.
+
+    Args:
+        plan_gateway(IPlanGateway): The injected Plan gateway.
+        format(str): The output format.
+        columns(List[str]): The columns to show for tabular output.
+
+    Returns:
+        List of workflows formatted by ``format``.
+    """
     workflows = plan_gateway.get_newest_plans_by_names()
 
     if format not in WORKFLOW_FORMATS:
@@ -113,8 +110,16 @@ def list_workflows_command():
 
 
 @inject.autoparams()
-def _remove_workflow(name, force, plan_gateway: IPlanGateway):
-    """Remove the remote named <name>."""
+def _remove_workflow(name: str, force: bool, plan_gateway: IPlanGateway):
+    """Remove the remote named <name>.
+
+    Args:
+        name (str): The name of the Plan to remove.
+        force (bool): Whether to force removal or not.
+        plan_gateway(IPlanGateway): The injected Plan gateway.
+    Raises:
+        errors.ParameterError: If the Plan doesn't exist or was already deleted.
+    """
     workflows = plan_gateway.get_newest_plans_by_names()
     plan = None
     if name.startswith("/plans/"):
@@ -138,7 +143,14 @@ def remove_workflow_command():
 
 
 def _show_workflow(name_or_id: str):
-    """Show the details of a workflow."""
+    """Show the details of a workflow.
+
+    Args:
+        name_or_id(str): Name or id of the Plan to show.
+
+    Returns:
+        Details of the Plan.
+    """
     workflow = _find_workflow(name_or_id)
     return plan_view(workflow)
 
@@ -169,7 +181,31 @@ def _compose_workflow(
     project_gateway: IProjectGateway,
     client_dispatcher: IClientDispatcher,
 ) -> CompositePlan:
-    """Compose workflows into a CompositePlan."""
+    """Compose workflows into a CompositePlan.
+
+    Args:
+        name(str): Name of the new composed Plan.
+        description(str): Description for the Plan.
+        mappings(List[str]): Mappings between parameters of this and child Plans.
+        defaults(List[str]): Default values for parameters.
+        links(List[str]): Links between parameters of child Plans.
+        param_descriptions(List[str]): Descriptions of parameters.
+        map_inputs(bool): Whether or not to automatically expose child inputs.
+        map_inputs(bool): Whether or not to automatically expose child outputs.
+        map_params(bool): Whether or not to automatically expose child parameters.
+        link_all(bool): Whether or not to automatically link child steps' parameters.
+        keywords(List[str]): Keywords for the Plan.
+        steps(List[str]): Child steps to include.
+        sources(List[str]): Starting files when automatically detecting child Plans.
+        sinks(List[str]): Ending files when automatically detecting child Plans.
+        activity_gateway(IActivityGateway): Injected activity gateway.
+        plan_gateway(IPlanGateway): Injected plan gateway.
+        project_gateway(IProjectGateway): Injected project gateway.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+
+    Returns:
+        The newly created ``CompositePlan``.
+    """
 
     if plan_gateway.get_by_name(name):
         raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
@@ -293,7 +329,7 @@ def compose_workflow_command():
 
 @inject.autoparams()
 def _edit_workflow(
-    name,
+    name: str,
     new_name: Optional[str],
     description: Optional[str],
     set_params: List[str],
@@ -302,7 +338,21 @@ def _edit_workflow(
     describe_params: List[str],
     plan_gateway: IPlanGateway,
 ):
-    """Edits a workflow details."""
+    """Edits a workflow details.
+
+    Args:
+        name (str): Name of the Plan to edit.
+        new_name(Optional[str]): New name of the Plan.
+        description(Optional[str]): New description of the Plan.
+        set_params(List[str]): New default values for parameters.
+        map_params(List[str]): New mappings for Plan.
+        rename_params(List[str]): New names for parameters.
+        describe_params(List[str]): New descriptions for parameters.
+        plan_gateway(IPlanGateway): Injected plan gateway.
+
+    Returns:
+        Details of the modified Plan.
+    """
     derived_from = _find_workflow(name)
     workflow = derived_from.derive()
     if new_name:
@@ -351,7 +401,18 @@ def edit_workflow_command():
 def _export_workflow(
     name_or_id, client_dispatcher: IClientDispatcher, format: str, output: Optional[str], values: Optional[str]
 ):
-    """Export a workflow to a given format."""
+    """Export a workflow to a given format.
+
+    Args:
+        name_or_id: name or id of the Plan to export
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        format(str): Format to export to.
+        output(Optional[str]): Output path to store result at.
+        values(Optional[str]): Path to values file to apply before export.
+
+    Returns:
+        The exported workflow as string.
+    """
     client = client_dispatcher.current_client
 
     workflow = _find_workflow(name_or_id)
@@ -359,7 +420,7 @@ def _export_workflow(
         output = Path(output)
 
     if values:
-        values = _safe_read_yaml(values)
+        values = safe_read_yaml(values)
         rv = ValueResolver.get(workflow, values)
         workflow = rv.apply()
         if rv.missing_parameters:
@@ -419,7 +480,15 @@ def _lookup_paths_in_paths(client_dispatcher: IClientDispatcher, lookup_paths: L
 
 @inject.autoparams()
 def _workflow_inputs(activity_gateway: IActivityGateway, paths: List[str] = None):
-    """Get inputs used by workflows."""
+    """Get inputs used by workflows.
+
+    Args:
+        activity_gateway(IActivityGateway): The injected activity gateway.
+        paths(List[str], optional): List of paths to consider as inputs (Default value = None).
+
+    Returns:
+        Set[str]: Set of input file paths.
+    """
     usage_paths = activity_gateway.get_all_usage_paths()
 
     if not paths:
@@ -435,7 +504,15 @@ def workflow_inputs_command():
 
 @inject.autoparams()
 def _workflow_outputs(activity_gateway: IActivityGateway, paths: List[str] = None):
-    """Get inputs used by workflows."""
+    """Get inputs used by workflows.
+
+    Args:
+        activity_gateway(IActivityGateway): The injected activity gateway.
+        paths(List[str], optional): List of paths to consider as outputs (Default value = None).
+
+    Returns:
+        Set[str]: Set of output file paths.
+    """
     generation_paths = activity_gateway.get_all_generation_paths()
 
     if not paths:
@@ -452,14 +529,22 @@ def workflow_outputs_command():
 @inject.params(client_dispatcher=IClientDispatcher, activity_gateway=IActivityGateway, plan_gateway=IPlanGateway)
 def execute_workflow(
     dag: "DiGraph",
-    command_name: str,
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
     provider="cwltool",
     config=None,
 ):
-    """Execute a Run with/without subprocesses."""
+    """Execute a Run with/without subprocesses.
+
+    Args:
+        dag("DiGraph"): The workflow graph to execute.
+        client_dispatcher(IClientDispatcher): The injected client dispatcher.
+        activity_gateway(IActivityGateway): The injected activity gateway.
+        plan_gateway(IPlanGateway): The injected plan gateway.
+        provider: Provider to run the workflow with (Default value = "cwltool").
+        config: Config for the workflow provider (Default value = None).
+    """
     client = client_dispatcher.current_client
 
     inputs = {i.actual_value for p in dag.nodes for i in p.inputs}
@@ -476,7 +561,7 @@ def execute_workflow(
     delete_indirect_files_list(client.path)
 
     if config:
-        config = _safe_read_yaml(config)
+        config = safe_read_yaml(config)
 
     started_at_time = local_now()
 
@@ -510,7 +595,7 @@ def _execute_workflow(
     # apply the provided parameter settings provided by user
     override_params = dict()
     if values:
-        override_params.update(_safe_read_yaml(values))
+        override_params.update(safe_read_yaml(values))
 
     if set_params:
         from deepmerge import always_merger
@@ -533,7 +618,7 @@ def _execute_workflow(
         )
 
     graph = ExecutionGraph([workflow], virtual_links=True)
-    execute_workflow(dag=graph.workflow_graph, command_name="execute", provider=provider, config=config)
+    execute_workflow(dag=graph.workflow_graph, provider=provider, config=config)
 
 
 def execute_workflow_command():
@@ -552,7 +637,20 @@ def _visualize_graph(
     client_dispatcher: IClientDispatcher,
     revision: Optional[str] = None,
 ):
-    """Visualize an activity graph."""
+    """Visualize an activity graph.
+
+    Args:
+        sources(List[str]): Input paths to start the visualized graph at.
+        targets(List[str]): Output paths to end the visualized graph at.
+        show_files(bool): Whether or not to show file nodes.
+        activity_gateway(IActivityGateway): The injected activity gateway.
+        client_dispatcher(IClientDispatcher): The injected client dispatcher.
+        revision(Optional[str], optional): Revision or revision range to show
+            the graph for  (Default value = None)
+
+    Returns:
+        Graph visualization view model.
+    """
     client = client_dispatcher.current_client
 
     sources = sources or []
@@ -581,7 +679,17 @@ def visualize_graph_command():
 
 
 def _extract_iterate_parameters(values: Dict[str, Any], index_pattern: re.Pattern, tag_separator: str = "@"):
-    """Recursively extracts the iteration paramaters from the workflow values given by the user."""
+    """Recursively extracts the iteration paramaters from the workflow values given by the user.
+
+    Args:
+        values(Dict[str, Any]): Plan values to iterate over.
+        index_pattern(re.Pattern): Pattern for parameter indizes.
+        tag_separator(str, optional): Separator for tagged values (Default value = "@").
+
+    Returns:
+        Tuple of ``(iter_params, params)`` where ``params`` are regular parameters
+        and ``iter_params`` are parameters with iteration values.
+    """
     iter_params = {"indexed": {}, "params": {}, "tagged": {}}
     params = {}
     for param_name, param_value in values.items():
@@ -626,9 +734,18 @@ def _extract_iterate_parameters(values: Dict[str, Any], index_pattern: re.Patter
 
 
 def _validate_iterate_parameters(
-    workflow: AbstractPlan, workflow_params: Dict[str, Any], iter_params: Dict[str, Any], mapping_path: str
+    workflow: AbstractPlan, workflow_params: Dict[str, Any], iter_params: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Validates the user provided iteration parameters."""
+    """Validates the user provided iteration parameters.
+
+    Args:
+        workflow(AbstractPlan): The Plan to validate parameters against.
+        workflow_params(Dict[str, Any]): The plain parameters to check.
+        iter_params(Dict[str, Any]): The iterative parameters to check.
+
+    Returns:
+        Dictionary of validated iteration parameters.
+    """
     import copy
 
     rv = ValueResolver.get(copy.deepcopy(workflow), workflow_params)
@@ -682,8 +799,20 @@ def _validate_iterate_parameters(
 
 def _build_iterations(
     workflow: AbstractPlan, workflow_params: Dict[str, Any], iter_params: Dict[str, Any], index_pattern: re.Pattern
-) -> List[AbstractPlan]:
-    """Instantiate the workflows for each iteration."""
+) -> Tuple[List[AbstractPlan], List[Dict]]:
+    """Instantiate the workflows for each iteration.
+
+    Args:
+        workflow(AbstractPlan): The base workflow to use as a template.
+        workflow_params(Dict[str, Any]): The plain parameters to use.
+        iter_params(Dict[str, Any]): The iterative parameters to use.
+        index_pattern(re.Pattern): The pattern for the index placeholder.
+
+    Returns:
+        Tuple of ``(plans, itervalues)`` with ``plans`` being a list of all
+        plans for each iteration and ``itervalues`` being a list of all values
+        for each iteration.
+    """
     import copy
 
     from deepmerge import always_merger
@@ -750,7 +879,7 @@ def _iterate_workflow(
     iter_params = {"indexed": {}, "params": {}, "tagged": {}}
     workflow_params = {}
     if mapping_path:
-        mapping = _safe_read_yaml(mapping_path)
+        mapping = safe_read_yaml(mapping_path)
         iter_params, workflow_params = _extract_iterate_parameters(mapping, index_pattern, tag_separator=TAG_SEPARATOR)
 
     for m in mappings:
@@ -790,7 +919,7 @@ def _iterate_workflow(
         set_param = reduce(lambda x, y: {y: x}, reversed(param_name.split(".")), param_value)
         workflow_params = always_merger.merge(workflow_params, set_param)
 
-    iter_params = _validate_iterate_parameters(workflow, workflow_params, iter_params, mapping_path)
+    iter_params = _validate_iterate_parameters(workflow, workflow_params, iter_params)
     if iter_params is None:
         return
 
@@ -799,7 +928,7 @@ def _iterate_workflow(
     communication.echo(f"\n\n{tabulate(execute_plan, execute_plan[0].keys())}")
     if not dry_run:
         graph = ExecutionGraph(workflows=plans, virtual_links=True)
-        execute_workflow(dag=graph.workflow_graph, command_name="iterate", provider=provider, config=config)
+        execute_workflow(dag=graph.workflow_graph, provider=provider, config=config)
 
 
 def iterate_workflow_command():

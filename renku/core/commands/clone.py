@@ -39,7 +39,26 @@ def _project_clone(
     checkout_revision=None,
     use_renku_credentials=False,
 ):
-    """Clone Renku project repo, install Git hooks and LFS."""
+    """Clone Renku project repo, install Git hooks and LFS.
+
+    Args:
+        url: Git URL to clone.
+        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+        database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
+        path: Path to clone to (Default value = None).
+        install_githooks: Whether to install the pre-commit hook or not (Default value = True).
+        skip_smudge: Whether to skip pulling files from LFS (Default value = True).
+        recursive: Recursively clone (Default value = True).
+        depth: Clone depth (commits from HEAD) (Default value = None).
+        progress: Git progress object (Default value = None).
+        config: Initial config (Default value = None).
+        raise_git_except: Whether to raise Git exceptions or not (Default value = False).
+        checkout_revision: Specific revision to check out (Default value = None).
+        use_renku_credentials: Whether to use credentials stored in renku (Default value = False).
+
+    Returns:
+        Tuple of cloned ``Repository`` and whether it's a Renku project or not.
+    """
     from renku.core.management.migrate import is_renku_project
 
     install_lfs = client_dispatcher.current_client.external_storage_requested

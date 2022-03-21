@@ -30,3 +30,10 @@ def available_workflow_providers():
     from renku.core.plugins.provider import available_workflow_providers
 
     return available_workflow_providers()
+
+
+def supported_session_providers():
+    """Deferred import as plugins are slow."""
+    from renku.core.plugins.session import supported_session_providers
+
+    return list(map(lambda p: p[1], supported_session_providers()))

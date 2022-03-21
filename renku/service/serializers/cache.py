@@ -41,7 +41,8 @@ from renku.service.serializers.rpc import JsonRPCResponse
 def extract_file(request):
     """Extract file from Flask request.
 
-    :raises: `ValidationError`
+    Raises:
+        `ValidationError`: If file data or filename is missing in request.
     """
     files = request.files
     if "file" not in files:

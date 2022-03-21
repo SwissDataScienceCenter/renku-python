@@ -24,24 +24,30 @@ COPY renku /code/renku/renku
 # renku-python is installed in the image. This is the default for chartpress builds.
 ARG CLEAN_INSTALL
 RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi
+
 RUN make download-templates
-RUN pip wheel --wheel-dir /wheels . && \
+
+# set the BUILD_CORE_SERVICE to non null to install additional service dependencies
+ARG BUILD_CORE_SERVICE
+RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD=[service] ; fi && \
+    pip wheel --wheel-dir /wheels .${EXT_BUILD} && \
     pip install --no-index --no-warn-script-location --force --root=/pythonroot/ /wheels/*.whl
 
 FROM base
 
 RUN addgroup -gid 1000 shuhitsu && \
-    useradd -m -u 1000 -g shuhitsu shuhitsu
-
-RUN git lfs install
+    useradd -m -u 1000 -g shuhitsu shuhitsu && \
+    git lfs install && \
+    if [ -n "${BUILD_CORE_SERVICE}"]; then mkdir /svc && chown shuhitsu:shuhitsu /svc ; fi
 
 COPY --from=builder /pythonroot/ /
 
 # shuhitsu (執筆): The "secretary" of the renga, as it were, who is responsible for
 # writing down renga verses and for the proceedings of the renga.
-# todo: #2705 avoid code duplication between service and CLI dockerfiles
 USER shuhitsu
 
+ENV RENKU_SVC_NUM_WORKERS 4
+ENV RENKU_SVC_NUM_THREADS 8
 ENV RENKU_DISABLE_VERSION_CHECK=1
 
 ENTRYPOINT ["renku"]

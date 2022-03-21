@@ -34,8 +34,10 @@ def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:
 
     Can be used to export renku workflows in different formats.
 
-    :returns: A tuple of the plugin itself and the output formats it supports.
-              NOTE: a plugin can support multiple formats.
+    Returns:
+        Tuple[IWorkflowConverter,List[str]]: A tuple of the plugin itself and the output formats it supports.
+            A plugin can support multiple formats.
+
     """
     pass
 
@@ -46,18 +48,26 @@ def workflow_convert(workflow: Plan, basedir: Path, output: Optional[Path], outp
 
     Can be used to export renku workflows in different formats.
 
-    :param workflow: A ``Plan`` object that describes the given workflow.
-    :param basedir: .
-    :param output: The output file, which will contain the workflow.
-    :param output_format: Output format supported by the given plugin.
-    :returns: The string representation of the given Plan in the specific
-              workflow format.
+    Args:
+        workflow(Plan): A ``Plan`` object that describes the given workflow.
+        basedir(Path): The base output directory.
+        output(Optional[Path]): The output file, which will contain the workflow.
+        output_format(Optional[str]): Output format supported by the given plugin.
+
+    Returns:
+        str: The string representation of the given Plan in the specific
+            workflow format.
+
     """
     pass
 
 
 def supported_formats() -> List[str]:
-    """Returns the currently available workflow language format types."""
+    """Returns the currently available workflow language format types.
+
+    Returns:
+        List of supported export formats.
+    """
     from renku.core.plugins.pluginmanager import get_plugin_manager
 
     pm = get_plugin_manager()
@@ -66,7 +76,14 @@ def supported_formats() -> List[str]:
 
 
 def workflow_converter(format: str) -> Callable[[Plan, Path, Optional[Path], Optional[str]], str]:
-    """Returns a workflow converter function for a given format if available."""
+    """Returns a workflow converter function for a given format if available.
+
+    Args:
+        format(str): The format to convert to.
+
+    Returns:
+        The conversion plugin callable.
+    """
     from renku.core.plugins.pluginmanager import get_plugin_manager
 
     pm = get_plugin_manager()

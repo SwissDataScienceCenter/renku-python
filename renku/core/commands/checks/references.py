@@ -23,7 +23,15 @@ from ..echo import WARNING
 
 
 def check_missing_references(client, fix):
-    """Find missing references."""
+    """Find missing references.
+
+    Args:
+        client: ``LocalClient``.
+        fix: Whether to fix found issues.
+
+    Returns:
+        Tuple of whether references are valid and string of found problems.
+    """
     from renku.core.models.refs import LinkReference
 
     missing = [ref for ref in LinkReference.iter_items() if not ref.reference.exists()]
