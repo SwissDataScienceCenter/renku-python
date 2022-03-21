@@ -18,6 +18,17 @@
 Changes
 =======
 
+`1.1.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.1...v1.1.2>`__ (2022-03-18)
+-------------------------------------------------------------------------------------------------------
+
+This is a hotfix release fixing an issue with SHACL.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix ParameterMapping in SHACL
+   (`#2762 <https://github.com/SwissDataScienceCenter/renku-python/issues/2762>`__)
+
 `1.1.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.0...v1.1.1>`__ (2022-03-10)
 -------------------------------------------------------------------------------------------------------
 
