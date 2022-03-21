@@ -75,8 +75,7 @@ the execution, is identified as an input path. The identification only works if
 the path associated with the argument matches an existing file or directory
 in the repository.
 
-The detection might not work as expected
-if:
+The detection might not work as expected if:
 
 * a file is **modified** during the execution. In this case it will be stored
   as an **output**;
@@ -101,7 +100,7 @@ if:
    parameter as just a string even if it matches a file name in the project.
    This option is not a replacement for the arguments that are passed on the
    command line.
-   You can specify ``--param name=value`` or just `--param value``, the former
+   You can specify ``--param name=value`` or just ``--param value``, the former
    of which would also set the name of the parameter on the resulting Plan.
 
 .. topic:: Disabling input detection (``--no-input-detection``)
@@ -112,6 +111,11 @@ if:
     command arguments are ignored unless they are in the explicit inputs list.
     This only affects files and directories; command options and flags are
     still treated as inputs.
+
+.. note:: ``renku run`` prints the generated plan after execution if you pass
+    ``--verbose`` to it. You can check the generated plan to verify that the
+    execution was done as you intended. Nothing will be printed if both
+    ``stdout`` and ``stderr`` are directed to file.
 
 Detecting output paths
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -274,6 +278,7 @@ from renku.core.commands.options import option_isolation
 )
 @option_isolation
 @click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
+@click.option("--verbose", is_flag=True, default=False, help="Print generated plan after the execution.")
 def run(
     name,
     description,
@@ -287,8 +292,10 @@ def run(
     success_codes,
     isolation,
     command_line,
+    verbose,
 ):
     """Tracking work on a specific problem."""
+    from renku.cli.utils.terminal import print_plan
     from renku.core.commands.run import run_command
 
     communicator = ClickCallback()
@@ -297,16 +304,24 @@ def run(
     if isolation:
         command = command.with_git_isolation()
 
-    command.with_communicator(communicator).build().execute(
-        name=name,
-        description=description,
-        keyword=keyword,
-        explicit_inputs=explicit_inputs,
-        explicit_outputs=explicit_outputs,
-        explicit_parameters=explicit_parameters,
-        no_output=no_output,
-        no_input_detection=no_input_detection,
-        no_output_detection=no_output_detection,
-        success_codes=success_codes,
-        command_line=command_line,
+    result = (
+        command.with_communicator(communicator)
+        .build()
+        .execute(
+            name=name,
+            description=description,
+            keyword=keyword,
+            explicit_inputs=explicit_inputs,
+            explicit_outputs=explicit_outputs,
+            explicit_parameters=explicit_parameters,
+            no_output=no_output,
+            no_input_detection=no_input_detection,
+            no_output_detection=no_output_detection,
+            success_codes=success_codes,
+            command_line=command_line,
+        )
     )
+
+    if verbose:
+        plan = result.output
+        print_plan(plan, require_tty=True)

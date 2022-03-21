@@ -207,3 +207,38 @@ def test_run_non_existing_command(runner, client):
 
     assert 2 == result.exit_code
     assert "Cannot execute command 'non-existing_command'" in result.output
+
+
+def test_run_prints_plan(split_runner, client):
+    """Test run shows the generated plan with --verbose."""
+    result = split_runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "--no-output", "echo", "data"])
+
+    assert 0 == result.exit_code
+    assert "Name: echo-command" in result.output
+
+
+def test_run_prints_plan_when_stdout_redirected(split_runner, client):
+    """Test run shows the generated plan in stderr if stdout is redirected to a file."""
+    result = split_runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "echo", "data"], stdout="output")
+
+    assert 0 == result.exit_code
+    assert "Name:" not in (client.path / "output").read_text()
+    assert "Name: echo-command" in result.stderr
+
+
+def test_run_prints_plan_when_stderr_redirected(split_runner, client):
+    """Test run shows the generated plan in stdout if stderr is redirected to a file."""
+    result = split_runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "echo", "data"], stderr="output")
+
+    assert 0 == result.exit_code
+    assert "Name:" not in (client.path / "output").read_text()
+    assert "Name: echo-command" in result.output
+
+
+def test_run_prints_nothing_when_both_redirected(split_runner, client):
+    """Test run doesn't print the plan if both stdout and stderr are redirected to a file."""
+    result = split_runner.invoke(cli, ["run", "--verbose", "echo", "data"], stdout="out", stderr="err")
+
+    assert 0 == result.exit_code
+    assert "Name:" not in (client.path / "out").read_text()
+    assert "Name:" not in (client.path / "err").read_text()

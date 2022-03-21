@@ -24,6 +24,7 @@ from subprocess import call
 import click
 
 from renku.core import errors
+from renku.core.commands.view_model.plan import PlanViewModel
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
 from renku.core.management.git import get_mapped_std_streams
@@ -57,7 +58,7 @@ def _run_command(
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
-):
+) -> PlanViewModel:
     # NOTE: validate name as early as possible
     client = client_dispatcher.current_client
 
@@ -199,6 +200,8 @@ def _run_command(
             plan=plan, started_at_time=started_at_time, ended_at_time=ended_at_time, annotations=tool.annotations
         )
         activity_gateway.add(activity)
+
+        return PlanViewModel.from_plan(plan)
 
     finally:
         if system_stdout:

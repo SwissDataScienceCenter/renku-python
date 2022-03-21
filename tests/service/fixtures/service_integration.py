@@ -199,13 +199,13 @@ def svc_protected_old_repo(svc_synced_client, it_protected_repo_url):
 @pytest.fixture()
 def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, real_sync):
     """Client with a local remote to test pushes."""
-    from click.testing import CliRunner
     from marshmallow import pre_load
 
     from renku.cli import cli
     from renku.core.utils.contexts import chdir
     from renku.service.config import PROJECT_CLONE_NO_DEPTH
     from renku.service.serializers import cache
+    from tests.fixtures.runners import RenkuRunner
 
     # NOTE: prevent service from adding an auth token as it doesn't work with local repos
     def _no_auth_format(self, data, **kwargs):
@@ -244,7 +244,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
                 global_config.set_value("user", "email", "renku@datascience.ch")
 
             # NOTE: init "remote" repo
-            runner = CliRunner()
+            runner = RenkuRunner()
             with chdir(remote_repo_checkout_path):
 
                 result = runner.invoke(

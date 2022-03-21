@@ -64,6 +64,7 @@ import filelock
 import portalocker
 
 import renku.cli.utils.color as color
+from renku.cli.utils.terminal import echo
 from renku.core.commands.echo import ERROR
 from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
 from renku.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
@@ -91,9 +92,9 @@ class RenkuExceptionsHandler(click.Group):
         try:
             return super().main(*args, **kwargs)
         except RenkuException as e:
-            click.echo(ERROR + str(e), err=True)
+            echo(ERROR + str(e), err=True)
             if e.__cause__ is not None:
-                click.echo(f"\n{traceback.format_exc()}")
+                echo(f"\n{traceback.format_exc()}")
             exit_code = 1
             if isinstance(e, (ParameterError, UsageError)):
                 exit_code = 2
@@ -129,7 +130,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
             return result
 
         except (filelock.Timeout, portalocker.LockException, portalocker.AlreadyLocked):
-            click.echo(
+            echo(
                 (
                     click.style("Unable to acquire lock.\n", fg=color.RED) + "Hint: Please wait for another renku "
                     "process to finish and then try again."
@@ -141,6 +142,8 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 self._handle_sentry()
 
             if not (sys.stdin.isatty() and sys.stdout.isatty()):
+                if not sys.stderr.isatty():
+                    echo(f"\n{traceback.format_exc()}", err=True)
                 raise
 
             self._handle_github()
@@ -160,7 +163,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 scope.user = {"name": user.name, "email": user.email}
 
             event_id = capture_exception()
-            click.echo(_BUG + "Recorded in Sentry with ID: {0}\n".format(event_id), err=True)
+            echo(_BUG + "Recorded in Sentry with ID: {0}\n".format(event_id), err=True)
             raise
 
     def _handle_github(self):
@@ -216,7 +219,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
     def _process_print(self):
         """Print link in a console."""
-        click.echo(self._format_issue_body(limit=None))
+        echo(self._format_issue_body(limit=None))
 
     def _process_ignore(self):
         """Print original exception in a console."""

@@ -682,8 +682,8 @@ def edit(name, title, description, creators, metadata, keyword):
 @click.argument("name", shell_complete=_complete_datasets)
 def show(name):
     """Show metadata of a dataset."""
+    from renku.cli.utils.terminal import print_markdown
     from renku.core.commands.dataset import show_dataset_command
-    from renku.core.utils.os import print_markdown
 
     result = show_dataset_command().build().execute(name=name)
     ds = result.output
