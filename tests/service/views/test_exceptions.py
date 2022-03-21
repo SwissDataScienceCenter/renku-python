@@ -123,8 +123,8 @@ def test_migration_required_flag(svc_client_setup):
     [
         ("/this_endpoint_does_not_exists", "POST", SVC_ERROR_PROGRAMMING + 404),
         ("/this_endpoint_does_not_exists", "GET", SVC_ERROR_PROGRAMMING + 404),
-        ("/version", "POST", SVC_ERROR_PROGRAMMING + 405),
-        ("/version", "WRONG_VERB", SVC_ERROR_PROGRAMMING + 405),
+        ("/apiversion", "POST", SVC_ERROR_PROGRAMMING + 405),
+        ("/apiversion", "WRONG_VERB", SVC_ERROR_PROGRAMMING + 405),
         ("/this_endpoint_does_not_exists", "WRONG_VERB", SVC_ERROR_PROGRAMMING + 404),
     ],
 )
