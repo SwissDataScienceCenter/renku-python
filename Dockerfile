@@ -1,10 +1,13 @@
 FROM python:3.9-slim as base
 
 RUN apt-get update && \
-    apt-get install -y git && \
+    apt-get install -y git git-lfs=2.* python3-dev && \
     pip install --no-cache --upgrade pip requirements-builder
 
 FROM base as builder
+
+RUN apt-get install -y build-essential && \
+    apt-get clean
 
 # The python install is done in two steps to avoid re-installing all dependencies every
 # time the code changes
