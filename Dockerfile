@@ -25,8 +25,6 @@ COPY renku /code/renku/renku
 ARG CLEAN_INSTALL
 RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi
 
-RUN make download-templates
-
 # set the BUILD_CORE_SERVICE to non null to install additional service dependencies
 ARG BUILD_CORE_SERVICE
 RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD=[service] ; fi && \
