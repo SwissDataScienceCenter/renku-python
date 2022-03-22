@@ -22,6 +22,7 @@ from sentry_sdk import capture_exception
 
 from renku.core.commands.graph import export_graph_command
 from renku.core.commands.migrate import migrations_check
+from renku.core.commands.view_model.graph import DotFormat
 from renku.core.errors import RenkuException
 from renku.service.config import PROJECT_CLONE_NO_DEPTH
 from renku.service.controllers.api.abstract import ServiceCtrl
@@ -64,16 +65,27 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
         }
 
         try:
-            result = (
-                export_graph_command()
-                .build()
-                .execute(revision_or_range=self.context["revision"], format=self.context["format"])
-            )
+            result = export_graph_command().build().execute(revision_or_range=self.context["revision"])
+
+            format = self.context["format"]
+
+            if format == "json-ld":
+                result = result.output.as_jsonld_string()
+            elif format == "rdf":
+                result = result.output.as_rdf_string()
+            elif format == "nt":
+                result = result.output.as_nt_string()
+            elif format == "dot":
+                result = result.output.as_dot_string(format=DotFormat.FULL)
+            elif format == "dot-landscape":
+                result = result.output.as_dot_string(format=DotFormat.FULL_LANDSCAPE)
+            else:
+                raise NotImplementedError(f"Format {format} is not supported on this endpoint.")
 
             if self.context.get("callback_url"):
-                self.report_success(callback_payload, {"payload": result.output}, self.context["callback_url"])
+                self.report_success(callback_payload, {"payload": result}, self.context["callback_url"])
 
-            return result.output
+            return result
         except (RequestException, RenkuException, MemoryError) as e:
             if self.context.get("callback_url"):
                 self.report_recoverable(callback_payload, e, self.context["callback_url"])

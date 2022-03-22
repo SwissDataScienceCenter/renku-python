@@ -21,12 +21,12 @@ import json
 from typing import Dict, List, Set, Union
 
 from renku.core import errors
-from renku.core.commands.format.graph import GRAPH_FORMATS
 from renku.core.commands.schema.activity import ActivitySchema
 from renku.core.commands.schema.composite_plan import CompositePlanSchema
 from renku.core.commands.schema.dataset import DatasetSchema, DatasetTagSchema
 from renku.core.commands.schema.plan import PlanSchema
 from renku.core.commands.schema.project import ProjectSchema
+from renku.core.commands.view_model.graph import GraphViewModel
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
@@ -59,7 +59,7 @@ def _export_graph(
     format: str = "json-ld",
     revision_or_range: str = None,
     strict: bool = False,
-):
+) -> GraphViewModel:
     """Output graph in specific format.
 
     Args:
@@ -88,7 +88,7 @@ def _export_graph(
     if strict:
         _validate_graph(json.dumps(graph, indent=2), "json-ld")
 
-    return GRAPH_FORMATS[format](graph)
+    return GraphViewModel(graph)
 
 
 def update_nested_node_host(node: Dict, host: str) -> None:
