@@ -100,7 +100,10 @@ def graph():
 )
 @click.option("--full", is_flag=True, help="Generate full graph for project. Overrides --revision.")
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
-def export(format, revision, full, strict):
+@click.option(
+    "--no-indent", is_flag=True, default=False, help="Format without indentation/pretty-printing (only for JSON-LD)."
+)
+def export(format, revision, full, strict, no_indent):
     r"""Export Renku graph metadata for project."""
     from renku.cli.utils.callback import ClickCallback
     from renku.core.commands.graph import export_graph_command
@@ -119,7 +122,7 @@ def export(format, revision, full, strict):
     format = GRAPH_FORMATS[format]
 
     if format == "jsonld":
-        result = result.output.as_jsonld_string()
+        result = result.output.as_jsonld_string(indentation=None if no_indent else 2)
     elif format == "rdf":
         result = result.output.as_rdf_string()
     elif format == "nt":

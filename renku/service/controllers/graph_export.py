@@ -70,7 +70,7 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
             format = self.context["format"]
 
             if format == "json-ld":
-                result = result.output.as_jsonld_string()
+                result = result.output.as_jsonld_string(indentation=None)
             elif format == "rdf":
                 result = result.output.as_rdf_string()
             elif format == "nt":
