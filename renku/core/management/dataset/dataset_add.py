@@ -113,7 +113,7 @@ def add_data_to_dataset(
             if paths_to_avoid:
                 files = [f for f in files if f["path"] not in paths_to_avoid]
                 communication.warn(
-                    "Ignored adding paths under a .git directory:\n  " + "\n  ".join(str(p) for p in paths_to_avoid)
+                    "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
             files_to_commit = {str(client.path / f["path"]) for f in files}
@@ -211,8 +211,8 @@ def _process_urls(
             files.extend(new_files)
 
     if tracked_external_warnings:
-        message = "\n  ".join(tracked_external_warnings)
-        communication.warn(f"Warning: The following files cannot be added as external:\n  {message}")
+        message = "\n\t".join(tracked_external_warnings)
+        communication.warn(f"Warning: The following files cannot be added as external:\n\t{message}")
 
     return files
 
@@ -270,10 +270,8 @@ def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files
 
         files = [f for f in files if str(client.path / f["path"]) in files_to_commit]
         communication.warn(
-            "Theses paths are ignored by one of your .gitignore "
-            + 'files (use "--force" flag if you really want to add '
-            + "them):\n  "
-            + "\n  ".join([str(p) for p in ignored_sources])
+            "Theses paths are ignored by one of your .gitignore files (use '--force' flag if you really want to add "
+            "them):\n\t" + "\n\t".join([str(p) for p in ignored_sources])
         )
 
     return files, files_to_commit
@@ -291,9 +289,8 @@ def _check_existing_files(client: "LocalClient", dataset: Dataset, files_to_comm
         files_to_commit = files_to_commit.difference(existing_files)
         files = [f for f in files if str(client.path / f["path"]) in files_to_commit]
         communication.warn(
-            "These existing files were not overwritten "
-            + '(use "--overwrite" flag to overwrite them):\n  '
-            + "\n  ".join([str(p) for p in existing_files])
+            "These existing files were not overwritten (use '--overwrite' flag to overwrite them):\n\t"
+            + "\n\t".join([str(p) for p in existing_files])
         )
 
     return files, files_to_commit
