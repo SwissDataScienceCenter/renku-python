@@ -284,7 +284,7 @@ unicode_backport = ["unicodedata2"]
 
 [[package]]
 name = "check-manifest"
-version = "0.47"
+version = "0.48"
 description = "Check MANIFEST.in in a Python source package for completeness"
 category = "main"
 optional = true
@@ -292,7 +292,7 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 build = ">=0.1"
-toml = "*"
+tomli = "*"
 
 [package.extras]
 test = ["mock (>=3.0.0)", "pytest"]
@@ -2518,7 +2518,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "3ae049b67378dfc78e50fbed03f2589b241be9c95491263095c58addeb37d7f6"
+content-hash = "1fce4ecc3eefc2213c47ddc8db6085880cd70c729ea6d7d1acd35933b5a8929d"
 
 [metadata.files]
 addict = [
@@ -2726,8 +2726,8 @@ charset-normalizer = [
     {file = "charset_normalizer-2.0.12-py3-none-any.whl", hash = "sha256:6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df"},
 ]
 check-manifest = [
-    {file = "check-manifest-0.47.tar.gz", hash = "sha256:56dadd260a9c7d550b159796d2894b6d0bcc176a94cbc426d9bb93e5e48d12ce"},
-    {file = "check_manifest-0.47-py3-none-any.whl", hash = "sha256:365c94d65de4c927d9d8b505371d08ee19f9f369c86b9ac3db97c2754c827c95"},
+    {file = "check-manifest-0.48.tar.gz", hash = "sha256:3b575f1dade7beb3078ef4bf33a94519834457c7281dbc726b15c5466b55c657"},
+    {file = "check_manifest-0.48-py3-none-any.whl", hash = "sha256:b1923685f98c1c2468601a1a7bed655db549a25d43c583caded3860ad8308f8c"},
 ]
 circus = [
     {file = "circus-0.17.1-py3-none-any.whl", hash = "sha256:ca4cf272654d21bb74718cf6bfd9e05d44140d32685edd357cf0d66e18947983"},
