@@ -76,9 +76,9 @@ class Isolation(contextlib.ExitStack):
     """Isolate execution."""
 
     CONTEXTS = {
-        "stdin": _wrap_path_or_stream(redirect_stdin, "rb"),
-        "stdout": _wrap_path_or_stream(contextlib.redirect_stdout, "wb"),
-        "stderr": _wrap_path_or_stream(contextlib.redirect_stderr, "wb"),
+        "stdin": _wrap_path_or_stream(redirect_stdin, "r"),
+        "stdout": _wrap_path_or_stream(contextlib.redirect_stdout, "w"),
+        "stderr": _wrap_path_or_stream(contextlib.redirect_stderr, "w"),
         "cwd": chdir,
     }
 

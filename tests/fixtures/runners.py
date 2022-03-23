@@ -48,11 +48,13 @@ class OutputStreamProxy:
     def write(self, value: str):
         """Write to the output stream."""
         # NOTE: Disabled the write if stream is a TTY to avoid cluttering the screen during tests.
-        if self._stream.isatty():
-            self._buffer += value.encode("utf-8")
-            return len(value)
-        else:
-            return self._stream.write(value)
+        if not self._stream.isatty():
+            self._stream.write(value)
+
+        value = value.encode("utf-8")
+        self._buffer += value
+
+        return len(value)
 
     def getvalue(self) -> bytes:
         """Return everything that has been written to the stream."""

@@ -234,5 +234,4 @@ def test_run_prints_plan_when_stderr_redirected(split_runner, client):
 
     assert 0 == result.exit_code, result.output + result.stderr
     assert "Name: echo-command" in (client.path / "output").read_text()
-    assert "Name:" not in result.stderr
     assert "Name:" not in result.output
