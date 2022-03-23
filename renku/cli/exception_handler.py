@@ -93,7 +93,7 @@ class RenkuExceptionsHandler(click.Group):
         except RenkuException as e:
             click.echo(ERROR + str(e), err=True)
             if e.__cause__ is not None:
-                click.echo(f"\n{traceback.format_exc()}", err=True)
+                click.echo(f"\n{traceback.format_exc()}")
             exit_code = 1
             if isinstance(e, (ParameterError, UsageError)):
                 exit_code = 2
@@ -131,8 +131,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         except (filelock.Timeout, portalocker.LockException, portalocker.AlreadyLocked):
             click.echo(
                 click.style("Unable to acquire lock.\n", fg=color.RED) + "Hint: Please wait for another renku "
-                "process to finish and then try again.",
-                err=True,
+                "process to finish and then try again."
             )
 
         except Exception:
@@ -140,8 +139,6 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 self._handle_sentry()
 
             if not (sys.stdin.isatty() and sys.stdout.isatty()):
-                if not sys.stderr.isatty():
-                    click.echo(f"\n{traceback.format_exc()}", err=True)
                 raise
 
             self._handle_github()

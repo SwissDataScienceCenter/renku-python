@@ -47,11 +47,9 @@ class OutputStreamProxy:
 
     def write(self, value: str):
         """Write to the output stream."""
-        value = value.encode("utf-8")
-
         # NOTE: Disabled the write if stream is a TTY to avoid cluttering the screen during tests.
         if self._stream.isatty():
-            self._buffer += value
+            self._buffer += value.encode("utf-8")
             return len(value)
         else:
             return self._stream.write(value)
