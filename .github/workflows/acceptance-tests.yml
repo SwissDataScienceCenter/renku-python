@@ -42,6 +42,16 @@ jobs:
     environment:
       name: renku-ci-rp-${{ github.event.number }}
     steps:
+    - uses: actions/checkout@v2
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.RENKU_DOCKER_USERNAME }}
+        password: ${{ secrets.RENKU_DOCKER_PASSWORD }}
+    - name: build-lts-image
+      run: |
+        docker build -t renku/renku-core:${{ github.sha }} --build-arg CLEAN_INSTALL=1 --build-arg BUILD_CORE_SERVICE=1 .
+        docker push renku/renku-core:${{ github.sha }}
     - name: deploy-pr
       uses: SwissDataScienceCenter/renku-actions/deploy-renku@v0.5.0
       env:
@@ -60,13 +70,13 @@ jobs:
         RENKU_ANONYMOUS_SESSIONS: true
         RENKU_TESTS_ENABLED: true
         TEST_ARTIFACTS_PATH: "tests-artifacts-${{ github.sha }}"
-        renku_core: "@${{ github.head_ref }}"
+        renku_core: "@develop"
         renku: "${{ needs.check-deploy.outputs.renku }}"
         renku_gateway: "${{ needs.check-deploy.outputs.renku-gateway }}"
         renku_graph: "${{ needs.check-deploy.outputs.renku-graph }}"
         renku_notebooks: "${{ needs.check-deploy.outputs.renku-notebooks }}"
-        renku_ui: "${{ needs.check-deploy.outputs.renku-ui }}"
-        extra_values: "${{ needs.check-deploy.outputs.extra-values }}"
+        renku_ui: "@master"
+        extra_values: core.versions.v8.image.tag=${{ github.sha }}
     - name: Check existing renkubot comment
       uses: peter-evans/find-comment@v1
       id: findcomment
