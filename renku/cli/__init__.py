@@ -64,7 +64,6 @@ import os
 import sys
 import uuid
 from pathlib import Path
-from typing import List
 
 import click
 import yaml
@@ -119,12 +118,28 @@ def get_entry_points(name: str):
         return all_entry_points.get(name, [])
 
 
-WARNING_UNPROTECTED_COMMANDS = ["clone", "credentials", "env", "help", "init", "login", "logout", "service"]
+WARNING_UNPROTECTED_COMMANDS = ["clone", "credentials", "env", "help", "init", "login", "logout", "service", "template"]
+
+WARNING_UNPROTECTED_SUBCOMMANDS = {"template": ["ls", "show"]}
 
 
 def _uuid_representer(dumper, data):
     """Add UUID serializer for YAML."""
     return dumper.represent_str(str(data))
+
+
+def _is_renku_project(path: Path) -> bool:
+    """Check if a path is a renku project."""
+    from renku.core.management import RENKU_HOME
+    from renku.core.management.migrations.utils import OLD_METADATA_PATH
+    from renku.core.management.repository import RepositoryApiMixin
+    from renku.core.metadata.database import Database
+
+    renku_path = Path(path) / RENKU_HOME
+    old_metadata = renku_path / OLD_METADATA_PATH
+    new_metadata = renku_path / RepositoryApiMixin.DATABASE_PATH / Database.ROOT_OID
+
+    return old_metadata.exists() or new_metadata.exists()
 
 
 yaml.add_representer(uuid.UUID, _uuid_representer)
@@ -140,24 +155,34 @@ def print_global_config_path(ctx, param, value):
     ctx.exit()
 
 
+def is_allowed_subcommand(ctx):
+    """Called from subcommands to check if their subsubcommand is allowed.
+
+    Subcommands where some subsubcommands are allowed should be added to
+    `WARNING_UNPROTECTED_COMMANDS` so they pass through the parent check
+    and then added to `WARNING_UNPROTECTED_SUBCOMMANDS` so they get checked
+    here.
+    """
+
+    client = ctx.obj
+
+    if not _is_renku_project(client.path) and (
+        not WARNING_UNPROTECTED_SUBCOMMANDS.get(ctx.command.name, False)
+        or ctx.invoked_subcommand not in WARNING_UNPROTECTED_SUBCOMMANDS[ctx.command.name]
+    ):
+        raise UsageError(
+            (
+                "`{0}` is not a renku repository.\n"
+                "To initialize this as a renku "
+                "repository use: `renku init`".format(client.path)
+            )
+        )
+
+
 def is_allowed_command(ctx):
     """Check if invoked command contains help command."""
 
-    def is_allowed_subcommands(command: str, subcommands: List[str]):
-        args = sys.argv
-
-        if ctx.invoked_subcommand != command or command not in args:
-            return False
-
-        subcommand_index = args.index(command) + 1
-        return subcommand_index < len(args) and args[subcommand_index] in subcommands
-
-    return (
-        ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS
-        or is_allowed_subcommands("template", ["ls", "show"])
-        or "-h" in sys.argv
-        or "--help" in sys.argv
-    )
+    return ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS or "-h" in sys.argv or "--help" in sys.argv
 
 
 @with_plugins(get_entry_points("renku.cli_plugins"))
@@ -191,17 +216,10 @@ def is_allowed_command(ctx):
 @click.pass_context
 def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
-    from renku.core.management import RENKU_HOME
     from renku.core.management.client import LocalClient
-    from renku.core.management.migrations.utils import OLD_METADATA_PATH
-    from renku.core.management.repository import RepositoryApiMixin
-    from renku.core.metadata.database import Database
 
-    renku_path = Path(path) / RENKU_HOME
-    old_metadata = renku_path / OLD_METADATA_PATH
-    new_metadata = renku_path / RepositoryApiMixin.DATABASE_PATH / Database.ROOT_OID
     is_command_allowed = is_allowed_command(ctx)
-    is_renku_project = old_metadata.exists() or new_metadata.exists()
+    is_renku_project = _is_renku_project(Path(path))
 
     if not is_renku_project and not is_command_allowed:
         raise UsageError(

@@ -109,7 +109,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.1.1"
+      tag: "v1.1.2"
       pullPolicy: IfNotPresent
   v8:
     name: v8
@@ -118,5 +118,5 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v0.16.5"
+      tag: "v0.16.6"
       pullPolicy: IfNotPresent

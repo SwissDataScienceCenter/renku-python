@@ -19,10 +19,10 @@ data:
       tcp_nopush on;
       client_max_body_size 0; # Required for uploading large files
 
-      location /renku/versions {
+      location /renku/version {
         root /;
         add_header Content-Type application/json;
-        try_files /usr/share/nginx/html/versions.json =404;
+        try_files /usr/share/nginx/html/version.json =404;
       }
 
       {{- range $version := .Values.versions }}
@@ -38,11 +38,19 @@ data:
         proxy_pass http://{{ .Values.versions.latest.name }};
       }
     }
-  versions.json: |
+  version.json: |
     {
-      {{- $printComma := false -}}
-      {{- range $key, $version := .Values.versions }}
-      {{- if $printComma }},{{ else }} {{- $printComma = true }} {{ end }}
-      "{{ $version.prefix }}": "{{ include "renku-core.fullname" $ }}-{{ $version.name }}"
-      {{- end }}
+      "name": "renku-core",
+      "versions": [
+        {{- $printComma := false -}}
+        {{- range $key, $version := .Values.versions }}
+        {{- if $printComma }},{{ else }} {{- $printComma = true }} {{ end }}
+        {
+          "version": "{{ $version.image.tag }}",
+          "data": {
+            "metadata_version": "{{ $version.prefix }}"
+          }
+        }
+        {{- end }}
+      ]
     }

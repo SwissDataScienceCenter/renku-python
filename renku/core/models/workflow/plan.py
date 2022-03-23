@@ -159,6 +159,14 @@ class Plan(AbstractPlan):
             derived_from=derived_from,
         )
 
+        # NOTE: Validate plan
+        all_names = [p.name for p in itertools.chain(self.inputs, self.outputs, self.parameters)]
+        seen = set()
+        duplicates = [n for n in all_names if n in seen or seen.add(n)]
+        if duplicates:
+            duplicates = ", ".join(duplicates)
+            raise errors.ParameterError(f"Duplicate input, output or parameter names found: {duplicates}")
+
     def is_similar_to(self, other: "Plan") -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
 

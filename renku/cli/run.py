@@ -194,17 +194,23 @@ Sometimes the list of inputs and outputs are not known before execution of the
 program. For example, a program might accept a date range as input and access
 all files within that range during its execution.
 
-To address this issue, the program can dump a list of input and output files
-that it is accessing in ``inputs.txt`` and ``outputs.txt``. Each line in these
-files is expected to be the path to an input or output file within the
-project's directory. When the program is finished, Renku will look for
-existence of these two files and adds their content to the list of explicit
-inputs and outputs. Renku will then delete these two files.
+To address this issue, the program can dump a mapping of input and output files
+that it is accessing in ``inputs.yml`` and ``outputs.yml``. This YAML file
+should be of the format
+.. code-block:: YAML
+
+   name1: path1
+   name2: path2
+
+where name is the user-defined name of the input/output and path is the path.
+When the program is finished, Renku will look for existence of these two files
+and adds their content to the list of explicit inputs and outputs. Renku will
+then delete these two files.
 
 By default, Renku looks for these two files in ``.renku/tmp`` directory. One
 can change this default location by setting ``RENKU_INDIRECT_PATH``
 environment variable. When set, it points to a sub-directory within the
-``.renku/tmp`` directory where ``inputs.txt`` and ``outputs.txt`` reside.
+``.renku/tmp`` directory where ``inputs.yml`` and ``outputs.yml`` reside.
 
 Exit codes
 ~~~~~~~~~~
