@@ -114,8 +114,8 @@ The detection might not work as expected if:
 
 .. note:: ``renku run`` prints the generated plan after execution if you pass
     ``--verbose`` to it. You can check the generated plan to verify that the
-    execution was done as you intended. Nothing will be printed if both
-    ``stdout`` and ``stderr`` are directed to file.
+    execution was done as you intended. The plan will always be printed to
+    ``stderr`` even if it's directed to a file.
 
 Detecting output paths
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -324,4 +324,4 @@ def run(
 
     if verbose:
         plan = result.output
-        print_plan(plan, require_tty=True)
+        print_plan(plan, err=True)

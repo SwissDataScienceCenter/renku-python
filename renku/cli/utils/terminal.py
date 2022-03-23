@@ -17,9 +17,7 @@
 # limitations under the License.
 """Utility functions for ViewModels."""
 
-import contextlib
 import functools
-import sys
 from typing import TYPE_CHECKING
 
 import click
@@ -38,51 +36,28 @@ def print_markdown(text: str):
     Console().print(Markdown(text))
 
 
-def echo(message: str, err: bool = False, require_tty: bool = False, either: bool = False):
-    """Print a message to std output streams.
-
-    Args:
-        message: Message to print.
-        err: Whether to use stderr or not.
-        require_tty: Print only if output is a terminal.
-        either: Try both stdout and stderr to find a terminal; used only if ``require_tty`` is True; ignores ``err``.
-    """
-    if require_tty:
-        if either:
-            for stream in [sys.stdout, sys.stderr]:
-                if stream.isatty():
-                    click.echo(message=message, err=err)
-                    break
-        else:
-            stream = sys.stderr if err else sys.stdout
-            if stream.isatty():
-                click.echo(message=message, err=err)
-    else:
-        click.echo(message=message, err=err)
-
-
-def print_plan(plan: "PlanViewModel", require_tty: bool = False):
+def print_plan(plan: "PlanViewModel", err: bool = False):
     """Print a plan to stderr.
 
     Args:
-        require_tty: Print only if output is a terminal.
+        err: Print to ``stderr``.
     """
     style_key = functools.partial(click.style, bold=True, fg=color.MAGENTA)
     style_value = functools.partial(click.style, bold=True)
 
     def print_key_value(key, value, print_empty: bool = True):
         if print_empty or value:
-            echo(style_key(key) + style_value(value), require_tty=require_tty, either=True)
+            click.echo(style_key(key) + style_value(value), err=err)
 
     def print_key(key):
-        echo(style_key(key), require_tty=require_tty, either=True)
+        click.echo(style_key(key), err=err)
 
     def print_value(value):
-        echo(style_value(value), require_tty=require_tty, either=True)
+        click.echo(style_value(value), err=err)
 
     def print_description(description):
         if description:
-            echo(f"\t\t{description}", require_tty=require_tty, either=True)
+            click.echo(f"\t\t{description}", err=err)
 
     print_key_value("Id: ", plan.id)
     print_key_value("Name: ", plan.name)
