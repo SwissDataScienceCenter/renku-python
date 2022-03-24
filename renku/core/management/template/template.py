@@ -354,48 +354,42 @@ def set_template_parameters(
 class EmbeddedTemplates(TemplatesSource):
     """Represent templates that are bundled with Renku.
 
-    For embedded templates, ``source`` is "renku" and ``version`` is set to the installed Renku version. ``reference``
-    should not be set for such projects.
+    For embedded templates, ``source`` is "renku". In the old versioning scheme, ``version`` is set to the installed
+    Renku version and ``reference`` is not set. In the new scheme, both ``version`` and ``reference`` are set to the
+    template version.
     """
 
     @classmethod
     def fetch(cls, source: Optional[str], reference: Optional[str]) -> "EmbeddedTemplates":
         """Fetch embedded Renku templates."""
-        from renku import __version__
-
-        if reference and reference != "master":
-            raise errors.ParameterError("Templates included in renku don't support specifying a template reference")
+        from renku import __template_version__
 
         path = importlib_resources.files("renku") / "templates"
         with importlib_resources.as_file(path) as folder:
             path = Path(folder)
 
-        return cls(path=path, source="renku", reference=None, version=str(__version__))
+        return cls(path=path, source="renku", reference=__template_version__, version=__template_version__)
 
-    def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
-        """Return True if an update is available along with the latest version of a template."""
-        latest_version = self.get_latest_version(id=id, reference=reference, version=version)
-        update_available = latest_version is not None and latest_version != version
-
-        return update_available, latest_version
-
-    def get_all_versions(self, id) -> List[str]:
-        """Return all available versions for a template id."""
+    def get_all_references(self, id) -> List[str]:
+        """Return all available references for a template id."""
         template_exists = any(t.id == id for t in self.templates)
-        return [self.version] if template_exists else []
+        return [self.reference] if template_exists else []
 
-    def get_latest_version(self, id: str, reference: Optional[str], version: Optional[str]) -> Optional[str]:
-        """Return latest version number of a template."""
+    def get_latest_reference_and_version(
+        self, id: str, reference: Optional[str], version: Optional[str]
+    ) -> Optional[Tuple[str, str]]:
+        """Return latest reference and version number of a template."""
         if version is None:
             return
+        elif reference is None or reference != version:  # Old versioning scheme
+            return self.reference, self.version
 
-        template_version = Version(self.version)
         try:
             current_version = Version(version)
         except ValueError:  # NOTE: version is not a valid SemVer
-            return str(template_version)
+            return self.reference, self.version
         else:
-            return str(template_version) if current_version < template_version else version
+            return (self.reference, self.version) if current_version < Version(self.version) else (reference, version)
 
     def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
         """Return all available versions for a template id."""
@@ -432,14 +426,7 @@ class RepositoryTemplates(TemplatesSource):
 
         return cls(path=path, source=source, reference=reference, version=version, repository=repository)
 
-    def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
-        """Return True if an update is available along with the latest version of a template."""
-        latest_version = self.get_latest_version(id=id, reference=reference, version=version)
-        update_available = latest_version is not None and latest_version != reference
-
-        return update_available, latest_version
-
-    def get_all_versions(self, id) -> List[str]:
+    def get_all_references(self, id) -> List[str]:
         """Return a list of git tags that are valid SemVer and include a template id."""
         versions = []
         for tag in self.repository.tags:
@@ -454,8 +441,10 @@ class RepositoryTemplates(TemplatesSource):
 
         return [str(v) for v in sorted(versions)]
 
-    def get_latest_version(self, id: str, reference: Optional[str], version: Optional[str]) -> Optional[str]:
-        """Return latest version number of a template."""
+    def get_latest_reference_and_version(
+        self, id: str, reference: Optional[str], version: Optional[str]
+    ) -> Optional[Tuple[str, str]]:
+        """Return latest reference and version number of a template."""
         if version is None:
             return
 
@@ -463,11 +452,11 @@ class RepositoryTemplates(TemplatesSource):
 
         # NOTE: Assume that a SemVer reference is always a tag
         if tag:
-            versions = self.get_all_versions(id=id)
-            return versions[-1] if len(versions) > 0 else None
+            references = self.get_all_references(id=id)
+            return (references[-1], self.version) if len(references) > 0 else None
 
         # NOTE: Template's reference is a branch or SHA and the latest version is RepositoryTemplates' version
-        return self.version
+        return reference, self.version
 
     def _has_template_at(self, id: str, reference: str) -> bool:
         """Return if template id is available at a reference."""
