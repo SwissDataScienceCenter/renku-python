@@ -81,7 +81,7 @@ be an interface in the inner layer that is the basis for injection and an
 implementation in the outer layer that gets injected.
 
 
-.. _inject: (https://pypi.org/project/Inject/)
+.. _inject: https://pypi.org/project/Inject/
 
 
 Database
@@ -202,7 +202,7 @@ Public methods, their parameters and their return values should be documented.
 For documentation, we use Google style docstrings. You can see an example of
 those here google_style_ .
 
-.. _google_style: (https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html)
+.. _google_style: https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
 
 Code comment guidelines
 -----------------------
@@ -235,4 +235,4 @@ Release branches should be created off of master, have develop merged into them
 and then should be merged (not squash merged) back into master. A Github Action
 will then take care of merging master back into develop.
 
-.. _git-flow: (https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html)
+.. _git-flow: https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
