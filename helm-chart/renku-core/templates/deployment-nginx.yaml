@@ -37,8 +37,8 @@ spec:
               subPath: nginx-server-blocks.conf
             - name: nginx-volume
               readOnly: true
-              mountPath: /usr/share/nginx/html/versions.json
-              subPath: versions.json
+              mountPath: /usr/share/nginx/html/version.json
+              subPath: version.json
       volumes:
         - name: nginx-volume
           configMap:
