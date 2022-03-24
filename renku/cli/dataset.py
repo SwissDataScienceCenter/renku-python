@@ -1000,7 +1000,7 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
         def get_dataset_files(records):
             from renku.core.commands.format.tabulate import tabulate
 
-            columns = {"path": ("path", None), "dataset": ("dataset.name", None), "external": ("external", None)}
+            columns = {"path": ("path", None), "dataset": ("dataset.name", "dataset"), "external": ("external", None)}
             return tabulate(collection=records, columns="path,dataset,external", columns_mapping=columns)
 
         if not datasets and not dataset_files:

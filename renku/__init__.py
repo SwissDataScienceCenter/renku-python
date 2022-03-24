@@ -19,6 +19,6 @@
 
 from __future__ import absolute_import, print_function
 
-from renku.version import __version__
+from renku.version import __template_version__, __version__
 
-__all__ = ("__version__",)
+__all__ = ("__template_version__", "__version__")
