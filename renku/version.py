@@ -24,7 +24,7 @@ try:
 except ImportError:
     from importlib_metadata import distribution
 
-__version__ = "0.0.0"
+__version__ = "1.1.2.dev94+g166cb9c2"
 __template_version__ = "0.3.0"
 
 

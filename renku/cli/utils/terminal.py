@@ -27,6 +27,9 @@ from renku.cli.utils import color
 if TYPE_CHECKING:
     from renku.core.commands.view_model.plan import PlanViewModel
 
+style_key = functools.partial(click.style, bold=True, fg=color.MAGENTA)
+style_value = functools.partial(click.style, bold=True)
+
 
 def print_markdown(text: str):
     """Print markdown text to console."""
@@ -42,8 +45,6 @@ def print_plan(plan: "PlanViewModel", err: bool = False):
     Args:
         err: Print to ``stderr``.
     """
-    style_key = functools.partial(click.style, bold=True, fg=color.MAGENTA)
-    style_value = functools.partial(click.style, bold=True)
 
     def print_key_value(key, value, print_empty: bool = True):
         if print_empty or value:
