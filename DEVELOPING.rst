@@ -6,7 +6,7 @@ Developing
 Architecture Overview
 ---------------------
 
-The high-level architecture of `renku` follows a Hexogonal/Ports&Adapters
+The high-level architecture of ``renku`` follows a Hexagonal/Ports&Adapters
 Architecture approach.
 
 The following diagram shows a rough outline of the architecture:
@@ -16,23 +16,23 @@ The following diagram shows a rough outline of the architecture:
 
 
 The bold, green arrows show the direction of dependencies (always inwards, e.g.
-`renku.cli` can depend on `renku.commands` but not the other way around). The
+``renku.cli`` can depend on ``renku.commands`` but not the other way around). The
 blue/red arrows denote the flow of control/information into and out of the
 system.
 
 The major components are:
 
-* :code:`renku.ui.cli`: The command line interface code using the `click` library.
+* :code:`renku.ui.cli`: The command line interface code using the ``click`` library.
 * :code:`renku.ui.rpc`: The JSON RPC server code used by the Renku platform.
 * :code:`renku.ui.api`: The user API allowing easy access to renku features
   from users' Python scripts.
 * :code:`renku.command`: Wrappers following a Command Builder pattern (see
   below) that is used to set up relevant context and post-execution code
-  for calls into `renku.core`.
+  for calls into ``renku.core``.
 * :code:`renku.infrastructure`: Contains implementations of interfaces for
   interfacing with the outside world, such as the internal database and git.
 * :code:`renku.core`: The namespace for all business logic. Contains subfolders
-  for different topics, such as `dataset`, `workflow` and so on.
+  for different topics, such as ``dataset``, ``workflow`` and so on.
 * :code:`renku.domain_model`: The domain models used within renku.
 * :code:`renku.data`: Contains non-code data files used by renku.
 
@@ -53,19 +53,19 @@ The basic pattern is something like:
 
    Command().command(_my_command).with_database(write=True).build().execute(arg1="a", arg2="")
 
-The above would wrap the function `_my_command` in a command builder, set up
+The above would wrap the function ``_my_command`` in a command builder, set up
 dependency injection so the metadata database is available in executed code
-using the `with_database` call and then finalize the command object using
-`build`. A finalized command cannot be further modified, all its settings are
-locked in after the call to `build`.
+using the ``with_database`` call and then finalize the command object using
+``build``. A finalized command cannot be further modified, all its settings are
+locked in after the call to ``build``.
 
-It can then be executed as many times as needed using its `execute` method,
+It can then be executed as many times as needed using its ``execute`` method,
 which takes care of setting up the relevant context (the database in this case)
-and then passed along its arguments to the wrapped `_my_command`. Since we set
-`write=True`, this would also persist any changes made to metadata in the
+and then passed along its arguments to the wrapped ``_my_command``. Since we set
+``write=True``, this would also persist any changes made to metadata in the
 database after the command has finished.
 
-We usually don't call `build` in the `renku.core` namespace so callers of
+We usually don't call ``build`` in the ``renku.core`` namespace so callers of
 the command can still modify it with additional context if needed.
 
 
@@ -103,16 +103,16 @@ as ZODB does. Since ZODB's code is already split across multiple Python
 packages, we can reuse large parts of the existing ecosystem on top of our
 implementation.
 
-Specifically, we use the `persistent` package for top-level objects that get
-stored in individual files, we use the `BTrees` package for our database
-indices and we use `zc.relation` for path/graph style queries.
+Specifically, we use the ``persistent`` package for top-level objects that get
+stored in individual files, we use the ``BTrees`` package for our database
+indices and we use ``zc.relation`` for path/graph style queries.
 
 In very simple terms, the database acts almost like a global dictionary that
-entries can be added to or looked up in. This is because `BTrees` implements
+entries can be added to or looked up in. This is because ``BTrees`` implements
 the Python dictionary interface, but under the hood stores data in a balanced
 tree for performance reasons. Different (also nested) entries get stored in
 separate files, with one file for each object inheriting from
-`persistent.Persistent` and its (non-persistent) children.
+``persistent.Persistent`` and its (non-persistent) children.
 
 The database itself is an object database. As such, it is schemaless and it
 stores python objects as-is, meaning any property you might add to an object
@@ -132,12 +132,13 @@ To make code more readable, abstract away the database and keep things clean,
 we have various Gateway classes. These expose database (and other
 infrastructure) functionality in an easily understandable way.
 
-The consist of two parts, an interface definition in `renku.core.interface`
-and one or more implementations in `renku.infrastructure`.
+A gateway consists of two parts, an interface definition in
+``renku.core.interface`` and one or more implementations in
+``renku.infrastructure``.
 
 Public methods on a Gateway should be easily human-readable, for a single
 use-case. For instance, the ActivityGateway has methods such as
-`get_activities_by_generation` and `get_downstream_activities`, making it clear
+``get_activities_by_generation`` and ``get_downstream_activities``, making it clear
 what the code using them intends to do. This pattern should be followed when
 implementing new gateways.
 
@@ -145,11 +146,11 @@ Communication
 -------------
 
 Some parts of the code, especially for CLI use, have to send feedback to the
-user or prompt the user for input. As `renku.core` should be agnostic to what
-UI (CLI, RPC server, API) is using it, we do not allow things like `print()`
-in `renku.core` code. To facilitate communication with the outside world in
-cases where it is neccessary, we have the `communication` model, which behaves
-similarily in spirit to the Python `logging` module.
+user or prompt the user for input. As ``renku.core`` should be agnostic to what
+UI (CLI, RPC server, API) is using it, we do not allow things like ``print()``
+in ``renku.core`` code. To facilitate communication with the outside world in
+cases where it is necessary, we have the ``communication`` model, which behaves
+similarly in spirit to the Python ``logging`` module.
 
 Using this is done simply like:
 
@@ -173,20 +174,20 @@ The easiest way to run most tests (except integration tests) is to do:
 
   $ ./run-tests.sh -t
 
-You can also use the `-s` flag to run style checks and `-d` to run
+You can also use the ``-s`` flag to run style checks and ``-d`` to run
 documentation tests.
 
-For running an individual test, use `pytest -k name_of_test`.
+For running an individual test, use ``pytest -k name_of_test``.
 
 Some of our integration tests need API keys set in environment variables:
 
-* :code:`IT_OAUTH_GIT_TOKEN`: Gitlab OAuth2 token for the `dev` instance of
+* :code:`IT_OAUTH_GIT_TOKEN`: Gitlab OAuth2 token for the ``dev`` instance of
   Renkulab.
 * :code:`DATAVERSE_ACCESS_TOKEN`: OAuth2 token for Dataverse.
 * :code:`ZENODO_ACCESS_TOKEN`: OAuth2 token for Zenodo.
-* :code:`DOLOS_ACCESS_TOKEN`: OAuth2 token for OLOS.
+* :code:`OLOS_ACCESS_TOKEN`: OAuth2 token for OLOS.
 
-You can set those using e.g. `export IT_OAUTH_GIT_TOKEN=abcedfg123456` before
+You can set those using e.g. ``export IT_OAUTH_GIT_TOKEN=abcedfg123456`` before
 running integration tests.
 
 Tests are automatically run on PRs. We cache dependencies in our Github Actions
@@ -227,11 +228,11 @@ So a comment should look like:
 Branching Model
 ---------------
 
-We follow the git_flow_ model of branches for development, with `master` being
-the release branch and `develop` being the development branch.
+We follow the git-flow_ model of branches for development, with ``master`` being
+the release branch and ``develop`` being the development branch.
 
 Release branches should be created off of master, have develop merged into them
 and then should be merged (not squash merged) back into master. A Github Action
 will then take care of merging master back into develop.
 
-.. _git_flow: (https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html)
+.. _git-flow: (https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html)
