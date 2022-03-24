@@ -112,14 +112,6 @@ def is_path_empty(path: Union[Path, str]) -> bool:
     return not any(subpaths)
 
 
-def print_markdown(text: str):
-    """Print markdown text to console."""
-    from rich.console import Console
-    from rich.markdown import Markdown
-
-    Console().print(Markdown(text))
-
-
 def is_ascii(data):
     """Check if provided string contains only ascii characters."""
     return len(data) == len(data.encode())

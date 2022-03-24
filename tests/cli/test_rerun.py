@@ -23,7 +23,6 @@ import time
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
 
 from renku.cli import cli
 from renku.core.metadata.repository import Repository
@@ -129,10 +128,8 @@ def test_rerun_with_from(project, renku_cli, provider, source, content):
 
 
 @pytest.mark.skip(reason="renku rerun not implemented with --edit-inputs yet, reenable later")
-def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
+def test_rerun_with_edited_inputs(project, run, no_lfs_warning, split_runner):
     """Test input modification."""
-    runner = CliRunner(mix_stderr=False)
-
     cwd = Path(project)
     data = cwd / "examples"
     data.mkdir()
@@ -164,7 +161,7 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
         # Make sure the input path is relative to the current directory.
         os.chdir(str(data))
 
-        result = runner.invoke(
+        result = split_runner.invoke(
             cli, ["rerun", "--show-inputs", "--from", str(first), str(second)], catch_exceptions=False
         )
         assert 0 == result.exit_code, format_result_exception(result)
