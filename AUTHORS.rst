@@ -17,6 +17,7 @@
 
 Authors
 =======
+.. _authors-reference:
 
 Python SDK and CLI for the Renku platform.
 
