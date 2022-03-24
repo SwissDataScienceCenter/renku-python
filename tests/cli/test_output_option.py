@@ -21,7 +21,7 @@ import os
 from pathlib import Path
 
 from renku.cli import cli
-from tests.utils import write_and_commit_file
+from tests.utils import format_result_exception, write_and_commit_file
 
 
 def test_run_succeeds_normally(renku_cli, client, subdirectory):
@@ -243,19 +243,19 @@ def test_explicit_inputs_in_subdirectories(client, runner):
     result = runner.invoke(
         cli, ["run", "--input", "foo/bar", "--input", "script.sh", "sh", "script.sh"], stdout="output"
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Status must be dirty if foo/bar changes
     write_and_commit_file(client.repository, client.path / "foo" / "bar", "new changes")
 
-    assert 0 == result.exit_code, result.output
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["status"])
 
-    assert 1 == result.exit_code
+    assert 1 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["update", "--all"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
     assert (client.path / "foo" / "bar").exists()
     assert (client.path / "script.sh").exists()
     assert (client.path / "output").exists()
