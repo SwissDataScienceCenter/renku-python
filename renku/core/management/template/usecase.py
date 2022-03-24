@@ -70,13 +70,11 @@ def check_for_template_update(client) -> Tuple[bool, bool, Optional[str], Option
     metadata = TemplateMetadata.from_client(client=client)
 
     templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
-    latest_version = templates_source.get_latest_version(
+    update_available, latest_reference = templates_source.is_update_available(
         id=metadata.id, reference=metadata.reference, version=metadata.version
     )
 
-    update_available = latest_version is not None and latest_version != metadata.version
-
-    return update_available, metadata.allow_update, metadata.version, latest_version
+    return update_available, metadata.allow_update, metadata.reference, latest_reference
 
 
 @inject.autoparams("client_dispatcher")
@@ -130,7 +128,7 @@ def update_template(
 
     templates_source = fetch_templates_source(source=template_metadata.source, reference=template_metadata.reference)
 
-    update_available, latest_version = templates_source.is_update_available(
+    update_available, latest_reference = templates_source.is_update_available(
         id=template_metadata.id, reference=template_metadata.reference, version=template_metadata.version
     )
 
@@ -139,7 +137,7 @@ def update_template(
 
     rendered_template, actions = _set_or_update_project_from_template(
         templates_source=templates_source,
-        reference=latest_version,
+        reference=latest_reference,
         id=template_metadata.id,
         interactive=interactive,
         dry_run=dry_run,

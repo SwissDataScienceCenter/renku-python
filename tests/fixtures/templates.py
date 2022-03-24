@@ -32,7 +32,7 @@ def template_metadata():
     """Default template metadata."""
     yield {
         "__template_source__": "renku",
-        "__template_ref__": "master",
+        "__template_ref__": renku_version,
         "__template_id__": "python-minimal",
         "__namespace__": "",
         "__repository__": "",
@@ -172,18 +172,21 @@ def templates_source(tmp_path, monkeypatch):
 
         def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
             """Return True if an update is available along with the latest version of a template."""
-            latest_version = self.get_latest_version(id=id, reference=reference, version=version)
+            _, latest_version = self.get_latest_reference_and_version(id=id, reference=reference, version=version)
 
             return latest_version != version, latest_version
 
-        def get_all_versions(self, id) -> List[str]:
-            """Return all available versions for a template id."""
+        def get_all_references(self, id) -> List[str]:
+            """Return all available references for a template id."""
             return [str(v) for v in self._versions]
 
-        def get_latest_version(self, id: str, reference: Optional[str], version: Optional[str]) -> Optional[str]:
-            """Return latest version number of a template."""
+        def get_latest_reference_and_version(
+            self, id: str, reference: Optional[str], version: Optional[str]
+        ) -> Optional[Tuple[str, str]]:
+            """Return latest reference and version number of a template."""
             _ = self.get_template(id=id, reference=reference)
-            return str(max(self._versions))
+            version = str(max(self._versions))
+            return version, version
 
         def get_template(self, id, reference: Optional[str]) -> Optional[Template]:
             """Return a template at a specific reference."""

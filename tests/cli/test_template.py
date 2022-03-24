@@ -80,7 +80,7 @@ def test_template_show(isolated_runner):
         result = isolated_runner.invoke(cli, command + ["R-minimal"])
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "Name: Basic R (4.1.2) Project" in result.output
+        assert re.search("^Name: Basic R (.*) Project$", result.output, re.MULTILINE) is not None
     finally:
         sys.argv = argv
 
@@ -90,7 +90,7 @@ def test_template_show_no_id(runner, client):
     result = runner.invoke(cli, ["template", "show"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Name: Basic Python (3.9) Project" in result.output
+    assert re.search("^Name: Basic Python (.*) Project$", result.output, re.MULTILINE) is not None
 
 
 def test_template_show_no_id_outside_project(isolated_runner):
@@ -136,11 +136,15 @@ def test_template_set_failure(runner, client, client_database_injection_manager)
 
 def test_template_set(runner, client, client_database_injection_manager):
     """Test setting a new template in a project."""
+    from renku.version import __template_version__
+
     result = runner.invoke(cli, ["template", "set", "--force", "R-minimal"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
         assert "R-minimal" == client.project.template_id
+        assert __template_version__ == client.project.template_version
+        assert __template_version__ == client.project.template_ref
 
 
 def test_template_set_overwrites_modified(runner, client, client_database_injection_manager):
