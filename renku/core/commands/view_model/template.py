@@ -66,7 +66,7 @@ class TemplateViewModel:
             parameters=template.parameters,
             icon=template.icon,
             immutable_files=template.immutable_files,
-            versions=template.get_all_versions(),
+            versions=template.get_all_references(),
         )
 
 

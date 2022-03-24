@@ -60,19 +60,26 @@ class TemplatesSource:
 
         return self.manifest.templates
 
-    @abstractmethod
     def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
-        """Return True if an update is available along with the latest version of a template."""
-        raise NotImplementedError
+        """Return True if an update is available along with the latest reference of a template."""
+        latest = self.get_latest_reference_and_version(id=id, reference=reference, version=version)
+        if not latest:
+            return False, reference
+
+        latest_reference, latest_version = latest
+        update_available = latest_reference != reference or latest_version != version
+        return update_available, latest_reference
 
     @abstractmethod
-    def get_all_versions(self, id) -> List[str]:
+    def get_all_references(self, id) -> List[str]:
         """Return all available versions for a template id."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_latest_version(self, id: str, reference: Optional[str], version: Optional[str]) -> Optional[str]:
-        """Return latest version number of a template."""
+    def get_latest_reference_and_version(
+        self, id: str, reference: Optional[str], version: Optional[str]
+    ) -> Optional[Tuple[str, str]]:
+        """Return latest reference and version number of a template."""
         raise NotImplementedError
 
     @abstractmethod
@@ -220,9 +227,9 @@ class Template:
         self.version = templates_source.version
         self.path = templates_source.path / self.id
 
-    def get_all_versions(self) -> List[str]:
-        """Return all available versions for the template."""
-        return self.templates_source.get_all_versions(self.id)
+    def get_all_references(self) -> List[str]:
+        """Return all available references for the template."""
+        return self.templates_source.get_all_references(self.id)
 
     def validate(self, skip_files):
         """Validate a template."""
