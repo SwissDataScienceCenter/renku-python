@@ -18,6 +18,17 @@
 Changes
 =======
 
+`1.1.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.2...v1.1.3>`__ (2022-03-25)
+-------------------------------------------------------------------------------------------------------
+
+This is a bugfix release fixing an issue with template update check.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** use consistent template versioning for embedded and remote templates
+   (`#2763 <https://github.com/SwissDataScienceCenter/renku-python/pull/2763>`__)
+
 `1.1.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.1...v1.1.2>`__ (2022-03-18)
 -------------------------------------------------------------------------------------------------------
 
