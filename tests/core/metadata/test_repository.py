@@ -239,3 +239,20 @@ def test_get_user_with_quotation_mark(git_repository):
 
     assert "Renku the Frog" == user.name
     assert "renku@renku.ch" == user.email
+
+
+@pytest.mark.parametrize(
+    "path, contains",
+    [("A", True), (Path("A"), True), ("non-existing", False), ("/outside/repo", False), ("data", True)],
+)
+def test_contains_file(git_repository, path, contains):
+    """Test if repository contains a given path."""
+    assert git_repository.contains(path) is contains
+
+
+def test_contains_untracked_file(git_repository):
+    """Test if repository contains a given path."""
+    path = git_repository.path / "untracked"
+    path.write_text("untracked")
+
+    assert git_repository.contains(path) is False

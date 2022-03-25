@@ -682,8 +682,8 @@ def edit(name, title, description, creators, metadata, keyword):
 @click.argument("name", shell_complete=_complete_datasets)
 def show(name):
     """Show metadata of a dataset."""
+    from renku.cli.utils.terminal import print_markdown
     from renku.core.commands.dataset import show_dataset_command
-    from renku.core.utils.os import print_markdown
 
     result = show_dataset_command().build().execute(name=name)
     ds = result.output
@@ -1000,7 +1000,7 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
         def get_dataset_files(records):
             from renku.core.commands.format.tabulate import tabulate
 
-            columns = {"path": ("path", None), "dataset": ("dataset.name", None), "external": ("external", None)}
+            columns = {"path": ("path", None), "dataset": ("dataset.name", "dataset"), "external": ("external", None)}
             return tabulate(collection=records, columns="path,dataset,external", columns_mapping=columns)
 
         if not datasets and not dataset_files:

@@ -64,8 +64,7 @@ def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bo
         return Path(absolute_path).relative_to(base)
     except ValueError:
         if strict:
-            raise errors.ParameterError("File {} is not within path {}".format(path, base))
-        return
+            raise errors.ParameterError(f"File {path} is not within path {base}")
 
 
 def is_subpath(path: Union[Path, str], base: Union[Path, str]) -> bool:
@@ -111,14 +110,6 @@ def is_path_empty(path: Union[Path, str]) -> bool:
     """
     subpaths = Path(path).rglob("*")
     return not any(subpaths)
-
-
-def print_markdown(text: str):
-    """Print markdown text to console."""
-    from rich.console import Console
-    from rich.markdown import Markdown
-
-    Console().print(Markdown(text))
 
 
 def is_ascii(data):

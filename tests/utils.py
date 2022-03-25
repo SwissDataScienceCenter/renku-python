@@ -136,7 +136,12 @@ def format_result_exception(result):
     else:
         stacktrace = ""
 
-    return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output}"
+    try:
+        stderr = f"\n{result.stderr}"
+    except ValueError:
+        stderr = ""
+
+    return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output + stderr}"
 
 
 def load_dataset(name: str) -> Optional[Dataset]:

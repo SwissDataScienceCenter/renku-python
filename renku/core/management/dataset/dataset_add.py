@@ -24,8 +24,9 @@ import os
 import shutil
 import time
 import urllib
+from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union
 
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
@@ -45,6 +46,14 @@ from renku.core.utils.urls import check_url, provider_check, remove_credentials
 
 if TYPE_CHECKING:
     from renku.core.management.client import LocalClient
+
+
+class AddAction(Enum):
+    """Types of action when adding a file to a dataset."""
+
+    COPY = auto()
+    MOVE = auto()
+    SYMLINK = auto()
 
 
 @inject.autoparams("client_dispatcher", "database_dispatcher")
@@ -104,7 +113,7 @@ def add_data_to_dataset(
             if paths_to_avoid:
                 files = [f for f in files if f["path"] not in paths_to_avoid]
                 communication.warn(
-                    "Ignored adding paths under a .git directory:\n  " + "\n  ".join(str(p) for p in paths_to_avoid)
+                    "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
             files_to_commit = {str(client.path / f["path"]) for f in files}
@@ -169,6 +178,7 @@ def _process_urls(
 ):
     """Process file URLs for adding to a dataset."""
     files = []
+    tracked_external_warnings = []
     if all_at_once:  # Importing a non-git dataset
         files = _add_from_urls(
             client, urls=urls, destination_names=destination_names, destination=destination, extract=extract
@@ -191,13 +201,18 @@ def _process_urls(
                             "information and updates."
                         )
                     u = urllib.parse.urlparse(url)
-                    new_files = _add_from_local(
+                    new_files, warnings = _add_from_local(
                         client, dataset=dataset, path=u.path, external=external, destination=destination
                     )
+                    tracked_external_warnings.extend(warnings)
                 else:  # Remote URL
                     new_files = _add_from_url(client=client, url=url, destination=destination, extract=extract)
 
             files.extend(new_files)
+
+    if tracked_external_warnings:
+        message = "\n\t".join(tracked_external_warnings)
+        communication.warn(f"Warning: The following files cannot be added as external:\n\t{message}")
 
     return files
 
@@ -255,10 +270,8 @@ def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files
 
         files = [f for f in files if str(client.path / f["path"]) in files_to_commit]
         communication.warn(
-            "Theses paths are ignored by one of your .gitignore "
-            + 'files (use "--force" flag if you really want to add '
-            + "them):\n  "
-            + "\n  ".join([str(p) for p in ignored_sources])
+            "Theses paths are ignored by one of your .gitignore files (use '--force' flag if you really want to add "
+            "them):\n\t" + "\n\t".join([str(p) for p in ignored_sources])
         )
 
     return files, files_to_commit
@@ -276,9 +289,8 @@ def _check_existing_files(client: "LocalClient", dataset: Dataset, files_to_comm
         files_to_commit = files_to_commit.difference(existing_files)
         files = [f for f in files if str(client.path / f["path"]) in files_to_commit]
         communication.warn(
-            "These existing files were not overwritten "
-            + '(use "--overwrite" flag to overwrite them):\n  '
-            + "\n  ".join([str(p) for p in existing_files])
+            "These existing files were not overwritten (use '--overwrite' flag to overwrite them):\n\t"
+            + "\n\t".join([str(p) for p in existing_files])
         )
 
     return files, files_to_commit
@@ -297,11 +309,11 @@ def move_files_to_dataset(client: "LocalClient", files: List[Dict]):
         delete_file(dst, follow_symlinks=True)
         dst.parent.mkdir(parents=True, exist_ok=True)
 
-        if action == "copy":
+        if action == AddAction.COPY:
             shutil.copy(src, dst)
-        elif action == "move":
+        elif action == AddAction.MOVE:
             shutil.move(src, dst, copy_function=shutil.copy)
-        elif action == "symlink":
+        elif action == AddAction.SYMLINK:
             create_external_file(client=client, target=src, path=dst)
             data["is_external"] = True
         else:
@@ -384,9 +396,9 @@ def _add_from_git(
         new_files.add(path_in_dst_repo)
 
         if is_external_file(path=src, client_path=repository.path):
-            operation = (src.resolve(), dst, "symlink")
+            operation = (src.resolve(), dst, AddAction.SYMLINK)
         else:
-            operation = (src, dst, "move")
+            operation = (src, dst, AddAction.MOVE)
 
         checksum = repository.get_object_hash(revision="HEAD", path=path_in_src_repo)
         based_on = RemoteEntity(checksum=checksum, path=path_in_src_repo, url=url)
@@ -394,7 +406,6 @@ def _add_from_git(
         return {
             "path": path_in_dst_repo,
             "source": remove_credentials(url),
-            "parent": client,
             "based_on": based_on,
             "operation": operation,
         }
@@ -509,10 +520,9 @@ def _add_from_url(
     paths = [(src, destination / src.relative_to(tmp_root)) for src in paths if not src.is_dir()]
     return [
         {
-            "operation": (src, dst, "move"),
+            "operation": (src, dst, AddAction.MOVE),
             "path": dst.relative_to(client.path),
             "source": remove_credentials(url),
-            "parent": client,
         }
         for src, dst in paths
     ]
@@ -520,12 +530,13 @@ def _add_from_url(
 
 def _add_from_local(
     client: "LocalClient", dataset: Dataset, path: Union[str, Path], external: bool, destination: Path
-) -> List[Dict]:
+) -> Tuple[List[Dict], List[str]]:
     """Add a file or directory from a local filesystem."""
-    action = "symlink" if external else "copy"
+    action = AddAction.SYMLINK if external else AddAction.COPY
     absolute_dataset_data_dir = (client.path / get_dataset_data_dir(client, dataset)).resolve()
     source_root = Path(get_absolute_path(path))
-    is_with_repo = is_subpath(path=source_root, base=client.path)
+    is_within_repo = is_subpath(path=source_root, base=client.path)
+    warnings = []
 
     def check_recursive_addition(src: Path):
         if src.resolve() == absolute_dataset_data_dir:
@@ -548,9 +559,13 @@ def _add_from_local(
         return destination / source_root.name if destination_exists and destination_is_dir else destination
 
     def get_metadata(src: Path) -> Dict:
-        if is_with_repo:
+        is_tracked = client.repository.contains(src)
+
+        if is_tracked or (is_within_repo and not external):
             path_in_repo = src.relative_to(client.path)
-            return {"path": path_in_repo, "source": path_in_repo, "parent": client}
+            if external:
+                warnings.append(str(path_in_repo))
+            return {"path": path_in_repo, "source": path_in_repo}
         else:
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
@@ -558,7 +573,6 @@ def _add_from_local(
             return {
                 "path": dst.relative_to(client.path),
                 "source": os.path.relpath(src, client.path),
-                "parent": client,
                 "operation": (src, dst, action),
             }
 
@@ -575,6 +589,6 @@ def _add_from_local(
                 continue
             metadata.append(get_metadata(file))
 
-        return metadata
+        return metadata, warnings
     else:
-        return [get_metadata(source_root)]
+        return [get_metadata(source_root)], warnings
