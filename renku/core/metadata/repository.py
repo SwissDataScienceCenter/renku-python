@@ -207,6 +207,15 @@ class BaseRepository:
             "fetch", _to_string(remote), _to_string(refspec), all=all, unshallow=unshallow, depth=depth, tags=tags
         )
 
+    def contains(self, path: Union[Path, str]) -> bool:
+        """Return True if path is tracked in the repository."""
+        try:
+            self.run_git_command("ls-files", "--error-unmatch", str(path))
+        except errors.GitCommandError:
+            return False
+        else:
+            return True
+
     def move(self, *sources: Union[Path, str], destination: Union[Path, str], force: bool = False):
         """Move source files to the destination."""
         self.run_git_command("mv", *sources, destination, force=force)
