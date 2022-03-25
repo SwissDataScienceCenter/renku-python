@@ -77,10 +77,10 @@ def _print_log(log_entry: LogViewModel) -> str:
 
 def _print_activity_log(log_entry: ActivityLogViewModel) -> str:
     """Turn an activity log entry into a printable string."""
-    from renku.cli.utils.terminal import style_key
+    from renku.cli.utils.terminal import style_header, style_key
 
     results = [
-        click.style(f"Activity {log_entry.id}", fg=color.YELLOW, bold=True),
+        style_header(f"Activity {log_entry.id}"),
         style_key("Start Time: ") + log_entry.details.start_time,
         style_key("End Time: ") + log_entry.details.end_time,
     ]
@@ -97,12 +97,12 @@ def _print_activity_log(log_entry: ActivityLogViewModel) -> str:
     results.append(style_key("Command: ") + log_entry.description)
 
     if log_entry.details.inputs:
-        results.append(style_key("Inputs: \n\t") + "\n\t".join(f"{i[0]}: {i[1]}" for i in log_entry.details.inputs))
+        results.append(style_key("Inputs:\n\t") + "\n\t".join(f"{i[0]}: {i[1]}" for i in log_entry.details.inputs))
     if log_entry.details.outputs:
-        results.append(style_key("Outputs: \n\t") + "\n\t".join(f"{o[0]}: {o[1]}" for o in log_entry.details.outputs))
+        results.append(style_key("Outputs:\n\t") + "\n\t".join(f"{o[0]}: {o[1]}" for o in log_entry.details.outputs))
     if log_entry.details.parameters:
         results.append(
-            style_key("Parameters: \n\t") + "\n\t".join(f"{p[0]}: {p[1]}" for p in log_entry.details.parameters)
+            style_key("Parameters:\n\t") + "\n\t".join(f"{p[0]}: {p[1]}" for p in log_entry.details.parameters)
         )
 
     return "\n".join(results)
@@ -110,12 +110,9 @@ def _print_activity_log(log_entry: ActivityLogViewModel) -> str:
 
 def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
     """Turn a dataset log entry into a printable string."""
-    from renku.cli.utils.terminal import style_key
+    from renku.cli.utils.terminal import style_header, style_key
 
-    results = [
-        click.style(f"Dataset {log_entry.id}", fg=color.YELLOW, bold=True),
-        style_key("Date: ") + log_entry.date.isoformat(),
-    ]
+    results = [style_header(f"Dataset {log_entry.id}"), style_key("Date: ") + log_entry.date.isoformat()]
     change = []
     if log_entry.details.created:
         change.append("created")
@@ -152,7 +149,7 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
                 "\n\t".join(f"- {f}" for f in log_entry.details.files_removed), fg=color.RED
             )
 
-        results.append(style_key("Files modified: \n\t") + added + removed)
+        results.append(style_key("Files modified:\n\t") + added + removed)
 
     if log_entry.details.creators_added or log_entry.details.creators_removed:
         added = ""
@@ -166,7 +163,7 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
                 "\n\t".join(f"- {c}" for c in log_entry.details.creators_removed), fg=color.RED
             )
 
-        results.append(style_key("Creators modified: \n\t") + added + removed)
+        results.append(style_key("Creators modified:\n\t") + added + removed)
 
     if log_entry.details.keywords_added or log_entry.details.keywords_removed:
         added = ""
@@ -180,11 +177,11 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
                 "\n\t".join(f"- {k}" for k in log_entry.details.keywords_removed), fg=color.RED
             )
 
-        results.append(style_key("Keywords modified: \n\t") + added + removed)
+        results.append(style_key("Keywords modified:\n\t") + added + removed)
 
     if log_entry.details.images_changed_to:
         results.append(
-            style_key("Images set to: \n\t")
+            style_key("Images set to:\n\t")
             + click.style("\n\t".join(f"{i}" for i in log_entry.details.images_changed_to), fg=color.GREEN)
         )
 
