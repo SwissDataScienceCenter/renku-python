@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union
 from renku.core import errors
 from renku.core.management.dataset.constant import renku_pointers_path
 from renku.core.metadata.repository import Repository
+from renku.core.utils.os import is_subpath
 
 if TYPE_CHECKING:
     from renku.core.management.client import LocalClient
@@ -44,8 +45,12 @@ def create_pointer_file(client: "LocalClient", target: Union[str, Path], checksu
         if not path.exists():
             break
 
+    # NOTE: If target is within the repo, add it as a relative symlink
+    is_within_repo = is_subpath(target, base=client.path)
+    source = os.path.relpath(target, path.parent) if is_within_repo else target
+
     try:
-        os.symlink(target, path)
+        os.symlink(source, path)
     except FileNotFoundError:
         raise errors.ExternalFileNotFound(target)
 
