@@ -25,7 +25,7 @@ except ImportError:
     from importlib_metadata import distribution
 
 __version__ = "0.0.0"
-__template_version__ = "0.3.0"
+__template_version__ = "0.3.1"
 
 
 def is_release():
