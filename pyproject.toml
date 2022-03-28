@@ -67,6 +67,7 @@ cryptography = "<37.0.0,>=3.4.1"
 cwl-utils = ">=0.12"
 cwltool = "==3.1.20211107152837"
 deepmerge = "==1.0.1"
+docker = "<6,>=3.7.2"
 environ-config = "<21.3.0,>=18.2.0"
 fakeredis = { version = ">=1.4.1,<1.7.2", optional = true }
 filelock = ">=3.0.0,<3.6.1"
