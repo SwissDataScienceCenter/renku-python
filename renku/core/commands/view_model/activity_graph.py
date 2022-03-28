@@ -175,7 +175,7 @@ class ActivityGraphViewModel:
 
             colors = {e.color for e in intersecting_edges}
 
-            if len(colors) < len(EdgeShape.EDGE_COLORS):
+            if len(colors) < len(EdgeShape.COLORS):
                 while edge_color in colors:
                     edge_color = EdgeShape.next_color()
                 for e in new_edges:
