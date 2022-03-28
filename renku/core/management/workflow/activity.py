@@ -205,8 +205,11 @@ def create_activity_graph(
 
     connect_nodes_based_on_dependencies()
 
-    if not networkx.algorithms.dag.is_directed_acyclic_graph(graph):
-        raise ValueError("Cannot find execution order: Project has cyclic dependencies.")
+    cycles = list(networkx.algorithms.cycles.simple_cycles(graph))
+
+    if cycles:
+        cycles = [map(lambda x: getattr(x, "id", x), cycle) for cycle in cycles]
+        raise errors.GraphCycleError(cycles)
 
     connect_nodes_by_execution_order()
     remove_overridden_activities()
@@ -215,7 +218,7 @@ def create_activity_graph(
 
 
 def sort_activities(activities: List[Activity], remove_overridden_parents=True) -> List[Activity]:
-    """Returns a sorted list of activities based on their dependencies and execution order."""
+    """Return a sorted list of activities based on their dependencies and execution order."""
     graph = create_activity_graph(activities, remove_overridden_parents)
 
     return list(networkx.topological_sort(graph))

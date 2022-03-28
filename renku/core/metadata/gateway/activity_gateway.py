@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku activity database gateway implementation."""
 
+from itertools import chain
 from pathlib import Path
 from typing import List, Optional, Set, Tuple, Union
 
@@ -26,6 +27,7 @@ from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
+from renku.core.management.workflow.activity import create_activity_graph
 from renku.core.metadata.gateway.database_gateway import ActivityDownstreamRelation
 from renku.core.models.provenance.activity import Activity, ActivityCollection
 from renku.core.models.workflow.plan import Plan
@@ -147,6 +149,19 @@ class ActivityGateway(IActivityGateway):
 
         plan_gateway = inject.instance(IPlanGateway)
         plan_gateway.add(activity.association.plan)
+
+        # NOTE: Check for a cycle if this activity
+        upstream_chains = self.get_upstream_activity_chains(activity)
+        downstream_chains = self.get_downstream_activity_chains(activity)
+
+        all_activities = set()
+
+        for activity_chain in chain(upstream_chains, downstream_chains):
+            for current_activity in activity_chain:
+                all_activities.add(current_activity)
+
+        # NOTE: This call raises an exception if there is a cycle
+        create_activity_graph(list(all_activities), with_inputs_outputs=True)
 
     def add_activity_collection(self, activity_collection: ActivityCollection):
         """Add an ``ActivityCollection`` to storage."""
