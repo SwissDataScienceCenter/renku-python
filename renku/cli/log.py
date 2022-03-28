@@ -18,7 +18,7 @@
 """Renku cli for history of renku commands.
 
 You can use ``renku log`` to get a history of renku commands.
-At the moment, it only shows workflow executions.
+At the moment, it shows workflow executions and dataset changes.
 
 .. code-block:: console
 
@@ -28,6 +28,9 @@ At the moment, it only shows workflow executions.
     End Time: 2022-02-03T13:56:28+01:00
     User: John Doe <John.Doe@example.com>
     Renku Version: renku 1.0.5
+    Plan:
+        Id: /plans/c00826a571a246e79b0a3d77712e6f3b
+        Name: python-test-fc2ec
     Command: python test.py
     Inputs:
             input-1: test.py
@@ -74,31 +77,32 @@ def _print_log(log_entry: LogViewModel) -> str:
 
 def _print_activity_log(log_entry: ActivityLogViewModel) -> str:
     """Turn an activity log entry into a printable string."""
-    results = [click.style(f"Activity {log_entry.id}", fg=color.YELLOW, bold=True)]
-    results.append(click.style("Start Time: ", bold=True, fg=color.MAGENTA) + log_entry.details.start_time)
-    results.append(click.style("End Time: ", bold=True, fg=color.MAGENTA) + log_entry.details.end_time)
+    from renku.cli.utils.terminal import style_header, style_key
+
+    results = [
+        style_header(f"Activity {log_entry.id}"),
+        style_key("Start Time: ") + log_entry.details.start_time,
+        style_key("End Time: ") + log_entry.details.end_time,
+    ]
 
     if log_entry.details.user:
-        results.append(click.style("User: ", bold=True, fg=color.MAGENTA) + log_entry.details.user)
+        results.append(style_key("User: ") + log_entry.details.user)
     if log_entry.details.renku_version:
-        results.append(click.style("Renku Version: ", bold=True, fg=color.MAGENTA) + log_entry.details.renku_version)
+        results.append(style_key("Renku Version: ") + log_entry.details.renku_version)
 
-    results.append(click.style("Command: ", bold=True, fg=color.MAGENTA) + log_entry.description)
+    results.append(style_key("Plan:"))
+    results.append(style_key("\tId: ") + log_entry.plan.id)
+    results.append(style_key("\tName: ") + log_entry.plan.name)
+
+    results.append(style_key("Command: ") + log_entry.description)
 
     if log_entry.details.inputs:
-        results.append(
-            click.style("Inputs: \n\t", bold=True, fg=color.MAGENTA)
-            + "\n\t".join(f"{i[0]}: {i[1]}" for i in log_entry.details.inputs)
-        )
+        results.append(style_key("Inputs:\n\t") + "\n\t".join(f"{i[0]}: {i[1]}" for i in log_entry.details.inputs))
     if log_entry.details.outputs:
-        results.append(
-            click.style("Outputs: \n\t", bold=True, fg=color.MAGENTA)
-            + "\n\t".join(f"{o[0]}: {o[1]}" for o in log_entry.details.outputs)
-        )
+        results.append(style_key("Outputs:\n\t") + "\n\t".join(f"{o[0]}: {o[1]}" for o in log_entry.details.outputs))
     if log_entry.details.parameters:
         results.append(
-            click.style("Parameters: \n\t", bold=True, fg=color.MAGENTA)
-            + "\n\t".join(f"{p[0]}: {p[1]}" for p in log_entry.details.parameters)
+            style_key("Parameters:\n\t") + "\n\t".join(f"{p[0]}: {p[1]}" for p in log_entry.details.parameters)
         )
 
     return "\n".join(results)
@@ -106,8 +110,9 @@ def _print_activity_log(log_entry: ActivityLogViewModel) -> str:
 
 def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
     """Turn a dataset log entry into a printable string."""
-    results = [click.style(f"Dataset {log_entry.id}", fg=color.YELLOW, bold=True)]
-    results.append(click.style("Date: ", bold=True, fg=color.MAGENTA) + log_entry.date.isoformat())
+    from renku.cli.utils.terminal import style_header, style_key
+
+    results = [style_header(f"Dataset {log_entry.id}"), style_key("Date: ") + log_entry.date.isoformat()]
     change = []
     if log_entry.details.created:
         change.append("created")
@@ -121,18 +126,16 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
         change.append("modified")
 
     if change:
-        results.append(click.style("Changes: ", bold=True, fg=color.MAGENTA) + ", ".join(change))
+        results.append(style_key("Changes: ") + ", ".join(change))
 
     if log_entry.details.source:
-        results.append(click.style("Source: ", bold=True, fg=color.MAGENTA) + log_entry.details.source)
+        results.append(style_key("Source: ") + log_entry.details.source)
 
     if log_entry.details.title_changed:
-        results.append(click.style("Title set to: ", bold=True, fg=color.MAGENTA) + log_entry.details.title_changed)
+        results.append(style_key("Title set to: ") + log_entry.details.title_changed)
 
     if log_entry.details.description_changed:
-        results.append(
-            click.style("Description set to: ", bold=True, fg=color.MAGENTA) + log_entry.details.description_changed
-        )
+        results.append(style_key("Description set to: ") + log_entry.details.description_changed)
 
     if log_entry.details.files_added or log_entry.details.files_removed:
         added = ""
@@ -146,7 +149,7 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
                 "\n\t".join(f"- {f}" for f in log_entry.details.files_removed), fg=color.RED
             )
 
-        results.append(click.style("Files modified: \n\t", bold=True, fg=color.MAGENTA) + added + removed)
+        results.append(style_key("Files modified:\n\t") + added + removed)
 
     if log_entry.details.creators_added or log_entry.details.creators_removed:
         added = ""
@@ -160,7 +163,7 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
                 "\n\t".join(f"- {c}" for c in log_entry.details.creators_removed), fg=color.RED
             )
 
-        results.append(click.style("Creators modified: \n\t", bold=True, fg=color.MAGENTA) + added + removed)
+        results.append(style_key("Creators modified:\n\t") + added + removed)
 
     if log_entry.details.keywords_added or log_entry.details.keywords_removed:
         added = ""
@@ -174,11 +177,11 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
                 "\n\t".join(f"- {k}" for k in log_entry.details.keywords_removed), fg=color.RED
             )
 
-        results.append(click.style("Keywords modified: \n\t", bold=True, fg=color.MAGENTA) + added + removed)
+        results.append(style_key("Keywords modified:\n\t") + added + removed)
 
     if log_entry.details.images_changed_to:
         results.append(
-            click.style("Images set to: \n\t", bold=True, fg=color.MAGENTA)
+            style_key("Images set to:\n\t")
             + click.style("\n\t".join(f"{i}" for i in log_entry.details.images_changed_to), fg=color.GREEN)
         )
 

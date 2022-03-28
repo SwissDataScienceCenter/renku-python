@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 import inject
 
 from renku.core.commands.format.tabulate import tabulate
+from renku.core.commands.view_model.plan import PlanViewModel
 
 if TYPE_CHECKING:
     from renku.core.models.dataset import Dataset
@@ -164,6 +165,7 @@ class LogViewModel:
             description=command,
             details=details,
             agents=[a.full_identity for a in activity.agents],
+            plan=PlanViewModel.from_plan(activity.plan_with_values),
         )
 
     @classmethod
@@ -328,9 +330,18 @@ class ActivityLogViewModel(LogViewModel):
 
     type = LogType.ACTIVITY.value
 
-    def __init__(self, id: str, date: datetime, description: str, details: ActivityDetailsViewModel, agents: List[str]):
+    def __init__(
+        self,
+        id: str,
+        date: datetime,
+        description: str,
+        details: ActivityDetailsViewModel,
+        agents: List[str],
+        plan: PlanViewModel,
+    ):
         super().__init__(id, date, description, agents)
         self.details = details
+        self.plan = plan
 
     def to_dict(self) -> Dict[str, Any]:
         """Return a dict representation of this view model.
@@ -344,6 +355,7 @@ class ActivityLogViewModel(LogViewModel):
             "description": self.description,
             "agents": self.agents,
             "details": asdict(self.details),
+            "plan": {"id": self.plan.id, "name": self.plan.name},
         }
 
 
