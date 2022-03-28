@@ -18,6 +18,17 @@
 Changes
 =======
 
+`1.1.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.3...v1.1.4>`__ (2022-03-28)
+-------------------------------------------------------------------------------------------------------
+
+This is a bugfix release fixing an issue with cycle detection in workflows.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** prevent creating cycles when creating/executing workflows.
+   (`#2785 <https://github.com/SwissDataScienceCenter/renku-python/pull/2785>`__)
+
 `1.1.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.2...v1.1.3>`__ (2022-03-25)
 -------------------------------------------------------------------------------------------------------
 

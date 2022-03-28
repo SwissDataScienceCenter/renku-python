@@ -157,8 +157,8 @@ class ActivityGateway(IActivityGateway):
         all_activities = set()
 
         for activity_chain in chain(upstream_chains, downstream_chains):
-            for activity in activity_chain:
-                all_activities.add(activity)
+            for current_activity in activity_chain:
+                all_activities.add(current_activity)
 
         # NOTE: This call raises an exception if there is a cycle
         create_activity_graph(list(all_activities), with_inputs_outputs=True)
