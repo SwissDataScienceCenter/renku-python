@@ -82,7 +82,7 @@ def repository(tmpdir):
             os.environ["HOME"] = str(home)
             os.environ["XDG_CONFIG_HOME"] = str(home)
             with Repository.get_global_configuration(writable=True) as global_config:
-                global_config.set_value("user", "name", "Renku @ SDSC")
+                global_config.set_value("user", "name", "Renku Bot")
                 global_config.set_value("user", "email", "renku@datascience.ch")
                 global_config.set_value("pull", "rebase", "false")
 

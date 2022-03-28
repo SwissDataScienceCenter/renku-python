@@ -40,6 +40,9 @@ def test_activity_log(runner, project):
     result = runner.invoke(cli, ["log"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Activity /activities/" in result.output
+    assert "Plan:" in result.output
+    assert "Id: /plans/" in result.output
+    assert "Name: run1" in result.output
     assert "Command: touch foo" in result.output
     assert "output-1: foo" in result.output
     assert "Start Time:" in result.output
