@@ -902,3 +902,35 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     # check whether parameters setting was effective
     for o in outputs:
         assert Path(o).resolve().exists()
+
+
+def test_workflow_cycle_detection(run_shell, project, capsys, client):
+    """Test creating a cycle is not possible with renku run or workflow execute."""
+    input = client.path / "input"
+
+    with client.commit():
+        input.write_text("test")
+
+    result = run_shell("renku run --name run1 -- cp input output")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    result = run_shell("renku run --name run2 -- wc output > input")
+
+    assert b"Cycles detected in execution graph" in result[0]
+
+    run_shell("git clean -fd && git reset --hard")
+
+    result = run_shell("renku run --name run2 -- wc output > wordcount")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    result = run_shell("renku workflow execute  --set output-2=input run2")
+
+    assert b"Cycles detected in execution graph" in result[0]
