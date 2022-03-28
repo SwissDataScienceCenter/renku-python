@@ -27,6 +27,8 @@ repos:
     rev: 4.0.0
     hooks:
     -   id: pydocstyle
+        args:
+        - --ignore=D105,D107,D202,D401
 -   repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.8.0
     hooks:
