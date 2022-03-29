@@ -17,6 +17,7 @@
 # limitations under the License.
 """Utilities for renku service controllers."""
 from renku.core.commands.clone import project_clone_command
+from renku.core.errors import GitCommandError
 from renku.service.logger import service_log
 from renku.service.views.decorators import requires_cache
 
@@ -31,24 +32,29 @@ def user_project_clone(cache, user_data, project_data):
     project = cache.make_project(user, project_data)
     project.abs_path.mkdir(parents=True, exist_ok=True)
 
-    with project.write_lock():
-        repo, project.initialized = (
-            project_clone_command()
-            .build()
-            .execute(
-                project_data["url_with_auth"],
-                path=project.abs_path,
-                depth=project_data["depth"],
-                raise_git_except=True,
-                config={
-                    "user.name": project_data["fullname"],
-                    "user.email": project_data["email"],
-                    "pull.rebase": False,
-                },
-                checkout_revision=project_data["ref"],
-            )
-        ).output
-        project.save()
+    try:
+        with project.write_lock():
+            repo, project.initialized = (
+                project_clone_command()
+                .build()
+                .execute(
+                    project_data["url_with_auth"],
+                    path=project.abs_path,
+                    depth=project_data["depth"],
+                    raise_git_except=True,
+                    config={
+                        "user.name": project_data["fullname"],
+                        "user.email": project_data["email"],
+                        "pull.rebase": False,
+                    },
+                    checkout_revision=project_data["ref"],
+                )
+            ).output
+            project.save()
+    except GitCommandError as e:
+        if "project you were looking for could not be found" in str(e):
+            cache.invalidate_project(user, project.project_id)
+            raise e
 
     service_log.debug(f"project successfully cloned: {repo}")
     service_log.debug(f"project folder exists: {project.exists()}")

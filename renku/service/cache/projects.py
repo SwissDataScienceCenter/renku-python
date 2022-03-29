@@ -64,7 +64,7 @@ class ProjectManagementCache(BaseCache):
         project_obj = ProjectManagementCache.get_project(user, project_id)
 
         if project_obj:
-            project_obj.delete()
+            project_obj.purge()
 
         return project_obj
 
