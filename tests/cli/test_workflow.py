@@ -18,8 +18,10 @@
 """Test ``workflow`` commands."""
 
 import itertools
+import logging
 import os
 import re
+import sys
 import tempfile
 import uuid
 from pathlib import Path
@@ -33,7 +35,7 @@ from renku.cli import cli
 from renku.core.metadata.database import Database
 from renku.core.models.jsonld import write_yaml
 from renku.core.plugins.provider import available_workflow_providers
-from tests.utils import format_result_exception
+from tests.utils import format_result_exception, write_and_commit_file
 
 
 def test_workflow_list(runner, project, run_shell, client):
@@ -1070,3 +1072,41 @@ def test_workflow_cycle_detection(run_shell, project, capsys, client):
     result = run_shell("renku workflow execute  --set output-2=input run2")
 
     assert b"Cycles detected in execution graph" in result[0]
+
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="GitHub macOS image doesn't include Docker")
+def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
+    """test workflow execute using docker with the toil provider."""
+    caplog.set_level(logging.INFO)
+
+    write_and_commit_file(client.repository, "input", "first line\nsecond line")
+    output = client.path / "output"
+
+    run_shell("renku run --name run-1 -- tail -n 1 input > output")
+
+    assert "first line" not in output.read_text()
+
+    write_and_commit_file(client.repository, "toil.yaml", "logLevel: INFO\ndocker:\n  image: ubuntu")
+
+    result = runner.invoke(cli, ["workflow", "execute", "-p", "toil", "-s", "n-1=2", "-c", "toil.yaml", "run-1"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "first line" in output.read_text()
+    assert "executing with Docker" in caplog.text
+
+
+def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
+    """test workflow execute using docker with the toil provider and stderr redirection."""
+    write_and_commit_file(client.repository, "input", "first line\nsecond line")
+    output = client.path / "output"
+
+    run_shell("renku run --name run-1 -- tail -n 1 input 2> output")
+
+    assert "first line" not in output.read_text()
+
+    write_and_commit_file(client.repository, "toil.yaml", "docker:\n  image: ubuntu")
+
+    result = runner.invoke(cli, ["workflow", "execute", "-p", "toil", "-s", "n-1=2", "-c", "toil.yaml", "run-1"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "Cannot run workflows that have stdin or stderr redirection with Docker" in result.output

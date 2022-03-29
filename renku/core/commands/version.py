@@ -175,11 +175,11 @@ def _check_version():
 
     if version < latest_version:
         click.secho(
-            "You are using renku version {version}, however version "
-            "{latest_version} is available.\n"
-            "You should consider upgrading ...".format(version=__version__, latest_version=latest_version),
+            f"You are using renku version {__version__}, however version {latest_version} is available.\n"
+            "You should consider upgrading ...",
             fg="yellow",
             bold=True,
+            err=True,
         )
 
     VersionCache(pypi_version=str(latest_version)).dump(APP_NAME)
