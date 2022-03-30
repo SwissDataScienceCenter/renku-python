@@ -139,6 +139,7 @@ class RequireClean(Command):
         """
         if "client_dispatcher" not in context:
             raise ValueError("Commit builder needs a IClientDispatcher to be set.")
+
         context["client_dispatcher"].current_client.ensure_clean(ignore_std_streams=not builder._track_std_streams)
 
     @check_finalized

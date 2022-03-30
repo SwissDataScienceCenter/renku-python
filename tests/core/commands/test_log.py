@@ -53,7 +53,7 @@ def test_log_activities(mocker):
         id=previous_id,
         started_at_time=datetime.utcnow() - timedelta(hours=1, seconds=15),
         ended_at_time=datetime.utcnow() - timedelta(hours=1, seconds=10),
-        association=Association(id=Association.generate_id(previous_id), plan=plan1),
+        association=Association(id=Association.generate_id(previous_id), plan=plan1, agent=agents[1]),
         agents=agents,
     )
 
@@ -62,7 +62,7 @@ def test_log_activities(mocker):
         id=intermediate_id,
         started_at_time=datetime.utcnow() - timedelta(hours=1, seconds=10),
         ended_at_time=datetime.utcnow() - timedelta(hours=1, seconds=5),
-        association=Association(id=Association.generate_id(intermediate_id), plan=plan2),
+        association=Association(id=Association.generate_id(intermediate_id), plan=plan2, agent=agents[1]),
         agents=agents,
     )
 
@@ -71,7 +71,7 @@ def test_log_activities(mocker):
         id=following_id,
         started_at_time=datetime.utcnow() - timedelta(hours=1, seconds=5),
         ended_at_time=datetime.utcnow() - timedelta(hours=1),
-        association=Association(id=Association.generate_id(following_id), plan=plan3),
+        association=Association(id=Association.generate_id(following_id), plan=plan3, agent=agents[1]),
         agents=agents,
     )
 

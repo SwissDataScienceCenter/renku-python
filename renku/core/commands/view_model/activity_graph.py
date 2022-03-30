@@ -186,7 +186,7 @@ class ActivityGraphViewModel:
 
     def text_representation(
         self, columns: str, color: bool = True, ascii=False
-    ) -> Tuple[Optional[str], Optional[List[List[Tuple[Point, Point, Any]]]]]:
+    ) -> Tuple[Optional[str], Optional[List[List[Tuple["Point", "Point", Any]]]]]:
         """Return an ascii representation of the graph.
 
         Args:

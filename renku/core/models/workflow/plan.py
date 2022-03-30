@@ -64,6 +64,7 @@ class AbstractPlan(Persistent, ABC):
             self.name: str = self._get_default_name()
         else:
             AbstractPlan.validate_name(name)
+            self.name = name
 
     @staticmethod
     def generate_id(uuid: Optional[str] = None) -> str:

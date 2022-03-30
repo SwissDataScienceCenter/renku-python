@@ -24,8 +24,9 @@ from persistent.mapping import PersistentMapping
 
 from renku.core.metadata.database import PERSISTED, Database
 from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Activity, Association, Usage
+from renku.core.models.provenance.activity import Activity, Usage
 from renku.core.models.workflow.plan import Plan
+from tests.utils import create_dummy_activity
 
 
 def test_database_add(database):
@@ -33,7 +34,7 @@ def test_database_add(database):
     database, storage = database
 
     id = "/activities/42"
-    activity = Activity(id=id)
+    activity = create_dummy_activity(plan="p1", id=id)
     index = database.get("activities")
     index.add(activity)
     database.commit()
@@ -51,7 +52,7 @@ def test_database_add_using_set_item(database):
     database, storage = database
 
     id = "/activities/42"
-    activity = Activity(id=id)
+    activity = create_dummy_activity(plan="p1", id=id)
     database["activities"][id] = activity
 
     assert {id} == set(database["activities"].keys())
@@ -64,7 +65,7 @@ def test_database_index_with_no_automatic_key(database):
     index = database.add_index(name="manual", object_type=Activity)
 
     id = "/activities/42"
-    activity = Activity(id=id)
+    activity = create_dummy_activity(plan="r1", usages=["a"], generations=["b"], id=id)
     index.add(activity, key=id)
 
     database.commit()
@@ -83,7 +84,7 @@ def test_database_add_with_incorrect_key(database):
     database, storage = database
 
     id = "/activities/42"
-    activity_1 = Activity(id=id)
+    activity_1 = create_dummy_activity(plan="p1", id=id)
 
     with pytest.raises(AssertionError) as e:
         database["activities"]["incorrect-key"] = activity_1
@@ -96,7 +97,7 @@ def test_database_add_fails_when_no_key_and_no_automatic_key(database):
     database, storage = database
     index = database.add_index(name="manual", object_type=Activity)
 
-    activity = Activity(id="/activities/42")
+    activity = create_dummy_activity(plan="p1", id="/activities/42")
 
     with pytest.raises(AssertionError) as e:
         index.add(activity)
@@ -112,7 +113,7 @@ def test_database_no_file_created_if_not_committed(database):
     assert storage.exists("root")
 
     id = "/activities/42"
-    activity = Activity(id=id)
+    activity = create_dummy_activity(plan="p1", id=id)
     database.get("activities").add(activity)
 
     oid = Database.hash_id(id)
@@ -126,14 +127,14 @@ def test_database_update_required_object_only(database):
     index = database.get("activities")
 
     id_1 = "/activities/42"
-    activity_1 = Activity(id=id_1)
+    activity_1 = create_dummy_activity(plan="p1", id=id_1)
     index.add(activity_1)
     database.commit()
     oid_1 = Database.hash_id(id_1)
     modification_time_before = storage.get_modification_date(oid_1)
 
     id_2 = "/activities/43"
-    activity_2 = Activity(id=id_2)
+    activity_2 = create_dummy_activity(plan="p2", id=id_2)
     index.add(activity_2)
     database.commit()
 
@@ -151,7 +152,7 @@ def test_database_update_required_root_objects_only(database):
     entity_modification_time_before = storage.get_modification_date("plans")
     activity_modification_time_before = storage.get_modification_date("activities")
 
-    activity = Activity(id="/activities/42")
+    activity = create_dummy_activity(plan="p1", id="/activities/42")
     database.get("activities").add(activity)
     database.commit()
 
@@ -180,10 +181,9 @@ def test_database_loads_only_required_objects(database):
     """Test loading an object does not load its Persistent members."""
     database, storage = database
 
-    plan = Plan(id="/plan/9")
-    association = Association(id="association", plan=plan)
+    plan = Plan(id="/plan/9", command="")
     id = "/activities/42"
-    activity = Activity(id=id, association=association)
+    activity = create_dummy_activity(plan=plan, id=id)
     database.get("activities").add(activity)
     database.commit()
 
@@ -207,10 +207,9 @@ def test_database_load_multiple(database):
     database, storage = database
     database.add_index(name="associations", object_type=Activity, attribute="association.id")
 
-    plan = Plan(id="/plan/9")
-    association = Association(id="/association/42", plan=plan)
+    plan = Plan(id="/plan/9", command="")
     id = "/activities/42"
-    activity = Activity(id=id, association=association)
+    activity = create_dummy_activity(plan=plan, id=id)
     database.get("activities").add(activity)
     database.get("associations").add(activity)
     database.commit()
@@ -219,7 +218,7 @@ def test_database_load_multiple(database):
     oid = Database.hash_id(id)
     activity_1 = new_database.get(oid)
     activity_2 = new_database.get("activities").get(id)
-    activity_3 = new_database.get("associations").get("/association/42")
+    activity_3 = new_database.get("associations").get("/activities/42/association")
 
     assert activity_1 is activity_2
     assert activity_2 is activity_3
@@ -234,15 +233,15 @@ def test_database_index_update(database):
 
     name = "same-name"
 
-    plan_1 = Plan(id="/plans/42", name=name, description="old")
+    plan_1 = Plan(id="/plans/42", name=name, description="old", command="")
     database.get(index_name).add(plan_1)
-    plan_2 = Plan(id="/plans/43", name=name, description="new")
+    plan_2 = Plan(id="/plans/43", name=name, description="new", command="")
     database.get(index_name).add(plan_2)
     assert plan_2 is database.get(index_name).get(name)
 
     database.commit()
 
-    plan_3 = Plan(id="/plans/44", name=name, description="newer")
+    plan_3 = Plan(id="/plans/44", name=name, description="newer", command="")
     database.get(index_name).add(plan_3)
     database.commit()
 
@@ -275,7 +274,7 @@ def test_database_index_different_key_type(database):
     entity = Entity(checksum="42", path="dummy/path")
     usage = Usage(entity=entity, id="/usages/42")
 
-    activity = Activity(id="/activities/42", usages=[usage])
+    activity = create_dummy_activity(plan="r1", id="/activities/42", usages=[usage])
     database.get(index_name).add(activity, key_object=usage)
     database.commit()
 
@@ -299,7 +298,7 @@ def test_database_wrong_index_key_type(database):
     index_name = "usages"
     database.add_index(name=index_name, object_type=Activity, attribute="id", key_type=Usage)
 
-    activity = Activity(id="/activities/42")
+    activity = create_dummy_activity(plan="r1", id="/activities/42")
 
     with pytest.raises(AssertionError) as e:
         database.get(index_name).add(activity)
@@ -314,7 +313,7 @@ def test_database_missing_attribute(database):
     index_name = "usages"
     database.add_index(name=index_name, object_type=Activity, attribute="missing.attribute")
 
-    activity = Activity(id="/activities/42")
+    activity = create_dummy_activity(plan="r1", id="/activities/42")
 
     with pytest.raises(AttributeError) as e:
         database.get(index_name).add(activity)
@@ -327,7 +326,7 @@ def test_database_remove(database):
     database, storage = database
 
     id = "/activities/42"
-    activity = Activity(id=id)
+    activity = create_dummy_activity(plan="r1", id=id)
     database.get("activities").add(activity)
     database.commit()
 
@@ -366,9 +365,9 @@ def test_database_persistent_collections(database):
     entity_path = "dummy/path"
     usage = Usage(entity=Entity(checksum=entity_checksum, path=entity_path), id="/usages/42")
     id_1 = "/activities/1"
-    activity_1 = Activity(id=id_1, usages=[usage])
+    activity_1 = create_dummy_activity(plan="r1", usages=[usage], id=id_1)
     id_2 = "/activities/2"
-    activity_2 = Activity(id=id_2, usages=[usage])
+    activity_2 = create_dummy_activity(plan="r2", usages=[usage], id=id_2)
 
     p_mapping = PersistentMapping()
 
@@ -385,7 +384,7 @@ def test_database_persistent_collections(database):
     collections = new_database[index_name]
 
     id_3 = "/activities/3"
-    activity_3 = Activity(id=id_3, usages=[usage])
+    activity_3 = create_dummy_activity(plan="r3", usages=[usage], id=id_3)
     collections[entity_path][entity_checksum].append(activity_3)
 
     assert {id_1, id_2, id_3} == {activity.id for activity in collections[entity_path][entity_checksum]}
@@ -399,9 +398,9 @@ def test_database_immutable_object(database):
 
     usage = Usage(entity=Entity(checksum="42", path="dummy/path"), id="/usages/42")
     id_1 = "/activities/1"
-    activity_1 = Activity(id=id_1, usages=[usage])
+    activity_1 = create_dummy_activity(plan="r1", usages=[usage], id=id_1)
     id_2 = "/activities/2"
-    activity_2 = Activity(id=id_2, usages=[usage])
+    activity_2 = create_dummy_activity(plan="r2", usages=[usage], id=id_2)
 
     database.get("activities").add(activity_1)
     database.get("activities").add(activity_2)

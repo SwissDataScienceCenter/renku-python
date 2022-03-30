@@ -191,7 +191,7 @@ def _compose_workflow(
         links(List[str]): Links between parameters of child Plans.
         param_descriptions(List[str]): Descriptions of parameters.
         map_inputs(bool): Whether or not to automatically expose child inputs.
-        map_inputs(bool): Whether or not to automatically expose child outputs.
+        map_outputs(bool): Whether or not to automatically expose child outputs.
         map_params(bool): Whether or not to automatically expose child parameters.
         link_all(bool): Whether or not to automatically link child steps' parameters.
         keywords(List[str]): Keywords for the Plan.
@@ -422,7 +422,7 @@ def _export_workflow(
     workflow = _find_workflow(name_or_id)
 
     output_path: Optional[Path] = None
-    if output and output is str:
+    if output and isinstance(output, str):
         output_path = Path(output)
     elif output:
         output_path = cast(Path, output)

@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from typing import Iterator, List, Optional, Union
+from typing import Iterator, List, Optional, Union, cast
 
 import pytest
 from flaky import flaky
@@ -238,9 +238,10 @@ def write_and_commit_file(repository: Repository, path: Union[Path, str], conten
 
 def create_dummy_activity(
     plan: Union[Plan, str],
-    usages: List[Union[Path, str]] = [],
-    generations: List[Union[Path, str]] = [],
+    usages: List[Union[Path, str, Usage]] = [],
+    generations: List[Union[Path, str, Generation]] = [],
     ended_at_time=None,
+    id: Optional[str] = None,
 ) -> Activity:
     """Create a dummy activity."""
     if not isinstance(plan, Plan):
@@ -250,7 +251,7 @@ def create_dummy_activity(
     ended_at_time = ended_at_time or (datetime.utcnow() - timedelta(hours=1))
     checksum = "abc123"
 
-    activity_id = Activity.generate_id()
+    activity_id = id or Activity.generate_id()
 
     return Activity(
         id=activity_id,
@@ -272,6 +273,8 @@ def create_dummy_activity(
                 id=Generation.generate_id(activity_id),
                 entity=Entity(id=Entity.generate_id(checksum, g), checksum=checksum, path=g),
             )
+            if not isinstance(g, Generation)
+            else cast(Generation, g)
             for g in generations
         ],
         usages=[
@@ -279,6 +282,8 @@ def create_dummy_activity(
                 id=Usage.generate_id(activity_id),
                 entity=Entity(id=Entity.generate_id(checksum, u), checksum=checksum, path=u),
             )
+            if not isinstance(u, Usage)
+            else cast(Usage, u)
             for u in usages
         ],
     )

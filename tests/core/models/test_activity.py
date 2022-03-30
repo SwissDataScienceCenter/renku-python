@@ -31,7 +31,7 @@ from renku.core.models.workflow.plan import Plan
 def test_activity_parameter_values(mocker):
     """Test parameter values are correctly set on an activity."""
 
-    def get_entity_from_revision_mock(repository, path, revision=None):
+    def get_entity_from_revision_mock(repository, path, revision=None, bypass_cache=False):
         return Entity(checksum="abcdefg", id=uuid4().hex, path=path)
 
     def get_git_user_mock(client):
@@ -67,7 +67,11 @@ def test_activity_parameter_values(mocker):
     p4.actual_value = "5"
 
     plan = Plan(
-        id="test", inputs=[i1, i1_copy, i3, i4], outputs=[o1, o1_copy, o3, o4], parameters=[p1, p1_copy, p3, p4]
+        id="test",
+        command="",
+        inputs=[i1, i1_copy, i3, i4],
+        outputs=[o1, o1_copy, o3, o4],
+        parameters=[p1, p1_copy, p3, p4],
     )
 
     activity = Activity.from_plan(

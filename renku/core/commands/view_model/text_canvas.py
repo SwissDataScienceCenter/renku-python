@@ -56,7 +56,7 @@ class RectangleShape(Shape):
 
     def draw(
         self, color: bool = True, ascii=False
-    ) -> Tuple[npt.NDArray[np.int32], npt.NDArray[np.int32], npt.NDArray[np.str_]]:
+    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
         """Return the indices and values to draw this shape onto the canvas.
 
         Args:
@@ -135,7 +135,7 @@ class TextShape(Shape):
 
     def draw(
         self, color: bool = True, ascii=False
-    ) -> Tuple[npt.NDArray[np.int32], npt.NDArray[np.int32], npt.NDArray[np.str_]]:
+    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
         """Return the indices and values to draw this shape onto the canvas.
 
         Args:
@@ -206,7 +206,7 @@ class NodeShape(Shape):
 
     def draw(
         self, color: bool = True, ascii=False
-    ) -> Tuple[npt.NDArray[np.int32], npt.NDArray[np.int32], npt.NDArray[np.str_]]:
+    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
         """Return the indices and values to draw this shape onto the canvas.
 
         Args:
@@ -301,7 +301,7 @@ class EdgeShape(Shape):
 
     def draw(
         self, color: bool = True, ascii=False
-    ) -> Tuple[npt.NDArray[np.int32], npt.NDArray[np.int32], npt.NDArray[np.str_]]:
+    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
         """Return the indices and values to draw this shape onto the canvas.
 
         Args:

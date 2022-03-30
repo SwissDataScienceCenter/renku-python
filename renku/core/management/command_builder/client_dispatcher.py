@@ -46,7 +46,7 @@ class ClientDispatcher(IClientDispatcher):
         self, path: Union[Path, str], renku_home: str = RENKU_HOME, external_storage_requested: bool = True
     ) -> None:
         """Create and push a new client to the stack."""
-        if path is str:
+        if isinstance(path, str):
             path = Path(path)
 
         new_client = LocalClient(path=path)

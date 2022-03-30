@@ -22,14 +22,14 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import IO, Any, Mapping, Optional, Sequence, Union
+from typing import IO, Any, Mapping, Optional, Sequence, Union, cast
 
 import click
 import pytest
 from click.testing import CliRunner, Result
 
 
-class OutputStreamProxy(IO[str]):
+class OutputStreamProxy:
     """A proxy class to allow reading from stdout/stderr objects."""
 
     def __init__(self, stream):
@@ -76,13 +76,13 @@ class RenkuRunner(CliRunner):
         # and therefore, tests fail because nothing is printed to the outputs. We use a proxy around the original
         # stderr and stdout so that we can read from them without a need for BytesIO objects.
         with super().isolation(input=input, env=env, color=color):
-            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):  # type: ignore
                 yield stdout, stderr
 
     def invoke(  # type: ignore
         self,
         cli: click.BaseCommand,
-        args: Optional[Union[str, Sequence[str]]] = None,
+        args: Optional[Union[str, Sequence[Union[Path, str]]]] = None,
         input: Optional[Union[str, bytes, IO]] = None,
         env: Optional[Mapping[str, Optional[str]]] = None,
         catch_exceptions: bool = True,
@@ -109,7 +109,7 @@ class RenkuRunner(CliRunner):
         with Isolation(stdout=stdout, stderr=stderr):
             return super().invoke(
                 cli=cli,
-                args=args,
+                args=cast(Optional[Union[str, Sequence[str]]], args),
                 input=stdin or input,
                 env=env,
                 catch_exceptions=catch_exceptions,

@@ -157,7 +157,7 @@ class Activity(Persistent):
             if input_path in usages:
                 continue
 
-            entity = get_entity_from_revision(repository=client.repository, path=input_path)
+            entity = get_entity_from_revision(repository=client.repository, path=input_path, bypass_cache=True)
 
             dependency = Usage(entity=entity, id=Usage.generate_id(activity_id))
 
@@ -173,7 +173,7 @@ class Activity(Persistent):
             if output_path in generations:
                 continue
 
-            entity = get_entity_from_revision(repository=client.repository, path=output_path)
+            entity = get_entity_from_revision(repository=client.repository, path=output_path, bypass_cache=True)
 
             generation = Generation(entity=entity, id=Usage.generate_id(activity_id))
 

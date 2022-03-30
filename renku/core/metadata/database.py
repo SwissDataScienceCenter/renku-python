@@ -289,13 +289,12 @@ class Database:
 
     def _initialize_root(self):
         """Initialize root object."""
-        if not self._root:
-            try:
-                self._root = cast(RenkuOOBTree, self.get(Database.ROOT_OID))
-            except errors.ObjectNotFoundError:
-                self._root = RenkuOOBTree()
-                self._root._p_oid = Database.ROOT_OID
-                self.register(self._root)
+        try:
+            self._root = cast(RenkuOOBTree, self.get(Database.ROOT_OID))
+        except errors.ObjectNotFoundError:
+            self._root = RenkuOOBTree()
+            self._root._p_oid = Database.ROOT_OID
+            self.register(self._root)
 
     def add_index(self, name: str, object_type: type, attribute: str = None, key_type: type = None) -> "Index":
         """Add an index.

@@ -21,7 +21,7 @@ import curses.panel
 from typing import Dict, List, Tuple
 
 from renku.core import errors
-from renku.core.commands.view_model.activity_graph import Point
+from renku.core.commands.view_model.text_canvas import Point
 from renku.core.models.provenance.activity import Activity
 
 

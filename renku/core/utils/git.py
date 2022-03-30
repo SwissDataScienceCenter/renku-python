@@ -41,7 +41,7 @@ RENKU_BACKUP_PREFIX = "renku-backup"
 
 
 # TODO: Make sure caching is thread-safe
-_entity_cache: Dict[Tuple[Optional[str], str], Union[Entity, Collection]] = {}
+_entity_cache: Dict[Tuple[Optional[str], str], Union["Entity", "Collection"]] = {}
 
 
 def run_command(command, *paths, separator=None, **kwargs):
@@ -351,7 +351,7 @@ def is_path_safe(path: Union[Path, str]) -> bool:
 
 
 def get_entity_from_revision(
-    repository: "Repository", path: Union[Path, str], revision: Optional[str] = None
+    repository: "Repository", path: Union[Path, str], revision: Optional[str] = None, bypass_cache: bool = False
 ) -> "Entity":
     """Return an Entity instance from given path and revision.
 
@@ -359,6 +359,7 @@ def get_entity_from_revision(
         repository("Repository"): The current repository.
         path(Union[Path, str]): The path of the entity.
         revision(str, optional): The revision to check at (Default value = None).
+        bypass_cache(bool): Whether to ignore cached entries and get information from disk (Default value = False).
 
     Returns:
         "Entity": The Entity for the given path and revision.
@@ -378,7 +379,7 @@ def get_entity_from_revision(
 
             assert all(member_path != m.path for m in members)
 
-            entity = get_entity_from_revision(repository, member_path, revision)
+            entity = get_entity_from_revision(repository, member_path, revision, bypass_cache=bypass_cache)
             # NOTE: If a path is not found at a revision we assume that it didn't exist at that revision
             if entity:
                 members.append(entity)
@@ -388,7 +389,7 @@ def get_entity_from_revision(
     global _entity_cache
     key = (revision, str(path))
     cached_entry = _entity_cache.get(key)
-    if cached_entry:
+    if cached_entry and not bypass_cache:
         return cached_entry
 
     # NOTE: For untracked directory the hash is None; make sure to stage them first before calling this function.
@@ -746,7 +747,7 @@ def clone_repository(
 
     assert config is None or isinstance(config, dict), f"Config should be a dict not '{type(config)}'"
 
-    path = Path(path) if path is not None else Path(get_repository_name(url))
+    path = Path(path) if path else Path(get_repository_name(url))
 
     existing_repository = check_and_reuse_existing_repository()
     if existing_repository is not None:

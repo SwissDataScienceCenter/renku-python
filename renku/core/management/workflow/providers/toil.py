@@ -192,13 +192,13 @@ def importFileWrapper(storage: AbstractFileStore, file_path: str) -> FileID:
     return storage.importFile(file_uri)
 
 
-def process_children(parent: Job, dag: nx.DiGraph, jobs: Dict[str, Job], basedir: Path, storage: AbstractFileStore):
+def process_children(parent: Job, dag: nx.DiGraph, jobs: Dict[int, Job], basedir: Path, storage: AbstractFileStore):
     """Recursively process children of a workflow."""
 
     outputs = list()
     import_function = functools.partial(importFileWrapper, storage)
     for child in nx.neighbors(dag, parent.workflow):
-        child_job = cast(AbstractToilJob, jobs[str(id(child))])
+        child_job = cast(AbstractToilJob, jobs[id(child)])
         file_metadata = _upload_files(import_function, child.inputs, basedir)
         child_job.set_input_files(file_metadata)
         child_job.add_input_promise(parent.rv())

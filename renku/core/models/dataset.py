@@ -257,7 +257,7 @@ class DatasetFile(Slots):
         cls, client, path: Union[str, Path], source=None, based_on: Optional[RemoteEntity] = None
     ) -> "DatasetFile":
         """Return an instance from a path."""
-        entity = get_entity_from_revision(repository=client.repository, path=path)
+        entity = get_entity_from_revision(repository=client.repository, path=path, bypass_cache=True)
 
         is_external = is_external_file(path=path, client_path=client.path)
         return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)

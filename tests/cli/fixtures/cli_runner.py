@@ -24,7 +24,7 @@ import pytest
 if TYPE_CHECKING:
     from renku.core.models.provenance.activity import Activity
 
-Result = NamedTuple("Result", [("exit_code", int), ("activities", Union[None, Activity, List[Activity]])])
+Result = NamedTuple("Result", [("exit_code", int), ("activities", Union[None, "Activity", List["Activity"]])])
 
 
 @pytest.fixture

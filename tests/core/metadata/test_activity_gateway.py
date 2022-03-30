@@ -24,8 +24,8 @@ from tests.utils import create_dummy_activity
 
 
 def test_activity_gateway_downstream_activities(dummy_database_injection_manager):
-    """test getting downstream activities work."""
-    plan = Plan(id=Plan.generate_id(), name="plan")
+    """Test getting downstream activities work."""
+    plan = Plan(id=Plan.generate_id(), name="plan", command="")
 
     intermediate = create_dummy_activity(plan=plan, usages=["some/data"], generations=["other/data/file"])
     previous = create_dummy_activity(plan=plan, generations=["some/"])
@@ -52,7 +52,7 @@ def test_activity_gateway_downstream_activities(dummy_database_injection_manager
 
 
 def test_activity_gateway_downstream_activity_chains(dummy_database_injection_manager):
-    """test getting downstream activity chains work."""
+    """Test getting downstream activity chains work."""
     r1 = create_dummy_activity(plan="r1", usages=["a"], generations=["b"])
     r2 = create_dummy_activity(plan="r2", usages=["b"], generations=["c"])
     r3 = create_dummy_activity(plan="r3", usages=["d"], generations=["e"])
@@ -86,7 +86,7 @@ def test_activity_gateway_downstream_activity_chains(dummy_database_injection_ma
 
 
 def test_activity_gateway_upstream_activity_chains(dummy_database_injection_manager):
-    """test getting upstream activity chains work."""
+    """Test getting upstream activity chains work."""
     r1 = create_dummy_activity(plan="r1", usages=["a"], generations=["b"])
     r2 = create_dummy_activity(plan="r2", usages=["b"], generations=["c"])
     r3 = create_dummy_activity(plan="r3", usages=["d"], generations=["e"])

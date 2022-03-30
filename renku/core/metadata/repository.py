@@ -444,7 +444,7 @@ class BaseRepository:
         """Get content of an object using its checksum, write it to a file, and return the file's path."""
         absolute_path = get_absolute_path(path, self.path)
 
-        def get_content_helper() -> bool:
+        def get_content_helper(output_file) -> bool:
             command = ["git", "cat-file"]
 
             if checksum is None:
@@ -485,10 +485,10 @@ class BaseRepository:
 
         if output_file is None:
             with tempfile.NamedTemporaryFile(mode="w+b", delete=False) as temp_output_file:
-                if get_content_helper():
+                if get_content_helper(output_file=temp_output_file):
                     return temp_output_file.name
         else:
-            if get_content_helper():
+            if get_content_helper(output_file):
                 return output_file.name
 
         from_submodules = get_content_from_submodules()

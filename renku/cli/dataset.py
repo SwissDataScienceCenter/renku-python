@@ -872,7 +872,7 @@ def export_provider_argument(*param_decls, **attrs):
         from renku.core.management.dataset.providers import ProviderFactory
 
         providers = [k.lower() for k, p in ProviderFactory.providers().items() if p.supports_export]
-        f = argument("provider", type=click.Choice(list(providers.keys())))(f)
+        f = argument("provider", type=click.Choice(providers))(f)
         return f
 
     return wrapper

@@ -998,7 +998,7 @@ name = "mypy"
 version = "0.942"
 description = "Optional static typing for Python"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -1571,27 +1571,6 @@ pytest = ">=5.0"
 
 [package.extras]
 dev = ["pre-commit", "tox", "pytest-asyncio"]
-
-[[package]]
-name = "pytest-mypy"
-version = "0.9.1"
-description = "Mypy static type checker plugin for Pytest"
-category = "main"
-optional = true
-python-versions = ">=3.5"
-
-[package.dependencies]
-attrs = ">=19.0"
-filelock = ">=3.0"
-mypy = [
-    {version = ">=0.500", markers = "python_version < \"3.8\""},
-    {version = ">=0.700", markers = "python_version >= \"3.8\" and python_version < \"3.9\""},
-    {version = ">=0.780", markers = "python_version >= \"3.9\""},
-]
-pytest = [
-    {version = ">=6.2", markers = "python_version >= \"3.10\""},
-    {version = ">=4.6", markers = "python_version >= \"3.6\" and python_version < \"3.10\""},
-]
 
 [[package]]
 name = "pytest-pep8"
@@ -2203,7 +2182,7 @@ name = "tomli"
 version = "2.0.1"
 description = "A lil' TOML parser"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 
 [[package]]
@@ -2251,7 +2230,7 @@ name = "typed-ast"
 version = "1.5.2"
 description = "a fork of Python 2 and 3 ast modules with type comment support"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [[package]]
@@ -2607,16 +2586,16 @@ cffi = {version = ">=1.11", markers = "platform_python_implementation == \"PyPy\
 cffi = ["cffi (>=1.11)"]
 
 [extras]
-all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "marshmallow", "pexpect", "pillow", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
+all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "marshmallow", "mypy", "pexpect", "pillow", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
 docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
 service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "marshmallow", "pillow", "ptvsd", "python-dotenv", "redis", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
-tests = ["black", "check-manifest", "coverage", "fakeredis", "flakehell", "flaky", "freezegun", "isort", "pexpect", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-mypy", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "responses", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate"]
+tests = ["black", "check-manifest", "coverage", "fakeredis", "flakehell", "flaky", "freezegun", "isort", "mypy", "pexpect", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "responses", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate"]
 toil = ["toil"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "065a4c112b1486353e93f8f21cf7f3274884597d4630e94d1b2f31eb3d0c6774"
+content-hash = "3ad0d6f7f93c0b349e0c26f3952d3834c18b00d6e16a4fb1f47697587c917e67"
 
 [metadata.files]
 addict = [
@@ -3707,10 +3686,6 @@ pytest-forked = [
 pytest-mock = [
     {file = "pytest-mock-3.7.0.tar.gz", hash = "sha256:5112bd92cc9f186ee96e1a92efc84969ea494939c3aead39c50f421c4cc69534"},
     {file = "pytest_mock-3.7.0-py3-none-any.whl", hash = "sha256:6cff27cec936bf81dc5ee87f07132b807bcda51106b5ec4b90a04331cba76231"},
-]
-pytest-mypy = [
-    {file = "pytest-mypy-0.9.1.tar.gz", hash = "sha256:9ffa3bf405c12c5c6be9e92e22bebb6ab2c91b9c32f45b0f0c93af473269ab5c"},
-    {file = "pytest_mypy-0.9.1-py3-none-any.whl", hash = "sha256:a2505fcf61f1c0c51f950d4623ea8ca2daf6fb2101a5603554bad2e130202083"},
 ]
 pytest-pep8 = [
     {file = "pytest-pep8-1.0.6.tar.gz", hash = "sha256:032ef7e5fa3ac30f4458c73e05bb67b0f036a8a5cb418a534b3170f89f120318"},

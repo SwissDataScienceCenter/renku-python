@@ -465,7 +465,7 @@ class RepositoryTemplates(TemplatesSource):
         try:
             content = self.repository.get_content(TEMPLATE_MANIFEST, revision=reference)
 
-            if content is bytes:
+            if isinstance(content, bytes):
                 return False
             manifest = TemplatesManifest.from_string(cast(str, content))
         except (errors.ExportError, errors.InvalidTemplateError):
