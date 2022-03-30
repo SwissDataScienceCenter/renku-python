@@ -22,7 +22,7 @@ import itertools
 import re
 from abc import ABC
 from datetime import datetime
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Set, Tuple, cast
 from uuid import uuid4
 
 import marshmallow
@@ -42,31 +42,31 @@ class AbstractPlan(Persistent, ABC):
     def __init__(
         self,
         *,
-        description: str = None,
+        description: Optional[str] = None,
         id: str,
-        date_created: datetime = None,
-        invalidated_at: datetime = None,
-        keywords: List[str] = None,
-        name: str = None,
-        project_id: str = None,
-        derived_from: str = None,
+        date_created: Optional[datetime] = None,
+        invalidated_at: Optional[datetime] = None,
+        keywords: Optional[List[str]] = None,
+        name: Optional[str] = None,
+        project_id: Optional[str] = None,
+        derived_from: Optional[str] = None,
     ):
-        self.description: str = description
+        self.description: Optional[str] = description
         self.id: str = id
         self.date_created: datetime = date_created or local_now()
-        self.invalidated_at: datetime = invalidated_at
+        self.invalidated_at: Optional[datetime] = invalidated_at
         self.keywords: List[str] = keywords or []
-        self.name: str = name
-        self.project_id: str = project_id
-        self.derived_from: str = derived_from
 
-        if not self.name:
-            self.name = self._get_default_name()
+        self.project_id: Optional[str] = project_id
+        self.derived_from: Optional[str] = derived_from
+
+        if name is None:
+            self.name: str = self._get_default_name()
         else:
             AbstractPlan.validate_name(name)
 
     @staticmethod
-    def generate_id(uuid: str = None) -> str:
+    def generate_id(uuid: Optional[str] = None) -> str:
         """Generate an identifier for Plan."""
         uuid = uuid or uuid4().hex
         return f"/plans/{uuid}"
@@ -118,7 +118,7 @@ class AbstractPlan(Persistent, ABC):
         """Find if a parameter exists on this plan."""
         raise NotImplementedError()
 
-    def find_parameter_workflow(self, parameter: CommandParameterBase) -> "Plan":
+    def find_parameter_workflow(self, parameter: CommandParameterBase) -> Optional["AbstractPlan"]:
         """Return the workflow a parameter belongs to."""
         raise NotImplementedError()
 
@@ -129,19 +129,19 @@ class Plan(AbstractPlan):
     def __init__(
         self,
         *,
-        parameters: List[CommandParameter] = None,
-        command: str = None,
-        description: str = None,
+        parameters: Optional[List[CommandParameter]] = None,
+        command: str,
+        description: Optional[str] = None,
         id: str,
-        inputs: List[CommandInput] = None,
-        date_created: datetime = None,
-        invalidated_at: datetime = None,
-        keywords: List[str] = None,
-        name: str = None,
-        derived_from: str = None,
-        project_id: str = None,
-        outputs: List[CommandOutput] = None,
-        success_codes: List[int] = None,
+        inputs: Optional[List[CommandInput]] = None,
+        date_created: Optional[datetime] = None,
+        invalidated_at: Optional[datetime] = None,
+        keywords: Optional[List[str]] = None,
+        name: Optional[str] = None,
+        derived_from: Optional[str] = None,
+        project_id: Optional[str] = None,
+        outputs: Optional[List[CommandOutput]] = None,
+        success_codes: Optional[List[int]] = None,
     ):
         self.command: str = command
         self.inputs: List[CommandInput] = inputs or []
@@ -161,11 +161,18 @@ class Plan(AbstractPlan):
 
         # NOTE: Validate plan
         all_names = [p.name for p in itertools.chain(self.inputs, self.outputs, self.parameters)]
-        seen = set()
-        duplicates = [n for n in all_names if n in seen or seen.add(n)]
+        seen: Set[str] = set()
+
+        duplicates: List[str] = []
+        for n in all_names:
+            if n in seen:
+                duplicates.append(n)
+            else:
+                seen.add(n)
+
         if duplicates:
-            duplicates = ", ".join(duplicates)
-            raise errors.ParameterError(f"Duplicate input, output or parameter names found: {duplicates}")
+            duplicates_string = ", ".join(duplicates)
+            raise errors.ParameterError(f"Duplicate input, output or parameter names found: {duplicates_string}")
 
     def is_similar_to(self, other: "Plan") -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
@@ -210,7 +217,7 @@ class Plan(AbstractPlan):
         except (ValueError, IndexError):
             raise errors.ParameterNotFoundError(reference, self.name)
 
-        for parameter in self.inputs + self.outputs + self.parameters:
+        for parameter in self.inputs + self.outputs + self.parameters:  # type: ignore
             if parameter.name == reference:
                 return parameter
 
@@ -220,7 +227,7 @@ class Plan(AbstractPlan):
         """Find if a parameter exists on this plan."""
         return any(
             parameter.id == p.id and parameter.actual_value == p.actual_value
-            for p in self.inputs + self.outputs + self.parameters
+            for p in self.inputs + self.outputs + self.parameters  # type: ignore
         )
 
     def get_parameter_path(self, parameter: CommandParameterBase):
@@ -230,14 +237,17 @@ class Plan(AbstractPlan):
 
         return None
 
-    def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
+    def get_parameter_by_id(self, parameter_id: str) -> Optional[CommandParameterBase]:
         """Get a parameter on this plan by id."""
-        return next((p for p in self.inputs + self.outputs + self.parameters if parameter_id == p.id), None)
+        return next(
+            (p for p in self.inputs + self.outputs + self.parameters if parameter_id == p.id), None  # type: ignore
+        )
 
-    def find_parameter_workflow(self, parameter: CommandParameterBase) -> "Plan":
+    def find_parameter_workflow(self, parameter: CommandParameterBase) -> Optional[AbstractPlan]:
         """Return the workflow a parameter belongs to."""
         if self.find_parameter(parameter):
             return self
+        return None
 
     def assign_new_id(self):
         """Assign a new UUID.
@@ -273,16 +283,16 @@ class Plan(AbstractPlan):
     def to_argv(self, with_streams: bool = False) -> List[Any]:
         """Convert a Plan into argv list."""
         arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
-        arguments = filter(lambda a: a.position is not None and not getattr(a, "mapped_to", None), arguments)
-        arguments = sorted(arguments, key=lambda a: a.position)
+        filtered_arguments = filter(lambda a: a.position is not None and not getattr(a, "mapped_to", None), arguments)
+        arguments = sorted(filtered_arguments, key=lambda a: a.position)  # type: ignore
 
         argv = self.command.split(" ") if self.command else []
         argv.extend(e for a in arguments for e in a.to_argv())
 
         if with_streams:
             arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
-            arguments = filter(lambda a: a.position is not None and getattr(a, "mapped_to", None), arguments)
-            argv.extend(a.to_stream_representation() for a in arguments)
+            filtered_arguments = filter(lambda a: a.position is not None and getattr(a, "mapped_to", None), arguments)
+            argv.extend(a.to_stream_representation() for a in filtered_arguments)  # type: ignore
 
         return argv
 
@@ -291,7 +301,7 @@ class Plan(AbstractPlan):
         for param_string in params_strings:
             name, value = param_string.split("=", maxsplit=1)
             found = False
-            for collection in [self.inputs, self.outputs, self.parameters]:
+            for collection in cast(List[List[CommandParameterBase]], [self.inputs, self.outputs, self.parameters]):
                 for i, param in enumerate(collection):
                     if param.name == name:
                         new_param = param.derive(plan_id=self.id)

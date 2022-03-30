@@ -102,7 +102,7 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
     # NOTE: Force-add to include possible ignored files
     client.repository.add(*files.values(), force=True)
 
-    move_files(files=files, to_dataset=to_dataset)
+    move_files(files=files, to_dataset_name=to_dataset)
 
     if verbose:
         _show_moved_files(client.path, files)
@@ -209,11 +209,11 @@ def _warn_about_git_filters(files, client_dispatcher: IClientDispatcher):
         dst_attrs.append(f"{str(dst)}{attrs_text}")
 
     if src_attrs:
-        src_attrs = "\n\t".join(src_attrs)
-        dst_attrs = "\n\t".join(dst_attrs)
+        src_attrs_str = "\n\t".join(src_attrs)
+        dst_attrs_str = "\n\t".join(dst_attrs)
         communication.warn(
-            f"There are custom git attributes for the following files:\n\t{src_attrs}\n"
-            f"You need to edit '.gitattributes' and add the following:\n\t{dst_attrs}"
+            f"There are custom git attributes for the following files:\n\t{src_attrs_str}\n"
+            f"You need to edit '.gitattributes' and add the following:\n\t{dst_attrs_str}"
         )
 
 

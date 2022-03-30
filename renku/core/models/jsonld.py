@@ -25,7 +25,7 @@ try:
     from yaml import CDumper as Dumper
     from yaml import CSafeLoader as SafeLoader
 except ImportError:
-    from yaml import Dumper, SafeLoader
+    from yaml import Dumper, SafeLoader  # type: ignore
 
 
 # Shamelessly copy/pasting from SO:

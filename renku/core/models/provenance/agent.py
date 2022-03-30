@@ -19,6 +19,7 @@
 
 import re
 import uuid
+from typing import Optional, cast
 from urllib.parse import quote
 
 from renku.core.metadata.immutable import Slots
@@ -72,22 +73,24 @@ class Person(Agent):
     def __init__(
         self,
         *,
-        affiliation: str = None,
-        alternate_name: str = None,
-        email: str = None,
-        id: str = None,
+        affiliation: Optional[str] = None,
+        alternate_name: Optional[str] = None,
+        email: Optional[str] = None,
+        id: Optional[str] = None,
         name: str,
     ):
         self._validate_email(email)
 
-        if not id or id == "mailto:None" or id.startswith("_:"):
+        if id is None or id == "mailto:None" or id.startswith("_:"):
             full_identity = Person.get_full_identity(email, affiliation, name)
             id = Person.generate_id(email, full_identity)
 
         affiliation = affiliation or None
         alternate_name = alternate_name or None
 
-        super().__init__(affiliation=affiliation, alternate_name=alternate_name, email=email, id=id, name=name)
+        super().__init__(
+            affiliation=affiliation, alternate_name=alternate_name, email=email, id=cast(str, id), name=name
+        )
 
     def __eq__(self, other):
         if self is other:

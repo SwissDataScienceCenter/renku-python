@@ -123,7 +123,7 @@ class CWLToolProvider(IWorkflowProvider):
                     return unquote(location[len(prefix) :])
                 return unquote(location)
 
-            locations = {remove_prefix(output["location"]) for output in outputs.values()}
+            locations = {remove_prefix(output["location"]) for output in outputs.values()}  # type: ignore
             # make sure to not move an output if it's containing directory gets moved
             locations = {
                 location

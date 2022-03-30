@@ -30,7 +30,7 @@ from typing import Union
 
 import patoolib
 import requests
-from requests.adapters import HTTPAdapter, TimeoutSauce
+from requests.adapters import HTTPAdapter, TimeoutSauce  # type: ignore
 from urllib3.util.retry import Retry
 
 from renku.core import errors
@@ -52,7 +52,7 @@ class _CustomTimeout(TimeoutSauce):
         super().__init__(*args, **kwargs)
 
 
-requests.adapters.TimeoutSauce = _CustomTimeout
+requests.adapters.TimeoutSauce = _CustomTimeout  # type: ignore
 
 
 def delete(url, headers=None):

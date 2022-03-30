@@ -24,7 +24,7 @@ from collections import defaultdict
 from datetime import datetime
 from functools import reduce
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
 if TYPE_CHECKING:
     from networkx import DiGraph
@@ -302,7 +302,7 @@ def _compose_workflow(
 
     if link_all:
         # NOTE: propagate values to for linking to use
-        rv = CompositePlanValueResolver(plan, None)
+        rv = CompositePlanValueResolver(plan)
         plan = rv.apply()
 
         graph = ExecutionGraph([plan], virtual_links=True)
@@ -399,7 +399,11 @@ def edit_workflow_command():
 
 @inject.autoparams()
 def _export_workflow(
-    name_or_id, client_dispatcher: IClientDispatcher, format: str, output: Optional[str], values: Optional[str]
+    name_or_id,
+    client_dispatcher: IClientDispatcher,
+    format: str,
+    output: Optional[Union[str, Path]],
+    values: Optional[str],
 ):
     """Export a workflow to a given format.
 
@@ -416,12 +420,16 @@ def _export_workflow(
     client = client_dispatcher.current_client
 
     workflow = _find_workflow(name_or_id)
-    if output:
-        output = Path(output)
+
+    output_path: Optional[Path] = None
+    if output and output is str:
+        output_path = Path(output)
+    elif output:
+        output_path = cast(Path, output)
 
     if values:
-        values = safe_read_yaml(values)
-        rv = ValueResolver.get(workflow, values)
+        parsed_values = safe_read_yaml(values)
+        rv = ValueResolver.get(workflow, parsed_values)
         workflow = rv.apply()
         if rv.missing_parameters:
             communication.warn(
@@ -432,7 +440,7 @@ def _export_workflow(
     from renku.core.plugins.workflow import workflow_converter
 
     converter = workflow_converter(format)
-    return converter(workflow=workflow, basedir=client.path, output=output, output_format=format)
+    return converter(workflow=workflow, basedir=client.path, output=output_path, output_format=format)
 
 
 def export_workflow_command():
@@ -604,7 +612,7 @@ def _execute_workflow(
             name, value = param.split("=", maxsplit=1)
             keys = name.split(".")
 
-            set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)
+            set_param = reduce(lambda x, y: {y: x}, reversed(keys), value)  # type: ignore
             override_params = always_merger.merge(override_params, set_param)
 
     rv = ValueResolver.get(workflow, override_params)
@@ -669,7 +677,7 @@ def _visualize_graph(
         activity_gateway=activity_gateway,
         client_dispatcher=client_dispatcher,
     )
-    graph = create_activity_graph(activities, with_inputs_outputs=show_files)
+    graph = create_activity_graph(list(activities), with_inputs_outputs=show_files)
     return ActivityGraphViewModel(graph)
 
 
@@ -690,8 +698,8 @@ def _extract_iterate_parameters(values: Dict[str, Any], index_pattern: re.Patter
         Tuple of ``(iter_params, params)`` where ``params`` are regular parameters
         and ``iter_params`` are parameters with iteration values.
     """
-    iter_params = {"indexed": {}, "params": {}, "tagged": {}}
-    params = {}
+    iter_params: Dict[str, Any] = {"indexed": {}, "params": {}, "tagged": {}}
+    params: Dict[str, Any] = {}
     for param_name, param_value in values.items():
         if isinstance(param_value, str) and index_pattern.search(param_value):
             iter_params["indexed"][param_name] = param_value
@@ -735,7 +743,7 @@ def _extract_iterate_parameters(values: Dict[str, Any], index_pattern: re.Patter
 
 def _validate_iterate_parameters(
     workflow: AbstractPlan, workflow_params: Dict[str, Any], iter_params: Dict[str, Any]
-) -> Dict[str, Any]:
+) -> Optional[Dict[str, Any]]:
     """Validates the user provided iteration parameters.
 
     Args:
@@ -839,12 +847,12 @@ def _build_iterations(
         iteration_values = {}
         for k, v in iter_params["indexed"].items():
             value = index_pattern.sub(str(i), v)
-            set_param = reduce(lambda x, y: {y: x}, reversed(k.split(".")), value)
+            set_param = reduce(lambda x, y: {y: x}, reversed(k.split(".")), value)  # type: ignore
             plan_params = always_merger.merge(plan_params, set_param)
             iteration_values[k] = value
 
         for param_key, param_value in zip(columns, _flatten(values)):
-            set_param = reduce(lambda x, y: {y: x}, reversed(param_key.split(".")), param_value)
+            set_param = reduce(lambda x, y: {y: x}, reversed(param_key.split(".")), param_value)  # type: ignore
             plan_params = always_merger.merge(plan_params, set_param)
             iteration_values[param_key] = param_value
 
@@ -876,7 +884,7 @@ def _iterate_workflow(
     TAG_SEPARATOR = "@"
     index_pattern = re.compile(r"{iter_index}")
 
-    iter_params = {"indexed": {}, "params": {}, "tagged": {}}
+    iter_params: Optional[Dict[str, Any]] = {"indexed": {}, "params": {}, "tagged": {}}
     workflow_params = {}
     if mapping_path:
         mapping = safe_read_yaml(mapping_path)
@@ -885,7 +893,7 @@ def _iterate_workflow(
     for m in mappings:
         param_name, param_value = m.split("=", maxsplit=1)
         if index_pattern.search(param_value):
-            iter_params["indexed"][param_name] = param_value
+            iter_params["indexed"][param_name] = param_value  # type: ignore
         else:
             try:
                 param_value = ast.literal_eval(param_value)
@@ -916,10 +924,10 @@ def _iterate_workflow(
             else:
                 iter_params["params"][param_name] = param_value
 
-        set_param = reduce(lambda x, y: {y: x}, reversed(param_name.split(".")), param_value)
+        set_param = reduce(lambda x, y: {y: x}, reversed(param_name.split(".")), param_value)  # type: ignore
         workflow_params = always_merger.merge(workflow_params, set_param)
 
-    iter_params = _validate_iterate_parameters(workflow, workflow_params, iter_params)
+    iter_params = _validate_iterate_parameters(workflow, workflow_params, cast(Dict[str, Any], iter_params))
     if iter_params is None:
         return
 

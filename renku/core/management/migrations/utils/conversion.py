@@ -57,7 +57,7 @@ def _convert_language(language: Optional[old_datasets.Language]) -> Optional[Lan
     """Convert old Language to new Language."""
     if not language:
         return
-    return Language(alternate_name=language.alternate_name, name=language.name)
+    return Language(name=language.name, alternate_name=language.alternate_name)
 
 
 def _convert_image_object(image_object: Optional[old_datasets.ImageObject]) -> Optional[ImageObject]:

@@ -89,7 +89,7 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
         if git_login:
             _set_git_credential_helper(repository=client.repository, hostname=parsed_endpoint.netloc)
             backup_remote_name, backup_exists, remote = create_backup_remote(
-                repository=client.repository, remote_name=remote_name, url=remote_url
+                repository=client.repository, remote_name=remote_name, url=remote_url  # type:ignore
             )
             if backup_exists:
                 communication.echo(f"Backup remote '{backup_remote_name}' already exists. Ignoring '--git' flag.")
@@ -98,8 +98,8 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
             else:
                 _set_renku_url_for_remote(
                     repository=client.repository,
-                    remote_name=remote_name,
-                    remote_url=remote_url,
+                    remote_name=remote_name,  # type:ignore
+                    remote_url=remote_url,  # type:ignore
                     hostname=parsed_endpoint.netloc,
                 )
 

@@ -568,9 +568,9 @@ class GraphCycleError(RenkuException):
 
     def __init__(self, cycles: List[List[str]]):
         """Embed exception and build a custom message."""
-        cycles = "), (".join(", ".join(cycle) for cycle in cycles)
+        cycle_str = "), (".join(", ".join(cycle) for cycle in cycles)
         super().__init__(
-            f"Cycles detected in execution graph: ({cycles})\nCircular workflows are not supported in renku\n"
+            f"Cycles detected in execution graph: ({cycle_str})\nCircular workflows are not supported in renku\n"
             "If this happened as part of a 'renku run' or 'renku workflow execute', please git reset and clean"
             "the project and try again. This might be due to renku erroneously detecting an input as an output, "
             "if so, please specify the wrongly detected output as an explicit input using '--input'."

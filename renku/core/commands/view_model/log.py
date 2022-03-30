@@ -169,7 +169,7 @@ class LogViewModel:
         )
 
     @classmethod
-    def from_dataset(cls, dataset: "Dataset") -> Optional["DatasetLogViewModel"]:
+    def from_dataset(cls, dataset: "Dataset") -> "DatasetLogViewModel":
         """Create a log entry from an activity.
 
         Args:
@@ -199,7 +199,7 @@ class LogViewModel:
         previous_dataset = None
 
         if dataset.is_derivation():
-            previous_dataset = dataset_gateway.get_by_id(dataset.derived_from.url_id)
+            previous_dataset = dataset_gateway.get_by_id(dataset.derived_from.url_id)  # type: ignore
 
         current_files = {f for f in dataset.dataset_files if not f.date_removed}
         previous_files = set()
@@ -220,14 +220,14 @@ class LogViewModel:
                 new_files = current_files
 
             descriptions.append(f"{len(new_files)} file(s) added")
-            details.files_added = [str(f.entity.path) for f in new_files]
+            details.files_added = [str(f.entity.path) for f in new_files]  # type: ignore
             details.modified = True
 
         if previous_files and {f.id for f in previous_files}.difference({f.id for f in current_files}):
             # NOTE: Files removed
             removed_files = previous_files - current_files
             descriptions.append(f"{len(removed_files)} file(s) removed")
-            details.files_removed = [str(f.entity.path) for f in removed_files]
+            details.files_removed = [str(f.entity.path) for f in removed_files]  # type: ignore
             details.modified = True
 
         if not previous_dataset:

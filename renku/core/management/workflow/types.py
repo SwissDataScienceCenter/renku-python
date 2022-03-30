@@ -19,12 +19,15 @@
 
 import os
 from pathlib import Path
+from typing import List
 
 import attr
 
 
 class _PathFormatterMixin:
     """Format path property."""
+
+    path: Path
 
     def __str__(self):
         """Simple conversion to string."""
@@ -35,8 +38,8 @@ class _PathFormatterMixin:
 class File(_PathFormatterMixin):
     """Represent a file."""
 
-    path = attr.ib(converter=Path)
-    mime_type = attr.ib(default=["application/octet-stream"])
+    path: Path = attr.ib(converter=Path)
+    mime_type: List[str] = attr.ib(default=["application/octet-stream"])
 
 
 @attr.s

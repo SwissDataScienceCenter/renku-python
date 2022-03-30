@@ -20,7 +20,7 @@
 import copy
 from collections import defaultdict
 from datetime import datetime
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
@@ -42,17 +42,17 @@ class CompositePlan(AbstractPlan):
     def __init__(
         self,
         *,
-        derived_from: str = None,
-        description: str = None,
+        derived_from: Optional[str] = None,
+        description: Optional[str] = None,
         id: str,
-        date_created: datetime = None,
-        invalidated_at: datetime = None,
-        keywords: List[str] = None,
-        links: List[ParameterLink] = None,
-        mappings: List[ParameterMapping] = None,
+        date_created: Optional[datetime] = None,
+        invalidated_at: Optional[datetime] = None,
+        keywords: Optional[List[str]] = None,
+        links: Optional[List[ParameterLink]] = None,
+        mappings: Optional[List[ParameterMapping]] = None,
         name: str,
-        plans: List[Union["CompositePlan", Plan]] = None,
-        project_id: str = None,
+        plans: List[Union["CompositePlan", Plan]],
+        project_id: Optional[str] = None,
     ):
         super().__init__(
             derived_from=derived_from,
@@ -97,11 +97,11 @@ class CompositePlan(AbstractPlan):
                     raise errors.MappingNotFoundError(mapping=name, workflow=self.name)
                 continue
 
-            targets = targets.split(",")
+            target_names = targets.split(",")
 
             target_params = []
 
-            for target in targets:
+            for target in target_names:
                 target_params.append(self.resolve_mapping_path(target)[0])
 
             existing = self._find_existing_mapping(target_params)
@@ -116,12 +116,13 @@ class CompositePlan(AbstractPlan):
                     name=name,
                     mapped_parameters=target_params,
                     id=ParameterMapping.generate_id(plan_id=self.id, postfix=name),
+                    default_value=None,
                 )
             )
 
     def add_mapping(self, mapping: ParameterMapping) -> None:
         """Add a mapping to this run."""
-        existing: ParameterMapping = next((m for m in self.mappings if mapping.name == m.name), None)
+        existing: Optional[ParameterMapping] = next((m for m in self.mappings if mapping.name == m.name), None)
 
         if not existing:
             self.mappings.append(mapping)
@@ -137,18 +138,18 @@ class CompositePlan(AbstractPlan):
         for link_string in link_strings:
             source, sinks = link_string.split("=", maxsplit=1)
 
-            source, _ = self.resolve_mapping_path(source)
+            source_param, _ = self.resolve_mapping_path(source)
 
-            if isinstance(source, ParameterMapping):
-                sources = source.leaf_parameters
+            if isinstance(source_param, ParameterMapping):
+                sources = list(source_param.leaf_parameters)
             else:
-                sources = [source]
+                sources = [source_param]
 
-            sinks = sinks.split(",")
+            sinks_names = sinks.split(",")
 
-            sink_params = []
+            sink_params: List[CommandParameterBase] = []
 
-            for sink in sinks:
+            for sink in sinks_names:
                 resolved_sink, _ = self.resolve_mapping_path(sink)
 
                 if isinstance(resolved_sink, ParameterMapping):
@@ -157,8 +158,8 @@ class CompositePlan(AbstractPlan):
                 else:
                     sink_params.append(resolved_sink)
 
-            for source in sources:
-                self.add_link(source, sink_params)
+            for link_source in sources:
+                self.add_link(link_source, sink_params)
 
     def add_link(self, source: CommandParameterBase, sinks: List[CommandParameterBase]) -> None:
         """Validate and add a ParameterLink."""
@@ -179,7 +180,12 @@ class CompositePlan(AbstractPlan):
                 raise errors.ParameterLinkError(f"A parameter link can't end in a command output: '{sink.name}'.")
 
             source_wf = self.find_parameter_workflow(source)
+            if source_wf is None:
+                raise errors.ParameterLinkError(f"Couldn't find parameter {source}")
+
             sink_wf = self.find_parameter_workflow(sink)
+            if sink_wf is None:
+                raise errors.ParameterLinkError(f"Couldn't find parameter {sink}")
 
             if source_wf.find_parameter(sink) or sink_wf.find_parameter(source):
                 raise errors.ParameterLinkError(
@@ -187,7 +193,7 @@ class CompositePlan(AbstractPlan):
                     f"sink '{sink.name}' are on the same workflow."
                 )
 
-            existing = list(self.find_link_by_target(sink))
+            existing = list(self.find_link_by_target(cast(Union[CommandInput, CommandParameter], sink)))
 
             if existing:
                 _, existing_wfs = zip(*existing)
@@ -217,12 +223,12 @@ class CompositePlan(AbstractPlan):
 
         for plan in self.plans:
             path = plan.get_parameter_path(parameter)
-            if path:
+            if path is not None:
                 return [self] + path
 
         return None
 
-    def get_parameter_by_id(self, parameter_id: str) -> CommandParameterBase:
+    def get_parameter_by_id(self, parameter_id: str) -> Optional[CommandParameterBase]:
         """Get a parameter on this plan by id."""
         mapping = next((p for p in self.mappings if parameter_id == p.id), None)
 
@@ -235,7 +241,9 @@ class CompositePlan(AbstractPlan):
             if parameter:
                 return parameter
 
-    def find_parameter_workflow(self, parameter: CommandParameterBase) -> Optional[Union["CompositePlan", Plan]]:
+        return None
+
+    def find_parameter_workflow(self, parameter: CommandParameterBase) -> Optional[AbstractPlan]:
         """Return the workflow a parameter belongs to."""
         if parameter in self.mappings:
             return self
@@ -247,7 +255,7 @@ class CompositePlan(AbstractPlan):
 
         return None
 
-    def find_link_by_target(self, target: CommandInput):
+    def find_link_by_target(self, target: Union[CommandInput, CommandParameter]):
         """Find a link on this or a child workflow that has target as a sink."""
         for link in self.links:
             if target in link.sinks:
@@ -257,7 +265,7 @@ class CompositePlan(AbstractPlan):
             if isinstance(plan, CompositePlan):
                 yield plan.find_link_by_target(target)
 
-    def _map_all(self, selector: Callable[[Plan], CommandParameterBase]) -> None:
+    def _map_all(self, selector: Callable[[Plan], List[CommandParameterBase]]) -> None:
         """Automatically map all base parameters matched by selection_lambda on this run."""
 
         for step in self.plans:
@@ -267,7 +275,7 @@ class CompositePlan(AbstractPlan):
             params = selector(step)
 
             existing = self._find_existing_mapping(params)
-            non_mapped = set(params) - existing.keys()
+            non_mapped: Set[CommandParameterBase] = set(params) - existing.keys()
 
             for param in non_mapped:
                 name = f"{step.name}_{param.name}"
@@ -285,15 +293,15 @@ class CompositePlan(AbstractPlan):
 
     def map_all_inputs(self) -> None:
         """Map all unmapped inputs from child steps to the parent."""
-        self._map_all(lambda x: x.inputs)
+        self._map_all(lambda x: cast(List[CommandParameterBase], x.inputs))
 
     def map_all_outputs(self) -> None:
         """Map all unmapped outputs from child steps to the parent."""
-        self._map_all(lambda x: x.outputs)
+        self._map_all(lambda x: cast(List[CommandParameterBase], x.outputs))
 
     def map_all_parameters(self) -> None:
         """Map all unmapped parameters from child steps to the parent."""
-        self._map_all(lambda x: x.parameters)
+        self._map_all(lambda x: cast(List[CommandParameterBase], x.parameters))
 
     def set_mapping_defaults(self, default_strings: List[str]) -> None:
         """Set default value based on a default specification string."""

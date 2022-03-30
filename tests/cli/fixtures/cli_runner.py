@@ -17,12 +17,14 @@
 # limitations under the License.
 """Renku CLI fixtures for execution management."""
 
-from collections import namedtuple
-from typing import List, Tuple, Union
+from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple, Union
 
 import pytest
 
-Result = namedtuple("Result", "exit_code, activities")
+if TYPE_CHECKING:
+    from renku.core.models.provenance.activity import Activity
+
+Result = NamedTuple("Result", [("exit_code", int), ("activities", Union[None, Activity, List[Activity]])])
 
 
 @pytest.fixture
@@ -43,20 +45,22 @@ def renku_cli(client, run, client_database_injection_manager):
         with client_database_injection_manager(client):
             activities_before = _get_activities()
 
-        args = [str(a) for a in args]
+        str_args = [str(a) for a in args]
 
-        exit_code = run(args, **kwargs)
+        exit_code = run(str_args, **kwargs)
 
         with client_database_injection_manager(client):
             activities_after = _get_activities()
 
         new_activities = [a for id, a in activities_after.items() if id not in activities_before]
 
-        if len(new_activities) == 0:
-            new_activities = None
-        elif len(new_activities) == 1:
-            new_activities = new_activities[0]
+        result: Optional[Union[Activity, List[Activity]]] = new_activities
 
-        return Result(exit_code, new_activities)
+        if len(new_activities) == 0:
+            result = None
+        elif len(new_activities) == 1:
+            result = new_activities[0]
+
+        return Result(exit_code, result)
 
     return renku_cli_

@@ -29,7 +29,7 @@ from renku.core.utils.metadata import read_renku_version_from_dockerfile
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type: ignore
 
 
 @pytest.fixture()

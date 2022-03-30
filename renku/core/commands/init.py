@@ -166,6 +166,9 @@ def _init(
     templates_source = fetch_templates_source(source=template_source, reference=template_ref)
     template = select_template(templates_source=templates_source, id=template_id)
 
+    if template is None:
+        raise errors.TemplateNotFoundError(f"Couldn't find template with id {template_id}")
+
     metadata = dict()
     # NOTE: supply metadata
     metadata["__template_source__"] = template_source
@@ -199,11 +202,11 @@ def _init(
 
         message = ""
         if overwrites:
-            overwrites = "\n\t".join(sorted(overwrites))
-            message += f"The following files exist in the directory and will be overwritten:\n\t{overwrites}\n"
+            overwrites_str = "\n\t".join(sorted(overwrites))
+            message += f"The following files exist in the directory and will be overwritten:\n\t{overwrites_str}\n"
         if appends:
-            appends = "\n\t".join(sorted(appends))
-            message += f"The following files exist in the directory and will be appended to:\n\t{appends}\n"
+            appends_str = "\n\t".join(sorted(appends))
+            message += f"The following files exist in the directory and will be appended to:\n\t{appends_str}\n"
         if message:
             communication.confirm(f"{message}Proceed?", abort=True, warning=True)
 

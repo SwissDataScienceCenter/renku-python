@@ -21,7 +21,7 @@ import os
 import re
 import unicodedata
 import urllib
-from typing import List
+from typing import List, Optional
 from urllib.parse import ParseResult
 
 from renku.core import errors
@@ -101,7 +101,7 @@ def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher
     return parsed_endpoint._replace(scheme="https", path="/", params="", query="", fragment="")
 
 
-def get_slug(name: str, invalid_chars: List[chr] = None, lowercase: bool = True) -> str:
+def get_slug(name: str, invalid_chars: Optional[List[str]] = None, lowercase: bool = True) -> str:
     """Create a slug from name."""
     invalid_chars = invalid_chars or []
     lower_case = name.lower() if lowercase else name

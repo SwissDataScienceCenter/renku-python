@@ -19,7 +19,7 @@
 
 import os.path
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Sequence, Union
 from urllib.parse import quote
 
 from renku.core.metadata.immutable import Immutable
@@ -30,7 +30,10 @@ class Entity(Immutable):
 
     __slots__ = ("checksum", "path")
 
-    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], **kwargs):
+    path: str
+    checksum: str
+
+    def __init__(self, *, checksum: str, id: Optional[str] = None, path: Union[Path, str], **kwargs):
         path = str(path)
 
         assert id is None or isinstance(id, str)
@@ -62,6 +65,10 @@ class Collection(Entity):
 
     __slots__ = ("members",)
 
-    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], members: List[Entity] = None):
-        members = tuple(members) if members else ()
-        super().__init__(checksum=checksum, id=id, path=path, members=members)
+    members: Sequence[Entity]
+
+    def __init__(
+        self, *, checksum: str, id: Optional[str] = None, path: Union[Path, str], members: Optional[List[Entity]] = None
+    ):
+        members_tuple = tuple(members) if members else ()
+        super().__init__(checksum=checksum, id=id, path=path, members=members_tuple)

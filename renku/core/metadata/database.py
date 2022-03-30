@@ -25,7 +25,7 @@ import json
 from enum import Enum
 from pathlib import Path
 from types import BuiltinFunctionType, FunctionType
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 from uuid import uuid4
 
 import persistent
@@ -217,7 +217,7 @@ class Database:
         self._objects_to_commit: Dict[OID_TYPE, persistent.Persistent] = {}
         self._reader: ObjectReader = ObjectReader(database=self)
         self._writer: ObjectWriter = ObjectWriter(database=self)
-        self._root: Optional[RenkuOOBTree] = None
+        self._root: RenkuOOBTree
 
         self._initialize_root()
 
@@ -249,7 +249,7 @@ class Database:
             assert isinstance(oid, OID_TYPE)
             return oid
 
-        id: str = getattr(object, "id", None) or getattr(object, "_id", None)
+        id: Optional[str] = getattr(object, "id", None) or getattr(object, "_id", None)
         if id:
             return Database.hash_id(id)
 
@@ -291,7 +291,7 @@ class Database:
         """Initialize root object."""
         if not self._root:
             try:
-                self._root = self.get(Database.ROOT_OID)
+                self._root = cast(RenkuOOBTree, self.get(Database.ROOT_OID))
             except errors.ObjectNotFoundError:
                 self._root = RenkuOOBTree()
                 self._root._p_oid = Database.ROOT_OID
@@ -431,6 +431,8 @@ class Database:
         object = self._objects_to_commit.get(oid)
         if object is not None:
             return object
+
+        return None
 
     def remove_root_object(self, name: str) -> None:
         """Remove a root object from the database.
@@ -785,8 +787,8 @@ class Storage:
                 with io.TextIOWrapper(compressor) as out:
                     json.dump(data, out, ensure_ascii=False)
         else:
-            with open(path, "wt") as f:
-                json.dump(data, f, ensure_ascii=False, sort_keys=True, indent=2)
+            with open(path, "wt") as f:  # type: ignore
+                json.dump(data, f, ensure_ascii=False, sort_keys=True, indent=2)  # type: ignore
 
     def load(self, filename: str):
         """Load data for object with object id oid.
@@ -838,7 +840,7 @@ class ObjectWriter:
         assert object._p_oid, f"Object does not have an oid: '{object}'"
         assert object._p_jar is not None, f"Object is not associated with a Database: '{object}'"
 
-        self._serialization_cache = {}
+        self._serialization_cache: Dict[int, Any] = {}
         state = object.__getstate__()
         was_dict = isinstance(state, dict)
         data = self._serialize_helper(state)
@@ -943,14 +945,18 @@ class ObjectReader:
         self._database = database
 
         # a cache for normal (non-persistent objects with an id) to deduplicate them on load
-        self._normal_object_cache = {}
+        self._normal_object_cache: Dict[str, Any] = {}
+        self._deserialization_cache: List[Any] = []
 
-    def _get_class(self, type_name: str) -> type:
+    def _get_class(self, type_name: str) -> Optional[type]:
         cls = self._classes.get(type_name)
         if cls:
             return cls
 
         cls = get_class(type_name)
+
+        if cls is None:
+            return None
 
         self._classes[type_name] = cls
         return cls

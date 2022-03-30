@@ -91,7 +91,12 @@ def graph():
 
 
 @graph.command()
-@click.option("--format", type=CaseInsensitiveChoice(GRAPH_FORMATS), default="json-ld", help="Choose an output format.")
+@click.option(
+    "--format",
+    type=CaseInsensitiveChoice(list(GRAPH_FORMATS.keys())),
+    default="json-ld",
+    help="Choose an output format.",
+)
 @click.option(
     "--revision",
     type=str,

@@ -26,7 +26,7 @@ from renku.core.utils.git import get_hook_path
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type: ignore
 
 
 def check_git_hooks_installed(client, fix):

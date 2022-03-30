@@ -26,7 +26,7 @@ from renku.core.models.dataset import Dataset, DatasetTag
 class IDatasetGateway(ABC):
     """Interface for the DatasetGateway."""
 
-    def get_by_id(self, id: str) -> Optional[Dataset]:
+    def get_by_id(self, id: str) -> Dataset:
         """Get a dataset by id."""
         raise NotImplementedError
 

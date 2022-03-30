@@ -19,7 +19,7 @@
 
 from datetime import datetime
 from itertools import chain
-from typing import List, Optional, Union
+from typing import List, Optional, Union, cast
 from uuid import uuid4
 
 from werkzeug.utils import cached_property
@@ -43,7 +43,7 @@ NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 class Association:
     """Assign responsibility to an agent for an activity."""
 
-    def __init__(self, *, agent: Union[Person, SoftwareAgent] = None, id: str, plan: Plan):
+    def __init__(self, *, agent: Union[Person, SoftwareAgent], id: str, plan: Plan):
         self.agent: Union[Person, SoftwareAgent] = agent
         self.id: str = id
         self.plan: Plan = plan
@@ -94,17 +94,17 @@ class Activity(Persistent):
     def __init__(
         self,
         *,
-        agents: List[Union[Person, SoftwareAgent]] = None,
-        annotations: List[Annotation] = None,
-        association: Association = None,
-        ended_at_time: datetime = None,
-        generations: List[Generation] = None,
+        agents: List[Union[Person, SoftwareAgent]],
+        annotations: Optional[List[Annotation]] = None,
+        association: Association,
+        ended_at_time: datetime,
+        generations: Optional[List[Generation]] = None,
         id: str,
-        invalidations: List[Entity] = None,
-        parameters: List[ParameterValue] = None,
-        project_id: str = None,
-        started_at_time: datetime = None,
-        usages: List[Usage] = None,
+        invalidations: Optional[List[Entity]] = None,
+        parameters: Optional[List[ParameterValue]] = None,
+        project_id: Optional[str] = None,
+        started_at_time: datetime,
+        usages: Optional[List[Usage]] = None,
     ):
         self.agents: List[Union[Person, SoftwareAgent]] = agents
         self.annotations: List[Annotation] = annotations or []
@@ -114,7 +114,7 @@ class Activity(Persistent):
         self.id: str = id
         self.invalidations: List[Entity] = invalidations or []
         self.parameters: List[ParameterValue] = parameters or []
-        self.project_id: str = project_id
+        self.project_id: Optional[str] = project_id
         self.started_at_time: datetime = started_at_time
         self.usages: List[Usage] = usages or []
 
@@ -187,7 +187,7 @@ class Activity(Persistent):
             )
 
         agent = SoftwareAgent(id=version_url, name=f"renku {__version__}")
-        person = get_git_user(client.repository)
+        person = cast(Person, get_git_user(client.repository))
         association = Association(agent=agent, id=Association.generate_id(activity_id), plan=plan)
 
         activity = cls(

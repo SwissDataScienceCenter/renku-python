@@ -22,7 +22,7 @@ import os
 import pathlib
 import urllib
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 import attr
@@ -140,7 +140,7 @@ class ZenodoMetadataSerializer:
     version = attr.ib(default=None, kw_only=True)
 
 
-def _metadata_converter(data):
+def _metadata_converter(data: Dict[str, Any]) -> ZenodoMetadataSerializer:
     """Convert dict to ZenodoMetadata instance.
 
     Args:
@@ -177,13 +177,13 @@ class ZenodoRecordSerializer:
 
     links = attr.ib(default=None, kw_only=True)
 
-    metadata = attr.ib(default=None, kw_only=True, converter=_metadata_converter)
+    metadata: ZenodoMetadataSerializer = attr.ib(default=None, kw_only=True, converter=_metadata_converter)
 
     modified = attr.ib(default=None, kw_only=True)
 
     owner = attr.ib(default=None, kw_only=True)
 
-    record_id = attr.ib(default=None, kw_only=True, converter=str)
+    record_id: str = attr.ib(default=None, kw_only=True, converter=str)
 
     state = attr.ib(default=None, kw_only=True)
 

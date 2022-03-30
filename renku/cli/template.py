@@ -114,7 +114,7 @@ list of files that will be updated.
 """
 
 import functools
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 import click
 
@@ -275,7 +275,7 @@ def _print_template_list(templates: List["TemplateViewModel"], verbose: bool):
     for index, template in enumerate(templates, start=1):
         setattr(template, "index", index)
 
-    headers = {"index": None, "id": None}
+    headers: Dict[str, Any] = {"index": None, "id": None}
     if verbose:
         headers["description"] = "Description"
         # "variables": "Parameters"

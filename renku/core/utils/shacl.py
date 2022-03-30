@@ -22,7 +22,7 @@ from pyshacl import validate
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type: ignore
 
 
 def validate_graph(graph, shacl_path=None, format="nquads"):

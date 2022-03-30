@@ -24,7 +24,7 @@ import time
 from contextlib import contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import Any, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import click
 import yaml
@@ -58,6 +58,8 @@ class PlanFactory:
 
     _RE_SUBCOMMAND = re.compile(r"^[A-Za-z]+(-[A-Za-z]+)?$")
 
+    command_line: List[str]
+
     def __init__(
         self,
         command_line: str,
@@ -68,7 +70,7 @@ class PlanFactory:
         working_dir: Optional[str] = None,
         no_input_detection: bool = False,
         no_output_detection: bool = False,
-        success_codes: List[int] = None,
+        success_codes: Optional[List[int]] = None,
         stdin: Optional[str] = None,
         stdout: Optional[str] = None,
         stderr: Optional[str] = None,
@@ -113,15 +115,13 @@ class PlanFactory:
         self.stderr = stderr
 
         self.base_command, detected_arguments = self.split_command_and_args()
-        self.parameters = []
-        self.inputs = []
-        self.outputs = []
-        self.annotations = []
-        self.existing_directories = set()
+        self.parameters: List[CommandParameter] = []
+        self.inputs: List[CommandInput] = []
+        self.outputs: List[CommandOutput] = []
+        self.annotations: List[Dict[str, Any]] = []
+        self.existing_directories: Set[str] = set()
 
         self.add_inputs_and_parameters(*detected_arguments)
-
-        self.existing_directories = {}
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
@@ -144,7 +144,7 @@ class PlanFactory:
     @staticmethod
     def _is_ignored_path(candidate: Union[Path, str], ignored_list: Set[str] = None) -> bool:
         """Return True if the path is in ignored list."""
-        return ignored_list and str(candidate) in ignored_list
+        return ignored_list is not None and str(candidate) in ignored_list
 
     def _resolve_existing_subpath(self, candidate) -> Optional[Path]:
         """Return a path instance if it exists in the project's directory."""
@@ -162,6 +162,8 @@ class PlanFactory:
                 return path
             elif is_external_file(path=candidate, client_path=self.working_dir):
                 return Path(os.path.abspath(candidate))
+
+        return None
 
     def add_inputs_and_parameters(self, *arguments):
         """Yield command input parameters."""
@@ -269,7 +271,7 @@ class PlanFactory:
 
             if input_path.is_dir() and tree.get(input_path):
                 # The directory might exist before running the script
-                candidates = self._check_potential_output_directory(input_path, candidates, tree)
+                candidates = self._check_potential_output_directory(input_path, candidates, tree)  # type: ignore
 
             input_candidates[str(input_path)] = input
 
@@ -286,16 +288,16 @@ class PlanFactory:
 
             if input_path.is_dir() and tree.get(input_path):
                 # The directory might exist before running the script
-                candidates = self._check_potential_output_directory(input_path, candidates, tree)
+                candidates = self._check_potential_output_directory(input_path, candidates, tree)  # type: ignore
 
                 parameter_candidates[str(input_path)] = parameter
             parameter_candidates[str(input_path)] = parameter
 
-        for path, name in candidates:
-            candidate = self._resolve_existing_subpath(self.working_dir / path)
+        for candidate_path, name in candidates:
+            candidate = self._resolve_existing_subpath(self.working_dir / candidate_path)
 
             if candidate is None:
-                raise errors.UsageError('Path "{0}" does not exist.'.format(path))
+                raise errors.UsageError('Path "{0}" does not exist.'.format(candidate_path))
 
             glob = str(candidate.relative_to(self.working_dir))
 
@@ -375,7 +377,7 @@ class PlanFactory:
         position: Optional[int] = None,
         postfix: Optional[str] = None,
         name: Optional[str] = None,
-        encoding_format: List[str] = None,
+        encoding_format: Optional[List[str]] = None,
     ):
         """Create a CommandInput."""
         if self.no_input_detection and all(Path(default_value).resolve() != path for path, _ in self.explicit_inputs):
@@ -589,7 +591,7 @@ class PlanFactory:
             # Keep track of unmodified output files.
             unmodified = set()
 
-            candidates = set()
+            candidates: Set[Tuple[Union[Path, str], Optional[str]]] = set()
 
             if not self.no_output_detection:
                 # Calculate possible output paths.
@@ -682,7 +684,7 @@ class PlanFactory:
         self,
         project_gateway: IProjectGateway,
         name: Optional[str] = None,
-        description: str = Optional[None],
+        description: Optional[str] = None,
         keywords: Optional[List[str]] = None,
     ) -> Plan:
         """Return an instance of ``Plan`` based on this factory."""

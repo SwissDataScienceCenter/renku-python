@@ -17,6 +17,8 @@
 # limitations under the License.
 """Command builder for repository."""
 
+from typing import Optional
+
 from renku.core import errors
 from renku.core.management.command_builder.command import Command, CommandResult, check_finalized
 
@@ -29,10 +31,10 @@ class Commit(Command):
     def __init__(
         self,
         builder: Command,
-        message: str = None,
-        commit_if_empty: bool = False,
-        raise_if_empty: bool = False,
-        commit_only: bool = None,
+        message: Optional[str] = None,
+        commit_if_empty: Optional[bool] = False,
+        raise_if_empty: Optional[bool] = False,
+        commit_only: Optional[bool] = None,
     ) -> None:
         """__init__ of Commit.
 

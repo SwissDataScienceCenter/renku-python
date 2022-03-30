@@ -119,6 +119,41 @@ jobs:
           SIDEBAR: 1
         run: ./run-tests.sh -d
 
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.8"
+      - uses: actions/cache@master
+        id: dependency-cache
+        with:
+          path: |
+            ${{ env.pythonLocation }}
+            renku/templates
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install coveralls poetry wheel twine
+          make download-templates
+          python -m pip install .[all]
+      - name: Install renku into cache
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
+        run: python -m pip install --no-deps .
+      - name: Set Git config
+        run: |
+          git config --global --add user.name "Renku Bot"
+          git config --global --add user.email "renku@datascience.ch"
+      - name: Test mypy
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+        run: mypy
+
   cheatsheet:
     runs-on: ubuntu-latest
     if: "'refs/heads/master' != github.ref && 'refs/heads/develop' != github.ref && !startsWith(github.ref, 'refs/tags/')"

@@ -19,7 +19,7 @@
 
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from renku.core import errors
 from renku.core.commands.workflow import execute_workflow
@@ -32,6 +32,7 @@ from renku.core.management.interface.plan_gateway import IPlanGateway
 from renku.core.management.workflow.activity import sort_activities
 from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.models.provenance.activity import Activity
+from renku.core.models.workflow.plan import AbstractPlan
 from renku.core.utils.metadata import add_activity_if_recent, filter_overridden_activities, get_modified_activities
 from renku.core.utils.os import get_relative_paths
 
@@ -103,15 +104,15 @@ def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_di
     # get newest with same name
     newest_plan = plan_gateway.get_by_name(plan.name)
 
-    if newest_plan.invalidated_at is not None:
+    if newest_plan is None or newest_plan.invalidated_at is not None:
         return False
 
     all_plans = plan_gateway.get_all_plans()
 
-    derived = plan
+    derived: Optional[AbstractPlan] = plan
     while derived:
         plan = derived
-        derived = next((p for p in all_plans if p.derived_from and p.derived_from == plan.id), None)
+        derived = next((p for p in all_plans if p.derived_from is not None and p.derived_from == plan.id), None)
 
     return plan.invalidated_at is None
 
@@ -135,7 +136,7 @@ def _get_modified_activities_and_paths(repository, activity_gateway) -> Tuple[Se
 
 def _get_downstream_activities(
     starting_activities: Set[Activity], activity_gateway: IActivityGateway, paths: List[str]
-) -> Set[Activity]:
+) -> List[Activity]:
     """Return activities downstream of passed activities.
 
     Args:
@@ -147,7 +148,7 @@ def _get_downstream_activities(
         Set[Activity]: All activites and their downstream activities.
 
     """
-    all_activities = defaultdict(set)
+    all_activities: Dict[str, Set[Activity]] = defaultdict(set)
 
     def include_newest_activity(activity):
         existing_activities = all_activities[activity.association.plan.id]
@@ -180,4 +181,4 @@ def _get_downstream_activities(
                     break
                 include_newest_activity(activity)
 
-    return {a for activities in all_activities.values() for a in activities}
+    return list({a for activities in all_activities.values() for a in activities})

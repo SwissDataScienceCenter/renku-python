@@ -20,6 +20,7 @@
 import os
 import re
 from pathlib import Path
+from typing import Optional
 from urllib.parse import urlparse
 
 import attr
@@ -59,7 +60,7 @@ def _build(*parts):
 
 
 #: Define possible repository URLs.
-_REPOSITORY_URLS = (
+_REPOSITORY_URLS = [
     # https://user:pass@example.com/owner/repo.git
     _build(_RE_SCHEME, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, r"/", _RE_PATHNAME_WITH_GITLAB),
     # https://user:pass@example.com:gitlab/owner/repo.git
@@ -68,10 +69,10 @@ _REPOSITORY_URLS = (
     _build(_RE_USERNAME, _RE_HOSTNAME, r":", _RE_PATHNAME_WITH_GITLAB),
     # /path/to/repo
     _build(_RE_UNIXPATH),
-)
+]
 
 
-def filter_repo_name(repo_name):
+def filter_repo_name(repo_name: str) -> str:
     """Remove the .git extension from the repo name."""
     if repo_name is not None and repo_name.endswith(".git"):
         return repo_name[: -len(".git")]
@@ -91,7 +92,7 @@ class GitURL(object):
     password = attr.ib(default=None)
     port = attr.ib(default=None)
     owner = attr.ib(default=None)
-    name = attr.ib(default=None, converter=filter_repo_name)
+    name: Optional[str] = attr.ib(default=None, converter=filter_repo_name)
     slug = attr.ib(default=None)
     _regex = attr.ib(default=None, eq=False, order=False)
 
@@ -114,17 +115,17 @@ class GitURL(object):
 
         if gitlab_url:
             # NOTE: use known gitlab url to simplify regex to make detection more robust
-            gitlab_url = urlparse(gitlab_url)
+            parsed_gitlab_url = urlparse(gitlab_url)
             gitlab_re = _build(
                 _RE_SCHEME,
                 _RE_USERNAME_PASSWORD,
-                r"(?P<hostname>" + re.escape(gitlab_url.hostname) + ")",
-                r":(?P<port>" + str(gitlab_url.port) + ")" if gitlab_url.port else "",
+                r"(?P<hostname>" + re.escape(parsed_gitlab_url.hostname) + ")",  # type: ignore
+                r":(?P<port>" + str(parsed_gitlab_url.port) + ")" if parsed_gitlab_url.port else "",
                 r"/",
-                re.escape(gitlab_url.path) + r"/" if gitlab_url.path else "",
+                re.escape(parsed_gitlab_url.path) + r"/" if parsed_gitlab_url.path else "",
                 _RE_PATHNAME,
             )
-            url_regexes = (gitlab_re,) + url_regexes
+            url_regexes = [gitlab_re] + url_regexes
 
         for regex in url_regexes:
             matches = re.search(regex, href)

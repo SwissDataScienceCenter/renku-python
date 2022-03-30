@@ -29,7 +29,7 @@ import pytest
 from click.testing import CliRunner, Result
 
 
-class OutputStreamProxy:
+class OutputStreamProxy(IO[str]):
     """A proxy class to allow reading from stdout/stderr objects."""
 
     def __init__(self, stream):
@@ -51,10 +51,10 @@ class OutputStreamProxy:
         if not self._stream.isatty():
             self._stream.write(value)
 
-        value = value.encode("utf-8")
-        self._buffer += value
+        byte_value = value.encode("utf-8")
+        self._buffer += byte_value
 
-        return len(value)
+        return len(byte_value)
 
     def getvalue(self) -> bytes:
         """Return everything that has been written to the stream."""
@@ -68,8 +68,8 @@ class RenkuRunner(CliRunner):
     def isolation(self, input=None, env=None, color: bool = False):
         """See ``click.testing.CliRunner::isolation``."""
         # Preserve original stdout and stderr
-        stdout = OutputStreamProxy(sys.stdout)
-        stderr = stdout if self.mix_stderr else OutputStreamProxy(sys.stderr)
+        stdout = OutputStreamProxy(sys.stdout)  # type: ignore
+        stderr = stdout if self.mix_stderr else OutputStreamProxy(sys.stderr)  # type: ignore
 
         # NOTE: CliRunner.isolation replaces original stdout and stderr with BytesIO so that it can read program
         # outputs from them. This causes Renku CLI to create custom terminal (since stdout and stderr are not tty)
@@ -79,10 +79,10 @@ class RenkuRunner(CliRunner):
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                 yield stdout, stderr
 
-    def invoke(
+    def invoke(  # type: ignore
         self,
         cli: click.BaseCommand,
-        args: Optional[Union[str, Sequence[Union[Path, str]]]] = None,
+        args: Optional[Union[str, Sequence[str]]] = None,
         input: Optional[Union[str, bytes, IO]] = None,
         env: Optional[Mapping[str, Optional[str]]] = None,
         catch_exceptions: bool = True,
@@ -91,7 +91,7 @@ class RenkuRunner(CliRunner):
         stdout: Optional[Union[str, Path, IO]] = None,
         stderr: Optional[Union[str, Path, IO]] = None,
         **extra: Any,
-    ) -> Result:
+    ) -> Result:  # type: ignore
         """See ``click.testing.CliRunner::invoke``."""
         from renku.core.utils.contexts import Isolation
         from renku.core.utils.util import to_string
@@ -100,8 +100,11 @@ class RenkuRunner(CliRunner):
 
         if isinstance(args, Path):
             args = str(args)
-        elif not isinstance(args, str):
+        elif args is not None and not isinstance(args, str):
             args = [to_string(a) for a in args]
+
+        if isinstance(stdin, Path):
+            stdin = str(stdin)
 
         with Isolation(stdout=stdout, stderr=stderr):
             return super().invoke(
@@ -123,6 +126,7 @@ def run_shell():
         """Spawn subprocess and execute shell command.
 
         Args:
+            cmd(str): The command to run.
             return_ps: Return process object.
             sleep_for: After executing command sleep for n seconds.
         Returns:

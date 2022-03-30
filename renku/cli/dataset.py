@@ -535,7 +535,9 @@ def dataset():
 
 
 @dataset.command("ls")
-@click.option("--format", type=click.Choice(DATASETS_FORMATS), default="tabular", help="Choose an output format.")
+@click.option(
+    "--format", type=click.Choice(list(DATASETS_FORMATS.keys())), default="tabular", help="Choose an output format."
+)
 @click.option(
     "-c",
     "--columns",
@@ -756,7 +758,12 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 )
 @click.option("-I", "--include", default=None, multiple=True, help="Include files matching given pattern.")
 @click.option("-X", "--exclude", default=None, multiple=True, help="Exclude files matching given pattern.")
-@click.option("--format", type=click.Choice(DATASET_FILES_FORMATS), default="tabular", help="Choose an output format.")
+@click.option(
+    "--format",
+    type=click.Choice(list(DATASET_FILES_FORMATS.keys())),
+    default="tabular",
+    help="Choose an output format.",
+)
 @click.option(
     "-c",
     "--columns",
@@ -845,7 +852,9 @@ def remove_tags(name, tags):
 
 @dataset.command("ls-tags")
 @click.argument("name", shell_complete=_complete_datasets)
-@click.option("--format", type=click.Choice(DATASET_TAGS_FORMATS), default="tabular", help="Choose an output format.")
+@click.option(
+    "--format", type=click.Choice(list(DATASET_TAGS_FORMATS.keys())), default="tabular", help="Choose an output format."
+)
 def ls_tags(name, format):
     """List all tags of a dataset."""
     from renku.core.commands.dataset import list_tags_command
@@ -863,7 +872,7 @@ def export_provider_argument(*param_decls, **attrs):
         from renku.core.management.dataset.providers import ProviderFactory
 
         providers = [k.lower() for k, p in ProviderFactory.providers().items() if p.supports_export]
-        f = argument("provider", type=click.Choice(providers))(f)
+        f = argument("provider", type=click.Choice(list(providers.keys())))(f)
         return f
 
     return wrapper

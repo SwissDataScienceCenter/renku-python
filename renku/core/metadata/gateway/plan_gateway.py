@@ -58,7 +58,9 @@ class PlanGateway(IPlanGateway):
         database = self.database_dispatcher.current_database
         database["plans"].add(plan)
 
-        if plan.derived_from:
+        if plan.derived_from is not None:
             derived_from = self.get_by_id(plan.derived_from)
-            database["plans-by-name"].pop(derived_from.name, None)
+
+            if derived_from is not None:
+                database["plans-by-name"].pop(derived_from.name, None)
         database["plans-by-name"].add(plan)

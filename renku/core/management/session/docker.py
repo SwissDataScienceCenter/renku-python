@@ -18,7 +18,7 @@
 """Docker based interactive session provider."""
 
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 from uuid import uuid4
 
 import docker
@@ -98,9 +98,9 @@ class DockerSessionProvider(ISessionProvider):
         return list(
             map(
                 lambda x: Session(
-                    id=x.short_id,
+                    id=cast(str, x.short_id),
                     status=x.status,
-                    url=next(DockerSessionProvider()._get_jupyter_urls(x.ports, x.labels["jupyter_token"])),
+                    url=next(iter(DockerSessionProvider()._get_jupyter_urls(x.ports, x.labels["jupyter_token"]))),
                 ),
                 self._get_docker_containers(project_name),
             )
@@ -134,7 +134,7 @@ class DockerSessionProvider(ISessionProvider):
             default_url = client.get_value("interactive", "default_url")
 
             # resource requests
-            resource_requests = dict()
+            resource_requests: Dict[str, Any] = dict()
             if cpu_request:
                 # based on the docker go cli: func ParseCPUs
                 resource_requests["nano_cpus"] = int(cpu_request * 10**9)

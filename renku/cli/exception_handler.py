@@ -75,7 +75,7 @@ if SENTRY_ENABLED:
     try:
         from importlib.metadata import PackageNotFoundError, distribution
     except ImportError:
-        from importlib_metadata import PackageNotFoundError, distribution
+        from importlib_metadata import PackageNotFoundError, distribution  # type: ignore
 
     try:
         distribution("sentry-sdk")

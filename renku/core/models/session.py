@@ -132,7 +132,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_url(self, session_name: str) -> str:
+    def session_url(self, session_name: str) -> Optional[str]:
         """Get the given session's URL.
 
         Args:

@@ -104,7 +104,7 @@ from renku.core.utils.git import default_path
 try:
     from importlib.metadata import entry_points
 except ImportError:
-    from importlib_metadata import entry_points
+    from importlib_metadata import entry_points  # type: ignore
 
 
 def get_entry_points(name: str):
@@ -112,7 +112,7 @@ def get_entry_points(name: str):
     all_entry_points = entry_points()
 
     if hasattr(all_entry_points, "select"):
-        return all_entry_points.select(group=name)
+        return all_entry_points.select(group=name)  # type: ignore
     else:
         # Prior to Python 3.10, this returns a dict instead of the selection interface, which is slightly slower
         return all_entry_points.get(name, [])

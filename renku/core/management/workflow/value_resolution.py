@@ -19,7 +19,7 @@
 
 from abc import ABC, abstractmethod
 from itertools import chain
-from typing import Any, Dict, Set
+from typing import Any, Dict, Optional, Set
 
 from renku.core import errors
 from renku.core.models.workflow.composite_plan import CompositePlan
@@ -30,7 +30,7 @@ from renku.core.models.workflow.plan import AbstractPlan, Plan
 class ValueResolver(ABC):
     """Value resolution class for an ``AbstractPlan``."""
 
-    def __init__(self, plan: AbstractPlan, values: Dict[str, Any]):
+    def __init__(self, plan: AbstractPlan, values: Optional[Dict[str, Any]]):
         self._values = values
         self.missing_parameters: Set[str] = set()
         self._plan = plan
@@ -73,7 +73,7 @@ class PlanValueResolver(ValueResolver):
         Returns:
             A Plan with values applied.
         """
-        if not self._values:
+        if self._values is None:
             return self._plan
 
         values_keys = set(self._values.keys())
@@ -100,7 +100,7 @@ class CompositePlanValueResolver(ValueResolver):
     - Value propagated to a parameter from the source of a ParameterLink
     """
 
-    def __init__(self, plan: CompositePlan, values: Dict[str, Any]):
+    def __init__(self, plan: CompositePlan, values: Optional[Dict[str, Any]] = None):
         super(CompositePlanValueResolver, self).__init__(plan, values)
 
     def apply(self) -> AbstractPlan:
@@ -149,6 +149,8 @@ class CompositePlanValueResolver(ValueResolver):
 
     def _apply_parameters_values(self) -> None:
         """Apply values to mappings of a CompositePlan."""
+        if self._values is None:
+            return
         for k, v in filter(lambda x: not isinstance(x[1], dict), self._values.items()):
             mapping = next((m for m in self._plan.mappings if m.name == k), None)
 

@@ -31,11 +31,11 @@ class ProjectViewModel:
     def __init__(
         self,
         id: str,
-        name: str,
+        name: Optional[str],
         creator: Person,
         created: datetime,
-        description: str,
-        agent: str,
+        description: Optional[str],
+        agent: Optional[str],
         annotations: Optional[str],
         template_info: str,
         keywords: Optional[List[str]],
@@ -51,7 +51,7 @@ class ProjectViewModel:
         self.annotations = annotations
         self.template_info = template_info
         self.keywords = keywords
-        self.keywords_str = ", ".join(keywords)
+        self.keywords_str = ", ".join(keywords) if keywords else ""
 
     @classmethod
     def from_project(cls, project: Project):

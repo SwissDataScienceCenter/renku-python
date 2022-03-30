@@ -49,7 +49,7 @@ class DatasetFileViewModel:
     def from_dataset_file(cls, dataset_file: DatasetFile, dataset: Dataset) -> "DatasetFileViewModel":
         """Create view model from ``DatasetFile``."""
         return cls(
-            path=dataset_file.entity.path,
+            path=dataset_file.entity.path,  # type: ignore
             source=dataset_file.source,
             external=dataset_file.is_external,
             deleted=dataset_file.date_removed is not None,

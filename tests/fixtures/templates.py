@@ -172,7 +172,9 @@ def templates_source(tmp_path, monkeypatch):
 
         def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
             """Return True if an update is available along with the latest version of a template."""
-            _, latest_version = self.get_latest_reference_and_version(id=id, reference=reference, version=version)
+            _, latest_version = self.get_latest_reference_and_version(
+                id=id, reference=reference, version=version  # type: ignore
+            )
 
             return latest_version != version, latest_version
 
@@ -182,7 +184,7 @@ def templates_source(tmp_path, monkeypatch):
 
         def get_latest_reference_and_version(
             self, id: str, reference: Optional[str], version: Optional[str]
-        ) -> Optional[Tuple[str, str]]:
+        ) -> Optional[Tuple[Optional[str], str]]:
             """Return latest reference and version number of a template."""
             _ = self.get_template(id=id, reference=reference)
             version = str(max(self._versions))
@@ -205,9 +207,12 @@ def templates_source(tmp_path, monkeypatch):
 
                 return template
 
-        def update(self, id, version, content="# modification", parameters: List[TemplateParameter] = None):
+        def update(self, id, version, content="# modification", parameters: Optional[List[TemplateParameter]] = None):
             """Update all files of a template."""
             template = self.get_template(id=id, reference=None)
+
+            if template is None or template.path is None:
+                return
 
             for relative_path in template.get_files():
                 path = template.path / relative_path

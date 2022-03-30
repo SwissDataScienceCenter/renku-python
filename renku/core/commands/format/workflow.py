@@ -17,6 +17,7 @@
 # limitations under the License.
 """Serializers for workflows."""
 import textwrap
+from typing import Callable, Dict
 
 from renku.core.models.json import dumps
 
@@ -77,7 +78,7 @@ def json(workflows, **kwargs):
     return dumps(data, indent=2)
 
 
-WORKFLOW_FORMATS = {
+WORKFLOW_FORMATS: Dict[str, Callable] = {
     "tabular": tabular,
     "json-ld": jsonld,
     "json": json,
