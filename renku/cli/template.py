@@ -125,8 +125,12 @@ if TYPE_CHECKING:
 
 
 @click.group()
-def template():
+@click.pass_context
+def template(ctx):
     """Template commands."""
+    from renku.cli import is_allowed_subcommand
+
+    is_allowed_subcommand(ctx)
 
 
 @template.command("ls")

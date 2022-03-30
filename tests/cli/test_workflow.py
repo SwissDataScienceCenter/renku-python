@@ -625,6 +625,142 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
     assert "goodbye\n" == output.read_text()
 
 
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, client, provider):
+    """Test executing a workflow with --set for a renku.api.Input."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+    input = client.path / "input"
+    input.write_text("input string")
+    other_input = client.path / "other_input"
+    other_input.write_text("my other input string")
+
+    with client.commit():
+        script.write_text(
+            f"from renku.api import Input\nwith open(Input('my-input', '{input.name}'), 'r') as f:\n    print(f.read())"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name} > {output.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "input string\n" == output.read_text()
+    result = run_shell(f"renku workflow execute -p {provider} --set my-input={other_input.name} run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "my other input string\n" == output.read_text()
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, client, provider):
+    """Test executing a workflow with --set for a renku.api.Output."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+    other_output = client.path / "other_output"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.api import Output\nwith open(Output('my-output', '{output.name}'), 'w') as f:\n"
+            "    f.write('test')"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "test" == output.read_text()
+    result = run_shell(f"renku workflow execute -p {provider} --set my-output={other_output.name} run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "test" == other_output.read_text()
+
+
+def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, project, capsys, client):
+    """Test executing a workflow with duplicate output with differing path."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+    other_output = client.path / "other_output"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
+            f"open(Output('my-output', '{other_output.name}'), 'w')"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"Error: Invalid parameter value - Duplicate input/output name found: my-output\n" in result[0]
+
+
+def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_shell, project, capsys, client):
+    """Test executing a workflow with duplicate output with same path."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
+            f"open(Output('my-output', '{output.name}'), 'w')"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+
+def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, project, capsys, client):
+    """Test executing a workflow with duplicate input with differing path."""
+    script = client.path / "script.py"
+    input = client.path / "input"
+    other_input = client.path / "other_input"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
+            f"open(Input('my-input', '{other_input.name}'), 'w')"
+        )
+
+    result = run_shell(f"renku run --no-output --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"Error: Invalid parameter value - Duplicate input/output name found: my-input\n" in result[0]
+
+
+def test_workflow_execute_command_with_api_valid_duplicate_input(runner, run_shell, project, capsys, client):
+    """Test executing a workflow with duplicate input with same path."""
+    script = client.path / "script.py"
+    input = client.path / "input"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
+            f"open(Input('my-input', '{input.name}'), 'w')"
+        )
+
+    result = run_shell(f"renku run --no-output --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+
 def test_workflow_visualize_non_interactive(runner, project, client, workflow_graph):
     """Test renku workflow visualize in non-interactive mode."""
 

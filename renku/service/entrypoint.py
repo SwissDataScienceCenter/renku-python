@@ -22,15 +22,21 @@ import traceback
 import uuid
 
 import sentry_sdk
-from flask import Flask, jsonify, request, url_for
+from flask import Flask, Response, jsonify, request, url_for
 from jwt import InvalidTokenError
-from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.service.cache import cache
-from renku.service.config import CACHE_DIR, HTTP_SERVER_ERROR, SENTRY_ENABLED, SENTRY_SAMPLERATE, SERVICE_PREFIX
+from renku.service.config import CACHE_DIR, SENTRY_ENABLED, SENTRY_SAMPLERATE, SERVICE_PREFIX
+from renku.service.errors import (
+    ProgramHttpMethodError,
+    ProgramHttpMissingError,
+    ProgramHttpRequestError,
+    ProgramHttpServerError,
+    ProgramHttpTimeoutError,
+)
 from renku.service.logger import service_log
 from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
@@ -56,7 +62,7 @@ if SENTRY_ENABLED:
     )
 
 
-def create_app():
+def create_app(custom_exceptions=True):
     """Creates a Flask app with a necessary configuration."""
     app = Flask(__name__)
     app.secret_key = os.getenv("RENKU_SVC_SERVICE_KEY", uuid.uuid4().hex)
@@ -85,7 +91,55 @@ def create_app():
 
         return "renku repository service version {}\n".format(renku.__version__)
 
+    if custom_exceptions:
+        register_exceptions(app)
+
     return app
+
+
+def register_exceptions(app):
+    """Register the exceptions handler."""
+
+    @app.errorhandler(Exception)
+    def exceptions(e):
+        """This exceptions handler manages Flask/Werkzeug exceptions.
+
+        For the other exception handlers check ``service/decorators.py``
+        """
+        # NOTE: add log entry
+        str(getattr(e, "code", "unavailable"))
+        log_error_code = str(getattr(e, "code", "unavailable"))
+        service_log.error(
+            f"{request.remote_addr} {request.method} {request.scheme} {request.full_path}\n"
+            f"Error code: {log_error_code}\n"
+            f"Stack trace: {traceback.format_exc()}"
+        )
+
+        # NOTE: craft user messages
+        if hasattr(e, "code"):
+            code = e.code
+
+            # NOTE: return an http error for methods with no body allowed. This prevents undesired exceptions.
+            NO_PAYLOAD_METHODS = "HEAD"
+            if request.method in NO_PAYLOAD_METHODS:
+                return Response(status=code)
+
+            if code == 400:
+                error = ProgramHttpRequestError(e)
+            elif code == 404:
+                error = ProgramHttpMissingError(e)
+            elif code == 405:
+                error = ProgramHttpMethodError(e)
+            elif code == 408:
+                error = ProgramHttpTimeoutError(e)
+            else:
+                error = ProgramHttpServerError(e, code)
+
+            return error_response(error)
+
+        # NOTE: Werkzeug exceptions should be covered above, the following line is for
+        #   unexpected HTTP server errors.
+        return error_response(e)
 
 
 def build_routes(app):
@@ -114,39 +168,6 @@ def after_request(response):
     )
 
     return response
-
-
-@app.errorhandler(Exception)
-def exceptions(e):
-    """This exceptions handler manages Flask/Werkzeug exceptions.
-
-    For Renku exception handlers check ``service/decorators.py``
-    """
-
-    # NOTE: Capture werkzeug exceptions and propagate them to sentry.
-    capture_exception(e)
-
-    # NOTE: Capture traceback for dumping it to the log.
-    tb = traceback.format_exc()
-
-    if hasattr(e, "code") and e.code == 404:
-        service_log.error(
-            "{} {} {} {} 404 NOT FOUND\n{}".format(
-                request.remote_addr, request.method, request.scheme, request.full_path, tb
-            )
-        )
-        return error_response(HTTP_SERVER_ERROR - e.code, e.name)
-
-    if hasattr(e, "code") and e.code >= 500:
-        service_log.error(
-            "{} {} {} {} 5xx INTERNAL SERVER ERROR\n{}".format(
-                request.remote_addr, request.method, request.scheme, request.full_path, tb
-            )
-        )
-        return error_response(HTTP_SERVER_ERROR - e.code, e.name)
-
-    # NOTE: Werkzeug exceptions should be covered above, following line is for unexpected HTTP server errors.
-    return error_response(HTTP_SERVER_ERROR, str(e))
 
 
 if __name__ == "__main__":

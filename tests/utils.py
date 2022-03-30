@@ -17,7 +17,9 @@
 # limitations under the License.
 """Test utility functions."""
 import contextlib
+import json
 import os
+import re
 import traceback
 import uuid
 from contextlib import contextmanager
@@ -101,8 +103,10 @@ def modified_environ(*remove, **update):
 
     The ``os.environ`` dictionary is updated in-place so that the modification
     is sure to work in all situations.
-    :param remove: Environment variables to remove.
-    :param update: Dictionary of environment variables and values to add/update.
+
+    Args:
+        remove: Environment variables to remove.
+        update: Dictionary of environment variables and values to add/update.
     """
     env = os.environ
     update = update or {}
@@ -132,7 +136,12 @@ def format_result_exception(result):
     else:
         stacktrace = ""
 
-    return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output}"
+    try:
+        stderr = f"\n{result.stderr}"
+    except ValueError:
+        stderr = ""
+
+    return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output + stderr}"
 
 
 def load_dataset(name: str) -> Optional[Dataset]:
@@ -166,7 +175,8 @@ def retry_failed(fn=None, extended: bool = False):
     """
     Decorator to run flaky with same number of max and min repetitions across all tests.
 
-    :param extended: allow more repetitions than usual.
+    Args:
+        extended (bool, optional): allow more repetitions than usual (Default value = False).
     """
 
     def decorate(fn):
@@ -272,3 +282,11 @@ def clone_compressed_repository(base_path, name) -> Repository:
     repository = Repository.clone_from(bare_path, repository_path)
 
     return repository
+
+
+def assert_rpc_response(response, with_key="result"):
+    """Check rpc result in response."""
+    assert response and 200 == response.status_code
+
+    response_text = re.sub(r"http\S+", "", json.dumps(response.json))
+    assert with_key in response_text

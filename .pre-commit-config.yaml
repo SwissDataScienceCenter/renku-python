@@ -1,6 +1,35 @@
 repos:
-- repo: https://github.com/ambv/black
-  rev: 22.1.0
-  hooks:
-  - id: black
-    language_version: python3
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+    -   id: check-yaml
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+-   repo: https://github.com/psf/black
+    rev: 22.1.0
+    hooks:
+    -   id: black
+-   repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+    -   id: isort
+        name: isort (python)
+-   repo: https://github.com/pycqa/flake8
+    rev: '3.9.2'
+    hooks:
+    -   id: flake8
+        exclude: ^docs/
+        args:
+        - "--max-line-length=120"
+        - "--show-source"
+        - "--ignore=E121,E126,E203,E226,E231,W503,W504"
+-   repo: https://github.com/pycqa/pydocstyle
+    rev: 4.0.0
+    hooks:
+    -   id: pydocstyle
+        args:
+        - --ignore=D105,D107,D202,D401
+-   repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.8.0
+    hooks:
+    -   id: shellcheck

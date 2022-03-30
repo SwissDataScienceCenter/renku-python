@@ -25,10 +25,15 @@ from renku.core.errors import ParameterError
 def shorten_message(message: str, line_length: int = 100, body_length: int = 65000):
     """Wraps and shortens a commit message.
 
-    :param message: message to adjust.
-    :param line_length: maximum line length before wrapping. 0 for infinite.
-    :param body_length: maximum body length before cut. 0 for infinite.
-    :return: message wrapped and trimmed.
+    Args:
+        message(str): message to adjust.
+        line_length(int, optional): maximum line length before wrapping. 0 for infinite (Default value = 100).
+        body_length(int, optional): maximum body length before cut. 0 for infinite (Default value = 65000).
+    Raises:
+        ParameterError: If line_length or body_length < 0
+    Returns:
+        message wrapped and trimmed.
+
     """
 
     if line_length < 0:

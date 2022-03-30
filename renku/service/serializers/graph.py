@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku graph serializers."""
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, validate
 
 from renku.service.serializers.common import AsyncSchema, LocalRepositorySchema, MigrateSchema, RemoteRepositorySchema
 from renku.service.serializers.rpc import JsonRPCResponse
@@ -27,7 +27,7 @@ class GraphExportRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySch
 
     callback_url = fields.URL()
     revision = fields.String(missing="HEAD", allow_none=True)
-    format = fields.String(missing="json-ld")
+    format = fields.String(missing="json-ld", validate=validate.OneOf(["json-ld", "nt", "rdf", "dot", "dot-landscape"]))
 
 
 class GraphExportResponse(Schema):

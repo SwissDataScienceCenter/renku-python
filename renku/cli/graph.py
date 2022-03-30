@@ -73,7 +73,16 @@ correct and that there isn't anything missing.
 import click
 
 from renku.cli.utils.click import CaseInsensitiveChoice
-from renku.core.commands.format.graph import GRAPH_FORMATS
+
+GRAPH_FORMATS = {
+    "jsonld": "jsonld",
+    "json-ld": "jsonld",
+    "nt": "nt",
+    "rdf": "rdf",
+    "dot": "dot",
+    "dot-landscape": "dot-landscape",
+    "dot-debug": "dot-debug",
+}
 
 
 @click.group(hidden=True)
@@ -91,15 +100,40 @@ def graph():
 )
 @click.option("--full", is_flag=True, help="Generate full graph for project. Overrides --revision.")
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
-def export(format, revision, full, strict):
+@click.option(
+    "--no-indent", is_flag=True, default=False, help="Format without indentation/pretty-printing (only for JSON-LD)."
+)
+def export(format, revision, full, strict, no_indent):
     r"""Export Renku graph metadata for project."""
     from renku.cli.utils.callback import ClickCallback
     from renku.core.commands.graph import export_graph_command
+    from renku.core.commands.view_model.graph import DotFormat
 
     if full:
         revision = None
 
     communicator = ClickCallback()
-    export_graph_command().with_communicator(communicator).build().execute(
-        format=format, strict=strict, revision_or_range=revision
+    result = (
+        export_graph_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(format=format, strict=strict, revision_or_range=revision)
     )
+    format = GRAPH_FORMATS[format]
+
+    if format == "jsonld":
+        result = result.output.as_jsonld_string(indentation=None if no_indent else 2)
+    elif format == "rdf":
+        result = result.output.as_rdf_string()
+    elif format == "nt":
+        result = result.output.as_nt_string()
+    elif format == "dot":
+        result = result.output.as_dot_string(format=DotFormat.FULL)
+    elif format == "dot-landscape":
+        result = result.output.as_dot_string(format=DotFormat.FULL_LANDSCAPE)
+    elif format == "dot-debug":
+        result = result.output.as_dot_string(format=DotFormat.DEBUG)
+    else:
+        raise NotImplementedError(f"Format {format} not supported for graph export.")
+
+    click.echo(result)

@@ -17,9 +17,9 @@
 # limitations under the License.
 """Renku service templates read manifest controller tests."""
 import pytest
-from marshmallow import ValidationError
 
-from renku.core import errors
+from renku.core.errors import InvalidTemplateError
+from renku.service.errors import UserRepoUrlInvalidError
 
 
 def test_template_read_manifest_ctrl(ctrl_init, svc_client_with_templates, mocker):
@@ -47,7 +47,7 @@ def test_validation_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_clie
     _, _, template_params = svc_client_with_templates
     template_params["url"] = git_url
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(UserRepoUrlInvalidError):
         TemplatesReadManifestCtrl(cache, user_data, template_params)
 
 
@@ -64,5 +64,5 @@ def test_found_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_client_wi
 
     ctrl = TemplatesReadManifestCtrl(cache, user_data, template_params)
 
-    with pytest.raises(errors.InvalidTemplateError):
+    with pytest.raises(InvalidTemplateError):
         ctrl.to_response()

@@ -47,11 +47,15 @@ _entity_cache = {}
 def run_command(command, *paths, separator=None, **kwargs):
     """Execute command by splitting `paths` to make sure that argument list will be within os limits.
 
-    :param command: A list or tuple containing command and its arguments.
-    :param paths: List of paths/long argument. This will be appended to `command` for each invocation.
-    :param separator: Separator for `paths` if they need to be passed as string.
-    :param kwargs: Extra arguments passed to `subprocess.run`.
-    :returns: Result of last invocation.
+    Args:
+        command: A list or tuple containing command and its arguments.
+        *paths: Paths to run on.
+        separator: Separator for `paths` if they need to be passed as string. (Default value = None)
+    Raises:
+        errors.GitError: If a Git subcommand failed.
+    Returns:
+        Result of last invocation.
+
     """
     from renku.core.metadata.repository import split_paths
 
@@ -77,17 +81,42 @@ def run_command(command, *paths, separator=None, **kwargs):
 
 
 def is_valid_git_repository(repository: Optional["Repository"]) -> bool:
-    """Return if is a git repository and has a valid HEAD."""
+    """Return if is a git repository and has a valid HEAD.
+
+    Args:
+        repository(Optional["Repository"]): The repository to check.
+
+    Returns:
+        bool: Whether or not this is a valid Git repository.
+
+    """
     return repository is not None and repository.head.is_valid()
 
 
 def get_hook_path(repository, name: str) -> Path:
-    """Return path to the given named hook in the given repository."""
+    """Return path to the given named hook in the given repository.
+
+    Args:
+        repository: The current Git repository.
+        name(str): The name of the hook.
+
+    Returns:
+        Path: Path to the hook.
+
+    """
     return repository.path / ".git" / "hooks" / name
 
 
 def get_oauth_url(url, gitlab_token):
-    """Format URL with a username and password."""
+    """Format URL with a username and password.
+
+    Args:
+        url: The URL to format.
+        gitlab_token: The Gitlab OAuth2 Token.
+
+    Returns:
+        The URL with credentials added.
+    """
     parsed_url = urllib.parse.urlparse(url)
 
     if not parsed_url.netloc:
@@ -98,14 +127,32 @@ def get_oauth_url(url, gitlab_token):
 
 
 def get_cache_directory_for_repository(client, url) -> Path:
-    """Return a path to client's cache directory."""
+    """Return a path to client's cache directory.
+
+    Args:
+        client: ``LocalCLient``.
+        url: The repository URL.
+
+    Returns:
+        Path: The path of the cache.
+
+    """
     from renku.core.management.dataset.constant import CACHE
 
     return client.renku_path / CACHE / get_full_repository_path(url)
 
 
 def parse_git_url(url: Optional[str]) -> GitURL:
-    """Return parsed git url."""
+    """Return parsed git url.
+
+    Args:
+        url(Optional[str]): The URL to parse.
+    Raises:
+        errors.InvalidGitURL: If ``url`` is empty.
+    Returns:
+        GitURL: The parsed GitURL.
+
+    """
     if not url:
         raise errors.InvalidGitURL("No URL provided.")
 
@@ -113,7 +160,15 @@ def parse_git_url(url: Optional[str]) -> GitURL:
 
 
 def have_same_remote(url1, url2) -> bool:
-    """Checks if two git urls point to the same remote repo ignoring protocol and credentials."""
+    """Checks if two git urls point to the same remote repo ignoring protocol and credentials.
+
+    Args:
+        url1: The first URL.
+        url2:The second URL.
+
+    Returns:
+        bool: True if both URLs point to the same repository.
+    """
     try:
         u1 = parse_git_url(url1)
         u2 = parse_git_url(url2)
@@ -124,7 +179,16 @@ def have_same_remote(url1, url2) -> bool:
 
 
 def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
-    """Return a repo url that can be authenticated by renku."""
+    """Return a repo url that can be authenticated by renku.
+
+    Args:
+        remote_url: The repository URL.
+        deployment_hostname: The host name used by this deployment (Default value = None).
+        access_token: The OAuth2 access token (Default value = None).
+
+    Returns:
+        The Renku repository URL with credentials.
+    """
     parsed_remote = parse_git_url(remote_url)
     path = parsed_remote.path.strip("/")
     if path.startswith("gitlab/"):
@@ -138,7 +202,17 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
 
 
 def create_backup_remote(repository: "Repository", remote_name: str, url: str) -> Tuple[str, bool, Optional["Remote"]]:
-    """Create a backup for ``remote_name`` and sets its url to ``url``."""
+    """Create a backup for ``remote_name`` and sets its url to ``url``.
+
+    Args:
+        repository("Repository"): The current repository.
+        remote_name(str): The name of the backup remote.
+        url(str): The remote URL.
+
+    Returns:
+        Tuple[str, bool, Optional["Remote"]]: Tuple of backup remote name, whether it existed already and the created
+            remote if successful.
+    """
     backup_remote_name = f"{RENKU_BACKUP_PREFIX}-{remote_name}"
 
     backup_exists = any(backup_remote_name == r.name for r in repository.remotes)
@@ -154,7 +228,14 @@ def create_backup_remote(repository: "Repository", remote_name: str, url: str) -
 
 
 def get_full_repository_path(url: Optional[str]) -> str:
-    """Extract hostname/path of a git repository from its URL."""
+    """Extract hostname/path of a git repository from its URL.
+
+    Args:
+        url(Optional[str]): The URL.
+
+    Returns:
+        The hostname plus path extracted from the URL.
+    """
     if not str:
         return ""
 
@@ -163,19 +244,41 @@ def get_full_repository_path(url: Optional[str]) -> str:
 
 
 def get_repository_name(url: str) -> str:
-    """Extract name of a git repository from its URL."""
+    """Extract name of a git repository from its URL.
+
+    Args:
+        url(str): The URL to get the repository name from.
+
+    Returns:
+        str: The repository name.
+    """
     return Path(get_renku_repo_url(url)).stem
 
 
 def get_committer_agent(commit: "Commit") -> "SoftwareAgent":
-    """Return committer SoftwareAgent."""
+    """Return committer SoftwareAgent.
+
+    Args:
+        commit("Commit"): The commit to check.
+
+    Returns:
+        "SoftwareAgent": The agent responsible for the commit.
+    """
     from renku.core.models.provenance.agent import SoftwareAgent
 
     return SoftwareAgent(id=commit.committer.email, name=commit.committer.name)
 
 
 def get_git_user(repository: Optional["Repository"]) -> Optional["Person"]:
-    """Return git user."""
+    """Return git user.
+
+    Args:
+        repository(Optional["Repository"]): The Git repository.
+
+    Returns:
+        Optional["Person"]: The person associated with the repository.
+
+    """
     from renku.core.models.provenance.agent import Person
 
     if repository is None:
@@ -186,7 +289,17 @@ def get_git_user(repository: Optional["Repository"]) -> Optional["Person"]:
 
 
 def get_remote(repository: Optional["Repository"], *, name: str = None, url: str = None) -> Optional["Remote"]:
-    """Return repository's remote using its name or url or return default remote if any."""
+    """Return repository's remote using its name or url or return default remote if any.
+
+    Args:
+        repository(Optional["Repository"]): The Git repository.
+        name(str, optional): The name of the remote (Default value = None).
+        url(str, optional): The remote URL (Default value = None).
+
+    Returns:
+        Optional["Remote"]: The remote, if found.
+
+    """
     if not repository or len(repository.remotes) == 0:
         return
     elif name:
@@ -212,7 +325,14 @@ def check_global_git_user_is_configured():
 
 
 def is_path_safe(path: Union[Path, str]) -> bool:
-    """Check if the path should be used in output."""
+    """Check if the path should be used in output.
+
+    Args:
+        path(Union[Path, str]): The path to check.
+
+    Returns:
+        bool: True if the path is safe else False.
+    """
     path = str(path)
 
     # Should not be in ignore paths.
@@ -227,7 +347,17 @@ def is_path_safe(path: Union[Path, str]) -> bool:
 
 
 def get_entity_from_revision(repository: "Repository", path: Union[Path, str], revision: str = None) -> "Entity":
-    """Return an Entity instance from given path and revision."""
+    """Return an Entity instance from given path and revision.
+
+    Args:
+        repository("Repository"): The current repository.
+        path(Union[Path, str]): The path of the entity.
+        revision(str, optional): The revision to check at (Default value = None).
+
+    Returns:
+        "Entity": The Entity for the given path and revision.
+
+    """
     from renku.core.models.entity import Collection, Entity
 
     def get_directory_members(absolute_path: Path) -> List[Entity]:
@@ -285,7 +415,17 @@ def default_path(path="."):
 
 
 def commit_changes(*paths: Union[Path, str], repository: "Repository", message=None) -> List[str]:
-    """Commit paths to the repository."""
+    """Commit paths to the repository.
+
+    Args:
+        *paths(Union[Path, str]): The paths to commit.
+        repository("Repository"): The repository to commit to.
+        message: The commit message (Default value = None).
+    Raises:
+        errors.GitError: If paths couldn't be committed.
+    Returns:
+        List of paths that were committed.
+    """
     if len(paths) == 0:
         return []
 
@@ -316,8 +456,15 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
 def push_changes(repository: "Repository", remote: str = None, reset: bool = True) -> str:
     """Push to a remote branch. If the remote branch is protected a new remote branch will be created and pushed to.
 
-    If ``reset`` is True, active branch will be reset to its upstream branch (if any) in case changes are pushed to a
-    different branch.
+    Args:
+        repository("Repository"): The current repository.
+        remote(str, optional): The remote to push to (Default value = None).
+        reset(bool, optional): Whether to reset active branch to its upstream branch, used if changes get
+            pushed to a temporary branch (Default value = True).
+    Raises:
+        errors.GitError: If there's no remote or the push fails.
+    Returns:
+        str: Name of the branch that was pushed to.
     """
     from renku.core.utils import communication
 
@@ -419,7 +566,28 @@ def clone_renku_repository(
     use_renku_credentials: bool = False,
     reuse_existing_repository: bool = False,
 ) -> "Repository":
-    """Clone a Renku Repository."""
+    """Clone a Renku Repository.
+
+    Args:
+        url(str): The Git URL to clone.
+        path(Union[Path, str]): The path to clone into.
+        gitlab_token: The gitlab OAuth2 token (Default value = None).
+        deployment_hostname: The hostname of the current renku deployment (Default value = None).
+        depth(Optional[int], optional): The clone depth, number of commits from HEAD (Default value = None).
+        install_githooks: Whether to install githooks (Default value = False).
+        install_lfs: Whether to install Git LFS (Default value = True).
+        skip_smudge: Whether to pull files from Git LFS (Default value = True).
+        recursive: Whether to clone recursively (Default value = True).
+        progress: The GitProgress object (Default value = None).
+        config(Optional[dict], optional): Set configuration for the project (Default value = None).
+        raise_git_except: Whether to raise git exceptions (Default value = False).
+        checkout_revision: The revision to checkout after clone (Default value = None).
+        use_renku_credentials(bool, optional): Whether to use Renku provided credentials (Default value = False).
+        reuse_existing_repository(bool, optional): Whether to clone over an existing repository (Default value = False).
+
+    Returns:
+        The cloned repository.
+    """
     parsed_url = parse_git_url(url)
 
     clone_options = None
@@ -476,7 +644,27 @@ def clone_repository(
     clean: bool = False,
     clone_options: List[str] = None,
 ) -> "Repository":
-    """Clone a Git repository and install Git hooks and LFS."""
+    """Clone a Git repository and install Git hooks and LFS.
+
+    Args:
+        url: The Git URL to clone.
+        path(Union[Path, str], optional): The path to clone into (Default value = None).
+        install_githooks: Whether to install githooks (Default value = True).
+        install_lfs: Whether to install Git LFS (Default value = True).
+        skip_smudge: Whether to pull files from Git LFS (Default value = True).
+        recursive: Whether to clone recursively (Default value = True).
+        depth: The clone depth, number of commits from HEAD (Default value = None).
+        progress: The GitProgress object (Default value = None).
+        config(Optional[dict], optional): Set configuration for the project (Default value = None).
+        raise_git_except: Whether to raise git exceptions (Default value = False).
+        checkout_revision: The revision to checkout after clone (Default value = None).
+        no_checkout(bool, optional): Whether to perform a checkout (Default value = False).
+        clean(bool, optional): Whether to require the target folder to be clean (Default value = False).
+        clone_options(List[str], optional): Additional clone options (Default value = None).
+
+    Returns:
+        The cloned repository.
+    """
     from renku.core.management.githooks import install
     from renku.core.metadata.repository import Repository
 
@@ -514,7 +702,7 @@ def clone_repository(
 
             if remote and have_same_remote(remote.url, url):
                 repository.reset(hard=True)
-                repository.fetch(all=True)
+                repository.fetch(all=True, tags=True)
                 # NOTE: By default we checkout remote repository's HEAD since the local HEAD might not point to
                 # the default branch.
                 default_checkout_revision = checkout_revision or "origin/HEAD"

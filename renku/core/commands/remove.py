@@ -34,7 +34,14 @@ from renku.core.utils.os import delete_file
 
 @inject.autoparams()
 def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset_gateway: IDatasetGateway):
-    """Remove files and check repository for potential problems."""
+    """Remove files and check repository for potential problems.
+
+    Args:
+        sources: Files to remove.
+        edit_command: Command to execute for editing .gitattributes.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        dataset_gateway(IDatasetGateway): Injected dataset gateway.
+    """
     from renku.core.management.git import _expand_directories
 
     client = client_dispatcher.current_client

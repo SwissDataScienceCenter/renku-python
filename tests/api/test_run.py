@@ -19,6 +19,8 @@
 
 from pathlib import Path
 
+import yaml
+
 from renku.api import Input, Output, Parameter, Project
 from renku.core.management.workflow.plan_factory import (
     get_indirect_inputs_path,
@@ -31,14 +33,14 @@ def test_indirect_inputs(client):
     """Test defining indirect inputs."""
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
-    path_3 = "a/path with white-spaces/"
+    path_3 = "a/path with white-spaces"
 
-    input_1 = Input(path_1)
+    input_1 = Input("input-1", path_1)
 
     with Project() as project:
-        input_2 = Input(path_2)
+        input_2 = Input("input-2", path_2)
 
-    input_3 = Input(path_3)
+    input_3 = Input("input-3", path_3)
 
     assert Path(path_1) == input_1.path
     assert Path(path_2) == input_2.path
@@ -46,29 +48,31 @@ def test_indirect_inputs(client):
 
     content = get_indirect_inputs_path(project.path).read_text()
 
-    assert {path_1, path_2, path_3} == {line for line in content.split("\n") if line}
+    assert {path_1, path_2, path_3} == set(yaml.safe_load(content).values())
+    assert {input_1.name, input_2.name, input_3.name} == set(yaml.safe_load(content).keys())
 
 
 def test_indirect_outputs(client):
     """Test defining indirect outputs."""
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
-    path_3 = "a/path with white-spaces/"
+    path_3 = "a/path with white-spaces"
 
-    input_1 = Output(path_1)
+    output_1 = Output("output-1", path_1)
 
     with Project() as project:
-        input_2 = Output(path_2)
+        output_2 = Output("output-2", path_2)
 
-    input_3 = Output(path_3)
+    output_3 = Output("output-3", path_3)
 
-    assert Path(path_1) == input_1.path
-    assert Path(path_2) == input_2.path
-    assert Path(path_3) == input_3.path
+    assert Path(path_1) == output_1.path
+    assert Path(path_2) == output_2.path
+    assert Path(path_3) == output_3.path
 
     content = get_indirect_outputs_path(project.path).read_text()
 
-    assert {path_1, path_2, path_3} == {line for line in content.split("\n") if line}
+    assert {path_1, path_2, path_3} == set(yaml.safe_load(content).values())
+    assert {output_1.name, output_2.name, output_3.name} == set(yaml.safe_load(content).keys())
 
 
 def test_indirect_inputs_outputs(client):
@@ -76,19 +80,24 @@ def test_indirect_inputs_outputs(client):
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
 
-    input_1 = Input(path_1)
-    output_2 = Output(path_2)
+    input_1 = Input("input-1", path_1)
+    output_2 = Output("output-1", path_2)
 
     assert Path(path_1) == input_1.path
     assert Path(path_2) == output_2.path
 
-    assert path_1 == get_indirect_inputs_path(client.path).read_text().strip()
-    assert path_2 == get_indirect_outputs_path(client.path).read_text().strip()
+    input_content = get_indirect_inputs_path(client.path).read_text()
+    output_content = get_indirect_outputs_path(client.path).read_text()
+
+    assert path_1 == list(yaml.safe_load(input_content).values())[0]
+    assert input_1.name == list(yaml.safe_load(input_content).keys())[0]
+    assert path_2 == list(yaml.safe_load(output_content).values())[0]
+    assert output_2.name == list(yaml.safe_load(output_content).keys())[0]
 
 
 def test_open_inputs(client):
     """Test inputs can be passed to open function."""
-    with open(Input("input.txt"), "w") as f:
+    with open(Input("input-1", "input.txt"), "w") as f:
         f.write("some data")
 
     assert "some data" == (client.path / "input.txt").read_text()
@@ -96,7 +105,7 @@ def test_open_inputs(client):
 
 def test_open_outputs(client):
     """Test outputs can be passed to open function."""
-    with open(Output("output.txt"), "w") as f:
+    with open(Output("output-1", "output.txt"), "w") as f:
         f.write("some data")
 
     assert "some data" == (client.path / "output.txt").read_text()

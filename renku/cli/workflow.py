@@ -22,10 +22,10 @@ Runs and Plans
 
 Renku records two different kinds of metadata when a workflow is executed,
 ``Run`` and ``Plan``.
-Plans describe a recipe for a command, they function as a template that
+Plans describe a recipe for a command. They function as a template that
 can be used directly or combined with other workflow templates to create more
 complex recipes.
-These Plans can be run in various ways, on creation with ``renku run`,`
+These Plans can be run in various ways, on creation with ``renku run``,
 doing a ``renku rerun`` or ``renku update`` or manually using ``renku workflow
 execute``.
 
@@ -644,7 +644,6 @@ from renku.core.commands.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 
 if TYPE_CHECKING:
     from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
-    from renku.core.commands.view_model.plan import PlanViewModel
 
 
 def _complete_workflows(ctx, param, incomplete):
@@ -657,96 +656,9 @@ def _complete_workflows(ctx, param, incomplete):
         return []
 
 
-def _print_plan(plan: "PlanViewModel"):
-    """Print a plan to stdout."""
-    from renku.core.utils.os import print_markdown
-
-    click.echo(click.style("Id: ", bold=True, fg=color.MAGENTA) + click.style(plan.id, bold=True))
-    click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(plan.name, bold=True))
-
-    if plan.description:
-        print_markdown(plan.description)
-
-    click.echo(click.style("Command: ", bold=True, fg=color.MAGENTA) + click.style(plan.full_command, bold=True))
-    click.echo(click.style("Success Codes: ", bold=True, fg=color.MAGENTA) + click.style(plan.success_codes, bold=True))
-
-    if plan.inputs:
-        click.echo(click.style("Inputs: ", bold=True, fg=color.MAGENTA))
-        for run_input in plan.inputs:
-            click.echo(click.style(f"\t- {run_input.name}:", bold=True))
-
-            if run_input.description:
-                click.echo(click.style(f"\t\t{run_input.description}"))
-
-            click.echo(
-                click.style("\t\tDefault Value: ", bold=True, fg=color.MAGENTA)
-                + click.style(run_input.default_value, bold=True)
-            )
-
-            if run_input.position:
-                click.echo(
-                    click.style("\t\tPosition: ", bold=True, fg=color.MAGENTA)
-                    + click.style(run_input.position, bold=True)
-                )
-
-            if run_input.prefix:
-                click.echo(
-                    click.style("\t\tPrefix: ", bold=True, fg=color.MAGENTA) + click.style(run_input.prefix, bold=True)
-                )
-
-    if plan.outputs:
-        click.echo(click.style("Outputs: ", bold=True, fg=color.MAGENTA))
-        for run_output in plan.outputs:
-            click.echo(click.style(f"\t- {run_output.name}:", bold=True))
-
-            if run_output.description:
-                click.echo(click.style(f"\t\t{run_output.description}"))
-
-            click.echo(
-                click.style("\t\tDefault Value: ", bold=True, fg=color.MAGENTA)
-                + click.style(run_output.default_value, bold=True)
-            )
-
-            if run_output.position:
-                click.echo(
-                    click.style("\t\tPosition: ", bold=True, fg=color.MAGENTA)
-                    + click.style(run_output.position, bold=True)
-                )
-
-            if run_output.prefix:
-                click.echo(
-                    click.style("\t\tPrefix: ", bold=True, fg=color.MAGENTA) + click.style(run_output.prefix, bold=True)
-                )
-
-    if plan.parameters:
-        click.echo(click.style("Parameters: ", bold=True, fg=color.MAGENTA))
-        for run_parameter in plan.parameters:
-            click.echo(click.style(f"\t- {run_parameter.name}:", bold=True))
-
-            if run_parameter.description:
-                click.echo(click.style(f"\t\t{run_parameter.description}"))
-
-            click.echo(
-                click.style("\t\tDefault Value: ", bold=True, fg=color.MAGENTA)
-                + click.style(run_parameter.default_value, bold=True)
-            )
-
-            if run_parameter.position:
-                click.echo(
-                    click.style("\t\tPosition: ", bold=True, fg=color.MAGENTA)
-                    + click.style(run_parameter.position, bold=True)
-                )
-
-            if run_parameter.prefix:
-                click.echo(
-                    click.style("\t\tPrefix: ", bold=True, fg=color.MAGENTA)
-                    + click.style(run_parameter.prefix, bold=True)
-                )
-
-
 def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
     """Print a CompositePlan to stdout."""
-    from renku.core.utils.os import print_markdown
+    from renku.cli.utils.terminal import print_markdown
 
     click.echo(click.style("Id: ", bold=True, fg=color.MAGENTA) + click.style(composite_plan.id, bold=True))
     click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(composite_plan.name, bold=True))
@@ -813,6 +725,7 @@ def list_workflows(format, columns):
 @click.argument("name_or_id", metavar="<name_or_id>", shell_complete=_complete_workflows)
 def show(name_or_id):
     """Show details for workflow <name_or_id>."""
+    from renku.cli.utils.terminal import print_plan
     from renku.core.commands.view_model.plan import PlanViewModel
     from renku.core.commands.workflow import show_workflow_command
 
@@ -820,7 +733,7 @@ def show(name_or_id):
 
     if plan:
         if isinstance(plan, PlanViewModel):
-            _print_plan(plan)
+            print_plan(plan)
         else:
             _print_composite_plan(plan)
     else:
@@ -954,6 +867,7 @@ def compose(
 )
 def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params):
     """Edit workflow details."""
+    from renku.cli.utils.terminal import print_plan
     from renku.core.commands.view_model.plan import PlanViewModel
     from renku.core.commands.workflow import edit_workflow_command
 
@@ -973,7 +887,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
     if not result.error:
         plan = result.output
         if isinstance(plan, PlanViewModel):
-            _print_plan(plan)
+            print_plan(plan)
         else:
             _print_composite_plan(plan)
 
@@ -1234,6 +1148,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 @click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
     """Execute a workflow by iterating through a range of provided parameters."""
+    from renku.cli.utils.terminal import print_plan
     from renku.core.commands.view_model.plan import PlanViewModel
     from renku.core.commands.workflow import iterate_workflow_command, show_workflow_command
 
@@ -1244,7 +1159,7 @@ def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
 
     if plan:
         if isinstance(plan, PlanViewModel):
-            _print_plan(plan)
+            print_plan(plan)
         else:
             _print_composite_plan(plan)
 

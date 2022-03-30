@@ -30,8 +30,7 @@ from renku.service.jobs.cleanup import cache_project_cleanup
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 from renku.service.utils import make_project_path
-from tests.service.views.test_dataset_views import assert_rpc_response
-from tests.utils import retry_failed
+from tests.utils import assert_rpc_response, retry_failed
 
 
 @pytest.mark.parametrize(
@@ -64,7 +63,6 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
 
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
@@ -90,7 +88,6 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert "COMPLETED" == response.json["result"]["state"]
 
@@ -113,7 +110,6 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
@@ -138,7 +134,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     assert commit_message.splitlines()[0] == new_commit.message.splitlines()[0]
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
-    assert response
+
     assert_rpc_response(response)
     assert "COMPLETED" == response.json["result"]["state"]
 
@@ -169,7 +165,6 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
@@ -219,7 +214,6 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
@@ -273,7 +267,6 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     payload = {"project_id": project_id, "name": uuid.uuid4().hex, "create_dataset": True, "files": [{"file_url": url}]}
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"].keys())
 
@@ -395,7 +388,6 @@ def test_dataset_project_lock(doi, svc_client_with_repo):
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 

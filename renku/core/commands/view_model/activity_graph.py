@@ -18,8 +18,9 @@
 """Activity graph view model."""
 
 from collections import namedtuple
+from datetime import datetime
 from textwrap import shorten
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, Any, List, Tuple
 
 if TYPE_CHECKING:
     from grandalf.graphs import Edge
@@ -46,8 +47,17 @@ class ActivityGraphViewModel:
     def __init__(self, graph):
         self.graph = graph
 
-    def _format_vertex(self, node, columns) -> str:
-        """Return vertex text for a node."""
+    def _format_vertex(self, node, columns: List[str]) -> Tuple[str, bool, Any]:
+        """Return vertex text for a node.
+
+        Args:
+            node: The node to format.
+            columns (List[str]): The fields to include in the node text.
+
+        Returns:
+            Tuple[str, bool, Any]: Tuple of string representation of node, whether or not
+                it is an Activity and the Activity if it is.
+        """
         from renku.core.models.provenance.activity import Activity
 
         if isinstance(node, Activity):
@@ -55,10 +65,16 @@ class ActivityGraphViewModel:
 
         return node, False, None
 
-    def _subgraph_order_key(self, subgraph):
+    def _subgraph_order_key(self, subgraph) -> datetime:
         """Return a sorting key for ordering subgraphs.
 
-        Subgraphs are ordered by the ended_at_time of the lastest activits in them.
+        Subgraphs are ordered by the ended_at_time of the lastest activities in them.
+
+        Args:
+            subgraph: Subgraph to get an order key for.
+
+        Returns:
+            datetime: The latest activity time in the subgraph.
         """
         from renku.core.models.provenance.activity import Activity
 
@@ -67,7 +83,11 @@ class ActivityGraphViewModel:
         return max(activity_times)
 
     def layout_graph(self, columns):
-        """Create a Sugiyama layout of the graph."""
+        """Create a Sugiyama layout of the graph.
+
+        Args:
+            columns: Columns to show as node text.
+        """
         import networkx
         from grandalf.graphs import Edge, Graph, Vertex
         from grandalf.layouts import SugiyamaLayout
@@ -120,6 +140,15 @@ class ActivityGraphViewModel:
         """Add an edge to a canvas object.
 
         Makes sure overlapping edges don't have the same color.
+
+        Args:
+            edges(List["Edge"]): Sub-edges of the edge to add.
+            canvas("TextCanvas"): Canvas to add edge to.
+            existing_edges(List["Edge"]): Already existing edges on canvas.
+            min_y: Starting y coordinate inside canvas.
+
+        Returns:
+            Tuple[int, str]: Ending y coordinate after edge is added and color used for edge.
         """
         from renku.core.commands.view_model.text_canvas import EdgeShape
 
@@ -156,8 +185,20 @@ class ActivityGraphViewModel:
         existing_edges.extend(new_edges)
         return max_y, edge_color
 
-    def text_representation(self, columns: str, color: bool = True, ascii=False):
-        """Return an ascii representation of the graph."""
+    def text_representation(
+        self, columns: str, color: bool = True, ascii=False
+    ) -> Tuple[str, List[List[Tuple[Point, Point, Any]]]]:
+        """Return an ascii representation of the graph.
+
+        Args:
+            columns(str): Columns to include in node text.
+            color(bool, optional): Whether to render in color or not (Default value = True).
+            ascii: Whether to use only ascii characters or also UTF8  (Default value = False).
+
+        Returns:
+            Tuple[str, List[List[Tuple[Point, Point, Any]]]]: Tuple of rendered canvas text and coordinates
+                of nodes within canvas.
+        """
         from grandalf.layouts import DummyVertex
 
         from renku.core.commands.view_model.text_canvas import NodeShape, TextCanvas

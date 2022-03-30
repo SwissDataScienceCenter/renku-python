@@ -71,7 +71,14 @@ class Project:
 
 
 def ensure_project_context(fn):
-    """Check existence of a project context."""
+    """Check existence of a project context.
+
+    Args:
+        fn: The function to wrap.
+
+    Returns:
+        The function with the current project injected.
+    """
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -82,7 +89,11 @@ def ensure_project_context(fn):
 
 
 def _get_current_project():
-    """Return current project context if any or a new project object."""
+    """Return current project context if any or a new project object.
+
+    Returns:
+        The current project context or None.
+    """
     return Project._project_contexts.top if Project._project_contexts.top else None
 
 

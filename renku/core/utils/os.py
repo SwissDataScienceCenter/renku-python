@@ -21,7 +21,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
-from typing import Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from renku.core import errors
 
@@ -64,8 +64,7 @@ def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bo
         return Path(absolute_path).relative_to(base)
     except ValueError:
         if strict:
-            raise errors.ParameterError("File {} is not within path {}".format(path, base))
-        return
+            raise errors.ParameterError(f"File {path} is not within path {base}")
 
 
 def is_subpath(path: Union[Path, str], base: Union[Path, str]) -> bool:
@@ -111,14 +110,6 @@ def is_path_empty(path: Union[Path, str]) -> bool:
     """
     subpaths = Path(path).rglob("*")
     return not any(subpaths)
-
-
-def print_markdown(text: str):
-    """Print markdown text to console."""
-    from rich.console import Console
-    from rich.markdown import Markdown
-
-    Console().print(Markdown(text))
 
 
 def is_ascii(data):
@@ -197,3 +188,18 @@ def hash_str(content: str):
         sha256_hash.update(byte_block)
 
     return sha256_hash.hexdigest()
+
+
+def safe_read_yaml(file: str) -> Dict[str, Any]:
+    """Parse a YAML file.
+
+    Returns:
+        In case of success a dictionary of the YAML's content,
+        otherwise raises a ParameterError exception.
+    """
+    try:
+        from renku.core.models import jsonld as jsonld
+
+        return jsonld.read_yaml(file)
+    except Exception as e:
+        raise errors.ParameterError(e)

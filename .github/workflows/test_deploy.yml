@@ -72,7 +72,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test style
         env:
@@ -111,7 +111,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test docs
         env:
@@ -153,7 +153,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Build cheatsheet
         run: |
@@ -254,7 +254,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -309,7 +309,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -351,9 +351,6 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
-          sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu jammy main restricted multiverse universe"
-          sudo apt-get update -y
-          sudo apt-get install -y --allow-downgrades -t jammy git-lfs=3.0.2-1
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -373,7 +370,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -434,7 +431,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -476,7 +473,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -511,7 +508,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -553,7 +550,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -594,7 +591,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -642,7 +639,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - uses: actions/cache@master
         id: network-cache
@@ -718,7 +715,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - uses: actions/cache@master
         id: network-cache
@@ -782,7 +779,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -824,7 +821,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install poetry poetry-dynamic-versioning poetry-lock-package twine
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Tag if necessary
         if: "!startsWith(github.ref, 'refs/tags/')"
@@ -851,6 +848,10 @@ jobs:
         with:
           fetch-depth: 0
           ref: 'develop'
+      - name: Set Git config
+        run: |
+          git config --global --add user.name "Renku Bot"
+          git config --global --add user.email "renku@datascience.ch"
       - name: merge changes from master
         run: |
           git merge origin/master --message "Merge branch 'master' into develop"

@@ -20,13 +20,13 @@ r"""Renku API Workflow Models.
 Input and Output classes can be used to define inputs and outputs of a script
 within the same script. Paths defined with these classes are added to explicit
 inputs and outputs in the workflow's metadata. For example, the following
-mark a ``data/data.csv`` as an input to the script:
+mark a ``data/data.csv`` as an input with name ``my-input`` to the script:
 
 .. code-block:: python
 
     from renku.api import Input
 
-    with open(Input("data/data.csv")) as input_data:
+    with open(Input("my-input", "data/data.csv")) as input_data:
         for line in input_data:
             print(line)
 
@@ -48,27 +48,43 @@ Once a Parameter is tracked like this, it can be set normally in commands like
 import re
 from os import PathLike, environ
 from pathlib import Path
+from typing import Union
 
 from renku.api.models.project import ensure_project_context
 from renku.core import errors
 from renku.core.management.workflow.plan_factory import (
     add_indirect_parameter,
+    add_to_files_list,
     get_indirect_inputs_path,
     get_indirect_outputs_path,
 )
 from renku.core.plugins.provider import RENKU_ENV_PREFIX
 
+name_pattern = re.compile("[a-zA-Z0-9-_]+")
+
 
 class _PathBase(PathLike):
     @ensure_project_context
-    def __init__(self, path, project):
-        self._path = Path(path)
+    def __init__(self, name: str, path: Union[str, Path], project=None):
+        if not name:
+            raise errors.ParameterError("'name' must be set.")
 
-        indirect_list_path = self._get_indirect_list_path(project.path)
-        indirect_list_path.parent.mkdir(exist_ok=True, parents=True)
-        with open(indirect_list_path, "a") as file_:
-            file_.write(str(path))
-            file_.write("\n")
+        if name and not name_pattern.match(name):
+            raise errors.ParameterError(
+                f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
+            )
+        self.name = name
+
+        env_value = environ.get(f"{RENKU_ENV_PREFIX}{name}", None)
+
+        if env_value:
+            self._path = Path(env_value)
+        else:
+            self._path = Path(path)
+
+            indirect_list_path = self._get_indirect_list_path(project.path)
+
+            add_to_files_list(indirect_list_path, name, self._path)
 
     @staticmethod
     def _get_indirect_list_path(project_path):
@@ -102,8 +118,20 @@ class Output(_PathBase):
 
 @ensure_project_context
 def parameter(name, value, project):
-    """Store parameter's name and value."""
-    if not re.match("[a-zA-Z0-9-_]+", name):
+    """Store parameter's name and value.
+
+    Args:
+        name (str): The name of the parameter.
+        value (Any): The value of the parameter.
+        project: The current project.
+
+    Returns:
+        The supplied value or a value set on workflow execution.
+    """
+    if not name:
+        raise errors.ParameterError("'name' must be set.")
+
+    if not name_pattern.match(name):
         raise errors.ParameterError(
             f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
         )

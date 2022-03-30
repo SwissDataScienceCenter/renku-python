@@ -66,8 +66,14 @@ to LFS:
 
     $ renku storage migrate --all
 
-This will move all files that are bigger than the renku `lfs_threshold` config
-value and are not excluded by `.renkulfsignore` into git LFS.
+This will move all files that are not excluded by `.renkulfsignore` into git
+LFS.
+
+.. note::
+
+    Recent versions of Git LFS don't support filtering files based on their
+    size. Therefore, Renku ignores `lfs_threshold` config value when migrating
+    files to LFS using this command.
 
 To only migrate specific files, you can also pass their paths to the command
 like:

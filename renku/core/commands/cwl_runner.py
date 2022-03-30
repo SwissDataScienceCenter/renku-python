@@ -33,7 +33,13 @@ from .echo import progressbar
 
 @inject.autoparams()
 def execute(output_file, client_dispatcher: IClientDispatcher, output_paths=None):
-    """Run the generated workflow using cwltool library."""
+    """Run the generated workflow using cwltool library.
+
+    Args:
+        output_file: Path to CWL file.
+        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+        output_paths: List of generated paths (Default value = None).
+    """
     client = client_dispatcher.current_client
 
     output_paths = output_paths or set()

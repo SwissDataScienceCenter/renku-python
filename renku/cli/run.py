@@ -75,8 +75,7 @@ the execution, is identified as an input path. The identification only works if
 the path associated with the argument matches an existing file or directory
 in the repository.
 
-The detection might not work as expected
-if:
+The detection might not work as expected if:
 
 * a file is **modified** during the execution. In this case it will be stored
   as an **output**;
@@ -91,7 +90,7 @@ if:
    the arguments that are passed on the command line. Files or directories
    specified with this option will not be passed as input arguments to the
    script.
-   You can specify ``--input name=path`` or just `--input path``, the former
+   You can specify ``--input name=path`` or just ``--input path``, the former
    of which would also set the name of the input on the resulting Plan.
 
 .. topic:: Specifying auxiliary parameters (``--param``)
@@ -101,7 +100,7 @@ if:
    parameter as just a string even if it matches a file name in the project.
    This option is not a replacement for the arguments that are passed on the
    command line.
-   You can specify ``--param name=value`` or just `--param value``, the former
+   You can specify ``--param name=value`` or just ``--param value``, the former
    of which would also set the name of the parameter on the resulting Plan.
 
 .. topic:: Disabling input detection (``--no-input-detection``)
@@ -112,6 +111,11 @@ if:
     command arguments are ignored unless they are in the explicit inputs list.
     This only affects files and directories; command options and flags are
     still treated as inputs.
+
+.. note:: ``renku run`` prints the generated plan after execution if you pass
+    ``--verbose`` to it. You can check the generated plan to verify that the
+    execution was done as you intended. The plan will always be printed to
+    ``stderr`` even if it's directed to a file.
 
 Detecting output paths
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -194,17 +198,23 @@ Sometimes the list of inputs and outputs are not known before execution of the
 program. For example, a program might accept a date range as input and access
 all files within that range during its execution.
 
-To address this issue, the program can dump a list of input and output files
-that it is accessing in ``inputs.txt`` and ``outputs.txt``. Each line in these
-files is expected to be the path to an input or output file within the
-project's directory. When the program is finished, Renku will look for
-existence of these two files and adds their content to the list of explicit
-inputs and outputs. Renku will then delete these two files.
+To address this issue, the program can dump a mapping of input and output files
+that it is accessing in ``inputs.yml`` and ``outputs.yml``. This YAML file
+should be of the format
+.. code-block:: YAML
+
+   name1: path1
+   name2: path2
+
+where name is the user-defined name of the input/output and path is the path.
+When the program is finished, Renku will look for existence of these two files
+and adds their content to the list of explicit inputs and outputs. Renku will
+then delete these two files.
 
 By default, Renku looks for these two files in ``.renku/tmp`` directory. One
 can change this default location by setting ``RENKU_INDIRECT_PATH``
 environment variable. When set, it points to a sub-directory within the
-``.renku/tmp`` directory where ``inputs.txt`` and ``outputs.txt`` reside.
+``.renku/tmp`` directory where ``inputs.yml`` and ``outputs.yml`` reside.
 
 Exit codes
 ~~~~~~~~~~
@@ -268,6 +278,7 @@ from renku.core.commands.options import option_isolation
 )
 @option_isolation
 @click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
+@click.option("--verbose", is_flag=True, default=False, help="Print generated plan after the execution.")
 def run(
     name,
     description,
@@ -281,8 +292,10 @@ def run(
     success_codes,
     isolation,
     command_line,
+    verbose,
 ):
     """Tracking work on a specific problem."""
+    from renku.cli.utils.terminal import print_plan
     from renku.core.commands.run import run_command
 
     communicator = ClickCallback()
@@ -291,16 +304,24 @@ def run(
     if isolation:
         command = command.with_git_isolation()
 
-    command.with_communicator(communicator).build().execute(
-        name=name,
-        description=description,
-        keyword=keyword,
-        explicit_inputs=explicit_inputs,
-        explicit_outputs=explicit_outputs,
-        explicit_parameters=explicit_parameters,
-        no_output=no_output,
-        no_input_detection=no_input_detection,
-        no_output_detection=no_output_detection,
-        success_codes=success_codes,
-        command_line=command_line,
+    result = (
+        command.with_communicator(communicator)
+        .build()
+        .execute(
+            name=name,
+            description=description,
+            keyword=keyword,
+            explicit_inputs=explicit_inputs,
+            explicit_outputs=explicit_outputs,
+            explicit_parameters=explicit_parameters,
+            no_output=no_output,
+            no_input_detection=no_input_detection,
+            no_output_detection=no_output_detection,
+            success_codes=success_codes,
+            command_line=command_line,
+        )
     )
+
+    if verbose:
+        plan = result.output
+        print_plan(plan, err=True)

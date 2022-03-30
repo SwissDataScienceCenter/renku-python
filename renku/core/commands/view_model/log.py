@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 import inject
 
 from renku.core.commands.format.tabulate import tabulate
+from renku.core.commands.view_model.plan import PlanViewModel
 
 if TYPE_CHECKING:
     from renku.core.models.dataset import Dataset
@@ -32,12 +33,28 @@ if TYPE_CHECKING:
 
 
 def tabular(data, columns) -> str:
-    """Tabular output."""
+    """Tabular output.
+
+    Args:
+        data: Input data.
+        columns: Columns to show.
+
+    Returns:
+        str: data in tabular form.
+    """
     return tabulate(data, columns, columns_mapping=LOG_COLUMNS, reverse=True)
 
 
 def json(data, columns) -> str:
-    """JSON output."""
+    """JSON output.
+
+    Args:
+        data: Input data.
+        columns: Not used.
+
+    Returns:
+        str: Data in JSON format.
+    """
     import json
 
     data = sorted(data, key=lambda x: x.date)
@@ -106,7 +123,14 @@ class LogViewModel:
 
     @classmethod
     def from_activity(cls, activity: "Activity") -> "ActivityLogViewModel":
-        """Create a log entry from an activity."""
+        """Create a log entry from an activity.
+
+        Args:
+            activity("Activity"): Activity to create log entry from.
+
+        Returns:
+            Log entry for activity.
+        """
         from renku.core.models.provenance.agent import Person, SoftwareAgent
 
         plan = activity.plan_with_values
@@ -141,11 +165,19 @@ class LogViewModel:
             description=command,
             details=details,
             agents=[a.full_identity for a in activity.agents],
+            plan=PlanViewModel.from_plan(activity.plan_with_values),
         )
 
     @classmethod
     def from_dataset(cls, dataset: "Dataset") -> Optional["DatasetLogViewModel"]:
-        """Create a log entry from an activity."""
+        """Create a log entry from an activity.
+
+        Args:
+            dataset("Dataset"): Dataset to create log entry for.
+
+        Returns:
+            Log entry for dataset.
+        """
         from renku.core.management.interface.dataset_gateway import IDatasetGateway
 
         dataset_gateway = inject.instance(IDatasetGateway)
@@ -279,7 +311,11 @@ class DatasetLogViewModel(LogViewModel):
         self.details = details
 
     def to_dict(self) -> Dict[str, Any]:
-        """Return a dict representation of this view model."""
+        """Return a dict representation of this view model.
+
+        Returns:
+            Dict[str,Any]: Dictionary representation of view model.
+        """
         return {
             "date": self.date.isoformat(),
             "type": self.type,
@@ -294,18 +330,32 @@ class ActivityLogViewModel(LogViewModel):
 
     type = LogType.ACTIVITY.value
 
-    def __init__(self, id: str, date: datetime, description: str, details: ActivityDetailsViewModel, agents: List[str]):
+    def __init__(
+        self,
+        id: str,
+        date: datetime,
+        description: str,
+        details: ActivityDetailsViewModel,
+        agents: List[str],
+        plan: PlanViewModel,
+    ):
         super().__init__(id, date, description, agents)
         self.details = details
+        self.plan = plan
 
     def to_dict(self) -> Dict[str, Any]:
-        """Return a dict representation of this view model."""
+        """Return a dict representation of this view model.
+
+        Returns:
+            Dict[str,Any]: Dictionary representation of view model.
+        """
         return {
             "date": self.date.isoformat(),
             "type": self.type,
             "description": self.description,
             "agents": self.agents,
             "details": asdict(self.details),
+            "plan": {"id": self.plan.id, "name": self.plan.name},
         }
 
 

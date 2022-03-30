@@ -21,12 +21,12 @@ import json
 from typing import Dict, List, Set, Union
 
 from renku.core import errors
-from renku.core.commands.format.graph import GRAPH_FORMATS
 from renku.core.commands.schema.activity import ActivitySchema
 from renku.core.commands.schema.composite_plan import CompositePlanSchema
 from renku.core.commands.schema.dataset import DatasetSchema, DatasetTagSchema
 from renku.core.commands.schema.plan import PlanSchema
 from renku.core.commands.schema.project import ProjectSchema
+from renku.core.commands.view_model.graph import GraphViewModel
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
@@ -59,8 +59,18 @@ def _export_graph(
     format: str = "json-ld",
     revision_or_range: str = None,
     strict: bool = False,
-):
-    """Output graph in specific format."""
+) -> GraphViewModel:
+    """Output graph in specific format.
+
+    Args:
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        format(str, optional): Output format (Default value = "json-ld").
+        revision_or_range(str, optional): Revision or range of revisions to export for (Default value = None).
+        strict(bool, optional): Whether to check generated JSON-LD against the SHACL schema (Default value = False).
+
+    Returns:
+        Renku metadata as string.
+    """
 
     format = format.lower()
 
@@ -78,11 +88,16 @@ def _export_graph(
     if strict:
         _validate_graph(json.dumps(graph, indent=2), "json-ld")
 
-    return GRAPH_FORMATS[format](graph)
+    return GraphViewModel(graph)
 
 
 def update_nested_node_host(node: Dict, host: str) -> None:
-    """Update all @id in a node to include host if necessary."""
+    """Update all @id in a node to include host if necessary.
+
+    Args:
+        node(Dict): Node to update.
+        host(str): Host to set.
+    """
     for k, v in node.items():
         if k == "@id":
             if not v.startswith("http") and not v.startswith("mailto"):
@@ -101,7 +116,16 @@ def _get_graph_for_revision(
     database_gateway: IDatabaseGateway,
     project_gateway: IProjectGateway,
 ) -> List[Dict]:
-    """Get the graph for changes made in a specific revision."""
+    """Get the graph for changes made in a specific revision.
+
+    Args:
+        revision_or_range(str): Revision or range of revisions to export for.
+        database_gateway(IDatabaseGateway): Injected database gateway.
+        project_gateway(IProjectGateway): Injected project gateway.
+
+    Returns:
+        List of JSON-LD metadata.
+    """
     all_objects = database_gateway.get_modified_objects_from_revision(revision_or_range=revision_or_range)
 
     change_types = (Project, Dataset, DatasetTag, Activity, Plan, CompositePlan)
@@ -124,7 +148,17 @@ def _get_graph_for_all_objects(
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
 ) -> List[Dict]:
-    """Get JSON-LD graph for all entities."""
+    """Get JSON-LD graph for all entities.
+
+    Args:
+        project_gateway(IProjectGateway): Injected project gateway.
+        dataset_gateway(IDatasetGateway): Injected dataset gateway.
+        activity_gateway(IActivityGateway): Injected activity gateway.
+        plan_gateway(IPlanGateway): Injected plan gateway.
+
+    Returns:
+        List of JSON-LD metadata.
+    """
     project = project_gateway.get_project()
     objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]] = activity_gateway.get_all_activities()
 
@@ -156,7 +190,15 @@ def _get_graph_for_all_objects(
 def _convert_entities_to_graph(
     entities: List[Union[Project, Dataset, DatasetTag, Activity, Plan, CompositePlan]], project: Project
 ) -> List[Dict]:
-    """Convert entities to JSON-LD graph."""
+    """Convert entities to JSON-LD graph.
+
+    Args:
+        entities(List[Union[Project, Dataset, DatasetTag, Activity, Plan, CompositePlan]]): Entities to convert.
+        project(Project): Current project.
+
+    Returns:
+        List of JSON-LD metadata.
+    """
     graph = []
     schemas = {
         Project: ProjectSchema,
@@ -190,7 +232,14 @@ def _convert_entities_to_graph(
 
 
 def get_activity_plan_ids(activity: Activity) -> Set[str]:
-    """Get the ids of all plans associated with an activity."""
+    """Get the ids of all plans associated with an activity.
+
+    Args:
+        activity(Activity): Activity tog et Plans for.
+
+    Returns:
+        Set of ids of Plans contained in Activity.
+    """
     plan_stack = [activity.association.plan]
     plan_ids = set()
 

@@ -29,7 +29,8 @@ class Communicator(Command):
     def __init__(self, builder: Command, communicator: communication.CommunicationCallback) -> None:
         """__init__ of Communicator.
 
-        :param communicator: Instance of CommunicationCallback.
+        Args:
+            communicator: Instance of CommunicationCallback.
         """
         self._builder = builder
         self._communicator = communicator
@@ -42,7 +43,11 @@ class Communicator(Command):
 
     @check_finalized
     def build(self) -> Command:
-        """Build the command."""
+        """Build the command.
+
+        Returns:
+            Command: Finalized version of this command.
+        """
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
         self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
 

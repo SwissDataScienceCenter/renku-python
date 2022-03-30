@@ -130,10 +130,8 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
         except (filelock.Timeout, portalocker.LockException, portalocker.AlreadyLocked):
             click.echo(
-                (
-                    click.style("Unable to acquire lock.\n", fg=color.RED) + "Hint: Please wait for another renku "
-                    "process to finish and then try again."
-                )
+                click.style("Unable to acquire lock.\n", fg=color.RED) + "Hint: Please wait for another renku "
+                "process to finish and then try again."
             )
 
         except Exception:

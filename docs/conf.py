@@ -46,6 +46,7 @@ extensions = [
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinxcontrib.spelling",
     "sphinx_tabs.tabs",
@@ -337,3 +338,26 @@ autoclass_content = "both"
 autodoc_mock_imports = ["persistent", "ZODB"]
 autodoc_typehints = "none"
 autodoc_typehints_description_target = "documented"
+
+# Napoleon (Google style) settings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+
+# sphinx type references only work for types that documentation is generated for
+# Suppress warnungs for these types that are referenced but not documented themselves.
+nitpick_ignore = [
+    ("py:class", "Path"),
+    ("py:class", "OID_TYPE"),
+    ("py:class", "optional"),
+    ("py:class", "persistent.Persistent"),
+    ("py:class", "DynamicProxy"),
+    ("py:class", "LocalClient"),
+    ("py:class", '"LocalClient"'),
+    ("py:class", "IClientDispatcher"),
+    ("py:class", "IDatasetGateway"),
+    ("py:class", "CommandResult"),
+    ("py:class", "CommunicationCallback"),
+    ("py:class", "IDatabaseDispatcher"),
+    ("py:exc", "errors.ParameterError"),
+    ("py:class", '"ValueResolver"'),
+]

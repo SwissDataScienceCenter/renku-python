@@ -195,9 +195,12 @@ class DataverseProvider(ProviderApi):
     def find_record(self, uri, **kwargs):
         """Retrieves a record from Dataverse.
 
-        :raises: ``LookupError``
-        :param uri: DOI or URL
-        :return: ``DataverseRecord``
+        Args:
+            uri: DOI or URL.
+
+        Returns:
+            DataverseRecord: The found record
+
         """
         if self.is_doi:
             doi = DOIProvider().find_record(uri)
@@ -273,7 +276,7 @@ class DataverseRecordSerializer:
     def files_info(self) -> List[DynamicProxy]:
         """Return list of dataset file proxies.
 
-        NOTE: This is only valid after a call to ``as_dataset``.
+        This is only valid after a call to ``as_dataset``.
         """
         return self._files_info
 

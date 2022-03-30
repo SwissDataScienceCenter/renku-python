@@ -21,7 +21,15 @@ from renku.core.management.migrate import is_migration_required, is_project_unsu
 
 
 def check_migration(client, fix):
-    """Check for project version."""
+    """Check for project version.
+
+    Args:
+        client: ``LocalClient``.
+        fix: Whether to fix found issues.
+
+    Returns:
+        Tuple of whether project metadata is up to date and string of found problems.
+    """
     if is_migration_required():
         problems = WARNING + "Project requires migration.\n" + '  (use "renku migrate" to fix this issue)\n'
     elif is_project_unsupported():
