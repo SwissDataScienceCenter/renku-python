@@ -998,7 +998,7 @@ name = "mypy"
 version = "0.942"
 description = "Optional static typing for Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -2203,7 +2203,7 @@ name = "tomli"
 version = "2.0.1"
 description = "A lil' TOML parser"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [[package]]
@@ -2251,7 +2251,7 @@ name = "typed-ast"
 version = "1.5.2"
 description = "a fork of Python 2 and 3 ast modules with type comment support"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [[package]]
@@ -2616,7 +2616,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "acc8688b45a06aa8b19bba975c022dc4c4679c204239821af9df7f3ffb2e464f"
+content-hash = "065a4c112b1486353e93f8f21cf7f3274884597d4630e94d1b2f31eb3d0c6774"
 
 [metadata.files]
 addict = [
