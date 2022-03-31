@@ -21,8 +21,6 @@ import re
 from subprocess import PIPE, SubprocessError, run
 from typing import Callable, Dict
 
-from renku.core.commands.format.tabulate import tabulate
-from renku.core.commands.schema.dataset import DatasetFileSchema
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 
@@ -37,6 +35,7 @@ def tabular(records, *, columns=None):
     Returns:
         String of records in tabular representation.
     """
+    from renku.core.commands.format.tabulate import tabulate
 
     if not columns:
         columns = "added,creators,dataset,full_path"
@@ -123,6 +122,7 @@ def jsonld(records, **kwargs):
     Args:
         records: Filtered collection.
     """
+    from renku.core.commands.schema.dataset import DatasetFileSchema
     from renku.core.models.json import dumps
 
     data = [DatasetFileSchema(flattened=True).dump(record) for record in records]

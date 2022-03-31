@@ -27,7 +27,6 @@ from urllib.parse import ParseResult
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.metadata.repository import Repository
 from renku.core.utils.git import get_remote, parse_git_url
 
 SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
@@ -122,6 +121,7 @@ def get_slug(name: str, invalid_chars: Optional[List[str]] = None, lowercase: bo
 
 def check_url(url):
     """Check if a url is local/remote and if it contains a git repository."""
+    from renku.core.metadata.repository import Repository
     from renku.core.utils import requests
 
     u = urllib.parse.urlparse(url)

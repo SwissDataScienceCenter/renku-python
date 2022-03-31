@@ -18,42 +18,43 @@
 """Renku dataset gateway interface."""
 
 from abc import ABC
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
-from renku.core.models.dataset import Dataset, DatasetTag
+if TYPE_CHECKING:
+    from renku.core.models.dataset import Dataset, DatasetTag
 
 
 class IDatasetGateway(ABC):
     """Interface for the DatasetGateway."""
 
-    def get_by_id(self, id: str) -> Dataset:
+    def get_by_id(self, id: str) -> "Dataset":
         """Get a dataset by id."""
         raise NotImplementedError
 
-    def get_by_name(self, name: str) -> Optional[Dataset]:
+    def get_by_name(self, name: str) -> Optional["Dataset"]:
         """Get a dataset by id."""
         raise NotImplementedError
 
-    def get_all_active_datasets(self) -> List[Dataset]:
+    def get_all_active_datasets(self) -> List["Dataset"]:
         """Get all datasets."""
         raise NotImplementedError
 
-    def get_provenance_tails(self) -> List[Dataset]:
+    def get_provenance_tails(self) -> List["Dataset"]:
         """Return the provenance for all datasets."""
         raise NotImplementedError
 
-    def get_all_tags(self, dataset: Dataset) -> List[DatasetTag]:
+    def get_all_tags(self, dataset: "Dataset") -> List["DatasetTag"]:
         """Return the list of all tags for a dataset."""
         raise NotImplementedError
 
-    def add_tag(self, dataset: Dataset, tag: DatasetTag):
+    def add_tag(self, dataset: "Dataset", tag: "DatasetTag"):
         """Add a tag from a dataset."""
         raise NotImplementedError
 
-    def remove_tag(self, dataset: Dataset, tag: DatasetTag):
+    def remove_tag(self, dataset: "Dataset", tag: "DatasetTag"):
         """Remove a tag from a dataset."""
         raise NotImplementedError
 
-    def add_or_remove(self, dataset: Dataset) -> None:
+    def add_or_remove(self, dataset: "Dataset") -> None:
         """Add or remove a dataset."""
         raise NotImplementedError
