@@ -20,7 +20,7 @@
 import copy
 import datetime
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Iterator, Tuple, Union
 
 import pytest
 
@@ -90,7 +90,7 @@ class DummyDatabaseDispatcher:
 
 
 @pytest.fixture
-def database() -> Tuple[Database, DummyStorage]:
+def database() -> Iterator[Tuple[Database, DummyStorage]]:
     """A Database with in-memory storage."""
     storage = DummyStorage()
     database = Database(storage=storage)

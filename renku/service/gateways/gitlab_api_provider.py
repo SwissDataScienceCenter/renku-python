@@ -57,7 +57,7 @@ class GitlabAPIProvider(IGitAPIProvider):
 
             try:
                 with open(full_path, "wb") as f:
-                    project.files.raw(file_path=path, ref=ref, streamed=True, action=f.write)
+                    project.files.raw(file_path=str(path), ref=ref, streamed=True, action=f.write)
 
                 result_paths.append(full_path)
             except gitlab.GitlabGetError:

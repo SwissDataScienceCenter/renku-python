@@ -17,15 +17,18 @@
 # limitations under the License.
 """Activity graph view model."""
 
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 from copy import deepcopy
 from io import StringIO
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 from click import style
 
-Point = namedtuple("Point", ["x", "y"])
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+Point = NamedTuple("Point", [("x", int), ("y", int)])
 
 MAX_NODE_LENGTH = 40
 
@@ -51,7 +54,9 @@ class RectangleShape(Shape):
         self.double_border = double_border
         self.color = color
 
-    def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
+    def draw(
+        self, color: bool = True, ascii=False
+    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
         """Return the indices and values to draw this shape onto the canvas.
 
         Args:
@@ -110,7 +115,7 @@ class RectangleShape(Shape):
         return xs.astype(int), ys.astype(int), vals
 
     @property
-    def extent(self) -> Tuple[Tuple[int]]:
+    def extent(self) -> Tuple[Point, Point]:
         """The extent of this shape.
 
         Returns:
@@ -128,7 +133,9 @@ class TextShape(Shape):
         self.bold = bold
         self.color = color
 
-    def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
+    def draw(
+        self, color: bool = True, ascii=False
+    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
         """Return the indices and values to draw this shape onto the canvas.
 
         Args:
@@ -139,8 +146,8 @@ class TextShape(Shape):
             Tuple[List[Tuple[int]],List[str]]: Tuple of list of coordinates and list if characters
                 at those coordinates.
         """
-        xs = []
-        ys = []
+        xs: List[int] = []
+        ys: List[int] = []
         vals = []
 
         current_x = self.point.x
@@ -150,7 +157,7 @@ class TextShape(Shape):
             for char in line:
                 xs.append(current_x)
                 ys.append(current_y)
-                kwargs = dict()
+                kwargs: Dict[str, Any] = dict()
                 if self.bold:
                     kwargs["bold"] = True
                 if color and self.color:
@@ -168,7 +175,7 @@ class TextShape(Shape):
         return np.array(xs), np.array(ys), np.array(vals)
 
     @property
-    def extent(self) -> Tuple[Tuple[int]]:
+    def extent(self) -> Tuple[Point, Point]:
         """The extent of this shape.
 
         Returns:
@@ -197,7 +204,9 @@ class NodeShape(Shape):
         # move width/2 to the left to center on coordinate
         self.x_offset = round((text_extent[1].x - text_extent[0].x) / 2)
 
-    def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
+    def draw(
+        self, color: bool = True, ascii=False
+    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
         """Return the indices and values to draw this shape onto the canvas.
 
         Args:
@@ -217,7 +226,7 @@ class NodeShape(Shape):
         return np.append(xs, text_xs) - self.x_offset, np.append(ys, text_ys), np.append(vals, text_vals)
 
     @property
-    def extent(self) -> Tuple[Tuple[int]]:
+    def extent(self) -> Tuple[Point, Point]:
         """The extent of this shape.
 
         Returns:
@@ -288,9 +297,11 @@ class EdgeShape(Shape):
         coordinates = set(map(tuple, np.column_stack(self.line_indices)))
         other_coordinates = set(map(tuple, np.column_stack(other_edge.line_indices)))
 
-        return coordinates.intersection(other_coordinates)
+        return coordinates.intersection(other_coordinates) is not None
 
-    def draw(self, color: bool = True, ascii=False) -> Tuple[List[Tuple[int]], List[str]]:
+    def draw(
+        self, color: bool = True, ascii=False
+    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
         """Return the indices and values to draw this shape onto the canvas.
 
         Args:
@@ -308,10 +319,10 @@ class EdgeShape(Shape):
         if color:
             char = style(char, fg=self.color)
 
-        return xs, ys, len(xs) * [char]
+        return xs, ys, np.array(len(xs) * [char])
 
     @property
-    def extent(self) -> Tuple[Tuple[int]]:
+    def extent(self) -> Tuple[Point, Point]:
         """The extent of this shape.
 
         Returns:

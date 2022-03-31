@@ -19,7 +19,7 @@
 
 from collections import defaultdict
 from itertools import product
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 import networkx as nx
 from networkx.algorithms.cycles import simple_cycles
@@ -31,11 +31,9 @@ from renku.core.models.workflow import composite_plan, parameter, plan
 class ExecutionGraph:
     """Represents an execution graph for one or more workflow steps."""
 
-    def __init__(
-        self, workflows: List[Union["plan.Plan", "composite_plan.CompositePlan"]], virtual_links: bool = False
-    ):
-        self.workflows: List[Union["plan.Plan", "composite_plan.CompositePlan"]] = workflows
-        self.virtual_links = []
+    def __init__(self, workflows: List["plan.AbstractPlan"], virtual_links: bool = False):
+        self.workflows: List["plan.AbstractPlan"] = workflows
+        self.virtual_links: List[Tuple["parameter.CommandOutput", "parameter.CommandInput"]] = []
 
         self.calculate_concrete_execution_graph(virtual_links=virtual_links)
 
@@ -106,12 +104,12 @@ class ExecutionGraph:
     ):
         """Add links between leaf parameters (resolving Mappings)."""
         if isinstance(source, parameter.ParameterMapping):
-            sources = source.leaf_parameters
+            sources = list(source.leaf_parameters)
         else:
             sources = [source]
 
         if isinstance(sink, parameter.ParameterMapping):
-            sinks = sink.leaf_parameters
+            sinks = list(sink.leaf_parameters)
         else:
             sinks = [sink]
 
@@ -122,6 +120,11 @@ class ExecutionGraph:
                     break
             else:
                 raise ParameterError(f"'{param.name}' is not part of any workflows.")
+
+            edge: Union[
+                Tuple["parameter.CommandParameterBase", "plan.Plan"],
+                Tuple["plan.Plan", "parameter.CommandParameterBase"],
+            ]
 
             if isinstance(param, parameter.CommandOutput):
                 edge = (wf, param)

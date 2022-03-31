@@ -22,7 +22,7 @@ import html
 import io
 import json
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import pyld
 import rdflib
@@ -137,7 +137,7 @@ class GraphViewModel:
         """
         types = collections.defaultdict(set)
         fields = collections.defaultdict(set)
-        nodes = {}
+        nodes: Dict[str, str] = {}
 
         def node(x):
             """Return a name of the given node."""

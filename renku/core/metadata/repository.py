@@ -27,7 +27,22 @@ from datetime import datetime
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
-from typing import Any, BinaryIO, Callable, Dict, Generator, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import (
+    Any,
+    BinaryIO,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    NamedTuple,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 import git
 
@@ -38,7 +53,7 @@ NULL_TREE = git.NULL_TREE
 _MARKER = object()
 
 
-def git_unicode_unescape(s: str, encoding: str = "utf-8") -> str:
+def git_unicode_unescape(s: Optional[str], encoding: str = "utf-8") -> str:
     """Undoes git/gitpython unicode encoding."""
     if s is None:
         return ""
@@ -62,9 +77,10 @@ def split_paths(*paths):
 class BaseRepository:
     """Abstract Base repository."""
 
-    def __init__(self, path: Union[Path, str] = ".", repository: git.Repo = None):
+    def __init__(self, path: Union[Path, str] = ".", repository: Optional[git.Repo] = None):
         super().__init__()
-        self._repository = repository
+
+        self._repository: Optional[git.Repo] = repository
         self._path = Path(path).resolve()
 
     def __repr__(self) -> str:
@@ -78,29 +94,39 @@ class BaseRepository:
     @property
     def head(self) -> "SymbolicReference":
         """HEAD of the repository."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return SymbolicReference(self._repository, "HEAD")
 
     @property
     def active_branch(self) -> Optional["Branch"]:
         """Return current checked out branch."""
         if self.head.reference is None:
-            return
+            return None
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return Branch(self._repository, self.head.reference.path)
 
     @property
     def branches(self) -> "BranchManager":
         """Return all branches."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return BranchManager(self._repository)
 
     @property
     def remotes(self) -> "RemoteManager":
         """Return all remotes."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return RemoteManager(self._repository)
 
-    @property
+    @property  # type: ignore
     @lru_cache()
     def submodules(self) -> "SubmoduleManager":
         """Return a list of submodules."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return SubmoduleManager(self._repository)
 
     @property
@@ -109,29 +135,37 @@ class BaseRepository:
 
         NOTE: This can be implemented by ``git diff --cached --name-status -z``.
         """
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         try:
             diff = self._repository.index.diff("HEAD", ignore_submodules=True)
             return [Diff.from_diff(d) for d in diff]
-        except (git.BadName, git.BadObject, git.GitError) as e:
+        except (git.BadName, git.BadObject, git.GitError) as e:  # type: ignore
             raise errors.GitError("Cannot get staged changes") from e
 
     @property
     def tags(self) -> "TagManager":
         """Return all available tags."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return TagManager(self._repository)
 
     @property
     def unstaged_changes(self) -> List["Diff"]:
         """Return a list of changes that are not staged."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         try:
             diff = self._repository.index.diff(None, ignore_submodules=True)
             return [Diff.from_diff(d) for d in diff]
-        except (git.BadName, git.BadObject, git.GitError) as e:
+        except (git.BadName, git.BadObject, git.GitError) as e:  # type: ignore
             raise errors.GitError("Cannot get modified changes") from e
 
     @property
     def unmerged_blobs(self) -> Dict[str, List[Tuple[int, "Object"]]]:
         """Return a map of path to stage and blob for unmerged blobs in the current index."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return {
             str(path): [(e[0], Object.from_object(e[1])) for e in values]
             for path, values in self._repository.index.unmerged_blobs().items()
@@ -140,12 +174,16 @@ class BaseRepository:
     @property
     def untracked_files(self) -> List[str]:
         """Return the list of untracked files."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return self._repository.untracked_files
 
     @property
     def files(self) -> List[str]:
         """Return a list of all files in the current version of the repository."""
-        return [e[0] for e in self._repository.index.entries]
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+        return [str(e[0]) for e in self._repository.index.entries]
 
     def is_valid(self) -> bool:
         """Return True if a valid repository exists."""
@@ -171,6 +209,8 @@ class BaseRepository:
         no_edit: bool = False,
     ) -> "Commit":
         """Commit added files to the VCS."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         env = {}
         if author:
             env.update({"GIT_AUTHOR_NAME": author.name, "GIT_AUTHOR_EMAIL": author.email})
@@ -266,10 +306,14 @@ class BaseRepository:
 
     def is_dirty(self, untracked_files: bool = False) -> bool:
         """Return True if the repository has modified or untracked files ignoring submodules."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return self._repository.is_dirty(untracked_files=untracked_files, submodules=False)
 
     def run_git_command(self, command: str, *args, **kwargs) -> str:
         """Run a git command in this repository."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
         return _run_git_command(self._repository, command, *args, **kwargs)
 
     def get_attributes(self, *paths: Union[Path, str]) -> Dict[str, Dict[str, str]]:
@@ -280,7 +324,7 @@ class BaseRepository:
         if len(paths) == 0:
             return {}
 
-        attributes = defaultdict(dict)
+        attributes: Dict[str, Dict[str, str]] = defaultdict(dict)
 
         for batch in split_paths(*paths):
             data = self.run_git_command("check-attr", "-z", "--all", "--", *batch)
@@ -293,7 +337,7 @@ class BaseRepository:
     def get_previous_commit(
         self,
         path: Union[Path, str],
-        revision: Union["Commit", str] = None,
+        revision: Optional[Union["Commit", str]] = None,
         first: bool = False,
         full_history: bool = True,
         submodule: bool = False,
@@ -317,12 +361,15 @@ class BaseRepository:
     def iterate_commits(
         self,
         *paths: Union[Path, str],
-        revision: str = None,
+        revision: Optional[str] = None,
         reverse: bool = False,
         full_history: bool = False,
         max_count: int = -1,
     ) -> Generator["Commit", None, None]:
         """Return a list of commits."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         revision = revision or "HEAD"
         assert isinstance(revision, str), f"'revision' must be string not '{type(revision)}'"
 
@@ -336,12 +383,18 @@ class BaseRepository:
 
     def get_commit(self, revision: str) -> "Commit":
         """Return Commit with the provided sha."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         try:
             commit = self._repository.commit(revision)
-        except (ValueError, IndexError, git.BadName, git.BadObject) as e:
+        except (ValueError, IndexError, git.BadName, git.BadObject) as e:  # type: ignore
             raise errors.GitCommitNotFoundError(f"Cannot find a commit with revision '{revision}'") from e
         else:
-            return Commit.from_commit(self._repository, commit)
+            wrapped_commit = Commit.from_commit(self._repository, commit)
+            if not wrapped_commit:
+                raise errors.GitCommitNotFoundError(f"Cannot find a commit with revision '{revision}'")
+            return wrapped_commit
 
     def get_ignored_paths(self, *paths: Union[Path, str]) -> List[str]:
         """Return ignored paths matching ``.gitignore`` file."""
@@ -359,20 +412,22 @@ class BaseRepository:
         self,
         path: Union[Path, str],
         *,
-        revision: Union["Reference", str] = None,
-        checksum: str = None,
+        revision: Optional[Union["Reference", str]] = None,
+        checksum: Optional[str] = None,
         binary: bool = False,
     ) -> Union[bytes, str]:
         """Get content of a file in a given revision as text or binary."""
         output = self.copy_content_to_file(path=path, checksum=checksum, revision=revision)
-        output = Path(output)
+        output_path = Path(output)
 
-        content = output.read_bytes() if binary else output.read_text()
+        content: Union[bytes, str] = output_path.read_bytes() if binary else output_path.read_text()
         delete_file(output)
 
         return content
 
-    def get_raw_content(self, *, path: Union[Path, str], revision: str = None, checksum: str = None) -> str:
+    def get_raw_content(
+        self, *, path: Union[Path, str], revision: Optional[str] = None, checksum: Optional[str] = None
+    ) -> str:
         """Get raw content of a file in a given revision as text without applying any filter on it."""
         output = self.copy_content_to_file(path=path, checksum=checksum, revision=revision, apply_filters=False)
 
@@ -381,15 +436,15 @@ class BaseRepository:
     def copy_content_to_file(
         self,
         path: Union[Path, str],
-        revision: str = None,
-        checksum: str = None,
-        output_file: BinaryIO = None,
+        revision: Optional[Union["Reference", str]] = None,
+        checksum: Optional[str] = None,
+        output_file: Optional[BinaryIO] = None,
         apply_filters: bool = True,
     ) -> str:
         """Get content of an object using its checksum, write it to a file, and return the file's path."""
         absolute_path = get_absolute_path(path, self.path)
 
-        def get_content_helper() -> bool:
+        def get_content_helper(output_file) -> bool:
             command = ["git", "cat-file"]
 
             if checksum is None:
@@ -429,11 +484,11 @@ class BaseRepository:
                     )
 
         if output_file is None:
-            with tempfile.NamedTemporaryFile(mode="w+b", delete=False) as output_file:
-                if get_content_helper():
-                    return output_file.name
+            with tempfile.NamedTemporaryFile(mode="w+b", delete=False) as temp_output_file:
+                if get_content_helper(output_file=temp_output_file):
+                    return temp_output_file.name
         else:
-            if get_content_helper():
+            if get_content_helper(output_file):
                 return output_file.name
 
         from_submodules = get_content_from_submodules()
@@ -443,7 +498,9 @@ class BaseRepository:
         # TODO: Return FileNotFound
         raise errors.ExportError(f"File not found in the repository: '{revision}/{checksum}:{path}'")
 
-    def get_object_hashes(self, paths: List[Union[Path, str]], revision: str = None) -> Dict[str, str]:
+    def get_object_hashes(
+        self, paths: List[Union[Path, str]], revision: Optional[str] = None
+    ) -> Dict[Union[Path, str], Optional[str]]:
         """Return git hash of an object in a Repo or its submodule.
 
         NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
@@ -455,17 +512,17 @@ class BaseRepository:
             modified_files = [item.b_path for item in self.unstaged_changes if not item.deleted]
             dirty_files = {os.path.join(self.path, p) for p in self.untracked_files + modified_files + staged_files}
             dirty_files = {p for p in dirty_files if p in paths and not os.path.isdir(p)}
-            dirty_files = list(dirty_files)
+            dirty_files_list = list(dirty_files)
 
-            dirty_files_hashes = Repository.hash_objects(dirty_files)
-            return dict(zip(dirty_files, dirty_files_hashes))
+            dirty_files_hashes = Repository.hash_objects(cast(List[Union[Path, str]], dirty_files_list))
+            return dict(zip(dirty_files_list, dirty_files_hashes))
 
         def _get_hashes_from_revision(
             paths: Set[Union[Path, str]], revision: str, repository: BaseRepository
-        ) -> Dict[str, str]:
+        ) -> Dict[Union[Path, str], Optional[str]]:
             """Get hashes for paths in a specific revision."""
             existing_paths = repository.get_existing_paths_in_revision(paths, revision=revision)
-            result = {}
+            result: Dict[Union[Path, str], Optional[str]] = {}
             for batch in split_paths(*existing_paths):
                 hashes = self.run_git_command("rev-parse", *[f"{revision}:{relative_path}" for relative_path in batch])
                 result.update(zip(batch, hashes.splitlines()))
@@ -479,10 +536,10 @@ class BaseRepository:
         path_mapping = {get_absolute_path(path, self.path): path for path in paths}
         absolute_paths = set(path_mapping.keys())
 
-        hashes = {}
+        hashes: Dict[Union[Path, str], Optional[str]] = {}
         # NOTE: If revision is not specified, we use hash-object to hash the (possibly) modified object
         if not revision:
-            uncommitted_hashes = _get_uncommitted_file_hashes(absolute_paths)
+            uncommitted_hashes = _get_uncommitted_file_hashes(cast(Set[Union[Path, str]], absolute_paths))
 
             hashes.update({path_mapping.get(p, p): h for p, h in uncommitted_hashes.items()})
 
@@ -496,11 +553,11 @@ class BaseRepository:
         submodule_paths = defaultdict(list)
         main_repo_paths = []
 
-        if len(self.submodules) > 0:
+        if len(self.submodules) > 0:  # type: ignore
             # NOTE: filter paths belonging to main repo from those belonging to submodules
             for absolute_path in absolute_paths:
                 found = False
-                for submodule in self.submodules:
+                for submodule in self.submodules:  # type: ignore
                     try:
                         Path(absolute_path).relative_to(submodule.path)
                         submodule_paths[submodule].append(absolute_path)
@@ -516,22 +573,22 @@ class BaseRepository:
 
         if main_repo_paths:
             # NOTE: Get hashes for paths in the main repository
-            revision_hashes = _get_hashes_from_revision(main_repo_paths, revision, self)
+            revision_hashes = _get_hashes_from_revision(set(main_repo_paths), revision, self)
             hashes.update({path_mapping.get(get_absolute_path(p, self.path), p): h for p, h in revision_hashes.items()})
 
         if not submodule_paths:
             return hashes
 
         # NOTE: Get hashes for paths in submodules
-        for submodule, submodule_paths in submodule_paths.items():
-            submodule_hashes = submodule.get_object_hashes(paths=submodule_paths, revision="HEAD")
+        for submodule, submodule_path in submodule_paths.items():
+            submodule_hashes = submodule.get_object_hashes(paths=submodule_path, revision="HEAD")
             hashes.update(
                 {path_mapping.get(get_absolute_path(p, self.path), p): h for p, h in submodule_hashes.items()}
             )
 
         return hashes
 
-    def get_object_hash(self, path: Union[Path, str], revision: Union["Commit", str] = None) -> Optional[str]:
+    def get_object_hash(self, path: Union[Path, str], revision: Optional[Union["Commit", str]] = None) -> Optional[str]:
         """Return git hash of an object in a Repo or its submodule.
 
         NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
@@ -548,25 +605,27 @@ class BaseRepository:
 
         def get_staged_directory_hash() -> Optional[str]:
             if not os.path.isdir(absolute_path):
-                return
+                return None
 
             stashed_revision = self.run_git_command("stash", "create")
             if not stashed_revision:
-                return
+                return None
 
             try:
                 return self.run_git_command("rev-parse", f"{stashed_revision}:{relative_path}")
             except errors.GitCommandError:
-                return
+                return None
 
         def get_object_hash_from_submodules() -> Optional[str]:
-            for submodule in self.submodules:
+            for submodule in self.submodules:  # type: ignore
                 try:
                     Path(absolute_path).relative_to(submodule.path)
                 except ValueError:
                     continue
                 else:
                     return submodule.get_object_hash(path=absolute_path, revision="HEAD")
+
+            return None
 
         relative_path = os.path.relpath(absolute_path, start=self.path)
 
@@ -691,12 +750,13 @@ class BaseRepository:
             ) from e
 
     @staticmethod
-    def hash_object(path: Union[Path, str]) -> str:
+    def hash_object(path: Union[Path, str]) -> Optional[str]:
         """Create a git hash for a a path. The path doesn't need to be in a repository."""
         result = BaseRepository.hash_objects([path])
 
         if result and len(result) > 0:
             return result[0]
+        return None
 
 
 class Repository(BaseRepository):
@@ -705,9 +765,8 @@ class Repository(BaseRepository):
     def __init__(
         self, path: Union[Path, str] = ".", search_parent_directories: bool = False, repository: git.Repo = None
     ):
-        super().__init__()
-        self._repository: git.Repo = repository or _create_repository(path, search_parent_directories)
-        self._path = Path(self._repository.working_dir).resolve()
+        repo = repository or _create_repository(path, search_parent_directories)
+        super().__init__(path=Path(repo.working_dir).resolve(), repository=repo)  # type: ignore
 
     @classmethod
     def clone_from(
@@ -778,13 +837,13 @@ class Submodule(BaseRepository):
         try:
             self._repository: git.Repo = _create_repository(path, search_parent_directories=False)
         except errors.GitError:
-            # NOTE: Submodule directory doesn't exists yet, so, we ignore the error
+            # NOTE: Submodule directory doesn't exist yet, so, we ignore the error
             pass
 
     @classmethod
-    def from_submodule(cls, parent: git.Repo, submodule: git.Submodule) -> "Submodule":
+    def from_submodule(cls, parent: git.Repo, submodule: git.Submodule) -> "Submodule":  # type: ignore
         """Create an instance from a git submodule."""
-        path = Path(parent.working_dir) / submodule.path
+        path = Path(parent.working_dir) / submodule.path  # type: ignore
         return cls(parent=parent, name=submodule.name, path=path, url=submodule.url)
 
     def __str__(self) -> str:
@@ -801,7 +860,7 @@ class Submodule(BaseRepository):
     @property
     def relative_path(self) -> Path:
         """Relative submodule's path to its parent repository."""
-        return self._path.relative_to(self._parent.working_dir)
+        return self._path.relative_to(self._parent.working_dir)  # type: ignore
 
     @property
     def url(self) -> str:
@@ -863,7 +922,7 @@ class Object(NamedTuple):
     hexsha: str
 
     @classmethod
-    def from_object(cls, object: git.Object):
+    def from_object(cls, object: git.Object):  # type: ignore
         """Create an instance from a git object."""
         return cls(path=object.path, type=object.type, size=object.size, hexsha=object.hexsha)
 
@@ -907,7 +966,7 @@ class Diff(NamedTuple):
         a_path = a_path or b_path
         b_path = b_path or a_path
 
-        return cls(a_path=a_path, b_path=b_path, change_type=diff.change_type)
+        return cls(a_path=a_path, b_path=b_path, change_type=cast(str, diff.change_type))
 
     @property
     def deleted(self) -> bool:
@@ -923,17 +982,19 @@ class Diff(NamedTuple):
 class Commit:
     """A VCS commit."""
 
-    def __init__(self, repository: git.Repo, commit: git.Commit):
+    def __init__(self, repository: git.Repo, commit: git.Commit):  # type: ignore
         self._repository: git.Repo = repository
-        self._commit: git.Commit = commit
+        self._commit: git.Commit = commit  # type: ignore
         self._hexsha: str = commit.hexsha
         self._author: Actor = Actor(name=commit.author.name, email=commit.author.email)
         self._committer: Actor = Actor(name=commit.committer.name, email=commit.committer.email)
 
     @classmethod
-    def from_commit(cls, repository: git.Repo, commit: Optional[git.Commit]) -> Optional["Commit"]:
+    def from_commit(
+        cls, repository: git.Repo, commit: Union[git.Commit, git.types.Commit_ish]  # type: ignore
+    ) -> "Commit":
         """Create an instance from a git Commit object."""
-        return Commit(repository, commit) if commit else None
+        return Commit(repository, commit)
 
     def __eq__(self, other: Any) -> bool:
         return self._hexsha == getattr(other, "_hexsha", _MARKER)
@@ -980,7 +1041,11 @@ class Commit:
     @property
     def parents(self) -> List["Commit"]:
         """List of commit parents."""
-        return [Commit.from_commit(self._repository, p) for p in self._commit.parents]
+        result = []
+
+        for p in self._commit.parents:
+            result.append(Commit.from_commit(self._repository, p))
+        return result
 
     @property
     def tree(self) -> Dict[str, Object]:
@@ -1016,9 +1081,9 @@ class Commit:
 
     def compare_to(self, other: "Commit") -> int:
         """Return -1 if self is made before other."""
-        if self._repository.is_ancestor(self, other):
+        if self._repository.is_ancestor(self, other):  # type: ignore
             return -1
-        if self._repository.is_ancestor(other, self):
+        if self._repository.is_ancestor(other, self):  # type: ignore
             return 1
 
         if self._commit.committed_date < other._commit.committed_date:
@@ -1035,6 +1100,9 @@ class Commit:
         return 0
 
 
+T = TypeVar("T", bound="Reference")
+
+
 class Reference:
     """A git reference."""
 
@@ -1043,7 +1111,7 @@ class Reference:
         self._reference = git.Reference(repo=repository, path=path, check_path=False)
 
     @classmethod
-    def from_reference(cls, repository: git.Repo, reference: git.Reference) -> "Reference":
+    def from_reference(cls: Type[T], repository: git.Repo, reference: git.Reference) -> T:
         """Create an instance from a git reference."""
         return cls(repository, reference.path)
 
@@ -1091,7 +1159,7 @@ class SymbolicReference(Reference):
         try:
             return Reference.from_reference(repository=self._repository, reference=self._reference.reference)
         except (git.GitError, TypeError):
-            return
+            return None
 
 
 class RemoteReference(Reference):
@@ -1122,6 +1190,8 @@ class Branch(Reference):
         remote_reference = self._reference.tracking_branch()
         if remote_reference:
             return RemoteReference.from_reference(repository=self._repository, reference=remote_reference)
+
+        return None
 
 
 class BranchManager:
@@ -1201,7 +1271,7 @@ class Remote:
         try:
             return self._remote.url
         except git.GitError:
-            return
+            return None
 
     def is_valid(self) -> bool:
         """Return True if remote exists."""
@@ -1253,7 +1323,7 @@ class RemoteManager:
     def remove(self, remote: Union[Remote, str]):
         """Remove an existing remote."""
         try:
-            self._repository.delete_remote(remote=remote)
+            self._repository.delete_remote(remote=remote)  # type: ignore
         except git.GitCommandError as e:
             raise errors.GitCommandError(
                 message=f"Git command failed: {str(e)}",
@@ -1277,14 +1347,17 @@ class Tag(Reference):
         return cls(repository, tag.path)
 
     @property
-    def commit(self) -> Optional[Commit]:
+    def commit(self) -> Commit:
         """Return the commit the tag refers to."""
         try:
             commit = self._reference.commit
         except ValueError:
             commit = self._reference.object
 
-        return Commit.from_commit(self._repository, commit) if commit else None
+        if commit is None:
+            raise errors.GitError(f"Not a valid reference: {self._reference.object}")
+
+        return Commit.from_commit(self._repository, commit)
 
 
 class TagManager:
@@ -1350,9 +1423,9 @@ class Configuration:
         elif writable:
             # NOTE: By default, we update only repository's configuration
             scope = scope or "repository"
-            self._configuration = repository.config_writer(config_level=scope)
+            self._configuration = repository.config_writer(config_level=scope)  # type: ignore
         else:
-            self._configuration = repository.config_reader(config_level=scope)
+            self._configuration = repository.config_reader(config_level=scope)  # type: ignore
 
     def __enter__(self) -> "Configuration":
         self._configuration.__enter__()
@@ -1422,7 +1495,7 @@ def _to_string(value) -> Optional[str]:
 def _find_previous_commit_helper(
     repository: BaseRepository,
     path: Union[Path, str],
-    revision: str = None,
+    revision: Optional[str] = None,
     first: bool = False,
     full_history: bool = False,
     submodules: bool = False,
@@ -1430,6 +1503,7 @@ def _find_previous_commit_helper(
     """Return a previous commit for a given path starting from ``revision``.
 
     Args:
+        repository (BaseRepository): The repository to search in.
         path (Union[Path, str]): relative path to the file.
         revision (str, optional): revision to start from, defaults to ``HEAD`` (Default value = None).
         first (bool, optional): show the first commit in the history (Default value = False).
@@ -1440,7 +1514,7 @@ def _find_previous_commit_helper(
     revision = revision or "HEAD"
 
     def get_previous_commit_from_submodules() -> Optional[Commit]:
-        for submodule in repository.submodules:
+        for submodule in repository.submodules:  # type: ignore
             try:
                 Path(absolute_path).relative_to(submodule.path)
             except ValueError:
@@ -1457,6 +1531,8 @@ def _find_previous_commit_helper(
                 if commit:
                     return commit
 
+        return None
+
     max_count = 1 if not first else -1
 
     commits = list(
@@ -1468,6 +1544,8 @@ def _find_previous_commit_helper(
 
     if submodules:
         return get_previous_commit_from_submodules()
+
+    return None
 
 
 def _sanitize_git_config_value(value: str) -> str:

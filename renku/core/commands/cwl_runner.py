@@ -86,7 +86,7 @@ def execute(output_file, client_dispatcher: IClientDispatcher, output_paths=None
             return unquote(location[len(prefix) :])
         return unquote(location)
 
-    locations = {remove_prefix(output["location"]) for output in outputs.values()}
+    locations = {remove_prefix(output["location"]) for output in outputs.values()}  # type: ignore
     # make sure to not move an output if it's containing directory gets moved
     locations = {
         location for location in locations if not any(location.startswith(d) for d in locations if location != d)

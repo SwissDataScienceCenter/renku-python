@@ -23,7 +23,7 @@ import shutil
 import tempfile
 from enum import Enum, IntEnum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from packaging.version import Version
 
@@ -46,7 +46,7 @@ from renku.core.utils.util import to_semantic_version, to_string
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type:ignore
 
 TEMPLATE_KEEP_FILES = ["readme.md", "readme.rst", "readme.txt", "readme"]
 TEMPLATE_INIT_APPEND_FILES = [".gitignore"]
@@ -196,7 +196,7 @@ def get_file_actions(
         else:
             return FileAction.OVERWRITE
 
-    def get_action_for_set(relative_path: str, destination: Path, new_checksum: str) -> FileAction:
+    def get_action_for_set(relative_path: str, destination: Path, new_checksum: Optional[str]) -> FileAction:
         """Decide what to do with a template file."""
         current_checksum = hash_file(destination)
 
@@ -213,7 +213,7 @@ def get_file_actions(
             return FileAction.OVERWRITE
 
     def get_action_for_update(
-        relative_path: str, destination: Path, old_checksum: Optional[str], new_checksum: str
+        relative_path: str, destination: Path, old_checksum: Optional[str], new_checksum: Optional[str]
     ) -> FileAction:
         """Decide what to do with a template file."""
         current_checksum = hash_file(destination)
@@ -373,14 +373,14 @@ class EmbeddedTemplates(TemplatesSource):
     def get_all_references(self, id) -> List[str]:
         """Return all available references for a template id."""
         template_exists = any(t.id == id for t in self.templates)
-        return [self.reference] if template_exists else []
+        return [self.reference] if template_exists and self.reference is not None else []
 
     def get_latest_reference_and_version(
         self, id: str, reference: Optional[str], version: Optional[str]
-    ) -> Optional[Tuple[str, str]]:
+    ) -> Optional[Tuple[Optional[str], str]]:
         """Return latest reference and version number of a template."""
         if version is None:
-            return
+            return None
         elif reference is None or reference != version:  # Old versioning scheme
             return self.reference, self.version
 
@@ -443,12 +443,14 @@ class RepositoryTemplates(TemplatesSource):
 
     def get_latest_reference_and_version(
         self, id: str, reference: Optional[str], version: Optional[str]
-    ) -> Optional[Tuple[str, str]]:
+    ) -> Optional[Tuple[Optional[str], str]]:
         """Return latest reference and version number of a template."""
         if version is None:
-            return
+            return None
 
-        tag = to_semantic_version(reference)
+        tag = None
+        if reference is not None:
+            tag = to_semantic_version(reference)
 
         # NOTE: Assume that a SemVer reference is always a tag
         if tag:
@@ -462,7 +464,10 @@ class RepositoryTemplates(TemplatesSource):
         """Return if template id is available at a reference."""
         try:
             content = self.repository.get_content(TEMPLATE_MANIFEST, revision=reference)
-            manifest = TemplatesManifest.from_string(content)
+
+            if isinstance(content, bytes):
+                return False
+            manifest = TemplatesManifest.from_string(cast(str, content))
         except (errors.ExportError, errors.InvalidTemplateError):
             return False
         else:

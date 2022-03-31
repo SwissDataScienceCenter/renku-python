@@ -38,10 +38,12 @@ class VersionedBlueprint(Blueprint):
         endpoint: Optional[str] = None,
         view_func: Optional[Callable] = None,
         provide_automatic_options: Optional[bool] = None,
-        versions: List[str] = None,
+        versions: List[ApiVersion] = None,
         **options: Any,
     ) -> None:
         """Overwrite Blueprint add_url_rule to support versioning."""
+        if versions is None:
+            return
 
         for version in versions:
             if version.is_base_version:

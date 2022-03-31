@@ -66,11 +66,11 @@ def _log(
             yield current_dataset
 
             if current_dataset.is_derivation():
-                current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)
+                current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)  # type: ignore
             else:
                 return
 
-    log_entries = []
+    log_entries: List[LogViewModel] = []
 
     if not datasets_only:
         activities = activity_gateway.get_all_activities()

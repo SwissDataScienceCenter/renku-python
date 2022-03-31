@@ -80,10 +80,10 @@ def check_missing_files(client, fix, dataset_gateway: IDatasetGateway):
 
     problems = WARNING + "There are missing files in datasets."
 
-    for dataset, files in missing.items():
+    for dataset_name, files in missing.items():
         problems += (
             "\n\t"
-            + click.style(dataset, fg="yellow")
+            + click.style(dataset_name, fg="yellow")
             + ":\n\t  "
             + "\n\t  ".join(click.style(path, fg="red") for path in files)
         )
@@ -114,7 +114,7 @@ def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGate
             invalid_datasets.append(dataset.name)
 
     for dataset in dataset_gateway.get_provenance_tails():
-        while dataset.derived_from is not None:
+        while dataset.derived_from is not None and dataset.derived_from.url_id is not None:
             if dataset.same_as or dataset.derived_from.url_id == dataset.id:
                 fix_or_report(dataset)
                 break

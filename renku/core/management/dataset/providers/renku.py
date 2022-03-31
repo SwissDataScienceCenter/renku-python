@@ -377,10 +377,10 @@ class _RenkuRecordSerializer:
                 self._project_url = url
                 break
 
-        if not self._project_url:
+        if self._project_url is None or repository is None:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
 
-        self._remote_client = LocalClient(repository.path)
+        self._remote_client = LocalClient(path=repository.path)
         client_dispatcher.push_created_client_to_stack(self._remote_client)
         database_dispatcher.push_database_to_stack(self._remote_client.database_path)
 

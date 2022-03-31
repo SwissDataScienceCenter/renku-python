@@ -703,7 +703,9 @@ def workflow():
 
 
 @workflow.command("ls")
-@click.option("--format", type=click.Choice(WORKFLOW_FORMATS), default="tabular", help="Choose an output format.")
+@click.option(
+    "--format", type=click.Choice(list(WORKFLOW_FORMATS.keys())), default="tabular", help="Choose an output format."
+)
 @click.option(
     "-c",
     "--columns",

@@ -38,7 +38,7 @@ class BaseCache:
         "health_check_interval": int(os.getenv("CACHE_HEALTH_CHECK_INTERVAL", 60)),
     }
 
-    cache = redis.Redis(**config_)
+    cache = redis.Redis(**config_)  # type: ignore
     model_db = Database(**config_)
     namespace = REDIS_NAMESPACE
 

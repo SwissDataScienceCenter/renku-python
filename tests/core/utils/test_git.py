@@ -36,9 +36,12 @@ from tests.utils import write_and_commit_file
 )
 def test_get_remote(git_repository_with_multiple_remotes, name: Optional[str], url: Optional[str]):
     """Test getting remote of a git repository."""
-    assert url == get_remote(git_repository_with_multiple_remotes, name=name).url
-
-    assert url == get_remote(git_repository_with_multiple_remotes, url=url).url
+    remote = get_remote(git_repository_with_multiple_remotes, name=name)
+    assert remote is not None
+    assert url == remote.url
+    remote = get_remote(git_repository_with_multiple_remotes, url=url)
+    assert remote is not None
+    assert url == remote.url
 
 
 def test_get_non_existing_remote(git_repository_with_multiple_remotes):

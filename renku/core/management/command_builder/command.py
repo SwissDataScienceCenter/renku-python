@@ -20,8 +20,8 @@
 import contextlib
 import functools
 import threading
-import typing
 from collections import defaultdict
+from typing import Any, Callable, Dict, List, Optional
 
 import click
 import inject
@@ -69,13 +69,11 @@ def _patched_get_injector_or_die() -> inject.Injector:
     return injector
 
 
-def _patched_configure(
-    config: typing.Optional[inject.BinderCallable] = None, bind_in_runtime: bool = True
-) -> inject.Injector:
+def _patched_configure(config: Optional[inject.BinderCallable] = None, bind_in_runtime: bool = True) -> inject.Injector:
     """Create an injector with a callable config or raise an exception when already configured.
 
     Args:
-        config(typing.Optional[inject.BinderCallable], optional): Injection binding config (Default value = None).
+        config(Optional[inject.BinderCallable], optional): Injection binding config (Default value = None).
         bind_in_runtime(bool, optional): Whether to allow binding at runtime (Default value = True).
 
     Returns:
@@ -162,22 +160,22 @@ class Command:
 
     def __init__(self) -> None:
         """__init__ of Command."""
-        self.injection_pre_hooks = defaultdict(list)
-        self.pre_hooks = defaultdict(list)
-        self.post_hooks = defaultdict(list)
-        self._operation = None
-        self._finalized = False
-        self._track_std_streams = False
-        self._working_directory = None
+        self.injection_pre_hooks: Dict[int, List[Callable]] = defaultdict(list)
+        self.pre_hooks: Dict[int, List[Callable]] = defaultdict(list)
+        self.post_hooks: Dict[int, List[Callable]] = defaultdict(list)
+        self._operation: Optional[Callable] = None
+        self._finalized: bool = False
+        self._track_std_streams: bool = False
+        self._working_directory: Optional[str] = None
 
-    def __getattr__(self, name: str) -> typing.Any:
+    def __getattr__(self, name: str) -> Any:
         """Bubble up attributes of wrapped builders."""
         if "_builder" in self.__dict__:
             return getattr(self._builder, name)
 
         raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
 
-    def __setattr__(self, name: str, value: typing.Any) -> None:
+    def __setattr__(self, name: str, value: Any) -> None:
         """Set attributes of wrapped builders."""
         if hasattr(self, "_builder") and self.__class__ is not self._builder.__class__:
             self._builder.__setattr__(name, value)
@@ -200,7 +198,7 @@ class Command:
         ctx = click.get_current_context(silent=True)
         if ctx is None:
             dispatcher.push_client_to_stack(path=default_path(self._working_directory or "."))
-            ctx = click.Context(click.Command(builder._operation))
+            ctx = click.Context(click.Command(builder._operation))  # type: ignore
         else:
             client = ctx.ensure_object(LocalClient)
             dispatcher.push_created_client_to_stack(client)
@@ -247,7 +245,7 @@ class Command:
         if not self.finalized:
             raise errors.CommandNotFinalizedError("Call `build()` before executing a command")
 
-        context = {}
+        context: Dict[str, Any] = {}
         if any(self.injection_pre_hooks):
             order = sorted(self.injection_pre_hooks.keys())
 
@@ -308,12 +306,12 @@ class Command:
         return self._finalized
 
     @check_finalized
-    def add_injection_pre_hook(self, order: int, hook: typing.Callable):
+    def add_injection_pre_hook(self, order: int, hook: Callable):
         """Add a pre-execution hook for dependency injection.
 
         Args:
             order(int): Determines the order of executed hooks, lower numbers get executed first.
-            hook(typing.Callable): The hook to add.
+            hook(Callable): The hook to add.
         """
         if hasattr(self, "_builder"):
             self._builder.add_injection_pre_hook(order, hook)
@@ -321,12 +319,12 @@ class Command:
             self.injection_pre_hooks[order].append(hook)
 
     @check_finalized
-    def add_pre_hook(self, order: int, hook: typing.Callable):
+    def add_pre_hook(self, order: int, hook: Callable):
         """Add a pre-execution hook.
 
         Args:
             order(int): Determines the order of executed hooks, lower numbers get executed first.
-            hook(typing.Callable): The hook to add.
+            hook(Callable): The hook to add.
         """
         if hasattr(self, "_builder"):
             self._builder.add_pre_hook(order, hook)
@@ -334,12 +332,12 @@ class Command:
             self.pre_hooks[order].append(hook)
 
     @check_finalized
-    def add_post_hook(self, order: int, hook: typing.Callable):
+    def add_post_hook(self, order: int, hook: Callable):
         """Add a post-execution hook.
 
         Args:
             order(int): Determines the order of executed hooks, higher numbers get executed first.
-            hook(typing.Callable): The hook to add.
+            hook(Callable): The hook to add.
         """
         if hasattr(self, "_builder"):
             self._builder.add_post_hook(order, hook)
@@ -364,11 +362,11 @@ class Command:
         return self
 
     @check_finalized
-    def command(self, operation: typing.Callable):
+    def command(self, operation: Callable):
         """Set the wrapped command.
 
         Args:
-            operation(typing.Callable): The function to wrap in the command builder.
+            operation(Callable): The function to wrap in the command builder.
 
         Returns:
             Command: This command.
@@ -411,7 +409,11 @@ class Command:
 
     @check_finalized
     def with_commit(
-        self, message: str = None, commit_if_empty: bool = False, raise_if_empty: bool = False, commit_only: bool = None
+        self,
+        message: Optional[str] = None,
+        commit_if_empty: bool = False,
+        raise_if_empty: bool = False,
+        commit_only: Optional[bool] = None,
     ) -> "Command":
         """Create a commit.
 

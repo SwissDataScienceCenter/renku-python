@@ -41,7 +41,7 @@ from renku.core.utils.file_size import parse_file_size
 from renku.core.utils.git import run_command
 
 from .git import _expand_directories
-from .repository import RepositoryApiMixin
+from .repository import RepositoryApiMixin  # type: ignore
 
 
 def check_external_storage_wrapper(fn):
@@ -560,7 +560,7 @@ class StorageApiMixin(RepositoryApiMixin):
         def _map_checksum(entity, checksum_mapping) -> Optional[Entity]:
             """Update the checksum and id of an entity based on a mapping."""
             if entity.checksum not in checksum_mapping:
-                return
+                return None
 
             new_checksum = checksum_mapping[entity.checksum]
 
@@ -569,10 +569,10 @@ class StorageApiMixin(RepositoryApiMixin):
                 for member in entity.members:
                     new_member = _map_checksum(member, checksum_mapping)
                     if new_member:
-                        member.append(new_member)
+                        members.append(new_member)
                     else:
                         members.append(member)
-                new_entity = Collection(checksum=new_checksum, path=entity.path, members=members)
+                new_entity: Entity = Collection(checksum=new_checksum, path=entity.path, members=members)
             else:
                 new_entity = Entity(checksum=new_checksum, path=entity.path)
 

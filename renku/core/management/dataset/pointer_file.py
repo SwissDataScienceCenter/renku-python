@@ -20,7 +20,7 @@
 import os
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Tuple, Union, cast
 
 from renku.core import errors
 from renku.core.management.dataset.constant import renku_pointers_path
@@ -47,7 +47,7 @@ def create_pointer_file(client: "LocalClient", target: Union[str, Path], checksu
 
     # NOTE: If target is within the repo, add it as a relative symlink
     is_within_repo = is_subpath(target, base=client.path)
-    source = os.path.relpath(target, path.parent) if is_within_repo else target
+    source = cast(Union[str, bytes, Path], os.path.relpath(target, path.parent) if is_within_repo else target)
 
     try:
         os.symlink(source, path)
@@ -69,6 +69,9 @@ def is_external_file_updated(client_path: Path, path: Union[Path, str]) -> Tuple
 
     new_checksum = Repository.hash_object(target)
     old_checksum = pointer_file.name.split("-")[-1]
+
+    if new_checksum is None:
+        raise errors.ExternalFileNotFound(target)
 
     updated = new_checksum != old_checksum
 

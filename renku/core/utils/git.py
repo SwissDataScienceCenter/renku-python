@@ -24,7 +24,7 @@ import urllib
 from functools import reduce
 from pathlib import Path
 from subprocess import SubprocessError, run
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
@@ -32,7 +32,7 @@ from renku.core.models.git import GitURL
 
 if TYPE_CHECKING:
     from renku.core.metadata.repository import Commit, Remote, Repository
-    from renku.core.models.entity import Entity
+    from renku.core.models.entity import Collection, Entity
     from renku.core.models.provenance.agent import Person, SoftwareAgent
 
 
@@ -41,7 +41,7 @@ RENKU_BACKUP_PREFIX = "renku-backup"
 
 
 # TODO: Make sure caching is thread-safe
-_entity_cache = {}
+_entity_cache: Dict[Tuple[Optional[str], str], Union["Entity", "Collection"]] = {}
 
 
 def run_command(command, *paths, separator=None, **kwargs):
@@ -240,7 +240,7 @@ def get_full_repository_path(url: Optional[str]) -> str:
         return ""
 
     parsed_url = parse_git_url(url)
-    return pathlib.posixpath.join(parsed_url.hostname, parsed_url.path)
+    return pathlib.posixpath.join(parsed_url.hostname, parsed_url.path)  # type:ignore
 
 
 def get_repository_name(url: str) -> str:
@@ -282,13 +282,15 @@ def get_git_user(repository: Optional["Repository"]) -> Optional["Person"]:
     from renku.core.models.provenance.agent import Person
 
     if repository is None:
-        return
+        return None
 
     user = repository.get_user()
     return Person(name=user.name, email=user.email)
 
 
-def get_remote(repository: Optional["Repository"], *, name: str = None, url: str = None) -> Optional["Remote"]:
+def get_remote(
+    repository: Optional["Repository"], *, name: Optional[str] = None, url: Optional[str] = None
+) -> Optional["Remote"]:
     """Return repository's remote using its name or url or return default remote if any.
 
     Args:
@@ -301,15 +303,17 @@ def get_remote(repository: Optional["Repository"], *, name: str = None, url: str
 
     """
     if not repository or len(repository.remotes) == 0:
-        return
+        return None
     elif name:
         return next((r for r in repository.remotes if r.name == name), None)
     elif url:
         return next((r for r in repository.remotes if r.url == url), None)
     elif len(repository.remotes) == 1:
         return repository.remotes[0]
-    elif repository.active_branch.remote_branch:
+    elif repository.active_branch and repository.active_branch.remote_branch:
         return repository.active_branch.remote_branch.remote
+
+    return None
 
 
 def check_global_git_user_is_configured():
@@ -346,13 +350,16 @@ def is_path_safe(path: Union[Path, str]) -> bool:
     return True
 
 
-def get_entity_from_revision(repository: "Repository", path: Union[Path, str], revision: str = None) -> "Entity":
+def get_entity_from_revision(
+    repository: "Repository", path: Union[Path, str], revision: Optional[str] = None, bypass_cache: bool = False
+) -> "Entity":
     """Return an Entity instance from given path and revision.
 
     Args:
         repository("Repository"): The current repository.
         path(Union[Path, str]): The path of the entity.
         revision(str, optional): The revision to check at (Default value = None).
+        bypass_cache(bool): Whether to ignore cached entries and get information from disk (Default value = False).
 
     Returns:
         "Entity": The Entity for the given path and revision.
@@ -372,7 +379,7 @@ def get_entity_from_revision(repository: "Repository", path: Union[Path, str], r
 
             assert all(member_path != m.path for m in members)
 
-            entity = get_entity_from_revision(repository, member_path, revision)
+            entity = get_entity_from_revision(repository, member_path, revision, bypass_cache=bypass_cache)
             # NOTE: If a path is not found at a revision we assume that it didn't exist at that revision
             if entity:
                 members.append(entity)
@@ -382,7 +389,7 @@ def get_entity_from_revision(repository: "Repository", path: Union[Path, str], r
     global _entity_cache
     key = (revision, str(path))
     cached_entry = _entity_cache.get(key)
-    if cached_entry:
+    if cached_entry and not bypass_cache:
         return cached_entry
 
     # NOTE: For untracked directory the hash is None; make sure to stage them first before calling this function.
@@ -395,11 +402,11 @@ def get_entity_from_revision(repository: "Repository", path: Union[Path, str], r
     absolute_path = repository.path / path
     if str(path) != "." and absolute_path.is_dir():
         members = get_directory_members(absolute_path)
-        entity = Collection(id=id, checksum=checksum, path=path, members=members)
+        entity: Union[Entity, Collection] = Collection(id=id, checksum=checksum, path=path, members=members)
     else:
         entity = Entity(id=id, checksum=checksum, path=path)
 
-    _entity_cache[cached_entry] = entity
+    _entity_cache[key] = entity
 
     return entity
 
@@ -440,9 +447,14 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
                 # Show saved files in message
                 max_len = 100
                 message = "Saved changes to: "
-                paths_with_lens = reduce(
-                    lambda c, x: c + [(x, c[-1][1] + len(x))], saved_paths, [(None, len(message))]
-                )[1:]
+                paths_with_lens = cast(
+                    List[Tuple[str, int]],
+                    reduce(
+                        lambda c, x: c + [(x, c[-1][1] + len(x))],
+                        saved_paths,
+                        cast(List[Tuple[Optional[str], int]], [(None, len(message))]),
+                    )[1:],
+                )
                 # limit first line to max_len characters
                 message += " ".join(p if l < max_len else "\n\t" + p for p, l in paths_with_lens)
 
@@ -453,7 +465,7 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
         return saved_paths
 
 
-def push_changes(repository: "Repository", remote: str = None, reset: bool = True) -> str:
+def push_changes(repository: "Repository", remote: Optional[str] = None, reset: bool = True) -> str:
     """Push to a remote branch. If the remote branch is protected a new remote branch will be created and pushed to.
 
     Args:
@@ -477,7 +489,7 @@ def push_changes(repository: "Repository", remote: str = None, reset: bool = Tru
     else:
         pushed_branch = repository.active_branch.name
 
-    if remote:
+    if remote is not None:
         pushed_remote = get_remote(repository, url=remote) or get_remote(repository, name=remote)
         if not pushed_remote:
             if get_remote(repository, name="origin") is not None:
@@ -693,8 +705,8 @@ def clone_repository(
             raise errors.InvalidFileOperation(f"Cannot delete files in {path}: Permission denied") from e
 
     def check_and_reuse_existing_repository() -> Optional[Repository]:
-        if not path.exists():
-            return
+        if path is None or not cast(Path, path).exists():
+            return None
 
         try:
             repository = Repository(path)
@@ -716,6 +728,8 @@ def clone_repository(
         else:
             return repository
 
+        return None
+
     def clone(branch, depth):
         if skip_smudge:
             os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
@@ -735,9 +749,9 @@ def clone_repository(
 
     path = Path(path) if path else Path(get_repository_name(url))
 
-    repository = check_and_reuse_existing_repository()
-    if repository:
-        return repository
+    existing_repository = check_and_reuse_existing_repository()
+    if existing_repository is not None:
+        return existing_repository
 
     try:
         # NOTE: Try to clone, assuming checkout_revision is a branch or a tag (if it is set)

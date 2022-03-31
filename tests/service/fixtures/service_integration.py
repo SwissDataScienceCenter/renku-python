@@ -46,12 +46,12 @@ def _mock_cache_sync(repository: Repository):
         repository.reset(current_reference, hard=True)
 
     reset_repo_function = mixins.RenkuOperationMixin.reset_local_repo
-    mixins.RenkuOperationMixin.reset_local_repo = _mocked_repo_reset
+    mixins.RenkuOperationMixin.reset_local_repo = _mocked_repo_reset  # type: ignore
 
     try:
         yield
     finally:
-        mixins.RenkuOperationMixin.reset_local_repo = reset_repo_function
+        mixins.RenkuOperationMixin.reset_local_repo = reset_repo_function  # type: ignore
 
 
 def integration_repo_path(headers, project_id, url_components):

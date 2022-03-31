@@ -32,9 +32,11 @@ class DatasetGateway(IDatasetGateway):
 
     database_dispatcher = inject.attr(IDatabaseDispatcher)
 
-    def get_by_id(self, id: str) -> Optional[Dataset]:
+    def get_by_id(self, id: str) -> Dataset:
         """Get a dataset by id."""
-        return self.database_dispatcher.current_database.get_by_id(id)
+        dataset = self.database_dispatcher.current_database.get_by_id(id)
+        assert isinstance(dataset, Dataset)
+        return dataset
 
     def get_by_name(self, name: str) -> Optional[Dataset]:
         """Get a dataset by id."""

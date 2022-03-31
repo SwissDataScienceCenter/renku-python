@@ -21,7 +21,7 @@ import copy
 import urllib
 from abc import abstractmethod
 from pathlib import PurePosixPath
-from typing import Any, List, Optional
+from typing import Any, Iterator, List, Optional
 from uuid import uuid4
 
 from renku.core.errors import ParameterError
@@ -61,35 +61,36 @@ class CommandParameterBase:
         self,
         *,
         default_value: Any,
-        description: str,
+        description: Optional[str],
         id: str,
-        name: str,
+        name: Optional[str],
         position: Optional[int] = None,
         prefix: Optional[str] = None,
-        derived_from: str = None,
-        postfix: str = None,
+        derived_from: Optional[str] = None,
+        postfix: Optional[str] = None,
     ):
         self.default_value: Any = default_value
-        self.description: str = description
+        self.description: Optional[str] = description
         self.id: str = id
-        self.name: str = name
         self.position: Optional[int] = position
-        self.prefix: str = prefix
+        self.prefix: Optional[str] = prefix
         self._v_actual_value_set = False
-        self.derived_from: str = derived_from
-        self.postfix: str = postfix
+        self.derived_from: Optional[str] = derived_from
+        self.postfix: Optional[str] = postfix
 
-        if not self.name:
+        if name is not None:
+            self.name: str = name
+        else:
             self.name = self._get_default_name()
 
     @staticmethod
-    def _generate_id(plan_id: str, parameter_type: str, position: Optional[int], postfix: str = None) -> str:
+    def _generate_id(plan_id: str, parameter_type: str, position: Optional[int], postfix: Optional[str] = None) -> str:
         """Generate an id for parameters."""
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/1
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/stdin
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/dda5fcbf00984917be46dc12f5f7b675
-        position = str(position) if position is not None else uuid4().hex
-        postfix = urllib.parse.quote(postfix) if postfix else position
+        position_str = str(position) if position is not None else uuid4().hex
+        postfix = urllib.parse.quote(postfix) if postfix else position_str
         return f"{plan_id}/{parameter_type}/{postfix}"
 
     @property
@@ -194,16 +195,16 @@ class CommandInput(CommandParameterBase):
     def __init__(
         self,
         *,
-        default_value: Any = None,
-        description: str = None,
+        default_value: Optional[Any] = None,
+        description: Optional[str] = None,
         id: str,
-        mapped_to: MappedIOStream = None,
-        name: str = None,
+        mapped_to: Optional[MappedIOStream] = None,
+        name: Optional[str] = None,
         position: Optional[int] = None,
-        prefix: str = None,
-        encoding_format: List[str] = None,
-        derived_from: str = None,
-        postfix: str = None,
+        prefix: Optional[str] = None,
+        encoding_format: Optional[List[str]] = None,
+        derived_from: Optional[str] = None,
+        postfix: Optional[str] = None,
     ):
         super().__init__(
             default_value=default_value,
@@ -215,12 +216,14 @@ class CommandInput(CommandParameterBase):
             derived_from=derived_from,
             postfix=postfix,
         )
-        self.mapped_to: MappedIOStream = mapped_to
-        _validate_mime_type(encoding_format)
-        self.encoding_format: List[str] = encoding_format
+        self.mapped_to: Optional[MappedIOStream] = mapped_to
+
+        if encoding_format is not None:
+            _validate_mime_type(encoding_format)
+        self.encoding_format: Optional[List[str]] = encoding_format
 
     @staticmethod
-    def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
+    def generate_id(plan_id: str, position: Optional[int] = None, postfix: Optional[str] = None) -> str:
         """Generate an id for CommandInput."""
         return CommandParameterBase._generate_id(plan_id, parameter_type="inputs", position=position, postfix=postfix)
 
@@ -246,15 +249,15 @@ class CommandOutput(CommandParameterBase):
         *,
         create_folder: bool = False,
         default_value: Any = None,
-        description: str = None,
+        description: Optional[str] = None,
         id: str,
-        mapped_to: MappedIOStream = None,
-        name: str = None,
+        mapped_to: Optional[MappedIOStream] = None,
+        name: Optional[str] = None,
         position: Optional[int] = None,
-        prefix: str = None,
-        encoding_format: List[str] = None,
-        derived_from: str = None,
-        postfix: str = None,
+        prefix: Optional[str] = None,
+        encoding_format: Optional[List[str]] = None,
+        derived_from: Optional[str] = None,
+        postfix: Optional[str] = None,
     ):
         super().__init__(
             default_value=default_value,
@@ -267,9 +270,11 @@ class CommandOutput(CommandParameterBase):
             postfix=postfix,
         )
         self.create_folder: bool = create_folder
-        self.mapped_to: MappedIOStream = mapped_to
-        _validate_mime_type(encoding_format)
-        self.encoding_format: List[str] = encoding_format
+        self.mapped_to: Optional[MappedIOStream] = mapped_to
+
+        if encoding_format is not None:
+            _validate_mime_type(encoding_format)
+        self.encoding_format: Optional[List[str]] = encoding_format
 
     @staticmethod
     def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
@@ -299,11 +304,11 @@ class ParameterMapping(CommandParameterBase):
     def __init__(
         self,
         *,
-        default_value: Any = None,
-        description: str = None,
+        default_value: Any,
+        description: Optional[str] = None,
         id: str,
-        name: str = None,
-        mapped_parameters: List[CommandParameterBase] = None,
+        name: Optional[str] = None,
+        mapped_parameters: List[CommandParameterBase],
         **kwargs,
     ):
         super().__init__(default_value=default_value, description=description, id=id, name=name, **kwargs)
@@ -311,7 +316,7 @@ class ParameterMapping(CommandParameterBase):
         self.mapped_parameters: List[CommandParameterBase] = mapped_parameters
 
     @staticmethod
-    def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
+    def generate_id(plan_id: str, position: Optional[int] = None, postfix: Optional[str] = None) -> str:
         """Generate an id for CommandOutput."""
         return CommandParameterBase._generate_id(plan_id, parameter_type="mappings", position=position, postfix=postfix)
 
@@ -322,7 +327,7 @@ class ParameterMapping(CommandParameterBase):
     def _get_default_name(self) -> str:
         return self._generate_name(base="mapping")
 
-    @CommandParameterBase.actual_value.setter
+    @CommandParameterBase.actual_value.setter  # type: ignore
     def actual_value(self, value):
         """Set the actual value to be used for execution."""
         self._v_actual_value = value
@@ -333,13 +338,19 @@ class ParameterMapping(CommandParameterBase):
                 mapped_to.actual_value = value
 
     @property
-    def leaf_parameters(self):
+    def leaf_parameters(self) -> Iterator[CommandParameterBase]:
         """Return leaf (non-Mapping) parameters contained by this Mapping."""
         for mapped_to in self.mapped_parameters:
             if isinstance(mapped_to, ParameterMapping):
-                yield mapped_to.leaf_parameters
+                yield from mapped_to.leaf_parameters
             else:
                 yield mapped_to
+
+    def derive(self, plan_id: str) -> "ParameterMapping":
+        """Create a new ``CommandParameter`` that is derived from self."""
+        parameter = copy.copy(self)
+        parameter.id = ParameterMapping.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix)
+        return parameter
 
 
 class ParameterLink:

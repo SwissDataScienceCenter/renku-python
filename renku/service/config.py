@@ -23,7 +23,7 @@ from pathlib import Path
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type: ignore
 
 SVC_ERROR_GENERIC = 0
 SVC_ERROR_USER = 1000

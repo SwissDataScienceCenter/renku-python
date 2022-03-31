@@ -17,17 +17,14 @@
 # limitations under the License.
 """Activity graph view model."""
 
-from collections import namedtuple
 from datetime import datetime
 from textwrap import shorten
-from typing import TYPE_CHECKING, Any, List, Tuple
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from grandalf.graphs import Edge
 
-    from renku.core.commands.view_model.text_canvas import TextCanvas
-
-Point = namedtuple("Point", ["x", "y"])
+    from renku.core.commands.view_model.text_canvas import Point, TextCanvas
 
 MAX_NODE_LENGTH = 40
 
@@ -47,7 +44,7 @@ class ActivityGraphViewModel:
     def __init__(self, graph):
         self.graph = graph
 
-    def _format_vertex(self, node, columns: List[str]) -> Tuple[str, bool, Any]:
+    def _format_vertex(self, node, columns: List[Callable]) -> Tuple[str, bool, Any]:
         """Return vertex text for a node.
 
         Args:
@@ -150,7 +147,7 @@ class ActivityGraphViewModel:
         Returns:
             Tuple[int, str]: Ending y coordinate after edge is added and color used for edge.
         """
-        from renku.core.commands.view_model.text_canvas import EdgeShape
+        from renku.core.commands.view_model.text_canvas import EdgeShape, Point
 
         edge_color = EdgeShape.next_color()
         new_edges = []
@@ -181,13 +178,15 @@ class ActivityGraphViewModel:
                 for e in new_edges:
                     e.color = edge_color
 
-        [canvas.add_shape(e, layer=0) for e in new_edges]
+        for e in new_edges:
+            canvas.add_shape(e, layer=0)
+
         existing_edges.extend(new_edges)
         return max_y, edge_color
 
     def text_representation(
         self, columns: str, color: bool = True, ascii=False
-    ) -> Tuple[str, List[List[Tuple[Point, Point, Any]]]]:
+    ) -> Tuple[Optional[str], Optional[List[List[Tuple["Point", "Point", Any]]]]]:
         """Return an ascii representation of the graph.
 
         Args:
@@ -201,7 +200,7 @@ class ActivityGraphViewModel:
         """
         from grandalf.layouts import DummyVertex
 
-        from renku.core.commands.view_model.text_canvas import NodeShape, TextCanvas
+        from renku.core.commands.view_model.text_canvas import NodeShape, Point, TextCanvas
         from renku.core.models.provenance.activity import Activity
 
         self.layout_graph(columns=columns)
@@ -218,7 +217,7 @@ class ActivityGraphViewModel:
 
         for layout in self.layouts:
             max_y = 0
-            existing_edges = []
+            existing_edges: List[Edge] = []
 
             for layer in layout.layers:
                 layer_nodes = []
@@ -253,7 +252,7 @@ class ActivityGraphViewModel:
                                 visited_nodes.add(dummy_node)
 
                         local_max_y, node_color = self._add_edges_to_canvas(
-                            visited_edges, canvas, existing_edges, min_y
+                            list(visited_edges), canvas, existing_edges, min_y
                         )
                         max_y = max(max_y, local_max_y)
 

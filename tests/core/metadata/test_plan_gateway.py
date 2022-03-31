@@ -27,8 +27,8 @@ from renku.core.models.workflow.plan import Plan
 def test_plan_gateway_add_get(dummy_database_injection_manager):
     """Test getting a plan by id."""
 
-    plan = Plan(id=Plan.generate_id(), name="plan")
-    composite_plan = CompositePlan(id=CompositePlan.generate_id(), name="composite-plan")
+    plan = Plan(id=Plan.generate_id(), name="plan", command="")
+    composite_plan = CompositePlan(id=CompositePlan.generate_id(), name="composite-plan", plans=[plan])
 
     with dummy_database_injection_manager(None):
         plan_gateway = PlanGateway()
@@ -51,10 +51,14 @@ def test_plan_gateway_add_get(dummy_database_injection_manager):
 
 def test_plan_gateway_newest_plans(dummy_database_injection_manager, database):
     """Test getting newest plans."""
-    plan = Plan(id=Plan.generate_id(), name="plan")
-    plan2 = Plan(id=Plan.generate_id(), name="plan")
-    invalidated_plan = Plan(id=Plan.generate_id(), name="invalidated_plan", invalidated_at=datetime.utcnow())
-    invalidated_plan2 = Plan(id=Plan.generate_id(), name="invalidated_plan", invalidated_at=datetime.utcnow())
+    plan = Plan(id=Plan.generate_id(), name="plan", command="")
+    plan2 = Plan(id=Plan.generate_id(), name="plan", command="")
+    invalidated_plan = Plan(
+        id=Plan.generate_id(), name="invalidated_plan", command="", invalidated_at=datetime.utcnow()
+    )
+    invalidated_plan2 = Plan(
+        id=Plan.generate_id(), name="invalidated_plan", command="", invalidated_at=datetime.utcnow()
+    )
 
     with dummy_database_injection_manager(None):
         plan_gateway = PlanGateway()

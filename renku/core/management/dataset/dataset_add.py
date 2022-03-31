@@ -26,7 +26,7 @@ import time
 import urllib
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
@@ -65,14 +65,14 @@ def add_data_to_dataset(
     force: bool = False,
     create: bool = False,
     overwrite: bool = False,
-    sources: Optional[List[str]] = None,
+    sources: Optional[List[Union[str, Path]]] = None,
     destination: str = "",
-    ref: str = None,
+    ref: Optional[str] = None,
     external: bool = False,
     extract: bool = False,
     all_at_once: bool = False,
-    destination_names: List[str] = None,
-    repository: Repository = None,
+    destination_names: Optional[List[str]] = None,
+    repository: Optional[Repository] = None,
     clear_files_before: bool = False,
     total_size: Optional[int] = None,
     with_metadata: Optional[Dataset] = None,
@@ -90,7 +90,7 @@ def add_data_to_dataset(
 
     try:
         with DatasetContext(name=dataset_name, create=create) as dataset:
-            destination = _create_destination_directory(client, dataset, destination)
+            destination_path = _create_destination_directory(client, dataset, destination)
 
             client.check_external_storage()
 
@@ -98,7 +98,7 @@ def add_data_to_dataset(
                 client,
                 dataset,
                 urls,
-                destination,
+                destination_path,
                 ref,
                 sources,
                 destination_names,
@@ -169,17 +169,19 @@ def _process_urls(
     urls: List[str],
     destination: Path,
     ref: Optional[str] = None,
-    sources: Optional[List[str]] = None,
+    sources: Optional[List[Union[str, Path]]] = None,
     destination_names: Optional[List[str]] = None,
     external: bool = False,
     extract: bool = False,
     all_at_once: bool = False,
-    repository: Repository = None,
+    repository: Optional[Repository] = None,
 ):
     """Process file URLs for adding to a dataset."""
     files = []
     tracked_external_warnings = []
     if all_at_once:  # Importing a non-git dataset
+        if not destination_names:
+            raise errors.ParameterError("'destination_names' has to be set when using 'all_at_once=True'")
         files = _add_from_urls(
             client, urls=urls, destination_names=destination_names, destination=destination, extract=extract
         )
@@ -239,7 +241,7 @@ def _check_available_space(client: "LocalClient", urls: List[str], total_size: O
 
 def _create_destination_directory(
     client: "LocalClient", dataset: Dataset, destination: Optional[Union[Path, str]] = None
-):
+) -> Path:
     """Create directory for dataset add."""
     dataset_datadir = client.path / get_dataset_data_dir(client, dataset)
     # NOTE: Make sure that dataset's data dir exists because we check for existence of a destination later to decide
@@ -247,9 +249,9 @@ def _create_destination_directory(
     dataset_datadir.mkdir(parents=True, exist_ok=True)
 
     destination = destination or Path(".")
-    destination = get_relative_path(destination, base=dataset_datadir, strict=True)
+    destination = cast(Path, get_relative_path(destination, base=dataset_datadir, strict=True))
     destination = dataset_datadir / destination
-    return destination
+    return cast(Path, destination)
 
 
 def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files: List[Dict]):
@@ -339,10 +341,10 @@ def _generate_dataset_files(
 def _add_from_git(
     client: "LocalClient",
     url: str,
-    sources: List[Union[Path, str]],
+    sources: Optional[List[Union[Path, str]]],
     destination: Path,
     ref: Optional[str] = None,
-    repository: Repository = None,
+    repository: Optional[Repository] = None,
 ):
     """Process adding resources from another git repository."""
     from renku.core.management.client import LocalClient
@@ -350,7 +352,18 @@ def _add_from_git(
     destination_exists = destination.exists()
     destination_is_dir = destination.is_dir()
 
+    if not repository:
+        repository = clone_repository(
+            url=url,
+            path=get_cache_directory_for_repository(client=client, url=url),
+            checkout_revision=ref,
+            depth=None,
+            clean=True,
+        )
+
     def check_sources_are_within_remote_repo():
+        if not sources:
+            return
         for source in sources:
             if get_relative_path(path=source, base=repository.path) is None:
                 raise errors.ParameterError(f"Path '{source}' is not within the repository")
@@ -358,13 +371,13 @@ def _add_from_git(
     def get_paths_from_remote_repo() -> Set[Path]:
         """Return all paths from the repo that match a source pattern."""
         if not sources:
-            return set(repository.path.glob("*"))
+            return set(repository.path.glob("*"))  # type: ignore
 
         paths = set()
         for source in sources:
             # NOTE: Normalized source to resolve .. references (if any). This preserves wildcards.
             normalized_source = os.path.normpath(source)
-            absolute_source = os.path.join(repository.path, normalized_source)
+            absolute_source = os.path.join(repository.path, normalized_source)  # type: ignore
             # NOTE: Path.glob("root/**") does not return correct results (e.g. it include ``root`` in the result)
             subpaths = set(Path(p) for p in glob.glob(absolute_source))
             if len(subpaths) == 0:
@@ -387,20 +400,24 @@ def _add_from_git(
         )
 
     def get_metadata(src, dst) -> Optional[Dict]:
-        path_in_src_repo = src.relative_to(repository.path)
+        path_in_src_repo = src.relative_to(repository.path)  # type: ignore
         path_in_dst_repo = dst.relative_to(client.path)
 
         if path_in_dst_repo in new_files:  # A path with the same destination is already copied
-            return
+            return  # type: ignore
 
         new_files.add(path_in_dst_repo)
 
-        if is_external_file(path=src, client_path=repository.path):
+        if is_external_file(path=src, client_path=repository.path):  # type: ignore
             operation = (src.resolve(), dst, AddAction.SYMLINK)
         else:
             operation = (src, dst, AddAction.MOVE)
 
-        checksum = repository.get_object_hash(revision="HEAD", path=path_in_src_repo)
+        checksum = repository.get_object_hash(revision="HEAD", path=path_in_src_repo)  # type: ignore
+
+        if not checksum:
+            raise errors.GitCommitNotFoundError(f"Couldn't find a checksum for {path_in_src_repo}")
+
         based_on = RemoteEntity(checksum=checksum, path=path_in_src_repo, url=url)
 
         return {
@@ -410,23 +427,14 @@ def _add_from_git(
             "operation": operation,
         }
 
-    if not repository:
-        repository = clone_repository(
-            url=url,
-            path=get_cache_directory_for_repository(client=client, url=url),
-            checkout_revision=ref,
-            depth=None,
-            clean=True,
-        )
-
     check_sources_are_within_remote_repo()
     paths = get_paths_from_remote_repo()
     n_paths = len(paths)
 
-    LocalClient(repository.path).pull_paths_from_storage(*paths)
+    LocalClient(path=repository.path).pull_paths_from_storage(*paths)
 
     results = []
-    new_files = set()
+    new_files: Set[Path] = set()
     for path in paths:
         dst_root = get_destination_root(n_paths=n_paths, path=path)
 
@@ -463,7 +471,7 @@ def _add_from_urls(
                 communication.unsubscribe(communicator)
 
     files = []
-    max_workers = min(os.cpu_count() - 1, 4) or 1
+    max_workers = min((os.cpu_count() or 1) - 1, 4) or 1
     with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
         futures = {
             executor.submit(
@@ -504,7 +512,7 @@ def _add_from_url(
         # If execution time was less or equal to zero seconds,
         # block the thread a bit to avoid being rate limited.
         if exec_time == 0:
-            time.sleep(min(os.cpu_count() - 1, 4) or 1)
+            time.sleep(min((os.cpu_count() or 1) - 1, 4) or 1)
     except errors.RequestError as e:  # pragma nocover
         raise errors.OperationError("Cannot download from {}".format(url)) from e
 

@@ -17,9 +17,10 @@
 # limitations under the License.
 """Plugin hooks for renku workflow customization."""
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import pluggy
+from typing_extensions import Protocol
 
 from renku.core import errors
 from renku.core.models.workflow.converters import IWorkflowConverter
@@ -29,7 +30,7 @@ hookspec = pluggy.HookspecMarker("renku")
 
 
 @hookspec
-def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:
+def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.
@@ -43,7 +44,9 @@ def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:
 
 
 @hookspec(firstresult=True)
-def workflow_convert(workflow: Plan, basedir: Path, output: Optional[Path], output_format: Optional[str]) -> str:
+def workflow_convert(
+    workflow: Plan, basedir: Path, output: Optional[Path], output_format: Optional[str]
+) -> str:  # type: ignore
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.
@@ -75,7 +78,17 @@ def supported_formats() -> List[str]:
     return [format for fs in supported_formats for format in fs[1]]
 
 
-def workflow_converter(format: str) -> Callable[[Plan, Path, Optional[Path], Optional[str]], str]:
+class WorkflowConverterProtocol(Protocol):
+    """Typing protocol to specify type of the workflow converter hook."""
+
+    def __call__(
+        self, workflow: Plan, basedir: Path, output: Optional[Path] = None, output_format: Optional[str] = None
+    ) -> str:
+        """Dummy method to let mypy know the type of the hook implementation."""
+        raise NotImplementedError()
+
+
+def workflow_converter(format: str) -> WorkflowConverterProtocol:
     """Returns a workflow converter function for a given format if available.
 
     Args:

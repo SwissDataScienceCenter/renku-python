@@ -25,7 +25,7 @@ import uuid
 from abc import abstractmethod
 from pathlib import Path
 from subprocess import call
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, cast
 
 import networkx as nx
 from toil.common import Toil
@@ -53,7 +53,7 @@ class AbstractToilJob(Job):
         super(AbstractToilJob, self).__init__(unitName=workflow.name, displayName=workflow.name, *args, **kwargs)
         self.workflow = workflow
         self._input_files: Dict[str, FileID] = {}
-        self._parents_promise = []
+        self._parents_promise: List[Promise] = []
         self._environment = os.environ.copy()
 
     @abstractmethod
@@ -154,7 +154,10 @@ class SubprocessToilJob(AbstractToilJob):
         return call(
             command_line,
             cwd=os.getcwd(),
-            **{key: open(value, mode="r" if key == "stdin" else "w") for key, value in mapped_std.items()},
+            **{
+                key: open(value, mode="r" if key == "stdin" else "w")
+                for key, value in mapped_std.items()  # type: ignore
+            },
             env=self._environment,
         )
 
@@ -189,13 +192,13 @@ def importFileWrapper(storage: AbstractFileStore, file_path: str) -> FileID:
     return storage.importFile(file_uri)
 
 
-def process_children(parent: Job, dag: nx.DiGraph, jobs: Dict[str, Job], basedir: Path, storage: AbstractFileStore):
+def process_children(parent: Job, dag: nx.DiGraph, jobs: Dict[int, Job], basedir: Path, storage: AbstractFileStore):
     """Recursively process children of a workflow."""
 
     outputs = list()
     import_function = functools.partial(importFileWrapper, storage)
     for child in nx.neighbors(dag, parent.workflow):
-        child_job = jobs[id(child)]
+        child_job = cast(AbstractToilJob, jobs[id(child)])
         file_metadata = _upload_files(import_function, child.inputs, basedir)
         child_job.set_input_files(file_metadata)
         child_job.add_input_promise(parent.rv())
@@ -240,7 +243,8 @@ class ToilProvider(IWorkflowProvider):
         options.clean = "always"
 
         if config:
-            [setattr(options, k, v) for k, v in config.items()]
+            for k, v in config.items():
+                setattr(options, k, v)
 
         outputs = list()
         try:

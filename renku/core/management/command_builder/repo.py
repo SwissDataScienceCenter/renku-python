@@ -17,6 +17,8 @@
 # limitations under the License.
 """Command builder for repository."""
 
+from typing import Optional
+
 from renku.core import errors
 from renku.core.management.command_builder.command import Command, CommandResult, check_finalized
 
@@ -29,10 +31,10 @@ class Commit(Command):
     def __init__(
         self,
         builder: Command,
-        message: str = None,
-        commit_if_empty: bool = False,
-        raise_if_empty: bool = False,
-        commit_only: bool = None,
+        message: Optional[str] = None,
+        commit_if_empty: Optional[bool] = False,
+        raise_if_empty: Optional[bool] = False,
+        commit_only: Optional[bool] = None,
     ) -> None:
         """__init__ of Commit.
 
@@ -137,6 +139,7 @@ class RequireClean(Command):
         """
         if "client_dispatcher" not in context:
             raise ValueError("Commit builder needs a IClientDispatcher to be set.")
+
         context["client_dispatcher"].current_client.ensure_clean(ignore_std_streams=not builder._track_std_streams)
 
     @check_finalized

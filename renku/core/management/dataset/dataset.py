@@ -23,7 +23,7 @@ import shutil
 import urllib
 from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 
 import patoolib
 
@@ -67,6 +67,7 @@ from renku.core.utils.urls import get_slug, remove_credentials
 
 if TYPE_CHECKING:
     from renku.core.management.client import LocalClient
+    from renku.core.metadata.repository import Repository
 
 
 def search_datasets(name: str) -> List[str]:
@@ -129,7 +130,11 @@ def create_dataset(
     client = client_dispatcher.current_client
 
     if not creators:
-        creators = [get_git_user(client.repository)]
+        creators = []
+        user = get_git_user(client.repository)
+
+        if user:
+            creators.append(user)
 
     if not is_dataset_name_valid(name):
         valid_name = get_slug(name, lowercase=False)
@@ -177,10 +182,10 @@ def edit_dataset(
     description: str,
     creators: List[Person],
     client_dispatcher: IClientDispatcher,
-    keywords: List[str] = None,
-    images: List[ImageRequestModel] = None,
+    keywords: Optional[List[str]] = None,
+    images: Optional[List[ImageRequestModel]] = None,
     skip_image_update: bool = False,
-    custom_metadata: Dict = None,
+    custom_metadata: Optional[Dict] = None,
 ):
     """Edit dataset metadata.
 
@@ -212,7 +217,10 @@ def edit_dataset(
     dataset_provenance = DatasetsProvenance()
     dataset = dataset_provenance.get_by_name(name=name)
 
-    updated = {k: v for k, v in possible_updates.items() if v}
+    if dataset is None:
+        raise errors.ParameterError("Dataset does not exist.")
+
+    updated: Dict[str, Any] = {k: v for k, v in possible_updates.items() if v}
 
     if updated:
         dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
@@ -367,7 +375,7 @@ def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClient
     provider.set_parameters(**kwargs)
 
     selected_tag = None
-    tags = datasets_provenance.get_all_tags(dataset)
+    tags = datasets_provenance.get_all_tags(dataset)  # type: ignore
 
     if tag:
         selected_tag = next((t for t in tags if t.name == tag), None)
@@ -383,8 +391,8 @@ def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClient
         if not dataset:
             raise errors.DatasetNotFound(message=f"Cannot find dataset with id: '{selected_tag.dataset_id.value}'")
 
-    data_dir = get_dataset_data_dir(client, dataset)
-    dataset = DynamicProxy(dataset)
+    data_dir = get_dataset_data_dir(client, dataset)  # type: ignore
+    dataset = cast(Dataset, DynamicProxy(dataset))
     dataset.data_dir = data_dir
 
     access_token = client.get_value(provider_name, config_key_secret)
@@ -608,7 +616,7 @@ def update_datasets(
 
             uri = dataset.same_as.url
             if isinstance(uri, dict):
-                uri = uri.get("@id")
+                uri = cast(str, uri.get("@id"))
             provider, _ = ProviderFactory.from_uri(uri)
 
             if not provider:
@@ -679,8 +687,8 @@ def update_datasets(
             "Limit list of files to be updated to one repository. See 'renku dataset update -h' for more information."
         )
 
-    updated_files = []
-    deleted_files = []
+    updated_files: List[DynamicProxy] = []
+    deleted_files: List[DynamicProxy] = []
 
     if external_files and not no_external:
         updated = update_external_files(client, external_files, dry_run=dry_run)
@@ -716,7 +724,7 @@ def update_datasets(
             file.date_removed = local_now()
 
     dataset_files_view_models = [
-        DatasetFileViewModel.from_dataset_file(f, f.dataset) for f in updated_files + deleted_files
+        DatasetFileViewModel.from_dataset_file(cast(DatasetFile, f), f.dataset) for f in updated_files + deleted_files
     ]
     return imported_datasets_view_models, dataset_files_view_models
 
@@ -734,7 +742,7 @@ def show_dataset(name):
     return DatasetDetailsJson().dump(dataset)
 
 
-def set_dataset_images(client: "LocalClient", dataset: Dataset, images: List[ImageRequestModel]):
+def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional[List[ImageRequestModel]]):
     """Set a dataset's images.
 
     Args:
@@ -802,7 +810,7 @@ def move_files(
     client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
     files: Dict[Path, Path],
-    to_dataset: Optional[str] = None,
+    to_dataset_name: Optional[str] = None,
 ):
     """Move files and their metadata from one or more datasets to a target dataset.
 
@@ -810,15 +818,17 @@ def move_files(
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway):Injected dataset gateway.
         files(Dict[Path, Path]): Files to move
-        to_dataset(Optional[str], optional): Target dataset (Default value = None)
+        to_dataset_name(Optional[str], optional): Target dataset (Default value = None)
     """
     client = client_dispatcher.current_client
 
     datasets = [d.copy() for d in dataset_gateway.get_all_active_datasets()]
-    if to_dataset:
+
+    to_dataset: Optional[Dataset] = None
+    if to_dataset_name:
         # NOTE: Use the same dataset object or otherwise a race happens if dataset is in both source and destination
-        to_dataset: Dataset = next(d for d in datasets if d.name == to_dataset)
-    modified_datasets = {}
+        to_dataset = next(d for d in datasets if d.name == to_dataset_name)
+    modified_datasets: Dict[str, Dataset] = {}
 
     progress_name = "Updating dataset metadata"
     communication.start_progress(progress_name, total=len(files))
@@ -828,6 +838,7 @@ def move_files(
             dst = dst.relative_to(client.path)
             # NOTE: Files are moved at this point, so, we use can use dst
             new_dataset_file = DatasetFile.from_path(client, dst)
+
             for dataset in datasets:
                 removed = dataset.unlink_file(src, missing_ok=True)
                 if removed:
@@ -851,10 +862,10 @@ def move_files(
         communication.finalize_progress(progress_name)
 
     datasets_provenance = DatasetsProvenance()
-    modified_datasets = list(modified_datasets.values())
-    for dataset in modified_datasets:
-        datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
-    if to_dataset and to_dataset not in modified_datasets:
+    modified_dataset_values = list(modified_datasets.values())
+    for modified_dataset in modified_dataset_values:
+        datasets_provenance.add_or_update(modified_dataset, creator=get_git_user(client.repository))
+    if to_dataset and to_dataset not in modified_dataset_values:
         datasets_provenance.add_or_update(to_dataset, creator=get_git_user(client.repository))
 
 
@@ -980,6 +991,7 @@ def update_dataset_git_files(
         files(List[DynamicProxy]): List of files to be updated.
         ref(str): Reference to use for update.
         delete(bool, optional): Indicates whether to delete files or not (Default value = False).
+        dry_run(bool): Whether to perform update or only print changes.
 
     Returns:
         Tuple[List[DynamicProxy], List[DynamicProxy]]: Tuple of updated and deleted file records.
@@ -988,7 +1000,7 @@ def update_dataset_git_files(
 
     client = client_dispatcher.current_client
 
-    visited_repos = {}
+    visited_repos: Dict[str, Tuple["Repository", LocalClient]] = {}
     updated_files: List[DynamicProxy] = []
     deleted_files: List[DynamicProxy] = []
 
@@ -1009,11 +1021,11 @@ def update_dataset_git_files(
                 remote_repository = clone_repository(
                     url=url, path=get_cache_directory_for_repository(client=client, url=url), checkout_revision=ref
                 )
-                remote_client = LocalClient(remote_repository.path)
+                remote_client = LocalClient(path=remote_repository.path)
                 visited_repos[url] = remote_repository, remote_client
 
             checksum = remote_repository.get_object_hash(path=based_on.path, revision="HEAD")
-            found = bool(checksum)
+            found = checksum is not None
             changed = found and based_on.checksum != checksum
 
             src = remote_repository.path / based_on.path
@@ -1033,7 +1045,9 @@ def update_dataset_git_files(
                         create_external_file(client=client, target=src.resolve(), path=dst)
                     else:
                         shutil.copy(src, dst)
-                    file.based_on = RemoteEntity(checksum=checksum, path=based_on.path, url=based_on.url)
+                    file.based_on = RemoteEntity(
+                        checksum=checksum, path=based_on.path, url=based_on.url  # type: ignore
+                    )
                 updated_files.append(file)
     finally:
         communication.finalize_progress(progress_text)
@@ -1130,8 +1144,8 @@ def filter_dataset_files(
                     records.append(record)
 
     if unused_names:
-        unused_names = ", ".join(unused_names)
-        raise errors.ParameterError(f"Dataset does not exist: {unused_names}")
+        unused_names_str = ", ".join(unused_names)
+        raise errors.ParameterError(f"Dataset does not exist: {unused_names_str}")
 
     return sorted(records, key=lambda r: r.date_added)
 

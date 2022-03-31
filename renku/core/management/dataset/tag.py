@@ -47,6 +47,8 @@ def add_dataset_tag(dataset_name: str, tag: str, description="", force=False):
         )
     datasets_provenance = DatasetsProvenance()
     dataset = datasets_provenance.get_by_name(dataset_name, strict=True)
+    assert dataset is not None
+
     tags = datasets_provenance.get_all_tags(dataset)
     existing_tag = next((t for t in tags if t.name == tag), None)
     if existing_tag:
@@ -63,6 +65,7 @@ def list_dataset_tags(dataset_name, format):
     """List all tags for a dataset."""
     datasets_provenance = DatasetsProvenance()
     dataset = datasets_provenance.get_by_name(dataset_name, strict=True)
+    assert dataset is not None
 
     tags = datasets_provenance.get_all_tags(dataset)
     tags = sorted(tags, key=lambda t: t.date_created)
@@ -77,6 +80,7 @@ def remove_dataset_tags(dataset_name: str, tags: List[str]):
     """Removes tags from a dataset."""
     datasets_provenance = DatasetsProvenance()
     dataset = datasets_provenance.get_by_name(dataset_name, strict=True)
+    assert dataset is not None
 
     dataset_tags = datasets_provenance.get_all_tags(dataset)
     tag_names = {t.name for t in dataset_tags}

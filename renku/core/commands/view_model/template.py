@@ -32,18 +32,18 @@ class TemplateViewModel:
         description: str,
         icon: Optional[str],
         id: str,
-        immutable_files: Optional[List],
+        immutable_files: Optional[List[str]],
         name: str,
         reference: Optional[str],
-        source: str,
+        source: Optional[str],
         parameters: List[TemplateParameter],
-        version: str,
+        version: Optional[str],
         versions: List[str],
     ):
         self.description: str = description
         self.icon = icon
         self.id: str = id
-        self.immutable_files: List[str] = immutable_files
+        self.immutable_files: Optional[List[str]] = immutable_files
         self.name: str = name
         self.reference = reference
         self.source = source
@@ -85,14 +85,14 @@ class TemplateParameterViewModel:
         name: str,
         description: str,
         type: str,
-        possible_values: List[str],
-        default: str,
+        possible_values: List[Any],
+        default: Optional[Any],
     ):
         self.name: str = name
         self.description: str = description
         self.type: str = type
         self.possible_values: List[Any] = possible_values
-        self.default: Optional[str] = default
+        self.default: Optional[Any] = default
 
     @classmethod
     def from_template_parameter(cls, parameter: TemplateParameter) -> "TemplateParameterViewModel":
@@ -116,7 +116,9 @@ class TemplateParameterViewModel:
 class TemplateChangeViewModel:
     """A view model for resulting changes from a template set/update."""
 
-    def __init__(self, id: str, source: str, reference: Optional[str], version: str, file_changes: List[str]):
+    def __init__(
+        self, id: str, source: Optional[str], reference: Optional[str], version: Optional[str], file_changes: List[str]
+    ):
         self.id: str = id
         self.source = source
         self.reference = reference

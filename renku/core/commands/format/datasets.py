@@ -17,6 +17,7 @@
 # limitations under the License.
 """Serializers for datasets."""
 import textwrap
+from typing import Callable, Dict
 
 from renku.core.commands.format.tabulate import tabulate
 from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
@@ -77,7 +78,7 @@ def json(datasets, **kwargs):
     return dumps(data, indent=2)
 
 
-DATASETS_FORMATS = {
+DATASETS_FORMATS: Dict[str, Callable] = {
     "tabular": tabular,
     "json-ld": jsonld,
     "json": json,

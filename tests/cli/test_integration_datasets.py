@@ -19,8 +19,8 @@
 import os
 import shutil
 import subprocess
-from collections import namedtuple
 from pathlib import Path
+from typing import NamedTuple
 from urllib import parse
 
 import pytest
@@ -1602,7 +1602,7 @@ def test_check_disk_space(runner, client, monkeypatch, url):
 
     def disk_usage(_):
         """Mocked response."""
-        Usage = namedtuple("Usage", "free")
+        Usage = NamedTuple("Usage", [("free", int)])
         return Usage(free=0)
 
     monkeypatch.setattr(shutil, "disk_usage", disk_usage)
