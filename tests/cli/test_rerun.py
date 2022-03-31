@@ -321,3 +321,20 @@ def test_rerun_multiple_paths_common_output(project, renku_cli, runner):
     assert "r2" not in result.output
     assert "r3" in result.output
     assert "r4" in result.output
+
+
+def test_rerun_output_in_subdirectory(split_runner, client):
+    """Test re-run when an output is in a sub-directory."""
+    output = client.path / "sub-dir" / "output"
+    write_and_commit_file(client.repository, output, "")
+
+    result = split_runner.invoke(cli, ["run", "bash", "-c", 'touch "$0" ; echo data > "$0"', output])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    write_and_commit_file(client.repository, output, "")
+
+    result = split_runner.invoke(cli, ["rerun", output])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "data" in output.read_text()

@@ -20,7 +20,7 @@ import contextlib
 import os
 import secrets
 import shutil
-from typing import Iterator
+from typing import Generator
 
 import pytest
 
@@ -124,7 +124,7 @@ def project(repository):
 
 
 @pytest.fixture
-def client(project, global_config_dir) -> Iterator[LocalClient]:
+def client(project, global_config_dir) -> Generator[LocalClient, None, None]:
     """Return a Renku repository."""
     from renku.core.models.enums import ConfigFilter
 
