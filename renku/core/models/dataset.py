@@ -22,7 +22,7 @@ import os
 import posixpath
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, cast
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
@@ -42,10 +42,10 @@ from renku.core.utils.urls import get_path, get_slug
 
 def is_dataset_name_valid(name: str) -> bool:
     """Check if name is a valid slug."""
-    return name and name == get_slug(name, lowercase=False)
+    return name is not None and name == get_slug(name, lowercase=False)
 
 
-def generate_default_name(dataset_title, dataset_version=None):
+def generate_default_name(dataset_title, dataset_version=None) -> str:
     """Get dataset name."""
     max_length = 24
     # For compatibility with older versions use title as name if it is valid; otherwise, use encoded title
@@ -66,25 +66,36 @@ def generate_default_name(dataset_title, dataset_version=None):
 class Url:
     """Represents a schema URL reference."""
 
-    def __init__(self, *, id: str = None, url: str = None, url_str: str = None, url_id: str = None):
-        self.id: str = id
-        self.url: str = url
-        self.url_str: str = url_str
-        self.url_id: str = url_id
+    def __init__(
+        self,
+        *,
+        id: Optional[str] = None,
+        url: Optional[Union[str, Dict[str, str]]] = None,
+        url_str: Optional[str] = None,
+        url_id: Optional[str] = None,
+    ):
+        self.id: str
+        self.url: Union[str, Dict[str, str]]
+        self.url_str: Optional[str] = url_str
+        self.url_id: Optional[str] = url_id
 
-        if not self.url:
+        if not url:
             self.url = self._get_default_url()
-        elif isinstance(self.url, dict):
-            if "_id" in self.url:
-                self.url["@id"] = self.url.pop("_id")
-            self.url_id = self.url["@id"]
-            self.url_str = None
-        elif isinstance(self.url, str):
-            self.url_str = self.url
-            self.url_id = None
+        else:
+            self.url = url
+            if isinstance(self.url, dict):
+                if "_id" in self.url:
+                    self.url["@id"] = self.url.pop("_id")
+                self.url_id = self.url["@id"]
+                self.url_str = None
+            elif isinstance(self.url, str):
+                self.url_str = self.url
+                self.url_id = None
 
-        if not self.id or self.id.startswith("_:"):
+        if not id or id.startswith("_:"):
             self.id = Url.generate_id(url_str=self.url_str, url_id=self.url_id)
+        else:
+            self.id = id
 
     def __repr__(self) -> str:
         return f"<Url {self.value}>"
@@ -99,9 +110,9 @@ class Url:
         return f"/urls/{id}"
 
     @property
-    def value(self):
+    def value(self) -> str:
         """Returns the url value as string."""
-        return self.url_str or self.url_id
+        return cast(str, self.url_str or self.url_id)
 
     def _get_default_url(self):
         """Define default value for url field."""
@@ -120,9 +131,9 @@ class DatasetTag(Persistent):
         self,
         *,
         dataset_id: Url,
-        date_created: datetime = None,
-        description: str = None,
-        id: str = None,
+        date_created: Optional[datetime] = None,
+        description: Optional[str] = None,
+        id: Optional[str] = None,
         name: str,
     ):
         if not id:
@@ -130,7 +141,7 @@ class DatasetTag(Persistent):
 
         self.dataset_id: Url = dataset_id
         self.date_created: datetime = parse_date(date_created) or local_now()
-        self.description: str = description
+        self.description: Optional[str] = description
         self.id: str = id
         self.name: str = name
 
@@ -147,7 +158,7 @@ class Language(Immutable):
 
     __slots__ = ("alternate_name", "name")
 
-    def __init__(self, alternate_name: str = None, id: str = None, name: str = None):
+    def __init__(self, name: str, alternate_name: Optional[str] = None, id: Optional[str] = None):
         id = id or Language.generate_id(name)
         super().__init__(alternate_name=alternate_name, id=id, name=name)
 
@@ -162,6 +173,10 @@ class ImageObject(Slots):
     """Represents a schema.org `ImageObject`."""
 
     __slots__ = ("content_url", "id", "position")
+
+    id: str
+    content_url: str
+    position: str
 
     def __init__(self, *, content_url: str, id: str, position: int):
         id = get_path(id)
@@ -217,34 +232,32 @@ class DatasetFile(Slots):
     def __init__(
         self,
         *,
-        based_on: RemoteEntity = None,
-        date_added: datetime = None,
-        date_removed: datetime = None,
-        entity: Entity = None,
-        id: str = None,
-        is_external: bool = False,
-        source: Union[Path, str] = None,
+        based_on: Optional[RemoteEntity] = None,
+        date_added: Optional[datetime] = None,
+        date_removed: Optional[datetime] = None,
+        entity: Optional[Entity] = None,
+        id: Optional[str] = None,
+        is_external: Optional[bool] = False,
+        source: Optional[Union[Path, str]] = None,
     ):
         assert entity is None or isinstance(entity, Entity), f"Invalid entity type: '{entity}'"
 
         super().__init__()
 
-        self.based_on: RemoteEntity = based_on
+        self.based_on: Optional[RemoteEntity] = based_on
         self.date_added: datetime = fix_datetime(date_added) or local_now()
-        self.date_removed: datetime = fix_datetime(date_removed)
-        self.entity: Entity = entity
+        self.date_removed: Optional[datetime] = fix_datetime(date_removed)
+        self.entity: Optional[Entity] = entity
         self.id: str = id or DatasetFile.generate_id()
-        self.is_external: bool = is_external
-        self.source: str = str(source)
+        self.is_external: bool = is_external or False
+        self.source: Optional[str] = str(source)
 
     @classmethod
     def from_path(
-        cls, client, path: Union[str, Path], source=None, based_on: RemoteEntity = None
-    ) -> Optional["DatasetFile"]:
+        cls, client, path: Union[str, Path], source=None, based_on: Optional[RemoteEntity] = None
+    ) -> "DatasetFile":
         """Return an instance from a path."""
-        entity = get_entity_from_revision(repository=client.repository, path=path)
-        if not entity:
-            return
+        entity = get_entity_from_revision(repository=client.repository, path=path, bypass_cache=True)
 
         is_external = is_external_file(path=path, client_path=client.path)
         return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
@@ -297,31 +310,31 @@ class DatasetFile(Slots):
 class Dataset(Persistent):
     """Represent a dataset."""
 
-    date_modified: Optional[datetime] = None
+    date_modified: Optional[datetime] = None  # type: ignore
 
     def __init__(
         self,
         *,
-        annotations: List[Annotation] = None,
-        creators: List[Person] = None,
-        dataset_files: List[DatasetFile] = None,
-        date_created: datetime = None,
-        date_published: datetime = None,
-        date_removed: datetime = None,
-        derived_from: Url = None,
-        description: str = None,
-        id: str = None,
-        identifier: str = None,
-        images: List[ImageObject] = None,
-        in_language: Language = None,
-        initial_identifier: str = None,
-        keywords: List[str] = None,
-        license: str = None,
-        name: str = None,
-        project_id: str = None,
-        same_as: Url = None,
-        title: str = None,
-        version: str = None,
+        annotations: Optional[List[Annotation]] = None,
+        creators: Optional[List[Person]] = None,
+        dataset_files: Optional[List[DatasetFile]] = None,
+        date_created: Optional[datetime] = None,
+        date_published: Optional[datetime] = None,
+        date_removed: Optional[datetime] = None,
+        derived_from: Optional[Url] = None,
+        description: Optional[str] = None,
+        id: Optional[str] = None,
+        identifier: Optional[str] = None,
+        images: Optional[List[ImageObject]] = None,
+        in_language: Optional[Language] = None,
+        initial_identifier: Optional[str] = None,
+        keywords: Optional[List[str]] = None,
+        license: Optional[str] = None,
+        name: Optional[str] = None,
+        project_id: Optional[str] = None,
+        same_as: Optional[Url] = None,
+        title: Optional[str] = None,
+        version: Optional[str] = None,
     ):
         if not name:
             assert title, "Either 'name' or 'title' must be set."
@@ -341,26 +354,26 @@ class Dataset(Persistent):
 
         self.identifier = identifier or uuid4().hex
         self.id = id or Dataset.generate_id(identifier=self.identifier)
-        self.name = name
+        self.name: str = name
 
         self.creators: List[Person] = creators or []
         # `dataset_files` includes existing files and those that have been removed in the previous version
         self.dataset_files: List[DatasetFile] = dataset_files or []
-        self.date_created: datetime = date_created
+        self.date_created: Optional[datetime] = date_created
         self.date_modified: datetime = local_now()
-        self.date_published: datetime = fix_datetime(date_published)
-        self.date_removed: datetime = fix_datetime(date_removed)
-        self.derived_from: Url = derived_from
-        self.description: str = description
+        self.date_published: Optional[datetime] = fix_datetime(date_published)
+        self.date_removed: Optional[datetime] = fix_datetime(date_removed)
+        self.derived_from: Optional[Url] = derived_from
+        self.description: Optional[str] = description
         self.images: List[ImageObject] = images or []
-        self.in_language: Language = in_language
+        self.in_language: Optional[Language] = in_language
         self.initial_identifier: str = initial_identifier
         self.keywords: List[str] = keywords or []
-        self.license: str = license
-        self.project_id: str = project_id
-        self.same_as: Url = same_as
-        self.title: str = title
-        self.version: str = version
+        self.license: Optional[str] = license
+        self.project_id: Optional[str] = project_id
+        self.same_as: Optional[Url] = same_as
+        self.title: Optional[str] = title
+        self.version: Optional[str] = version
         self.annotations: List[Annotation] = annotations or []
 
     @staticmethod
@@ -405,7 +418,7 @@ class Dataset(Persistent):
 
     def is_derivation(self) -> bool:
         """Return if a dataset has correct derived_form."""
-        return self.derived_from and not self.same_as and self.id != self.derived_from.url_id
+        return self.derived_from is not None and not self.same_as and self.id != self.derived_from.url_id
 
     def copy(self) -> "Dataset":
         """Return a clone of this dataset."""
@@ -456,7 +469,7 @@ class Dataset(Persistent):
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
             self.creators.append(creator)
 
-    def _assign_new_identifier(self, identifier: str):
+    def _assign_new_identifier(self, identifier: Optional[str]):
         identifier = identifier or uuid4().hex
         self.initial_identifier = identifier
         self.identifier = identifier
@@ -476,10 +489,12 @@ class Dataset(Persistent):
         """Find a file in the dataset using its relative path."""
         path = str(path)
         for file in self.dataset_files:
-            if str(file.entity.path) == path and not file.is_removed():
+            if str(file.entity.path) == path and not file.is_removed():  # type: ignore
                 return file
 
-    def update_files_from(self, current_dataset: "Dataset", date: datetime = None):
+        return None
+
+    def update_files_from(self, current_dataset: "Dataset", date: Optional[datetime] = None):
         """Check `current_files` to reuse existing entries and mark removed files."""
         new_files: Dict[str, DatasetFile] = {f.entity.path: f for f in self.files}
         current_files: Dict[str, DatasetFile] = {f.entity.path: f for f in current_dataset.files}
@@ -545,7 +560,7 @@ class Dataset(Persistent):
         if not file:
             if not missing_ok:
                 raise errors.InvalidFileOperation(f"File cannot be found: {path}")
-            return
+            return None
 
         file.remove()
 
@@ -561,10 +576,13 @@ class Dataset(Persistent):
         new_files = []
 
         for file in files:
-            existing_file = self.find_file(file.entity.path)
+            existing_file = self.find_file(file.entity.path)  # type: ignore
             if not existing_file:
                 new_files.append(file)
-            elif file.entity.checksum != existing_file.entity.checksum or file.date_added != existing_file.date_added:
+            elif (
+                file.entity.checksum != existing_file.entity.checksum  # type: ignore
+                or file.date_added != existing_file.date_added
+            ):
                 self.dataset_files.remove(existing_file)
                 new_files.append(file)
 

@@ -17,15 +17,22 @@
 # limitations under the License.
 """Renku plugin implementations."""
 
+from typing import TYPE_CHECKING, List, Type
+
 from renku.core.management.session.docker import DockerSessionProvider
 from renku.core.management.workflow.converters.cwl import CWLExporter
 from renku.core.management.workflow.providers.cwltool import CWLToolProvider
 
-__all__ = []
+if TYPE_CHECKING:
+    from renku.core.models.session import ISessionProvider
+    from renku.core.models.workflow.converters import IWorkflowConverter
+    from renku.core.models.workflow.provider import IWorkflowProvider
 
-session_providers = [DockerSessionProvider]
-workflow_exporters = [CWLExporter]
-workflow_providers = [CWLToolProvider]
+__all__: List[str] = []
+
+session_providers: "List[Type[ISessionProvider]]" = [DockerSessionProvider]
+workflow_exporters: "List[Type[IWorkflowConverter]]" = [CWLExporter]
+workflow_providers: "List[Type[IWorkflowProvider]]" = [CWLToolProvider]
 
 try:
     from renku.core.management.workflow.providers.toil import ToilProvider

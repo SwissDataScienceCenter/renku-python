@@ -17,8 +17,8 @@
 # limitations under the License.
 """Serializers for activities."""
 
-from collections import namedtuple
-from typing import List, Set
+from datetime import datetime
+from typing import List, NamedTuple, Set
 
 from renku.core.commands.format.tabulate import tabulate
 from renku.core.models.provenance.activity import Activity
@@ -36,8 +36,11 @@ def tabulate_activities(activities: List[Activity], modified_inputs: Set[str]):
         String of activities in tabular representation.
     """
     collection = []
-    fields = "plan, execution_date, modified_inputs, outputs, command"
-    ActivityDisplay = namedtuple("ActivityDisplay", fields)
+    fields = "plan,execution_date,modified_inputs,outputs,command"
+    ActivityDisplay = NamedTuple(
+        "ActivityDisplay",
+        [("plan", str), ("execution_date", datetime), ("modified_inputs", str), ("outputs", str), ("command", str)],
+    )
 
     for activity in activities:
         modified_usages = {
@@ -47,14 +50,12 @@ def tabulate_activities(activities: List[Activity], modified_inputs: Set[str]):
         modified_inputs |= generations
         plan = activity.association.plan.name
 
-        modified_usages = ", ".join(sorted(modified_usages))
-        generations = ", ".join(sorted(generations))
         collection.append(
             ActivityDisplay(
                 plan,
                 activity.ended_at_time,
-                modified_usages,
-                generations,
+                ", ".join(sorted(modified_usages)),
+                ", ".join(sorted(generations)),
                 " ".join(activity.plan_with_values.to_argv(with_streams=True)),
             )
         )

@@ -18,6 +18,7 @@
 """Serializers for dataset tags list."""
 
 from collections import OrderedDict
+from typing import Callable, Dict
 
 from renku.core.commands.schema.dataset import DatasetTagSchema
 from renku.core.models.tabulate import tabulate
@@ -64,7 +65,7 @@ def jsonld(tags):
     return dumps(data, indent=2)
 
 
-DATASET_TAGS_FORMATS = {
+DATASET_TAGS_FORMATS: Dict[str, Callable] = {
     "tabular": tabular,
     "json-ld": jsonld,
 }

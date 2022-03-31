@@ -24,11 +24,11 @@ repos:
         - "--show-source"
         - "--ignore=E121,E126,E203,E226,E231,W503,W504"
 -   repo: https://github.com/pycqa/pydocstyle
-    rev: 4.0.0
+    rev: 4.0.1
     hooks:
     -   id: pydocstyle
         args:
-        - --ignore=D105,D107,D202,D401
+        - --ignore=D105,D107,D202,D203,D212,D213,D401,D406,D407,D410,D411,D413
 -   repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.8.0
     hooks:

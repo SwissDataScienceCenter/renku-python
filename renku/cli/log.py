@@ -74,6 +74,8 @@ def _print_log(log_entry: LogViewModel) -> str:
     elif isinstance(log_entry, DatasetLogViewModel):
         return _print_dataset_log(log_entry)
 
+    raise NotImplementedError()
+
 
 def _print_activity_log(log_entry: ActivityLogViewModel) -> str:
     """Turn an activity log entry into a printable string."""
@@ -199,7 +201,10 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
     show_default=True,
 )
 @click.option(
-    "--format", type=click.Choice(LOG_FORMATS), default="detailed", help="Choose an output format (default: detailed)."
+    "--format",
+    type=click.Choice(list(LOG_FORMATS.keys())),
+    default="detailed",
+    help="Choose an output format (default: detailed).",
 )
 @click.option("-w", "--workflows", is_flag=True, default=False, help="Show only workflow executions.")
 @click.option("-d", "--datasets", is_flag=True, default=False, help="Show only dataset modifications.")

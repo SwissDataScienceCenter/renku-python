@@ -89,7 +89,7 @@ class _CommunicationManger(CommunicationCallback):
         self._listeners = []
         self._enabled = True
 
-    @property
+    @property  # type: ignore
     @lock_communication
     def listeners(self):
         """Return subscribed listeners."""

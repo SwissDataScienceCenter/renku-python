@@ -51,6 +51,7 @@ class DatasetsProvenance:
                 return dataset
 
             return dataset.copy()
+        return None
 
     def get_by_name(self, name: str, immutable: bool = False, strict: bool = False) -> Optional[Dataset]:
         """Return a dataset by its name."""
@@ -59,7 +60,7 @@ class DatasetsProvenance:
             if strict:
                 raise errors.DatasetNotFound(name=name)
 
-            return
+            return None
         if not dataset.immutable or immutable:
             return dataset
 
@@ -72,9 +73,11 @@ class DatasetsProvenance:
     def get_previous_version(self, dataset: Dataset) -> Optional[Dataset]:
         """Return the previous version of a dataset if any."""
         if dataset.is_derivation():
-            return self.get_by_id(dataset.derived_from.url_id)
+            return self.get_by_id(dataset.derived_from.url_id)  # type: ignore
 
-    def add_or_update(self, dataset: Dataset, date: datetime = None, creator: Person = None):
+        return None
+
+    def add_or_update(self, dataset: Dataset, date: Optional[datetime] = None, creator: Optional[Person] = None):
         """Add/update a dataset according to its new content.
 
         NOTE: This functions always mutates the dataset.
@@ -124,8 +127,8 @@ class DatasetsProvenance:
         self,
         dataset: Dataset,
         commit_sha: str,
-        date: datetime = None,
-        tags: List[DatasetTag] = None,
+        date: Optional[datetime] = None,
+        tags: Optional[List[DatasetTag]] = None,
         remove=False,
         replace=False,
         preserve_identifiers: bool = False,
@@ -198,7 +201,7 @@ class DatasetsProvenance:
         """Remove a tag from a dataset."""
         self.dataset_gateway.remove_tag(dataset, tag)
 
-    def _process_dataset_tags(self, dataset: Dataset, tags: List[DatasetTag]):
+    def _process_dataset_tags(self, dataset: Dataset, tags: Optional[List[DatasetTag]]):
         if not tags:
             return
 

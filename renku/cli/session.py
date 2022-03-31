@@ -49,8 +49,10 @@ def session():
     metavar="<config file>",
     help="YAML file containing configuration for the provider.",
 )
-@click.option("--format", type=click.Choice(SESSION_FORMATS), default="tabular", help="Choose an output format.")
-def list(provider, config, format):
+@click.option(
+    "--format", type=click.Choice(list(SESSION_FORMATS.keys())), default="tabular", help="Choose an output format."
+)
+def list_sessions(provider, config, format):
     """List interactive sessions."""
     from renku.core.commands.session import session_list_command
 

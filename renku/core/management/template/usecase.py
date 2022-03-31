@@ -17,8 +17,7 @@
 # limitations under the License.
 """Template use cases."""
 
-from collections import namedtuple
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 import click
 
@@ -58,9 +57,13 @@ def show_template(source, reference, id, client_dispatcher: IClientDispatcher) -
         metadata = TemplateMetadata.from_client(client=client_dispatcher.current_client)
 
         templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
-        template = templates_source.get_template(id=metadata.id, reference=None)
+        id = metadata.id
+        template = templates_source.get_template(id=id, reference=None)
     else:
         raise errors.ParameterError("No Renku project found")
+
+    if template is None:
+        raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available")
 
     return TemplateViewModel.from_template(template)
 
@@ -91,6 +94,9 @@ def set_template(
     templates_source = fetch_templates_source(source=source, reference=reference)
 
     template = select_template(templates_source, id=id)
+
+    if template is None:
+        raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available")
 
     rendered_template, actions = _set_or_update_project_from_template(
         templates_source=templates_source,
@@ -133,7 +139,7 @@ def update_template(
     )
 
     if not update_available:
-        return
+        return None
 
     rendered_template, actions = _set_or_update_project_from_template(
         templates_source=templates_source,
@@ -171,6 +177,9 @@ def _set_or_update_project_from_template(
 
     template = templates_source.get_template(id=id, reference=reference)
 
+    if template is None:
+        raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available")
+
     template_metadata = TemplateMetadata.from_client(client=client)
     template_metadata.update(template=template)
 
@@ -197,14 +206,14 @@ def _set_or_update_project_from_template(
     return rendered_template, actions
 
 
-def select_template(templates_source: TemplatesSource, id=None) -> Template:
+def select_template(templates_source: TemplatesSource, id=None) -> Optional[Template]:
     """Select a template from a template source."""
 
     def prompt_to_select_template():
         if not communication.has_prompt():
             raise errors.InvalidTemplateError("Cannot select a template")
 
-        Selection = namedtuple("Selection", ["index", "id"])
+        Selection = NamedTuple("Selection", [("index", int), ("id", str)])
 
         templates = [Selection(index=i, id=t.id) for i, t in enumerate(templates_source.templates, start=1)]
         tables = tabulate(templates, headers=["index", "id"])

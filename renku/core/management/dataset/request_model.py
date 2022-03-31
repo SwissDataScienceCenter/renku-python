@@ -23,7 +23,7 @@ import os
 import shutil
 import urllib
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Union, cast
 from urllib.request import urlretrieve
 
 from renku.core import errors
@@ -46,7 +46,7 @@ class ImageRequestModel:
         self.content_url = content_url
         self.position = position
         self.mirror_locally = mirror_locally
-        self.safe_image_paths: List[Union[str, Path]] = safe_image_paths or []
+        self.safe_image_paths: List[Union[str, Path]] = cast(List[Union[str, Path]], safe_image_paths) or []
 
     @inject.autoparams()
     def to_image_object(self, dataset: Dataset, client_dispatcher: IClientDispatcher) -> ImageObject:

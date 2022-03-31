@@ -18,7 +18,7 @@
 """Project class."""
 
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional, cast
 from urllib.parse import quote
 
 import persistent
@@ -34,63 +34,64 @@ from renku.core.utils.os import normalize_to_ascii
 class Project(persistent.Persistent):
     """Represent a project."""
 
-    keywords = None
+    keywords: List[str] = list()
 
     def __init__(
         self,
         *,
-        agent_version: str = None,
-        annotations: List[Annotation] = None,
+        agent_version: Optional[str] = None,
+        annotations: Optional[List[Annotation]] = None,
         automated_update: bool = False,
         creator: Person,
-        date_created: datetime = None,
-        description: str = None,
-        id: str = None,
-        immutable_template_files: List[str] = None,
-        name: str,
-        template_id: str = None,
+        date_created: Optional[datetime] = None,
+        description: Optional[str] = None,
+        id: Optional[str] = None,
+        immutable_template_files: Optional[List[str]] = None,
+        name: Optional[str] = None,
+        template_id: Optional[str] = None,
         template_metadata: str = "{}",
-        template_ref: str = None,
-        template_source: str = None,
-        template_version: str = None,
-        version: str = None,
-        keywords: List[str] = None,
+        template_ref: Optional[str] = None,
+        template_source: Optional[str] = None,
+        template_version: Optional[str] = None,
+        version: Optional[str] = None,
+        keywords: Optional[List[str]] = None,
     ):
         from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 
-        version = version or SUPPORTED_PROJECT_VERSION
+        version = cast(str, version or SUPPORTED_PROJECT_VERSION)
         date_created = parse_date(date_created) or local_now()
 
-        if not id:
-            namespace, name = Project.get_namespace_and_name(name=name, creator=creator)
-            id = Project.generate_id(namespace=namespace, name=name)
+        if id is None:
+            namespace, generated_name = Project.get_namespace_and_name(name=name, creator=creator)
+            assert generated_name is not None, "Cannot generate Project id with no name"
+            id = Project.generate_id(namespace=namespace, name=generated_name)
 
-        self.agent_version: str = agent_version
+        self.agent_version: Optional[str] = agent_version
         self.annotations: List[Annotation] = annotations or []
         self.automated_update: bool = automated_update
         self.creator: Person = creator
         self.date_created: datetime = fix_datetime(date_created) or local_now()
-        self.description: str = description
+        self.description: Optional[str] = description
         self.id: str = id
-        self.immutable_template_files: List[str] = immutable_template_files
-        self.name: str = name
-        self.template_id: str = template_id
+        self.immutable_template_files: Optional[List[str]] = immutable_template_files
+        self.name: Optional[str] = name
+        self.template_id: Optional[str] = template_id
         self.template_metadata: str = template_metadata
-        self.template_ref: str = template_ref
-        self.template_source: str = template_source
-        self.template_version: str = template_version
+        self.template_ref: Optional[str] = template_ref
+        self.template_source: Optional[str] = template_source
+        self.template_version: Optional[str] = template_version
         self.version: str = version
-        self.keywords: List[str] = keywords or []
+        self.keywords = keywords or []
 
     @classmethod
     def from_client(
         cls,
         client,
-        name: str = None,
-        description: str = None,
-        keywords: List[str] = None,
-        custom_metadata: Dict = None,
-        creator: Person = None,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        keywords: Optional[List[str]] = None,
+        custom_metadata: Optional[Dict] = None,
+        creator: Optional[Person] = None,
     ) -> "Project":
         """Create an instance from a LocalClient."""
         namespace, name = cls.get_namespace_and_name(client=client, name=name, creator=creator)
@@ -100,8 +101,11 @@ class Project(persistent.Persistent):
         if custom_metadata:
             annotations = [Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku")]
 
-        if not creator:
+        if creator is None:
             raise ValueError("Project Creator not set")
+
+        if name is None:
+            raise ValueError("Project 'name' not set and could not be generated")
 
         id = cls.generate_id(namespace=namespace, name=name)
         return cls(
@@ -109,7 +113,7 @@ class Project(persistent.Persistent):
         )
 
     @staticmethod
-    def get_namespace_and_name(*, client=None, name: str = None, creator: Person = None):
+    def get_namespace_and_name(*, client=None, name: Optional[str] = None, creator: Optional[Person] = None):
         """Return Project's namespace and name from various objects."""
         namespace = None
 

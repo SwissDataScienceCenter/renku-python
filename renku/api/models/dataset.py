@@ -40,6 +40,8 @@ property:
 """
 
 from operator import attrgetter
+from pathlib import Path
+from typing import Optional
 
 from renku.api.models.project import ensure_project_context
 from renku.core.management.command_builder.database_dispatcher import DatabaseDispatcher
@@ -125,6 +127,9 @@ class DatasetFile:
 
     _ATTRIBUTES = ["date_added", "name", "path", "entity"]
 
+    _dataset_file: core_dataset.DatasetFile
+    full_path: Optional[Path] = None
+
     @classmethod
     @ensure_project_context
     def _from_dataset_file(cls, dataset_file: core_dataset.DatasetFile, project):
@@ -139,7 +144,9 @@ class DatasetFile:
         """
         self = cls()
         self._dataset_file = dataset_file
-        self.full_path = project.path / dataset_file.entity.path
+
+        if dataset_file.entity:
+            self.full_path = project.path / dataset_file.entity.path
 
         return self
 

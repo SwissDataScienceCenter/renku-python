@@ -86,6 +86,7 @@ inject = "<4.4.0,>=4.3.0"
 isort = { version = "<5.10.2,>=5.3.2", optional = true }
 jinja2 = { version = "<3.0.4,>=2.11.3" }
 marshmallow = { version = ">=3.13.0,<3.15.0", optional = true }
+mypy = {version = ">=0.942,<1.0", optional = true}
 ndg-httpsclient = "==0.5.1"
 networkx = "<2.7,>=2.6.0"
 numpy = ">=1.20.0,<1.22.0"
@@ -99,7 +100,7 @@ portalocker = ">=2.2.1,<2.5"
 psutil = ">=5.4.7,<5.9.1,"
 ptvsd = { version = "<4.4.0,>=4.3.0", optional = true }
 pyasn1 = "<=0.4.8,>=0.4.5"
-pydocstyle = { version = "<6.1.2,>=3.0.0", optional = true }
+pydocstyle = { version = "<6.1.2,>=4.0.1", optional = true }
 pyjwt = ">=2.1.0,<2.4.0"
 pyld = "==2.0.3"
 pyopenssl = ">=19.0.0,<22.1.0"
@@ -136,6 +137,11 @@ sphinx-tabs = { version = "==3.2.0", optional = true }
 tabulate = "<0.8.10,>=0.7.7"
 toil = { version = "==5.6.0", optional = true }
 tqdm = "<4.62.4,>=4.48.1"
+types-python-dateutil = { version="^2.8.10", optional = true }
+types-PyYAML = { version="<6.1.0,>=5.4", optional = true }
+types-redis = { version=">=3.5.3,<4.1.0", optional = true }
+types-requests = { version = "<2.27.2,>=2.23.0", optional = true }
+types-tabulate = { version = "<0.8.10,>=0.7.7", optional = true }
 walrus = { version = ">=0.8.2,<0.10.0", optional = true }
 wcmatch = "<8.3,>=6.0.0"
 werkzeug = "<2.0.4,>=1.0.0"
@@ -175,6 +181,7 @@ tests = [
     "flaky",
     "freezegun",
     "isort",
+    "mypy",
     "pexpect",
     "pydocstyle",
     "pyte",
@@ -189,6 +196,11 @@ tests = [
     "pytest-timeout",
     "pytest-xdist",
     "responses",
+    "types-PyYAML",
+    "types-python-dateutil",
+    "types-redis",
+    "types-requests",
+    "types-tabulate"
 ]
 toil = ["toil"]
 docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
@@ -207,6 +219,7 @@ all = [
     "gunicorn",
     "isort",
     "marshmallow",
+    "mypy",
     "pexpect",
     "pillow",
     "ptvsd",
@@ -233,6 +246,11 @@ all = [
     "sphinx-rtd-theme",
     "sphinx-tabs",
     "toil",
+    "types-PyYAML",
+    "types-python-dateutil",
+    "types-redis",
+    "types-requests",
+    "types-tabulate",
     "walrus",
 ]
 
@@ -307,6 +325,63 @@ markers = [
     "shelled: mark a test as a shelled test.",
     "serial: mark a test that can not be run in parallel",
 ]
+
+[tool.mypy]
+python_version = "3.8"
+files = [
+    "renku/**/*.py",
+    "tests/**/*.py"
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "apispec.*",
+    "apispec_webframeworks.*",
+    "appdirs",
+    "BTrees.*",
+    "calamus.*",
+    "deepmerge",
+    "docker",
+    "click_option_group",
+    "click_plugins",
+    "circus",
+    "fakeredis",
+    "flaky",
+    "grandalf.*",
+    "gunicorn.*",
+    "humanize",
+    "lazy_object_proxy",
+    "lockfile",
+    "networkx.*",
+    "pathspec",
+    "patoolib.*",
+    "persistent.*",
+    "pexpect",
+    "PIL",
+    "pluggy",
+    "psutil",
+    "pyld",
+    "pyshacl",
+    "pyte",
+    "ruamel",
+    "rq",
+    "rq_scheduler",
+    "shellingham",
+    "toil.*",
+    "tqdm",
+    "urllib3.*",
+    "walrus",
+    "yagup.*",
+    "yaspin",
+    "zc.*",
+    "ZODB.*",
+    "zope.*"
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "renku.core.management.migrations.*"
+ignore_errors = true
 
 [tool.coverage.run]
 omit = ["renku/conftest.py", "renku/data/*"]

@@ -21,7 +21,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 from uuid import uuid4
 
 import cwl_utils.parser.cwl_v1_2 as cwl
@@ -31,7 +31,7 @@ from renku.core.management.workflow.concrete_execution_graph import ExecutionGra
 from renku.core.models.jsonld import write_yaml
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.converters import IWorkflowConverter
-from renku.core.models.workflow.parameter import DIRECTORY_MIME_TYPE, CommandInput, CommandParameter
+from renku.core.models.workflow.parameter import DIRECTORY_MIME_TYPE, CommandInput, CommandOutput, CommandParameter
 from renku.core.models.workflow.plan import Plan
 from renku.core.plugins import hookimpl
 from renku.core.plugins.provider import RENKU_ENV_PREFIX
@@ -127,9 +127,9 @@ class CWLExporter(IWorkflowConverter):
         workflow: CompositePlan, tmpdir: Path, basedir: Path, filename: Optional[Path], output_format: Optional[str]
     ):
         """Converts a composite plan to a CWL file."""
-        inputs = {}
+        inputs: Dict[str, str] = {}
         arguments = {}
-        outputs = {}
+        outputs: Dict[str, Tuple[str, Any]] = {}
         consumed_outputs = set()
         steps = []
 
@@ -139,7 +139,7 @@ class CWLExporter(IWorkflowConverter):
         graph = ExecutionGraph([workflow], virtual_links=True)
         cycles = graph.cycles
         if cycles:
-            cycles = [map(lambda x: x.name, cycle) for cycle in cycles]
+            cycles = [list(map(lambda x: x.name, cycle)) for cycle in cycles]
             raise errors.GraphCycleError(cycles)
 
         import networkx as nx
@@ -211,8 +211,8 @@ class CWLExporter(IWorkflowConverter):
                     id="output_{}".format(index), outputSource="{}/{}".format(step_id, id_), type=type_
                 )
             )
-        if not filename:
-            filename = "parent_{}.cwl".format(uuid4())
+        if filename is None:
+            filename = Path("parent_{}.cwl".format(uuid4()))
 
         output = workflow_object.save()
         path = (tmpdir / filename).resolve()
@@ -305,15 +305,15 @@ class CWLExporter(IWorkflowConverter):
         )
 
         if workdir_req.listing:
-            tool_object.requirements.append(workdir_req)
+            tool_object.requirements.append(workdir_req)  # type: ignore
         if jsrequirement:
-            tool_object.requirements.append(cwl.InlineJavascriptRequirement())
+            tool_object.requirements.append(cwl.InlineJavascriptRequirement())  # type: ignore
         if environment_variables:
-            tool_object.requirements.append(cwl.EnvVarRequirement(environment_variables))
+            tool_object.requirements.append(cwl.EnvVarRequirement(environment_variables))  # type: ignore
 
         output = tool_object.save()
-        if not filename:
-            filename = "{}.cwl".format(uuid4())
+        if filename is None:
+            filename = Path("{}.cwl".format(uuid4()))
         path = (tmpdir / filename).resolve()
         write_yaml(path, output)
         return output, path
@@ -345,7 +345,11 @@ class CWLExporter(IWorkflowConverter):
     @staticmethod
     def _convert_input(input: CommandInput, basedir: Path):
         """Converts an input to a CWL input."""
-        type_ = "Directory" if DIRECTORY_MIME_TYPE in input.encoding_format else "File"
+        type_ = (
+            "Directory"
+            if input.encoding_format is not None and DIRECTORY_MIME_TYPE in input.encoding_format
+            else "File"
+        )
         position = input.position
 
         sanitized_id = CWLExporter._sanitize_id(input.id)
@@ -373,7 +377,7 @@ class CWLExporter(IWorkflowConverter):
         )
 
     @staticmethod
-    def _convert_output(output: CommandInput):
+    def _convert_output(output: CommandOutput):
         """Converts an output to a CWL output."""
         if output.mapped_to:
             return (
@@ -385,7 +389,11 @@ class CWLExporter(IWorkflowConverter):
                 None,
             )
 
-        type_ = "Directory" if DIRECTORY_MIME_TYPE in output.encoding_format else "File"
+        type_ = (
+            "Directory"
+            if output.encoding_format is not None and DIRECTORY_MIME_TYPE in output.encoding_format
+            else "File"
+        )
 
         sanitized_id = CWLExporter._sanitize_id(output.id)
 

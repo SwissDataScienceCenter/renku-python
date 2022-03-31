@@ -18,7 +18,7 @@
 """Renku ``status`` command."""
 
 from collections import defaultdict
-from typing import Set, Tuple
+from typing import Dict, Set, Tuple
 
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
@@ -65,9 +65,9 @@ def _get_status(client_dispatcher: IClientDispatcher, activity_gateway: IActivit
     if not modified and not deleted:
         return None, None, None, None
 
-    modified_inputs = set()
-    stale_outputs = defaultdict(set)
-    stale_activities = defaultdict(set)
+    modified_inputs: Set[str] = set()
+    stale_outputs: Dict[str, Set[str]] = defaultdict(set)
+    stale_activities: Dict[str, Set[str]] = defaultdict(set)
 
     for start_activity, entity in modified:
         usage_path = get_relative_path_to_cwd(client.path / entity.path)

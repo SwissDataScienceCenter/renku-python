@@ -21,7 +21,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Sequence, Union
 
 from renku.core import errors
 
@@ -66,13 +66,15 @@ def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bo
         if strict:
             raise errors.ParameterError(f"File {path} is not within path {base}")
 
+    return None
+
 
 def is_subpath(path: Union[Path, str], base: Union[Path, str]) -> bool:
     """Return True if path is within base."""
     return get_relative_path(path, base) is not None
 
 
-def get_relative_paths(base: Union[Path, str], paths: List[Union[Path, str]]) -> List[str]:
+def get_relative_paths(base: Union[Path, str], paths: Sequence[Union[Path, str]]) -> List[str]:
     """Return a list of paths relative to a base path."""
     relative_paths = []
 
@@ -165,7 +167,7 @@ def delete_file(filepath: Union[Path, str], ignore_errors: bool = True, follow_s
 def hash_file(path: Union[Path, str]) -> Optional[str]:
     """Calculate the sha256 hash of a file."""
     if not os.path.exists(path):
-        return
+        return None
 
     sha256_hash = hashlib.sha256()
 

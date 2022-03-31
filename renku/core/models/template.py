@@ -23,7 +23,7 @@ import os
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union, cast
 
 import jinja2
 import yaml
@@ -60,7 +60,9 @@ class TemplatesSource:
 
         return self.manifest.templates
 
-    def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
+    def is_update_available(
+        self, id: str, reference: Optional[str], version: Optional[str]
+    ) -> Tuple[bool, Optional[str]]:
         """Return True if an update is available along with the latest reference of a template."""
         latest = self.get_latest_reference_and_version(id=id, reference=reference, version=version)
         if not latest:
@@ -78,7 +80,7 @@ class TemplatesSource:
     @abstractmethod
     def get_latest_reference_and_version(
         self, id: str, reference: Optional[str], version: Optional[str]
-    ) -> Optional[Tuple[str, str]]:
+    ) -> Optional[Tuple[Optional[str], str]]:
         """Return latest reference and version number of a template."""
         raise NotImplementedError
 
@@ -122,13 +124,13 @@ class TemplatesManifest:
     def templates(self) -> List["Template"]:
         """Return list of available templates info in the manifest."""
         if self._templates is None:
-            self._templates: List[Template] = [
+            self._templates = [
                 Template(
-                    id=t.get("id") or t.get("folder"),
-                    name=t.get("name"),
-                    description=t.get("description"),
-                    parameters=t.get("parameters") or t.get("variables"),
-                    icon=t.get("icon"),
+                    id=cast(str, t.get("id") or t.get("folder")),
+                    name=cast(str, t.get("name")),
+                    description=cast(str, t.get("description")),
+                    parameters=cast(Dict[str, Dict[str, Any]], t.get("parameters") or t.get("variables")),
+                    icon=cast(str, t.get("icon")),
                     immutable_files=t.get("immutable_template_files", []),
                     allow_update=t.get("allow_template_update", True),
                     source=None,
@@ -196,7 +198,7 @@ class Template:
         path: Optional[Path],
         templates_source: Optional[TemplatesSource],
     ):
-        self.path: Path = path
+        self.path: Optional[Path] = path
         self.source = source
         self.reference = reference
         self.version = version
@@ -229,6 +231,8 @@ class Template:
 
     def get_all_references(self) -> List[str]:
         """Return all available references for the template."""
+        if self.templates_source is None:
+            return []
         return self.templates_source.get_all_references(self.id)
 
     def validate(self, skip_files):
@@ -243,7 +247,7 @@ class Template:
         if skip_files:
             return
 
-        if not self.path.exists():
+        if self.path is None or not self.path.exists():
             raise errors.InvalidTemplateError(f"Template directory for '{self.id}' does not exists")
 
         # TODO: What are required files
@@ -261,12 +265,17 @@ class Template:
 
     def get_files(self) -> Generator[str, None, None]:
         """Return all files in a rendered renku template."""
+        if self.path is None:
+            return
         for subpath in self.path.rglob("*"):
             if subpath.is_file():
                 yield str(subpath.relative_to(self.path))
 
     def render(self, metadata: "TemplateMetadata") -> "RenderedTemplate":
         """Render template files in a new directory."""
+        if self.path is None:
+            raise ValueError("Template path not set")
+
         render_base = Path(tempfile.mkdtemp())
 
         for relative_path in self.get_files():
@@ -281,8 +290,8 @@ class Template:
             try:
                 content = source.read_text()
             except UnicodeDecodeError:  # NOTE: Binary files
-                content = source.read_bytes()
-                destination.write_bytes(content)
+                content_bytes = source.read_bytes()
+                destination.write_bytes(content_bytes)
             else:
                 template = jinja2.Template(content, keep_trailing_newline=True)
                 rendered_content = template.render(metadata.metadata)
@@ -298,7 +307,7 @@ class RenderedTemplate:
         self.path: Path = path
         self.template: Template = template
         self.metadata: Dict[str, Any] = metadata
-        self.checksums: Dict[str, str] = {f: hash_file(self.path / f) for f in self.get_files()}
+        self.checksums: Dict[str, Optional[str]] = {f: hash_file(self.path / f) for f in self.get_files()}
 
     def get_files(self) -> Generator[str, None, None]:
         """Return all files in a rendered renku template."""

@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Iterator, List, Optional, Union, cast
 
 import pytest
 from flaky import flaky
@@ -39,6 +39,7 @@ from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Dataset
 from renku.core.models.entity import Entity
 from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
+from renku.core.models.provenance.agent import Person, SoftwareAgent
 from renku.core.models.workflow.plan import Plan
 
 
@@ -83,6 +84,7 @@ def assert_dataset_is_mutated(old: Dataset, new: Dataset, mutator=None):
     assert old.initial_identifier == new.initial_identifier
     assert old.id != new.id
     assert old.identifier != new.identifier
+    assert new.derived_from is not None
     assert old.id == new.derived_from.url_id
     if old.date_created and new.date_created:
         assert old.date_created <= new.date_created
@@ -155,13 +157,18 @@ def load_dataset(name: str) -> Optional[Dataset]:
 @inject.autoparams("dataset_gateway", "database_dispatcher")
 def with_dataset(
     client,
-    name: str = None,
-    dataset_gateway: IDatasetGateway = None,
-    database_dispatcher: IDatabaseDispatcher = None,
+    *,
+    name: str,
+    dataset_gateway: IDatasetGateway,
+    database_dispatcher: IDatabaseDispatcher,
     commit_database: bool = False,
-):
+) -> Iterator[Optional[Dataset]]:
     """Yield an editable metadata object for a dataset."""
     dataset = DatasetsProvenance().get_by_name(name=name, strict=True, immutable=True)
+
+    if not dataset:
+        return None
+
     dataset.unfreeze()
 
     yield dataset
@@ -176,6 +183,7 @@ def retry_failed(fn=None, extended: bool = False):
     Decorator to run flaky with same number of max and min repetitions across all tests.
 
     Args:
+        fn (Callable): The function to retry.
         extended (bool, optional): allow more repetitions than usual (Default value = False).
     """
 
@@ -230,29 +238,43 @@ def write_and_commit_file(repository: Repository, path: Union[Path, str], conten
 
 def create_dummy_activity(
     plan: Union[Plan, str],
-    usages: List[Union[Path, str]] = (),
-    generations: List[Union[Path, str]] = (),
+    usages: List[Union[Path, str, Usage]] = [],
+    generations: List[Union[Path, str, Generation]] = [],
     ended_at_time=None,
+    id: Optional[str] = None,
 ) -> Activity:
     """Create a dummy activity."""
     if not isinstance(plan, Plan):
         assert isinstance(plan, str)
-        plan = Plan(id=Plan.generate_id(), name=plan)
+        plan = Plan(id=Plan.generate_id(), name=plan, command=plan)
 
     ended_at_time = ended_at_time or (datetime.utcnow() - timedelta(hours=1))
     checksum = "abc123"
 
-    activity_id = Activity.generate_id()
+    activity_id = id or Activity.generate_id()
 
     return Activity(
         id=activity_id,
+        started_at_time=ended_at_time - timedelta(hours=1),
         ended_at_time=ended_at_time,
-        association=Association(id=Association.generate_id(activity_id), plan=plan),
+        agents=[
+            SoftwareAgent(name="renku test", id="https://github.com/swissdatasciencecenter/renku-python/tree/test"),
+            Person(name="Renkubot", email="test@renkulab.io"),
+        ],
+        association=Association(
+            id=Association.generate_id(activity_id),
+            plan=plan,
+            agent=SoftwareAgent(
+                name="renku test", id="https://github.com/swissdatasciencecenter/renku-python/tree/test"
+            ),
+        ),
         generations=[
             Generation(
                 id=Generation.generate_id(activity_id),
                 entity=Entity(id=Entity.generate_id(checksum, g), checksum=checksum, path=g),
             )
+            if not isinstance(g, Generation)
+            else cast(Generation, g)
             for g in generations
         ],
         usages=[
@@ -260,6 +282,8 @@ def create_dummy_activity(
                 id=Usage.generate_id(activity_id),
                 entity=Entity(id=Entity.generate_id(checksum, u), checksum=checksum, path=u),
             )
+            if not isinstance(u, Usage)
+            else cast(Usage, u)
             for u in usages
         ],
     )

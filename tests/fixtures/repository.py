@@ -20,6 +20,7 @@ import contextlib
 import os
 import secrets
 import shutil
+from typing import Iterator
 
 import pytest
 
@@ -123,7 +124,7 @@ def project(repository):
 
 
 @pytest.fixture
-def client(project, global_config_dir) -> LocalClient:
+def client(project, global_config_dir) -> Iterator[LocalClient]:
     """Return a Renku repository."""
     from renku.core.models.enums import ConfigFilter
 
@@ -135,11 +136,11 @@ def client(project, global_config_dir) -> LocalClient:
             return "False"
         return original_get_value(self, section, key, config_filter=config_filter)
 
-    LocalClient.get_value = mocked_get_value
+    LocalClient.get_value = mocked_get_value  # type: ignore
 
     yield LocalClient(path=project)
 
-    LocalClient.get_value = original_get_value
+    LocalClient.get_value = original_get_value  # type: ignore
 
 
 @pytest.fixture

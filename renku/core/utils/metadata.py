@@ -21,7 +21,7 @@ import os
 import re
 from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Dict, FrozenSet, List, Optional, Set, Tuple, Union
 
 from packaging.version import Version
 
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
     """Parse input and return a list of Person."""
-    creators = creators or ()
+    creators = creators or []
 
     if not isinstance(creators, Iterable) or isinstance(creators, str):
         raise errors.ParameterError("Invalid creators type")
@@ -113,7 +113,7 @@ def get_modified_activities(
 
 def filter_overridden_activities(activities: List["Activity"]) -> List["Activity"]:
     """Filter out overridden activities from a list of activities."""
-    relevant_activities = {}
+    relevant_activities: Dict[FrozenSet[str], Activity] = {}
 
     for activity in activities[::-1]:
         outputs = frozenset(g.entity.path for g in activity.generations)
@@ -184,14 +184,14 @@ def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
     """Read RENKU_VERSION from the content of path if a valid version is available."""
     path = Path(path)
     if not path.exists():
-        return
+        return None
 
     docker_content = path.read_text()
     m = re.search(r"^\s*ARG RENKU_VERSION=(.+)$", docker_content, flags=re.MULTILINE)
     if not m:
-        return
+        return None
 
     try:
         return str(Version(m.group(1)))
     except ValueError:
-        return
+        return None

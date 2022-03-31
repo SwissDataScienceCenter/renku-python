@@ -60,7 +60,7 @@ from renku.core.utils import communication
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type: ignore
 
 SUPPORTED_PROJECT_VERSION = 9
 

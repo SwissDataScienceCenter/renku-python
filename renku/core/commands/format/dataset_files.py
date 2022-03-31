@@ -19,6 +19,7 @@
 
 import re
 from subprocess import PIPE, SubprocessError, run
+from typing import Callable, Dict
 
 from renku.core.commands.format.tabulate import tabulate
 from renku.core.commands.schema.dataset import DatasetFileSchema
@@ -147,7 +148,7 @@ def json(records, **kwargs):
     return dumps(data, indent=2)
 
 
-DATASET_FILES_FORMATS = {
+DATASET_FILES_FORMATS: Dict[str, Callable] = {
     "tabular": tabular,
     "json-ld": jsonld,
     "json": json,

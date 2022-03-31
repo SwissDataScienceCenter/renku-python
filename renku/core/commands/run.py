@@ -188,9 +188,9 @@ def _run_command(
             if tty_exists:
                 # change back to /dev/tty redirection
                 if stdout_redirected:
-                    sys.stdout = system_stdout
+                    sys.stdout = system_stdout  # type:ignore
                 if stderr_redirected:
-                    sys.stderr = system_stderr
+                    sys.stderr = system_stderr  # type:ignore
 
             if return_code not in (success_codes or {0}):
                 raise errors.InvalidSuccessCode(return_code, success_codes=success_codes)

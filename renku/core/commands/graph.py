@@ -45,7 +45,7 @@ from renku.core.utils.urls import get_host
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type: ignore
 
 
 def export_graph_command():
@@ -181,14 +181,14 @@ def _get_graph_for_all_objects(
 
         current_dataset = dataset
         while current_dataset.is_derivation():
-            current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)
+            current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)  # type: ignore
             objects.append(current_dataset)
 
     return _convert_entities_to_graph(objects, project)
 
 
 def _convert_entities_to_graph(
-    entities: List[Union[Project, Dataset, DatasetTag, Activity, Plan, CompositePlan]], project: Project
+    entities: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]], project: Project
 ) -> List[Dict]:
     """Convert entities to JSON-LD graph.
 

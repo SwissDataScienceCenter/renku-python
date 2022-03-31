@@ -19,7 +19,7 @@
 
 import itertools
 from collections import defaultdict
-from typing import List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 import networkx
 
@@ -39,7 +39,7 @@ def get_activities_until_paths(
     revision: Optional[str] = None,
 ) -> Set[Activity]:
     """Get all current activities leading to `paths`, from `sources`."""
-    all_activities = defaultdict(set)
+    all_activities: Dict[str, Set[Activity]] = defaultdict(set)
 
     def include_newest_activity(activity):
         existing_activities = all_activities[activity.association.plan.id]
@@ -93,10 +93,10 @@ def create_activity_graph(
     activities: List[Activity], remove_overridden_parents=True, with_inputs_outputs=False
 ) -> networkx.Graph:
     """Create a dependency DAG from activities."""
-    by_usage = defaultdict(set)
-    by_generation = defaultdict(set)
+    by_usage: Dict[str, Set[Activity]] = defaultdict(set)
+    by_generation: Dict[str, Set[Activity]] = defaultdict(set)
 
-    overridden_activities = defaultdict(set)
+    overridden_activities: Dict[Activity, Set[str]] = defaultdict(set)
 
     graph = networkx.DiGraph()
 
