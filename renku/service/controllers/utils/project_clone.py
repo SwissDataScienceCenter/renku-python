@@ -52,9 +52,8 @@ def user_project_clone(cache, user_data, project_data):
             ).output
             project.save()
     except GitCommandError as e:
-        if "project you were looking for could not be found" in str(e):
-            cache.invalidate_project(user, project.project_id)
-            raise e
+        cache.invalidate_project(user, project.project_id)
+        raise e
 
     service_log.debug(f"project successfully cloned: {repo}")
     service_log.debug(f"project folder exists: {project.exists()}")

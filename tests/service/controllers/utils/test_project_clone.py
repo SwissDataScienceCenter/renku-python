@@ -100,7 +100,7 @@ def test_service_user_non_existing_project_clone(svc_client_cache, it_remote_rep
     assert 0 == len(projects)
 
     # NOTE: try to clone a non-existing repo and verify no other projects are added to the cache
-    payload["git_url"] = "https://renkulabnonexistingwebsite.io"
+    payload["git_url"] = f"{it_remote_repo_url}-non-existing-project-url"
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response, "error")
