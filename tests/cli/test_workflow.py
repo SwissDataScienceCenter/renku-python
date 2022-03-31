@@ -38,6 +38,17 @@ from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 
+def _execute(capsys, runner, args):
+    with capsys.disabled():
+        try:
+            cli.main(
+                args=args,
+                prog_name=runner.get_default_prog_name(cli),
+            )
+        except SystemExit as e:
+            assert e.code in {None, 0}
+
+
 def test_workflow_list(runner, project, run_shell, client):
     """Test listing of workflows."""
     # Run a shell command with pipe.
@@ -541,16 +552,6 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
         result = runner.invoke(cli, cmd)
         assert 0 == result.exit_code, format_result_exception(result)
 
-    def _execute(args):
-        with capsys.disabled():
-            try:
-                cli.main(
-                    args=args,
-                    prog_name=runner.get_default_prog_name(cli),
-                )
-            except SystemExit as e:
-                assert e.code in {None, 0}
-
     def _flatten_dict(obj, key_string=""):
         if type(obj) == dict:
             key_string = key_string + "." if key_string else key_string
@@ -563,7 +564,7 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
 
     if not parameters:
         execute_cmd = ["workflow", "execute", "-p", provider, workflow_name]
-        _execute(execute_cmd)
+        _execute(capsys, runner, execute_cmd)
     else:
         database = Database.from_path(client.database_path)
         plan = database["plans-by-name"][workflow_name]
@@ -600,7 +601,7 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
 
         execute_cmd.append(workflow_name)
 
-        _execute(execute_cmd)
+        _execute(capsys, runner, execute_cmd)
 
         # check whether parameters setting was effective
         for o in outputs:
@@ -1135,3 +1136,34 @@ def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
 
     assert 1 == result.exit_code, format_result_exception(result)
     assert "Cannot run workflows that have stdin or stderr redirection with Docker" in result.output
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+@pytest.mark.parametrize(
+    "workflow, parameters, outputs",
+    [
+        (
+            [
+                "--output {a-2}_{b-3} python -c \"import sys; f=open(sys.argv[2]+'_'+sys.argv[4], 'w'); f.write('foo'); f.close()\" -a foo -b bar",
+                {"a-2": "fizz", "b-3": "buzz"},
+                ["fizz_buzz"],
+            ]
+        ),
+    ],
+)
+def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, parameters, provider, outputs):
+    workflow_name = "foobar"
+
+    # Run a shell command with pipe.
+    output = run_shell(f"renku run --name {workflow_name} {workflow}")
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    execute_cmd = ["workflow", "execute", "-p", provider, workflow_name]
+    [execute_cmd.extend(["--set", f"{k}={v}"]) for k, v in parameters.items()]
+    _execute(capsys, runner, execute_cmd)
+
+    for o in outputs:
+        assert Path(o).resolve().exists()

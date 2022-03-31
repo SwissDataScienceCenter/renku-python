@@ -19,9 +19,9 @@
 
 import datetime
 from string import Formatter
-from typing import Dict, Iterable, Tuple, Union
+from typing import Any, Iterable, Mapping, Tuple, Union
 
-from renku.core.models.workflow.parameter import CommandParameterBase
+from renku.domain_model.workflow.parameter import CommandParameterBase
 
 
 class TemplateVariableFormatter(Formatter):
@@ -32,7 +32,7 @@ class TemplateVariableFormatter(Formatter):
     def __init__(self):
         super(TemplateVariableFormatter, self).__init__()
 
-    def apply(self, param: str, parameters: Dict[str, str] = None) -> str:
+    def apply(self, param: str, parameters: Mapping[str, Any] = {}) -> str:
         """Renders the parameter template into its final value."""
         return super().vformat(param, args=[datetime.datetime.now()], kwargs=parameters)
 
@@ -43,7 +43,7 @@ class TemplateVariableFormatter(Formatter):
         return super().get_value(key, args, kwargs)
 
     @staticmethod
-    def to_map(parameters: Iterable[Union[CommandParameterBase, Tuple[str, str]]]) -> Dict[str, str]:
+    def to_map(parameters: Iterable[Union[CommandParameterBase, Tuple[str, str]]]) -> Mapping[str, str]:
         """Converts a list of `CommandParameterBase` into parameter name-value dictionary."""
         return dict(
             map(
