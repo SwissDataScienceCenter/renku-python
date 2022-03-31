@@ -16,15 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project clone tests."""
+import json
 import time
 import uuid
 
 import pytest
 from marshmallow import EXCLUDE
+from werkzeug.utils import secure_filename
 
 from renku.service.controllers.utils.project_clone import user_project_clone
+from renku.service.serializers.headers import encode_b64
 from renku.service.serializers.templates import ProjectTemplateRequest
-from tests.utils import modified_environ, retry_failed
+from tests.utils import assert_rpc_response, modified_environ, retry_failed
 
 
 @pytest.mark.integration
@@ -72,3 +75,34 @@ def test_service_user_project_clone(svc_client_cache):
         projects = [project.project_id for project in cache.get_projects(user)]
         assert project_one.project_id in projects
         assert project_two.project_id in projects
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_service_user_non_existing_project_clone(svc_client_cache, it_remote_repo_url):
+    """Check reading manifest template."""
+    svc_client, headers, cache = svc_client_cache
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
+    user = cache.ensure_user({"user_id": user_id})
+
+    # NOTE: clone a valid repo and verify there is one project in the cache
+    payload = {"git_url": it_remote_repo_url, "depth": -1}
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+
+    assert_rpc_response(response)
+    projects = list(cache.get_projects(user))
+    assert 1 == len(projects)
+
+    # NOTE: invalidate the project
+    cache.invalidate_project(user, projects[0].project_id)
+    projects = list(cache.get_projects(user))
+    assert 0 == len(projects)
+
+    # NOTE: try to clone a non-existing repo and verify no other projects are added to the cache
+    payload["git_url"] = f"{it_remote_repo_url}-non-existing-project-url"
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+
+    assert_rpc_response(response, "error")
+    projects = list(cache.get_projects(user))
+    assert 0 == len(projects)
