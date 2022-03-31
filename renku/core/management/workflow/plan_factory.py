@@ -410,6 +410,8 @@ class PlanFactory:
         postfix: Optional[str] = None,
         encoding_format: List[str] = None,
         name: Optional[str] = None,
+        id: str = None,
+        mapped_to: Optional[MappedIOStream] = None,
     ):
         """Create a CommandOutput."""
         if self.no_output_detection and all(Path(default_value).resolve() != path for path, _ in self.explicit_outputs):
@@ -424,7 +426,7 @@ class PlanFactory:
         ):
             create_folder = True
 
-        mapped_stream = self.get_stream_mapping_for_value(default_value)
+        mapped_stream = mapped_to or self.get_stream_mapping_for_value(default_value)
 
         if mapped_stream and position is None:
             position = (
@@ -432,13 +434,15 @@ class PlanFactory:
                 + 1
             )
 
+        id = id or CommandOutput.generate_id(
+            plan_id=self.plan_id,
+            position=position,
+            postfix=mapped_stream.stream_type if mapped_stream else postfix,
+        )
+
         self.outputs.append(
             CommandOutput(
-                id=CommandOutput.generate_id(
-                    plan_id=self.plan_id,
-                    position=position,
-                    postfix=mapped_stream.stream_type if mapped_stream else postfix,
-                ),
+                id=id,
                 default_value=default_value,
                 prefix=prefix,
                 position=position,
@@ -453,16 +457,15 @@ class PlanFactory:
     def add_command_output_from_input(self, input: CommandInput, name):
         """Create a CommandOutput from an input."""
         self.inputs.remove(input)
-        self.outputs.append(
-            CommandOutput(
-                id=input.id.replace("/inputs/", "/outputs/"),
-                default_value=input.default_value,
-                prefix=input.prefix,
-                position=input.position,
-                mapped_to=input.mapped_to,
-                encoding_format=input.encoding_format,
-                name=name,
-            )
+
+        self.add_command_output(
+            id=input.id.replace("/inputs/", "/outputs/"),
+            default_value=input.default_value,
+            prefix=input.prefix,
+            position=input.position,
+            mapped_to=input.mapped_to,
+            encoding_format=input.encoding_format,
+            name=name,
         )
 
     def add_command_output_from_parameter(self, parameter: CommandParameter, name):
