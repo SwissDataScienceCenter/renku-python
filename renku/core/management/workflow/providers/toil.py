@@ -25,7 +25,7 @@ import uuid
 from abc import abstractmethod
 from pathlib import Path
 from subprocess import call
-from typing import Any, Callable, Dict, List, cast
+from typing import Any, Callable, Dict, List, Union
 
 import networkx as nx
 from toil.common import Toil
@@ -33,6 +33,7 @@ from toil.fileStores import FileID
 from toil.fileStores.abstractFileStore import AbstractFileStore
 from toil.job import Job, Promise
 from toil.leader import FailedJobsException
+from toil.lib.docker import apiDockerCall
 
 from renku.core import errors
 from renku.core.commands.echo import progressbar
@@ -51,7 +52,7 @@ class AbstractToilJob(Job):
 
     def __init__(self, workflow: Plan, *args, **kwargs):
         super(AbstractToilJob, self).__init__(unitName=workflow.name, displayName=workflow.name, *args, **kwargs)
-        self.workflow = workflow
+        self.workflow: Plan = workflow
         self._input_files: Dict[str, FileID] = {}
         self._parents_promise: List[Promise] = []
         self._environment = os.environ.copy()
@@ -65,7 +66,7 @@ class AbstractToilJob(Job):
         """Set the location of inputs that are available in the original project."""
         self._input_files = input_files
 
-    def add_input_promise(self, promise: Promise):
+    def add_input_promise(self, promise: Dict[str, FileID]):
         """Adds a given job's output promise.
 
         The promise of a job contains its output locations in the global storage.
@@ -130,8 +131,6 @@ class AbstractToilJob(Job):
             if a.prefix:
                 if a.prefix.endswith(" "):
                     cmd.append(a.prefix[:-1])
-                    cmd.append(v)
-                    continue
                 else:
                     v = f"{a.prefix}{v}"
             cmd.append(v)
@@ -147,7 +146,7 @@ class SubprocessToilJob(AbstractToilJob):
     """A toil job that uses subprocess.call to execute a renku ``Plan``."""
 
     def __init__(self, workflow: Plan, *args, **kwargs):
-        super(SubprocessToilJob, self).__init__(workflow, *args, **kwargs)
+        super().__init__(workflow, *args, **kwargs)
 
     def _execute(self, command_line: List[str], mapped_std: Dict[str, str]) -> int:
         """Executes a given command line."""
@@ -162,7 +161,54 @@ class SubprocessToilJob(AbstractToilJob):
         )
 
 
-def _store_location(import_function: Callable[[str], FileID], basedir: Path, location: Path) -> Dict[str, Any]:
+class DockerToilJob(AbstractToilJob):
+    """A toil job that uses apiDockerCall to execute a renku ``Plan``."""
+
+    def __init__(self, workflow: Plan, docker_config: Dict[str, Any], *args, **kwargs):
+        super().__init__(workflow, *args, **kwargs)
+        self._docker_config: Dict[str, Any] = docker_config
+
+    def _execute(self, command_line: List[str], mapped_std: Dict[str, str]) -> int:
+        """Executes a given command line."""
+        # NOTE: Disable detached mode to block for ``apiDockerCall`` to finish
+        self._docker_config.pop("detach", None)
+
+        parameters: Union[List[str], List[List[str]]] = command_line
+
+        stderr = mapped_std.get("stderr")
+        stdin = mapped_std.get("stdin")
+        if stderr or stdin:
+            raise errors.OperationError("Cannot run workflows that have stdin or stderr redirection with Docker")
+        stdout = mapped_std.get("stdout")
+        if stdout:
+            parameters = [command_line, ["tee", stdout]]
+
+        volumes = self._docker_config.pop("volumes", {})
+
+        if "working_dir" not in self._docker_config:
+            working_dir = "/renku"
+            volumes[os.getcwd()] = {"bind": working_dir, "mode": "rw"}
+        else:
+            working_dir = self._docker_config.pop("working_dir")
+
+        # NOTE: We cannot get the exit code back from the docker container. The Docker API checks for the exit code and
+        # raises an exception if it's not 0, so, Plan.success_codes is ignored when running with Docker.
+        apiDockerCall(
+            self,
+            parameters=parameters,
+            detach=False,
+            environment=self._environment,
+            volumes=volumes,
+            working_dir=working_dir,
+            **self._docker_config,
+        )
+
+        return 0
+
+
+def _store_location(
+    import_function: Callable[[str], FileID], basedir: Path, location: Path
+) -> Union[FileID, Dict[str, Any]]:
     if location.is_dir():
         directory_content = dict()
         for f in location.rglob("*"):
@@ -186,19 +232,24 @@ def _upload_files(
     return file_locations
 
 
-def importFileWrapper(storage: AbstractFileStore, file_path: str) -> FileID:
+def import_file_wrapper(storage: AbstractFileStore, file_path: str) -> FileID:
     """Wrap importFile accept file:// URIs."""
     file_uri = file_path if ":/" in file_path else f"file://{file_path}"
     return storage.importFile(file_uri)
 
 
-def process_children(parent: Job, dag: nx.DiGraph, jobs: Dict[int, Job], basedir: Path, storage: AbstractFileStore):
+def process_children(
+    parent: AbstractToilJob,
+    dag: nx.DiGraph,
+    jobs: Dict[int, AbstractToilJob],
+    basedir: Path,
+    storage: AbstractFileStore,
+):
     """Recursively process children of a workflow."""
-
     outputs = list()
-    import_function = functools.partial(importFileWrapper, storage)
+    import_function = functools.partial(import_file_wrapper, storage)
     for child in nx.neighbors(dag, parent.workflow):
-        child_job = cast(AbstractToilJob, jobs[id(child)])
+        child_job = jobs[id(child)]
         file_metadata = _upload_files(import_function, child.inputs, basedir)
         child_job.set_input_files(file_metadata)
         child_job.add_input_promise(parent.rv())
@@ -207,12 +258,16 @@ def process_children(parent: Job, dag: nx.DiGraph, jobs: Dict[int, Job], basedir
     return outputs
 
 
-def initialize_jobs(job, basedir, dag):
+def initialize_jobs(job, basedir, dag, docker_config):
     """Creates the Toil execution plan for the given workflow DAG."""
     job.fileStore.logToMaster("executing renku DAG")
     outputs = list()
-    jobs = {id(n): SubprocessToilJob(n) for n in dag.nodes}
-    import_function = functools.partial(importFileWrapper, job.fileStore)
+    if docker_config:
+        job.fileStore.logToMaster("executing with Docker")
+        jobs = {id(n): DockerToilJob(n, docker_config) for n in dag.nodes}
+    else:
+        jobs = {id(n): SubprocessToilJob(n) for n in dag.nodes}
+    import_function = functools.partial(import_file_wrapper, job.fileStore)
     children = next(nx.topological_generations(dag))
     for workflow in children:
         child_job = jobs[id(workflow)]
@@ -230,17 +285,22 @@ class ToilProvider(IWorkflowProvider):
     @hookimpl
     def workflow_provider(self):
         """Workflow provider name."""
-        return (self, "toil")
+        return self, "toil"
 
     @hookimpl
     def workflow_execute(self, dag: nx.DiGraph, basedir: Path, config: Dict[str, Any]):
         """Executes a given workflow DAG using Toil."""
-        tmpdir = (Path(RENKU_HOME) / RENKU_TMP).resolve()
+        tmpdir = (basedir / RENKU_HOME / RENKU_TMP).resolve()
         if not tmpdir.exists():
             tmpdir.mkdir()
         options = Job.Runner.getDefaultOptions(str(tmpdir / uuid.uuid4().hex))
         options.logLevel = "ERROR"
         options.clean = "always"
+
+        config = config or {}
+        docker_config = config.pop("docker", {})
+        if docker_config and "image" not in docker_config:
+            raise errors.ConfigurationError("Docker configuration must provide an 'image' property")
 
         if config:
             for k, v in config.items():
@@ -249,8 +309,8 @@ class ToilProvider(IWorkflowProvider):
         outputs = list()
         try:
             with Toil(options) as toil:
-                rootJob = Job.wrapJobFn(initialize_jobs, basedir, dag)
-                job_outputs = toil.start(rootJob)
+                root_job = Job.wrapJobFn(initialize_jobs, basedir, dag, docker_config)
+                job_outputs = toil.start(root_job)
 
                 num_outputs = sum(map(lambda x: len(x.values()), job_outputs))
                 with progressbar(length=num_outputs, label="Moving outputs") as bar:
