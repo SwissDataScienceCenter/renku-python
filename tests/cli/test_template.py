@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,9 +23,9 @@ import sys
 import pytest
 from packaging.version import Version
 
-from renku.cli import cli
 from renku.core.models.template import TemplateMetadata, TemplateParameter
 from renku.core.utils.contexts import chdir
+from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 TEMPLATES_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"

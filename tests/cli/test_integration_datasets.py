@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -25,7 +25,6 @@ from urllib import parse
 
 import pytest
 
-from renku.cli import cli
 from renku.core import errors
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
@@ -33,6 +32,7 @@ from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import Url, get_dataset_data_dir
 from renku.core.utils.contexts import chdir
 from renku.core.utils.git import get_git_user
+from renku.ui.cli import cli
 from tests.utils import (
     assert_dataset_is_mutated,
     format_result_exception,

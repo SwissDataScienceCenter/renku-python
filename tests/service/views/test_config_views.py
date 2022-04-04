@@ -21,7 +21,7 @@ import json
 
 import pytest
 
-from renku.service.errors import IntermittentSettingExistsError, ProgramProjectCorruptError, UserNonRenkuProjectError
+from renku.ui.service.errors import IntermittentSettingExistsError, ProgramProjectCorruptError, UserNonRenkuProjectError
 from tests.utils import retry_failed
 
 

@@ -1,0 +1,37 @@
+---
+formatters:
+  simple:
+    format: "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: simple
+    level: DEBUG
+    stream: "ext://sys.stdout"
+loggers:
+  renku.ui.service:
+    handlers:
+      - console
+    level: DEBUG
+    propagate: false
+  renku.worker:
+    handlers:
+      - console
+    level: DEBUG
+    propagate: false
+  renku.scheduler:
+    handlers:
+      - console
+    level: DEBUG
+    propagate: false
+  rq.worker:
+    level: INFO
+  rq_scheduler.scheduler:
+    handlers:
+      - console
+    level: INFO
+root:
+  handlers:
+    - console
+  level: DEBUG
+version: 1

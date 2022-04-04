@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,12 +21,12 @@ from pathlib import Path
 
 import yaml
 
-from renku.api import Input, Output, Parameter, Project
 from renku.core.management.workflow.plan_factory import (
     get_indirect_inputs_path,
     get_indirect_outputs_path,
     read_indirect_parameters,
 )
+from renku.ui.api import Input, Output, Parameter, Project
 
 
 def test_indirect_inputs(client):

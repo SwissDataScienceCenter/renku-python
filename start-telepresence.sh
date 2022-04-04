@@ -87,7 +87,7 @@ echo -e ""
 echo ">>> COMMAND BEGIN <<<"
 echo "CACHE_DIR=temp/service_cache \
 DEBUG=1 FLASK_DEBUG=1 \
-FLASK_ENV=development FLASK_APP=renku.service.entrypoint \
+FLASK_ENV=development FLASK_APP=renku.ui.service.entrypoint \
 flask run --no-reload"
 echo ">>> COMMAND END <<<"
 echo -e ""

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -28,8 +28,8 @@ from renku.core.management.dataset.context import DatasetContext
 from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.metadata.repository import Repository
 from renku.core.models.git import GitURL
-from renku.service.errors import IntermittentFileExistsError, UserAnonymousError
-from renku.service.serializers.headers import JWT_TOKEN_SECRET
+from renku.ui.service.errors import IntermittentFileExistsError, UserAnonymousError
+from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import retry_failed
 
 

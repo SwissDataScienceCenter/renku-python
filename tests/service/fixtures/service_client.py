@@ -41,7 +41,7 @@ def real_sync():
 @pytest.fixture()
 def svc_client(mock_redis, svc_cache_dir):
     """Renku service client."""
-    from renku.service.entrypoint import create_app
+    from renku.ui.service.entrypoint import create_app
 
     flask_app = create_app()
 
@@ -59,28 +59,28 @@ def svc_client(mock_redis, svc_cache_dir):
 @pytest.fixture(scope="function")
 def svc_cache_dir(mocker, tmpdir):
     """Mock temporary dir for cache."""
-    import renku.service.cache.models.file
-    import renku.service.cache.models.project
-    import renku.service.config
-    import renku.service.controllers.cache_files_upload
-    import renku.service.controllers.datasets_create
-    import renku.service.controllers.datasets_edit
-    import renku.service.entrypoint
-    import renku.service.utils
+    import renku.ui.service.cache.models.file
+    import renku.ui.service.cache.models.project
+    import renku.ui.service.config
+    import renku.ui.service.controllers.cache_files_upload
+    import renku.ui.service.controllers.datasets_create
+    import renku.ui.service.controllers.datasets_edit
+    import renku.ui.service.entrypoint
+    import renku.ui.service.utils
 
     project_dir = Path(tmpdir.mkdir("projects"))
     upload_dir = Path(tmpdir.mkdir("uploads"))
 
-    mocker.patch.object(renku.service.config, "CACHE_DIR", Path(tmpdir))
-    mocker.patch.object(renku.service.entrypoint, "CACHE_DIR", Path(tmpdir))
-    mocker.patch.object(renku.service.config, "CACHE_UPLOADS_PATH", upload_dir)
-    mocker.patch.object(renku.service.cache.models.project, "CACHE_PROJECTS_PATH", project_dir)
-    mocker.patch.object(renku.service.utils, "CACHE_PROJECTS_PATH", project_dir)
-    mocker.patch.object(renku.service.utils, "CACHE_UPLOADS_PATH", upload_dir)
-    mocker.patch.object(renku.service.cache.models.file, "CACHE_UPLOADS_PATH", upload_dir)
-    mocker.patch.object(renku.service.controllers.cache_files_upload, "CACHE_UPLOADS_PATH", upload_dir)
-    mocker.patch.object(renku.service.controllers.datasets_create, "CACHE_UPLOADS_PATH", upload_dir)
-    mocker.patch.object(renku.service.controllers.datasets_edit, "CACHE_UPLOADS_PATH", upload_dir)
+    mocker.patch.object(renku.ui.service.config, "CACHE_DIR", Path(tmpdir))
+    mocker.patch.object(renku.ui.service.entrypoint, "CACHE_DIR", Path(tmpdir))
+    mocker.patch.object(renku.ui.service.config, "CACHE_UPLOADS_PATH", upload_dir)
+    mocker.patch.object(renku.ui.service.cache.models.project, "CACHE_PROJECTS_PATH", project_dir)
+    mocker.patch.object(renku.ui.service.utils, "CACHE_PROJECTS_PATH", project_dir)
+    mocker.patch.object(renku.ui.service.utils, "CACHE_UPLOADS_PATH", upload_dir)
+    mocker.patch.object(renku.ui.service.cache.models.file, "CACHE_UPLOADS_PATH", upload_dir)
+    mocker.patch.object(renku.ui.service.controllers.cache_files_upload, "CACHE_UPLOADS_PATH", upload_dir)
+    mocker.patch.object(renku.ui.service.controllers.datasets_create, "CACHE_UPLOADS_PATH", upload_dir)
+    mocker.patch.object(renku.ui.service.controllers.datasets_edit, "CACHE_UPLOADS_PATH", upload_dir)
 
     yield
 
@@ -88,7 +88,7 @@ def svc_cache_dir(mocker, tmpdir):
 @pytest.fixture(scope="function")
 def svc_client_cache(mock_redis, identity_headers, svc_cache_dir):
     """Service jobs fixture."""
-    from renku.service.entrypoint import create_app
+    from renku.ui.service.entrypoint import create_app
 
     flask_app = create_app()
 
@@ -108,7 +108,7 @@ def identity_headers():
     """Get authentication headers."""
     import jwt
 
-    from renku.service.serializers.headers import JWT_TOKEN_SECRET
+    from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
 
     jwt_data = {
         "jti": "12345",
@@ -144,7 +144,7 @@ def identity_headers():
 @pytest.fixture(scope="module")
 def view_user_data(identity_headers):
     """View user data object."""
-    from renku.service.serializers.headers import RequiredIdentityHeaders
+    from renku.ui.service.serializers.headers import RequiredIdentityHeaders
 
     user_data = RequiredIdentityHeaders().load(identity_headers)
 
@@ -179,7 +179,7 @@ def svc_client_with_user(svc_client_cache):
     """Service client with a predefined user."""
     from werkzeug.utils import secure_filename
 
-    from renku.service.serializers.headers import encode_b64
+    from renku.ui.service.serializers.headers import encode_b64
 
     svc_client, headers, cache = svc_client_cache
 

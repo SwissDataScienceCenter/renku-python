@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2017-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,10 +21,10 @@ import threading
 
 import pytest
 
-from renku.cli.utils.callback import ClickCallback
 from renku.core.management.command_builder.command import Command
 from renku.core.utils import communication
-from renku.service.utils.callback import ServiceCallback
+from renku.ui.cli.utils.callback import ClickCallback
+from renku.ui.service.utils.callback import ServiceCallback
 
 
 def test_communicator_is_unsubscribed(tmp_path):

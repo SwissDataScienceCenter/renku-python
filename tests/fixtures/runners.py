@@ -162,8 +162,8 @@ def split_runner():
 @pytest.fixture()
 def run(runner, capsys):
     """Return a callable runner."""
-    from renku.cli import cli
     from renku.core.utils.contexts import Isolation
+    from renku.ui.cli import cli
 
     def generate(args=("update", "--all"), cwd=None, **streams):
         """Generate an output."""

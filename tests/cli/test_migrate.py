@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,7 +23,6 @@ from pathlib import Path
 
 import pytest
 
-from renku.cli import cli
 from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
 from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
@@ -32,6 +31,7 @@ from renku.core.management.workflow.plan_factory import RENKU_TMP
 from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
 from renku.core.metadata.repository import Repository
 from renku.core.models.dataset import RemoteEntity
+from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 

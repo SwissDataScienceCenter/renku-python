@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,8 +21,8 @@ import uuid
 
 import pytest
 
-from renku.service.config import SVC_ERROR_PROGRAMMING
-from renku.service.errors import (
+from renku.ui.service.config import SVC_ERROR_PROGRAMMING
+from renku.ui.service.errors import (
     IntermittentProjectIdError,
     IntermittentTimeoutError,
     ProgramContentTypeError,

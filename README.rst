@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -364,7 +364,7 @@ Finally, run ``renku`` via the debugger:
 
 ::
 
-    $ ~/.local/pipx/venvs/renku/bin/python -m ptvsd --host localhost --wait -m renku.cli <command>
+    $ ~/.local/pipx/venvs/renku/bin/python -m ptvsd --host localhost --wait -m renku.ui.cli <command>
 
 
 If using Visual Studio Code, you may also want to set the ``Remote Attach`` configuration

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -28,7 +28,7 @@ from renku.core.management.template.template import fetch_templates_source
 from renku.core.metadata.repository import Repository
 from renku.core.models.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.core.utils.os import normalize_to_ascii
-from renku.service.errors import (
+from renku.ui.service.errors import (
     ProgramProjectCreationError,
     UserAnonymousError,
     UserProjectCreationError,
@@ -124,8 +124,8 @@ def test_read_manifest_from_wrong_template(svc_client_with_templates, template_u
 @retry_failed
 def test_create_project_from_template(svc_client_templates_creation):
     """Check creating project from a valid template."""
-    from renku.service.serializers.headers import RenkuHeaders
-    from renku.service.utils import CACHE_PROJECTS_PATH
+    from renku.ui.service.serializers.headers import RenkuHeaders
+    from renku.ui.service.utils import CACHE_PROJECTS_PATH
 
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
 

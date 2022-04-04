@@ -22,9 +22,9 @@ import pytest
 @pytest.fixture
 def with_scheduler(mock_redis):
     """Scheduler fixture."""
-    from renku.service.jobs.queues import WorkerQueues
-    from renku.service.scheduler import start_scheduler
-    from renku.service.utils.timeout import timeout
+    from renku.ui.service.jobs.queues import WorkerQueues
+    from renku.ui.service.scheduler import start_scheduler
+    from renku.ui.service.utils.timeout import timeout
 
     timeout(start_scheduler, fn_kwargs={"connection": WorkerQueues.connection}, timeout_duration=5)
 
