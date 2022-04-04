@@ -19,7 +19,7 @@
 
 import pytest
 
-from renku.service.views.api_versions import MAXIMUM_VERSION, MINIMUM_VERSION
+from renku.ui.service.views.api_versions import MAXIMUM_VERSION, MINIMUM_VERSION
 
 
 @pytest.mark.service

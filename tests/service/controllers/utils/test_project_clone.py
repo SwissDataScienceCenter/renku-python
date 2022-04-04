@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -24,9 +24,9 @@ import pytest
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
-from renku.service.controllers.utils.project_clone import user_project_clone
-from renku.service.serializers.headers import encode_b64
-from renku.service.serializers.templates import ProjectTemplateRequest
+from renku.ui.service.controllers.utils.project_clone import user_project_clone
+from renku.ui.service.serializers.headers import encode_b64
+from renku.ui.service.serializers.templates import ProjectTemplateRequest
 from tests.utils import assert_rpc_response, modified_environ, retry_failed
 
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -29,12 +29,12 @@ from time import time
 import pytest
 
 from renku import __version__
-from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
 from renku.core.metadata.repository import Repository
 from renku.core.models.enums import ConfigFilter
 from renku.core.utils.contexts import chdir
+from renku.ui.cli import cli
 from tests.utils import format_result_exception, retry_failed
 
 

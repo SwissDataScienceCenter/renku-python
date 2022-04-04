@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,9 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service rpc serializers."""
-from renku.service.errors import ProgramRenkuError
-from renku.service.serializers.datasets import DatasetListResponseRPC
-from renku.service.views import error_response, result_response
+from renku.ui.service.errors import ProgramRenkuError
+from renku.ui.service.serializers.datasets import DatasetListResponseRPC
+from renku.ui.service.views import error_response, result_response
 
 
 def test_error_response(svc_client):

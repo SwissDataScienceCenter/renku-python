@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -37,4 +37,3 @@ Implementation of Gateway interfaces.
 
 .. automodule:: renku.core.metadata.gateway
    :members:
-

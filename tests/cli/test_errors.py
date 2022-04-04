@@ -22,7 +22,7 @@ import tempfile
 import pytest
 from filelock import FileLock
 
-from renku.cli import cli
+from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 

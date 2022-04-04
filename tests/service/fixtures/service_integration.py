@@ -37,7 +37,7 @@ def _mock_cache_sync(repository: Repository):
     We don't want to undo that temporary migration with an actual cache sync, as it would break tests with
     repeat service calls, if the migration was just done locally in the fixture.
     """
-    from renku.service.controllers.api import mixins
+    from renku.ui.service.controllers.api import mixins
 
     current_reference = repository.head.reference if repository.head.is_valid() else repository.head.commit
 
@@ -56,8 +56,8 @@ def _mock_cache_sync(repository: Repository):
 
 def integration_repo_path(headers, project_id, url_components):
     """Constructs integration repo path."""
-    from renku.service.serializers.headers import RequiredIdentityHeaders
-    from renku.service.utils import make_project_path
+    from renku.ui.service.serializers.headers import RequiredIdentityHeaders
+    from renku.ui.service.utils import make_project_path
 
     user = RequiredIdentityHeaders().load(headers)
     project = {
@@ -201,10 +201,10 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     """Client with a local remote to test pushes."""
     from marshmallow import pre_load
 
-    from renku.cli import cli
     from renku.core.utils.contexts import chdir
-    from renku.service.config import PROJECT_CLONE_NO_DEPTH
-    from renku.service.serializers import cache
+    from renku.ui.cli import cli
+    from renku.ui.service.config import PROJECT_CLONE_NO_DEPTH
+    from renku.ui.service.serializers import cache
     from tests.fixtures.runners import RenkuRunner
 
     # NOTE: prevent service from adding an auth token as it doesn't work with local repos
@@ -289,8 +289,8 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 @pytest.fixture
 def quick_cache_synchronization(mocker):
     """Forces cache to synchronize on every request."""
-    import renku.service.cache.models.project
+    import renku.ui.service.cache.models.project
 
-    mocker.patch.object(renku.service.cache.models.project.Project, "fetch_age", 10000)
+    mocker.patch.object(renku.ui.service.cache.models.project.Project, "fetch_age", 10000)
 
     yield

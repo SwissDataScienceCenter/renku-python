@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,8 +18,8 @@
 """Renku service project related job tests."""
 import pytest
 
-from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
-from renku.service.serializers.cache import ProjectMigrateRequest
+from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
+from renku.ui.service.serializers.cache import ProjectMigrateRequest
 from tests.utils import retry_failed
 
 
@@ -34,7 +34,7 @@ def test_delay_migration_job(svc_client_cache, it_remote_repo_url_temp_branch, v
     context = ProjectMigrateRequest().load({"git_url": it_remote_repo_url, "ref": branch, "skip_docker_update": True})
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.cache_migrate_project"
+    renku_module = "renku.ui.service.controllers.cache_migrate_project"
     renku_ctrl = "MigrateProjectCtrl"
 
     user = cache.ensure_user(view_user_data)

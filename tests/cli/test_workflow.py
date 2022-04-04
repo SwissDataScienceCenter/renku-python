@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -31,10 +31,10 @@ import pyte
 import pytest
 from cwl_utils.parser import cwl_v1_2 as cwlgen
 
-from renku.cli import cli
 from renku.core.metadata.database import Database
 from renku.core.models.jsonld import write_yaml
 from renku.core.plugins.provider import available_workflow_providers
+from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 
@@ -603,12 +603,12 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, capsys, client, provider):
-    """Test executing a workflow with --set for a renku.api.Parameter."""
+    """Test executing a workflow with --set for a renku.ui.api.Parameter."""
     script = client.path / "script.py"
     output = client.path / "output"
 
     with client.commit():
-        script.write_text("from renku.api import Parameter\n" 'print(Parameter("test", "hello world"))\n')
+        script.write_text("from renku.ui.api import Parameter\n" 'print(Parameter("test", "hello world"))\n')
 
     result = run_shell(f"renku run --name run1 -- python {script} > {output}")
 
@@ -629,7 +629,7 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, client, provider):
-    """Test executing a workflow with --set for a renku.api.Input."""
+    """Test executing a workflow with --set for a renku.ui.api.Input."""
     script = client.path / "script.py"
     output = client.path / "output"
     input = client.path / "input"
@@ -639,7 +639,8 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
 
     with client.commit():
         script.write_text(
-            f"from renku.api import Input\nwith open(Input('my-input', '{input.name}'), 'r') as f:\n    print(f.read())"
+            f"from renku.ui.api import Input\nwith open(Input('my-input', '{input.name}'), 'r') as f:\n"
+            "    print(f.read())"
         )
 
     result = run_shell(f"renku run --name run1 -- python {script.name} > {output.name}")
@@ -660,14 +661,14 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, client, provider):
-    """Test executing a workflow with --set for a renku.api.Output."""
+    """Test executing a workflow with --set for a renku.ui.api.Output."""
     script = client.path / "script.py"
     output = client.path / "output"
     other_output = client.path / "other_output"
 
     with client.commit():
         script.write_text(
-            f"from renku.api import Output\nwith open(Output('my-output', '{output.name}'), 'w') as f:\n"
+            f"from renku.ui.api import Output\nwith open(Output('my-output', '{output.name}'), 'w') as f:\n"
             "    f.write('test')"
         )
 
@@ -695,7 +696,7 @@ def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, p
 
     with client.commit():
         script.write_text(
-            f"from renku.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
+            f"from renku.ui.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
             f"open(Output('my-output', '{other_output.name}'), 'w')"
         )
 
@@ -712,7 +713,7 @@ def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_sh
 
     with client.commit():
         script.write_text(
-            f"from renku.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
+            f"from renku.ui.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
             f"open(Output('my-output', '{output.name}'), 'w')"
         )
 
@@ -733,7 +734,7 @@ def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, pr
 
     with client.commit():
         script.write_text(
-            f"from renku.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
+            f"from renku.ui.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
             f"open(Input('my-input', '{other_input.name}'), 'w')"
         )
 
@@ -750,7 +751,7 @@ def test_workflow_execute_command_with_api_valid_duplicate_input(runner, run_she
 
     with client.commit():
         script.write_text(
-            f"from renku.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
+            f"from renku.ui.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
             f"open(Input('my-input', '{input.name}'), 'w')"
         )
 

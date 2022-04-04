@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -26,9 +26,9 @@ import pytest
 from marshmallow.utils import isoformat
 from werkzeug.utils import secure_filename
 
-from renku.service.cache.models.project import Project
-from renku.service.errors import UserAnonymousError
-from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
+from renku.ui.service.cache.models.project import Project
+from renku.ui.service.errors import UserAnonymousError
+from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 
 
 @pytest.mark.service

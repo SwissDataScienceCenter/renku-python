@@ -27,12 +27,12 @@ from tests.utils import retry_failed
 @retry_failed
 def test_delay_config_set(svc_client_cache, it_remote_repo_url, view_user_data):
     """Test delayed set config endpoint."""
-    from renku.service.serializers.config import ConfigSetRequest
+    from renku.ui.service.serializers.config import ConfigSetRequest
 
     context = ConfigSetRequest().load({"git_url": it_remote_repo_url, "migrate_project": True, "config": {"a": "b"}})
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.config_set"
+    renku_module = "renku.ui.service.controllers.config_set"
     renku_ctrl = "SetConfigCtrl"
 
     user = cache.ensure_user(view_user_data)
@@ -40,7 +40,7 @@ def test_delay_config_set(svc_client_cache, it_remote_repo_url, view_user_data):
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
@@ -53,12 +53,12 @@ def test_delay_config_set(svc_client_cache, it_remote_repo_url, view_user_data):
 @retry_failed
 def test_delay_config_set_failure(svc_client_cache, it_remote_repo_url, view_user_data):
     """Test delayed set config endpoint."""
-    from renku.service.serializers.config import ConfigSetRequest
+    from renku.ui.service.serializers.config import ConfigSetRequest
 
     context = ConfigSetRequest().load({"git_url": it_remote_repo_url, "config": {"a": "b"}})
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.config_set"
+    renku_module = "renku.ui.service.controllers.config_set"
     renku_ctrl = "SetConfigCtrl"
 
     user = cache.ensure_user(view_user_data)
@@ -66,7 +66,7 @@ def test_delay_config_set_failure(svc_client_cache, it_remote_repo_url, view_use
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     with pytest.raises(MigrationRequired):
         delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)

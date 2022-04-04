@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,7 +23,7 @@ from time import sleep
 
 import pytest
 
-from renku.cli import cli
+from renku.ui.cli import cli
 from tests.utils import format_result_exception, retry_failed
 
 
@@ -187,7 +187,7 @@ def test_config_read_concurrency(runner, project, client, run):
         "19",
         sys.executable,
         "-m",
-        "renku.cli",
+        "renku.ui.cli",
         "config",
         "show",
         "test",

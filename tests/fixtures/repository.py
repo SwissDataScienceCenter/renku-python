@@ -70,7 +70,7 @@ def repository(tmpdir):
     """Yield a Renku repository."""
     from click.testing import CliRunner
 
-    from renku.cli import cli
+    from renku.ui.cli import cli
 
     runner = CliRunner()
     with _isolated_filesystem(tmpdir, delete=True) as project_path:
@@ -105,8 +105,8 @@ def project(repository):
     """Create a test project."""
     from click.testing import CliRunner
 
-    from renku.cli import cli
     from renku.core.utils.contexts import chdir
+    from renku.ui.cli import cli
 
     runner = CliRunner()
 

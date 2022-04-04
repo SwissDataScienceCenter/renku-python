@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku service version view tests."""
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
-from renku.service.views.api_versions import MAXIMUM_VERSION, MINIMUM_VERSION
+from renku.ui.service.views.api_versions import MAXIMUM_VERSION, MINIMUM_VERSION
 
 
 def test_version(svc_client):

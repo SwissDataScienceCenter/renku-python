@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,10 +19,10 @@
 
 import pytest
 
-from renku.cli import cli
 from renku.core import errors
 from renku.core.commands.login import read_renku_token
 from renku.core.utils.contexts import chdir
+from renku.ui.cli import cli
 from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT, USER_CODE
 from tests.utils import format_result_exception
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -27,7 +27,7 @@ import pytest
 from werkzeug.utils import secure_filename
 
 from renku.core.utils.os import normalize_to_ascii
-from renku.service.errors import (
+from renku.ui.service.errors import (
     IntermittentDatasetExistsError,
     IntermittentFileNotExistsError,
     IntermittentProjectIdError,
@@ -41,7 +41,7 @@ from renku.service.errors import (
     UserOutdatedProjectError,
     UserRepoNoAccessError,
 )
-from renku.service.serializers.headers import encode_b64
+from renku.ui.service.serializers.headers import encode_b64
 from tests.utils import assert_rpc_response, make_dataset_add_payload, retry_failed
 
 
