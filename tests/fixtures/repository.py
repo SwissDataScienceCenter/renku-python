@@ -25,14 +25,14 @@ from typing import Generator
 import pytest
 
 from renku.core.management.client import LocalClient
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 from tests.utils import format_result_exception
 
 
 @contextlib.contextmanager
 def _isolated_filesystem(tmpdir, name=None, delete=True):
     """Click CliRunner ``isolated_filesystem`` but xdist compatible."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     if not name:
         name = secrets.token_hex(8)
@@ -105,7 +105,7 @@ def project(repository):
     """Create a test project."""
     from click.testing import CliRunner
 
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
     from renku.ui.cli import cli
 
     runner = CliRunner()
@@ -126,7 +126,7 @@ def project(repository):
 @pytest.fixture
 def client(project, global_config_dir) -> Generator[LocalClient, None, None]:
     """Return a Renku repository."""
-    from renku.core.models.enums import ConfigFilter
+    from renku.domain_model.enums import ConfigFilter
 
     original_get_value = LocalClient.get_value
 
@@ -148,8 +148,8 @@ def client_injection_bindings():
     """Return bindings needed for client dependency injection."""
 
     def _create_client_bindings(client):
-        from renku.core.management.command_builder.client_dispatcher import ClientDispatcher
-        from renku.core.management.interface.client_dispatcher import IClientDispatcher
+        from renku.command.command_builder.client_dispatcher import ClientDispatcher
+        from renku.core.interface.client_dispatcher import IClientDispatcher
 
         client_dispatcher = ClientDispatcher()
         client_dispatcher.push_created_client_to_stack(client)
@@ -163,7 +163,7 @@ def injection_binder(request):
     """Return a binder that can work with bindings."""
 
     def _binder(bindings):
-        from renku.core.management.command_builder.command import inject, remove_injector
+        from renku.command.command_builder.command import inject, remove_injector
 
         def _bind(binder):
             for key, value in bindings["bindings"].items():

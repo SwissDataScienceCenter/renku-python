@@ -21,12 +21,12 @@
 from datetime import datetime, timedelta
 from typing import List
 
-from renku.core.commands.log import _log
-from renku.core.commands.view_model.log import DatasetLogViewModel, LogType
-from renku.core.management.command_builder.command import inject, remove_injector
-from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.models.provenance.activity import Activity, Association
-from renku.core.models.provenance.agent import Person, SoftwareAgent
+from renku.command.command_builder.command import inject, remove_injector
+from renku.command.log import _log
+from renku.command.view_model.log import DatasetLogViewModel, LogType
+from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.domain_model.provenance.activity import Activity, Association
+from renku.domain_model.provenance.agent import Person, SoftwareAgent
 
 
 def test_log_activities(mocker):

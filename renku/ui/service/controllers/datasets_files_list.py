@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku service datasets files controller."""
 
-from renku.core.commands.dataset import list_files_command
+from renku.command.dataset import list_files_command
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.serializers.datasets import DatasetFilesListRequest, DatasetFilesListResponseRPC

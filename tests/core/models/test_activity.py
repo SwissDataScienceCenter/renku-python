@@ -21,11 +21,11 @@ from datetime import datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Activity
-from renku.core.models.provenance.agent import Person
-from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter
-from renku.core.models.workflow.plan import Plan
+from renku.domain_model.entity import Entity
+from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.provenance.agent import Person
+from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
+from renku.domain_model.workflow.plan import Plan
 
 
 def test_activity_parameter_values(mocker):
@@ -37,8 +37,8 @@ def test_activity_parameter_values(mocker):
     def get_git_user_mock(client):
         return Person(id=uuid4().hex, name="John Doe", email="john@doe.com")
 
-    mocker.patch("renku.core.models.provenance.activity.get_entity_from_revision", get_entity_from_revision_mock)
-    mocker.patch("renku.core.models.provenance.activity.get_git_user", get_git_user_mock)
+    mocker.patch("renku.domain_model.provenance.activity.get_entity_from_revision", get_entity_from_revision_mock)
+    mocker.patch("renku.domain_model.provenance.activity.get_git_user", get_git_user_mock)
     commit = MagicMock()
     commit.hexsha.return_value = uuid4().hex
     commit.committer.email.return_value = "john@doe.com"

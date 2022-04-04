@@ -21,8 +21,8 @@ import os
 
 import pytest
 
-from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-from renku.core.metadata.gateway.plan_gateway import PlanGateway
+from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 

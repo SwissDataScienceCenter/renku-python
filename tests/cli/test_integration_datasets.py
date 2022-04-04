@@ -27,11 +27,11 @@ import pytest
 
 from renku.core import errors
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-from renku.core.metadata.repository import Repository
-from renku.core.models.dataset import Url, get_dataset_data_dir
-from renku.core.utils.contexts import chdir
-from renku.core.utils.git import get_git_user
+from renku.core.util.contexts import chdir
+from renku.core.util.git import get_git_user
+from renku.domain_model.dataset import Url, get_dataset_data_dir
+from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
+from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import (
     assert_dataset_is_mutated,
@@ -407,7 +407,7 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, cli
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
 def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
-    from renku.core.management.dataset.providers import renku
+    from renku.core.dataset.providers import renku
 
     def clone_renku_repository_mock(*_, **__):
         raise errors.GitError
@@ -1571,19 +1571,19 @@ def test_add_removes_credentials(runner, client, url, load_dataset_with_injectio
 )
 def test_add_with_content_disposition(runner, client, monkeypatch, disposition, filename, load_dataset_with_injection):
     """Check filename is read from content disposition."""
-    import renku.core.utils.requests
+    import renku.core.util.requests
 
     url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
 
     with monkeypatch.context() as monkey:
         # NOTE: mock requests headers
-        original_disposition = renku.core.utils.requests.get_filename_from_headers
+        original_disposition = renku.core.util.requests.get_filename_from_headers
 
         def _fake_disposition(response):
             response.headers["content-disposition"] = disposition
             return original_disposition(response)
 
-        monkey.setattr(renku.core.utils.requests, "get_filename_from_headers", _fake_disposition)
+        monkey.setattr(renku.core.util.requests, "get_filename_from_headers", _fake_disposition)
         result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", url])
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 

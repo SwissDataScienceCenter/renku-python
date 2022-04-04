@@ -20,15 +20,15 @@
 import pytest
 
 from renku.core import errors
-from renku.core.management.template.template import (
+from renku.core.template.template import (
     FileAction,
     TemplateAction,
     copy_template_to_client,
     fetch_templates_source,
     get_file_actions,
 )
-from renku.core.management.template.usecase import check_for_template_update, update_template
-from renku.core.models.template import TEMPLATE_MANIFEST
+from renku.core.template.usecase import check_for_template_update, update_template
+from renku.domain_model.template import TEMPLATE_MANIFEST
 
 TEMPLATES_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
 

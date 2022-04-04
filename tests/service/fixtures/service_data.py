@@ -26,7 +26,7 @@ import pytest
 @pytest.fixture
 def datapack_zip(directory_tree):
     """Returns dummy data folder as a zip archive."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     workspace_dir = tempfile.TemporaryDirectory()
     with chdir(workspace_dir.name):
@@ -38,7 +38,7 @@ def datapack_zip(directory_tree):
 @pytest.fixture
 def datapack_tar(directory_tree):
     """Returns dummy data folder as a tar archive."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     workspace_dir = tempfile.TemporaryDirectory()
     with chdir(workspace_dir.name):
@@ -50,7 +50,7 @@ def datapack_tar(directory_tree):
 @pytest.fixture
 def datapack_gz(directory_tree):
     """Returns dummy data folder as a tar archive."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     workspace_dir = tempfile.TemporaryDirectory()
     with chdir(workspace_dir.name):

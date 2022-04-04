@@ -153,8 +153,8 @@ from renku.ui.cli.utils.plugins import available_workflow_providers
 )
 def update(update_all, dry_run, paths, provider, config):
     """Update existing files by rerunning their outdated workflow."""
-    from renku.core.commands.format.activity import tabulate_activities
-    from renku.core.commands.update import update_command
+    from renku.command.format.activity import tabulate_activities
+    from renku.command.update import update_command
 
     communicator = ClickCallback()
 

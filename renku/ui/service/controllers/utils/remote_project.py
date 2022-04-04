@@ -24,8 +24,8 @@ from urllib.parse import urlparse
 from marshmallow import EXCLUDE
 
 from renku.core import errors
-from renku.core.metadata.repository import Repository
-from renku.core.utils.contexts import click_context
+from renku.core.util.contexts import click_context
+from renku.infrastructure.repository import Repository
 from renku.ui.service.serializers.cache import ProjectCloneContext
 
 ANONYMOUS_SESSION = "anonymous"

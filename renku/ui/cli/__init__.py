@@ -69,11 +69,11 @@ import click
 import yaml
 from click_plugins import with_plugins
 
-from renku.core.commands.echo import WARNING
-from renku.core.commands.options import option_external_storage_requested
-from renku.core.commands.version import check_version, print_version
+from renku.command.echo import WARNING
+from renku.command.options import option_external_storage_requested
+from renku.command.version import check_version, print_version
 from renku.core.errors import UsageError
-from renku.core.utils.git import default_path
+from renku.core.util.git import default_path
 from renku.ui.cli.clone import clone
 from renku.ui.cli.config import config
 from renku.ui.cli.dataset import dataset
@@ -131,9 +131,9 @@ def _uuid_representer(dumper, data):
 def _is_renku_project(path: Path) -> bool:
     """Check if a path is a renku project."""
     from renku.core.management import RENKU_HOME
-    from renku.core.management.migrations.utils import OLD_METADATA_PATH
     from renku.core.management.repository import RepositoryApiMixin
-    from renku.core.metadata.database import Database
+    from renku.core.migration.utils import OLD_METADATA_PATH
+    from renku.infrastructure.database import Database
 
     renku_path = Path(path) / RENKU_HOME
     old_metadata = renku_path / OLD_METADATA_PATH

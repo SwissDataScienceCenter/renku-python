@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets unlink controller."""
-from renku.core.commands.dataset import file_unlink_command
+from renku.command.dataset import file_unlink_command
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl

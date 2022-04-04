@@ -43,9 +43,9 @@ from operator import attrgetter
 from pathlib import Path
 from typing import Optional
 
-from renku.core.management.command_builder.database_dispatcher import DatabaseDispatcher
-from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-from renku.core.models import dataset as core_dataset
+from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
+from renku.domain_model import dataset as core_dataset
+from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.ui.api.models.project import ensure_project_context
 
 

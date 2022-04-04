@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.utils.os import normalize_to_ascii
+from renku.core.util.os import normalize_to_ascii
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def real_sync():
     """Enable remote sync."""
     import importlib
 
-    from renku.core.utils import git
+    from renku.core.util import git
 
     # NOTE: Use this fixture only in serial tests: git.push_changes is mocked; reloading the git module to undo the mock
     importlib.reload(git)
@@ -205,7 +205,7 @@ def svc_client_with_templates(svc_client, mock_redis, identity_headers, template
 @pytest.fixture
 def svc_client_templates_creation(svc_client_with_templates):
     """Setup and teardown steps for templates tests."""
-    from renku.core.utils import requests
+    from renku.core.util import requests
 
     svc_client, authentication_headers, template = svc_client_with_templates
     parameters = []

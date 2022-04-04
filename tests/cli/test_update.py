@@ -24,10 +24,10 @@ from pathlib import Path
 import pytest
 
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-from renku.core.metadata.repository import Repository
-from renku.core.models.workflow.plan import Plan
-from renku.core.plugins.provider import available_workflow_providers
+from renku.core.plugin.provider import available_workflow_providers
+from renku.domain_model.workflow.plan import Plan
+from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 

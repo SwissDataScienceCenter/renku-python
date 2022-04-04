@@ -19,9 +19,9 @@
 
 import pytest
 
+from renku.command.login import read_renku_token
 from renku.core import errors
-from renku.core.commands.login import read_renku_token
-from renku.core.utils.contexts import chdir
+from renku.core.util.contexts import chdir
 from renku.ui.cli import cli
 from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT, USER_CODE
 from tests.utils import format_result_exception

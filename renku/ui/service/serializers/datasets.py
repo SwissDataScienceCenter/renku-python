@@ -18,10 +18,10 @@
 """Renku service datasets serializers."""
 from marshmallow import Schema, ValidationError, fields, post_load
 
-from renku.core.models.dataset import DatasetCreatorsJson as DatasetCreators
-from renku.core.models.dataset import DatasetDetailsJson as DatasetDetails
-from renku.core.models.dataset import ImageObjectJson as ImageObject
-from renku.core.models.dataset import ImageObjectRequestJson as ImageObjectRequest
+from renku.domain_model.dataset import DatasetCreatorsJson as DatasetCreators
+from renku.domain_model.dataset import DatasetDetailsJson as DatasetDetails
+from renku.domain_model.dataset import ImageObjectJson as ImageObject
+from renku.domain_model.dataset import ImageObjectRequestJson as ImageObjectRequest
 from renku.ui.service.serializers.common import (
     AsyncSchema,
     JobDetailsResponse,

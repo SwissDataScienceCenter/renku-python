@@ -19,8 +19,8 @@
 
 import json
 
-from renku.core.metadata.gateway.project_gateway import ProjectGateway
-from renku.core.models.provenance.agent import Person
+from renku.domain_model.provenance.agent import Person
+from renku.infrastructure.gateway.project_gateway import ProjectGateway
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 

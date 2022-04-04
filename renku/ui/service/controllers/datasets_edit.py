@@ -16,9 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets edit controller."""
-from renku.core.commands.dataset import edit_dataset_command
-from renku.core.management.dataset.request_model import ImageRequestModel
-from renku.core.utils.metadata import construct_creators
+from renku.command.dataset import edit_dataset_command
+from renku.core.dataset.request_model import ImageRequestModel
+from renku.core.util.metadata import construct_creators
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl

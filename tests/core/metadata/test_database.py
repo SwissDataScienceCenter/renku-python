@@ -22,10 +22,10 @@ from persistent import GHOST, UPTODATE
 from persistent.list import PersistentList
 from persistent.mapping import PersistentMapping
 
-from renku.core.metadata.database import PERSISTED, Database
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Activity, Usage
-from renku.core.models.workflow.plan import Plan
+from renku.domain_model.entity import Entity
+from renku.domain_model.provenance.activity import Activity, Usage
+from renku.domain_model.workflow.plan import Plan
+from renku.infrastructure.database import PERSISTED, Database
 from tests.utils import create_dummy_activity
 
 

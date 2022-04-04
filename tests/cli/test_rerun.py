@@ -24,8 +24,8 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.metadata.repository import Repository
-from renku.core.plugins.provider import available_workflow_providers
+from renku.core.plugin.provider import available_workflow_providers
+from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 

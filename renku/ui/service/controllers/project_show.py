@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project show controller."""
-from renku.core.commands.project import show_project_command
+from renku.command.project import show_project_command
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.serializers.project import ProjectShowRequest, ProjectShowResponseRPC

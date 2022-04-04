@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple, Union
 import pytest
 
 if TYPE_CHECKING:
-    from renku.core.models.provenance.activity import Activity
+    from renku.domain_model.provenance.activity import Activity
 
 Result = NamedTuple("Result", [("exit_code", int), ("activities", Union[None, "Activity", List["Activity"]])])
 
@@ -33,9 +33,9 @@ def renku_cli(client, run, client_database_injection_manager):
 
     It returns the exit code and the resulting activity or list of activities.
     """
-    from renku.core.management.command_builder.command import inject
-    from renku.core.management.interface.activity_gateway import IActivityGateway
-    from renku.core.models.provenance.activity import Activity
+    from renku.command.command_builder.command import inject
+    from renku.core.interface.activity_gateway import IActivityGateway
+    from renku.domain_model.provenance.activity import Activity
 
     def renku_cli_(*args, **kwargs) -> Tuple[int, Union[None, Activity, List[Activity]]]:
         @inject.autoparams()

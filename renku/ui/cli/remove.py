@@ -38,7 +38,7 @@ from renku.ui.cli.utils.callback import ClickCallback
 @click.argument("sources", type=click.Path(exists=True), nargs=-1, required=True)
 def remove(sources):
     """Remove files and check repository for potential problems."""
-    from renku.core.commands.remove import remove_command
+    from renku.command.remove import remove_command
 
     communicator = ClickCallback()
     remove_command().with_communicator(communicator).build().execute(sources=sources, edit_command=click.edit)

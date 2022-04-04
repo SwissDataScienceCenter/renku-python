@@ -110,8 +110,8 @@ def graph():
 )
 def export(format, revision, full, strict, no_indent):
     r"""Export Renku graph metadata for project."""
-    from renku.core.commands.graph import export_graph_command
-    from renku.core.commands.view_model.graph import DotFormat
+    from renku.command.graph import export_graph_command
+    from renku.command.view_model.graph import DotFormat
     from renku.ui.cli.utils.callback import ClickCallback
 
     if full:

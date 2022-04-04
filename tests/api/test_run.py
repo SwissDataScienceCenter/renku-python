@@ -21,7 +21,7 @@ from pathlib import Path
 
 import yaml
 
-from renku.core.management.workflow.plan_factory import (
+from renku.core.workflow.plan_factory import (
     get_indirect_inputs_path,
     get_indirect_outputs_path,
     read_indirect_parameters,

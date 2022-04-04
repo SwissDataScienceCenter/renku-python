@@ -20,7 +20,7 @@ import json
 import os
 from pathlib import Path
 
-from renku.core.commands.dataset import add_to_dataset_command
+from renku.command.dataset import add_to_dataset_command
 from renku.core.errors import RenkuException
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import MESSAGE_PREFIX

@@ -58,7 +58,7 @@ You can select a format using the ``--format <format>`` argument.
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.core.commands.view_model.log import (
+from renku.command.view_model.log import (
     LOG_COLUMNS,
     LOG_FORMATS,
     ActivityLogViewModel,
@@ -210,7 +210,7 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
 @click.option("-d", "--datasets", is_flag=True, default=False, help="Show only dataset modifications.")
 def log(columns, format, workflows, datasets):
     """Show a history of renku workflow and dataset commands."""
-    from renku.core.commands.log import log_command
+    from renku.command.log import log_command
 
     result = log_command().with_database().build().execute(workflows_only=workflows, datasets_only=datasets).output
     if format == "detailed":

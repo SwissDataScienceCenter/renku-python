@@ -19,7 +19,7 @@
 
 import os
 
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 

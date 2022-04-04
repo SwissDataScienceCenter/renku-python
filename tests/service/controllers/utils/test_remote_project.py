@@ -21,7 +21,7 @@ import pytest
 from marshmallow import ValidationError
 
 import renku
-from renku.core.commands.migrate import migrations_check
+from renku.command.migrate import migrations_check
 from renku.ui.service.controllers.utils.remote_project import RemoteProject
 from tests.utils import retry_failed
 

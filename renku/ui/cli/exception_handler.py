@@ -64,7 +64,7 @@ import filelock
 import portalocker
 
 import renku.ui.cli.utils.color as color
-from renku.core.commands.echo import ERROR
+from renku.command.echo import ERROR
 from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
 from renku.ui.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 
@@ -150,8 +150,8 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
         with configure_scope() as scope:
             with capture_internal_exceptions():
-                from renku.core.commands.git import get_git_home
-                from renku.core.metadata.repository import Repository
+                from renku.command.git import get_git_home
+                from renku.infrastructure.repository import Repository
 
                 user = Repository(get_git_home()).get_user()
 

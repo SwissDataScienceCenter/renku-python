@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache list cached projects controller."""
-from renku.core.commands.config import update_multiple_config
+from renku.command.config import update_multiple_config
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl

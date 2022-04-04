@@ -29,9 +29,9 @@ import click
 import psutil
 
 import renku.ui.cli.utils.color as color
-from renku.core.commands.echo import ERROR
-from renku.core.models.tabulate import tabulate
-from renku.core.utils.contexts import chdir
+from renku.command.echo import ERROR
+from renku.core.util.contexts import chdir
+from renku.domain_model.tabulate import tabulate
 
 RENKU_DAEMON_LOG_FILE = "renku.log"
 RENKU_DAEMON_ERR_FILE = "renku.err"

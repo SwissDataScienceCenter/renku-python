@@ -18,7 +18,7 @@
 """Renku doctor tests."""
 from pathlib import Path
 
-from renku.core.models.dataset import Url
+from renku.domain_model.dataset import Url
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, with_dataset
 

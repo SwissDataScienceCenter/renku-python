@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
-from renku.core.management.workflow import plan_factory
+from renku.core.workflow import plan_factory
 
 
 @pytest.mark.serial

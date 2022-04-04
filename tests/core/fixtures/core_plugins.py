@@ -21,14 +21,14 @@ from typing import Optional
 
 import pytest
 
-from renku.core.models.workflow.converters import IWorkflowConverter
-from renku.core.models.workflow.plan import Plan
+from renku.domain_model.workflow.converters import IWorkflowConverter
+from renku.domain_model.workflow.plan import Plan
 
 
 @pytest.fixture
 def dummy_run_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
-    from renku.core.plugins import hookimpl
+    from renku.core.plugin import hookimpl
 
     class _CmdlineToolAnnotations(object):
         """CmdlineTool Hook implementation namespace."""
@@ -36,7 +36,7 @@ def dummy_run_plugin_hook():
         @hookimpl
         def cmdline_tool_annotations(self, tool):
             """``cmdline_tool_annotations`` hook implementation."""
-            from renku.core.models.provenance.annotation import Annotation
+            from renku.domain_model.provenance.annotation import Annotation
 
             return [Annotation(id="_:annotation", source="Dummy Cmdline Hook", body="dummy cmdline hook body")]
 
@@ -46,7 +46,7 @@ def dummy_run_plugin_hook():
 @pytest.fixture
 def dummy_pre_run_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
-    from renku.core.plugins import hookimpl
+    from renku.core.plugin import hookimpl
 
     class _PreRun(object):
         """CmdlineTool Hook implementation namespace."""
@@ -64,7 +64,7 @@ def dummy_pre_run_plugin_hook():
 @pytest.fixture
 def dummy_processrun_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
-    from renku.core.plugins import hookimpl
+    from renku.core.plugin import hookimpl
 
     class _ActivityAnnotations(object):
         """CmdlineTool Hook implementation namespace."""
@@ -72,7 +72,7 @@ def dummy_processrun_plugin_hook():
         @hookimpl
         def process_run_annotations(self, plan):
             """``process_run_annotations`` hook implementation."""
-            from renku.core.models.provenance.annotation import Annotation
+            from renku.domain_model.provenance.annotation import Annotation
 
             return [Annotation(id="_:annotation", source="Dummy Activity Hook", body="dummy Activity hook body")]
 
@@ -82,7 +82,7 @@ def dummy_processrun_plugin_hook():
 @pytest.fixture
 def dummy_workflow_exporter_hook():
     """A dummy hook to be used with the renku run plugin."""
-    from renku.core.plugins import hookimpl
+    from renku.core.plugin import hookimpl
 
     class DummyWorkflowExporter(IWorkflowConverter):
         """CmdlineTool Hook implementation namespace."""

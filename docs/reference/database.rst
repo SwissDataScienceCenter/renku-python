@@ -23,5 +23,5 @@ Renku uses an internal database store in the ``.renku/metadata`` that uses a
 custom implementation of the ZODB object database, with a separate file per
 main entity.
 
-.. automodule:: renku.core.metadata.database
+.. automodule:: renku.infrastructure.database
    :members:

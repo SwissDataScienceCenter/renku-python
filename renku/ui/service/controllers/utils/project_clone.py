@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for renku service controllers."""
-from renku.core.commands.clone import project_clone_command
+from renku.command.clone import project_clone_command
 from renku.core.errors import GitCommandError
 from renku.ui.service.logger import service_log
 from renku.ui.service.views.decorators import requires_cache

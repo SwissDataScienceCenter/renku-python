@@ -31,9 +31,9 @@ import pytest
 from renku import __version__
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
-from renku.core.metadata.repository import Repository
-from renku.core.models.enums import ConfigFilter
-from renku.core.utils.contexts import chdir
+from renku.core.util.contexts import chdir
+from renku.domain_model.enums import ConfigFilter
+from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, retry_failed
 

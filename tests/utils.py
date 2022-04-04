@@ -31,16 +31,16 @@ from typing import Iterator, List, Optional, Union, cast
 import pytest
 from flaky import flaky
 
-from renku.core.management.command_builder.command import inject, remove_injector
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.metadata.repository import Repository
-from renku.core.models.dataset import Dataset
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
-from renku.core.models.provenance.agent import Person, SoftwareAgent
-from renku.core.models.workflow.plan import Plan
+from renku.command.command_builder.command import inject, remove_injector
+from renku.core.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.domain_model.dataset import Dataset
+from renku.domain_model.entity import Entity
+from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
+from renku.domain_model.provenance.agent import Person, SoftwareAgent
+from renku.domain_model.workflow.plan import Plan
+from renku.infrastructure.repository import Repository
 
 
 def raises(error):

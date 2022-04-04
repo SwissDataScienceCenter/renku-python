@@ -21,14 +21,14 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 from tests.utils import clone_compressed_repository
 
 
 @pytest.fixture(params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git"])
 def old_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     name = request.param
     base_path = tmp_path / name
@@ -62,7 +62,7 @@ def old_project(request, tmp_path):
 )
 def old_workflow_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     name = request.param["name"]
     base_path = tmp_path / name
@@ -82,7 +82,7 @@ def old_workflow_project(request, tmp_path):
 def old_dataset_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
     from renku.core.management.client import LocalClient
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     name = request.param
     base_path = tmp_path / name
@@ -97,7 +97,7 @@ def old_repository_with_submodules(request, tmp_path):
     """Prepares a testing repo that has datasets using git submodules."""
     import tarfile
 
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     name = "old-datasets-v0.6.0-with-submodules"
     base_path = Path(__file__).parent / ".." / ".." / "data" / f"{name}.tar.gz"

@@ -121,7 +121,7 @@ import click
 from renku.ui.cli.init import parse_parameters
 
 if TYPE_CHECKING:
-    from renku.core.commands.view_model.template import TemplateChangeViewModel, TemplateViewModel
+    from renku.command.view_model.template import TemplateChangeViewModel, TemplateViewModel
 
 
 @click.group()
@@ -141,7 +141,7 @@ def template(ctx):
 @click.option("-v", "--verbose", is_flag=True, help="Show detailed description for templates and parameters")
 def list_templates(source, reference, verbose):
     """Show available templates in Renku or in a template source."""
-    from renku.core.commands.template import list_templates_command
+    from renku.command.template import list_templates_command
     from renku.ui.cli.utils.callback import ClickCallback
 
     result = (
@@ -159,7 +159,7 @@ def list_templates(source, reference, verbose):
 @click.argument("template-id", required=False, default=None)
 def show_template(source, reference, template_id):
     """Show detailed template information for a single template."""
-    from renku.core.commands.template import show_template_command
+    from renku.command.template import show_template_command
     from renku.ui.cli.utils.callback import ClickCallback
 
     result = (
@@ -194,7 +194,7 @@ def show_template(source, reference, template_id):
 @click.argument("template-id", required=False, default=None)
 def set_template(source, reference, template_id, parameters, force, interactive, dry_run):
     """Set a template for a project."""
-    from renku.core.commands.template import set_template_command
+    from renku.command.template import set_template_command
     from renku.ui.cli.utils.callback import ClickCallback
 
     result = (
@@ -222,7 +222,7 @@ def set_template(source, reference, template_id, parameters, force, interactive,
 @click.option("-n", "--dry-run", is_flag=True, help="Show what would have been updated")
 def update_template(force, interactive, dry_run):
     """Update a project's template."""
-    from renku.core.commands.template import update_template_command
+    from renku.command.template import update_template_command
     from renku.ui.cli.utils.callback import ClickCallback
 
     result = (
@@ -240,7 +240,7 @@ def update_template(force, interactive, dry_run):
 
 def _print_template(template: "TemplateViewModel"):
     """Print detailed template info."""
-    from renku.core.utils.util import to_string
+    from renku.core.util.util import to_string
 
     print_name = functools.partial(click.style, bold=True, fg="magenta")
     print_value = functools.partial(click.style, bold=True)
@@ -270,7 +270,7 @@ def _print_template(template: "TemplateViewModel"):
 
 def _print_template_list(templates: List["TemplateViewModel"], verbose: bool):
     """Print a list of templates."""
-    from renku.core.models.tabulate import tabulate
+    from renku.domain_model.tabulate import tabulate
 
     for index, template in enumerate(templates, start=1):
         setattr(template, "index", index)
@@ -286,7 +286,7 @@ def _print_template_list(templates: List["TemplateViewModel"], verbose: bool):
 
 def _print_template_change(changes: "TemplateChangeViewModel"):
     """Print detailed template info."""
-    from renku.core.utils.util import to_string
+    from renku.core.util.util import to_string
 
     print_name = functools.partial(click.style, bold=True, fg="magenta")
     print_value = functools.partial(click.style, bold=True)

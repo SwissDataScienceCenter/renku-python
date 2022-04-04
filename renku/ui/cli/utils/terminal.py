@@ -25,7 +25,7 @@ import click
 from renku.ui.cli.utils import color
 
 if TYPE_CHECKING:
-    from renku.core.commands.view_model.plan import PlanViewModel
+    from renku.command.view_model.plan import PlanViewModel
 
 style_header = functools.partial(click.style, bold=True, fg=color.YELLOW)
 style_key = functools.partial(click.style, bold=True, fg=color.MAGENTA)

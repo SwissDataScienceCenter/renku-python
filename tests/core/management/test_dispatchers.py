@@ -20,10 +20,10 @@ from pathlib import Path
 
 import pytest
 
+from renku.command.command_builder.client_dispatcher import ClientDispatcher
+from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
 from renku.core import errors
 from renku.core.management.client import LocalClient
-from renku.core.management.command_builder.client_dispatcher import ClientDispatcher
-from renku.core.management.command_builder.database_dispatcher import DatabaseDispatcher
 
 
 def test_client_dispatcher(tmpdir):

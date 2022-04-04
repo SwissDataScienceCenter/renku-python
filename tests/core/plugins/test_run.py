@@ -19,7 +19,7 @@
 
 import pytest
 
-from renku.core.plugins import pluginmanager as pluginmanager
+from renku.core.plugin import pluginmanager as pluginmanager
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 

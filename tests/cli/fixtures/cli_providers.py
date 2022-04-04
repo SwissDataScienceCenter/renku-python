@@ -52,7 +52,7 @@ def olos_sandbox(client):
 @pytest.fixture(scope="module")
 def dataverse_demo_cleanup(request):
     """Delete all Dataverse datasets at the end of the test session."""
-    from renku.core.utils import requests
+    from renku.core.util import requests
 
     server_url = "https://demo.dataverse.org"
     access_token = os.getenv("DATAVERSE_ACCESS_TOKEN", "")
@@ -100,8 +100,8 @@ def doi_responses():
     """Responses for doi.org requests."""
     import responses
 
-    from renku.core.management.dataset.providers.dataverse import DATAVERSE_API_PATH, DATAVERSE_VERSION_API
-    from renku.core.management.dataset.providers.doi import DOI_BASE_URL
+    from renku.core.dataset.providers.dataverse import DATAVERSE_API_PATH, DATAVERSE_VERSION_API
+    from renku.core.dataset.providers.doi import DOI_BASE_URL
 
     with responses.RequestsMock(assert_all_requests_are_fired=False) as response:
 

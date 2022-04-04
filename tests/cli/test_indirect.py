@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.utils.contexts import chdir
+from renku.core.util.contexts import chdir
 
 
 def test_indirect_inputs_outputs(renku_cli, client):

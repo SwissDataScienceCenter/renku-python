@@ -78,7 +78,7 @@ def rollback(ctx):
     Only renku commands executed after the 1.0.0 release are supported,
     previous commands won't show up.
     """
-    from renku.core.commands.rollback import rollback_command
+    from renku.command.rollback import rollback_command
 
     communicator = ClickCallback()
     rollback_command().with_communicator(communicator).build().execute()

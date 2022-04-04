@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 from werkzeug.utils import secure_filename
 
-from renku.core.utils.os import normalize_to_ascii
+from renku.core.util.os import normalize_to_ascii
 from renku.ui.service.errors import (
     IntermittentDatasetExistsError,
     IntermittentFileNotExistsError,

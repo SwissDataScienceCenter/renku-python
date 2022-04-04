@@ -52,7 +52,7 @@ def githooks():
 @click.option("--force", is_flag=True, help="Override existing hooks.")
 def install(force):
     """Install Git hooks."""
-    from renku.core.commands.githooks import install_githooks_command
+    from renku.command.githooks import install_githooks_command
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
@@ -63,7 +63,7 @@ def install(force):
 @githooks.command()
 def uninstall():
     """Uninstall Git hooks."""
-    from renku.core.commands.githooks import uninstall_githooks_command
+    from renku.command.githooks import uninstall_githooks_command
 
     uninstall_githooks_command().build().execute()
     click.secho("OK", fg=color.GREEN)

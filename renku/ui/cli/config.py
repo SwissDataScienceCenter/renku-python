@@ -162,8 +162,8 @@ def show(key, local_only, global_only, default_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
-    from renku.core.commands.config import read_config
-    from renku.core.models.enums import ConfigFilter
+    from renku.command.config import read_config
+    from renku.domain_model.enums import ConfigFilter
 
     config_filter = ConfigFilter.ALL
 
@@ -187,7 +187,7 @@ def set_(key, value, global_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
-    from renku.core.commands.config import update_config
+    from renku.command.config import update_config
 
     update_config().build().execute(key, value=value, global_only=global_only)
     click.secho("OK", fg=color.GREEN)
@@ -201,7 +201,7 @@ def remove(key, global_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
-    from renku.core.commands.config import update_config
+    from renku.command.config import update_config
 
     update_config().build().execute(key, remove=True, global_only=global_only)
     click.secho("OK", fg=color.GREEN)

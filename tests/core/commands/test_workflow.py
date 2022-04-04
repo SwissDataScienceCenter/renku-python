@@ -23,9 +23,9 @@ from contextlib import nullcontext
 import pytest
 
 from renku.core import errors
-from renku.core.management.workflow.concrete_execution_graph import ExecutionGraph
-from renku.core.management.workflow.value_resolution import CompositePlanValueResolver
-from renku.core.models.workflow.composite_plan import CompositePlan
+from renku.core.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.workflow.value_resolution import CompositePlanValueResolver
+from renku.domain_model.workflow.composite_plan import CompositePlan
 
 
 def _get_nested_actual_values(run):

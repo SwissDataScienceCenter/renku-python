@@ -59,7 +59,7 @@ from renku.ui.cli.utils.callback import ClickCallback
 @click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 def status(ctx, paths):
     """Show a status of the repository."""
-    from renku.core.commands.status import get_status_command
+    from renku.command.status import get_status_command
 
     communicator = ClickCallback()
     result = get_status_command().with_communicator(communicator).build().execute(paths=paths)

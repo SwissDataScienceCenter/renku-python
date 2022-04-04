@@ -35,7 +35,7 @@ import click
 def doctor(ctx, fix):
     """Check your system and repository for potential problems."""
     import renku.ui.cli.utils.color as color
-    from renku.core.commands.doctor import DOCTOR_INFO, doctor_check_command
+    from renku.command.doctor import DOCTOR_INFO, doctor_check_command
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()

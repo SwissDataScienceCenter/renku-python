@@ -24,7 +24,7 @@ def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from _pytest.monkeypatch import MonkeyPatch
 
-    from renku.core.utils import git
+    from renku.core.util import git
     from renku.ui.service.cache.base import BaseCache
     from renku.ui.service.cache.models.file import File
     from renku.ui.service.cache.models.job import Job

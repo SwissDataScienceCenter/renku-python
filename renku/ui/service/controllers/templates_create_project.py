@@ -21,10 +21,10 @@ from pathlib import Path
 
 from marshmallow import EXCLUDE
 
-from renku.core.commands.init import create_from_template_local_command
-from renku.core.metadata.repository import Repository
-from renku.core.models.template import TEMPLATE_MANIFEST, TemplatesManifest
-from renku.core.utils.contexts import click_context
+from renku.command.init import create_from_template_local_command
+from renku.core.util.contexts import click_context
+from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
+from renku.infrastructure.repository import Repository
 from renku.ui.service.config import MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin

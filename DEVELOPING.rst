@@ -16,7 +16,7 @@ The following diagram shows a rough outline of the architecture:
 
 
 The bold, green arrows show the direction of dependencies (always inwards, e.g.
-``renku.ui.cli`` can depend on ``renku.commands`` but not the other way around). The
+``renku.ui.cli`` can depend on ``renku.command`` but not the other way around). The
 blue/red arrows denote the flow of control/information into and out of the
 system.
 
@@ -156,7 +156,7 @@ Using this is done simply like:
 
 .. code-block:: python
 
-   from renku.core.utils import communication
+   from renku.core.util import communication
 
    communication.echo("Feedback to the user.")
    result = communication.confirm("Are you sure?")

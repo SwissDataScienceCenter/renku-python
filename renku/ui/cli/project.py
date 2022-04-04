@@ -90,7 +90,7 @@ def project():
 )
 def edit(description, keyword, creator, metadata):
     """Edit project metadata."""
-    from renku.core.commands.project import edit_project_command
+    from renku.command.project import edit_project_command
 
     custom_metadata = None
 
@@ -135,7 +135,7 @@ def _print_project(project):
 @project.command()
 def show():
     """Show details for the project."""
-    from renku.core.commands.project import show_project_command
+    from renku.command.project import show_project_command
 
     project = show_project_command().build().execute().output
 

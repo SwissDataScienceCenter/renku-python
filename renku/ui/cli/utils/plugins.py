@@ -20,20 +20,20 @@
 
 def supported_formats():
     """Deferred import as plugins are slow."""
-    from renku.core.plugins.workflow import supported_formats
+    from renku.core.plugin.workflow import supported_formats
 
     return supported_formats()
 
 
 def available_workflow_providers():
     """Deferred import as plugins are slow."""
-    from renku.core.plugins.provider import available_workflow_providers
+    from renku.core.plugin.provider import available_workflow_providers
 
     return available_workflow_providers()
 
 
 def supported_session_providers():
     """Deferred import as plugins are slow."""
-    from renku.core.plugins.session import supported_session_providers
+    from renku.core.plugin.session import supported_session_providers
 
     return list(map(lambda p: p[1], supported_session_providers()))

@@ -20,9 +20,9 @@ import curses
 import curses.panel
 from typing import Dict, List, Tuple
 
+from renku.command.view_model.text_canvas import Point
 from renku.core import errors
-from renku.core.commands.view_model.text_canvas import Point
-from renku.core.models.provenance.activity import Activity
+from renku.domain_model.provenance.activity import Activity
 
 
 class CursesActivityGraphViewer:
