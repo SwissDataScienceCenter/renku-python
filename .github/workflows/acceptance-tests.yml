@@ -31,7 +31,7 @@ jobs:
       persist: ${{ steps.deploy-comment.outputs.persist}}
     steps:
       - id: deploy-comment
-        uses: SwissDataScienceCenter/renku-actions/check-pr-description@v0.5.0
+        uses: SwissDataScienceCenter/renku-actions/check-pr-description@v0.5.1
         with:
           string: /deploy
           pr_ref: ${{ github.event.number }}
@@ -53,7 +53,7 @@ jobs:
         docker build -t renku/renku-core:${{ github.sha }} --build-arg CLEAN_INSTALL=1 --build-arg BUILD_CORE_SERVICE=1 .
         docker push renku/renku-core:${{ github.sha }}
     - name: deploy-pr
-      uses: SwissDataScienceCenter/renku-actions/deploy-renku@v0.5.0
+      uses: SwissDataScienceCenter/renku-actions/deploy-renku@v0.5.1
       env:
         DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
@@ -75,7 +75,7 @@ jobs:
         renku_gateway: "${{ needs.check-deploy.outputs.renku-gateway }}"
         renku_graph: "${{ needs.check-deploy.outputs.renku-graph }}"
         renku_notebooks: "${{ needs.check-deploy.outputs.renku-notebooks }}"
-        renku_ui: "@master"
+        renku_ui: "${{ needs.check-deploy.outputs.renku-ui }}"
         extra_values: core.versions.v8.image.tag=${{ github.sha }}
     - name: Check existing renkubot comment
       uses: peter-evans/find-comment@v1
@@ -97,7 +97,7 @@ jobs:
     if: ${{ github.event.action != 'closed' && needs.check-deploy.outputs.pr-contains-string == 'true' && needs.check-deploy.outputs.test-enabled == 'true' }}
     needs: [check-deploy, deploy-pr]
     steps:
-    - uses: SwissDataScienceCenter/renku-actions/test-renku@v0.5.0
+    - uses: SwissDataScienceCenter/renku-actions/test-renku@v0.5.1
       with:
         renkubot-kubeconfig: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
         renku-release: renku-ci-rp-${{ github.event.number }}
@@ -111,7 +111,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: renku teardown
-      uses: SwissDataScienceCenter/renku-actions/cleanup-renku-ci-deployments@v0.5.0
+      uses: SwissDataScienceCenter/renku-actions/cleanup-renku-ci-deployments@v0.5.1
       env:
         HELM_RELEASE_REGEX: "^renku-ci-rp-${{ github.event.number }}$"
         GITLAB_TOKEN: ${{ secrets.DEV_GITLAB_TOKEN }}
