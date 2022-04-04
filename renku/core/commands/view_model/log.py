@@ -24,10 +24,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import inject
 
-from renku.core.commands.format.tabulate import tabulate
-from renku.core.commands.view_model.plan import PlanViewModel
-
 if TYPE_CHECKING:
+    from renku.core.commands.view_model.plan import PlanViewModel
     from renku.core.models.dataset import Dataset
     from renku.core.models.provenance.activity import Activity
 
@@ -42,6 +40,8 @@ def tabular(data, columns) -> str:
     Returns:
         str: data in tabular form.
     """
+    from renku.core.commands.format.tabulate import tabulate
+
     return tabulate(data, columns, columns_mapping=LOG_COLUMNS, reverse=True)
 
 
@@ -131,6 +131,7 @@ class LogViewModel:
         Returns:
             Log entry for activity.
         """
+        from renku.core.commands.view_model.plan import PlanViewModel
         from renku.core.models.provenance.agent import Person, SoftwareAgent
 
         plan = activity.plan_with_values
@@ -337,7 +338,7 @@ class ActivityLogViewModel(LogViewModel):
         description: str,
         details: ActivityDetailsViewModel,
         agents: List[str],
-        plan: PlanViewModel,
+        plan: "PlanViewModel",
     ):
         super().__init__(id, date, description, agents)
         self.details = details

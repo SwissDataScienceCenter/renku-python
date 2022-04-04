@@ -28,9 +28,7 @@ from urllib.parse import urlparse
 import attr
 from tqdm import tqdm
 
-from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
 from renku.core.management.dataset.providers.api import ExporterApi, ProviderApi
-from renku.core.management.dataset.providers.doi import DOIProvider
 from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils.file_size import bytes_to_unit
 
@@ -461,6 +459,8 @@ class ZenodoExporter(ExporterApi):
 
     def dataset_to_request(self):
         """Prepare dataset metadata for request."""
+        from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
+
         jsonld = dump_dataset_as_jsonld(self.dataset)
         jsonld["upload_type"] = "dataset"
         return jsonld
@@ -557,6 +557,8 @@ class ZenodoProvider(ProviderApi):
 
     def find_record_by_doi(self, doi):
         """Resolve the DOI and make a record for the retrieved record id."""
+        from renku.core.management.dataset.providers.doi import DOIProvider
+
         doi = DOIProvider().find_record(doi)
         return self.get_record(ZenodoProvider.record_id(doi.url))
 

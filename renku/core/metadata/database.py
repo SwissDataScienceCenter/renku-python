@@ -41,6 +41,7 @@ from zope.interface.interface import InterfaceClass
 
 from renku.core import errors
 from renku.core.metadata.immutable import Immutable
+from renku.core.metadata.persistent import Persistent
 from renku.core.models.project import Project
 
 OID_TYPE = str
@@ -151,52 +152,6 @@ class RenkuOOBTree(BTree):
 
     max_leaf_size = 1000
     max_internal_size = 2000
-
-
-class Persistent(persistent.Persistent):
-    """Base Persistent class for renku classes.
-
-    Subclasses are assumed to be immutable once persisted to the database. If a class shouldn't be immutable then
-    subclass it directly from persistent.Persistent.
-    """
-
-    _v_immutable = False
-
-    def reassign_oid(self):
-        """Reassign ``oid`` (after assigning a new identifier for example)."""
-        if self._p_jar is not None:
-            self._p_jar.remove_from_cache(self)
-
-        self._p_oid = None
-        self._p_oid = Database.generate_oid(self)
-
-    @property
-    def immutable(self):
-        """Return if object is immutable."""
-        return self._v_immutable
-
-    def freeze(self):
-        """Set immutable property."""
-        self._v_immutable = True
-
-    def unfreeze(self):
-        """Allows modifying an immutable object.
-
-        Don't make an object mutable unless the intention is to drop the changes or modify the object in-place. Modified
-        objects will be updated in-place which results in a binary diff when persisted. Normally, we want to create a
-        mutable copy and persist it as a new object.
-        """
-        self._v_immutable = False
-
-    def __setattr__(self, key, value):
-        if self._v_immutable and key != "__weakref__" and not key.startswith("_p_") and not key.startswith("_v_"):
-            raise RuntimeError(f"Cannot modify immutable object {self}.{key}")
-
-        super().__setattr__(key, value)
-
-    @property
-    def __name__(self):
-        return self.__class__.__name__
 
 
 class Database:
@@ -338,7 +293,7 @@ class Database:
         for singleton objects that have no Index defined for them (e.g. Project).
 
         Args:
-            object(Persistent): The object to add.
+            object(persistent.Persistent): The object to add.
             oid(OID_TYPE, optional): The oid for the object (Default value = None).
         """
         assert not oid or isinstance(oid, OID_TYPE), f"Invalid oid type: '{type(oid)}'"

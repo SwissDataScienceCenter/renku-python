@@ -22,22 +22,24 @@ import os
 import posixpath
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, cast
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
 import marshmallow
 
 from renku.core import errors
-from renku.core.metadata.database import Persistent
 from renku.core.metadata.immutable import Immutable, Slots
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.agent import Person, SoftwareAgent
-from renku.core.models.provenance.annotation import Annotation
+from renku.core.metadata.persistent import Persistent
 from renku.core.utils.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.utils.git import get_entity_from_revision
 from renku.core.utils.metadata import is_external_file
 from renku.core.utils.urls import get_path, get_slug
+
+if TYPE_CHECKING:
+    from renku.core.models.entity import Entity
+    from renku.core.models.provenance.agent import Person
+    from renku.core.models.provenance.annotation import Annotation
 
 
 def is_dataset_name_valid(name: str) -> bool:
@@ -235,11 +237,13 @@ class DatasetFile(Slots):
         based_on: Optional[RemoteEntity] = None,
         date_added: Optional[datetime] = None,
         date_removed: Optional[datetime] = None,
-        entity: Optional[Entity] = None,
+        entity: Optional["Entity"] = None,
         id: Optional[str] = None,
         is_external: Optional[bool] = False,
         source: Optional[Union[Path, str]] = None,
     ):
+        from renku.core.models.entity import Entity
+
         assert entity is None or isinstance(entity, Entity), f"Invalid entity type: '{entity}'"
 
         super().__init__()
@@ -247,7 +251,7 @@ class DatasetFile(Slots):
         self.based_on: Optional[RemoteEntity] = based_on
         self.date_added: datetime = fix_datetime(date_added) or local_now()
         self.date_removed: Optional[datetime] = fix_datetime(date_removed)
-        self.entity: Optional[Entity] = entity
+        self.entity: Optional["Entity"] = entity
         self.id: str = id or DatasetFile.generate_id()
         self.is_external: bool = is_external or False
         self.source: Optional[str] = str(source)
@@ -315,8 +319,8 @@ class Dataset(Persistent):
     def __init__(
         self,
         *,
-        annotations: Optional[List[Annotation]] = None,
-        creators: Optional[List[Person]] = None,
+        annotations: Optional[List["Annotation"]] = None,
+        creators: Optional[List["Person"]] = None,
         dataset_files: Optional[List[DatasetFile]] = None,
         date_created: Optional[datetime] = None,
         date_published: Optional[datetime] = None,
@@ -356,7 +360,7 @@ class Dataset(Persistent):
         self.id = id or Dataset.generate_id(identifier=self.identifier)
         self.name: str = name
 
-        self.creators: List[Person] = creators or []
+        self.creators: List["Person"] = creators or []
         # `dataset_files` includes existing files and those that have been removed in the previous version
         self.dataset_files: List[DatasetFile] = dataset_files or []
         self.date_created: Optional[datetime] = date_created
@@ -374,7 +378,7 @@ class Dataset(Persistent):
         self.same_as: Optional[Url] = same_as
         self.title: Optional[str] = title
         self.version: Optional[str] = version
-        self.annotations: List[Annotation] = annotations or []
+        self.annotations: List["Annotation"] = annotations or []
 
     @staticmethod
     def generate_id(identifier: str) -> str:
@@ -388,6 +392,8 @@ class Dataset(Persistent):
 
     @staticmethod
     def _validate_creator(creators):
+        from renku.core.models.provenance.agent import Person, SoftwareAgent
+
         creators = creators or []
         for creator in creators:
             if not isinstance(creator, (Person, SoftwareAgent)):
@@ -450,7 +456,7 @@ class Dataset(Persistent):
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
 
     def derive_from(
-        self, dataset: "Dataset", creator: Optional[Person], identifier: str = None, date_created: datetime = None
+        self, dataset: "Dataset", creator: Optional["Person"], identifier: str = None, date_created: datetime = None
     ):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"

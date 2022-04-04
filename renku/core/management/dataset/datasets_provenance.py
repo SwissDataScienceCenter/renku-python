@@ -18,15 +18,17 @@
 """Datasets Provenance."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 from uuid import UUID
 
 from renku.core import errors
 from renku.core.management.command_builder.command import inject
 from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.models.dataset import Dataset, DatasetTag, Url
-from renku.core.models.provenance.agent import Person
 from renku.core.utils import communication
+
+if TYPE_CHECKING:
+    from renku.core.models.dataset import Dataset, DatasetTag
+    from renku.core.models.provenance.agent import Person
 
 
 class DatasetsProvenance:
@@ -35,12 +37,14 @@ class DatasetsProvenance:
     dataset_gateway = inject.attr(IDatasetGateway)
 
     @property
-    def datasets(self) -> List[Dataset]:
+    def datasets(self) -> List["Dataset"]:
         """Return an iterator of datasets."""
         return self.dataset_gateway.get_all_active_datasets()
 
-    def get_by_id(self, id: str, immutable: bool = False) -> Optional[Dataset]:
+    def get_by_id(self, id: str, immutable: bool = False) -> Optional["Dataset"]:
         """Return a dataset by its id."""
+        from renku.core.models.dataset import Dataset
+
         try:
             dataset = self.dataset_gateway.get_by_id(id)
         except errors.ObjectNotFoundError:
@@ -53,7 +57,7 @@ class DatasetsProvenance:
             return dataset.copy()
         return None
 
-    def get_by_name(self, name: str, immutable: bool = False, strict: bool = False) -> Optional[Dataset]:
+    def get_by_name(self, name: str, immutable: bool = False, strict: bool = False) -> Optional["Dataset"]:
         """Return a dataset by its name."""
         dataset = self.dataset_gateway.get_by_name(name)
         if not dataset:
@@ -70,18 +74,20 @@ class DatasetsProvenance:
         """Return the provenance for all datasets."""
         return self.dataset_gateway.get_provenance_tails()
 
-    def get_previous_version(self, dataset: Dataset) -> Optional[Dataset]:
+    def get_previous_version(self, dataset: "Dataset") -> Optional["Dataset"]:
         """Return the previous version of a dataset if any."""
         if dataset.is_derivation():
             return self.get_by_id(dataset.derived_from.url_id)  # type: ignore
 
         return None
 
-    def add_or_update(self, dataset: Dataset, date: Optional[datetime] = None, creator: Optional[Person] = None):
+    def add_or_update(self, dataset: "Dataset", date: Optional[datetime] = None, creator: Optional["Person"] = None):
         """Add/update a dataset according to its new content.
 
         NOTE: This functions always mutates the dataset.
         """
+        from renku.core.models.dataset import Dataset
+
         assert isinstance(dataset, Dataset)
 
         # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
@@ -103,8 +109,10 @@ class DatasetsProvenance:
 
         self.dataset_gateway.add_or_remove(dataset)
 
-    def remove(self, dataset, date: datetime = None, creator: Person = None):
+    def remove(self, dataset, date: datetime = None, creator: "Person" = None):
         """Remove a dataset."""
+        from renku.core.models.dataset import Dataset
+
         assert isinstance(dataset, Dataset)
 
         # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
@@ -125,19 +133,21 @@ class DatasetsProvenance:
 
     def update_during_migration(
         self,
-        dataset: Dataset,
+        dataset: "Dataset",
         commit_sha: str,
         date: Optional[datetime] = None,
-        tags: Optional[List[DatasetTag]] = None,
+        tags: Optional[List["DatasetTag"]] = None,
         remove=False,
         replace=False,
         preserve_identifiers: bool = False,
     ):
         """Add, update, remove, or replace a dataset in migration."""
+        from renku.core.models.dataset import Dataset
+
         assert isinstance(dataset, Dataset)
         assert not (remove and replace), "Cannot remove and replace"
 
-        def update_dataset(existing, new) -> Dataset:
+        def update_dataset(existing, new) -> "Dataset":
             """Update existing dataset with the new dataset metadata."""
             existing.update_metadata_from(new, exclude=["date_created", "derived_from", "same_as"])
             existing.dataset_files = new.dataset_files
@@ -189,19 +199,21 @@ class DatasetsProvenance:
         uuid = f"{commit_sha[:20]}{identifier[-12:]}"
         return UUID(uuid).hex
 
-    def get_all_tags(self, dataset: Dataset) -> List[DatasetTag]:
+    def get_all_tags(self, dataset: "Dataset") -> List["DatasetTag"]:
         """Return the list of all tags for a dataset."""
         return self.dataset_gateway.get_all_tags(dataset)
 
-    def add_tag(self, dataset: Dataset, tag: DatasetTag):
+    def add_tag(self, dataset: "Dataset", tag: "DatasetTag"):
         """Add a tag from a dataset."""
         self.dataset_gateway.add_tag(dataset, tag)
 
-    def remove_tag(self, dataset: Dataset, tag: DatasetTag):
+    def remove_tag(self, dataset: "Dataset", tag: "DatasetTag"):
         """Remove a tag from a dataset."""
         self.dataset_gateway.remove_tag(dataset, tag)
 
-    def _process_dataset_tags(self, dataset: Dataset, tags: Optional[List[DatasetTag]]):
+    def _process_dataset_tags(self, dataset: "Dataset", tags: Optional[List["DatasetTag"]]):
+        from renku.core.models.dataset import DatasetTag, Url
+
         if not tags:
             return
 

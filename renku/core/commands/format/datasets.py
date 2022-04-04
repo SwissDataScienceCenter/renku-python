@@ -19,10 +19,7 @@
 import textwrap
 from typing import Callable, Dict
 
-from renku.core.commands.format.tabulate import tabulate
-from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
 from renku.core.metadata.immutable import DynamicProxy
-from renku.core.models.json import dumps
 
 
 def tabular(datasets, *, columns=None):
@@ -35,6 +32,8 @@ def tabular(datasets, *, columns=None):
     Returns:
         String representation of datasets in tabular form.
     """
+    from renku.core.commands.format.tabulate import tabulate
+
     if not columns:
         columns = "id,date_created,name,creators,tags,version"
 
@@ -59,6 +58,9 @@ def jsonld(datasets, **kwargs):
     Returns:
         String of datasets in JSON-LD format.
     """
+    from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
+    from renku.core.models.json import dumps
+
     data = [dump_dataset_as_jsonld(dataset) for dataset in datasets]
     return dumps(data, indent=2)
 
@@ -73,6 +75,7 @@ def json(datasets, **kwargs):
         String of datasets as JSON data.
     """
     from renku.core.models.dataset import DatasetDetailsJson
+    from renku.core.models.json import dumps
 
     data = [DatasetDetailsJson().dump(dataset) for dataset in datasets]
     return dumps(data, indent=2)

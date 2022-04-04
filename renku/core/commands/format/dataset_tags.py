@@ -20,9 +20,6 @@
 from collections import OrderedDict
 from typing import Callable, Dict
 
-from renku.core.commands.schema.dataset import DatasetTagSchema
-from renku.core.models.tabulate import tabulate
-
 
 def tabular(tags):
     """Format dataset tags with a tabular output.
@@ -33,6 +30,8 @@ def tabular(tags):
     Returns:
         String of tags in tabular representation.
     """
+    from renku.core.models.tabulate import tabulate
+
     return tabulate(
         tags,
         headers=OrderedDict(
@@ -59,6 +58,7 @@ def jsonld(tags):
     Returns:
         String of tags in JSON-LD representation.
     """
+    from renku.core.commands.schema.dataset import DatasetTagSchema
     from renku.core.models.json import dumps
 
     data = [DatasetTagSchema().dump(tag) for tag in tags]
