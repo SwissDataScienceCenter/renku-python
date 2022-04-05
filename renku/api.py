@@ -19,8 +19,8 @@
 
 import warnings
 
-from renku.ui.api import Dataset, Input, Output, Parameter, Project
+import renku.ui.api as api
 
-warnings.warn("The renku.api module has moved to renku.ui.api and is deprecated", DeprecationWarning, stacklevel=2)
+warnings.warn("The renku.api module has moved to renku.ui.api and is deprecated", DeprecationWarning)
 
-__all__ = ("Dataset", "Input", "Output", "Parameter", "Project")
+globals().update({k: getattr(api, k) for k in api.__dict__.keys() if not k.startswith("_")})

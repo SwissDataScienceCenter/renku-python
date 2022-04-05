@@ -19,8 +19,8 @@
 
 import warnings
 
-from renku.core.plugin import *  # noqa: F401,F403
+import renku.core.plugin as plugin
 
-warnings.warn(
-    "The renku.core.plugins module has moved to renku.core.plugin and is deprecated", DeprecationWarning, stacklevel=2
-)
+warnings.warn("The renku.core.plugins module has moved to renku.core.plugin and is deprecated", DeprecationWarning)
+
+globals().update({k: getattr(plugin, k) for k in plugin.__dict__.keys() if not k.startswith("_")})

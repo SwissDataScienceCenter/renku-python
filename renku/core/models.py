@@ -15,17 +15,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""For backwards compatibility, ``renku.cli`` was moved to ``renku.ui.cli``."""
+"""For backwards compatibility, ``renku.core.models`` was moved to ``renku.domain_model``."""
 
-import sys
 import warnings
 
-import renku.ui.cli as cli
+import renku.domain_model as new_model
 
-warnings.warn("The renku.cli module has moved to renku.ui.cli and is deprecated", DeprecationWarning)
+warnings.warn("The renku.core.models module has moved to renku.domain_model and is deprecated", DeprecationWarning)
 
-globals().update({k: getattr(cli, k) for k in cli.__dict__.keys() if not k.startswith("_")})
-
-if __name__ == "__main__":  # pragma: no cover
-    sys.argv[0] = "python -m renku.ui.cli"
-    cli()
+globals().update({k: getattr(new_model, k) for k in new_model.__dict__.keys() if not k.startswith("_")})

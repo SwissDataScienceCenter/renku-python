@@ -19,8 +19,8 @@
 
 import warnings
 
-from renku.command import *  # noqa: F401,F403
+import renku.command as command
 
-warnings.warn(
-    "The renku.core.commands module has moved to renku.command and is deprecated", DeprecationWarning, stacklevel=2
-)
+warnings.warn("The renku.core.commands module has moved to renku.command and is deprecated", DeprecationWarning)
+
+globals().update({k: getattr(command, k) for k in command.__dict__.keys() if not k.startswith("_")})

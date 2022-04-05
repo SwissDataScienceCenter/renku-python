@@ -15,17 +15,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""For backwards compatibility, ``renku.cli`` was moved to ``renku.ui.cli``."""
+"""For backwards compatibility, ``renku.core.metadata`` was moved to ``renku.infrastructure``."""
 
-import sys
 import warnings
 
-import renku.ui.cli as cli
+import renku.infrastructure as infrastructure
 
-warnings.warn("The renku.cli module has moved to renku.ui.cli and is deprecated", DeprecationWarning)
+warnings.warn("The renku.core.metadata module has moved to renku.infrastructure and is deprecated", DeprecationWarning)
 
-globals().update({k: getattr(cli, k) for k in cli.__dict__.keys() if not k.startswith("_")})
-
-if __name__ == "__main__":  # pragma: no cover
-    sys.argv[0] = "python -m renku.ui.cli"
-    cli()
+globals().update({k: getattr(infrastructure, k) for k in infrastructure.__dict__.keys() if not k.startswith("_")})
