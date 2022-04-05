@@ -21,8 +21,8 @@ A simple example of a ``MyProvider`` workflow executor plugin:
         from pathlib import Path
         from typing import Any, Dict, List
 
-        from renku.core.models.workflow.provider import IWorkflowProvider
-        from renku.core.plugins import hookimpl
+        from renku.domain_model.workflow.provider import IWorkflowProvider
+        from renku.core.plugin import hookimpl
 
         class MyProvider(IWorkflowProvider):
             @hookimpl
@@ -43,7 +43,7 @@ A simple example of a ``MyProvider`` workflow executor plugin:
 
 The execution of the workflow(s) shall be defined in ``workflow_execute`` function, where
 
-  - ``dag`` is a Directed Acyclic Graph of :py:class:`Plans<renku.core.models.workflow.plan>`
+  - ``dag`` is a Directed Acyclic Graph of :py:class:`Plans<renku.domain_model.workflow.plan>`
     to be executed represented with a
     `networkx.DiGraph <https://networkx.org/documentation/stable/reference/classes/digraph.html>`_,
   - ``basedir`` is the absolute path to the project,
@@ -59,6 +59,6 @@ initial implementation of a provider plugin.
 
 A provider HAS to set environment variables for a plans parameters, so they can be used by scripts.
 These environment variables have to be prefixed with the value of the
-``renku.core.plugins.provider.RENKU_ENV_PREFIX`` constant. So for a parameter with name
+``renku.core.plugin.provider.RENKU_ENV_PREFIX`` constant. So for a parameter with name
 ``my-param`` and the ``RENKU_ENV_PREFIX`` value of ``RENKU_ENV_``, the environment variable
 should be called ``RENKU_ENV_my-param``.

@@ -20,8 +20,8 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.commands.clone import project_clone_command
-from renku.core.utils.contexts import chdir
+from renku.command.clone import project_clone_command
+from renku.core.util.contexts import chdir
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, retry_failed
 

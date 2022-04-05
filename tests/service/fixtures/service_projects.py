@@ -24,8 +24,8 @@ from urllib.parse import urlparse
 
 import pytest
 
-from renku.core.metadata.repository import Repository
-from renku.core.utils.os import normalize_to_ascii
+from renku.core.util.os import normalize_to_ascii
+from renku.infrastructure.repository import Repository
 
 
 @pytest.fixture

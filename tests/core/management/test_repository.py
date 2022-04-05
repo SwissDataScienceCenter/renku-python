@@ -19,9 +19,9 @@
 
 from pathlib import Path
 
-from renku.core.commands.dataset import create_dataset_command
+from renku.command.dataset import create_dataset_command
 from renku.core.management.client import LocalClient
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 
 
 def test_latest_version(project, client_database_injection_manager):

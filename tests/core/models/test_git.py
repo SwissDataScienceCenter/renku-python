@@ -22,7 +22,7 @@ import os
 import pytest
 
 from renku.core import errors
-from renku.core.models.git import GitURL
+from renku.domain_model.git import GitURL
 
 
 @pytest.mark.parametrize(

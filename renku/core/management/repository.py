@@ -27,16 +27,16 @@ from uuid import uuid4
 import attr
 import filelock
 
+from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.compat import Path
+from renku.core.interface.database_gateway import IDatabaseGateway
+from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management import RENKU_HOME
-from renku.core.management.command_builder import inject
 from renku.core.management.git import GitCore
-from renku.core.management.interface.database_gateway import IDatabaseGateway
-from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.models.enums import ConfigFilter
-from renku.core.models.project import Project
-from renku.core.utils.git import default_path
+from renku.core.util.git import default_path
+from renku.domain_model.enums import ConfigFilter
+from renku.domain_model.project import Project
 
 DEFAULT_DATA_DIR = "data"
 
@@ -185,7 +185,7 @@ class RepositoryApiMixin(GitCore):
     @property
     def remote(self):
         """Return host, owner and name of the remote if it exists."""
-        from renku.core.models.git import GitURL
+        from renku.domain_model.git import GitURL
 
         original_remote_name = remote_name = "origin"
 
@@ -291,7 +291,7 @@ class RepositoryApiMixin(GitCore):
 
     def init_repository(self, force=False, user=None, initial_branch=None):
         """Initialize an empty Renku repository."""
-        from renku.core.metadata.repository import Repository
+        from renku.infrastructure.repository import Repository
 
         # initialize repo and set user data
         path = self.path.absolute()

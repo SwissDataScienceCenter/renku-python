@@ -51,7 +51,7 @@ import os
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.core.commands.echo import ERROR, INFO
+from renku.command.echo import ERROR, INFO
 from renku.core.errors import MigrationRequired, ProjectNotSupported
 from renku.ui.cli.utils.callback import ClickCallback
 
@@ -71,7 +71,7 @@ from renku.ui.cli.utils.callback import ClickCallback
 )
 def migrate(check, skip_template_update, skip_docker_update, strict, preserve_identifiers):
     """Check for migration and migrate to the latest Renku project version."""
-    from renku.core.commands.migrate import (
+    from renku.command.migrate import (
         AUTOMATED_TEMPLATE_UPDATE_SUPPORTED,
         DOCKERFILE_UPDATE_POSSIBLE,
         MIGRATION_REQUIRED,
@@ -137,7 +137,7 @@ def migrate(check, skip_template_update, skip_docker_update, strict, preserve_id
 @click.command(hidden=True)
 def migrationscheck():
     """Check status of the project and current renku-python version."""
-    from renku.core.commands.migrate import migrations_check
+    from renku.command.migrate import migrations_check
 
     result = migrations_check().lock_project().build().execute().output
     click.echo(json.dumps(result))
@@ -147,7 +147,7 @@ def migrationscheck():
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def check_immutable_template_files(paths):
     """Check specified paths if they are marked immutable in the template."""
-    from renku.core.commands.migrate import check_immutable_template_files_command
+    from renku.command.migrate import check_immutable_template_files_command
 
     result = check_immutable_template_files_command().build().execute(paths=paths)
     paths = result.output

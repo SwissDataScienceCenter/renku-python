@@ -19,7 +19,7 @@
 
 import pytest
 
-from renku.core.metadata.immutable import Immutable, Slots
+from renku.infrastructure.immutable import Immutable, Slots
 
 
 class A(Slots):

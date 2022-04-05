@@ -22,8 +22,8 @@ from typing import List, Optional, Union
 
 import gitlab
 
-from renku.core.models.git import GitURL
-from renku.core.utils.os import delete_file
+from renku.core.util.os import delete_file
+from renku.domain_model.git import GitURL
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
 
 

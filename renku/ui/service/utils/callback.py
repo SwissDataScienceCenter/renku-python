@@ -17,7 +17,7 @@
 # limitations under the License.
 """Communicator class for service communication."""
 
-from renku.core.utils.communication import CommunicationCallback
+from renku.core.util.communication import CommunicationCallback
 
 
 class ServiceCallback(CommunicationCallback):

@@ -30,9 +30,9 @@ from pathlib import Path
 import attr
 
 from renku.core import errors
-from renku.core.utils.os import get_absolute_path
-from renku.core.utils.scm import shorten_message
-from renku.core.utils.urls import remove_credentials
+from renku.core.util.os import get_absolute_path
+from renku.core.util.scm import shorten_message
+from renku.core.util.urls import remove_credentials
 
 COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
@@ -75,7 +75,7 @@ def finalize_commit(
     abbreviate_message=True,
 ):
     """Commit modified/added paths."""
-    from renku.core.metadata.repository import Actor
+    from renku.infrastructure.repository import Actor
     from renku.version import __version__, version_url
 
     committer = Actor(name=f"renku {__version__}", email=version_url)
@@ -138,8 +138,8 @@ def prepare_worktree(
     commit=None,
 ):
     """Set up a Git worktree to provide isolation."""
-    from renku.core.metadata.repository import NULL_TREE
-    from renku.core.utils.contexts import Isolation
+    from renku.core.util.contexts import Isolation
+    from renku.infrastructure.repository import NULL_TREE
 
     path = path or tempfile.mkdtemp()
     branch_name = branch_name or "renku/run/isolation/" + uuid.uuid4().hex
@@ -284,7 +284,7 @@ class GitCore:
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
-        from renku.core.metadata.repository import Repository
+        from renku.infrastructure.repository import Repository
 
         #: Create an instance of a Git repository for the given path.
         try:
@@ -405,7 +405,7 @@ class GitCore:
     @contextmanager
     def worktree(self, path=None, branch_name=None, commit=None, merge_args=("--ff-only",)):
         """Create new worktree."""
-        from renku.core.metadata.repository import NULL_TREE
+        from renku.infrastructure.repository import NULL_TREE
 
         delete = branch_name is None
         new_branch = commit is not NULL_TREE

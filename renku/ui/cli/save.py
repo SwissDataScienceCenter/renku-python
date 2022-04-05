@@ -95,7 +95,7 @@ from renku.ui.cli.utils.callback import ClickCallback
 @click.argument("paths", type=click.Path(exists=False, dir_okay=True), nargs=-1)
 def save(message, destination, paths):
     """Save and push local changes."""
-    from renku.core.commands.save import save_and_push_command
+    from renku.command.save import save_and_push_command
 
     communicator = ClickCallback()
     saved_paths, branch = (

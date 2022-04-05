@@ -62,8 +62,8 @@ import renku.ui.cli.utils.color as color
 @click.argument("path", required=False, default=None)
 def clone(no_pull_data, url, path):
     """Clone a Renku repository."""
-    from renku.core.commands.clone import project_clone_command
-    from renku.core.utils.git import get_git_progress_instance
+    from renku.command.clone import project_clone_command
+    from renku.core.util.git import get_git_progress_instance
 
     click.echo(f"Cloning {url} ...")
     project_clone_command().build().execute(

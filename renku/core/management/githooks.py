@@ -20,9 +20,9 @@
 import stat
 from pathlib import Path
 
-from renku.core.management.command_builder.command import inject
-from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.utils.git import get_hook_path
+from renku.command.command_builder.command import inject
+from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.util.git import get_hook_path
 
 try:
     import importlib_resources

@@ -26,7 +26,7 @@ import click
 import portalocker
 
 from renku.core.management import RENKU_HOME
-from renku.core.models.enums import ConfigFilter
+from renku.domain_model.enums import ConfigFilter
 
 APP_NAME = "Renku"
 """Application name for storing configuration."""

@@ -26,8 +26,8 @@ import portalocker
 
 from renku.core.errors import GitCommandError, GitConfigurationError, RenkuException, UninitializedProject
 from renku.core.management import RENKU_HOME
-from renku.core.metadata.repository import Repository
-from renku.core.utils.contexts import click_context
+from renku.core.util.contexts import click_context
+from renku.infrastructure.repository import Repository
 from renku.ui.service.cache.config import REDIS_NAMESPACE
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.cache.models.project import Project
@@ -336,7 +336,7 @@ class RenkuOpSyncMixin(RenkuOperationMixin, metaclass=ABCMeta):
 
     def sync(self, remote="origin"):
         """Sync with remote."""
-        from renku.core.utils.git import push_changes
+        from renku.core.util.git import push_changes
 
         if self.project_path is None:
             raise RenkuException("unable to sync with remote since no operation has been executed")

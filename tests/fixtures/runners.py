@@ -93,8 +93,8 @@ class RenkuRunner(CliRunner):
         **extra: Any,
     ) -> Result:  # type: ignore
         """See ``click.testing.CliRunner::invoke``."""
-        from renku.core.utils.contexts import Isolation
-        from renku.core.utils.util import to_string
+        from renku.core.util.contexts import Isolation
+        from renku.core.util.util import to_string
 
         assert not input or not stdin, "Cannot set both ``stdin`` and ``input``"
 
@@ -162,7 +162,7 @@ def split_runner():
 @pytest.fixture()
 def run(runner, capsys):
     """Return a callable runner."""
-    from renku.core.utils.contexts import Isolation
+    from renku.core.util.contexts import Isolation
     from renku.ui.cli import cli
 
     def generate(args=("update", "--all"), cwd=None, **streams):

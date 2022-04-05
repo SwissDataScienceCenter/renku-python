@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 
 FIRST_COMMIT_SHA = "d44be0700e7ad1d062544763fd55c6ccb6f456e1"
 LAST_COMMIT_SHA = "8853e0c1112e512c36db9cc76faff560b655e5d5"  # HEAD

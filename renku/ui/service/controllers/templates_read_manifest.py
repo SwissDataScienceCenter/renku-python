@@ -21,8 +21,8 @@ from io import BytesIO
 
 from marshmallow import EXCLUDE
 
-from renku.core.management.template.template import fetch_templates_source
-from renku.core.utils.os import get_safe_relative_path
+from renku.core.template.template import fetch_templates_source
+from renku.core.util.os import get_safe_relative_path
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.serializers.templates import ManifestTemplatesRequest, ManifestTemplatesResponseRPC

@@ -18,8 +18,8 @@
 """Test activity database gateways."""
 
 
-from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-from renku.core.models.workflow.plan import Plan
+from renku.domain_model.workflow.plan import Plan
+from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from tests.utils import create_dummy_activity
 
 

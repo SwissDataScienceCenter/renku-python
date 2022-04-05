@@ -53,7 +53,7 @@ def directory_tree(tmp_path, directory_tree_files) -> Path:
 def data_repository(directory_tree):
     """Create a test repository."""
     # NOTE: Initialize step.
-    from renku.core.metadata.repository import Actor, Repository
+    from renku.infrastructure.repository import Actor, Repository
 
     repository = Repository.initialize(directory_tree)
 

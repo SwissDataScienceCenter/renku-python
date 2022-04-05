@@ -26,7 +26,7 @@ from typing import Generator
 import pytest
 
 from renku.core import errors
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 from tests.utils import format_result_exception, modified_environ
 
 
@@ -74,7 +74,7 @@ def integration_repo_path(headers, project_id, url_components):
 @contextlib.contextmanager
 def integration_repo(headers, project_id, url_components) -> Generator[Repository, None, None]:
     """With integration repo helper."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     repo_path = integration_repo_path(headers, project_id, url_components)
     with chdir(repo_path):
@@ -93,7 +93,7 @@ def integration_repo(headers, project_id, url_components) -> Generator[Repositor
 @pytest.fixture()
 def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_repo_url):
     """Setup and teardown steps for integration tests."""
-    from renku.core.models.git import GitURL
+    from renku.domain_model.git import GitURL
 
     url_components = GitURL.parse(it_remote_repo_url)
 
@@ -157,7 +157,7 @@ def svc_client_with_repo(svc_client_setup):
 @pytest.fixture
 def svc_protected_repo(svc_client, identity_headers, it_protected_repo_url):
     """Service client with migrated remote protected repository."""
-    from renku.core.models.git import GitURL
+    from renku.domain_model.git import GitURL
 
     payload = {
         "git_url": it_protected_repo_url,
@@ -201,7 +201,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     """Client with a local remote to test pushes."""
     from marshmallow import pre_load
 
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
     from renku.ui.cli import cli
     from renku.ui.service.config import PROJECT_CLONE_NO_DEPTH
     from renku.ui.service.serializers import cache

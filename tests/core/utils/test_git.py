@@ -21,7 +21,7 @@ from typing import Optional
 
 import pytest
 
-from renku.core.utils.git import get_remote, push_changes
+from renku.core.util.git import get_remote, push_changes
 from tests.fixtures.config import IT_PROTECTED_REMOTE_REPO_URL, IT_REMOTE_NON_RENKU_REPO_URL
 from tests.utils import write_and_commit_file
 
@@ -99,7 +99,7 @@ def test_push_to_diverged_branch(protected_git_repository, mocker):
     write_and_commit_file(protected_git_repository, "new-file", "some other content")
     commit_sha_after = protected_git_repository.head.commit.hexsha
 
-    mocker.patch("renku.core.utils.communication.confirm", lambda *_, **__: False)
+    mocker.patch("renku.core.util.communication.confirm", lambda *_, **__: False)
 
     new_pushed_branch = push_changes(protected_git_repository)
 

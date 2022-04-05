@@ -22,8 +22,8 @@ from urllib.parse import urljoin
 
 import pytest
 
-from renku.core.management.migrations.models import v9 as old_datasets
-from renku.core.utils.uuid import is_uuid
+from renku.core.migration.models import v9 as old_datasets
+from renku.core.util.uuid import is_uuid
 
 
 def test_dataset_deserialization(client_with_datasets, load_dataset_with_injection):

@@ -23,7 +23,7 @@ import click
 from tqdm import tqdm
 
 import renku.ui.cli.utils.color as color
-from renku.core.utils.communication import CommunicationCallback
+from renku.core.util.communication import CommunicationCallback
 
 
 class StandardOutput(CommunicationCallback):

@@ -23,8 +23,8 @@ import sys
 import pytest
 from packaging.version import Version
 
-from renku.core.models.template import TemplateMetadata, TemplateParameter
-from renku.core.utils.contexts import chdir
+from renku.core.util.contexts import chdir
+from renku.domain_model.template import TemplateMetadata, TemplateParameter
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 

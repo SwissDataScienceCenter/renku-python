@@ -34,11 +34,11 @@ import pathspec
 from werkzeug.utils import cached_property
 
 from renku.core import errors
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Collection
-from renku.core.utils import communication
-from renku.core.utils.file_size import parse_file_size
-from renku.core.utils.git import run_command
+from renku.core.util import communication
+from renku.core.util.file_size import parse_file_size
+from renku.core.util.git import run_command
+from renku.domain_model.entity import Entity
+from renku.domain_model.provenance.activity import Collection
 
 from .git import _expand_directories
 from .repository import RepositoryApiMixin  # type: ignore
@@ -581,7 +581,7 @@ class StorageApiMixin(RepositoryApiMixin):
         def _map_checksum_old(entity, checksum_mapping):
             """Update the checksum and id of an entity based on a mapping."""
             # TODO: Remove this method once moved to Entity with 'id' field
-            from renku.core.models.provenance.activity import Collection
+            from renku.domain_model.provenance.activity import Collection
 
             if entity.checksum not in checksum_mapping:
                 return

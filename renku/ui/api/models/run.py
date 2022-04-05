@@ -51,13 +51,13 @@ from pathlib import Path
 from typing import Union
 
 from renku.core import errors
-from renku.core.management.workflow.plan_factory import (
+from renku.core.plugin.provider import RENKU_ENV_PREFIX
+from renku.core.workflow.plan_factory import (
     add_indirect_parameter,
     add_to_files_list,
     get_indirect_inputs_path,
     get_indirect_outputs_path,
 )
-from renku.core.plugins.provider import RENKU_ENV_PREFIX
 from renku.ui.api.models.project import ensure_project_context
 
 name_pattern = re.compile("[a-zA-Z0-9-_]+")

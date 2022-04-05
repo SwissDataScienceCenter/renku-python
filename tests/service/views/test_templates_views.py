@@ -24,10 +24,10 @@ from time import sleep
 
 import pytest
 
-from renku.core.management.template.template import fetch_templates_source
-from renku.core.metadata.repository import Repository
-from renku.core.models.template import TEMPLATE_MANIFEST, TemplatesManifest
-from renku.core.utils.os import normalize_to_ascii
+from renku.core.template.template import fetch_templates_source
+from renku.core.util.os import normalize_to_ascii
+from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
+from renku.infrastructure.repository import Repository
 from renku.ui.service.errors import (
     ProgramProjectCreationError,
     UserAnonymousError,

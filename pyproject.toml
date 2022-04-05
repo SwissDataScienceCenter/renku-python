@@ -380,7 +380,7 @@ module = [
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "renku.core.management.migrations.*"
+module = "renku.core.migration.*"
 ignore_errors = true
 
 [tool.coverage.run]

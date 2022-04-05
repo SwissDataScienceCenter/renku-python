@@ -26,8 +26,8 @@ from urllib.parse import urlparse
 import pytest
 
 from renku.core import errors
-from renku.core.metadata.database import Database
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.database import Database
+from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from renku.ui.cli.init import parse_parameters
 from tests.utils import format_result_exception, raises

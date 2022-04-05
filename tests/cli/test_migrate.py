@@ -23,14 +23,14 @@ from pathlib import Path
 
 import pytest
 
+from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
-from renku.core.management.workflow.plan_factory import RENKU_TMP
-from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-from renku.core.metadata.repository import Repository
-from renku.core.models.dataset import RemoteEntity
+from renku.core.workflow.plan_factory import RENKU_TMP
+from renku.domain_model.dataset import RemoteEntity
+from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
+from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 

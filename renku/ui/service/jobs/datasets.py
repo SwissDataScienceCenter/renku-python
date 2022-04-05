@@ -20,12 +20,12 @@ import urllib
 
 from urllib3.exceptions import HTTPError
 
+from renku.command.dataset import add_to_dataset_command, import_dataset_command
 from renku.core import errors
-from renku.core.commands.dataset import add_to_dataset_command, import_dataset_command
-from renku.core.metadata.repository import Repository
-from renku.core.models.git import GitURL
-from renku.core.utils.contexts import click_context
-from renku.core.utils.git import push_changes
+from renku.core.util.contexts import click_context
+from renku.core.util.git import push_changes
+from renku.domain_model.git import GitURL
+from renku.infrastructure.repository import Repository
 from renku.ui.service.logger import worker_log
 from renku.ui.service.utils.callback import ServiceCallback
 from renku.ui.service.views.decorators import requires_cache

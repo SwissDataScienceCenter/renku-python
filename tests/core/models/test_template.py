@@ -23,8 +23,8 @@ import textwrap
 import pytest
 
 from renku.core import errors
-from renku.core.models.template import TemplateMetadata, TemplateParameter, TemplatesManifest
-from renku.core.utils.metadata import read_renku_version_from_dockerfile
+from renku.core.util.metadata import read_renku_version_from_dockerfile
+from renku.domain_model.template import TemplateMetadata, TemplateParameter, TemplatesManifest
 
 try:
     import importlib_resources

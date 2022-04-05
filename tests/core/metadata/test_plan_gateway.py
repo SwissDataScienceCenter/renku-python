@@ -19,9 +19,9 @@
 
 from datetime import datetime
 
-from renku.core.metadata.gateway.plan_gateway import PlanGateway
-from renku.core.models.workflow.composite_plan import CompositePlan
-from renku.core.models.workflow.plan import Plan
+from renku.domain_model.workflow.composite_plan import CompositePlan
+from renku.domain_model.workflow.plan import Plan
+from renku.infrastructure.gateway.plan_gateway import PlanGateway
 
 
 def test_plan_gateway_add_get(dummy_database_injection_manager):

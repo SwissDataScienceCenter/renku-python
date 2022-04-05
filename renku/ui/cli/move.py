@@ -56,7 +56,7 @@ from renku.ui.cli.utils.callback import ClickCallback
 @click.option("--to-dataset", type=str, default=None, nargs=1, help="A target dataset to move files to.")
 def move(sources, destination, force, verbose, to_dataset):
     """Move files and check repository for potential problems."""
-    from renku.core.commands.move import move_command
+    from renku.command.move import move_command
 
     communicator = ClickCallback()
     move_command().with_communicator(communicator).build().execute(

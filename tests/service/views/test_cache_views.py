@@ -24,10 +24,10 @@ import uuid
 import jwt
 import pytest
 
-from renku.core.management.dataset.context import DatasetContext
-from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-from renku.core.metadata.repository import Repository
-from renku.core.models.git import GitURL
+from renku.core.dataset.context import DatasetContext
+from renku.domain_model.git import GitURL
+from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
+from renku.infrastructure.repository import Repository
 from renku.ui.service.errors import IntermittentFileExistsError, UserAnonymousError
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import retry_failed
@@ -757,7 +757,7 @@ def test_cache_gets_synchronized(
 ):
     """Test that the cache stays synchronized with the remote repository."""
     from renku.core.management.client import LocalClient
-    from renku.core.models.provenance.agent import Person
+    from renku.domain_model.provenance.agent import Person
 
     svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
 

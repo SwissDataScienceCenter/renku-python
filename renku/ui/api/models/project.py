@@ -99,7 +99,7 @@ def _get_current_project():
 
 def _get_local_client():
     from renku.core.management.client import LocalClient
-    from renku.core.metadata.repository import Repository
+    from renku.infrastructure.repository import Repository
 
     try:
         repository = Repository(".", search_parent_directories=True)

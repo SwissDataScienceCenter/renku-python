@@ -25,7 +25,7 @@ import yaml
 @pytest.fixture
 def dataset_metadata():
     """Return dataset metadata fixture."""
-    from renku.core.models.jsonld import NoDatesSafeLoader
+    from renku.domain_model.jsonld import NoDatesSafeLoader
 
     file_path = Path(__file__).parent / ".." / ".." / "data" / "doi-dataset.yml"
 
@@ -36,7 +36,7 @@ def dataset_metadata():
 @pytest.fixture
 def dataset_metadata_before_calamus():
     """Return dataset metadata fixture."""
-    from renku.core.models.jsonld import NoDatesSafeLoader
+    from renku.domain_model.jsonld import NoDatesSafeLoader
 
     path = Path(__file__).parent / ".." / ".." / "data" / "dataset-v0.10.4-before-calamus.yml"
     yield yaml.load(path.read_text(), Loader=NoDatesSafeLoader)

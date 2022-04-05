@@ -20,9 +20,9 @@
 from requests import RequestException
 from sentry_sdk import capture_exception
 
-from renku.core.commands.graph import export_graph_command
-from renku.core.commands.migrate import migrations_check
-from renku.core.commands.view_model.graph import DotFormat
+from renku.command.graph import export_graph_command
+from renku.command.migrate import migrations_check
+from renku.command.view_model.graph import DotFormat
 from renku.core.errors import RenkuException
 from renku.ui.service.config import PROJECT_CLONE_NO_DEPTH
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
@@ -102,7 +102,7 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def report_recoverable(self, payload, exception, callback_url):
         """Report to callback URL recoverable state."""
-        from renku.core.utils import requests
+        from renku.core.util import requests
 
         capture_exception(exception)
 
@@ -116,7 +116,7 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def report_unrecoverable(self, payload, exception, callback_url):
         """Report to callback URL unrecoverable state."""
-        from renku.core.utils import requests
+        from renku.core.util import requests
 
         capture_exception(exception)
 
@@ -130,7 +130,7 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def report_success(self, request_payload, graph_payload, callback_url):
         """Report to callback URL success state."""
-        from renku.core.utils import requests
+        from renku.core.util import requests
 
         data = GraphExportCallbackSuccess().load({**request_payload, **graph_payload})
 

@@ -19,7 +19,7 @@
 from marshmallow import fields
 from marshmallow.schema import Schema
 
-from renku.core.models.dataset import DatasetCreatorsJson as DatasetCreators
+from renku.domain_model.dataset import DatasetCreatorsJson as DatasetCreators
 from renku.ui.service.serializers.common import (
     AsyncSchema,
     LocalRepositorySchema,

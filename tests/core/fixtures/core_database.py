@@ -25,9 +25,9 @@ from typing import Iterator, Tuple, Union
 import pytest
 
 from renku.core import errors
-from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.metadata.database import Database
-from renku.core.metadata.gateway.database_gateway import initialize_database
+from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.infrastructure.database import Database
+from renku.infrastructure.gateway.database_gateway import initialize_database
 
 
 class DummyStorage:
@@ -105,19 +105,19 @@ def database_injection_bindings():
     """Create injection bindings for a database."""
 
     def _add_database_injection_bindings(bindings):
-        from renku.core.management.command_builder.database_dispatcher import DatabaseDispatcher
-        from renku.core.management.interface.activity_gateway import IActivityGateway
-        from renku.core.management.interface.client_dispatcher import IClientDispatcher
-        from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
-        from renku.core.management.interface.database_gateway import IDatabaseGateway
-        from renku.core.management.interface.dataset_gateway import IDatasetGateway
-        from renku.core.management.interface.plan_gateway import IPlanGateway
-        from renku.core.management.interface.project_gateway import IProjectGateway
-        from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-        from renku.core.metadata.gateway.database_gateway import DatabaseGateway
-        from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-        from renku.core.metadata.gateway.plan_gateway import PlanGateway
-        from renku.core.metadata.gateway.project_gateway import ProjectGateway
+        from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
+        from renku.core.interface.activity_gateway import IActivityGateway
+        from renku.core.interface.client_dispatcher import IClientDispatcher
+        from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+        from renku.core.interface.database_gateway import IDatabaseGateway
+        from renku.core.interface.dataset_gateway import IDatasetGateway
+        from renku.core.interface.plan_gateway import IPlanGateway
+        from renku.core.interface.project_gateway import IProjectGateway
+        from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+        from renku.infrastructure.gateway.database_gateway import DatabaseGateway
+        from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
+        from renku.infrastructure.gateway.plan_gateway import PlanGateway
+        from renku.infrastructure.gateway.project_gateway import ProjectGateway
 
         dispatcher = DatabaseDispatcher()
         dispatcher.push_database_to_stack(
@@ -142,16 +142,16 @@ def dummy_database_injection_bindings(database):
     """Create injection bindings for a database."""
 
     def _add_database_injection_bindings(bindings):
-        from renku.core.management.interface.activity_gateway import IActivityGateway
-        from renku.core.management.interface.database_gateway import IDatabaseGateway
-        from renku.core.management.interface.dataset_gateway import IDatasetGateway
-        from renku.core.management.interface.plan_gateway import IPlanGateway
-        from renku.core.management.interface.project_gateway import IProjectGateway
-        from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-        from renku.core.metadata.gateway.database_gateway import DatabaseGateway
-        from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-        from renku.core.metadata.gateway.plan_gateway import PlanGateway
-        from renku.core.metadata.gateway.project_gateway import ProjectGateway
+        from renku.core.interface.activity_gateway import IActivityGateway
+        from renku.core.interface.database_gateway import IDatabaseGateway
+        from renku.core.interface.dataset_gateway import IDatasetGateway
+        from renku.core.interface.plan_gateway import IPlanGateway
+        from renku.core.interface.project_gateway import IProjectGateway
+        from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+        from renku.infrastructure.gateway.database_gateway import DatabaseGateway
+        from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
+        from renku.infrastructure.gateway.plan_gateway import PlanGateway
+        from renku.infrastructure.gateway.project_gateway import ProjectGateway
 
         bindings["bindings"][IDatabaseDispatcher] = DummyDatabaseDispatcher(database[0])
 

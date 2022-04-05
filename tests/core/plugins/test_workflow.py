@@ -17,7 +17,7 @@
 # limitations under the License.
 """Test plugins for the ``workflow`` command."""
 
-from renku.core.plugins import pluginmanager as pluginmanager
+from renku.core.plugin import pluginmanager as pluginmanager
 from renku.ui.cli import cli
 
 

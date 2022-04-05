@@ -20,8 +20,8 @@
 import click
 from lazy_object_proxy import Proxy
 
+from renku.command.format.session import SESSION_FORMATS
 from renku.core import errors
-from renku.core.commands.format.session import SESSION_FORMATS
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import supported_session_providers
 
@@ -54,7 +54,7 @@ def session():
 )
 def list_sessions(provider, config, format):
     """List interactive sessions."""
-    from renku.core.commands.session import session_list_command
+    from renku.command.session import session_list_command
 
     result = session_list_command().build().execute(provider=provider, config_path=config)
     click.echo(SESSION_FORMATS[format](result.output))
@@ -85,7 +85,7 @@ def list_sessions(provider, config, format):
 @click.option("--memory", type=click.STRING, metavar="<memory size>", help="Amount of memory required for the session.")
 def start(provider, config, image, cpu, disk, gpu, memory):
     """Start a interactive sessions."""
-    from renku.core.commands.session import session_start_command
+    from renku.command.session import session_start_command
 
     communicator = ClickCallback()
     result = (
@@ -118,7 +118,7 @@ def start(provider, config, image, cpu, disk, gpu, memory):
 @click.option("stop_all", "--all", is_flag=True, help="Stops all the running containers.")
 def stop(session_name, stop_all, provider):
     """Stop a interactive sessions."""
-    from renku.core.commands.session import session_stop_command
+    from renku.command.session import session_stop_command
 
     if not stop_all and session_name is None:
         raise errors.ParameterError("Please specify either a session ID or the '--all' flag.")
@@ -142,6 +142,6 @@ def stop(session_name, stop_all, provider):
 )
 def open(session_name, provider):
     """Stop a interactive sessions."""
-    from renku.core.commands.session import session_open_command
+    from renku.command.session import session_open_command
 
     session_open_command().build().execute(session_name=session_name, provider=provider)

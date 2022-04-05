@@ -635,19 +635,19 @@ import click
 from lazy_object_proxy import Proxy
 
 import renku.ui.cli.utils.color as color
+from renku.command.echo import ERROR
+from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
+from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
-from renku.core.commands.echo import ERROR
-from renku.core.commands.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
-from renku.core.commands.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import available_workflow_providers, supported_formats
 
 if TYPE_CHECKING:
-    from renku.core.commands.view_model.composite_plan import CompositePlanViewModel
+    from renku.command.view_model.composite_plan import CompositePlanViewModel
 
 
 def _complete_workflows(ctx, param, incomplete):
-    from renku.core.commands.workflow import search_workflows_command
+    from renku.command.workflow import search_workflows_command
 
     try:
         result = search_workflows_command().build().execute(name=incomplete)
@@ -717,7 +717,7 @@ def workflow():
 )
 def list_workflows(format, columns):
     """List or manage workflows with subcommands."""
-    from renku.core.commands.workflow import list_workflows_command
+    from renku.command.workflow import list_workflows_command
 
     result = list_workflows_command().build().execute(format=format, columns=columns)
     click.echo(result.output)
@@ -727,8 +727,8 @@ def list_workflows(format, columns):
 @click.argument("name_or_id", metavar="<name_or_id>", shell_complete=_complete_workflows)
 def show(name_or_id):
     """Show details for workflow <name_or_id>."""
-    from renku.core.commands.view_model.plan import PlanViewModel
-    from renku.core.commands.workflow import show_workflow_command
+    from renku.command.view_model.plan import PlanViewModel
+    from renku.command.workflow import show_workflow_command
     from renku.ui.cli.utils.terminal import print_plan
 
     plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
@@ -747,7 +747,7 @@ def show(name_or_id):
 @click.option("--force", is_flag=True, help="Override the existence check.")
 def remove(name, force):
     """Remove a workflow named <name>."""
-    from renku.core.commands.workflow import remove_workflow_command
+    from renku.command.workflow import remove_workflow_command
 
     remove_workflow_command().build().execute(name=name, force=force)
 
@@ -798,7 +798,7 @@ def compose(
     steps,
 ):
     """Create a composite workflow consisting of multiple steps."""
-    from renku.core.commands.workflow import compose_workflow_command
+    from renku.command.workflow import compose_workflow_command
 
     if (sources or sinks) and steps:
         click.secho(ERROR + "--from/--to cannot be used at the same time as passing run/step names.")
@@ -869,8 +869,8 @@ def compose(
 )
 def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params):
     """Edit workflow details."""
-    from renku.core.commands.view_model.plan import PlanViewModel
-    from renku.core.commands.workflow import edit_workflow_command
+    from renku.command.view_model.plan import PlanViewModel
+    from renku.command.workflow import edit_workflow_command
     from renku.ui.cli.utils.terminal import print_plan
 
     result = (
@@ -920,7 +920,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 )
 def export(workflow_name, format, output, values):
     """Export workflow."""
-    from renku.core.commands.workflow import export_workflow_command
+    from renku.command.workflow import export_workflow_command
 
     communicator = ClickCallback()
 
@@ -943,7 +943,7 @@ def inputs(ctx, paths):
 
     <PATHS>    Limit results to these paths.
     """
-    from renku.core.commands.workflow import workflow_inputs_command
+    from renku.command.workflow import workflow_inputs_command
 
     result = workflow_inputs_command().build().execute(paths=paths)
 
@@ -966,7 +966,7 @@ def outputs(ctx, paths):
 
     <PATHS>    Limit results to these paths.
     """
-    from renku.core.commands.workflow import workflow_outputs_command
+    from renku.command.workflow import workflow_outputs_command
 
     result = workflow_outputs_command().build().execute(paths=paths)
 
@@ -1017,7 +1017,7 @@ def execute(
     name_or_id,
 ):
     """Execute a given workflow."""
-    from renku.core.commands.workflow import execute_workflow_command
+    from renku.command.workflow import execute_workflow_command
 
     communicator = ClickCallback()
 
@@ -1076,7 +1076,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 
     Either PATHS or --from need to be set.
     """
-    from renku.core.commands.workflow import visualize_graph_command
+    from renku.command.workflow import visualize_graph_command
 
     if pager and no_pager:
         raise errors.ParameterError("Can't use both --pager and --no-pager.")
@@ -1150,8 +1150,8 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 @click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
     """Execute a workflow by iterating through a range of provided parameters."""
-    from renku.core.commands.view_model.plan import PlanViewModel
-    from renku.core.commands.workflow import iterate_workflow_command, show_workflow_command
+    from renku.command.view_model.plan import PlanViewModel
+    from renku.command.workflow import iterate_workflow_command, show_workflow_command
     from renku.ui.cli.utils.terminal import print_plan
 
     if len(mappings) == 0 and mapping_path is None:

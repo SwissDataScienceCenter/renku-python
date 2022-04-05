@@ -21,8 +21,8 @@ import threading
 
 import pytest
 
-from renku.core.management.command_builder.command import Command
-from renku.core.utils import communication
+from renku.command.command_builder.command import Command
+from renku.core.util import communication
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.service.utils.callback import ServiceCallback
 

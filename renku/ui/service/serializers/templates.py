@@ -23,7 +23,7 @@ from marshmallow import Schema, ValidationError, fields, post_load, pre_load, va
 from yagup import GitURL
 from yagup.exceptions import InvalidURL
 
-from renku.core.utils.os import normalize_to_ascii
+from renku.core.util.os import normalize_to_ascii
 from renku.ui.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.ui.service.serializers.cache import ProjectCloneContext, RepositoryCloneRequest
 from renku.ui.service.serializers.rpc import JsonRPCResponse

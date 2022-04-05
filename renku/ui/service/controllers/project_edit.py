@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project edit controller."""
-from renku.core.commands.project import edit_project_command
+from renku.command.project import edit_project_command
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOpSyncMixin

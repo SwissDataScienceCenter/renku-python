@@ -19,9 +19,9 @@
 
 from datetime import datetime
 
-from renku.core.metadata.gateway.project_gateway import ProjectGateway
-from renku.core.models.project import Project
-from renku.core.models.provenance.agent import Person
+from renku.domain_model.project import Project
+from renku.domain_model.provenance.agent import Person
+from renku.infrastructure.gateway.project_gateway import ProjectGateway
 
 
 def test_project_gateway_update(dummy_database_injection_manager, monkeypatch):

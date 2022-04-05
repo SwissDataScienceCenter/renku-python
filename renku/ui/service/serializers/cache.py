@@ -24,8 +24,8 @@ from marshmallow import Schema, ValidationError, fields, post_load, pre_load
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
-from renku.core.models.git import GitURL
-from renku.core.utils.os import normalize_to_ascii
+from renku.core.util.os import normalize_to_ascii
+from renku.domain_model.git import GitURL
 from renku.ui.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.ui.service.serializers.common import (
     ArchiveSchema,

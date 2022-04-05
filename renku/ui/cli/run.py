@@ -254,7 +254,7 @@ directories, respectively.
 
 import click
 
-from renku.core.commands.options import option_isolation
+from renku.command.options import option_isolation
 from renku.ui.cli.utils.callback import ClickCallback
 
 
@@ -295,7 +295,7 @@ def run(
     verbose,
 ):
     """Tracking work on a specific problem."""
-    from renku.core.commands.run import run_command
+    from renku.command.run import run_command
     from renku.ui.cli.utils.terminal import print_plan
 
     communicator = ClickCallback()

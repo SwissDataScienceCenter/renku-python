@@ -18,7 +18,7 @@
 """Test agents."""
 import pytest
 
-from renku.core.models.provenance.agent import Person
+from renku.domain_model.provenance.agent import Person
 
 
 @pytest.mark.parametrize(

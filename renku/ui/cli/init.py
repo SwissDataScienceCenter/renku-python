@@ -194,8 +194,8 @@ from pathlib import Path
 
 import click
 
+from renku.command.options import option_external_storage_requested
 from renku.core import errors
-from renku.core.commands.options import option_external_storage_requested
 
 INVALID_DATA_DIRS = [".", ".renku", ".git"]
 """Paths that cannot be used as data directory name."""
@@ -302,8 +302,8 @@ def init(
     initial_branch,
 ):
     """Initialize a project in PATH. Default is the current path."""
-    from renku.core.commands.init import init_command
-    from renku.core.utils.git import check_global_git_user_is_configured
+    from renku.command.init import init_command
+    from renku.core.util.git import check_global_git_user_is_configured
     from renku.ui.cli.utils.callback import ClickCallback
 
     if template_ref and not template_source:

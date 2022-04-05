@@ -74,7 +74,7 @@ from renku.ui.cli.utils.callback import ClickCallback
 @click.option("--yes", is_flag=True, default=False, hidden=True, help="Do not ask for user confirmation.")  # For tests
 def login(endpoint, git, yes):
     """Log in to the platform."""
-    from renku.core.commands.login import login_command
+    from renku.command.login import login_command
 
     communicator = ClickCallback()
     login_command().with_communicator(communicator).build().execute(endpoint=endpoint, git_login=git, yes=yes)
@@ -85,7 +85,7 @@ def login(endpoint, git, yes):
 @click.argument("endpoint", required=False, default=None)
 def logout(endpoint):
     """Logout from the platform and delete credentials."""
-    from renku.core.commands.login import logout_command
+    from renku.command.login import logout_command
 
     communicator = ClickCallback()
     logout_command().with_communicator(communicator).build().execute(endpoint=endpoint)
@@ -97,7 +97,7 @@ def logout(endpoint):
 @click.argument("command")
 def credentials(command, hostname):
     """A git credential helper for returning renku user/token."""
-    from renku.core.commands.login import credentials_command
+    from renku.command.login import credentials_command
 
     communicator = ClickCallback()
     credentials_command().with_communicator(communicator).build().execute(command=command, hostname=hostname)
