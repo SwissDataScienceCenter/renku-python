@@ -10,7 +10,8 @@ charts:
     images:
       renku-core:
         contextPath: .
-        dockerfilePath: Dockerfile.svc
+        dockerfilePath: Dockerfile
         valuesPath: image
         buildArgs:
           CLEAN_INSTALL: "1"
+          BUILD_CORE_SERVICE: "1"

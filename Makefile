@@ -29,15 +29,13 @@ docker-tag: service cli
 
 docker-push: docker-tag
 	docker push $(DOCKER_PREFIX)renku-python:$(GIT_MASTER_HEAD_SHA)
-	docker push $(DOCKER_PREFIX)renku-python:latest
 	docker push $(DOCKER_PREFIX)renku-core:$(GIT_MASTER_HEAD_SHA)
-	docker push $(DOCKER_PREFIX)renku-core:latest
 
 docker-login:
 	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}
 
 service:
-	docker build -f Dockerfile.svc -t $(DOCKER_PREFIX)renku-core:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
+	docker build -t $(DOCKER_PREFIX)renku-core:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 --build-arg BUILD_CORE_SERVICE=1 .
 
 cli:
-	docker build -f Dockerfile.cli -t $(DOCKER_PREFIX)renku-python:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .
+	docker build -t $(DOCKER_PREFIX)renku-python:`git rev-parse --short HEAD` --build-arg CLEAN_INSTALL=1 .

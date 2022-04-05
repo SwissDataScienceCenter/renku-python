@@ -23,7 +23,10 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_DATABASE = int(os.getenv("REDIS_DATABASE", 0))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 
-REDIS_NAMESPACE = os.getenv("REDIS_NAMESPACE")
+REDIS_NAMESPACE = os.getenv("REDIS_NAMESPACE", "")
+
+if REDIS_NAMESPACE:
+    REDIS_NAMESPACE = f"{REDIS_NAMESPACE}."
 
 REDIS_IS_SENTINEL = os.environ.get("REDIS_IS_SENTINEL", "") == "true"
 REDIS_MASTER_SET = os.environ.get("REDIS_MASTER_SET", "mymaster")

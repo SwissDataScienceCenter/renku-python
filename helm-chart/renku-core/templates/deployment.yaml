@@ -56,13 +56,11 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{ if .Values.debug }}
-          args: ["api", "--debug"]
           securityContext:
-            runAsGroup: 2000
-          {{ else }}
-          args: ["api"]
-          {{ end }}
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+          args: ["service", "api"]
           env:
             - name: REDIS_HOST
               value: {{ .Values.global.redis.host | quote }}
@@ -131,7 +129,7 @@ spec:
         - name: {{ .Chart.Name }}-datasets-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: ["worker"]
+          args: ["service", "worker"]
           env:
             - name: REDIS_HOST
               value: {{ .Values.global.redis.host | quote }}
@@ -177,7 +175,7 @@ spec:
         - name: {{ .Chart.Name }}-management-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: ["worker"]
+          args: ["service", "worker"]
           env:
             - name: REDIS_HOST
               value: {{ .Values.global.redis.host | quote }}
@@ -221,7 +219,7 @@ spec:
         - name: {{ .Chart.Name }}-scheduler
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: ["scheduler"]
+          args: ["service", "scheduler"]
           env:
             - name: REDIS_HOST
               value: {{ .Values.global.redis.host | quote }}
