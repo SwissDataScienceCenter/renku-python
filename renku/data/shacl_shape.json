@@ -151,7 +151,7 @@
                      "sh:pattern": "http(s)?://[^/]+/persons/\\S+"
                   },
                   {
-                     "sh:pattern": "mailto:[^@\\s]+\\S+\\.\\S+"
+                     "sh:pattern": "mailto:[^@\\s]+@\\S+\\.\\S+"
                   }
                ]
             },
@@ -369,7 +369,7 @@
                      "sh:pattern": "http(s)?://[^/]+/persons/\\S+"
                   },
                   {
-                     "sh:pattern": "mailto:[^@]+\\S+\\.\\S+"
+                     "sh:pattern": "mailto:[^@\\s]+@\\S+\\.\\S+"
                   }
                ]
             },
