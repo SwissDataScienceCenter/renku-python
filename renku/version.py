@@ -40,7 +40,7 @@ def _get_distribution_url():
         d = distribution("renku")
         return d.metadata["Home-page"]
     except Exception:
-        return "N/A"
+        return "https://github.com/swissdatasciencecenter/renku-python"
 
 
-version_url = "{}/tree/{}".format(_get_distribution_url(), "v" + __version__)
+version_url = f"{_get_distribution_url()}/tree/v{__version__}"
