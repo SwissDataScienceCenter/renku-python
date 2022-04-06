@@ -95,7 +95,7 @@ def test_run_external_command_file(runner, client, project, run_shell, client_da
         assert plan.command.endswith("/echo")
 
 
-def test_run_metadata(renku_cli, client, client_database_injection_manager):
+def test_run_metadata(renku_cli, runner, client, client_database_injection_manager):
     """Test run with workflow metadata."""
     exit_code, activity = renku_cli(
         "run", "--name", "run-1", "--description", "first run", "--keyword", "key1", "--keyword", "key2", "touch", "foo"
@@ -113,6 +113,9 @@ def test_run_metadata(renku_cli, client, client_database_injection_manager):
         assert "run-1" == plan.name
         assert "first run" == plan.description
         assert {"key1", "key2"} == set(plan.keywords)
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize(

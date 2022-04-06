@@ -66,7 +66,7 @@ def test_rerun(project, renku_cli, provider):
         ("𒁃.c", "𒁏.txt"),
     ],
 )
-def test_rerun_with_special_paths(project, renku_cli, provider, source, output):
+def test_rerun_with_special_paths(project, renku_cli, runner, provider, source, output):
     """Test rerun with unicode/whitespace filenames."""
     cwd = Path(project)
     source = cwd / source
@@ -87,6 +87,9 @@ def test_rerun_with_special_paths(project, renku_cli, provider, source, output):
             break
 
     assert content != output.read_text().strip(), "The output should have changed."
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
@@ -294,6 +297,9 @@ def test_rerun_overridden_outputs_partially(project, renku_cli, runner):
     assert "r1" in result.output
     assert "r2" in result.output
     assert "r3" not in result.output
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_rerun_multiple_paths_common_output(project, renku_cli, runner):

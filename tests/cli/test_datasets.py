@@ -473,6 +473,9 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client, load_dataset_
     result = runner.invoke(cli, ["dataset", "add", "dataset"] + paths, catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_add_with_relative_path(runner, client, directory_tree, subdirectory):
     """Test adding data with relative path."""
@@ -676,8 +679,7 @@ def test_dataset_add_many(tmpdir, runner, project, client):
 
 
 def test_dataset_file_path_from_subdirectory(runner, client, subdirectory, load_dataset_with_injection):
-    """Test adding a file into a dataset and check path independent
-    of the CWD"""
+    """Test adding a file into a dataset and check path independent of the CWD."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -992,7 +994,7 @@ def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):
 
 
 def test_dataset_unlink_file(tmpdir, runner, client, subdirectory, load_dataset_with_injection):
-    """Test unlinking of file and check removal from dataset"""
+    """Test unlinking of file and check removal from dataset."""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1037,6 +1039,9 @@ def test_dataset_rm(runner, client, directory_tree, subdirectory, load_dataset_w
     assert not load_dataset_with_injection("my-dataset", client)
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
 
@@ -1126,6 +1131,9 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory, load_dataset
     assert 1 == len(dataset.annotations)
     assert new_metadata == dataset.annotations[0].body
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize("dirty", [False, True])
 def test_dataset_edit_no_change(runner, client, project, dirty):
@@ -1171,6 +1179,7 @@ def test_dataset_provider_resolution_dataverse(doi_responses, uri):
 
 
 def test_dataset_tag(tmpdir, runner, client, subdirectory, get_datasets_provenance_with_injection):
+    """Test that dataset tags can be created."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -1200,9 +1209,13 @@ def test_dataset_tag(tmpdir, runner, client, subdirectory, get_datasets_provenan
         all_tags = datasets_provenance.get_all_tags(dataset)
         assert {dataset.id} == {t.dataset_id.value for t in all_tags}
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize("form", ["tabular", "json-ld"])
 def test_dataset_ls_tags(tmpdir, runner, project, client, form, load_dataset_with_injection):
+    """Test listing of dataset tags."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -1238,6 +1251,7 @@ def test_dataset_ls_tags(tmpdir, runner, project, client, form, load_dataset_wit
 
 
 def test_dataset_rm_tag(tmpdir, runner, client, subdirectory, load_dataset_with_injection):
+    """Test removing of dataset tags."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -1273,8 +1287,12 @@ def test_dataset_rm_tag(tmpdir, runner, client, subdirectory, load_dataset_with_
     assert 2 == result.exit_code
     assert "not found" in result.output
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
+    """Test removing multiple dataset tags at once."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -1300,6 +1318,7 @@ def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
 
 
 def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
+    """Test removing non-existent dataset tag."""
     result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1"], catch_exceptions=False)
 
     assert 1 == result.exit_code
@@ -1726,7 +1745,7 @@ def test_external_file_update(runner, client, directory_tree, subdirectory):
     assert current_commit != previous_commit
 
 
-@pytest.mark.skip("renku update doesn't support new database, reenable once it does")
+@pytest.mark.skip("renku update follows symlinks when calculating hashes and doesn't respect external files")
 @pytest.mark.serial
 def test_workflow_with_external_file(runner, client, directory_tree, run, subdirectory, no_lfs_size_limit):
     """Check using external files in workflows."""
@@ -2026,6 +2045,9 @@ def test_datasets_provenance_after_update(runner, client, directory_tree, get_da
         current_version = datasets_provenance.get_by_name("my-data")
 
     assert current_version.identifier != current_version.initial_identifier
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_datasets_provenance_after_adding_tag(

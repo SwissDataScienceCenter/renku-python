@@ -1468,10 +1468,24 @@
                "maxCount": 1
             },
             {
-               "path": "schema:mapsTo",
-               "sh:class": {
-                  "@id": "renku:CommandParameterBase"
-               }
+               "path": "renku:mapsTo",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandParameter"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandInput"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandOutput"
+                     }
+                  }
+               ]
             }
          ]
       },

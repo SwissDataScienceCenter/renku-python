@@ -98,6 +98,9 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
     assert "Renku Version:" in result.output
     assert "Keywords:" in result.output
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_project_edit_no_change(runner, client):
     """Check project metadata editing does not commit when there is no change."""

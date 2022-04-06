@@ -51,6 +51,9 @@ def test_move(runner, client):
     assert f"{src1} -> {dst1}" in result.output
     assert f"{src2} -> {dst2}" in result.output
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_move_outside_paths(runner, client, directory_tree):
     """Test move from/to outside paths is not possible."""

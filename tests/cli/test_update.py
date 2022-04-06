@@ -64,6 +64,9 @@ def test_update(runner, client, renku_cli, client_database_injection_manager, pr
         # NOTE: No ActivityCollection is created if update include only one activity
         assert [] == activity_collections
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_update_multiple_steps(runner, client, renku_cli, client_database_injection_manager, provider):

@@ -97,6 +97,9 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after, load_
     assert dataset.date_created is None
     assert dataset.date_published is not None
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize(
     "doi, input",
@@ -143,6 +146,9 @@ def test_dataset_import_real_param(doi, input, runner, project, sleep_after, cli
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize(
     "doi", [("10.5281/zenodo.3239984", "n"), ("zenodo.org/record/3239986", "n"), ("10.5281/zenodo.3239982", "n")]
@@ -163,7 +169,7 @@ def test_dataset_import_uri_404(doi, runner, project, sleep_after):
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
-    """Test dataset import for existing DOI and dataset"""
+    """Test dataset import for existing DOI and dataset."""
     result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.1438326"], input="y")
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Warning: Newer version found" in result.output
@@ -322,6 +328,9 @@ def test_dataset_import_renku_provider(runner, client, uri, load_dataset_with_in
     # NOTE: Check that schema:sameAs is always set to canonical dataset URI regardless of import URI
     canonical_uri = "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0"
     assert dataset.same_as.url["@id"] == canonical_uri
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.integration
@@ -482,7 +491,7 @@ def test_dataset_import_renku_provider_errors(runner, project, uri, message):
 @pytest.mark.vcr
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
 def test_dataset_reimport_renkulab_dataset(runner, project, url):
-    """Test dataset import for existing dataset"""
+    """Test dataset import for existing dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
 
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
@@ -557,6 +566,9 @@ def test_dataset_export_upload_file(
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.integration
