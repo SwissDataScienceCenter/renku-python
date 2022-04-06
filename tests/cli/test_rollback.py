@@ -83,6 +83,9 @@ def test_rollback(client, runner, project):
     result = runner.invoke(cli, ["rollback"], input="7\ny")
     assert 0 == result.exit_code, format_result_exception(result)
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
     result = runner.invoke(cli, ["workflow", "ls"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 2 == len(result.output.splitlines())

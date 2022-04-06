@@ -146,6 +146,9 @@ def test_workflow_compose(runner, project, run_shell, client):
     assert composite_plan.mappings[1].default_value == "other_output.csv"
     assert composite_plan.mappings[1].description == "the final output file produced"
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_workflow_compose_from_paths(runner, project, run_shell, client):
     """Test renku workflow compose with input/output paths."""
@@ -322,7 +325,7 @@ def test_workflow_show(runner, project, run_shell, client):
 
 
 def test_workflow_remove_command(runner, project):
-    """test workflow remove with builder."""
+    """Test workflow remove with builder."""
     workflow_name = "test_workflow"
 
     result = runner.invoke(cli, ["workflow", "remove", workflow_name])
@@ -336,7 +339,7 @@ def test_workflow_remove_command(runner, project):
 
 
 def test_workflow_export_command(runner, project):
-    """test workflow export with builder."""
+    """Test workflow export with builder."""
     result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", "run1", "touch", "data.csv"])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -466,6 +469,9 @@ def test_workflow_edit(runner, client, run_shell):
     assert len(edited_composite_plan.mappings) == 1
     assert edited_composite_plan.mappings[0].mapped_parameters[0].name == "param1"
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_workflow_show_outputs_with_directory(runner, client, run):
     """Output files in directory are not shown as separate outputs."""
@@ -517,7 +523,7 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
     ],
 )
 def test_workflow_execute_command(runner, run_shell, project, capsys, client, provider, yaml, workflows, parameters):
-    """test workflow execute."""
+    """Test workflow execute."""
 
     for wf in workflows:
         output = run_shell(f"renku run --name {wf[0]} -- {wf[1]}")
@@ -600,6 +606,9 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
         for o in outputs:
             assert Path(o).resolve().exists()
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, capsys, client, provider):
@@ -625,6 +634,9 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
     assert result[1] is None
 
     assert "goodbye\n" == output.read_text()
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
@@ -658,6 +670,9 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
 
     assert "my other input string\n" == output.read_text()
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, client, provider):
@@ -686,6 +701,9 @@ def test_workflow_execute_command_with_api_output_set(runner, run_shell, project
     assert result[1] is None
 
     assert "test" == other_output.read_text()
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, project, capsys, client):
@@ -960,6 +978,9 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
 
     assert "xyz\n" == Path("output4").read_text()
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize(
@@ -1042,6 +1063,9 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     for o in outputs:
         assert Path(o).resolve().exists()
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_workflow_cycle_detection(run_shell, project, capsys, client):
     """Test creating a cycle is not possible with renku run or workflow execute."""
@@ -1077,7 +1101,7 @@ def test_workflow_cycle_detection(run_shell, project, capsys, client):
 
 @pytest.mark.skipif(sys.platform == "darwin", reason="GitHub macOS image doesn't include Docker")
 def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
-    """test workflow execute using docker with the toil provider."""
+    """Test workflow execute using docker with the toil provider."""
     caplog.set_level(logging.INFO)
 
     write_and_commit_file(client.repository, "input", "first line\nsecond line")
@@ -1097,7 +1121,7 @@ def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
 
 
 def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
-    """test workflow execute using docker with the toil provider and stderr redirection."""
+    """Test workflow execute using docker with the toil provider and stderr redirection."""
     write_and_commit_file(client.repository, "input", "first line\nsecond line")
     output = client.path / "output"
 
