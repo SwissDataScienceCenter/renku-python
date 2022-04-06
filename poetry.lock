@@ -581,11 +581,11 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "environ-config"
-version = "21.2.0"
+version = "22.1.0"
 description = "Boilerplate-free configuration with env variables."
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 
 [package.dependencies]
 attrs = ">=17.4.0"
@@ -2622,7 +2622,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "f5ed1e83eb2f295acbf6dfa4e48fe3d24e385d850343180ab802bebbe8991910"
+content-hash = "1e9e6658d801347791d417483703f6d871e353d8bb2c73671f51747c50db52a4"
 
 [metadata.files]
 addict = [
@@ -2965,8 +2965,8 @@ entrypoints = [
     {file = "entrypoints-0.4.tar.gz", hash = "sha256:b706eddaa9218a19ebcd67b56818f05bb27589b1ca9e8d797b74affad4ccacd4"},
 ]
 environ-config = [
-    {file = "environ-config-21.2.0.tar.gz", hash = "sha256:24bebf69d814a18242483c83a2856f20db1b623eab2d34fb712d3d02f5cd22c8"},
-    {file = "environ_config-21.2.0-py2.py3-none-any.whl", hash = "sha256:638057e2fb73984d62192f9c13510eb5df1d291f95b8923e9dc588453d709dd3"},
+    {file = "environ-config-22.1.0.tar.gz", hash = "sha256:7c7dbc5601060667301e992f6f0544c01e5144c86f1b2ec0b053e322788bb602"},
+    {file = "environ_config-22.1.0-py2.py3-none-any.whl", hash = "sha256:db7b36c948e6e896aa71573c3ced375f259b80901dd6cc5bfcc7f7f5d64d5cfe"},
 ]
 execnet = [
     {file = "execnet-1.9.0-py2.py3-none-any.whl", hash = "sha256:a295f7cc774947aac58dde7fdc85f4aa00c42adf5d8f5468fc630c1acf30a142"},

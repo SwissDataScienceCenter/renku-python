@@ -69,7 +69,7 @@ cwltool = "==3.1.20211107152837"
 deepdiff = "^5.8.0"
 deepmerge = "==1.0.1"
 docker = "<6,>=3.7.2"
-environ-config = "<21.3.0,>=18.2.0"
+environ-config = ">=18.2.0,<22.2.0"
 fakeredis = { version = ">=1.4.1,<1.7.2", optional = true }
 filelock = ">=3.0.0,<3.6.1"
 flake8 = { version = "<4.0,>=3.8", optional = true }                             #wait for https://github.com/flakehell/flakehell/pull/23 to be merged before bumping
