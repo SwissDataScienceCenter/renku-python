@@ -76,15 +76,15 @@ class DeprecatedImportInterceptor(importlib.abc.MetaPathFinder):
         """Find the spec for a namespace."""
         match = next((n for n in self.package_redirects if fullname.startswith(n)), None)
         if match is not None:
-            if match == fullname:
+            if match == fullname and self.package_redirects[match][1]:
                 warnings.warn(
-                    f"The {fullname} module has moved to {self.package_redirects[match]} and is deprecated",
+                    f"The {fullname} module has moved to {self.package_redirects[match][0]} and is deprecated",
                     DeprecationWarning,
                     stacklevel=2,
                 )
             try:
                 subpath = fullname[len(match) :]
-                target_name = self.package_redirects[match] + subpath
+                target_name = self.package_redirects[match][0] + subpath
 
                 sys.meta_path = [x for x in sys.meta_path if x is not self]
                 spec = importlib.util.find_spec(target_name)
@@ -101,12 +101,12 @@ sys.meta_path.insert(
     0,
     DeprecatedImportInterceptor(
         {
-            "renku.core.models": "renku.domain_model",
-            "renku.core.metadata": "renku.infrastructure",
-            "renku.core.commands": "renku.command",
-            "renku.core.plugins": "renku.core.plugin",
-            "renku.api": "renku.ui.api",
-            "renku.cli": "renku.ui.cli",
+            "renku.core.models": ("renku.domain_model", False),
+            "renku.core.metadata": ("renku.infrastructure", False),
+            "renku.core.commands": ("renku.command", True),
+            "renku.core.plugins": ("renku.core.plugin", True),
+            "renku.api": ("renku.ui.api", True),
+            "renku.cli": ("renku.ui.cli", True),
         }
     ),
 )
