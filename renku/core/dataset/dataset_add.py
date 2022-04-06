@@ -248,10 +248,9 @@ def _create_destination_directory(
     # what will be its name
     dataset_datadir.mkdir(parents=True, exist_ok=True)
 
-    destination = destination or Path(".")
-    destination = cast(Path, get_relative_path(destination, base=dataset_datadir, strict=True))
-    destination = dataset_datadir / destination
-    return cast(Path, destination)
+    destination = destination or ""
+    relative_path = cast(str, get_relative_path(destination, base=dataset_datadir, strict=True))
+    return dataset_datadir / relative_path
 
 
 def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files: List[Dict]):
@@ -365,7 +364,7 @@ def _add_from_git(
         if not sources:
             return
         for source in sources:
-            if get_relative_path(path=source, base=repository.path) is None:
+            if not is_subpath(path=source, base=repository.path):
                 raise errors.ParameterError(f"Path '{source}' is not within the repository")
 
     def get_paths_from_remote_repo() -> Set[Path]:
