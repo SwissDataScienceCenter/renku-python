@@ -668,6 +668,26 @@ class IntermittentDatasetExistsError(ServiceError):
         super().__init__(exception=exception)
 
 
+class IntermittentProjectTemplateUnavailable(ServiceError):
+    """The reference template for the project is currently unavailable.
+
+    It may be a temporary issue in accessing the remote template, or it may have been deleted,
+    moved, or otherwise not-accessible.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 140
+    userMessage = (
+        "The reference template for the project is currently unavailable."
+        " It may be a temporary problem, or the template may not be accessible anymore."
+    )
+    devMessage = (
+        "Error accessing the project template. This may be temporary, or the project may not be accessible anymore."
+    )
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
 class IntermittentTimeoutError(ServiceError):
     """An operation timed out."""
 

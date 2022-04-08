@@ -44,6 +44,7 @@ from renku.ui.service.errors import (
     IntermittentDatasetExistsError,
     IntermittentFileNotExistsError,
     IntermittentProjectIdError,
+    IntermittentProjectTemplateUnavailable,
     IntermittentRedisError,
     IntermittentSettingExistsError,
     IntermittentTimeoutError,
@@ -375,8 +376,24 @@ def handle_datasets_unlink_errors(f):
     return decorated_function
 
 
-def handle_migration_errors(f):
-    """Wrapper which handles migrations exceptions."""
+def handle_migration_read_errors(f):
+    """Wrapper which handles migrations read exceptions."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        # NOTE: verify if this may better go in MigrationsCheckCtrl as try/except in to_response()
+        try:
+            return f(*args, **kwargs)
+        except (InvalidTemplateError, TemplateUpdateError, UninitializedProject) as e:
+            raise IntermittentProjectTemplateUnavailable(e)
+
+    return decorated_function
+
+
+@handle_migration_read_errors
+def handle_migration_write_errors(f):
+    """Wrapper which handles migrations write exceptions."""
     # noqa
     @wraps(f)
     def decorated_function(*args, **kwargs):
