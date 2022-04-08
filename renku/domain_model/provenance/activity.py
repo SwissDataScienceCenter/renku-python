@@ -51,7 +51,7 @@ class Association:
     @staticmethod
     def generate_id(activity_id: str) -> str:
         """Generate a Association identifier."""
-        return f"{activity_id}/association"  # TODO: Does it make sense to use plural name here?
+        return f"{activity_id}/association"
 
 
 class Usage(Immutable):
@@ -175,7 +175,7 @@ class Activity(Persistent):
 
             entity = get_entity_from_revision(repository=client.repository, path=output_path, bypass_cache=True)
 
-            generation = Generation(entity=entity, id=Usage.generate_id(activity_id))
+            generation = Generation(entity=entity, id=Generation.generate_id(activity_id))
 
             generations[output_path] = generation
 
