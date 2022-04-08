@@ -25,7 +25,7 @@ from renku.command.schema.dataset import dump_dataset_as_jsonld
 from renku.command.schema.project import ProjectSchema
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util.shacl import validate_graph
-from renku.domain_model.jsonld import NoDatesSafeLoader
+from renku.core.util.yaml import NoDatesSafeLoader
 
 
 def _shacl_graph_to_string(graph):

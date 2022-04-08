@@ -25,8 +25,8 @@ from renku.command.schema.calamus import DateTimeList, JsonLDSchema, StringList,
 from renku.core.migration.models.v9 import Person as OldPerson
 from renku.core.migration.models.v9 import generate_project_id, wfprov
 from renku.core.migration.utils import OLD_METADATA_PATH, generate_dataset_tag_id, generate_url_id, get_datasets_path
+from renku.core.util import yaml
 from renku.core.util.urls import get_host
-from renku.domain_model import jsonld
 
 
 class Base:
@@ -86,7 +86,7 @@ class Project(Base):
     @classmethod
     def from_yaml(cls, path, client):
         """Read content from YAML file."""
-        data = jsonld.read_yaml(path)
+        data = yaml.read_yaml(path)
         self = ProjectSchemaV3().load(data)
 
         if not self.creator:
@@ -107,7 +107,7 @@ class Project(Base):
         self.agent_version = __version__
 
         data = ProjectSchemaV3().dump(self)
-        jsonld.write_yaml(path=path, data=data)
+        yaml.write_yaml(path=path, data=data)
 
 
 class Collection(Base):
@@ -166,7 +166,7 @@ class Dataset(Base):
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
         """Read content from YAML file."""
-        data = jsonld.read_yaml(path)
+        data = yaml.read_yaml(path)
         self = DatasetSchemaV3(client=client, commit=commit).load(data)
         self._metadata_path = path
         return self
@@ -175,7 +175,7 @@ class Dataset(Base):
         """Write content to a YAML file."""
         data = DatasetSchemaV3().dump(self)
         path = path or self._metadata_path or os.path.join(self.path, OLD_METADATA_PATH)
-        jsonld.write_yaml(path=path, data=data)
+        yaml.write_yaml(path=path, data=data)
 
 
 class PersonSchemaV3(JsonLDSchema):
