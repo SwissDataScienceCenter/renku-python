@@ -22,8 +22,9 @@ import os
 import pytest
 
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.domain_model.dataset import Url
 from renku.ui.cli import cli
-from tests.utils import format_result_exception, modified_environ
+from tests.utils import format_result_exception, modified_environ, with_dataset
 
 
 @pytest.mark.parametrize("revision", ["", "HEAD", "HEAD^", "HEAD^..HEAD"])
@@ -112,3 +113,17 @@ def test_graph_export_strict_dataset(tmpdir, runner, project, client, format, su
 
     # check that all datasets are exported
     assert 2 == result.output.count("http://schema.org/Dataset")
+
+
+def test_graph_export_dataset_mutability(runner, client_with_datasets, client_database_injection_manager):
+    """Test export validation fails for datasets that have both same_as and derived_from."""
+    with client_database_injection_manager(client_with_datasets):
+        with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
+            # NOTE: Set both same_as and derived_from for a dataset
+            dataset.same_as = Url(url_str="http://example.com")
+            dataset.derived_from = Url(url_id="datasets/abc123")
+
+    result = runner.invoke(cli, ["graph", "export", "--full", "--strict"])
+
+    assert 1 == result.exit_code
+    assert "Both prov:wasDerivedFrom and schema:sameAs are set." in result.output
