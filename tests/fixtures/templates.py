@@ -184,7 +184,7 @@ def templates_source(tmp_path, monkeypatch):
 
         def get_latest_reference_and_version(
             self, id: str, reference: Optional[str], version: Optional[str]
-        ) -> Optional[Tuple[Optional[str], str]]:
+        ) -> Tuple[Optional[str], str]:
             """Return latest reference and version number of a template."""
             _ = self.get_template(id=id, reference=reference)
             version = str(max(self._versions))

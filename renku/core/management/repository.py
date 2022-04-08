@@ -58,7 +58,7 @@ def _path_converter(path) -> Path:
 class PathMixin:
     """Define a default path attribute."""
 
-    path: Path = attr.ib(default=default_path, converter=_path_converter)
+    path: Path = attr.ib(default=default_path, converter=_path_converter)  # type: ignore
 
     @path.validator
     def _check_path(self, _, value):

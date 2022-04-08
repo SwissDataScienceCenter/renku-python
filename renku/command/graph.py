@@ -181,7 +181,8 @@ def _get_graph_for_all_objects(
 
         current_dataset = dataset
         while current_dataset.is_derivation():
-            current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)  # type: ignore
+            assert current_dataset.derived_from is not None
+            current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.value)
             objects.append(current_dataset)
 
     return _convert_entities_to_graph(objects, project)
