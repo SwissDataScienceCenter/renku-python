@@ -48,13 +48,13 @@ Bug Fixes
    to more tests
    (`#2811 <https://github.com/SwissDataScienceCenter/renku-python/issues/2811>`__)
    (`ce9850f <https://github.com/SwissDataScienceCenter/renku-python/commit/ce9850f94e08a137fde7238e247250b4bf8b3976>`__)
--  **core:** Fix workflow outputs not staging parent directory o execution
+-  **core:** Fix workflow outputs not staging parent directory of execution
    (`#2798 <https://github.com/SwissDataScienceCenter/renku-python/issues/2798>`__)
    (`330a3b8 <https://github.com/SwissDataScienceCenter/renku-python/commit/330a3b8df8347552db8ea3697e7fff5bcf807bec>`__)
 -  **core:** optimize imports to improve startup time
    (`#2799 <https://github.com/SwissDataScienceCenter/renku-python/issues/2799>`__)
    (`918fc30 <https://github.com/SwissDataScienceCenter/renku-python/commit/918fc303f83c4f5b7b66db001f9002df335a4af2>`__)
--  **service:** clean cache after trying to fetch projects from non-existing repos
+-  **service:** clean cache after trying to fetch projects from non-existing repositories
    (`#2789 <https://github.com/SwissDataScienceCenter/renku-python/issues/2789>`__)
    (`c62b75b <https://github.com/SwissDataScienceCenter/renku-python/commit/c62b75bce7da710c6f06802e61942837feb4a105>`__),
    closes
