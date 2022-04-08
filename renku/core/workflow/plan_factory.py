@@ -285,6 +285,12 @@ class PlanFactory:
                 input_path = Path(os.path.abspath(path)).relative_to(self.working_dir)
             except FileNotFoundError:
                 continue
+            except ValueError:
+                # NOTE: Raised if path is not relative to working_dir (external file)
+                input_path = Path(parameter.default_value)
+
+                if not input_path.exists():
+                    continue
 
             if input_path.is_dir() and tree.get(input_path):
                 # The directory might exist before running the script
