@@ -57,11 +57,11 @@ def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Pa
         raise ValueError(f"Path '{path}' is not with base directory '{base}'")
 
 
-def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bool = False) -> Optional[Path]:
+def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bool = False) -> Optional[str]:
     """Return a relative path to the base if path is within base without resolving symlinks."""
     try:
         absolute_path = get_absolute_path(path=path, base=base)
-        return Path(absolute_path).relative_to(base)
+        return str(Path(absolute_path).relative_to(base))
     except ValueError:
         if strict:
             raise errors.ParameterError(f"File {path} is not within path {base}")
@@ -83,7 +83,7 @@ def get_relative_paths(base: Union[Path, str], paths: Sequence[Union[Path, str]]
         if relative_path is None:
             raise errors.ParameterError(f"Path '{path}' is not within base path '{base}'")
 
-        relative_paths.append(str(relative_path))
+        relative_paths.append(relative_path)
 
     return relative_paths
 

@@ -490,3 +490,21 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
 
     assert "content_aeven more modified\n" == (client.path / output1).read_text()
     assert "content_beven more modified\n" == (client.path / output2).read_text()
+
+
+def test_update_with_external_files(split_runner, client, directory_tree):
+    """Test update commands that use external files."""
+    assert 0 == split_runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
+
+    path = client.path / "data" / "my-dataset" / "directory_tree" / "file1"
+
+    assert 0 == split_runner.invoke(cli, ["run", "tail", path], stdout="output").exit_code
+
+    (directory_tree / "file1").write_text("updated file1")
+
+    assert 0 == split_runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
+
+    result = split_runner.invoke(cli, ["update", "--all"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "updated file1" in (client.path / "output").read_text()
