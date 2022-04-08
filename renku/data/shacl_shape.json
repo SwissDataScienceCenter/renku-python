@@ -152,6 +152,9 @@
                   },
                   {
                      "sh:pattern": "mailto:[^@\\s]+@\\S+\\.\\S+"
+                  },
+                  {
+                     "sh:pattern": "http(s)?://[\\S]*orcid.org/[0-9-]+"
                   }
                ]
             },
@@ -370,6 +373,9 @@
                   },
                   {
                      "sh:pattern": "mailto:[^@\\s]+@\\S+\\.\\S+"
+                  },
+                  {
+                     "sh:pattern": "http(s)?://[\\S]*orcid.org/[0-9-]+"
                   }
                ]
             },
