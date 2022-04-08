@@ -24,7 +24,7 @@ import time
 from contextlib import contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 import click
 import yaml
@@ -36,7 +36,7 @@ from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management import RENKU_HOME
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
-from renku.core.util.os import get_relative_path
+from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
 from renku.core.workflow.types import PATH_OBJECTS, Directory, File
 from renku.domain_model.datastructures import DirectoryTree
 from renku.domain_model.workflow.parameter import (
@@ -63,8 +63,8 @@ class PlanFactory:
     def __init__(
         self,
         command_line: str,
-        explicit_inputs: Optional[List[Tuple[str, Optional[str]]]] = None,
-        explicit_outputs: Optional[List[Tuple[str, Optional[str]]]] = None,
+        explicit_inputs: Optional[List[Tuple[str, str]]] = None,
+        explicit_outputs: Optional[List[Tuple[str, str]]] = None,
         explicit_parameters: Optional[List[Tuple[str, Optional[str]]]] = None,
         directory: Optional[str] = None,
         working_dir: Optional[str] = None,
@@ -102,11 +102,11 @@ class PlanFactory:
 
         self.success_codes = success_codes or []
 
-        self.explicit_inputs = (
-            [(Path(os.path.abspath(path)), name) for path, name in explicit_inputs] if explicit_inputs else []
+        self.explicit_inputs: List[Tuple[str, str]] = (
+            [(get_absolute_path(path), name) for path, name in explicit_inputs] if explicit_inputs else []
         )
-        self.explicit_outputs = (
-            [(Path(os.path.abspath(path)), name) for path, name in explicit_outputs] if explicit_outputs else []
+        self.explicit_outputs: List[Tuple[str, str]] = (
+            [(get_absolute_path(path), name) for path, name in explicit_outputs] if explicit_outputs else []
         )
         self.explicit_parameters = explicit_parameters if explicit_parameters else []
 
@@ -146,19 +146,16 @@ class PlanFactory:
         """Return True if the path is in ignored list."""
         return ignored_list is not None and str(candidate) in ignored_list
 
-    def _resolve_existing_subpath(self, candidate) -> Optional[Path]:
+    def _resolve_existing_subpath(self, candidate: Union[Path, str]) -> Optional[Path]:
         """Return a path instance if it exists in the project's directory."""
-        candidate = Path(candidate)
-
-        if not candidate.is_absolute():
-            candidate = self.directory / candidate
+        candidate = self.directory / candidate if not os.path.isabs(candidate) else Path(candidate)
 
         if candidate.exists() or candidate.is_symlink():
             path = candidate.resolve()
 
-            # NOTE: If relative_path is None then it's is either an external file or an absolute path (e.g. /bin/bash)
-            relative_path = get_relative_path(path=path, base=self.working_dir)
-            if relative_path is not None:
+            # NOTE: If resolved path is not within the project then it's is either an external file or an absolute path
+            # (e.g. /bin/bash)
+            if is_subpath(path, base=self.working_dir):
                 return path
             elif is_external_file(path=candidate, client_path=self.working_dir):
                 return Path(os.path.abspath(candidate))
@@ -324,8 +321,7 @@ class PlanFactory:
     ) -> Set[Tuple[str, Optional[str]]]:
         """Check an input/parameter for being a potential output directory."""
         subpaths = {str(input_path / path) for path in tree.get(input_path, default=[])}
-        absolute_path = os.path.abspath(input_path)
-        if all(Path(absolute_path) != path for path, _ in self.explicit_outputs):
+        if not self._is_explicit(input_path, self.explicit_outputs):
             content = {str(path) for path in input_path.rglob("*") if not path.is_dir() and path.name != ".gitkeep"}
             preexisting_paths = content - subpaths
             if preexisting_paths:
@@ -371,6 +367,7 @@ class PlanFactory:
         """Return a stream mapping if value is a path mapped to a stream."""
         if self.stdin and self.stdin == value:
             return MappedIOStream(id=MappedIOStream.generate_id("stdin"), stream_type="stdin")
+
         if self.stdout and self.stdout == value:
             return MappedIOStream(id=MappedIOStream.generate_id("stdout"), stream_type="stdout")
         if self.stderr and self.stderr == value:
@@ -386,7 +383,7 @@ class PlanFactory:
         encoding_format: Optional[List[str]] = None,
     ):
         """Create a CommandInput."""
-        if self.no_input_detection and all(Path(default_value).resolve() != path for path, _ in self.explicit_inputs):
+        if self.no_input_detection and not self._is_explicit(default_value, self.explicit_inputs):
             return
 
         mapped_stream = self.get_stream_mapping_for_value(default_value)
@@ -420,7 +417,7 @@ class PlanFactory:
         mapped_to: Optional[MappedIOStream] = None,
     ):
         """Create a CommandOutput."""
-        if self.no_output_detection and all(Path(default_value).resolve() != path for path, _ in self.explicit_outputs):
+        if self.no_output_detection and not self._is_explicit(default_value, self.explicit_outputs):
             return
 
         create_folder = False
@@ -478,7 +475,7 @@ class PlanFactory:
         """Create a CommandOutput from a parameter."""
         self.parameters.remove(parameter)
         value = Path(self._path_relative_to_root(parameter.default_value))
-        encoding_format = [DIRECTORY_MIME_TYPE] if value.resolve().is_dir() else self._get_mimetype(value)
+        encoding_format = [DIRECTORY_MIME_TYPE] if value.is_dir() else self._get_mimetype(value)
         self.add_command_output(
             default_value=str(value),
             prefix=parameter.prefix,
@@ -512,8 +509,8 @@ class PlanFactory:
 
         for explicit_input, name in self.explicit_inputs:
             try:
-                relative_explicit_input = str(explicit_input.relative_to(self.working_dir))
-            except ValueError:
+                relative_explicit_input = get_relative_path(explicit_input, base=self.working_dir, strict=True)
+            except errors.ParameterError:
                 raise errors.UsageError(
                     "The input file or directory is not in the repository."
                     "\n\n\t" + click.style(str(explicit_input), fg="yellow") + "\n\n"
@@ -611,11 +608,15 @@ class PlanFactory:
                 candidates |= {(o.b_path, None) for o in repository.unstaged_changes if not o.deleted}
 
                 # Filter out explicit outputs
-                explicit_output_paths = {str(path.relative_to(self.working_dir)) for path, _ in self.explicit_outputs}
+                explicit_output_paths = {
+                    str(Path(path).relative_to(self.working_dir)) for path, _ in self.explicit_outputs
+                }
                 candidates = {c for c in candidates if c[0] not in explicit_output_paths}
 
             # Include explicit outputs
-            candidates |= {(str(path.relative_to(self.working_dir)), name) for path, name in self.explicit_outputs}
+            candidates |= {
+                (str(Path(path).relative_to(self.working_dir)), name) for path, name in self.explicit_outputs
+            }
 
             candidates = {(path, name) for path, name in candidates if is_path_safe(path)}
 
@@ -626,7 +627,7 @@ class PlanFactory:
                 if (
                     stream
                     and all(stream != path for path, _ in candidates)
-                    and (Path(os.path.abspath(stream)) != path for path, _ in self.explicit_outputs)
+                    and not self._is_explicit(stream, self.explicit_outputs)
                 ):
                     unmodified.add(stream)
                 elif stream:
@@ -652,7 +653,8 @@ class PlanFactory:
 
     def _path_relative_to_root(self, path) -> str:
         """Make a potentially relative path in a subdirectory relative to the root of the repository."""
-        return str((self.directory / path).resolve().relative_to(self.working_dir))
+        absolute_path = get_absolute_path(path, base=self.directory)
+        return cast(str, get_relative_path(absolute_path, base=self.working_dir, strict=True))
 
     def _include_indirect_parameters(self):
         run_parameters = read_indirect_parameters(self.working_dir)
@@ -668,7 +670,7 @@ class PlanFactory:
 
         for name, indirect_input in read_files_list(indirect_inputs_list).items():
             # treat indirect inputs like explicit inputs
-            path = Path(os.path.abspath(indirect_input))
+            path = get_absolute_path(indirect_input)
             self.explicit_inputs.append((path, name))
 
         # add new explicit inputs (if any) to inputs
@@ -680,13 +682,18 @@ class PlanFactory:
 
         for name, indirect_output in read_files_list(indirect_outputs_list).items():
             # treat indirect outputs like explicit outputs
-            path = Path(os.path.abspath(indirect_output))
+            path = get_absolute_path(indirect_output)
             self.explicit_outputs.append((path, name))
 
     def iter_input_files(self, basedir):
         """Yield tuples with input id and path."""
         for input_ in self.inputs:
             yield input_.id, os.path.normpath(os.path.join(basedir, input_.default_value))
+
+    @staticmethod
+    def _is_explicit(path: Union[Path, str], explicits_collection: List[Tuple[str, str]]) -> bool:
+        absolute_path = get_absolute_path(path)
+        return any(absolute_path == path for path, _ in explicits_collection)
 
     @inject.autoparams("project_gateway")
     def to_plan(

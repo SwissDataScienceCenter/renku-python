@@ -120,8 +120,8 @@ def test_run_metadata(renku_cli, runner, client, client_database_injection_manag
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_run_external_file(renku_cli, runner, client, client_database_injection_manager, tmpdir):
-    """Test run with workflow metadata."""
+def test_run_with_outside_files(renku_cli, runner, client, client_database_injection_manager, tmpdir):
+    """Test run with files that are outside the project."""
 
     external_file = tmpdir.join("file_1")
     external_file.write(str(1))
@@ -265,3 +265,15 @@ def test_run_prints_plan_when_stderr_redirected(split_runner, client):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Name: echo-command" in (client.path / "output").read_text()
     assert "Name:" not in result.output
+
+
+def test_run_with_external_files(split_runner, client, directory_tree):
+    """Test run commands that use external files."""
+    assert 0 == split_runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
+
+    path = client.path / "data" / "my-dataset" / "directory_tree" / "file1"
+
+    result = split_runner.invoke(cli, ["run", "tail", path], stdout="output")
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "file1" in (client.path / "output").read_text()
