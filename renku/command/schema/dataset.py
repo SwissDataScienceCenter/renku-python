@@ -81,6 +81,7 @@ class LanguageSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     alternate_name = fields.String(schema.alternateName)
+    id = fields.Id(missing=None)
     name = fields.String(schema.name)
 
 
