@@ -22,7 +22,7 @@ import pytest
 @pytest.fixture
 def ctrl_init(svc_client_cache):
     """Cache object for controller testing."""
-    from renku.service.serializers.headers import RequiredIdentityHeaders
+    from renku.ui.service.serializers.headers import RequiredIdentityHeaders
 
     _, headers, cache = svc_client_cache
 

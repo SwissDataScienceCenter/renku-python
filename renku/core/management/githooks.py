@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,14 +20,14 @@
 import stat
 from pathlib import Path
 
-from renku.core.management.command_builder.command import inject
-from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.utils.git import get_hook_path
+from renku.command.command_builder.command import inject
+from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.util.git import get_hook_path
 
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type: ignore
 
 HOOKS = ("pre-commit",)
 

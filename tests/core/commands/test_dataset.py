@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -25,25 +25,25 @@ from pathlib import Path
 
 import pytest
 
-from renku.core import errors
-from renku.core.commands.dataset import (
+from renku.command.dataset import (
     add_to_dataset_command,
     create_dataset_command,
     file_unlink_command,
     list_datasets_command,
     list_files_command,
 )
+from renku.core import errors
+from renku.core.dataset.context import DatasetContext
+from renku.core.dataset.dataset_add import add_data_to_dataset
+from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.errors import ParameterError
-from renku.core.management.dataset.context import DatasetContext
-from renku.core.management.dataset.dataset_add import add_data_to_dataset
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.metadata.repository import Repository
-from renku.core.models.dataset import Dataset, is_dataset_name_valid
-from renku.core.models.provenance.agent import Person
-from renku.core.utils.contexts import chdir
-from renku.core.utils.git import get_git_user
-from renku.core.utils.urls import get_slug
+from renku.core.util.contexts import chdir
+from renku.core.util.git import get_git_user
+from renku.core.util.urls import get_slug
+from renku.domain_model.dataset import Dataset, is_dataset_name_valid
+from renku.domain_model.provenance.agent import Person
+from renku.infrastructure.repository import Repository
 from tests.utils import assert_dataset_is_mutated, load_dataset, raises
 
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2017-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,12 +21,12 @@
 from datetime import datetime, timedelta
 from typing import List
 
-from renku.core.commands.log import _log
-from renku.core.commands.view_model.log import DatasetLogViewModel, LogType
-from renku.core.management.command_builder.command import inject, remove_injector
-from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.models.provenance.activity import Activity, Association
-from renku.core.models.provenance.agent import Person, SoftwareAgent
+from renku.command.command_builder.command import inject, remove_injector
+from renku.command.log import _log
+from renku.command.view_model.log import DatasetLogViewModel, LogType
+from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.domain_model.provenance.activity import Activity, Association
+from renku.domain_model.provenance.agent import Person, SoftwareAgent
 
 
 def test_log_activities(mocker):
@@ -53,7 +53,7 @@ def test_log_activities(mocker):
         id=previous_id,
         started_at_time=datetime.utcnow() - timedelta(hours=1, seconds=15),
         ended_at_time=datetime.utcnow() - timedelta(hours=1, seconds=10),
-        association=Association(id=Association.generate_id(previous_id), plan=plan1),
+        association=Association(id=Association.generate_id(previous_id), plan=plan1, agent=agents[1]),
         agents=agents,
     )
 
@@ -62,7 +62,7 @@ def test_log_activities(mocker):
         id=intermediate_id,
         started_at_time=datetime.utcnow() - timedelta(hours=1, seconds=10),
         ended_at_time=datetime.utcnow() - timedelta(hours=1, seconds=5),
-        association=Association(id=Association.generate_id(intermediate_id), plan=plan2),
+        association=Association(id=Association.generate_id(intermediate_id), plan=plan2, agent=agents[1]),
         agents=agents,
     )
 
@@ -71,7 +71,7 @@ def test_log_activities(mocker):
         id=following_id,
         started_at_time=datetime.utcnow() - timedelta(hours=1, seconds=5),
         ended_at_time=datetime.utcnow() - timedelta(hours=1),
-        association=Association(id=Association.generate_id(following_id), plan=plan3),
+        association=Association(id=Association.generate_id(following_id), plan=plan3, agent=agents[1]),
         agents=agents,
     )
 

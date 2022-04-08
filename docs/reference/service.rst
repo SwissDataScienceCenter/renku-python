@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -28,3 +28,12 @@ API Specification
 To explore the API documentation and test the current API against a running
 instance of Renku you can use the `Swagger UI on renkulab.io
 <https://renkulab.io/swagger>`_.
+
+
+Errors
+------
+
+You can check the error details here
+
+.. toctree::
+   service_errors

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,8 +23,8 @@ from pathlib import Path
 
 import pytest
 
-from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
@@ -50,6 +50,9 @@ def test_move(runner, client):
     assert dst2.exists()
     assert f"{src1} -> {dst1}" in result.output
     assert f"{src2} -> {dst2}" in result.output
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_move_outside_paths(runner, client, directory_tree):

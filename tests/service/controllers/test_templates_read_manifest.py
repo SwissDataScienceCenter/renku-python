@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,14 +17,14 @@
 # limitations under the License.
 """Renku service templates read manifest controller tests."""
 import pytest
-from marshmallow import ValidationError
 
-from renku.core import errors
+from renku.core.errors import InvalidTemplateError
+from renku.ui.service.errors import UserRepoUrlInvalidError
 
 
 def test_template_read_manifest_ctrl(ctrl_init, svc_client_with_templates, mocker):
     """Test template read manifest controller."""
-    from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
+    from renku.ui.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 
     cache, user_data = ctrl_init
     _, _, template_params = svc_client_with_templates
@@ -41,13 +41,13 @@ def test_template_read_manifest_ctrl(ctrl_init, svc_client_with_templates, mocke
 @pytest.mark.parametrize("git_url", ["https://github.com/`test", "https://github.com/SwissDataScienceCenter/}"])
 def test_validation_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_client_with_templates, mocker):
     """Test validation exception on template read manifest controller."""
-    from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
+    from renku.ui.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 
     cache, user_data = ctrl_init
     _, _, template_params = svc_client_with_templates
     template_params["url"] = git_url
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(UserRepoUrlInvalidError):
         TemplatesReadManifestCtrl(cache, user_data, template_params)
 
 
@@ -56,7 +56,7 @@ def test_validation_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_clie
 @pytest.mark.parametrize("git_url", ["https://example.com/test2/test3", "https://www.example.com/test2/test3"])
 def test_found_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_client_with_templates, mocker):
     """Test git command exception on template read manifest controller."""
-    from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
+    from renku.ui.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 
     cache, user_data = ctrl_init
     _, _, template_params = svc_client_with_templates
@@ -64,5 +64,5 @@ def test_found_exc_template_read_manifest_ctrl(git_url, ctrl_init, svc_client_wi
 
     ctrl = TemplatesReadManifestCtrl(cache, user_data, template_params)
 
-    with pytest.raises(errors.InvalidTemplateError):
+    with pytest.raises(InvalidTemplateError):
         ctrl.to_response()

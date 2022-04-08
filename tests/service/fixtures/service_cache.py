@@ -24,13 +24,13 @@ def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from _pytest.monkeypatch import MonkeyPatch
 
-    from renku.core.utils import git
-    from renku.service.cache.base import BaseCache
-    from renku.service.cache.models.file import File
-    from renku.service.cache.models.job import Job
-    from renku.service.cache.models.project import Project
-    from renku.service.cache.models.user import User
-    from renku.service.jobs.queues import WorkerQueues
+    from renku.core.util import git
+    from renku.ui.service.cache.base import BaseCache
+    from renku.ui.service.cache.models.file import File
+    from renku.ui.service.cache.models.job import Job
+    from renku.ui.service.cache.models.project import Project
+    from renku.ui.service.cache.models.user import User
+    from renku.ui.service.jobs.queues import WorkerQueues
 
     def push_changes_mock(*_, **__):
         """Mock for repository remote sync."""

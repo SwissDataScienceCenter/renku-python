@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,9 +19,9 @@
 
 import json
 
-from renku.cli import cli
-from renku.core.metadata.gateway.project_gateway import ProjectGateway
-from renku.core.models.provenance.agent import Person
+from renku.domain_model.provenance.agent import Person
+from renku.infrastructure.gateway.project_gateway import ProjectGateway
+from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
@@ -97,6 +97,9 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
     assert "Creator:" in result.output
     assert "Renku Version:" in result.output
     assert "Keywords:" in result.output
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_project_edit_no_change(runner, client):

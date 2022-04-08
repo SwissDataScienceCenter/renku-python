@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -24,11 +24,17 @@ from time import sleep
 
 import pytest
 
-from renku.core.management.template.template import fetch_templates_source
-from renku.core.metadata.repository import Repository
-from renku.core.models.template import TEMPLATE_MANIFEST, TemplatesManifest
-from renku.core.utils.os import normalize_to_ascii
-from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
+from renku.core.template.template import fetch_templates_source
+from renku.core.util.os import normalize_to_ascii
+from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
+from renku.infrastructure.repository import Repository
+from renku.ui.service.errors import (
+    ProgramProjectCreationError,
+    UserAnonymousError,
+    UserProjectCreationError,
+    UserRepoUrlInvalidError,
+    UserTemplateInvalidError,
+)
 from tests.utils import retry_failed
 
 
@@ -92,35 +98,37 @@ def test_compare_manifests(svc_client_with_templates):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_create_project_from_template(svc_client_templates_creation):
+@pytest.mark.parametrize(
+    "template_url,error",
+    [
+        ("definitely_not_a_valid_URL", UserRepoUrlInvalidError),
+        ("https://renkulabnonexistingwebsite.io", UserRepoUrlInvalidError),
+        ("https://datascience.ch", UserRepoUrlInvalidError),
+        ("https://github.com/SwissDataScienceCenter/renku-python", UserTemplateInvalidError),
+    ],
+)
+def test_read_manifest_from_wrong_template(svc_client_with_templates, template_url, error):
     """Check reading manifest template."""
-    from renku.service.serializers.headers import RenkuHeaders
-    from renku.service.utils import CACHE_PROJECTS_PATH
+    svc_client, headers, template_params = svc_client_with_templates
+    template_params["url"] = template_url
+
+    response = svc_client.get("/templates.read_manifest", query_string=template_params, headers=headers)
+
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert error.code == response.json["error"]["code"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_create_project_from_template(svc_client_templates_creation):
+    """Check creating project from a valid template."""
+    from renku.ui.service.serializers.headers import RenkuHeaders
+    from renku.ui.service.utils import CACHE_PROJECTS_PATH
 
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
 
-    # NOTE:  fail: remote authentication
-    anonymous_headers = deepcopy(headers)
-    anonymous_headers["Authorization"] = "Bearer None"
-    response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=anonymous_headers)
-
-    assert response
-    assert response.json.get("error") is not None, response.json
-    assert "Cannot push changes" in response.json["error"]["reason"]
-
-    # NOTE:  fail: missing parameters
-    if len(payload["parameters"]) > 0:
-        payload_without_parameters = deepcopy(payload)
-        payload_without_parameters["parameters"] = []
-        response = svc_client.post(
-            "/templates.create_project", data=json.dumps(payload_without_parameters), headers=headers
-        )
-        assert response
-        assert response.json["error"]
-        assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
-        assert "missing parameter" in response.json["error"]["reason"]
-
-    # NOTE:  successfully push with proper authentication
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
     assert response
@@ -150,3 +158,77 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert response
     assert {"result"} == set(response.json.keys())
     assert expected_url == response.json["result"]["url"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_create_project_from_template_failures(svc_client_templates_creation):
+    """Check failures when creating project from a valid template providing wrong project values."""
+    svc_client, headers, payload, rm_remote = svc_client_templates_creation
+
+    # NOTE: fail on anonymous user
+    anonymous_headers = deepcopy(headers)
+    anonymous_headers["Authorization"] = "None"
+    anonymous_headers["Renku-User"] = "None"
+    response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=anonymous_headers)
+
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert UserAnonymousError.code == response.json["error"]["code"]
+
+    # NOTE: fail on missing project name
+    payload_missing_project = deepcopy(payload)
+    payload_missing_project["project_name"] = ""
+
+    response = svc_client.post("/templates.create_project", data=json.dumps(payload_missing_project), headers=headers)
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert UserProjectCreationError.code == response.json["error"]["code"]
+    assert "project name" in response.json["error"]["devMessage"]
+
+    # NOTE: fail on wrong git url - unexpected when invoked from the UI
+    payload_wrong_repo = deepcopy(payload)
+    payload_wrong_repo["project_repository"] = "###"
+
+    response = svc_client.post("/templates.create_project", data=json.dumps(payload_wrong_repo), headers=headers)
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert ProgramProjectCreationError.code == response.json["error"]["code"]
+    assert "git_url" in response.json["error"]["devMessage"]
+
+    # NOTE: missing fields -- unlikely to happen. If that is the case, we should determine if it's a user error or not
+    payload_missing_field = deepcopy(payload)
+    del payload_missing_field["project_repository"]
+
+    response = svc_client.post("/templates.create_project", data=json.dumps(payload_missing_field), headers=headers)
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert UserProjectCreationError.code == response.json["error"]["code"]
+    assert "provide a value for project repository" in response.json["error"]["devMessage"]
+
+    # NOTE: wrong template identifier
+    payload_fake_id = deepcopy(payload)
+    fake_identifier = "__FAKE_IDDENTIFIER__"
+    payload_fake_id["identifier"] = fake_identifier
+
+    response = svc_client.post("/templates.create_project", data=json.dumps(payload_fake_id), headers=headers)
+    assert 200 == response.status_code
+    assert {"error"} == set(response.json.keys())
+    assert UserProjectCreationError.code == response.json["error"]["code"]
+    assert "does not exist" in response.json["error"]["devMessage"]
+    assert fake_identifier in response.json["error"]["devMessage"]
+
+    # NOTE: fail on missing parameters
+    if len(payload["parameters"]) > 0:
+        payload_without_parameters = deepcopy(payload)
+        payload_without_parameters["parameters"] = []
+        response = svc_client.post(
+            "/templates.create_project", data=json.dumps(payload_without_parameters), headers=headers
+        )
+
+        assert 200 == response.status_code
+        assert {"error"} == set(response.json.keys())
+        assert UserProjectCreationError.code == response.json["error"]["code"]
+        assert "does not exist" in response.json["error"]["devMessage"]
+        assert fake_identifier in response.json["error"]["devMessage"]

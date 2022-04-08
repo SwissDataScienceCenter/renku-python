@@ -20,6 +20,7 @@ import json
 
 import pytest
 
+from renku.ui.service.errors import ProgramGraphCorruptError
 from tests.service.views.test_dataset_views import assert_rpc_response
 from tests.utils import retry_failed
 
@@ -38,11 +39,32 @@ def test_graph_export_view(svc_client_cache, it_remote_repo_url):
         "migrate_project": True,
     }
 
-    response = svc_client.get("/1.1/graph.export", data=json.dumps(payload), headers=headers)
+    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
-    assert {"result": {"graph": None}} == response.json
+    assert "graph" in response.json["result"]
+    assert len(response.json["result"]["graph"]) == 5831
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_graph_export_view_failures(it_non_renku_repo_url, svc_client_cache):
+    """Test failures when accessing an invalid project."""
+    svc_client, headers, _ = svc_client_cache
+
+    payload = {
+        "git_url": it_non_renku_repo_url,
+        "revision": "HEAD",
+        "callback_url": "https://webhook.site",
+        "migrate_project": True,
+    }
+
+    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
+
+    assert_rpc_response(response, "error")
+    assert ProgramGraphCorruptError.code == response.json["error"]["code"]
+    # TODO: add more errors
 
 
 @pytest.mark.service
@@ -53,10 +75,11 @@ def test_graph_export_no_callback(svc_client_cache, it_remote_repo_url):
     svc_client, headers, _ = svc_client_cache
     payload = {"git_url": it_remote_repo_url, "revision": "HEAD", "migrate_project": True}
 
-    response = svc_client.get("/1.1/graph.export", data=json.dumps(payload), headers=headers)
+    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
 
-    assert response
-    assert {"result": {"graph": None}} == response.json
+    assert_rpc_response(response)
+    assert "graph" in response.json["result"]
+    assert len(response.json["result"]["graph"]) == 5831
 
 
 @pytest.mark.service
@@ -68,6 +91,7 @@ def test_graph_export_no_revision(svc_client_cache, it_remote_repo_url):
 
     payload = {"git_url": it_remote_repo_url, "callback_url": "https://webhook.site", "migrate_project": True}
 
-    response = svc_client.get("/1.1/graph.export", data=json.dumps(payload), headers=headers)
-    assert response
+    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
+    assert "graph" in response.json["result"]
+    assert len(response.json["result"]["graph"]) == 5831

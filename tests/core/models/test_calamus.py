@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2017-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,7 +19,7 @@
 
 import pytest
 
-from renku.core.commands.schema.calamus import JsonLDSchema, Uri, fields
+from renku.command.schema.calamus import JsonLDSchema, Uri, fields
 
 
 @pytest.mark.parametrize("value", [{"field": "http://datascience.ch"}, "http://datascience.ch"])

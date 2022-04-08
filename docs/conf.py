@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -46,6 +46,7 @@ extensions = [
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinxcontrib.spelling",
     "sphinx_tabs.tabs",
@@ -68,7 +69,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Renku"
-copyright = "2017-2021, Swiss Data Science Center"
+copyright = "2017-2022, Swiss Data Science Center"
 author = "Swiss Data Science Center"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -337,3 +338,27 @@ autoclass_content = "both"
 autodoc_mock_imports = ["persistent", "ZODB"]
 autodoc_typehints = "none"
 autodoc_typehints_description_target = "documented"
+
+# Napoleon (Google style) settings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+
+# sphinx type references only work for types that documentation is generated for
+# Suppress warnings for these types that are referenced but not documented themselves.
+nitpick_ignore = [
+    ("py:class", "CommandResult"),
+    ("py:class", "CommunicationCallback"),
+    ("py:class", "DynamicProxy"),
+    ("py:class", "IClientDispatcher"),
+    ("py:class", "IDatabaseDispatcher"),
+    ("py:class", "IDatasetGateway"),
+    ("py:class", "LocalClient"),
+    ("py:class", "OID_TYPE"),
+    ("py:class", "Path"),
+    ("py:class", "Persistent"),
+    ("py:class", "optional"),
+    ("py:class", "persistent.Persistent"),
+    ("py:class", '"LocalClient"'),
+    ("py:class", '"ValueResolver"'),
+    ("py:exc", "errors.ParameterError"),
+]

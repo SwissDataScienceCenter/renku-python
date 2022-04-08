@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,20 +19,20 @@
 import os
 import shutil
 import subprocess
-from collections import namedtuple
 from pathlib import Path
+from typing import NamedTuple
 from urllib import parse
 
 import pytest
 
-from renku.cli import cli
 from renku.core import errors
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-from renku.core.metadata.repository import Repository
-from renku.core.models.dataset import Url, get_dataset_data_dir
-from renku.core.utils.contexts import chdir
-from renku.core.utils.git import get_git_user
+from renku.core.util.contexts import chdir
+from renku.core.util.git import get_git_user
+from renku.domain_model.dataset import Url, get_dataset_data_dir
+from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
+from renku.infrastructure.repository import Repository
+from renku.ui.cli import cli
 from tests.utils import (
     assert_dataset_is_mutated,
     format_result_exception,
@@ -97,6 +97,9 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after, load_
     assert dataset.date_created is None
     assert dataset.date_published is not None
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize(
     "doi, input",
@@ -143,6 +146,9 @@ def test_dataset_import_real_param(doi, input, runner, project, sleep_after, cli
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize(
     "doi", [("10.5281/zenodo.3239984", "n"), ("zenodo.org/record/3239986", "n"), ("10.5281/zenodo.3239982", "n")]
@@ -163,7 +169,7 @@ def test_dataset_import_uri_404(doi, runner, project, sleep_after):
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
-    """Test dataset import for existing DOI and dataset"""
+    """Test dataset import for existing DOI and dataset."""
     result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.1438326"], input="y")
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Warning: Newer version found" in result.output
@@ -323,9 +329,12 @@ def test_dataset_import_renku_provider(runner, client, uri, load_dataset_with_in
     canonical_uri = "https://dev.renku.ch/datasets/860f6b5b46364c83b6a9b38ef198bcc0"
     assert dataset.same_as.url["@id"] == canonical_uri
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.integration
-# @retry_failed
+@retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
     "uri",
@@ -407,7 +416,7 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, cli
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
 def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
-    from renku.core.management.dataset.providers import renku
+    from renku.core.dataset.providers import renku
 
     def clone_renku_repository_mock(*_, **__):
         raise errors.GitError
@@ -455,24 +464,24 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-    "uri, name",
+    "uri, message",
     [
         (
             "https://dev.renku.ch/projects/renku-test-projects/dataset-import/datasets/non-existing-dataset",
-            "non-existing-dataset",
+            "Cannot fetch dataset with name 'non-existing-dataset'",
         ),
         (
             "https://dev.renku.ch/projects/invalid/project-path/datasets/860f6b5b46364c83b6a9b38ef198bcc0",
-            "remote-dataset",
+            "Cannot find project in the knowledge graph:",
         ),
     ],
 )
-def test_dataset_import_renku_provider_errors(runner, project, uri, name):
+def test_dataset_import_renku_provider_errors(runner, project, uri, message):
     """Test errors in Renku dataset import due to invalid project or dataset name."""
     result = runner.invoke(cli, ["dataset", "import", uri])
 
     assert 1 == result.exit_code
-    assert f"Cannot fetch dataset with name '{name}'" in result.output
+    assert message in result.output
 
     assert 0 == runner.invoke(cli, ["dataset", "ls"]).exit_code
 
@@ -482,7 +491,7 @@ def test_dataset_import_renku_provider_errors(runner, project, uri, name):
 @pytest.mark.vcr
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
 def test_dataset_reimport_renkulab_dataset(runner, project, url):
-    """Test dataset import for existing dataset"""
+    """Test dataset import for existing dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
 
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
@@ -557,6 +566,9 @@ def test_dataset_export_upload_file(
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.integration
@@ -1068,7 +1080,7 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("params", [[], ["-I", "README.md"], ["-I", "R*"], ["remote"]])
+@pytest.mark.parametrize("params", [["--all"], ["-I", "README.md"], ["-I", "R*"], ["remote"]])
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_update(client, runner, params, load_dataset_with_injection):
@@ -1107,8 +1119,17 @@ def test_dataset_update_zenodo(client, runner, doi, load_dataset_with_injection)
         cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    commit_sha_after_file1_delete = client.repository.head.commit.hexsha
 
     before_dataset = load_dataset_with_injection("imported_dataset", client)
+
+    result = runner.invoke(cli, ["dataset", "update", "--all", "--dry-run"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following imported datasets will be updated" in result.output
+    assert "imported_dataset" in result.output
+    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
+    assert not client.repository.is_dirty(untracked_files=True)
 
     result = runner.invoke(cli, ["dataset", "update", "imported_dataset"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1178,9 +1199,19 @@ def test_dataset_update_renku(client, runner, load_dataset_with_injection, clien
     client.repository.add(all=True)
     client.repository.commit("metadata updated")
 
-    before_dataset = load_dataset_with_injection("remote-dataset", client)
+    commit_sha_after_file1_delete = client.repository.head.commit.hexsha
 
-    result = runner.invoke(cli, ["dataset", "update"])
+    before_dataset = load_dataset_with_injection("imported_dataset", client)
+
+    result = runner.invoke(cli, ["dataset", "update", "--all", "--dry-run"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following imported datasets will be updated" in result.output
+    assert "remote-dataset" in result.output
+    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
+    assert not client.repository.is_dirty(untracked_files=True)
+
+    result = runner.invoke(cli, ["dataset", "update", "--all"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     after_dataset = load_dataset_with_injection("remote-dataset", client)
@@ -1221,12 +1252,12 @@ def test_dataset_update_remove_file(client, runner):
 
     # docs/authors.rst does not exists in v0.5.0
 
-    result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.5.0"], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.5.0", "--all"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    assert "Some files are deleted." in result.output
+    assert "Some files are deleted:" in result.output
     assert file_path.exists()
 
-    result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.5.0", "--delete"], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.5.0", "--delete", "--all"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert not file_path.exists()
 
@@ -1260,7 +1291,7 @@ def test_dataset_invalid_update(client, runner, params):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("params", [[], ["-I", "CHANGES.rst"], ["-I", "CH*"], ["dataset-1", "dataset-2"]])
+@pytest.mark.parametrize("params", [["--all"], ["-I", "CHANGES.rst"], ["-I", "CH*"], ["dataset-1", "dataset-2"]])
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_update_multiple_datasets(client, runner, data_repository, params):
@@ -1334,7 +1365,7 @@ def test_empty_update(client, runner, data_repository):
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     commit_sha_before = client.repository.head.commit.hexsha
-    result = runner.invoke(cli, ["dataset", "update", "--ref", "0.3.0"], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "update", "--ref", "0.3.0", "--all"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     commit_sha_after = client.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
@@ -1444,11 +1475,22 @@ def test_update_specific_refs(ref, runner, client):
         ],
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    content = (client.path / DATA_DIR / "dataset" / filename).read_text()
+    file = Path(DATA_DIR) / "dataset" / filename
+    content = (client.path / file).read_text()
     assert "v0.3.1" not in content
 
+    commit_sha_after_file1_delete = client.repository.head.commit.hexsha
+
+    result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all", "--dry-run"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following files will be updated" in result.output
+    assert str(file) in result.output
+    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
+    assert not client.repository.is_dirty(untracked_files=True)
+
     # update data to a later version
-    result = runner.invoke(cli, ["dataset", "update", "--ref", ref])
+    result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     content = (client.path / DATA_DIR / "dataset" / filename).read_text()
     assert "v0.3.1" in content
@@ -1485,9 +1527,9 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # update data to a later version
-    result = runner.invoke(cli, ["dataset", "update", "--ref", "any-value"])
+    result = runner.invoke(cli, ["dataset", "update", "--ref", "any-value", "dataset"])
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert "Cannot use '--ref' with more than one Git repo" in result.output
+    assert "Cannot specify a reference with more than one Git repository" in result.output
 
 
 @pytest.mark.integration
@@ -1541,19 +1583,19 @@ def test_add_removes_credentials(runner, client, url, load_dataset_with_injectio
 )
 def test_add_with_content_disposition(runner, client, monkeypatch, disposition, filename, load_dataset_with_injection):
     """Check filename is read from content disposition."""
-    import renku.core.utils.requests
+    import renku.core.util.requests
 
     url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
 
     with monkeypatch.context() as monkey:
         # NOTE: mock requests headers
-        original_disposition = renku.core.utils.requests.get_filename_from_headers
+        original_disposition = renku.core.util.requests.get_filename_from_headers
 
         def _fake_disposition(response):
             response.headers["content-disposition"] = disposition
             return original_disposition(response)
 
-        monkey.setattr(renku.core.utils.requests, "get_filename_from_headers", _fake_disposition)
+        monkey.setattr(renku.core.util.requests, "get_filename_from_headers", _fake_disposition)
         result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", url])
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -1572,7 +1614,7 @@ def test_check_disk_space(runner, client, monkeypatch, url):
 
     def disk_usage(_):
         """Mocked response."""
-        Usage = namedtuple("Usage", "free")
+        Usage = NamedTuple("Usage", [("free", int)])
         return Usage(free=0)
 
     monkeypatch.setattr(shutil, "disk_usage", disk_usage)
@@ -1670,7 +1712,7 @@ def test_immutability_after_update(client, runner, load_dataset_with_injection):
 
     old_dataset = load_dataset_with_injection("my-data", client)
 
-    assert 0 == runner.invoke(cli, ["dataset", "update"], catch_exceptions=False).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "update", "--all"], catch_exceptions=False).exit_code
 
     dataset = load_dataset_with_injection("my-data", client)
     mutator = get_git_user(client.repository)
@@ -1720,7 +1762,7 @@ def test_datasets_provenance_after_git_update(client, runner, get_datasets_prove
     result = runner.invoke(cli, ["dataset", "add", "--create", "my-data", "--ref", "0.3.0", "-s", "README.md", url])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    assert 0 == runner.invoke(cli, ["dataset", "update"], catch_exceptions=False).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "update", "--all"], catch_exceptions=False).exit_code
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         current_version = datasets_provenance.get_by_name("my-data")

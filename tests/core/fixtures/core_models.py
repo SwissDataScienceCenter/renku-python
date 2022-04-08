@@ -22,7 +22,7 @@ import urllib
 
 import pytest
 
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 from tests.fixtures.config import IT_PROTECTED_REMOTE_REPO_URL, IT_REMOTE_NON_RENKU_REPO_URL
 from tests.utils import clone_compressed_repository
 
@@ -65,7 +65,7 @@ def git_repository(tmp_path):
             A       A
             A       B
     """
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     name = "git-repository.git"
     base_path = tmp_path / name

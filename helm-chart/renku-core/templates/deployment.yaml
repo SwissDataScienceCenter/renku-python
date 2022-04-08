@@ -77,7 +77,7 @@ spec:
             runAsUser: 1000
             runAsGroup: 1000
             allowPrivilegeEscalation: false
-          args: ["api"]
+          args: ["service", "api"]
           env:
             - name: REDIS_HOST
               value: {{ $.Values.global.redis.host | quote }}
@@ -152,7 +152,7 @@ spec:
         - name: {{ $.Chart.Name }}-datasets-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
-          args: ["worker"]
+          args: ["service", "worker"]
           env:
             - name: REDIS_HOST
               value: {{ $.Values.global.redis.host | quote }}
@@ -206,7 +206,7 @@ spec:
         - name: {{ $.Chart.Name }}-management-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
-          args: ["worker"]
+          args: ["service", "worker"]
           env:
             - name: REDIS_HOST
               value: {{ $.Values.global.redis.host | quote }}
@@ -258,7 +258,7 @@ spec:
         - name: {{ $.Chart.Name }}-scheduler
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
-          args: ["scheduler"]
+          args: ["service", "scheduler"]
           env:
             - name: REDIS_HOST
               value: {{ $.Values.global.redis.host | quote }}

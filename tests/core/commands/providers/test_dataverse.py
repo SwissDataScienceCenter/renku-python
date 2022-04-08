@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,9 +18,9 @@
 """Dataverse unit tests."""
 import pytest
 
+from renku.core.dataset.providers.dataverse import DataverseExporter, _DataverseDeposition
+from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.errors import RenkuImportError
-from renku.core.management.dataset.providers.dataverse import DataverseExporter, _DataverseDeposition
-from renku.core.management.dataset.providers.doi import DOIProvider
 
 
 def test_dataverse_exporter_init():

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,7 +17,7 @@
 # limitations under the License.
 """Test ``log`` command."""
 
-from renku.cli import cli
+from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
@@ -40,6 +40,9 @@ def test_activity_log(runner, project):
     result = runner.invoke(cli, ["log"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Activity /activities/" in result.output
+    assert "Plan:" in result.output
+    assert "Id: /plans/" in result.output
+    assert "Name: run1" in result.output
     assert "Command: touch foo" in result.output
     assert "output-1: foo" in result.output
     assert "Start Time:" in result.output

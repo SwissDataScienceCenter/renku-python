@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,15 +23,15 @@ from pathlib import Path
 
 import pytest
 
-from renku.cli import cli
+from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
-from renku.core.management.workflow.plan_factory import RENKU_TMP
-from renku.core.metadata.gateway.dataset_gateway import DatasetGateway
-from renku.core.metadata.repository import Repository
-from renku.core.models.dataset import RemoteEntity
+from renku.core.workflow.plan_factory import RENKU_TMP
+from renku.domain_model.dataset import RemoteEntity
+from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
+from renku.infrastructure.repository import Repository
+from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
@@ -370,8 +370,8 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
         ["dataset", "rm", "new"],
         ["dataset", "rm-tags", "news"],
         ["dataset", "show", "new"],
-        ["dataset", "unlink", "new"],
-        ["dataset", "update"],
+        ["dataset", "unlink", "new", "-I", "path"],
+        ["dataset", "update", "--all"],
         ["graph", "export"],
         ["mv", "news"],
         ["rerun", "data"],

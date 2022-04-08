@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -23,18 +23,18 @@ Renku Python API
 ``Project``
 -----------
 
-.. automodule:: renku.api.models.project
+.. automodule:: renku.ui.api.models.project
 
 .. _api-dataset:
 
 ``Dataset``
 -----------
 
-.. automodule:: renku.api.models.dataset
+.. automodule:: renku.ui.api.models.dataset
 
 .. _api-run:
 
 ``Inputs, Outputs, and Parameters``
 -----------------------------------
 
-.. automodule:: renku.api.models.run
+.. automodule:: renku.ui.api.models.run

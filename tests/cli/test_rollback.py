@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,7 +17,7 @@
 # limitations under the License.
 """Test ``log`` command."""
 
-from renku.cli import cli
+from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
@@ -81,6 +81,9 @@ def test_rollback(client, runner, project):
     assert "\n\toutput" in result.output
 
     result = runner.invoke(cli, ["rollback"], input="7\ny")
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "ls"])

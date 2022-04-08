@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,8 +17,8 @@
 # limitations under the License.
 """Test plugins for the ``workflow`` command."""
 
-from renku.cli import cli
-from renku.core.plugins import pluginmanager as pluginmanager
+from renku.core.plugin import pluginmanager as pluginmanager
+from renku.ui.cli import cli
 
 
 def test_renku_workflow_exporter_hook(monkeypatch, dummy_workflow_exporter_hook, runner, project):

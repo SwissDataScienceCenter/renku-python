@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,9 +19,9 @@
 
 from pathlib import Path
 
-from renku.core.commands.dataset import create_dataset_command
+from renku.command.dataset import create_dataset_command
 from renku.core.management.client import LocalClient
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 
 
 def test_latest_version(project, client_database_injection_manager):

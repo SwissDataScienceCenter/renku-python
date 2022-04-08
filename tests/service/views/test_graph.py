@@ -20,6 +20,8 @@ import json
 
 import pytest
 
+from tests.service.views.test_dataset_views import assert_rpc_response
+
 
 @pytest.mark.service
 @pytest.mark.jobs
@@ -36,6 +38,6 @@ def test_graph_export_job(svc_client_cache, it_remote_repo_url, revision):
         "migrate_project": True,
     }
 
-    response = svc_client.get("/1.1/graph.export", data=json.dumps(payload), headers=headers)
-    assert response
+    response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
+    assert_rpc_response(response)
     assert {"graph"} == set(response.json.get("result", {}).keys()), response.json

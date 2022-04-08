@@ -72,7 +72,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test style
         env:
@@ -111,13 +111,48 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test docs
         env:
           POETRY_VIRTUALENVS_CREATE: false
           SIDEBAR: 1
         run: ./run-tests.sh -d
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.8"
+      - uses: actions/cache@master
+        id: dependency-cache
+        with:
+          path: |
+            ${{ env.pythonLocation }}
+            renku/templates
+          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install coveralls poetry wheel twine
+          make download-templates
+          python -m pip install .[all]
+      - name: Install renku into cache
+        if: steps.dependency-cache.outputs.cache-hit == 'true'
+        run: python -m pip install --no-deps .
+      - name: Set Git config
+        run: |
+          git config --global --add user.name "Renku Bot"
+          git config --global --add user.email "renku@datascience.ch"
+      - name: Test mypy
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+        run: mypy
 
   cheatsheet:
     runs-on: ubuntu-latest
@@ -153,7 +188,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Build cheatsheet
         run: |
@@ -254,7 +289,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -309,7 +344,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -351,9 +386,6 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev
-          sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu jammy main restricted multiverse universe"
-          sudo apt-get update -y
-          sudo apt-get install -y --allow-downgrades -t jammy git-lfs=3.0.2-1
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -373,7 +405,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -434,7 +466,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -476,7 +508,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -511,7 +543,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -553,7 +585,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -594,7 +626,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -642,7 +674,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - uses: actions/cache@master
         id: network-cache
@@ -718,7 +750,7 @@ jobs:
         run: python -m pip install --no-deps .
       - name: Set Git config
         run: |
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - uses: actions/cache@master
         id: network-cache
@@ -782,7 +814,7 @@ jobs:
           python -m pip install wheel
           make download-templates
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
         env:
@@ -824,7 +856,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install poetry poetry-dynamic-versioning poetry-lock-package twine
           python -m pip install .[all]
-          git config --global --add user.name "Renku @ SDSC"
+          git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Tag if necessary
         if: "!startsWith(github.ref, 'refs/tags/')"
@@ -851,6 +883,10 @@ jobs:
         with:
           fetch-depth: 0
           ref: 'develop'
+      - name: Set Git config
+        run: |
+          git config --global --add user.name "Renku Bot"
+          git config --global --add user.email "renku@datascience.ch"
       - name: merge changes from master
         run: |
           git merge origin/master --message "Merge branch 'master' into develop"
@@ -905,7 +941,7 @@ jobs:
           echo "GIT_USER=Renku Bot" >> $GITHUB_ENV
           echo "GIT_EMAIL=renku@datascience.ch" >> $GITHUB_ENV
       - name: Push chart and images
-        uses: SwissDataScienceCenter/renku-actions/publish-chart@v0.5.0
+        uses: SwissDataScienceCenter/renku-actions/publish-chart@v0.5.1
         env:
           CHART_NAME: renku-core
           GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
@@ -914,7 +950,7 @@ jobs:
       - name: Wait for chart to be available
         run: sleep 120
       - name: Update component version
-        uses: SwissDataScienceCenter/renku-actions/update-component-version@v0.5.0
+        uses: SwissDataScienceCenter/renku-actions/update-component-version@v0.5.1
         env:
           CHART_NAME: renku-core
           GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}

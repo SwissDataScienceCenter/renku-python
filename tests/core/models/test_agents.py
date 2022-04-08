@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,7 +18,7 @@
 """Test agents."""
 import pytest
 
-from renku.core.models.provenance.agent import Person
+from renku.domain_model.provenance.agent import Person
 
 
 @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -25,13 +25,12 @@ import pytest
 from werkzeug.utils import secure_filename
 
 from renku.core.errors import DatasetExistsError, MigrationRequired, ParameterError
-from renku.core.metadata.repository import Repository
-from renku.service.jobs.cleanup import cache_project_cleanup
-from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
-from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
-from renku.service.utils import make_project_path
-from tests.service.views.test_dataset_views import assert_rpc_response
-from tests.utils import retry_failed
+from renku.infrastructure.repository import Repository
+from renku.ui.service.jobs.cleanup import cache_project_cleanup
+from renku.ui.service.jobs.datasets import dataset_add_remote_file, dataset_import
+from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
+from renku.ui.service.utils import make_project_path
+from tests.utils import assert_rpc_response, retry_failed
 
 
 @pytest.mark.parametrize(
@@ -64,7 +63,6 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
 
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
@@ -90,7 +88,6 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert "COMPLETED" == response.json["result"]["state"]
 
@@ -113,7 +110,6 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
@@ -138,7 +134,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     assert commit_message.splitlines()[0] == new_commit.message.splitlines()[0]
 
     response = svc_client.get(f"/jobs/{job_id}", headers=headers)
-    assert response
+
     assert_rpc_response(response)
     assert "COMPLETED" == response.json["result"]["state"]
 
@@ -169,7 +165,6 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
@@ -219,7 +214,6 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
@@ -273,7 +267,6 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     payload = {"project_id": project_id, "name": uuid.uuid4().hex, "create_dataset": True, "files": [{"file_url": url}]}
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"].keys())
 
@@ -304,13 +297,13 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 @pytest.mark.vcr
 def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Add a file to a new dataset on a remote repository."""
-    from renku.service.serializers.datasets import DatasetAddRequest
+    from renku.ui.service.serializers.datasets import DatasetAddRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     _, _, cache = svc_client_cache
     user = cache.ensure_user(view_user_data)
-    renku_module = "renku.service.controllers.datasets_add_file"
+    renku_module = "renku.ui.service.controllers.datasets_add_file"
     renku_ctrl = "DatasetsAddFileCtrl"
 
     context = DatasetAddRequest().load(
@@ -330,7 +323,7 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, vi
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
@@ -343,14 +336,14 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, vi
 @retry_failed
 def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Add a file to a new dataset on a remote repository."""
-    from renku.service.serializers.datasets import DatasetAddRequest
+    from renku.ui.service.serializers.datasets import DatasetAddRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
     _, _, cache = svc_client_cache
 
     view_user_data["user_id"] = uuid.uuid4().hex
     user = cache.ensure_user(view_user_data)
-    renku_module = "renku.service.controllers.datasets_add_file"
+    renku_module = "renku.ui.service.controllers.datasets_add_file"
     renku_ctrl = "DatasetsAddFileCtrl"
 
     temp_file = tempfile.NamedTemporaryFile(delete=False)
@@ -374,7 +367,7 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_br
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     with pytest.raises(MigrationRequired):
         delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
@@ -395,7 +388,6 @@ def test_dataset_project_lock(doi, svc_client_with_repo):
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
 
-    assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
@@ -423,7 +415,7 @@ def test_dataset_project_lock(doi, svc_client_with_repo):
 @retry_failed
 def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a new dataset successfully."""
-    from renku.service.serializers.datasets import DatasetCreateRequest
+    from renku.ui.service.serializers.datasets import DatasetCreateRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
@@ -439,7 +431,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     )
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.datasets_create"
+    renku_module = "renku.ui.service.controllers.datasets_create"
     renku_ctrl = "DatasetsCreateCtrl"
 
     user = cache.ensure_user(view_user_data)
@@ -447,7 +439,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
@@ -460,7 +452,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 @retry_failed
 def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a new dataset successfully."""
-    from renku.service.serializers.datasets import DatasetCreateRequest
+    from renku.ui.service.serializers.datasets import DatasetCreateRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
@@ -475,7 +467,7 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_
     )
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.datasets_create"
+    renku_module = "renku.ui.service.controllers.datasets_create"
     renku_ctrl = "DatasetsCreateCtrl"
 
     view_user_data["user_id"] = uuid.uuid4().hex
@@ -484,7 +476,7 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     with pytest.raises(MigrationRequired):
         delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
@@ -495,8 +487,8 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_
 @retry_failed
 def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a dataset was removed successfully."""
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
-    from renku.service.serializers.datasets import DatasetRemoveRequest
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.serializers.datasets import DatasetRemoveRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
     _, _, cache = svc_client_cache
@@ -510,7 +502,7 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     }
 
     context = DatasetRemoveRequest().load(request_payload)
-    renku_module = "renku.service.controllers.datasets_remove"
+    renku_module = "renku.ui.service.controllers.datasets_remove"
     renku_ctrl = "DatasetsRemoveCtrl"
 
     delete_job = cache.make_job(
@@ -528,8 +520,8 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 @retry_failed
 def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Create a dataset was removed successfully."""
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
-    from renku.service.serializers.datasets import DatasetRemoveRequest
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.serializers.datasets import DatasetRemoveRequest
 
     it_remote_repo_url, ref = it_remote_repo_url_temp_branch
     _, _, cache = svc_client_cache
@@ -543,7 +535,7 @@ def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
     }
 
     context = DatasetRemoveRequest().load(request_payload)
-    renku_module = "renku.service.controllers.datasets_remove"
+    renku_module = "renku.ui.service.controllers.datasets_remove"
     renku_ctrl = "DatasetsRemoveCtrl"
 
     delete_job = cache.make_job(
@@ -559,7 +551,7 @@ def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
 @retry_failed
 def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Edit a dataset successfully."""
-    from renku.service.serializers.datasets import DatasetEditRequest
+    from renku.ui.service.serializers.datasets import DatasetEditRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
@@ -576,7 +568,7 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
     )
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.datasets_edit"
+    renku_module = "renku.ui.service.controllers.datasets_edit"
     renku_ctrl = "DatasetsEditCtrl"
 
     user = cache.ensure_user(view_user_data)
@@ -584,7 +576,7 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
@@ -598,7 +590,7 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
 @retry_failed
 def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Edit a dataset with a failure."""
-    from renku.service.serializers.datasets import DatasetEditRequest
+    from renku.ui.service.serializers.datasets import DatasetEditRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
@@ -613,7 +605,7 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
     )
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.datasets_edit"
+    renku_module = "renku.ui.service.controllers.datasets_edit"
     renku_ctrl = "DatasetsEditCtrl"
 
     user = cache.ensure_user(view_user_data)
@@ -621,7 +613,7 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     with pytest.raises(MigrationRequired):
         delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
@@ -632,7 +624,7 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
 @retry_failed
 def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset successfully."""
-    from renku.service.serializers.datasets import DatasetUnlinkRequest
+    from renku.ui.service.serializers.datasets import DatasetUnlinkRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
@@ -649,7 +641,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     )
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.datasets_unlink"
+    renku_module = "renku.ui.service.controllers.datasets_unlink"
     renku_ctrl = "DatasetsUnlinkCtrl"
 
     user = cache.ensure_user(view_user_data)
@@ -657,7 +649,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
@@ -671,7 +663,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 @retry_failed
 def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset failure."""
-    from renku.service.serializers.datasets import DatasetUnlinkRequest
+    from renku.ui.service.serializers.datasets import DatasetUnlinkRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
@@ -680,7 +672,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
     )
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.datasets_unlink"
+    renku_module = "renku.ui.service.controllers.datasets_unlink"
     renku_ctrl = "DatasetsUnlinkCtrl"
 
     user = cache.ensure_user(view_user_data)
@@ -688,7 +680,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     with pytest.raises(MigrationRequired):
         delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
@@ -699,7 +691,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
 @retry_failed
 def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
     """Unlink a file from a dataset successfully."""
-    from renku.service.serializers.datasets import DatasetUnlinkRequest
+    from renku.ui.service.serializers.datasets import DatasetUnlinkRequest
 
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
@@ -714,7 +706,7 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
     )
 
     _, _, cache = svc_client_cache
-    renku_module = "renku.service.controllers.datasets_unlink"
+    renku_module = "renku.ui.service.controllers.datasets_unlink"
     renku_ctrl = "DatasetsUnlinkCtrl"
 
     user = cache.ensure_user(view_user_data)
@@ -722,7 +714,7 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    from renku.service.jobs.delayed_ctrl import delayed_ctrl_job
+    from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 

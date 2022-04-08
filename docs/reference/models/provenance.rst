@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -18,7 +18,7 @@
 Provenance
 ==========
 
-.. py:module:: renku.core.models.provenance
+.. py:module:: renku.domain_model.provenance
 
 Extract provenance information from the repository.
 
@@ -26,7 +26,7 @@ Extract provenance information from the repository.
 Activities
 ----------
 
-.. py:module:: renku.core.models.provenance.activity
+.. py:module:: renku.domain_model.provenance.activity
 
 .. autoclass:: Activity
    :members:
@@ -52,7 +52,7 @@ Activities
 Entities
 --------
 
-.. py:module:: renku.core.models.entity
+.. py:module:: renku.domain_model.entity
 
 .. autoclass:: Entity
    :members:
@@ -66,7 +66,7 @@ Entities
 Agents
 ------
 
-.. py:module:: renku.core.models.provenance.agent
+.. py:module:: renku.domain_model.provenance.agent
 
 .. autoclass:: Person
    :members:
@@ -80,7 +80,7 @@ Agents
 Annotations
 -----------
 
-.. py:module:: renku.core.models.provenance.annotation
+.. py:module:: renku.domain_model.provenance.annotation
 
 .. autoclass:: Annotation
    :members:
@@ -90,7 +90,7 @@ Annotations
 Parameters
 ----------
 
-.. py:module:: renku.core.models.provenance.parameter
+.. py:module:: renku.domain_model.provenance.parameter
 
 .. autoclass:: ParameterValue
    :members:

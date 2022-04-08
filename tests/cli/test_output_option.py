@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,7 +20,8 @@
 import os
 from pathlib import Path
 
-from renku.cli import cli
+from renku.ui.cli import cli
+from tests.utils import format_result_exception, write_and_commit_file
 
 
 def test_run_succeeds_normally(renku_cli, client, subdirectory):
@@ -232,24 +233,29 @@ def test_explicit_inputs_can_be_in_inputs(renku_cli, client, subdirectory):
     assert plan.inputs[0].position is not None
 
 
-def test_explicit_inputs_in_subdirectories(renku_cli, client):
+def test_explicit_inputs_in_subdirectories(client, runner):
     """Test explicit inputs that are in sub-dirs are made accessible"""
-
     # Set up a script with hard dependency
-    renku_cli("run", "--no-output", "mkdir", "foo")
-    renku_cli("run", "echo", "some changes", stdout="foo/bar")
-    renku_cli("run", "echo", "cat foo/bar", stdout="script.sh")
+    assert 0 == runner.invoke(cli, ["run", "--no-output", "mkdir", "foo"]).exit_code
+    assert 0 == runner.invoke(cli, ["run", "echo", "some changes"], stdout="foo/bar").exit_code
+    assert 0 == runner.invoke(cli, ["run", "echo", "cat foo/bar"], stdout="script.sh").exit_code
 
-    exit_code, _ = renku_cli("run", "--input", "foo/bar", "--input", "script.sh", "sh", "script.sh", stdout="output")
-    assert 0 == exit_code
+    result = runner.invoke(
+        cli, ["run", "--input", "foo/bar", "--input", "script.sh", "sh", "script.sh"], stdout="output"
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Status must be dirty if foo/bar changes
-    renku_cli("run", "echo", "new changes", stdout="foo/bar")
-    exit_code, _ = renku_cli("status")
-    assert 1 == exit_code
+    write_and_commit_file(client.repository, client.path / "foo" / "bar", "new changes")
 
-    exit_code, _ = renku_cli("update", "--all")
-    assert 0 == exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["status"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["update", "--all"])
+    assert 0 == result.exit_code, format_result_exception(result)
     assert (client.path / "foo" / "bar").exists()
     assert (client.path / "script.sh").exists()
     assert (client.path / "output").exists()

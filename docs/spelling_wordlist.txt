@@ -53,6 +53,7 @@ deployer
 deserialization
 deserialize
 Deserialize
+Deserialized
 discoverable
 Dockerfile
 dockerfiles
@@ -204,6 +205,8 @@ submodules
 subpath
 substep
 substeps
+subsubcommand
+subsubcommands
 sudo
 supertype
 supertypes

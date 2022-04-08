@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,9 +23,9 @@ import sys
 import pytest
 from packaging.version import Version
 
-from renku.cli import cli
-from renku.core.models.template import TemplateMetadata, TemplateParameter
-from renku.core.utils.contexts import chdir
+from renku.core.util.contexts import chdir
+from renku.domain_model.template import TemplateMetadata, TemplateParameter
+from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 TEMPLATES_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
@@ -146,6 +146,9 @@ def test_template_set(runner, client, client_database_injection_manager):
         assert __template_version__ == client.project.template_version
         assert __template_version__ == client.project.template_ref
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_template_set_overwrites_modified(runner, client, client_database_injection_manager):
     """Test setting a new template in a project overwrite modified files."""
@@ -229,6 +232,9 @@ def test_template_update(runner, client, client_database_injection_manager):
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Template is up-to-date" in result.output
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_template_update_latest_version(runner, client):

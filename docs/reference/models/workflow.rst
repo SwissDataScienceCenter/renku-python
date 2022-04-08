@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -18,7 +18,7 @@
 Renku Workflow
 ==============
 
-.. py:module:: renku.core.models.workflow
+.. py:module:: renku.domain_model.workflow
 
 Renku uses PROV-O and its own Renku ontology to represent workflows.
 
@@ -26,35 +26,35 @@ Renku uses PROV-O and its own Renku ontology to represent workflows.
 Plans
 -----
 
-.. automodule:: renku.core.models.workflow.plan
+.. automodule:: renku.domain_model.workflow.plan
    :members:
 
 
-.. automodule:: renku.core.models.workflow.composite_plan
+.. automodule:: renku.domain_model.workflow.composite_plan
    :members:
 
 Parameters
 ----------
 
-.. automodule:: renku.core.models.workflow.parameter
+.. automodule:: renku.domain_model.workflow.parameter
    :members:
 
 
 Renku Workflow Logic
 ====================
 
-.. py:module:: renku.core.management.workflow
+.. py:module:: renku.core.workflow
 
 Execution Graph
 ---------------
 
-.. automodule:: renku.core.management.workflow.concrete_execution_graph
+.. automodule:: renku.core.workflow.concrete_execution_graph
    :members:
 
 Value Resolution
 ----------------
 
-.. automodule:: renku.core.management.workflow.value_resolution
+.. automodule:: renku.core.workflow.value_resolution
    :members:
 
 Plan Factory
@@ -62,7 +62,7 @@ Plan Factory
 
 Used to create ``Plan`` objects based on command line arguments
 
-.. automodule:: renku.core.management.workflow.plan_factory
+.. automodule:: renku.core.workflow.plan_factory
    :members:
 
 Renku Provenance Logic
@@ -70,7 +70,7 @@ Renku Provenance Logic
 
 Use for building a direct acyclic graph of past executions.
 
-.. automodule:: renku.core.management.workflow.activity
+.. automodule:: renku.core.workflow.activity
    :members:
 
 
@@ -78,7 +78,7 @@ Use for building a direct acyclic graph of past executions.
 Renku Workflow Conversion
 =========================
 
-.. py:module:: renku.core.management.workflow.converters
+.. py:module:: renku.core.workflow.converters
 
 Renku allows conversion of tracked workflows to runnable workflows in
 supported tools (Currently CWL)
@@ -86,7 +86,7 @@ supported tools (Currently CWL)
 CWL
 ---
 
-.. automodule:: renku.core.management.workflow.converters.cwl
+.. automodule:: renku.core.workflow.converters.cwl
    :no-members:
 
 .. autoclass:: CWLExporter

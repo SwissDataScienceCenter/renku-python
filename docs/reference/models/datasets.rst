@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -18,13 +18,13 @@
 Datasets
 ========
 
-.. automodule:: renku.core.models.dataset
+.. automodule:: renku.domain_model.dataset
    :no-members:
 
 Dataset object
 --------------
 
-.. autoclass:: renku.core.models.dataset.Dataset
+.. autoclass:: renku.domain_model.dataset.Dataset
    :members:
    :inherited-members:
 
@@ -34,6 +34,6 @@ Dataset file
 
 Manage files in the dataset.
 
-.. autoclass:: renku.core.models.dataset.DatasetFile
+.. autoclass:: renku.domain_model.dataset.DatasetFile
    :members:
    :inherited-members:

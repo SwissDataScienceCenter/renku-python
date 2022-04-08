@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,12 +23,12 @@ from pathlib import Path
 
 import pytest
 
-from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-from renku.core.metadata.repository import Repository
-from renku.core.models.workflow.plan import Plan
-from renku.core.plugins.provider import available_workflow_providers
+from renku.core.plugin.provider import available_workflow_providers
+from renku.domain_model.workflow.plan import Plan
+from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+from renku.infrastructure.repository import Repository
+from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 
@@ -63,6 +63,9 @@ def test_update(runner, client, renku_cli, client_database_injection_manager, pr
 
         # NOTE: No ActivityCollection is created if update include only one activity
         assert [] == activity_collections
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
@@ -487,3 +490,21 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
 
     assert "content_aeven more modified\n" == (client.path / output1).read_text()
     assert "content_beven more modified\n" == (client.path / output2).read_text()
+
+
+def test_update_with_external_files(split_runner, client, directory_tree):
+    """Test update commands that use external files."""
+    assert 0 == split_runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
+
+    path = client.path / "data" / "my-dataset" / "directory_tree" / "file1"
+
+    assert 0 == split_runner.invoke(cli, ["run", "tail", path], stdout="output").exit_code
+
+    (directory_tree / "file1").write_text("updated file1")
+
+    assert 0 == split_runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
+
+    result = split_runner.invoke(cli, ["update", "--all"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "updated file1" in (client.path / "output").read_text()

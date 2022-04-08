@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -27,15 +27,14 @@ from pathlib import Path
 from time import time
 
 import pytest
-from click.testing import CliRunner
 
 from renku import __version__
-from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
-from renku.core.metadata.repository import Repository
-from renku.core.models.enums import ConfigFilter
-from renku.core.utils.contexts import chdir
+from renku.core.util.contexts import chdir
+from renku.domain_model.enums import ConfigFilter
+from renku.infrastructure.repository import Repository
+from renku.ui.cli import cli
 from tests.utils import format_result_exception, retry_failed
 
 
@@ -431,11 +430,9 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_status_consistency(client, project):
+def test_status_consistency(client, split_runner):
     """Test if the renku status output is consistent when running the
     command from directories other than the repository root."""
-    runner = CliRunner(mix_stderr=False)
-
     os.mkdir("somedirectory")
     with open("somedirectory/woop", "w") as fp:
         fp.write("woop")
@@ -443,7 +440,7 @@ def test_status_consistency(client, project):
     client.repository.add("somedirectory/woop")
     client.repository.commit("add woop")
 
-    result = runner.invoke(cli, ["run", "cp", "somedirectory/woop", "somedirectory/meeh"])
+    result = split_runner.invoke(cli, ["run", "cp", "somedirectory/woop", "somedirectory/meeh"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     with open("somedirectory/woop", "w") as fp:
@@ -452,9 +449,9 @@ def test_status_consistency(client, project):
     client.repository.add("somedirectory/woop")
     client.repository.commit("fix woop")
 
-    base_result = runner.invoke(cli, ["status"])
+    base_result = split_runner.invoke(cli, ["status"])
     os.chdir("somedirectory")
-    comp_result = runner.invoke(cli, ["status"])
+    comp_result = split_runner.invoke(cli, ["status"])
 
     assert 1 == base_result.exit_code, format_result_exception(base_result)
     assert 1 == comp_result.exit_code, format_result_exception(comp_result)

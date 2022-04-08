@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 
 
 @pytest.fixture()
@@ -84,7 +84,7 @@ def client_with_lfs_warning(project):
 @pytest.fixture(params=[".", "some/sub/directory"])
 def subdirectory(project, request):
     """Runs tests in root directory and a subdirectory."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     if request.param != ".":
         path = Path(request.param) / ".gitkeep"

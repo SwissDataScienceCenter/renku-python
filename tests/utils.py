@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,27 +17,30 @@
 # limitations under the License.
 """Test utility functions."""
 import contextlib
+import json
 import os
+import re
 import traceback
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Iterator, List, Optional, Union, cast
 
 import pytest
 from flaky import flaky
 
-from renku.core.management.command_builder.command import inject, remove_injector
-from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.management.interface.dataset_gateway import IDatasetGateway
-from renku.core.metadata.repository import Repository
-from renku.core.models.dataset import Dataset
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Activity, Association, Generation, Usage
-from renku.core.models.workflow.plan import Plan
+from renku.command.command_builder.command import inject, remove_injector
+from renku.core.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.domain_model.dataset import Dataset
+from renku.domain_model.entity import Entity
+from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
+from renku.domain_model.provenance.agent import Person, SoftwareAgent
+from renku.domain_model.workflow.plan import Plan
+from renku.infrastructure.repository import Repository
 
 
 def raises(error):
@@ -81,6 +84,7 @@ def assert_dataset_is_mutated(old: Dataset, new: Dataset, mutator=None):
     assert old.initial_identifier == new.initial_identifier
     assert old.id != new.id
     assert old.identifier != new.identifier
+    assert new.derived_from is not None
     assert old.id == new.derived_from.url_id
     if old.date_created and new.date_created:
         assert old.date_created <= new.date_created
@@ -101,8 +105,10 @@ def modified_environ(*remove, **update):
 
     The ``os.environ`` dictionary is updated in-place so that the modification
     is sure to work in all situations.
-    :param remove: Environment variables to remove.
-    :param update: Dictionary of environment variables and values to add/update.
+
+    Args:
+        remove: Environment variables to remove.
+        update: Dictionary of environment variables and values to add/update.
     """
     env = os.environ
     update = update or {}
@@ -132,7 +138,12 @@ def format_result_exception(result):
     else:
         stacktrace = ""
 
-    return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output}"
+    try:
+        stderr = f"\n{result.stderr}"
+    except ValueError:
+        stderr = ""
+
+    return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output + stderr}"
 
 
 def load_dataset(name: str) -> Optional[Dataset]:
@@ -146,13 +157,18 @@ def load_dataset(name: str) -> Optional[Dataset]:
 @inject.autoparams("dataset_gateway", "database_dispatcher")
 def with_dataset(
     client,
-    name: str = None,
-    dataset_gateway: IDatasetGateway = None,
-    database_dispatcher: IDatabaseDispatcher = None,
+    *,
+    name: str,
+    dataset_gateway: IDatasetGateway,
+    database_dispatcher: IDatabaseDispatcher,
     commit_database: bool = False,
-):
+) -> Iterator[Optional[Dataset]]:
     """Yield an editable metadata object for a dataset."""
     dataset = DatasetsProvenance().get_by_name(name=name, strict=True, immutable=True)
+
+    if not dataset:
+        return None
+
     dataset.unfreeze()
 
     yield dataset
@@ -166,7 +182,9 @@ def retry_failed(fn=None, extended: bool = False):
     """
     Decorator to run flaky with same number of max and min repetitions across all tests.
 
-    :param extended: allow more repetitions than usual.
+    Args:
+        fn (Callable): The function to retry.
+        extended (bool, optional): allow more repetitions than usual (Default value = False).
     """
 
     def decorate(fn):
@@ -220,29 +238,43 @@ def write_and_commit_file(repository: Repository, path: Union[Path, str], conten
 
 def create_dummy_activity(
     plan: Union[Plan, str],
-    usages: List[Union[Path, str]] = (),
-    generations: List[Union[Path, str]] = (),
+    usages: List[Union[Path, str, Usage]] = [],
+    generations: List[Union[Path, str, Generation]] = [],
     ended_at_time=None,
+    id: Optional[str] = None,
 ) -> Activity:
     """Create a dummy activity."""
     if not isinstance(plan, Plan):
         assert isinstance(plan, str)
-        plan = Plan(id=Plan.generate_id(), name=plan)
+        plan = Plan(id=Plan.generate_id(), name=plan, command=plan)
 
     ended_at_time = ended_at_time or (datetime.utcnow() - timedelta(hours=1))
     checksum = "abc123"
 
-    activity_id = Activity.generate_id()
+    activity_id = id or Activity.generate_id()
 
     return Activity(
         id=activity_id,
+        started_at_time=ended_at_time - timedelta(hours=1),
         ended_at_time=ended_at_time,
-        association=Association(id=Association.generate_id(activity_id), plan=plan),
+        agents=[
+            SoftwareAgent(name="renku test", id="https://github.com/swissdatasciencecenter/renku-python/tree/test"),
+            Person(name="Renkubot", email="test@renkulab.io"),
+        ],
+        association=Association(
+            id=Association.generate_id(activity_id),
+            plan=plan,
+            agent=SoftwareAgent(
+                name="renku test", id="https://github.com/swissdatasciencecenter/renku-python/tree/test"
+            ),
+        ),
         generations=[
             Generation(
                 id=Generation.generate_id(activity_id),
                 entity=Entity(id=Entity.generate_id(checksum, g), checksum=checksum, path=g),
             )
+            if not isinstance(g, Generation)
+            else cast(Generation, g)
             for g in generations
         ],
         usages=[
@@ -250,6 +282,8 @@ def create_dummy_activity(
                 id=Usage.generate_id(activity_id),
                 entity=Entity(id=Entity.generate_id(checksum, u), checksum=checksum, path=u),
             )
+            if not isinstance(u, Usage)
+            else cast(Usage, u)
             for u in usages
         ],
     )
@@ -272,3 +306,11 @@ def clone_compressed_repository(base_path, name) -> Repository:
     repository = Repository.clone_from(bare_path, repository_path)
 
     return repository
+
+
+def assert_rpc_response(response, with_key="result"):
+    """Check rpc result in response."""
+    assert response and 200 == response.status_code
+
+    response_text = re.sub(r"http\S+", "", json.dumps(response.json))
+    assert with_key in response_text

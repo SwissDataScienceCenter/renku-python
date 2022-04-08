@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -25,11 +25,11 @@ from urllib.parse import urlparse
 
 import pytest
 
-from renku.cli import cli
-from renku.cli.init import parse_parameters
 from renku.core import errors
-from renku.core.metadata.database import Database
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.database import Database
+from renku.infrastructure.repository import Repository
+from renku.ui.cli import cli
+from renku.ui.cli.init import parse_parameters
 from tests.utils import format_result_exception, raises
 
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,8 +18,10 @@
 """Test ``workflow`` commands."""
 
 import itertools
+import logging
 import os
 import re
+import sys
 import tempfile
 import uuid
 from pathlib import Path
@@ -29,11 +31,11 @@ import pyte
 import pytest
 from cwl_utils.parser import cwl_v1_2 as cwlgen
 
-from renku.cli import cli
-from renku.core.metadata.database import Database
-from renku.core.models.jsonld import write_yaml
-from renku.core.plugins.provider import available_workflow_providers
-from tests.utils import format_result_exception
+from renku.core.plugin.provider import available_workflow_providers
+from renku.domain_model.jsonld import write_yaml
+from renku.infrastructure.database import Database
+from renku.ui.cli import cli
+from tests.utils import format_result_exception, write_and_commit_file
 
 
 def test_workflow_list(runner, project, run_shell, client):
@@ -143,6 +145,9 @@ def test_workflow_compose(runner, project, run_shell, client):
     assert composite_plan.mappings[1].name == "output_file"
     assert composite_plan.mappings[1].default_value == "other_output.csv"
     assert composite_plan.mappings[1].description == "the final output file produced"
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_workflow_compose_from_paths(runner, project, run_shell, client):
@@ -320,7 +325,7 @@ def test_workflow_show(runner, project, run_shell, client):
 
 
 def test_workflow_remove_command(runner, project):
-    """test workflow remove with builder."""
+    """Test workflow remove with builder."""
     workflow_name = "test_workflow"
 
     result = runner.invoke(cli, ["workflow", "remove", workflow_name])
@@ -334,7 +339,7 @@ def test_workflow_remove_command(runner, project):
 
 
 def test_workflow_export_command(runner, project):
-    """test workflow export with builder."""
+    """Test workflow export with builder."""
     result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", "run1", "touch", "data.csv"])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -464,6 +469,9 @@ def test_workflow_edit(runner, client, run_shell):
     assert len(edited_composite_plan.mappings) == 1
     assert edited_composite_plan.mappings[0].mapped_parameters[0].name == "param1"
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_workflow_show_outputs_with_directory(runner, client, run):
     """Output files in directory are not shown as separate outputs."""
@@ -515,7 +523,7 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
     ],
 )
 def test_workflow_execute_command(runner, run_shell, project, capsys, client, provider, yaml, workflows, parameters):
-    """test workflow execute."""
+    """Test workflow execute."""
 
     for wf in workflows:
         output = run_shell(f"renku run --name {wf[0]} -- {wf[1]}")
@@ -598,15 +606,18 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
         for o in outputs:
             assert Path(o).resolve().exists()
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, capsys, client, provider):
-    """Test executing a workflow with --set for a renku.api.Parameter."""
+    """Test executing a workflow with --set for a renku.ui.api.Parameter."""
     script = client.path / "script.py"
     output = client.path / "output"
 
     with client.commit():
-        script.write_text("from renku.api import Parameter\n" 'print(Parameter("test", "hello world"))\n')
+        script.write_text("from renku.ui.api import Parameter\n" 'print(Parameter("test", "hello world"))\n')
 
     result = run_shell(f"renku run --name run1 -- python {script} > {output}")
 
@@ -623,6 +634,152 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
     assert result[1] is None
 
     assert "goodbye\n" == output.read_text()
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, client, provider):
+    """Test executing a workflow with --set for a renku.ui.api.Input."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+    input = client.path / "input"
+    input.write_text("input string")
+    other_input = client.path / "other_input"
+    other_input.write_text("my other input string")
+
+    with client.commit():
+        script.write_text(
+            f"from renku.ui.api import Input\nwith open(Input('my-input', '{input.name}'), 'r') as f:\n"
+            "    print(f.read())"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name} > {output.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "input string\n" == output.read_text()
+    result = run_shell(f"renku workflow execute -p {provider} --set my-input={other_input.name} run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "my other input string\n" == output.read_text()
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, client, provider):
+    """Test executing a workflow with --set for a renku.ui.api.Output."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+    other_output = client.path / "other_output"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.ui.api import Output\nwith open(Output('my-output', '{output.name}'), 'w') as f:\n"
+            "    f.write('test')"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "test" == output.read_text()
+    result = run_shell(f"renku workflow execute -p {provider} --set my-output={other_output.name} run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "test" == other_output.read_text()
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, project, capsys, client):
+    """Test executing a workflow with duplicate output with differing path."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+    other_output = client.path / "other_output"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.ui.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
+            f"open(Output('my-output', '{other_output.name}'), 'w')"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"Error: Invalid parameter value - Duplicate input/output name found: my-output\n" in result[0]
+
+
+def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_shell, project, capsys, client):
+    """Test executing a workflow with duplicate output with same path."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.ui.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
+            f"open(Output('my-output', '{output.name}'), 'w')"
+        )
+
+    result = run_shell(f"renku run --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+
+def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, project, capsys, client):
+    """Test executing a workflow with duplicate input with differing path."""
+    script = client.path / "script.py"
+    input = client.path / "input"
+    other_input = client.path / "other_input"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.ui.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
+            f"open(Input('my-input', '{other_input.name}'), 'w')"
+        )
+
+    result = run_shell(f"renku run --no-output --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"Error: Invalid parameter value - Duplicate input/output name found: my-input\n" in result[0]
+
+
+def test_workflow_execute_command_with_api_valid_duplicate_input(runner, run_shell, project, capsys, client):
+    """Test executing a workflow with duplicate input with same path."""
+    script = client.path / "script.py"
+    input = client.path / "input"
+
+    with client.commit():
+        script.write_text(
+            f"from renku.ui.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
+            f"open(Input('my-input', '{input.name}'), 'w')"
+        )
+
+    result = run_shell(f"renku run --no-output --name run1 -- python {script.name}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+
+    # Assert not allocated stderr.
+    assert result[1] is None
 
 
 def test_workflow_visualize_non_interactive(runner, project, client, workflow_graph):
@@ -821,6 +978,9 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
 
     assert "xyz\n" == Path("output4").read_text()
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize(
@@ -903,6 +1063,9 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     for o in outputs:
         assert Path(o).resolve().exists()
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_workflow_cycle_detection(run_shell, project, capsys, client):
     """Test creating a cycle is not possible with renku run or workflow execute."""
@@ -934,3 +1097,41 @@ def test_workflow_cycle_detection(run_shell, project, capsys, client):
     result = run_shell("renku workflow execute  --set output-2=input run2")
 
     assert b"Cycles detected in execution graph" in result[0]
+
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="GitHub macOS image doesn't include Docker")
+def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
+    """Test workflow execute using docker with the toil provider."""
+    caplog.set_level(logging.INFO)
+
+    write_and_commit_file(client.repository, "input", "first line\nsecond line")
+    output = client.path / "output"
+
+    run_shell("renku run --name run-1 -- tail -n 1 input > output")
+
+    assert "first line" not in output.read_text()
+
+    write_and_commit_file(client.repository, "toil.yaml", "logLevel: INFO\ndocker:\n  image: ubuntu")
+
+    result = runner.invoke(cli, ["workflow", "execute", "-p", "toil", "-s", "n-1=2", "-c", "toil.yaml", "run-1"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "first line" in output.read_text()
+    assert "executing with Docker" in caplog.text
+
+
+def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
+    """Test workflow execute using docker with the toil provider and stderr redirection."""
+    write_and_commit_file(client.repository, "input", "first line\nsecond line")
+    output = client.path / "output"
+
+    run_shell("renku run --name run-1 -- tail -n 1 input 2> output")
+
+    assert "first line" not in output.read_text()
+
+    write_and_commit_file(client.repository, "toil.yaml", "docker:\n  image: ubuntu")
+
+    result = runner.invoke(cli, ["workflow", "execute", "-p", "toil", "-s", "n-1=2", "-c", "toil.yaml", "run-1"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "Cannot run workflows that have stdin or stderr redirection with Docker" in result.output

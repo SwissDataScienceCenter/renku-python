@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -18,133 +18,133 @@
 Renku Command Line
 ==================
 
-.. automodule:: renku.cli
+.. automodule:: renku.ui.cli
 
 .. _cli-init:
 
 ``renku init``
 --------------
 
-.. automodule:: renku.cli.init
+.. automodule:: renku.ui.cli.init
 
 .. _cli-template:
 
 ``renku template``
 ------------------
 
-.. automodule:: renku.cli.template
+.. automodule:: renku.ui.cli.template
 
 .. _cli-clone:
 
 ``renku clone``
 ---------------
 
-.. automodule:: renku.cli.clone
+.. automodule:: renku.ui.cli.clone
 
 .. _cli-config:
 
 ``renku config``
 ----------------
 
-.. automodule:: renku.cli.config
+.. automodule:: renku.ui.cli.config
 
 .. _cli-project:
 
 ``renku project``
 -----------------
 
-.. automodule:: renku.cli.project
+.. automodule:: renku.ui.cli.project
 
 .. _cli-datasets:
 
 ``renku dataset``
 -----------------
 
-.. automodule:: renku.cli.dataset
+.. automodule:: renku.ui.cli.dataset
 
 .. _cli-graph:
 
 ``renku graph``
 ---------------
 
-.. automodule:: renku.cli.graph
+.. automodule:: renku.ui.cli.graph
 
 .. _cli-run:
 
 ``renku run``
 -------------
 
-.. automodule:: renku.cli.run
+.. automodule:: renku.ui.cli.run
 
 .. _cli-log:
 
 ``renku log``
 ---------------
 
-.. automodule:: renku.cli.log
+.. automodule:: renku.ui.cli.log
 
 .. _cli-login:
 
 ``renku login``
 ---------------
 
-.. automodule:: renku.cli.login
+.. automodule:: renku.ui.cli.login
 
 .. _cli-status:
 
 ``renku status``
 ----------------
 
-.. automodule:: renku.cli.status
+.. automodule:: renku.ui.cli.status
 
 .. _cli-update:
 
 ``renku update``
 ----------------
 
-.. automodule:: renku.cli.update
+.. automodule:: renku.ui.cli.update
 
 .. _cli-rerun:
 
 ``renku rerun``
 ---------------
 
-.. automodule:: renku.cli.rerun
+.. automodule:: renku.ui.cli.rerun
 
 .. _cli-rm:
 
 ``renku rm``
 ------------
 
-.. automodule:: renku.cli.remove
+.. automodule:: renku.ui.cli.remove
 
 .. _cli-mv:
 
 ``renku mv``
 ------------
 
-.. automodule:: renku.cli.move
+.. automodule:: renku.ui.cli.move
 
 .. _cli-workflow:
 
 ``renku workflow``
 ------------------
 
-.. automodule:: renku.cli.workflow
+.. automodule:: renku.ui.cli.workflow
 
 .. _cli-save:
 
 ``renku save``
 --------------
 
-.. automodule:: renku.cli.save
+.. automodule:: renku.ui.cli.save
 
 .. _cli-storage:
 
 ``renku storage``
 -----------------
 
-.. automodule:: renku.cli.storage
+.. automodule:: renku.ui.cli.storage
 
 .. _cli-doctor:
 
@@ -152,37 +152,37 @@ Renku Command Line
 ``renku doctor``
 ----------------
 
-.. automodule:: renku.cli.doctor
+.. automodule:: renku.ui.cli.doctor
 
 .. _cli-migrate:
 
 ``renku migrate``
 -----------------
 
-.. automodule:: renku.cli.migrate
+.. automodule:: renku.ui.cli.migrate
 
 .. _cli-rollback:
 
 ``renku rollback``
 ------------------
 
-.. automodule:: renku.cli.rollback
+.. automodule:: renku.ui.cli.rollback
 
 .. _cli-service:
 
 ``renku service``
 -----------------
 
-.. automodule:: renku.cli.service
+.. automodule:: renku.ui.cli.service
 
 .. _cli-githooks:
 
 ``renku githooks``
 ------------------
 
-.. automodule:: renku.cli.githooks
+.. automodule:: renku.ui.cli.githooks
 
 Error Tracking
 --------------
 
-.. automodule:: renku.cli.exception_handler
+.. automodule:: renku.ui.cli.exception_handler

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021- Swiss Data Science Center (SDSC)
+# Copyright 2017-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,10 +20,10 @@
 import pyld
 import pytest
 
-from renku.cli import cli
-from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
+from renku.command.schema.dataset import dump_dataset_as_jsonld
 from renku.core.compat import Path
-from renku.core.utils.shacl import validate_graph
+from renku.core.util.shacl import validate_graph
+from renku.ui.cli import cli
 from tests.utils import load_dataset
 
 
@@ -68,8 +68,8 @@ def test_dataset_shacl(tmpdir, runner, project, client):
 
 def test_project_shacl(project, client, client_database_injection_manager):
     """Test project metadata structure."""
-    from renku.core.commands.schema.project import ProjectSchema
-    from renku.core.models.provenance.agent import Person
+    from renku.command.schema.project import ProjectSchema
+    from renku.domain_model.provenance.agent import Person
 
     path = Path(__file__).parent.parent.parent / "data" / "force_project_shacl.json"
 

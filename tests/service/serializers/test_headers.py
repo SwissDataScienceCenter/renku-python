@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,7 +18,7 @@
 """Tests for service header serializers."""
 import jwt
 
-from renku.service.serializers.headers import JWT_TOKEN_SECRET, RequiredIdentityHeaders
+from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET, RequiredIdentityHeaders
 
 
 def test_header_serializer(identity_headers):

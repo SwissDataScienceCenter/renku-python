@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -41,7 +41,7 @@ where `myproject.pluginmodule` points to a Renku `hookimpl` e.g.:
 
 .. code-block:: python
 
-    from renku.core.plugins import hookimpl
+    from renku.core.plugin import hookimpl
 
     @hookimpl
     def plugin_hook_implementation(param1, param2):
@@ -51,7 +51,7 @@ where `myproject.pluginmodule` points to a Renku `hookimpl` e.g.:
 ``renku run`` hooks
 -------------------
 
-.. automodule:: renku.core.plugins.run
+.. automodule:: renku.core.plugin.run
    :members:
 
 `This <https://github.com/SwissDataScienceCenter/renku-dummy-annotator>`_ repository contains an implementation of
@@ -90,14 +90,14 @@ Workflow Converter Plugins
 --------------------------
 
 Additional workflow converters can be implemented by extending
-:class:`renku.core.models.workflow.converters.IWorkflowConverter`. By default renku
+:class:`renku.domain_model.workflow.converters.IWorkflowConverter`. By default renku
 provides a CWL converter plugins that is used when exporting a workflow:
 
 .. code-block:: console
 
    $ renku workflow export --format cwl <my_workflow>
 
-.. autoclass:: renku.core.models.workflow.converters.IWorkflowConverter
+.. autoclass:: renku.domain_model.workflow.converters.IWorkflowConverter
     :members:
 
 We created a `dummy <https://github.com/SwissDataScienceCenter/renku-dummy-format>`_ implementation of such
@@ -107,8 +107,8 @@ Workflow Provider Plugins
 -------------------------
 
 Additional workflow providers can be implemented by extending
-:class:`renku.core.models.workflow.provider.IWorkflowProvider`. See
+:class:`renku.domain_model.workflow.provider.IWorkflowProvider`. See
 :ref:`implementing_a_provider` for more information.
 
-.. autoclass:: renku.core.models.workflow.provider.IWorkflowProvider
+.. autoclass:: renku.domain_model.workflow.provider.IWorkflowProvider
     :members:

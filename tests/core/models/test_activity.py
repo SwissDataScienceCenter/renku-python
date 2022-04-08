@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,24 +21,24 @@ from datetime import datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from renku.core.models.entity import Entity
-from renku.core.models.provenance.activity import Activity
-from renku.core.models.provenance.agent import Person
-from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter
-from renku.core.models.workflow.plan import Plan
+from renku.domain_model.entity import Entity
+from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.provenance.agent import Person
+from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
+from renku.domain_model.workflow.plan import Plan
 
 
 def test_activity_parameter_values(mocker):
     """Test parameter values are correctly set on an activity."""
 
-    def get_entity_from_revision_mock(repository, path, revision=None):
+    def get_entity_from_revision_mock(repository, path, revision=None, bypass_cache=False):
         return Entity(checksum="abcdefg", id=uuid4().hex, path=path)
 
     def get_git_user_mock(client):
         return Person(id=uuid4().hex, name="John Doe", email="john@doe.com")
 
-    mocker.patch("renku.core.models.provenance.activity.get_entity_from_revision", get_entity_from_revision_mock)
-    mocker.patch("renku.core.models.provenance.activity.get_git_user", get_git_user_mock)
+    mocker.patch("renku.domain_model.provenance.activity.get_entity_from_revision", get_entity_from_revision_mock)
+    mocker.patch("renku.domain_model.provenance.activity.get_git_user", get_git_user_mock)
     commit = MagicMock()
     commit.hexsha.return_value = uuid4().hex
     commit.committer.email.return_value = "john@doe.com"
@@ -67,7 +67,11 @@ def test_activity_parameter_values(mocker):
     p4.actual_value = "5"
 
     plan = Plan(
-        id="test", inputs=[i1, i1_copy, i3, i4], outputs=[o1, o1_copy, o3, o4], parameters=[p1, p1_copy, p3, p4]
+        id="test",
+        command="",
+        inputs=[i1, i1_copy, i3, i4],
+        outputs=[o1, o1_copy, o3, o4],
+        parameters=[p1, p1_copy, p3, p4],
     )
 
     activity = Activity.from_plan(

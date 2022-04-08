@@ -78,3 +78,30 @@ where
  - ``-A my_account`` specifies which account should be charged for the used resources,
  - ``--export=ALL`` specifies that all environment variables are propagated to the Slurm workers.
    It is often required in academic Slurm installations.
+
+
+Run with Docker Containers
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can execute workflows using Docker with ``toil`` as it supports Docker
+containers. To do that, you need to add a ``docker`` section in the provider's
+config file and define a Docker image to be used for execution::
+
+  docker:
+    image: python:3.9-slim
+
+Renku ``toil`` plugin then uses the specified image to run your workflow. For
+a list of available configuration options see `Docker API <https://docker-py.readthedocs.io/en/stable/containers.html>`_
+documentation. Refer to `Toil's Docker documentation <https://toil.readthedocs.io/en/latest/developingWorkflows/developing.html#using-docker-containers-in-toil>`_
+for more information on how to set up Docker for use in ``toil``.
+
+Note that due to the limitations in the underlying libraries, workflows that
+use redirection from/to ``stderr``/``stdin`` cannot be executed with Docker.
+Redirection to ``stdout`` is supported.
+
+By default, if the config file doesn't define a ``working_dir``,
+Renku sets a default working directory and creates a volume in the container
+and mounts project's directory to it to make sure that the container can access
+local files. However, if you define a ``working_dir`` in the config file,
+Renku doesn't create this volume automatically and you must make sure that
+local files required to execute a workflow are accessible in the container.

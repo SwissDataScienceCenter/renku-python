@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,8 +21,8 @@ import pytest
 from marshmallow import ValidationError
 
 import renku
-from renku.core.commands.migrate import migrations_check
-from renku.service.controllers.utils.remote_project import RemoteProject
+from renku.command.migrate import migrations_check
+from renku.ui.service.controllers.utils.remote_project import RemoteProject
 from tests.utils import retry_failed
 
 

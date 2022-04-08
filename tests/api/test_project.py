@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,7 +21,7 @@ import os
 
 import pytest
 
-from renku.api import Project
+from renku.ui.api import Project
 
 
 @pytest.mark.parametrize("sub_path", [".", "src", "src/notebooks"])

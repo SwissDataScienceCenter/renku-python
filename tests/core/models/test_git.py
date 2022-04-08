@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,7 +22,7 @@ import os
 import pytest
 
 from renku.core import errors
-from renku.core.models.git import GitURL
+from renku.domain_model.git import GitURL
 
 
 @pytest.mark.parametrize(

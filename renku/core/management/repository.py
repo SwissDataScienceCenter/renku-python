@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,26 +21,35 @@ import os
 import shutil
 from contextlib import contextmanager
 from fnmatch import fnmatch
+from typing import Any, Optional
 from uuid import uuid4
 
 import attr
 import filelock
 
+from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.compat import Path
+from renku.core.interface.database_gateway import IDatabaseGateway
+from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management import RENKU_HOME
-from renku.core.management.command_builder import inject
 from renku.core.management.git import GitCore
-from renku.core.management.interface.database_gateway import IDatabaseGateway
-from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.models.enums import ConfigFilter
-from renku.core.models.project import Project
-from renku.core.utils.git import default_path
+from renku.core.util.git import default_path
+from renku.domain_model.enums import ConfigFilter
+from renku.domain_model.project import Project
 
 DEFAULT_DATA_DIR = "data"
 
 
-def path_converter(path):
+def _convert_data_dir_to_str(value: Optional[Any]) -> str:
+    """Convert a passed data dir value to string."""
+    if value is not None:
+        return str(value)
+
+    return DEFAULT_DATA_DIR
+
+
+def _path_converter(path) -> Path:
     """Converter for path in PathMixin."""
     return Path(path).resolve()
 
@@ -49,7 +58,7 @@ def path_converter(path):
 class PathMixin:
     """Define a default path attribute."""
 
-    path = attr.ib(default=default_path, converter=path_converter, type=Path)
+    path: Path = attr.ib(default=default_path, converter=_path_converter)
 
     @path.validator
     def _check_path(self, _, value):
@@ -63,7 +72,7 @@ class RepositoryApiMixin(GitCore):
     """Client for handling a local repository."""
 
     renku_home = attr.ib(default=RENKU_HOME)
-    """Define a name of the Renku folder (default: ``.renku``)."""
+    """Define a name of the Renku folder (Default value = '.renku')."""
 
     renku_path = attr.ib(init=False)
     """Store a ``Path`` instance of the Renku folder."""
@@ -71,9 +80,7 @@ class RepositoryApiMixin(GitCore):
     parent = attr.ib(default=None)
     """Store a pointer to the parent repository."""
 
-    data_dir = attr.ib(
-        default=DEFAULT_DATA_DIR, kw_only=True, converter=lambda value: str(value) if value else DEFAULT_DATA_DIR
-    )
+    data_dir = attr.ib(default=DEFAULT_DATA_DIR, kw_only=True, converter=_convert_data_dir_to_str)
     """Define a name of the folder for storing datasets."""
 
     LOCK_SUFFIX = ".lock"
@@ -95,9 +102,9 @@ class RepositoryApiMixin(GitCore):
         ".gitignore",
         ".gitlab-ci.yml",
         ".renku",
-        ".renku/*",
+        ".renku/**",
         ".renkulfsignore",
-        "Dockerfile",
+        "Dockerfile*",
         "environment.yml",
         "requirements.txt",
     ]
@@ -160,9 +167,9 @@ class RepositoryApiMixin(GitCore):
         """Path to the metadata storage directory."""
         return self.renku_path / self.DATABASE_PATH
 
-    @property
+    @property  # type: ignore
     @inject.autoparams()
-    def project(self, project_gateway: IProjectGateway):
+    def project(self, project_gateway: IProjectGateway):  # type: ignore
         """Return the Project instance."""
         self._project = project_gateway.get_project()
         return self._project
@@ -176,20 +183,21 @@ class RepositoryApiMixin(GitCore):
         return f"\n\nrenku-transaction: {self._transaction_id}"
 
     @property
-    def remote(self, remote_name="origin"):
+    def remote(self):
         """Return host, owner and name of the remote if it exists."""
-        from renku.core.models.git import GitURL
+        from renku.domain_model.git import GitURL
 
-        original_remote_name = remote_name
+        original_remote_name = remote_name = "origin"
 
         if original_remote_name in self._remote_cache:
             return self._remote_cache[original_remote_name]
 
         host = owner = name = None
         try:
-            remote_branch = self.repository.active_branch.remote_branch
-            if remote_branch is not None:
-                remote_name = remote_branch.remote.name
+            if self.repository.active_branch:
+                remote_branch = self.repository.active_branch.remote_branch
+                if remote_branch is not None:
+                    remote_name = remote_branch.remote.name
         except (AttributeError, errors.GitError):
             # NOTE: AttributeError is raised if there is a None value
             pass
@@ -283,7 +291,7 @@ class RepositoryApiMixin(GitCore):
 
     def init_repository(self, force=False, user=None, initial_branch=None):
         """Initialize an empty Renku repository."""
-        from renku.core.metadata.repository import Repository
+        from renku.infrastructure.repository import Repository
 
         # initialize repo and set user data
         path = self.path.absolute()

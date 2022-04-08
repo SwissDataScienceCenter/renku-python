@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -53,6 +53,15 @@ class ParameterError(RenkuException):
         else:
             message = "Invalid parameter value - {}".format(message)
 
+        super().__init__(message)
+
+
+class IncompatibleParametersError(ParameterError):
+    """Raise in case of incompatible parameters/flags."""
+
+    def __init__(self, a: str = None, b: str = None):
+        """Build a custom message."""
+        message = f"{a} is incompatible with {b}" if a is not None and b is not None else "Incompatible parameters"
         super().__init__(message)
 
 
@@ -258,6 +267,14 @@ class DatasetNotFound(RenkuException):
         else:
             msg = "Dataset is not found."
         super().__init__(msg)
+
+
+class ExternalFileNotFound(RenkuException):
+    """Raise when an external file is not found."""
+
+    def __init__(self, path):
+        """Build a custom message."""
+        super().__init__(f"Cannot find external file '{path}'")
 
 
 class DatasetExistsError(RenkuException):
@@ -551,9 +568,9 @@ class GraphCycleError(RenkuException):
 
     def __init__(self, cycles: List[List[str]]):
         """Embed exception and build a custom message."""
-        cycles = "), (".join(", ".join(cycle) for cycle in cycles)
+        cycle_str = "), (".join(", ".join(cycle) for cycle in cycles)
         super().__init__(
-            f"Cycles detected in execution graph: ({cycles})\nCircular workflows are not supported in renku\n"
+            f"Cycles detected in execution graph: ({cycle_str})\nCircular workflows are not supported in renku\n"
             "If this happened as part of a 'renku run' or 'renku workflow execute', please git reset and clean"
             "the project and try again. This might be due to renku erroneously detecting an input as an output, "
             "if so, please specify the wrongly detected output as an explicit input using '--input'."
@@ -566,3 +583,11 @@ class NothingToExecuteError(RenkuException):
 
 class TerminalSizeError(RenkuException):
     """Raised when terminal is too small for a command."""
+
+
+class DockerError(RenkuException):
+    """Raised when error has occured while executing docker command."""
+
+    def __init__(self, reason: str):
+        """Embed exception and build a custom message."""
+        super().__init__(f"Docker failed: {reason}")

@@ -1,5 +1,5 @@
 ..
-    Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2019-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -20,7 +20,7 @@
 Models
 ======
 
-.. automodule:: renku.core.models
+.. automodule:: renku.domain_model
 
 .. toctree::
    :maxdepth: 1

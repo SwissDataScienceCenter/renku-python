@@ -21,8 +21,8 @@ from contextlib import contextmanager
 
 import pytest
 
-from renku.core.management.dataset.dataset import create_dataset
-from renku.core.management.dataset.dataset_add import add_data_to_dataset
+from renku.core.dataset.dataset import create_dataset
+from renku.core.dataset.dataset_add import add_data_to_dataset
 
 
 @pytest.fixture
@@ -56,7 +56,7 @@ def client_with_injection(client, client_database_injection_manager):
 @pytest.fixture
 def client_with_datasets(client, directory_tree, client_database_injection_manager):
     """A client with datasets."""
-    from renku.core.models.provenance.agent import Person
+    from renku.domain_model.provenance.agent import Person
 
     person_1 = Person.from_string("P1 <p1@example.com> [IANA]")
     person_2 = Person.from_string("P2 <p2@example.com>")
@@ -93,7 +93,7 @@ def get_datasets_provenance_with_injection(client_database_injection_manager):
 
     @contextmanager
     def _inner(client):
-        from renku.core.management.dataset.datasets_provenance import DatasetsProvenance
+        from renku.core.dataset.datasets_provenance import DatasetsProvenance
 
         with client_database_injection_manager(client):
             yield DatasetsProvenance()

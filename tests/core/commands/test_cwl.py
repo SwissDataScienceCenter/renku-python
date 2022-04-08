@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.management.workflow.plan_factory import PlanFactory
+from renku.core.workflow.plan_factory import PlanFactory
 
 
 def test_1st_tool(client, client_database_injection_manager):
@@ -299,7 +299,7 @@ def test_input_directory(client, client_database_injection_manager):
 @pytest.mark.skip("CWLConverter doesn't yet support new metadata, renable once it does")
 def test_existing_output_directory(client, runner, project, client_database_injection_manager):
     """Test creation of InitialWorkDirRequirement for output."""
-    from renku.core.management.workflow.converters.cwl import CWLConverter
+    from renku.core.workflow.converters.cwl import CWLConverter
 
     client.path = client.path
     output = client.path / "output"

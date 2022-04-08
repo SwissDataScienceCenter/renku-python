@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -27,28 +27,28 @@ This API is built on top of Git and Git-LFS.
 Datasets
 --------
 
-.. automodule:: renku.core.management.dataset.dataset
+.. automodule:: renku.core.dataset.dataset
    :members:
 
-.. automodule:: renku.core.management.dataset.dataset_add
+.. automodule:: renku.core.dataset.dataset_add
    :members:
 
-.. automodule:: renku.core.management.dataset.constant
+.. automodule:: renku.core.dataset.constant
    :members:
 
-.. automodule:: renku.core.management.dataset.context
+.. automodule:: renku.core.dataset.context
    :members:
 
-.. automodule:: renku.core.management.dataset.pointer_file
+.. automodule:: renku.core.dataset.pointer_file
    :members:
 
-.. automodule:: renku.core.management.dataset.request_model
+.. automodule:: renku.core.dataset.request_model
    :members:
 
-.. automodule:: renku.core.management.dataset.tag
+.. automodule:: renku.core.dataset.tag
    :members:
 
-.. automodule:: renku.core.management.dataset.datasets_provenance
+.. automodule:: renku.core.dataset.datasets_provenance
    :members:
 
 Repository
@@ -63,7 +63,7 @@ Git Internals
 .. automodule:: renku.core.management.git
    :members:
 
-.. automodule:: renku.core.models.git
+.. automodule:: renku.domain_model.git
    :members:
 
 Command Builder
@@ -73,5 +73,5 @@ Most renku commands require context (database/git/etc.) to be set up for them.
 The command builder pattern makes this easy by wrapping commands in factory
 methods.
 
-.. automodule:: renku.core.management.command_builder
+.. automodule:: renku.command.command_builder
    :members:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,11 +23,10 @@ import time
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
 
-from renku.cli import cli
-from renku.core.metadata.repository import Repository
-from renku.core.plugins.provider import available_workflow_providers
+from renku.core.plugin.provider import available_workflow_providers
+from renku.infrastructure.repository import Repository
+from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 
@@ -67,7 +66,7 @@ def test_rerun(project, renku_cli, provider):
         ("𒁃.c", "𒁏.txt"),
     ],
 )
-def test_rerun_with_special_paths(project, renku_cli, provider, source, output):
+def test_rerun_with_special_paths(project, renku_cli, runner, provider, source, output):
     """Test rerun with unicode/whitespace filenames."""
     cwd = Path(project)
     source = cwd / source
@@ -88,6 +87,9 @@ def test_rerun_with_special_paths(project, renku_cli, provider, source, output):
             break
 
     assert content != output.read_text().strip(), "The output should have changed."
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
@@ -129,10 +131,8 @@ def test_rerun_with_from(project, renku_cli, provider, source, content):
 
 
 @pytest.mark.skip(reason="renku rerun not implemented with --edit-inputs yet, reenable later")
-def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
+def test_rerun_with_edited_inputs(project, run, no_lfs_warning, split_runner):
     """Test input modification."""
-    runner = CliRunner(mix_stderr=False)
-
     cwd = Path(project)
     data = cwd / "examples"
     data.mkdir()
@@ -164,7 +164,7 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
         # Make sure the input path is relative to the current directory.
         os.chdir(str(data))
 
-        result = runner.invoke(
+        result = split_runner.invoke(
             cli, ["rerun", "--show-inputs", "--from", str(first), str(second)], catch_exceptions=False
         )
         assert 0 == result.exit_code, format_result_exception(result)
@@ -298,6 +298,9 @@ def test_rerun_overridden_outputs_partially(project, renku_cli, runner):
     assert "r2" in result.output
     assert "r3" not in result.output
 
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
 
 def test_rerun_multiple_paths_common_output(project, renku_cli, runner):
     """Test when multiple paths generate the same output only the most recent path will be rerun."""
@@ -324,3 +327,20 @@ def test_rerun_multiple_paths_common_output(project, renku_cli, runner):
     assert "r2" not in result.output
     assert "r3" in result.output
     assert "r4" in result.output
+
+
+def test_rerun_output_in_subdirectory(split_runner, client):
+    """Test re-run when an output is in a sub-directory."""
+    output = client.path / "sub-dir" / "output"
+    write_and_commit_file(client.repository, output, "")
+
+    result = split_runner.invoke(cli, ["run", "bash", "-c", 'touch "$0" ; echo data > "$0"', output])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    write_and_commit_file(client.repository, output, "")
+
+    result = split_runner.invoke(cli, ["rerun", output])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "data" in output.read_text()

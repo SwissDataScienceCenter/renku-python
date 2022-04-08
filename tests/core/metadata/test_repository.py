@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 
 FIRST_COMMIT_SHA = "d44be0700e7ad1d062544763fd55c6ccb6f456e1"
 LAST_COMMIT_SHA = "8853e0c1112e512c36db9cc76faff560b655e5d5"  # HEAD
@@ -239,3 +239,20 @@ def test_get_user_with_quotation_mark(git_repository):
 
     assert "Renku the Frog" == user.name
     assert "renku@renku.ch" == user.email
+
+
+@pytest.mark.parametrize(
+    "path, contains",
+    [("A", True), (Path("A"), True), ("non-existing", False), ("/outside/repo", False), ("data", True)],
+)
+def test_contains_file(git_repository, path, contains):
+    """Test if repository contains a given path."""
+    assert git_repository.contains(path) is contains
+
+
+def test_contains_untracked_file(git_repository):
+    """Test if repository contains a given path."""
+    path = git_repository.path / "untracked"
+    path.write_text("untracked")
+
+    assert git_repository.contains(path) is False

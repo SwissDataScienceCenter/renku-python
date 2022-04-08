@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.utils.contexts import chdir
+from renku.core.util.contexts import chdir
 
 
 def test_indirect_inputs_outputs(renku_cli, client):
@@ -35,9 +35,9 @@ def test_indirect_inputs_outputs(renku_cli, client):
 
         Path("script.sh").write_text(
             """
-            echo foo >> .renku/tmp/inputs.txt
-            echo baz >> .renku/tmp/inputs.txt
-            echo qux >> .renku/tmp/outputs.txt
+            echo 'input-1: foo' >> .renku/tmp/inputs.yml
+            echo 'input-2: baz' >> .renku/tmp/inputs.yml
+            echo 'output-3: qux' >> .renku/tmp/outputs.yml
             """
         )
 
@@ -70,12 +70,12 @@ def test_duplicate_indirect_inputs(renku_cli, client):
 
         Path("script.sh").write_text(
             """
-            echo foo/bar >> .renku/tmp/inputs.txt
-            echo foo/bar >> .renku/tmp/inputs.txt
-            echo foo/./bar >> .renku/tmp/inputs.txt
-            echo foo/../foo/bar >> .renku/tmp/inputs.txt
-            echo baz >> .renku/tmp/inputs.txt
-            echo baz >> .renku/tmp/inputs.txt
+            echo 'input-1: foo/bar' >> .renku/tmp/inputs.yml
+            echo 'input-1: foo/bar' >> .renku/tmp/inputs.yml
+            echo 'input-1: foo/./bar' >> .renku/tmp/inputs.yml
+            echo 'input-1: foo/../foo/bar' >> .renku/tmp/inputs.yml
+            echo 'input-2: baz' >> .renku/tmp/inputs.yml
+            echo 'input-2: baz' >> .renku/tmp/inputs.yml
             """
         )
 
@@ -97,12 +97,12 @@ def test_duplicate_indirect_outputs(renku_cli, client):
 
         Path("script.sh").write_text(
             """
-            echo foo/bar >> .renku/tmp/outputs.txt
-            echo foo/bar >> .renku/tmp/outputs.txt
-            echo foo/./bar >> .renku/tmp/outputs.txt
-            echo foo/../foo/bar >> .renku/tmp/outputs.txt
-            echo baz >> .renku/tmp/outputs.txt
-            echo baz >> .renku/tmp/outputs.txt
+            echo 'output-1: foo/bar' >> .renku/tmp/outputs.yml
+            echo 'output-1: foo/bar' >> .renku/tmp/outputs.yml
+            echo 'output-1: foo/./bar' >> .renku/tmp/outputs.yml
+            echo 'output-1: foo/../foo/bar' >> .renku/tmp/outputs.yml
+            echo 'output-2: baz' >> .renku/tmp/outputs.yml
+            echo 'output-2: baz' >> .renku/tmp/outputs.yml
 
             touch baz
             """

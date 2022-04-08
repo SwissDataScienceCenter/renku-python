@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,8 +20,8 @@
 import os
 
 from renku.core.errors import ParameterError
-from renku.core.utils.scm import shorten_message
-from renku.core.utils.urls import get_host
+from renku.core.util.scm import shorten_message
+from renku.core.util.urls import get_host
 from tests.utils import raises
 
 

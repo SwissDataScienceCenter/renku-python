@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -27,7 +27,7 @@ Interfaces
 
 Interfaces that the Gateways implement.
 
-.. automodule:: renku.core.management.interface
+.. automodule:: renku.core.interface
    :members:
 
 Implementations
@@ -35,6 +35,5 @@ Implementations
 
 Implementation of Gateway interfaces.
 
-.. automodule:: renku.core.metadata.gateway
+.. automodule:: renku.infrastructure.gateway
    :members:
-

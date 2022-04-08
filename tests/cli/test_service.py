@@ -20,8 +20,8 @@ import time
 
 import pytest
 
-from renku.cli import cli
-from renku.cli.service import list_renku_processes
+from renku.ui.cli import cli
+from renku.ui.cli.service import list_renku_processes
 from tests.utils import format_result_exception, retry_failed
 
 

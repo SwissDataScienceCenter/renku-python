@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,13 +23,13 @@ import textwrap
 import pytest
 
 from renku.core import errors
-from renku.core.models.template import TemplateMetadata, TemplateParameter, TemplatesManifest
-from renku.core.utils.metadata import read_renku_version_from_dockerfile
+from renku.core.util.metadata import read_renku_version_from_dockerfile
+from renku.domain_model.template import TemplateMetadata, TemplateParameter, TemplatesManifest
 
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type: ignore
 
 
 @pytest.fixture()

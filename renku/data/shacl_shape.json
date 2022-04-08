@@ -23,6 +23,10 @@
          "@id": "sh:or",
          "@container": "@list"
       },
+      "in": {
+         "@id": "sh:in",
+         "@container": "@list"
+      },
       "minCount": "sh:minCount",
       "maxCount": "sh:maxCount",
       "nodeKind": {
@@ -121,7 +125,7 @@
                "nodeKind": "sh:Literal",
                "path": "schema:agent",
                "datatype": {
-                 "@id": "xsd:string"
+                  "@id": "xsd:string"
                },
                "minCount": 1,
                "maxCount": 1
@@ -137,10 +141,22 @@
             },
             {
                "path": "schema:creator",
-               "sh:class":{
+               "sh:class": {
                   "@id": "schema:Person"
                },
-               "minCount": 1
+               "minCount": 1,
+               "maxCount": 1,
+               "or": [
+                  {
+                     "sh:pattern": "http(s)?://[^/]+/persons/\\S+"
+                  },
+                  {
+                     "sh:pattern": "mailto:[^@\\s]+@\\S+\\.\\S+"
+                  },
+                  {
+                     "sh:pattern": "http(s)?://[\\S]*orcid.org/[0-9-]+"
+                  }
+               ]
             },
             {
                "nodeKind": "sh:Literal",
@@ -202,21 +218,21 @@
                "sh:class": {
                   "@id": "schema:Dataset"
                },
-               "sh:pattern": "http(s)?://[^/]+/datasets/[0-9a-g]+"
+               "sh:pattern": "http(s)?://[^/]+/datasets/[0-9a-f]+"
             },
             {
                "path": "renku:hasPlan",
                "sh:class": {
                   "@id": "prov:Plan"
                },
-               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-g\\-]+"
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+"
             },
             {
                "path": "renku:hasActivity",
                "sh:class": {
                   "@id": "prov:Activity"
                },
-               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+"
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-f]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -249,7 +265,7 @@
                ],
                "sh:select": [
                   {
-                     "@value": "SELECT ?this\nWHERE {\n  ?this a schema:Person .\n  MINUS { ?this a prov:Person . }\n}\n"
+                     "@value": "SELECT ?this WHERE { ?this a schema:Person . MINUS { ?this a prov:Person . } }"
                   }
                ]
             }
@@ -277,14 +293,16 @@
                "path": "schema:alternateName",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
                "path": "schema:affiliation",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             }
          ]
       },
@@ -304,14 +322,16 @@
                "path": "renku:checksum",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
                "path": "prov:atLocation",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -320,6 +340,13 @@
                   "@id": "xsd:string"
                },
                "maxCount": 1
+            },
+            {
+               "path": "prov:qualifiedGeneration",
+               "sh:class": {
+                  "@id": "prov:Generation"
+               },
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-f]+/(generations|usages)/[0-9a-f]+"
             }
          ]
       },
@@ -339,7 +366,18 @@
                "sh:class": {
                   "@id": "schema:Person"
                },
-               "minCount": 1
+               "minCount": 1,
+               "or": [
+                  {
+                     "sh:pattern": "http(s)?://[^/]+/persons/\\S+"
+                  },
+                  {
+                     "sh:pattern": "mailto:[^@\\s]+@\\S+\\.\\S+"
+                  },
+                  {
+                     "sh:pattern": "http(s)?://[\\S]*orcid.org/[0-9-]+"
+                  }
+               ]
             },
             {
                "nodeKind": "sh:Literal",
@@ -380,14 +418,16 @@
                "path": "prov:wasDerivedFrom",
                "sh:class": {
                   "@id": "schema:URL"
-               }
+               },
+               "maxCount": 1,
+               "sh:pattern": "http(s)?://[^/]+/urls/datasets/[0-9a-f]+"
             },
             {
                "path": "schema:hasPart",
                "sh:class": {
                   "@id": "schema:DigitalDocument"
                },
-               "sh:pattern": "http(s)?://[^/]+/dataset\\-files/[0-9a-g]+"
+               "sh:pattern": "http(s)?://[^/]+/dataset-files/[0-9a-f]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -396,19 +436,22 @@
                   "@id": "xsd:string"
                },
                "minCount": 1,
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "[0-9a-f]{32}"
             },
             {
                "path": "schema:inLanguage",
                "sh:class": {
                   "@id": "schema:Language"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/languages/\\S+"
             },
             {
                "path": "schema:image",
                "sh:class": {
                   "@id": "schema:ImageObject"
-               }
+               },
+               "sh:pattern": "http(s)?://[^/]+/datasets/[0-9a-f]+/images/[0-9]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -447,20 +490,17 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "minCount": 0,
-               "maxCount": 1
+               "minCount": 1,
+               "maxCount": 1,
+               "sh:pattern": "[0-9a-f]{32}"
             },
             {
                "path": "schema:sameAs",
                "sh:class": {
                   "@id": "schema:URL"
-               }
-            },
-            {
-               "path": "schema:subjectOf",
-               "sh:class": {
-                  "@id": "schema:PublicationEvent"
-               }
+               },
+               "maxCount": 1,
+               "sh:pattern": "http(s)?://[^/]+/urls/\\S+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -476,7 +516,8 @@
                "path": "schema:url",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -484,6 +525,39 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            }
+         ],
+         "sh:sparql": [
+            {
+               "@type": "sh:SPARQLConstraint",
+               "sh:prefixes": [
+                  {
+                     "@id": "schema:"
+                  }
+               ],
+               "sh:message": "Both schema:dateCreated and schema:datePublished are set.",
+               "sh:select": [
+                  {
+                     "@value": "SELECT $this WHERE { FILTER (EXISTS { $this schema:datePublished ?_ } && EXISTS { $this schema:dateCreated ?_ }) }"
+                  }
+               ]
+            },
+            {
+               "@type": "sh:SPARQLConstraint",
+               "sh:prefixes": [
+                  {
+                     "@id": "schema:"
+                  },
+                  {
+                     "@id": "prov:"
+                  }
+               ],
+               "sh:message": "Both prov:wasDerivedFrom and schema:sameAs are set.",
+               "sh:select": [
+                  {
+                     "@value": "SELECT $this WHERE { FILTER (EXISTS { $this prov:wasDerivedFrom ?_ } && EXISTS { $this schema:sameAs ?_ }) }"
+                  }
+               ]
             }
          ]
       },
@@ -511,6 +585,7 @@
                      "nodeKind": "sh:IRI"
                   }
                ],
+               "minCount": 1,
                "maxCount": 1
             }
          ]
@@ -540,7 +615,8 @@
                "datatype": {
                   "@id": "xsd:integer"
                },
-               "maxCount": 1
+               "maxCount": 1,
+               "minInclusive": 0
             }
          ]
       },
@@ -617,7 +693,8 @@
                   "@id": "schema:URL"
                },
                "minCount": 1,
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "http(s)?://[^/]+/urls/datasets/[0-9a-f]+"
             }
          ]
       },
@@ -637,7 +714,8 @@
                "sh:class": {
                   "@id": "prov:Entity"
                },
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "http(s)?://[^/]+/remote-entity/\\S+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -654,7 +732,10 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:moreThanOrEquals": {
+                  "@id": "schema:dateCreated"
+               }
             },
             {
                "path": "prov:entity",
@@ -662,14 +743,16 @@
                   "@id": "prov:Entity"
                },
                "minCount": 1,
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "http(s)?://[^/]+/entities/[0-9a-f]+/\\S+"
             },
             {
                "nodeKind": "sh:Literal",
                "path": "renku:external",
                "datatype": {
                   "@id": "xsd:boolean"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -742,7 +825,7 @@
                "sh:class": {
                   "@id": "prov:Association"
                },
-               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+/association"
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-f]+/association"
             },
             {
                "nodeKind": "sh:Literal",
@@ -751,14 +834,10 @@
                   "@id": "xsd:dateTime"
                },
                "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "path": "prov:qualifiedGeneration",
-               "sh:class": {
-                  "@id": "prov:Generation"
-               },
-               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+/generation/[0-9a-g]+"
+               "maxCount": 1,
+               "sh:moreThanOrEquals": {
+                  "@id": "prov:startedAtTime"
+               }
             },
             {
                "nodeKind": "sh:Literal",
@@ -772,7 +851,7 @@
                "sh:class": {
                   "@id": "prov:Usage"
                },
-               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+/usages/[0-9a-g]+"
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-f]+/usages/[0-9a-f]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -788,7 +867,7 @@
                "sh:class": {
                   "@id": "renku:ParameterValue"
                },
-               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-g]+/parameter-value/[0-9a-g]+"
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-f]+/parameter-value/[0-9a-f]+"
             }
          ]
       },
@@ -913,7 +992,7 @@
                   "@id": "renku:CommandParameter"
                },
                "path": "renku:hasArguments",
-               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-g\\-]+/parameters/[0-9a-z]+"
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/parameters/[0-9a-z]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -934,7 +1013,7 @@
                   "@id": "renku:CommandInput"
                },
                "path": "renku:hasInputs",
-               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-g\\-]+/inputs/[0-9a-z]+"
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/inputs/(stdin|[0-9a-f]+)"
             },
             {
                "nodeKind": "sh:Literal",
@@ -942,7 +1021,6 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "minCount": 0,
                "maxCount": 1
             },
             {
@@ -950,7 +1028,7 @@
                   "@id": "renku:CommandOutput"
                },
                "path": "renku:hasOutputs",
-               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-g\\-]+/outputs/[0-9a-z]+"
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/outputs/(stdout|stderr|[0-9a-f]+)"
             },
             {
                "nodeKind": "sh:Literal",
@@ -974,7 +1052,10 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:moreThanOrEquals": {
+                  "@id": "schema:dateCreated"
+               }
             }
          ]
       },
@@ -1054,54 +1135,6 @@
                      }
                   }
                ],
-               "minCount": 0,
-               "maxCount": 1
-            }
-         ]
-      },
-      {
-         "@id": "_:renkuRunParameterShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "renku:RunParameter",
-         "property": [
-            {
-               "nodeKind": "sh:Literal",
-               "path": "rdfs:label",
-               "datatype": {
-                  "@id": "xsd:string"
-               }
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:name",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:type",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 1,
-               "maxCount": 1
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "renku:value",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 1,
                "maxCount": 1
             }
          ]
@@ -1130,14 +1163,16 @@
                "path": "schema:encodingFormat",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -1168,7 +1203,8 @@
                "sh:class": {
                   "@id": "renku:IOStream"
                },
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "http(s)?://[^/]+/iostreams/stdin"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1204,7 +1240,8 @@
                "path": "schema:encodingFormat",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -1251,7 +1288,8 @@
                "sh:class": {
                   "@id": "renku:IOStream"
                },
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "http(s)?://[^/]+/iostreams/(stdout|stderr)"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1279,14 +1317,22 @@
                "path": "renku:streamType",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "minCount": 1,
+               "maxCount": 1,
+               "in": [
+                  "stdin",
+                  "stdout",
+                  "stderr"
+               ]
             },
             {
                "nodeKind": "sh:Literal",
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             }
          ]
       },
@@ -1320,7 +1366,9 @@
                         "@id": "xsd:string"
                      }
                   }
-               ]
+               ],
+               "minCount": 1,
+               "maxCount": 1
             },
             {
                "path": "schema:valueReference",
@@ -1369,7 +1417,8 @@
                "sh:class": {
                   "@id": "renku:ParameterMapping"
                },
-               "path": "renku:hasMappings"
+               "path": "renku:hasMappings",
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/mappings/[0-9a-z]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1397,7 +1446,8 @@
                "sh:class": {
                   "@id": "renku:ParameterLink"
                },
-               "path": "renku:workflowLinks"
+               "path": "renku:workflowLinks",
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/links/[0-9a-f]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1433,7 +1483,8 @@
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
@@ -1465,13 +1516,29 @@
                "datatype": {
                   "@id": "xsd:string"
                },
+               "minCount": 1,
                "maxCount": 1
             },
             {
-               "path": "schema:mapsTo",
-               "sh:class": {
-                  "@id": "renku:CommandParameterBase"
-               }
+               "path": "renku:mapsTo",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandParameter"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandInput"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "renku:CommandOutput"
+                     }
+                  }
+               ],
+               "minCount": 1
             }
          ]
       },
@@ -1491,7 +1558,8 @@
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "maxCount": 1
             },
             {
                "path": "renku:linkSource",

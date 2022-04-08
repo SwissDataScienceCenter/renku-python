@@ -26,7 +26,7 @@ from typing import Generator
 import pytest
 
 from renku.core import errors
-from renku.core.metadata.repository import Repository
+from renku.infrastructure.repository import Repository
 from tests.utils import format_result_exception, modified_environ
 
 
@@ -37,7 +37,7 @@ def _mock_cache_sync(repository: Repository):
     We don't want to undo that temporary migration with an actual cache sync, as it would break tests with
     repeat service calls, if the migration was just done locally in the fixture.
     """
-    from renku.service.controllers.api import mixins
+    from renku.ui.service.controllers.api import mixins
 
     current_reference = repository.head.reference if repository.head.is_valid() else repository.head.commit
 
@@ -46,18 +46,18 @@ def _mock_cache_sync(repository: Repository):
         repository.reset(current_reference, hard=True)
 
     reset_repo_function = mixins.RenkuOperationMixin.reset_local_repo
-    mixins.RenkuOperationMixin.reset_local_repo = _mocked_repo_reset
+    mixins.RenkuOperationMixin.reset_local_repo = _mocked_repo_reset  # type: ignore
 
     try:
         yield
     finally:
-        mixins.RenkuOperationMixin.reset_local_repo = reset_repo_function
+        mixins.RenkuOperationMixin.reset_local_repo = reset_repo_function  # type: ignore
 
 
 def integration_repo_path(headers, project_id, url_components):
     """Constructs integration repo path."""
-    from renku.service.serializers.headers import RequiredIdentityHeaders
-    from renku.service.utils import make_project_path
+    from renku.ui.service.serializers.headers import RequiredIdentityHeaders
+    from renku.ui.service.utils import make_project_path
 
     user = RequiredIdentityHeaders().load(headers)
     project = {
@@ -74,7 +74,7 @@ def integration_repo_path(headers, project_id, url_components):
 @contextlib.contextmanager
 def integration_repo(headers, project_id, url_components) -> Generator[Repository, None, None]:
     """With integration repo helper."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     repo_path = integration_repo_path(headers, project_id, url_components)
     with chdir(repo_path):
@@ -93,7 +93,7 @@ def integration_repo(headers, project_id, url_components) -> Generator[Repositor
 @pytest.fixture()
 def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_repo_url):
     """Setup and teardown steps for integration tests."""
-    from renku.core.models.git import GitURL
+    from renku.domain_model.git import GitURL
 
     url_components = GitURL.parse(it_remote_repo_url)
 
@@ -157,7 +157,7 @@ def svc_client_with_repo(svc_client_setup):
 @pytest.fixture
 def svc_protected_repo(svc_client, identity_headers, it_protected_repo_url):
     """Service client with migrated remote protected repository."""
-    from renku.core.models.git import GitURL
+    from renku.domain_model.git import GitURL
 
     payload = {
         "git_url": it_protected_repo_url,
@@ -199,13 +199,13 @@ def svc_protected_old_repo(svc_synced_client, it_protected_repo_url):
 @pytest.fixture()
 def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, real_sync):
     """Client with a local remote to test pushes."""
-    from click.testing import CliRunner
     from marshmallow import pre_load
 
-    from renku.cli import cli
-    from renku.core.utils.contexts import chdir
-    from renku.service.config import PROJECT_CLONE_NO_DEPTH
-    from renku.service.serializers import cache
+    from renku.core.util.contexts import chdir
+    from renku.ui.cli import cli
+    from renku.ui.service.config import PROJECT_CLONE_NO_DEPTH
+    from renku.ui.service.serializers import cache
+    from tests.fixtures.runners import RenkuRunner
 
     # NOTE: prevent service from adding an auth token as it doesn't work with local repos
     def _no_auth_format(self, data, **kwargs):
@@ -240,11 +240,11 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     with modified_environ(HOME=str(home), XDG_CONFIG_HOME=str(home)):
         try:
             with remote_repo_checkout.get_configuration(scope="global", writable=True) as global_config:
-                global_config.set_value("user", "name", "Renku @ SDSC")
+                global_config.set_value("user", "name", "Renku Bot")
                 global_config.set_value("user", "email", "renku@datascience.ch")
 
             # NOTE: init "remote" repo
-            runner = CliRunner()
+            runner = RenkuRunner()
             with chdir(remote_repo_checkout_path):
 
                 result = runner.invoke(
@@ -289,8 +289,8 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 @pytest.fixture
 def quick_cache_synchronization(mocker):
     """Forces cache to synchronize on every request."""
-    import renku.service.cache.models.project
+    import renku.ui.service.cache.models.project
 
-    mocker.patch.object(renku.service.cache.models.project.Project, "fetch_age", 10000)
+    mocker.patch.object(renku.ui.service.cache.models.project.Project, "fetch_age", 10000)
 
     yield

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,9 +17,7 @@
 # limitations under the License.
 """Compatibility layer for different Python versions."""
 
-import cgi
 import contextlib
-import html
 from pathlib import Path
 
 import pathspec
@@ -47,14 +45,12 @@ except AttributeError:
         def __exit__(self, *excinfo):
             pass
 
-    contextlib.nullcontext = nullcontext
+    contextlib.nullcontext = nullcontext  # type: ignore
 
 try:
     FileNotFoundError
 except NameError:  # pragma: no cover
     FileNotFoundError = IOError
-
-cgi.escape = html.escape
 
 
 class RenkuGitWildMatchPattern(pathspec.patterns.GitWildMatchPattern):
@@ -70,9 +66,4 @@ class RenkuGitWildMatchPattern(pathspec.patterns.GitWildMatchPattern):
 
 pathspec.util.register_pattern("renku_gitwildmatch", RenkuGitWildMatchPattern)
 
-__all__ = (
-    "FileNotFoundError",
-    "Path",
-    "contextlib",
-    "cgi",
-)
+__all__ = ("FileNotFoundError", "Path", "contextlib")

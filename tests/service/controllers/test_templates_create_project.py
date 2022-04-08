@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020-2021 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,13 +19,13 @@
 import pytest
 from marshmallow import ValidationError
 
-from renku.core.utils.os import normalize_to_ascii
+from renku.core.util.os import normalize_to_ascii
 from renku.version import is_release
 
 
 def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, mocker):
     """Test template create project controller."""
-    from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
+    from renku.ui.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
     cache, user_data = ctrl_init
     _, _, payload, _ = svc_client_templates_creation
@@ -133,7 +133,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
 )
 def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client_templates_creation, mocker):
     """Test template create project controller correct set of project name."""
-    from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
+    from renku.ui.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
     cache, user_data = ctrl_init
     _, _, payload, _ = svc_client_templates_creation
@@ -152,7 +152,7 @@ def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client
 @pytest.mark.parametrize("project_name", ["здрасти", "---- --üäü ----", "-.-", "...", "----", "~.---", "`~~"])
 def test_except_project_name_handler(project_name, ctrl_init, svc_client_templates_creation, mocker):
     """Test template create project controller exception raised."""
-    from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
+    from renku.ui.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
     cache, user_data = ctrl_init
     _, _, payload, _ = svc_client_templates_creation

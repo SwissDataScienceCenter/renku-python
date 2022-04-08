@@ -99,7 +99,7 @@ def project_init(template):
 @pytest.fixture
 def source_template(tmp_path):
     """A dummy Template."""
-    from renku.core.models.template import Template
+    from renku.domain_model.template import Template
 
     templates_source_root = tmp_path / "templates_source"
     dummy_template_root = templates_source_root / "dummy"
@@ -143,7 +143,7 @@ def source_template(tmp_path):
 def templates_source(tmp_path, monkeypatch):
     """A dummy TemplatesSource."""
     from renku.core import errors
-    from renku.core.models.template import Template, TemplateParameter, TemplatesSource
+    from renku.domain_model.template import Template, TemplateParameter, TemplatesSource
 
     templates_source_root = tmp_path / "templates_source"
 
@@ -172,7 +172,9 @@ def templates_source(tmp_path, monkeypatch):
 
         def is_update_available(self, id: str, reference: Optional[str], version: Optional[str]) -> Tuple[bool, str]:
             """Return True if an update is available along with the latest version of a template."""
-            _, latest_version = self.get_latest_reference_and_version(id=id, reference=reference, version=version)
+            _, latest_version = self.get_latest_reference_and_version(
+                id=id, reference=reference, version=version  # type: ignore
+            )
 
             return latest_version != version, latest_version
 
@@ -182,7 +184,7 @@ def templates_source(tmp_path, monkeypatch):
 
         def get_latest_reference_and_version(
             self, id: str, reference: Optional[str], version: Optional[str]
-        ) -> Optional[Tuple[str, str]]:
+        ) -> Optional[Tuple[Optional[str], str]]:
             """Return latest reference and version number of a template."""
             _ = self.get_template(id=id, reference=reference)
             version = str(max(self._versions))
@@ -205,9 +207,12 @@ def templates_source(tmp_path, monkeypatch):
 
                 return template
 
-        def update(self, id, version, content="# modification", parameters: List[TemplateParameter] = None):
+        def update(self, id, version, content="# modification", parameters: Optional[List[TemplateParameter]] = None):
             """Update all files of a template."""
             template = self.get_template(id=id, reference=None)
+
+            if template is None or template.path is None:
+                return
 
             for relative_path in template.get_files():
                 path = template.path / relative_path
@@ -222,12 +227,12 @@ def templates_source(tmp_path, monkeypatch):
     )
 
     with monkeypatch.context() as monkey:
-        import renku.core.management.template.usecase
+        import renku.core.template.usecase
 
         def mocked_fetch_templates_source(source: Optional[str], reference: Optional[str]):
             return dummy_templates_source
 
-        monkey.setattr(renku.core.management.template.usecase, "fetch_templates_source", mocked_fetch_templates_source)
+        monkey.setattr(renku.core.template.usecase, "fetch_templates_source", mocked_fetch_templates_source)
 
         yield dummy_templates_source
 
@@ -235,7 +240,7 @@ def templates_source(tmp_path, monkeypatch):
 @pytest.fixture
 def rendered_template(source_template, template_metadata):
     """A dummy RenderedTemplate."""
-    from renku.core.models.template import TemplateMetadata
+    from renku.domain_model.template import TemplateMetadata
 
     rendered_template = source_template.render(metadata=TemplateMetadata.from_dict(template_metadata))
 
@@ -245,7 +250,7 @@ def rendered_template(source_template, template_metadata):
 @pytest.fixture
 def client_with_template(client, rendered_template, client_database_injection_manager):
     """A client with a dummy template."""
-    from renku.core.management.template.template import FileAction, copy_template_to_client
+    from renku.core.template.template import FileAction, copy_template_to_client
 
     with client_database_injection_manager(client):
         actions = {f: FileAction.OVERWRITE for f in rendered_template.get_files()}
@@ -268,7 +273,7 @@ def rendered_template_with_update(tmp_path, rendered_template):
 
     This fixture modifies these files: ``immutable.file``, ``.gitignore``, ``Dockerfile``, ``README.md``.
     """
-    from renku.core.models.template import RenderedTemplate
+    from renku.domain_model.template import RenderedTemplate
 
     updated_template_root = tmp_path / "rendered_template_with_update"
 

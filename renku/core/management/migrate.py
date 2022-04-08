@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -36,6 +36,7 @@ from pathlib import Path
 
 from packaging.version import Version
 
+from renku.command.command_builder.command import inject
 from renku.core.errors import (
     DockerfileUpdateError,
     MigrationError,
@@ -43,10 +44,9 @@ from renku.core.errors import (
     ProjectNotSupported,
     TemplateUpdateError,
 )
-from renku.core.management.command_builder.command import inject
-from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.management.interface.project_gateway import IProjectGateway
-from renku.core.management.migrations.utils import (
+from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.migration.utils import (
     OLD_METADATA_PATH,
     MigrationContext,
     MigrationOptions,
@@ -54,13 +54,13 @@ from renku.core.management.migrations.utils import (
     is_using_temporary_datasets_path,
     read_project_version,
 )
-from renku.core.management.workflow.plan_factory import RENKU_TMP
-from renku.core.utils import communication
+from renku.core.util import communication
+from renku.core.workflow.plan_factory import RENKU_TMP
 
 try:
     import importlib_resources
 except ImportError:
-    import importlib.resources as importlib_resources
+    import importlib.resources as importlib_resources  # type: ignore
 
 SUPPORTED_PROJECT_VERSION = 9
 
@@ -165,7 +165,7 @@ def migrate(
 
 
 def _remove_untracked_renku_files(renku_path):
-    from renku.core.management.dataset.constant import CACHE
+    from renku.core.dataset.constant import CACHE
 
     untracked_paths = [RENKU_TMP, CACHE, "vendors"]
     for path in untracked_paths:
@@ -175,7 +175,7 @@ def _remove_untracked_renku_files(renku_path):
 
 def _update_template(client) -> bool:
     """Update local files from the remote template."""
-    from renku.core.management.template.usecase import update_template
+    from renku.core.template.usecase import update_template
 
     try:
         project = client.project
@@ -256,14 +256,14 @@ def is_renku_project(client_dispatcher: IClientDispatcher) -> bool:
 def get_migrations():
     """Return a sorted list of versions and migration modules."""
     migrations = []
-    for entry in importlib_resources.files("renku.core.management.migrations").iterdir():
+    for entry in importlib_resources.files("renku.core.migration").iterdir():
         match = re.search(r"^m_([0-9]{4})__[a-zA-Z0-9_-]*.py$", entry.name)
 
         if match is None:  # migration files match m_0000__[name].py format
             continue
 
         version = int(match.groups()[0])
-        path = "renku.core.management.migrations.{}".format(Path(entry.name).stem)
+        path = "renku.core.migration.{}".format(Path(entry.name).stem)
         migrations.append((version, path))
 
     migrations = sorted(migrations, key=lambda v: v[1].lower())

@@ -22,7 +22,7 @@ import tempfile
 import pytest
 from filelock import FileLock
 
-from renku.cli import cli
+from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
@@ -47,7 +47,7 @@ from tests.utils import format_result_exception
 )
 def test_cli_initialization_err(cmd, runner):
     """Test correct exception raise within non-renku repository."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     with tempfile.TemporaryDirectory() as tmpdir:
         with chdir(tmpdir):
@@ -87,7 +87,7 @@ def test_cli_initialization_err(cmd, runner):
 )
 def test_cli_initialization_no_err_help(cmd, runner):
     """Test allowed commands within non-renku repository."""
-    from renku.core.utils.contexts import chdir
+    from renku.core.util.contexts import chdir
 
     sys.argv = cmd
     with tempfile.TemporaryDirectory() as tmpdir:

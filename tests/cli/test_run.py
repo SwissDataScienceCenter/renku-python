@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,12 +18,14 @@
 """Test ``run`` command."""
 
 import os
+from typing import cast
 
 import pytest
 
-from renku.cli import cli
-from renku.core.metadata.gateway.activity_gateway import ActivityGateway
-from renku.core.metadata.gateway.plan_gateway import PlanGateway
+from renku.domain_model.workflow.plan import Plan
+from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+from renku.infrastructure.gateway.plan_gateway import PlanGateway
+from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
@@ -95,7 +97,7 @@ def test_run_external_command_file(runner, client, project, run_shell, client_da
         assert plan.command.endswith("/echo")
 
 
-def test_run_metadata(renku_cli, client, client_database_injection_manager):
+def test_run_metadata(renku_cli, runner, client, client_database_injection_manager):
     """Test run with workflow metadata."""
     exit_code, activity = renku_cli(
         "run", "--name", "run-1", "--description", "first run", "--keyword", "key1", "--keyword", "key2", "touch", "foo"
@@ -113,6 +115,34 @@ def test_run_metadata(renku_cli, client, client_database_injection_manager):
         assert "run-1" == plan.name
         assert "first run" == plan.description
         assert {"key1", "key2"} == set(plan.keywords)
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_run_with_outside_files(renku_cli, runner, client, client_database_injection_manager, tmpdir):
+    """Test run with files that are outside the project."""
+
+    external_file = tmpdir.join("file_1")
+    external_file.write(str(1))
+
+    exit_code, activity = renku_cli("run", "--name", "run-1", "cp", str(external_file), "file_1")
+
+    assert 0 == exit_code
+    plan = activity.association.plan
+    assert "run-1" == plan.name
+
+    with client_database_injection_manager(client):
+        plan_gateway = PlanGateway()
+        plan = cast(Plan, plan_gateway.get_by_id(plan.id))
+        assert "run-1" == plan.name
+        assert 1 == len(plan.parameters)
+        assert 1 == len(plan.outputs)
+        assert 0 == len(plan.inputs)
+        assert plan.parameters[0].default_value == str(external_file)
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize(
@@ -205,5 +235,45 @@ def test_run_non_existing_command(runner, client):
     """Test run with a non-existing command."""
     result = runner.invoke(cli, ["run", "non-existing_command"])
 
-    assert 2 == result.exit_code
+    assert 2 == result.exit_code, format_result_exception(result)
     assert "Cannot execute command 'non-existing_command'" in result.output
+
+
+def test_run_prints_plan(split_runner, client):
+    """Test run shows the generated plan with --verbose."""
+    result = split_runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "--no-output", "echo", "data"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Name: echo-command" in result.stderr
+    assert "Name:" not in result.output
+
+
+def test_run_prints_plan_when_stdout_redirected(split_runner, client):
+    """Test run shows the generated plan in stderr if stdout is redirected to a file."""
+    result = split_runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "echo", "data"], stdout="output")
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Name: echo-command" in result.stderr
+    assert "Name:" not in result.output
+    assert "Name:" not in (client.path / "output").read_text()
+
+
+def test_run_prints_plan_when_stderr_redirected(split_runner, client):
+    """Test run shows the generated plan in stdout if stderr is redirected to a file."""
+    result = split_runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "echo", "data"], stderr="output")
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Name: echo-command" in (client.path / "output").read_text()
+    assert "Name:" not in result.output
+
+
+def test_run_with_external_files(split_runner, client, directory_tree):
+    """Test run commands that use external files."""
+    assert 0 == split_runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
+
+    path = client.path / "data" / "my-dataset" / "directory_tree" / "file1"
+
+    result = split_runner.invoke(cli, ["run", "tail", path], stdout="output")
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "file1" in (client.path / "output").read_text()

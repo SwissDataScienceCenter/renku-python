@@ -19,9 +19,9 @@
 
 import pytest
 
-from renku.core.models.workflow.composite_plan import CompositePlan
-from renku.core.models.workflow.parameter import CommandInput, CommandOutput, CommandParameter
-from renku.core.models.workflow.plan import Plan
+from renku.domain_model.workflow.composite_plan import CompositePlan
+from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
+from renku.domain_model.workflow.plan import Plan
 
 
 def _create_run(name: str) -> Plan:

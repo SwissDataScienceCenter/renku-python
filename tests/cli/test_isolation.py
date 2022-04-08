@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -73,7 +73,7 @@ def test_file_modification_during_run(
     prefix = [
         sys.executable,
         "-m",
-        "renku.cli",
+        "renku.ui.cli",
         "run",
         "--isolation",
     ]
