@@ -18,9 +18,11 @@
 """Test ``run`` command."""
 
 import os
+from typing import cast
 
 import pytest
 
+from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.ui.cli import cli
@@ -113,6 +115,31 @@ def test_run_metadata(renku_cli, runner, client, client_database_injection_manag
         assert "run-1" == plan.name
         assert "first run" == plan.description
         assert {"key1", "key2"} == set(plan.keywords)
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_run_external_file(renku_cli, runner, client, client_database_injection_manager, tmpdir):
+    """Test run with workflow metadata."""
+
+    external_file = tmpdir.join("file_1")
+    external_file.write(str(1))
+
+    exit_code, activity = renku_cli("run", "--name", "run-1", "cp", str(external_file), "file_1")
+
+    assert 0 == exit_code
+    plan = activity.association.plan
+    assert "run-1" == plan.name
+
+    with client_database_injection_manager(client):
+        plan_gateway = PlanGateway()
+        plan = cast(Plan, plan_gateway.get_by_id(plan.id))
+        assert "run-1" == plan.name
+        assert 1 == len(plan.parameters)
+        assert 1 == len(plan.outputs)
+        assert 0 == len(plan.inputs)
+        assert plan.parameters[0].default_value == str(external_file)
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
