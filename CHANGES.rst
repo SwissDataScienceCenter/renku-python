@@ -41,6 +41,9 @@ imports with the new ones is all that needs to be done.
 Bug Fixes
 ~~~~~~~~~
 
+-  **workflow:** crash with external files in a command
+   (`#2817 <https://github.com/SwissDataScienceCenter/renku-python/issues/2817>`__)
+   (`54f5abe <https://github.com/SwissDataScienceCenter/renku-python/commit/54f5abeead33294037ae8d11a4a0005446f156c1>`__)
 -  **core:** fix error when using external file in plan
    (`#2815 <https://github.com/SwissDataScienceCenter/renku-python/issues/2815>`__)
    (`101209c <https://github.com/SwissDataScienceCenter/renku-python/commit/101209c7569aea37e31029b92c55110fe828213a>`__)
