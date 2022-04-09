@@ -18,6 +18,57 @@
 Changes
 =======
 
+`1.2.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.4...v1.2.0>`__ (2022-04-08)
+-------------------------------------------------------------------------------------------------------
+
+This release contains an internal refactoring moving some renku-python
+namespaces around, namely:
+
+-  ``renku.api`` -> ``renku.ui.api``
+-  ``renku.cli`` -> ``renku.ui.cli``
+-  ``renku.service`` -> ``renku.ui.service``
+-  ``renku.core.commands`` -> ``renku.command``
+-  ``renku.core.models`` -> ``renku.domain_model``
+-  ``renku.core.metadata`` -> ``renku.infrastructure``
+-  ``renku.core.plugins`` -> ``renku.core.plugin``
+-  some ``renku.core.management.*`` submodules to ``renku.core.*``
+
+All except the last point have redirects from the old to the new namespace,
+so existing could continues to work, but importing the old namespace will print
+a ``DeprecationWarning``. The code itself hasn't change, so replacing the old
+imports with the new ones is all that needs to be done.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **workflow:** crash with external files in a command
+   (`#2817 <https://github.com/SwissDataScienceCenter/renku-python/issues/2817>`__)
+   (`54f5abe <https://github.com/SwissDataScienceCenter/renku-python/commit/54f5abeead33294037ae8d11a4a0005446f156c1>`__)
+-  **core:** fix error when using external file in plan
+   (`#2815 <https://github.com/SwissDataScienceCenter/renku-python/issues/2815>`__)
+   (`101209c <https://github.com/SwissDataScienceCenter/renku-python/commit/101209c7569aea37e31029b92c55110fe828213a>`__)
+-  **core:** fix SHACL shape for MappingParameter and add SHACL checks
+   to more tests
+   (`#2811 <https://github.com/SwissDataScienceCenter/renku-python/issues/2811>`__)
+   (`ce9850f <https://github.com/SwissDataScienceCenter/renku-python/commit/ce9850f94e08a137fde7238e247250b4bf8b3976>`__)
+-  **core:** Fix workflow outputs not staging parent directory of execution
+   (`#2798 <https://github.com/SwissDataScienceCenter/renku-python/issues/2798>`__)
+   (`330a3b8 <https://github.com/SwissDataScienceCenter/renku-python/commit/330a3b8df8347552db8ea3697e7fff5bcf807bec>`__)
+-  **core:** optimize imports to improve startup time
+   (`#2799 <https://github.com/SwissDataScienceCenter/renku-python/issues/2799>`__)
+   (`918fc30 <https://github.com/SwissDataScienceCenter/renku-python/commit/918fc303f83c4f5b7b66db001f9002df335a4af2>`__)
+-  **service:** clean cache after trying to fetch projects from non-existing repositories
+   (`#2789 <https://github.com/SwissDataScienceCenter/renku-python/issues/2789>`__)
+   (`c62b75b <https://github.com/SwissDataScienceCenter/renku-python/commit/c62b75bce7da710c6f06802e61942837feb4a105>`__),
+   closes
+   `#2787 <https://github.com/SwissDataScienceCenter/renku-python/issues/2787>`__
+
+Features
+~~~~~~~~
+-  **workflow:** docker container support for toil provider
+   (`#2795 <https://github.com/SwissDataScienceCenter/renku-python/issues/2795>`__)
+   (`3b3a896 <https://github.com/SwissDataScienceCenter/renku-python/commit/3b3a896f801102cd61d7dc320dc5d999cb403c48>`__)
+
 `1.1.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.3...v1.1.4>`__ (2022-03-28)
 -------------------------------------------------------------------------------------------------------
 
