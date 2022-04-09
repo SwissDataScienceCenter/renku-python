@@ -200,8 +200,8 @@ def safe_read_yaml(file: str) -> Dict[str, Any]:
         otherwise raises a ParameterError exception.
     """
     try:
-        from renku.domain_model import jsonld as jsonld
+        from renku.core.util import yaml as yaml
 
-        return jsonld.read_yaml(file)
+        return yaml.read_yaml(file)
     except Exception as e:
         raise errors.ParameterError(e)

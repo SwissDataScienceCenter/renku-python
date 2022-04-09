@@ -59,10 +59,10 @@ from renku.core.migration.utils import (
     generate_url_id,
     get_datasets_path,
 )
+from renku.core.util import yaml as yaml
 from renku.core.util.datetime8601 import fix_datetime, parse_date
 from renku.core.util.doi import extract_doi, is_doi
 from renku.core.util.urls import get_host, get_slug
-from renku.domain_model import jsonld as jsonld
 from renku.domain_model.dataset import generate_default_name
 from renku.domain_model.refs import LinkReference
 from renku.infrastructure.repository import Commit
@@ -192,7 +192,7 @@ class Project:
     @classmethod
     def from_yaml(cls, path, client=None):
         """Return an instance from a YAML file."""
-        data = jsonld.read_yaml(path)
+        data = yaml.read_yaml(path)
         self = cls.from_jsonld(data=data, client=client)
         self._metadata_path = path
 
@@ -216,7 +216,7 @@ class Project:
 
         self._metadata_path = path or self._metadata_path
         data = ProjectSchema().dump(self)
-        jsonld.write_yaml(path=self._metadata_path, data=data)
+        yaml.write_yaml(path=self._metadata_path, data=data)
 
 
 @attr.s(eq=False, order=False)
@@ -805,7 +805,7 @@ class Activity(CommitMixin):
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
-        data = jsonld.read_yaml(path)
+        data = yaml.read_yaml(path)
 
         self = cls.from_jsonld(data=data, client=client, commit=commit)
         self._metadata_path = path
@@ -1000,7 +1000,7 @@ class ProcessRun(Activity):
         """Write an instance to the referenced YAML file."""
         self._metadata_path = path or self._metadata_path
         data = ProcessRunSchema(flattened=True).dump(self)
-        jsonld.write_yaml(path=self._metadata_path, data=data)
+        yaml.write_yaml(path=self._metadata_path, data=data)
 
 
 @attr.s(eq=False, order=False)
@@ -1740,7 +1740,7 @@ class Dataset(Entity, CreatorMixin):
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
-        data = jsonld.read_yaml(path)
+        data = yaml.read_yaml(path)
 
         self = cls.from_jsonld(data=data, client=client, commit=commit)
         self._metadata_path = path
@@ -1765,7 +1765,7 @@ class Dataset(Entity, CreatorMixin):
 
         self._metadata_path = path or self._metadata_path
         data = OldDatasetSchema(flattened=True).dump(self)
-        jsonld.write_yaml(path=self._metadata_path, data=data)
+        yaml.write_yaml(path=self._metadata_path, data=data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
