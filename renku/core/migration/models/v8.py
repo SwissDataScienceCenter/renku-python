@@ -25,7 +25,7 @@ from marshmallow import EXCLUDE, pre_dump
 from renku.command.schema.calamus import Uri, fields, prov, schema
 from renku.core.migration.models.v9 import generate_file_id
 from renku.core.migration.utils import OLD_METADATA_PATH, get_datasets_path
-from renku.domain_model import jsonld
+from renku.core.util import yaml
 
 from .v3 import CreatorMixinSchemaV3, DatasetTagSchemaV3, EntitySchemaV3, LanguageSchemaV3, PersonSchemaV3, UrlSchemaV3
 from .v7 import Base, DatasetFileSchemaV7
@@ -54,7 +54,7 @@ class Dataset(Base):
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
         """Read content from YAML file."""
-        data = jsonld.read_yaml(path)
+        data = yaml.read_yaml(path)
         self = DatasetSchemaV8(client=client, commit=commit, flattened=True).load(data)
         self._metadata_path = path
         return self
@@ -66,7 +66,7 @@ class Dataset(Base):
 
         data = DatasetSchemaV8(flattened=True).dump(self)
         path = path or self._metadata_path or os.path.join(self.path, OLD_METADATA_PATH)
-        jsonld.write_yaml(path=path, data=data)
+        yaml.write_yaml(path=path, data=data)
 
 
 class DatasetFileSchemaV8(DatasetFileSchemaV7):

@@ -32,7 +32,7 @@ import pytest
 from cwl_utils.parser import cwl_v1_2 as cwlgen
 
 from renku.core.plugin.provider import available_workflow_providers
-from renku.domain_model.jsonld import write_yaml
+from renku.core.util.yaml import write_yaml
 from renku.infrastructure.database import Database
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
