@@ -21,7 +21,6 @@
 import itertools
 import re
 from collections import defaultdict
-from datetime import datetime
 from functools import reduce
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
@@ -133,7 +132,7 @@ def _remove_workflow(name: str, force: bool, plan_gateway: IPlanGateway):
 
     plan = plan or workflows[name]
     plan.unfreeze()
-    plan.invalidated_at = datetime.utcnow()
+    plan.invalidated_at = local_now()
     plan.freeze()
 
 
