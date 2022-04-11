@@ -74,7 +74,11 @@ def test_datasets_create_dirty(runner, project, client, load_dataset_with_inject
 
 
 def test_dataset_show(runner, client, subdirectory):
-    """Test creating a dataset with metadata."""
+    """Test creating and showing a dataset with metadata."""
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Dataset 'my-dataset' not found." in result.output
+
     metadata = {
         "@id": "https://example.com/annotation1",
         "@type": "https://schema.org/specialType",

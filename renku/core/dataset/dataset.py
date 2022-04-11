@@ -735,6 +735,9 @@ def show_dataset(name):
         dict: JSON dictionary of dataset details.
     """
     dataset = DatasetsProvenance().get_by_name(name)
+
+    if not dataset:
+        return None
     return DatasetDetailsJson().dump(dataset)
 
 
