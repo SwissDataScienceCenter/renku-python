@@ -17,6 +17,8 @@
 # limitations under the License.
 """Represent run templates."""
 
+from datetime import timezone
+
 import marshmallow
 
 from renku.command.schema.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
@@ -49,3 +51,14 @@ class PlanSchema(JsonLDSchema):
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
     parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
+
+    @marshmallow.pre_dump
+    def _pre_dump(self, in_data, **kwargs):
+        """Fix data on dumping."""
+        if in_data.invalidated_at is not None and in_data.invalidated_at.tzinfo is None:
+            # NOTE: There was a bug that caused invalidated_at to be set without timezone (as UTC time)
+            # so we patch in the timezone here
+            in_data.unfreeze()
+            in_data.invalidated_at = in_data.invalidated_at.replace(microsecond=0).astimezone(timezone.utc)
+            in_data.freeze()
+        return in_data
