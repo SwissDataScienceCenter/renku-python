@@ -97,7 +97,7 @@ The following values are used by renku-python and available for the ``renku conf
 |                                | files are not added to git LFS      |           |
 +--------------------------------+-------------------------------------+-----------+
 | ``data_directory``             | Path to the data directory          | ``data/`` |
-|                                | read-only after project creation)   |           |
+|                                | (read-only after project creation)   |           |
 +--------------------------------+-------------------------------------+-----------+
 | ``zenodo.access_token``        | Access token for Zenodo API         | ``None``  |
 +--------------------------------+-------------------------------------+-----------+
