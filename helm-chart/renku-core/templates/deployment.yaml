@@ -52,6 +52,8 @@ spec:
         - name: {{ $.Chart.Name}}-rqmetrics
           image: "{{ $.Values.metrics.image.repository }}:{{ $.Values.metrics.image.tag }}"
           imagePullPolicy: {{ $.Values.metrics.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
           env:
             - name: RQ_REDIS_HOST
               value: {{ $.Values.global.redis.host | quote }}
@@ -152,6 +154,10 @@ spec:
         - name: {{ $.Chart.Name }}-datasets-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
           args: ["service", "worker"]
           env:
             - name: REDIS_HOST
@@ -206,6 +212,10 @@ spec:
         - name: {{ $.Chart.Name }}-management-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
           args: ["service", "worker"]
           env:
             - name: REDIS_HOST
@@ -258,6 +268,10 @@ spec:
         - name: {{ $.Chart.Name }}-scheduler
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
           args: ["service", "scheduler"]
           env:
             - name: REDIS_HOST
