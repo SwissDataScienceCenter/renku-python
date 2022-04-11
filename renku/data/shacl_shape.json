@@ -102,7 +102,8 @@
                   "@id": "xsd:string"
                },
                "minCount": 1,
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
             },
             {
                "nodeKind": "sh:Literal",
@@ -385,7 +386,8 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
             },
             {
                "nodeKind": "sh:Literal",
@@ -396,7 +398,8 @@
                "maxCount": 1,
                "sh:moreThanOrEquals": {
                   "@id": "schema:dateCreated"
-               }
+               },
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
             },
             {
                "nodeKind": "sh:Literal",
@@ -404,7 +407,8 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
             },
             {
                "nodeKind": "sh:Literal",
@@ -724,7 +728,8 @@
                   "@id": "xsd:string"
                },
                "minCount": 1,
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
             },
             {
                "nodeKind": "sh:Literal",
@@ -735,7 +740,8 @@
                "maxCount": 1,
                "sh:moreThanOrEquals": {
                   "@id": "schema:dateCreated"
-               }
+               },
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
             },
             {
                "path": "prov:entity",
@@ -1044,7 +1050,8 @@
                   "@id": "xsd:string"
                },
                "minCount": 1,
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1055,7 +1062,8 @@
                "maxCount": 1,
                "sh:moreThanOrEquals": {
                   "@id": "schema:dateCreated"
-               }
+               },
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
             }
          ]
       },
@@ -1455,7 +1463,8 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
             }
          ]
       },
