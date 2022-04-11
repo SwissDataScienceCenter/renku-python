@@ -18,6 +18,16 @@
 Changes
 =======
 
+`1.2.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.0...v1.2.1>`__ (2022-04-11)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix Plan.invalidated_at datetime not being timezone aware
+   (`#2823 <https://github.com/SwissDataScienceCenter/renku-python/issues/2823>`__)
+   (`df82f9f <https://github.com/SwissDataScienceCenter/renku-python/commit/df82f9fd8c481f6a6c177d1bdcd08484dbd46e79>`__)
+
 `1.2.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.4...v1.2.0>`__ (2022-04-08)
 -------------------------------------------------------------------------------------------------------
 
