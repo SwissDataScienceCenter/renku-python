@@ -30,7 +30,7 @@ from renku.core.migration.utils import (
     get_pre_0_3_4_datasets_metadata,
     is_using_temporary_datasets_path,
 )
-from renku.domain_model.jsonld import read_yaml, write_yaml
+from renku.core.util.yaml import read_yaml, write_yaml
 
 
 def migrate(migration_context):
