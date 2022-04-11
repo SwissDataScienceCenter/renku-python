@@ -48,7 +48,7 @@ def fake_stop(self, project_name, session_name, stop_all):
 
 
 def fake_find_image(self, image_name, config):
-    if image_name != "fixed_image":
+    if image_name == "missing_image":
         return False
     return True
 
@@ -70,9 +70,9 @@ def fake_session_list(self, project_name, config):
         ({"image_name": "missing_image"}, ParameterError),
     ],
 )
-@patch.object(DockerSessionProvider, "session_start", fake_start)
-@patch.object(DockerSessionProvider, "find_image", fake_find_image)
-@patch.object(DockerSessionProvider, "build_image", fake_build_image)
+@patch.multiple(
+    DockerSessionProvider, session_start=fake_start, find_image=fake_find_image, build_image=fake_build_image
+)
 def test_session_start(run_shell, client, provider, parameters, result, client_database_injection_manager):
     provider_implementation = next(filter(lambda x: x[1] == provider, supported_session_providers()), None)
     assert provider_implementation is not None
