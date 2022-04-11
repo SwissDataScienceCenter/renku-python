@@ -68,8 +68,7 @@ You can display all configuration values with:
 
 Both local and global configuration files are read. Values in local
 configuration take precedence over global values. Use ``--local`` or
-``--global`` flag to read corresponding configuration only.
-
+``--global`` flag to read corresponding configuration only. 
 You can provide a KEY to display only its value:
 
 .. code-block:: console
@@ -86,7 +85,7 @@ You can provide a KEY to display only its value:
 Available configuration values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following values are available for the ``renku config`` command:
+The following values are used by renku-python and available for the ``renku config`` command:
 
 +--------------------------------+-------------------------------------+-----------+
 | Name                           | Description                         | Default   |
@@ -97,6 +96,9 @@ The following values are available for the ``renku config`` command:
 | ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
 |                                | files are not added to git LFS      |           |
 +--------------------------------+-------------------------------------+-----------+
+| ``data_directory``             | Path to the data directory          | ``data/`` |
+|                                | read-only after project creation)   |           |
++--------------------------------+-------------------------------------+-----------+
 | ``zenodo.access_token``        | Access token for Zenodo API         | ``None``  |
 +--------------------------------+-------------------------------------+-----------+
 | ``dataverse.access_token``     | Access token for Dataverse API      | ``None``  |
@@ -104,20 +106,10 @@ The following values are available for the ``renku config`` command:
 | ``dataverse.server_url``       | URL for the Dataverse API server    | ``None``  |
 |                                | to use                              |           |
 +--------------------------------+-------------------------------------+-----------+
-| ``interactive.default_url``    | URL for interactive environments    | ``None``  |
-+--------------------------------+-------------------------------------+-----------+
-| ``interactive.cpu_request``    | CPU quota for environments          | ``None``  |
-+--------------------------------+-------------------------------------+-----------+
-| ``interactive.mem_request``    | Memory quota for environments       | ``None``  |
-+--------------------------------+-------------------------------------+-----------+
-| ``interactive.gpu_request``    | GPU quota for environments          | ``None``  |
-+--------------------------------+-------------------------------------+-----------+
-| ``interactive.lfs_auto_fetch`` | Whether to automatically fetch lfs  | ``None``  |
-|                                | files on environments startup       |           |
-+--------------------------------+-------------------------------------+-----------+
-| ``interactive.image``          | Pinned Docker image for             | ``None``  |
-|                                | environments                        |           |
-+--------------------------------+-------------------------------------+-----------+
+
+See the section on `renku.ini <https://renku.readthedocs.io/en/latest/reference/templates.html#renku>`_ for more configuration values.
+
+
 """
 import click
 
