@@ -246,6 +246,16 @@ def test_template_update_latest_version(runner, client):
 
 
 @pytest.mark.integration
+def test_template_update_missing_repo(runner, client_with_template):
+    """Test update with a none-existing template repository fails with expected error."""
+    result = runner.invoke(cli, ["template", "update"])
+
+    assert 1 == result.exit_code
+    assert "Template cannot be fetched" in result.output
+    assert not client_with_template.repository.is_dirty()
+
+
+@pytest.mark.integration
 def test_template_update_dry_run(runner, client):
     """Test update dry-run doesn't make any changes."""
     result = runner.invoke(

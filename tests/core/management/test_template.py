@@ -85,6 +85,13 @@ def test_template_update_files(client_with_template, templates_source, client_da
         assert file.read_text() != files_before[file]
 
 
+def test_template_update_source_failure(client_with_template, client_database_injection_manager):
+    """Test template update with broken template source."""
+    with client_database_injection_manager(client_with_template):
+        with pytest.raises(errors.TemplateUpdateError):
+            update_template(force=False, interactive=False, dry_run=False)
+
+
 @pytest.mark.parametrize(
     "action, content_type",
     [
