@@ -72,7 +72,7 @@ metrics:
   enabled: false
   image:
     repository: renku/rqmetrics
-    tag: latest
+    tag: 0.0.2
     pullPolicy: IfNotPresent
 
 resources: {}
