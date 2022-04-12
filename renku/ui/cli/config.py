@@ -85,7 +85,8 @@ You can provide a KEY to display only its value:
 Available configuration values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following values are used by renku-python and available for the ``renku config`` command:
+The following values are used by renku-python and available for 
+the ``renku config`` command:
 
 +--------------------------------+-------------------------------------+-----------+
 | Name                           | Description                         | Default   |
@@ -107,7 +108,8 @@ The following values are used by renku-python and available for the ``renku conf
 |                                | to use                              |           |
 +--------------------------------+-------------------------------------+-----------+
 
-See the section on `renku.ini <https://renku.readthedocs.io/en/latest/reference/templates.html#renku>`_ for more configuration values.
+See the section on `renku.ini <https://renku.readthedocs.io/en/latest/reference/templates.html#renku>`_ 
+for more configuration values.
 
 
 """
