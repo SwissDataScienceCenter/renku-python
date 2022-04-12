@@ -115,7 +115,7 @@ class ProjectCloneContext(RepositoryCloneRequest):
     def set_missing_id(self, data, **kwargs):
         """Set project_id when missing."""
         if not data.get("project_id"):
-            data["project_id"] = lambda: uuid.uuid4().hex
+            data["project_id"] = uuid.uuid4().hex
 
         return data
 
