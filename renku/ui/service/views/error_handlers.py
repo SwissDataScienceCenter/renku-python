@@ -36,6 +36,7 @@ from renku.core.errors import (
     MigrationRequired,
     ParameterError,
     RenkuException,
+    TemplateMissingReferenceError,
     TemplateUpdateError,
     UninitializedProject,
 )
@@ -66,6 +67,7 @@ from renku.ui.service.errors import (
     UserNonRenkuProjectError,
     UserOutdatedProjectError,
     UserProjectCreationError,
+    UserProjectTemplateReferenceError,
     UserRepoBranchInvalidError,
     UserRepoNoAccessError,
     UserRepoUrlInvalidError,
@@ -385,6 +387,8 @@ def handle_migration_read_errors(f):
         # NOTE: verify if this may better go in MigrationsCheckCtrl as try/except in to_response()
         try:
             return f(*args, **kwargs)
+        except TemplateMissingReferenceError as e:
+            raise UserProjectTemplateReferenceError(e)
         except (InvalidTemplateError, TemplateUpdateError) as e:
             raise IntermittentProjectTemplateUnavailable(e)
 

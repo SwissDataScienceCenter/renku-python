@@ -136,6 +136,9 @@ def update_template(
         templates_source = fetch_templates_source(
             source=template_metadata.source, reference=template_metadata.reference
         )
+    except errors.TemplateMissingReferenceError as e:
+        message = f"{str(e)}; You can still manually update the template and set a difference reference."
+        raise errors.TemplateUpdateError(message)
     except errors.InvalidTemplateError:
         raise errors.TemplateUpdateError("Template cannot be fetched.")
 

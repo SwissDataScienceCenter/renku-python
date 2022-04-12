@@ -342,6 +342,29 @@ class UserOutdatedProjectError(ServiceError):
         super().__init__(exception=exception)
 
 
+class UserProjectTemplateReferenceError(ServiceError):
+    """The project's template original reference cannot be found anymore.
+
+    The reference has probably been removed, either on purpose or as a side effect of a
+    forced push.
+    """
+
+    code = SVC_ERROR_USER + 141
+    userMessage = (
+        "The project's template original reference has been removed or overwritten."
+        " Manually changing it in a session may fix the problem."
+        " Further details: {message}."
+    )
+    devMessage = "Template reference is not available anymore. Details: {message}."
+
+    def __init__(self, exception):
+        super().__init__(
+            userMessage=self.userMessage.format(message=str(exception)),
+            devMessage=self.devMessage.format(message=str(exception)),
+            exception=exception,
+        )
+
+
 class ProgramInvalidGenericFieldsError(ServiceError):
     """One or more fields are unexpected.
 

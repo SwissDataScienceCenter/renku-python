@@ -33,6 +33,7 @@ from renku.ui.service.errors import (
     IntermittentFileExistsError,
     IntermittentProjectTemplateUnavailable,
     UserAnonymousError,
+    UserProjectTemplateReferenceError,
 )
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import assert_rpc_response, retry_failed
@@ -686,41 +687,62 @@ def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_ur
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_mirgate_wrong_template_failure(svc_client_with_repo, monkeypatch):
+def test_mirgate_wrong_template_failure(svc_client_with_repo, template, monkeypatch):
     """Check if migrations gracefully fail when the project template is not available."""
     import renku.core.template.usecase
     from renku.core.template.template import fetch_templates_source
+
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     class DummyTemplateMetadata(TemplateMetadata):
         def __init__(self, metadata, immutable_files):
             super().__init__(metadata=metadata, immutable_files=immutable_files)
 
+        def set_fake_source(self, value):
+            """Toggle source between fake and real"""
+            self.fake_source = value
+
         @property
         def source(self):
             """Template source."""
-            return "https://github.com/SwissDataScienceCenter/renku-FAKE-REMPO"
+            template_url = template["url"]
+            if self.fake_source:
+                return f"{template_url}FAKE_URL"
+            return template_url
 
         @property
         def reference(self):
             """Template reference."""
-            return "master"
+            return "FAKE_REF"
 
     def dummy_check_for_template_update(client):
         metadata = DummyTemplateMetadata.from_client(client=client)
+        metadata.set_fake_source(fake_source)
         templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
         update_available, latest_reference = templates_source.is_update_available(
             id=metadata.id, reference=metadata.reference, version=metadata.version
         )
         return update_available, metadata.allow_update, metadata.reference, latest_reference
 
+    # NOTE: fake URL and fake REF
+    fake_source = True
     with monkeypatch.context() as monkey:
         monkey.setattr(renku.command.migrate, "check_for_template_update", dummy_check_for_template_update)
 
-        svc_client, headers, project_id, _ = svc_client_with_repo
         response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
         assert_rpc_response(response, "error")
         assert IntermittentProjectTemplateUnavailable.code == response.json["error"]["code"]
+
+    # NOTE: valid URL but fake REF
+    fake_source = False
+    with monkeypatch.context() as monkey:
+        monkey.setattr(renku.command.migrate, "check_for_template_update", dummy_check_for_template_update)
+
+        response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+
+        assert_rpc_response(response, "error")
+        assert UserProjectTemplateReferenceError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
