@@ -385,7 +385,7 @@ def handle_migration_read_errors(f):
         # NOTE: verify if this may better go in MigrationsCheckCtrl as try/except in to_response()
         try:
             return f(*args, **kwargs)
-        except (InvalidTemplateError, TemplateUpdateError, UninitializedProject) as e:
+        except (InvalidTemplateError, TemplateUpdateError) as e:
             raise IntermittentProjectTemplateUnavailable(e)
 
     return decorated_function
