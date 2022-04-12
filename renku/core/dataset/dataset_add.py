@@ -34,6 +34,7 @@ from renku.core.dataset.constant import CACHE, renku_pointers_path
 from renku.core.dataset.context import DatasetContext
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file
+from renku.core.dataset.providers.models import ProviderDataset
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util import communication, requests
@@ -75,8 +76,8 @@ def add_data_to_dataset(
     repository: Optional[Repository] = None,
     clear_files_before: bool = False,
     total_size: Optional[int] = None,
-    with_metadata: Optional[Dataset] = None,
-):
+    with_metadata: Optional[ProviderDataset] = None,
+) -> Dataset:
     """Import the data into the data directory."""
     client = client_dispatcher.current_client
     sources = sources or []
@@ -140,7 +141,10 @@ def add_data_to_dataset(
                 communication.warn("No new file was added to project")
 
             if not files:
-                return
+                if create:
+                    raise errors.UsageError("There are no files to create a dataset")
+
+                return dataset
 
             dataset_files = _generate_dataset_files(client, dataset, files, clear_files_before)
 
@@ -151,7 +155,6 @@ def add_data_to_dataset(
             if with_metadata:
                 dataset.update_metadata_from(with_metadata)
         database_dispatcher.current_database.commit()
-        return dataset
     except errors.DatasetNotFound:
         raise errors.DatasetNotFound(
             message='Dataset "{0}" does not exist.\n'
@@ -161,6 +164,8 @@ def add_data_to_dataset(
         )
     except (FileNotFoundError, errors.GitCommandError) as e:
         raise errors.ParameterError("Could not find paths/URLs: \n{0}".format("\n".join(urls))) from e
+    else:
+        return dataset
 
 
 def _process_urls(

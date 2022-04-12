@@ -153,7 +153,7 @@ class SubprocessToilJob(AbstractToilJob):
         return call(
             command_line,
             cwd=os.getcwd(),
-            **{
+            **{  # type: ignore
                 key: open(value, mode="r" if key == "stdin" else "w")
                 for key, value in mapped_std.items()  # type: ignore
             },

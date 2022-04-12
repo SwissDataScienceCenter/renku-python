@@ -22,15 +22,17 @@ import os
 import pathlib
 import urllib
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, Optional
 from urllib.parse import urlparse
 
 import attr
 from tqdm import tqdm
 
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi
+from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderRecordSerializerApi
 from renku.core.util.file_size import bytes_to_unit
-from renku.infrastructure.immutable import DynamicProxy
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderDataset
 
 ZENODO_BASE_URL = "https://zenodo.org"
 ZENODO_SANDBOX_URL = "https://sandbox.zenodo.org/"
@@ -157,47 +159,50 @@ def _metadata_converter(data: Dict[str, Any]) -> ZenodoMetadataSerializer:
     return serialized
 
 
-@attr.s
-class ZenodoRecordSerializer:
+class ZenodoRecordSerializer(ProviderRecordSerializerApi):
     """Zenodo record."""
 
-    _jsonld = attr.ib(default=None, init=False)
+    def __init__(
+        self,
+        uri: str,
+        *,
+        conceptdoi=None,
+        conceptrecid=None,
+        created=None,
+        doi=None,
+        doi_url=None,
+        files=None,
+        id=None,
+        links=None,
+        metadata=None,
+        modified=None,
+        owner=None,
+        record_id=None,
+        state=None,
+        submitted=None,
+        title=None,
+    ):
+        super().__init__(uri=uri)
 
-    id = attr.ib(default=None, kw_only=True)
+        metadata = _metadata_converter(metadata) if metadata is not None else None
 
-    doi = attr.ib(default=None, kw_only=True)
+        self.conceptdoi = conceptdoi
+        self.conceptrecid = conceptrecid
+        self.created = created
+        self.doi = doi
+        self.doi_url = doi_url
+        self.files = files
+        self.id = id
+        self.links = links
+        self.metadata: Optional[ZenodoMetadataSerializer] = metadata
+        self.modified = modified
+        self.owner = owner
+        self.record_id: Optional[str] = str(record_id) if record_id is not None else None
+        self.state = state
+        self.submitted = submitted
+        self.title = title
 
-    doi_url = attr.ib(default=None, kw_only=True)
-
-    title = attr.ib(default=None, kw_only=True)
-
-    files = attr.ib(default=None, kw_only=True)
-
-    links = attr.ib(default=None, kw_only=True)
-
-    metadata: ZenodoMetadataSerializer = attr.ib(default=None, kw_only=True, converter=_metadata_converter)
-
-    modified = attr.ib(default=None, kw_only=True)
-
-    owner = attr.ib(default=None, kw_only=True)
-
-    record_id: str = attr.ib(default=None, kw_only=True, converter=str)
-
-    state = attr.ib(default=None, kw_only=True)
-
-    submitted = attr.ib(default=None, kw_only=True)
-
-    created = attr.ib(default=None, kw_only=True)
-
-    conceptrecid = attr.ib(default=None, kw_only=True)
-
-    conceptdoi = attr.ib(default=None, kw_only=True)
-
-    _zenodo = attr.ib(default=None, kw_only=True)
-
-    _uri = attr.ib(default=None, kw_only=True)
-
-    _files_info = attr.ib(default=None, kw_only=True)
+        self._jsonld = None
 
     @property
     def version(self):
@@ -209,18 +214,13 @@ class ZenodoRecordSerializer:
         """Get uri of latest version."""
         return self.links.get("latest_html")
 
-    @property
-    def files_info(self) -> List[DynamicProxy]:
-        """Return list of dataset file proxies."""
-        return self._files_info
-
     def is_last_version(self, uri):
         """Check if this record is the latest version."""
         return ZenodoProvider.record_id(self.links.get("latest_html")) == self.record_id
 
     def get_jsonld(self):
         """Get record metadata as jsonld."""
-        response = self._zenodo.accept_jsonld().make_request(self._uri)
+        response = _make_request(self._uri, accept="application/ld+json")
         self._jsonld = response.json()
 
         if "image" in self._jsonld and isinstance(self._jsonld["image"], str):
@@ -240,13 +240,12 @@ class ZenodoRecordSerializer:
 
         return [ZenodoFileSerializer(**file_) for file_ in self.files]
 
-    def as_dataset(self, client):
+    def as_dataset(self, client) -> "ProviderDataset":
         """Deserialize `ZenodoRecordSerializer` to `Dataset`."""
         from marshmallow import pre_load
 
         from renku.command.schema.agent import PersonSchema
-        from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetSchema
-        from renku.domain_model.dataset import DatasetFile
+        from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile, ProviderDatasetSchema
 
         class _ZenodoDatasetSchema(ProviderDatasetSchema):
             """Schema for Dataverse datasets."""
@@ -281,22 +280,17 @@ class ZenodoRecordSerializer:
         metadata = self.get_jsonld()
         dataset = ProviderDataset.from_jsonld(metadata, schema_class=_ZenodoDatasetSchema)
 
-        dataset_files = []
-        files_info = []
-        for file in files:
-            remote = file.remote_url
-            dataset_file = DatasetFile(entity=None, source=remote.geturl())
-            file_info = DynamicProxy(dataset_file)
-            file_info.checksum = file.checksum
-            file_info.filename = Path(file.filename).name
-            file_info.size_in_mb = bytes_to_unit(file.filesize, "mi")
-            file_info.filetype = file.type
-
-            dataset_files.append(dataset_file)
-            files_info.append(file_info)
-
-        dataset.dataset_files = dataset_files
-        self._files_info = files_info
+        self._files_info = [
+            ProviderDatasetFile(
+                source=file.remote_url.geturl(),
+                filename=Path(file.filename).name,
+                checksum=file.checksum,
+                size_in_mb=bytes_to_unit(file.filesize, "mi"),
+                filetype=file.type,
+                path="",
+            )
+            for file in files
+        ]
 
         return dataset
 
@@ -493,7 +487,6 @@ class ZenodoProvider(ProviderApi):
     """zenodo.org registry API provider."""
 
     is_doi = attr.ib(default=False)
-    _accept = attr.ib(default="application/json")
 
     @staticmethod
     def supports(uri):
@@ -518,28 +511,7 @@ class ZenodoProvider(ProviderApi):
         """Extract record id from uri."""
         return urlparse(uri).path.split("/")[-1]
 
-    def accept_json(self):
-        """Receive response as json."""
-        self._accept = "application/json"
-        return self
-
-    def accept_jsonld(self):
-        """Receive response as jsonld."""
-        self._accept = "application/ld+json"
-        return self
-
-    def make_request(self, uri):
-        """Execute network request."""
-        from renku.core.util import requests
-
-        record_id = ZenodoProvider.record_id(uri)
-
-        response = requests.get(make_records_url(record_id), headers={"Accept": self._accept})
-        if response.status_code != 200:
-            raise LookupError("record not found. Status: {}".format(response.status_code))
-        return response
-
-    def find_record(self, uri, client=None, **kwargs):
+    def find_record(self, uri, client=None, **kwargs) -> ZenodoRecordSerializer:
         """Retrieves a record from Zenodo.
 
         Args:
@@ -553,21 +525,34 @@ class ZenodoProvider(ProviderApi):
         if self.is_doi:
             return self.find_record_by_doi(uri)
 
-        return self.get_record(uri)
+        return self._get_record(uri)
 
     def find_record_by_doi(self, doi):
         """Resolve the DOI and make a record for the retrieved record id."""
         from renku.core.dataset.providers.doi import DOIProvider
 
         doi = DOIProvider().find_record(doi)
-        return self.get_record(ZenodoProvider.record_id(doi.url))
+        return self._get_record(ZenodoProvider.record_id(doi.url))
 
-    def get_record(self, uri):
+    @staticmethod
+    def _get_record(uri):
         """Retrieve record metadata and return ``ZenodoRecord``."""
-        response = self.make_request(uri)
+        response = _make_request(uri)
 
-        return ZenodoRecordSerializer(**response.json(), zenodo=self, uri=uri)
+        return ZenodoRecordSerializer(**response.json(), uri=uri)
 
     def get_exporter(self, dataset, access_token):
         """Create export manager for given dataset."""
         return ZenodoExporter(dataset=dataset, access_token=access_token)
+
+
+def _make_request(uri, accept: str = "application/json"):
+    """Execute network request."""
+    from renku.core.util import requests
+
+    record_id = ZenodoProvider.record_id(uri)
+
+    response = requests.get(make_records_url(record_id), headers={"Accept": accept})
+    if response.status_code != 200:
+        raise LookupError("record not found. Status: {}".format(response.status_code))
+    return response
