@@ -221,14 +221,14 @@ class LogViewModel:
                 new_files = current_files
 
             descriptions.append(f"{len(new_files)} file(s) added")
-            details.files_added = [str(f.entity.path) for f in new_files]  # type: ignore
+            details.files_added = [str(f.entity.path) for f in new_files]
             details.modified = True
 
         if previous_files and {f.id for f in previous_files}.difference({f.id for f in current_files}):
             # NOTE: Files removed
             removed_files = previous_files - current_files
             descriptions.append(f"{len(removed_files)} file(s) removed")
-            details.files_removed = [str(f.entity.path) for f in removed_files]  # type: ignore
+            details.files_removed = [str(f.entity.path) for f in removed_files]
             details.modified = True
 
         if not previous_dataset:

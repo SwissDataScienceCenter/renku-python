@@ -14,14 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """API for providers."""
+
 import abc
+from typing import TYPE_CHECKING, List
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
 
 
 class ProviderApi(abc.ABC):
     """Interface defining provider methods."""
 
     @abc.abstractmethod
-    def find_record(self, uri, **kwargs):
+    def find_record(self, uri, **kwargs) -> "ProviderRecordSerializerApi":
         """Find record by uri."""
         pass
 
@@ -64,6 +69,47 @@ class ProviderApi(abc.ABC):
     def supports_images(self):
         """True if provider is a git repository."""
         return False
+
+
+class ProviderRecordSerializerApi(abc.ABC):
+    """Interface defining provider record serializer methods."""
+
+    def __init__(self, uri: str):
+        self._uri: str = uri
+        self._files_info: List[ProviderDatasetFile] = []
+
+    @property
+    def files_info(self) -> List["ProviderDatasetFile"]:
+        """Return list of dataset file proxies.
+
+        This is only valid after a call to ``as_dataset``.
+        """
+        return self._files_info
+
+    @property
+    def url(self) -> str:
+        """Return url of this record."""
+        return self._uri
+
+    @property
+    def version(self) -> str:
+        """Get record version."""
+        raise NotImplementedError
+
+    @property
+    def latest_uri(self) -> str:
+        """Get uri of the latest version."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def as_dataset(self, client) -> "ProviderDataset":
+        """Deserialize this record to a ``ProviderDataset``."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def is_last_version(self, uri) -> bool:
+        """Check if record is at last possible version."""
+        raise NotImplementedError
 
 
 class ExporterApi(abc.ABC):
