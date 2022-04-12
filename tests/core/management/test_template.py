@@ -56,7 +56,7 @@ def test_template_fetch_invalid_git_url():
 @pytest.mark.vcr
 def test_template_fetch_invalid_git_reference():
     """Test fetching a template from an invalid reference."""
-    with pytest.raises(errors.InvalidTemplateError):
+    with pytest.raises(errors.TemplateMissingReferenceError):
         fetch_templates_source(source=TEMPLATES_URL, reference="invalid-ref")
 
 
