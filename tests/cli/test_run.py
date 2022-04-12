@@ -25,8 +25,6 @@ from typing import cast
 import pytest
 
 from renku.domain_model.workflow.plan import Plan
-
-from renku.core.workflow.value_resolution import ValueResolver
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.ui.cli import cli

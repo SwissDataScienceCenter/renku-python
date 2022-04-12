@@ -1144,7 +1144,9 @@ def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
     [
         (
             [
-                "--output {a-2}_{b-3} python -c \"import sys; f=open(sys.argv[2]+'_'+sys.argv[4], 'w'); f.write('foo'); f.close()\" -a foo -b bar",
+                "--output {a-2}_{b-3} python -c "
+                "\"import sys; f=open(sys.argv[2]+'_'+sys.argv[4], 'w'); f.write('foo'); f.close()\""
+                " -a foo -b bar",
                 {"a-2": "fizz", "b-3": "buzz"},
                 ["fizz_buzz"],
             ]

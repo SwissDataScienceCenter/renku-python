@@ -24,7 +24,7 @@ import time
 from contextlib import contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, Generator, Iterable, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, Generator, Iterable, List, Optional, Sequence, Set, Tuple, Union, cast
 
 import click
 import yaml
@@ -737,10 +737,9 @@ class PlanFactory:
         for input_ in self.inputs:
             yield input_.id, os.path.normpath(os.path.join(basedir, input_.actual_value))
 
-    @staticmethod
-    def _is_explicit(path: Union[Path, str], explicits_collection: List[Tuple[str, str]]) -> bool:
+    def _is_explicit(self, path: Union[Path, str], explicits_collection: List[Tuple[str, str]]) -> bool:
         absolute_path = get_absolute_path(path)
-        return any(absolute_path == path for path, _ in explicits_collection)
+        return any(absolute_path == path for path, _ in self._get_paths(explicits_collection))
 
     @inject.autoparams("project_gateway")
     def to_plan(
@@ -778,7 +777,9 @@ class PlanFactory:
             chain(self.inputs, self.explicit_inputs, self.parameters, self.explicit_parameters)
         )
 
-    def _get_paths(self, values: List[Tuple[str, Optional[str]]]) -> Generator[Tuple[Path, Optional[str]], None, None]:
+    def _get_paths(
+        self, values: Sequence[Tuple[str, Optional[str]]]
+    ) -> Generator[Tuple[Path, Optional[str]], None, None]:
         """Returns a list of absolute values."""
         for v, name in values:
             yield (Path(self._get_template_value(v)).resolve(), name)
