@@ -690,9 +690,6 @@ def show(name):
     result = show_dataset_command().build().execute(name=name)
     ds = result.output
 
-    if not ds:
-        raise click.BadParameter(f"Dataset '{name}' not found.")
-
     click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(ds["name"], bold=True))
     click.echo(click.style("Created: ", bold=True, fg=color.MAGENTA) + (ds.get("created_at", "") or ""))
 

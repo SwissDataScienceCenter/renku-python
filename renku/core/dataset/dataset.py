@@ -734,10 +734,8 @@ def show_dataset(name):
     Returns:
         dict: JSON dictionary of dataset details.
     """
-    dataset = DatasetsProvenance().get_by_name(name)
+    dataset = DatasetsProvenance().get_by_name(name, strict=True)
 
-    if not dataset:
-        return None
     return DatasetDetailsJson().dump(dataset)
 
 
