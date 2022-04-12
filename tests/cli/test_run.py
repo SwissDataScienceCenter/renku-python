@@ -17,9 +17,7 @@
 # limitations under the License.
 """Test ``run`` command."""
 
-import datetime
 import os
-from pathlib import Path
 from typing import cast
 
 import pytest
@@ -279,36 +277,3 @@ def test_run_with_external_files(split_runner, client, directory_tree):
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "file1" in (client.path / "output").read_text()
-
-
-@pytest.mark.parametrize(
-    "commands, outputs",
-    [
-        ([["touch", "{:%Y-%m-%d}"]], [datetime.datetime.now().strftime("%Y-%m-%d")]),
-        ([["touch", "foo"], ["--input", "my_foo=foo", "cp", "{my_foo}", "output"]], ["foo", "output"]),
-        (
-            [
-                [
-                    "--output",
-                    "{a-2}_{b-3}",
-                    "python",
-                    "-c",
-                    "import sys; f=open(sys.argv[2]+'_'+sys.argv[4], 'w'); f.write('foo'); f.close()",
-                    "-a",
-                    "foo",
-                    "-b",
-                    "bar",
-                ]
-            ],
-            ["foo_bar"],
-        ),
-    ],
-)
-def test_templated_parameter_run(runner, client, commands, outputs, client_database_injection_manager):
-    """Test parameters with various templated values."""
-    for c in commands:
-        result = runner.invoke(cli, ["run"] + c)
-        assert 0 == result.exit_code, format_result_exception(result)
-
-    for o in outputs:
-        assert Path(o).resolve().exists()

@@ -17,6 +17,7 @@
 # limitations under the License.
 """Test ``workflow`` commands."""
 
+import datetime
 import itertools
 import logging
 import os
@@ -1143,14 +1144,10 @@ def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
     "workflow, parameters, outputs",
     [
         (
-            [
-                "--output {a-2}_{b-3} python -c "
-                "\"import sys; f=open(sys.argv[2]+'_'+sys.argv[4], 'w'); f.write('foo'); f.close()\""
-                " -a foo -b bar",
-                {"a-2": "fizz", "b-3": "buzz"},
-                ["fizz_buzz"],
-            ]
-        ),
+            "touch foo",
+            {"output-1": "{:%Y-%m-%d}"},
+            [datetime.datetime.now().strftime("%Y-%m-%d")],
+        )
     ],
 )
 def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, parameters, provider, outputs):
