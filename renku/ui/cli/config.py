@@ -68,7 +68,7 @@ You can display all configuration values with:
 
 Both local and global configuration files are read. Values in local
 configuration take precedence over global values. Use ``--local`` or
-``--global`` flag to read corresponding configuration only. 
+``--global`` flag to read corresponding configuration only.
 You can provide a KEY to display only its value:
 
 .. code-block:: console
@@ -85,7 +85,7 @@ You can provide a KEY to display only its value:
 Available configuration values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following values are used by renku-python and available for 
+The following values are used by renku-python and available for
 the ``renku config`` command:
 
 +--------------------------------+-------------------------------------+-----------+
@@ -108,7 +108,7 @@ the ``renku config`` command:
 |                                | to use                              |           |
 +--------------------------------+-------------------------------------+-----------+
 
-See the section on `renku.ini <https://renku.readthedocs.io/en/latest/reference/templates.html#renku>`_ 
+See the section on `renku.ini <https://renku.readthedocs.io/en/latest/reference/templates.html#renku>`_
 for more configuration values.
 
 
