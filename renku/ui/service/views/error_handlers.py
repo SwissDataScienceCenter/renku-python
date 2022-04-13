@@ -384,7 +384,6 @@ def handle_migration_read_errors(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
-        # NOTE: verify if this may better go in MigrationsCheckCtrl as try/except in to_response()
         try:
             return f(*args, **kwargs)
         except TemplateMissingReferenceError as e:
