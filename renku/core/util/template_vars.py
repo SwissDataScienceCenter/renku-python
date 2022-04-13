@@ -21,6 +21,7 @@ import datetime
 from string import Formatter
 from typing import Any, Iterable, Mapping, Tuple, Union
 
+from renku.core.errors import ParameterError
 from renku.domain_model.workflow.parameter import CommandParameterBase
 
 
@@ -34,7 +35,10 @@ class TemplateVariableFormatter(Formatter):
 
     def apply(self, param: str, parameters: Mapping[str, Any] = {}) -> str:
         """Renders the parameter template into its final value."""
-        return super().vformat(param, args=[datetime.datetime.now()], kwargs=parameters)
+        try:
+            return super().vformat(param, args=[datetime.datetime.now()], kwargs=parameters)
+        except KeyError as e:
+            raise ParameterError(f"Could not resolve the variable {str(e)}")
 
     def get_value(self, key, args, kwargs):
         """Ignore some special keys when formatting the variable."""
