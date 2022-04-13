@@ -145,8 +145,7 @@ class DatasetFile:
         self = cls()
         self._dataset_file = dataset_file
 
-        if dataset_file.entity:
-            self.full_path = project.path / dataset_file.entity.path
+        self.full_path = project.path / dataset_file.entity.path
 
         return self
 

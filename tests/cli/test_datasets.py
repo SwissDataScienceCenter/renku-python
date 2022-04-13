@@ -74,7 +74,11 @@ def test_datasets_create_dirty(runner, project, client, load_dataset_with_inject
 
 
 def test_dataset_show(runner, client, subdirectory):
-    """Test creating a dataset with metadata."""
+    """Test creating and showing a dataset with metadata."""
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert 'Dataset "my-dataset" is not found.' in result.output
+
     metadata = {
         "@id": "https://example.com/annotation1",
         "@type": "https://schema.org/specialType",
@@ -495,8 +499,8 @@ def test_add_an_empty_directory(runner, client, directory_tree):
     path.mkdir()
 
     result = runner.invoke(cli, ["dataset", "add", "--create", "local", str(path)])
-    assert 1 == result.exit_code, format_result_exception(result)
-    assert "Error: There is nothing to commit." in result.output
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Error: There are no files to create a dataset" in result.output
 
 
 def test_repository_file_to_dataset(runner, client, subdirectory, load_dataset_with_injection):
@@ -1172,6 +1176,7 @@ def test_dataset_provider_resolution_zenodo(doi_responses, uri):
         "https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/TJCLKP",
     ],
 )
+@pytest.mark.integration
 def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     """Check that dataverse URIs resolve to ``DataverseProvider``."""
     provider, _ = ProviderFactory.from_uri(uri)

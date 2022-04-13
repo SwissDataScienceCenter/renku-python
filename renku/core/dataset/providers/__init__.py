@@ -16,9 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Third party data registry integration."""
+
+from typing import TYPE_CHECKING, Optional, Tuple
 from urllib.parse import urlparse
 
 from renku.core.util.doi import is_doi
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.api import ProviderApi
 
 
 class ProviderFactory:
@@ -35,7 +40,7 @@ class ProviderFactory:
         return {"OLOS": OLOSProvider, "Renku": RenkuProvider, "Zenodo": ZenodoProvider, "Dataverse": DataverseProvider}
 
     @staticmethod
-    def from_uri(uri):
+    def from_uri(uri) -> Tuple[Optional["ProviderApi"], str]:
         """Get provider type based on uri."""
         is_doi_ = is_doi(uri)
         if is_doi_ is None:
@@ -78,7 +83,7 @@ class ProviderFactory:
             return provider(is_doi=is_doi_), warning
 
     @staticmethod
-    def from_id(provider_id):
+    def from_id(provider_id) -> "ProviderApi":
         """Get provider type based on identifier."""
         provider = next((p for n, p in ProviderFactory.providers().items() if n.lower() == provider_id.lower()), None)
 

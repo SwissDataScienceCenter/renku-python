@@ -34,6 +34,7 @@ from renku.core.dataset.constant import renku_dataset_images_path, renku_pointer
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file, is_external_file_updated, update_external_file
 from renku.core.dataset.providers import ProviderFactory
+from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import add_dataset_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.client_dispatcher import IClientDispatcher
@@ -438,6 +439,7 @@ def import_dataset(
         gitlab_token: Gitlab OAuth2 token (Default value = None).
     """
     from renku.core.dataset.dataset_add import add_data_to_dataset
+    from renku.core.dataset.providers.renku import RenkuProvider, RenkuRecordSerializer
 
     client = client_dispatcher.current_client
 
@@ -445,10 +447,12 @@ def import_dataset(
     if err and provider is None:
         raise errors.ParameterError(f"Could not process '{uri}'.\n{err}")
 
+    assert provider is not None
+
     try:
         record = provider.find_record(uri, gitlab_token=gitlab_token)
-        dataset = record.as_dataset(client)
-        files = record.files_info
+        provider_dataset: ProviderDataset = record.as_dataset(client)
+        files: List[ProviderDatasetFile] = record.files_info
         total_size = 0
 
         if not yes:
@@ -487,20 +491,22 @@ def import_dataset(
     if not files:
         raise errors.ParameterError(f"Dataset '{uri}' has no files.")
 
-    if not provider.is_git_based:
-        if not name:
-            name = generate_default_name(dataset.title, dataset.version)
+    new_dataset: Dataset
 
-        dataset.same_as = Url(url_id=remove_credentials(uri))
-        if is_doi(dataset.identifier):
-            dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", dataset.identifier))
+    if not isinstance(provider, RenkuProvider):
+        if not name:
+            name = generate_default_name(provider_dataset.title, provider_dataset.version)
+
+        provider_dataset.same_as = Url(url_id=remove_credentials(uri))
+        if is_doi(provider_dataset.identifier):
+            provider_dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", provider_dataset.identifier))
 
         urls, names = zip(*[(f.source, f.filename) for f in files])
-        dataset = add_data_to_dataset(
+        new_dataset = add_data_to_dataset(
             urls=urls,
             dataset_name=name,
             create=not previous_dataset,
-            with_metadata=dataset,
+            with_metadata=provider_dataset,
             force=True,
             extract=extract,
             all_at_once=True,
@@ -511,37 +517,40 @@ def import_dataset(
         )
 
         if previous_dataset:
-            dataset = _update_datasets_metadata(dataset, previous_dataset, delete, dataset.same_as)
+            new_dataset = _update_datasets_metadata(new_dataset, previous_dataset, delete, new_dataset.same_as)
 
-        if dataset.version:
-            tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", dataset.version)
+        if provider_dataset.version:
+            tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", provider_dataset.version)
             add_dataset_tag(
-                dataset_name=dataset.name, tag=tag_name, description=f"Tag {dataset.version} created by renku import"
+                dataset_name=new_dataset.name,
+                tag=tag_name,
+                description=f"Tag {provider_dataset.version} created by renku import",
             )
     else:
-        name = name or dataset.name
+        record = cast(RenkuRecordSerializer, record)
+        name = name or provider_dataset.name
 
-        dataset.same_as = Url(url_id=record.latest_uri)
+        provider_dataset.same_as = Url(url_id=record.latest_uri)
 
-        if not dataset.data_dir:
-            raise errors.OperationError(f"Data directory for dataset must be set: {dataset.name}")
+        if not provider_dataset.data_dir:
+            raise errors.OperationError(f"Data directory for dataset must be set: {provider_dataset.name}")
 
         sources = []
 
         if record.datadir_exists:
-            sources = [f"{dataset.data_dir}/*"]
+            sources = [f"{provider_dataset.data_dir}/*"]
 
-        for file in dataset.files:
+        for file in files:
             try:
-                Path(file.entity.path).relative_to(dataset.data_dir)
+                Path(file.path).relative_to(provider_dataset.data_dir)
             except ValueError:  # Files that are not in dataset's data directory
-                sources.append(file.entity.path)
+                sources.append(file.path)
 
         new_dataset = add_data_to_dataset(
             urls=[record.project_url],
             dataset_name=name,
             sources=sources,
-            with_metadata=dataset,
+            with_metadata=provider_dataset,
             create=not previous_dataset,
             overwrite=True,
             repository=record.repository,
@@ -549,10 +558,9 @@ def import_dataset(
         )
 
         if previous_dataset:
-            _update_datasets_metadata(new_dataset, previous_dataset, delete, dataset.same_as)
+            _update_datasets_metadata(new_dataset, previous_dataset, delete, provider_dataset.same_as)
 
-    if provider.supports_images:
-        record.import_images(dataset)
+        record.import_images(new_dataset)
 
     database_dispatcher.current_database.commit()
 
@@ -734,7 +742,8 @@ def show_dataset(name):
     Returns:
         dict: JSON dictionary of dataset details.
     """
-    dataset = DatasetsProvenance().get_by_name(name)
+    dataset = DatasetsProvenance().get_by_name(name, strict=True)
+
     return DatasetDetailsJson().dump(dataset)
 
 
@@ -1059,7 +1068,7 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
     """Update files linked to external storage.
 
     Args:
-        client("LocalClient"): The ``LocalCLient``.
+        client("LocalClient"): The ``LocalClient``.
         records(List[DynamicProxy]): File records to update.
         dry_run(bool): Whether to return a preview of what would be updated.
     """
@@ -1133,6 +1142,7 @@ def filter_dataset_files(
                 match = _include_exclude(path, include, exclude)
 
                 if creators:
+                    c: Person
                     dataset_creators = {c.name for c in dataset.creators}
                     match = match and creators.issubset(dataset_creators)
 
