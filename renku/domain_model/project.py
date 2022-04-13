@@ -36,6 +36,10 @@ class Project(persistent.Persistent):
 
     keywords: List[str] = list()
 
+    # NOTE: the minimum version of renku to needed to work with a project
+    # This should be bumped on metadata version changes and when we do non forward-compatible on-the-fly migrations
+    minimum_renku_version: str = "1.2.0"
+
     def __init__(
         self,
         *,
@@ -82,6 +86,9 @@ class Project(persistent.Persistent):
         self.template_version: Optional[str] = template_version
         self.version: str = version
         self.keywords = keywords or []
+
+        # NOTE: We copy this over as class variables don't get saved in the DB
+        self.minimum_renku_version = Project.minimum_renku_version
 
     @classmethod
     def from_client(

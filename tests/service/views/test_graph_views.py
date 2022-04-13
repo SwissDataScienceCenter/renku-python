@@ -43,7 +43,7 @@ def test_graph_export_view(svc_client_cache, it_remote_repo_url):
 
     assert_rpc_response(response)
     assert "graph" in response.json["result"]
-    assert len(response.json["result"]["graph"]) == 5831
+    assert len(response.json["result"]["graph"]) == 5852
 
 
 @pytest.mark.service
@@ -79,7 +79,7 @@ def test_graph_export_no_callback(svc_client_cache, it_remote_repo_url):
 
     assert_rpc_response(response)
     assert "graph" in response.json["result"]
-    assert len(response.json["result"]["graph"]) == 5831
+    assert len(response.json["result"]["graph"]) == 5852
 
 
 @pytest.mark.service
@@ -94,4 +94,4 @@ def test_graph_export_no_revision(svc_client_cache, it_remote_repo_url):
     response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
     assert "graph" in response.json["result"]
-    assert len(response.json["result"]["graph"]) == 5831
+    assert len(response.json["result"]["graph"]) == 5852

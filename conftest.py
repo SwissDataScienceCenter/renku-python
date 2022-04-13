@@ -18,6 +18,8 @@
 """Pytest configuration."""
 import importlib
 
+from poetry_dynamic_versioning import _apply_version, _get_pyproject_path, _get_version, _revert_version, get_config
+
 CLI_FIXTURE_LOCATIONS = [
     "tests.cli.fixtures.cli_gateway",
     "tests.cli.fixtures.cli_kg",
@@ -61,10 +63,22 @@ SERVICE_FIXTURE_LOCATIONS = [
 INCLUDE_FIXTURES = GLOBAL_FIXTURE_LOCATIONS + CORE_FIXTURE_LOCATIONS + CLI_FIXTURE_LOCATIONS + SERVICE_FIXTURE_LOCATIONS
 
 
-for _fixture in INCLUDE_FIXTURES:
-    module = importlib.import_module(_fixture)
-    globals().update(
-        {n: getattr(module, n) for n in module.__all__}
-        if hasattr(module, "__all__")
-        else {k: v for (k, v) in module.__dict__.items() if not k.startswith("_")}
-    )
+def pytest_configure(config):
+    """Set version before tests run."""
+    poetry_config = get_config()
+    pyproject_path = _get_pyproject_path()
+    version = _get_version(poetry_config)
+    _apply_version(version, poetry_config, pyproject_path)
+
+    for _fixture in INCLUDE_FIXTURES:
+        module = importlib.import_module(_fixture)
+        globals().update(
+            {n: getattr(module, n) for n in module.__all__}
+            if hasattr(module, "__all__")
+            else {k: v for (k, v) in module.__dict__.items() if not k.startswith("_")}
+        )
+
+
+def pytest_unconfigure(config):
+    """Revert version to 0.0.0 after tests run."""
+    _revert_version()

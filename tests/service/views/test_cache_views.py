@@ -26,6 +26,8 @@ import pytest
 
 from renku.core.dataset.context import DatasetContext
 from renku.domain_model.git import GitURL
+from renku.domain_model.project import Project
+from renku.domain_model.provenance.agent import Person
 from renku.domain_model.template import TemplateMetadata
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
@@ -687,7 +689,7 @@ def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_ur
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_mirgate_wrong_template_failure(svc_client_with_repo, template, monkeypatch):
+def test_migrate_wrong_template_failure(svc_client_with_repo, template, monkeypatch):
     """Check if migrations gracefully fail when the project template is not available."""
     import renku.core.template.usecase
     from renku.core.template.template import fetch_templates_source
@@ -699,7 +701,7 @@ def test_mirgate_wrong_template_failure(svc_client_with_repo, template, monkeypa
             super().__init__(metadata=metadata, immutable_files=immutable_files)
 
         def set_fake_source(self, value):
-            """Toggle source between fake and real"""
+            """Toggle source between fake and real."""
             self.fake_source = value
 
         @property
@@ -862,3 +864,37 @@ def test_check_migrations_remote_anonymous(svc_client, it_remote_public_repo_url
     assert 200 == response.status_code
 
     assert response.json["result"]["core_compatibility_status"]["migration_required"] is True
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_migrations_local_minimum_version(svc_client_setup, mocker):
+    """Check if migrations are required for a local project."""
+    svc_client, headers, project_id, _, _ = svc_client_setup
+
+    def _mock_database_project(project):
+        def mocked_getter(self, key):
+            if key == "project":
+                return project
+            return getattr(self, key)
+
+        return mocked_getter
+
+    mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "2.0.0")
+    project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
+    mocker.patch(
+        "renku.command.command_builder.database_dispatcher.Database.__getitem__", _mock_database_project(project)
+    )
+    mocker.patch("renku.version.__version__", "1.0.0")
+
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    assert 200 == response.status_code
+
+    assert response.json["result"]["core_compatibility_status"]
+    assert response.json["result"]["template_status"]
+    assert response.json["result"]["dockerfile_renku_status"]
+    assert not response.json["result"]["project_supported"]
+    assert response.json["result"]["project_renku_version"]
+    assert ">=2.0.0" == response.json["result"]["project_renku_version"]
+    assert response.json["result"]["core_renku_version"]
+    assert "1.0.0" == response.json["result"]["core_renku_version"]
