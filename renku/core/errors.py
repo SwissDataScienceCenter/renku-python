@@ -458,6 +458,10 @@ class InvalidTemplateError(TemplateError):
     """Raised when using a non-valid template."""
 
 
+class TemplateMissingReferenceError(TemplateError):
+    """Raised when using a non-valid template."""
+
+
 class TemplateUpdateError(TemplateError):
     """Raised when a project couldn't be updated from its template."""
 
