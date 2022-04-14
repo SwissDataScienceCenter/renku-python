@@ -56,7 +56,7 @@ def test_template_fetch_invalid_git_url():
 @pytest.mark.vcr
 def test_template_fetch_invalid_git_reference():
     """Test fetching a template from an invalid reference."""
-    with pytest.raises(errors.InvalidTemplateError):
+    with pytest.raises(errors.TemplateMissingReferenceError):
         fetch_templates_source(source=TEMPLATES_URL, reference="invalid-ref")
 
 
@@ -83,6 +83,13 @@ def test_template_update_files(client_with_template, templates_source, client_da
 
     for file in client_with_template.template_files:
         assert file.read_text() != files_before[file]
+
+
+def test_template_update_source_failure(client_with_template, client_database_injection_manager):
+    """Test template update with broken template source."""
+    with client_database_injection_manager(client_with_template):
+        with pytest.raises(errors.TemplateUpdateError):
+            update_template(force=False, interactive=False, dry_run=False)
 
 
 @pytest.mark.parametrize(
