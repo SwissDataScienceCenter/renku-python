@@ -342,6 +342,29 @@ class UserOutdatedProjectError(ServiceError):
         super().__init__(exception=exception)
 
 
+class UserProjectTemplateReferenceError(ServiceError):
+    """The project's template original reference cannot be found anymore.
+
+    The reference has probably been removed, either on purpose or as a side effect of a
+    forced push.
+    """
+
+    code = SVC_ERROR_USER + 141
+    userMessage = (
+        "The project's template original reference has been removed or overwritten."
+        " Manually changing it in a session may fix the problem."
+        " Further details: {message}."
+    )
+    devMessage = "Template reference is not available anymore. Details: {message}."
+
+    def __init__(self, exception):
+        super().__init__(
+            userMessage=self.userMessage.format(message=str(exception)),
+            devMessage=self.devMessage.format(message=str(exception)),
+            exception=exception,
+        )
+
+
 class ProgramInvalidGenericFieldsError(ServiceError):
     """One or more fields are unexpected.
 
@@ -663,6 +686,26 @@ class IntermittentDatasetExistsError(ServiceError):
     code = SVC_ERROR_INTERMITTENT + 130
     userMessage = "The dataset creation failed because it already exists. Please refresh the page."
     devMessage = "Unexpected error creating a dataset, possibly caused by concurrent actions."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
+class IntermittentProjectTemplateUnavailable(ServiceError):
+    """The reference template for the project is currently unavailable.
+
+    It may be a temporary issue in accessing the remote template, or it may have been deleted,
+    moved, or otherwise not-accessible.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 140
+    userMessage = (
+        "The reference template for the project is currently unavailable."
+        " It may be a temporary problem, or the template may not be accessible anymore."
+    )
+    devMessage = (
+        "Error accessing the project template. This may be temporary, or the project may not be accessible anymore."
+    )
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)

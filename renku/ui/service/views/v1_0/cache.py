@@ -22,11 +22,11 @@ from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtr
 from renku.ui.service.serializers.v1_0.cache import ProjectMigrateResponseRPC_1_0
 from renku.ui.service.views.api_versions import V0_9, V1_0
 from renku.ui.service.views.decorators import accepts_json, requires_cache, requires_identity
-from renku.ui.service.views.error_handlers import handle_common_except, handle_migration_errors
+from renku.ui.service.views.error_handlers import handle_common_except, handle_migration_write_errors
 
 
 @handle_common_except
-@handle_migration_errors
+@handle_migration_write_errors
 @accepts_json
 @requires_cache
 @requires_identity

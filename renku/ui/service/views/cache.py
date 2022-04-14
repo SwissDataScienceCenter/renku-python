@@ -28,7 +28,11 @@ from renku.ui.service.controllers.cache_project_clone import ProjectCloneCtrl
 from renku.ui.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.ui.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
-from renku.ui.service.views.error_handlers import handle_common_except, handle_migration_errors
+from renku.ui.service.views.error_handlers import (
+    handle_common_except,
+    handle_migration_read_errors,
+    handle_migration_write_errors,
+)
 from renku.ui.service.views.v0_9.cache import add_v0_9_specific_endpoints
 from renku.ui.service.views.v1_0.cache import add_v1_0_specific_endpoints
 
@@ -156,7 +160,7 @@ def list_projects_view(user_data, cache):
 
 @cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False, versions=[V1_1])
 @handle_common_except
-@handle_migration_errors
+@handle_migration_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
@@ -187,6 +191,7 @@ def migrate_project_view(user_data, cache):
     "/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=[V1_0, V1_1]
 )
 @handle_common_except
+@handle_migration_read_errors
 @requires_cache
 @optional_identity
 def migration_check_project_view(user_data, cache):
