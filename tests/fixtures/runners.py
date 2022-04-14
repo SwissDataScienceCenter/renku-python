@@ -61,8 +61,23 @@ class OutputStreamProxy:
         return self._buffer
 
 
+class RenkuResult(Result):
+    """Holds the captured result of an invoked RenkuRunner."""
+
+    @property
+    def output(self) -> str:
+        """The (standard) output as unicode string."""
+        separator = "\n" if self.stdout and self.stderr else ""
+        return f"{self.stdout}{separator}{self.stderr}"
+
+
 class RenkuRunner(CliRunner):
     """Custom CliRunner that allows passing stdout and stderr to the ``invoke`` method."""
+
+    def __init__(self, mix_stderr: bool = False):
+        # NOTE: Always separate stdout and stderr
+        super().__init__(mix_stderr=mix_stderr)
+        self._stderr_was_set = False
 
     @contextlib.contextmanager
     def isolation(self, input=None, env=None, color: bool = False):
@@ -82,7 +97,7 @@ class RenkuRunner(CliRunner):
     def invoke(  # type: ignore
         self,
         cli: click.BaseCommand,
-        args: Optional[Union[str, Sequence[Union[Path, str]]]] = None,
+        args: Optional[Union[Path, str, Sequence[Union[Path, str]]]] = None,
         input: Optional[Union[str, bytes, IO]] = None,
         env: Optional[Mapping[str, Optional[str]]] = None,
         catch_exceptions: bool = True,
@@ -98,6 +113,10 @@ class RenkuRunner(CliRunner):
 
         assert not input or not stdin, "Cannot set both ``stdin`` and ``input``"
 
+        if stderr is not None:
+            self.mix_stderr = False
+            self._stderr_was_set = True
+
         if isinstance(args, Path):
             args = str(args)
         elif args is not None and not isinstance(args, str):
@@ -107,7 +126,7 @@ class RenkuRunner(CliRunner):
             stdin = str(stdin)
 
         with Isolation(stdout=stdout, stderr=stderr):
-            return super().invoke(
+            result = super().invoke(
                 cli=cli,
                 args=cast(Optional[Union[str, Sequence[str]]], args),
                 input=stdin or input,
@@ -115,6 +134,19 @@ class RenkuRunner(CliRunner):
                 catch_exceptions=catch_exceptions,
                 color=color,
                 **extra,
+            )
+
+            if self.mix_stderr or self._stderr_was_set:
+                return result
+
+            return RenkuResult(
+                runner=result.runner,
+                stdout_bytes=result.stdout_bytes,
+                stderr_bytes=result.stderr_bytes,
+                return_value=result.return_value,
+                exit_code=result.exit_code,
+                exception=result.exception,
+                exc_info=result.exc_info,
             )
 
 
@@ -151,12 +183,6 @@ def run_shell():
 def runner():
     """Create a runner on isolated filesystem."""
     return RenkuRunner()
-
-
-@pytest.fixture()
-def split_runner():
-    """A RenkuRunner with split stdout and stderr streams."""
-    return RenkuRunner(mix_stderr=False)
 
 
 @pytest.fixture()

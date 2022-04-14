@@ -56,13 +56,16 @@ from renku.ui.cli.utils.callback import ClickCallback
 
 @click.command()
 @click.pass_context
+@click.option("--ignore-deleted", is_flag=True, help="Ignore deleted paths.")
 @click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
-def status(ctx, paths):
+def status(ctx, paths, ignore_deleted):
     """Show a status of the repository."""
     from renku.command.status import get_status_command
 
     communicator = ClickCallback()
-    result = get_status_command().with_communicator(communicator).build().execute(paths=paths)
+    result = (
+        get_status_command().with_communicator(communicator).build().execute(paths=paths, ignore_deleted=ignore_deleted)
+    )
 
     stales, stale_activities, modified, deleted = result.output
 
@@ -73,8 +76,7 @@ def status(ctx, paths):
     if stales:
         click.echo(
             f"Outdated outputs({len(stales)}):\n"
-            # TODO: Enable once renku workflow visualize is implemented
-            # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
+            "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
             "  (use `renku update --all` to generate the file from its latest inputs)\n"
         )
         for k in sorted(stales.keys()):

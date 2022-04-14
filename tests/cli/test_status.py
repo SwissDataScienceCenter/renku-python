@@ -18,6 +18,7 @@
 """Test `status` command."""
 
 import os
+from pathlib import Path
 
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
@@ -90,12 +91,12 @@ def test_workflow_without_outputs(runner, project):
     assert "/activities/" in result.output
 
 
-def test_status_with_paths(runner, project):
+def test_status_with_paths(runner, project, subdirectory):
     """Test status check with multiple steps."""
-    source1 = os.path.join(os.getcwd(), "source1.txt")
-    output1 = os.path.join(os.getcwd(), "data", "output1.txt")
-    source2 = os.path.join(os.getcwd(), "source2.txt")
-    output2 = os.path.join(os.getcwd(), "data", "output2.txt")
+    source1 = os.path.join(project, "source1.txt")
+    output1 = os.path.join(project, "data", "output1.txt")
+    source2 = os.path.join(project, "source2.txt")
+    output2 = os.path.join(project, "data", "output2.txt")
 
     repo = Repository(project)
 
@@ -110,32 +111,32 @@ def test_status_with_paths(runner, project):
 
     result = runner.invoke(cli, ["status", source1])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert "data/output1.txt: source1.txt" in result.output
+    assert f"{os.path.relpath(output1)}: {os.path.relpath(source1)}" in result.output
     assert "Modified inputs(1):" in result.output
     assert "source2.txt" not in result.output
 
     result = runner.invoke(cli, ["status", output1])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert "data/output1.txt: source1.txt" in result.output
+    assert f"{os.path.relpath(output1)}: {os.path.relpath(source1)}" in result.output
     assert "Modified inputs(1):" in result.output
     assert "source2.txt" not in result.output
 
-    result = runner.invoke(cli, ["status", "source2.txt"])
+    result = runner.invoke(cli, ["status", os.path.relpath(source2)])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert "data/output2.txt: source2.txt" in result.output
+    assert f"{os.path.relpath(output2)}: {os.path.relpath(source2)}" in result.output
     assert "Modified inputs(1):" in result.output
     assert "source1.txt" not in result.output
 
-    result = runner.invoke(cli, ["status", "data/output2.txt"])
+    result = runner.invoke(cli, ["status", os.path.relpath(output2)])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert "data/output2.txt: source2.txt" in result.output
+    assert f"{os.path.relpath(output2)}: {os.path.relpath(source2)}" in result.output
     assert "Modified inputs(1):" in result.output
     assert "source1.txt" not in result.output
 
     result = runner.invoke(cli, ["status", source1, output2])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert "data/output1.txt: source1.txt" in result.output
-    assert "data/output2.txt: source2.txt" in result.output
+    assert f"{os.path.relpath(output1)}: {os.path.relpath(source1)}" in result.output
+    assert f"{os.path.relpath(output2)}: {os.path.relpath(source2)}" in result.output
     assert "Modified inputs(2):" in result.output
 
 
@@ -157,3 +158,88 @@ def test_status_with_path_all_generation(runner, project):
     assert 1 == result.exit_code, format_result_exception(result)
     assert "data/output1.txt: source.txt" in result.output
     assert "data/output2.txt: source.txt" in result.output
+
+
+def test_status_works_in_dirty_repository(runner, client):
+    """Test status doesn't need a clean project and doesn't change anything."""
+    source = client.path / "source"
+    write_and_commit_file(client.repository, source, "source content")
+    assert 0 == runner.invoke(cli, ["run", "head", source], stdout="output").exit_code
+
+    commit_sha_before = client.repository.head.commit.hexsha
+
+    source.write_text("modified content")
+    (client.path / "untracked").write_text("untracked file")
+
+    result = runner.invoke(cli, ["status"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "output: source" in result.output
+    assert commit_sha_before == client.repository.head.commit.hexsha
+    assert client.repository.untracked_files == ["untracked"]
+    assert {c.a_path for c in client.repository.unstaged_changes} == {"source"}
+
+
+def test_status_ignore_deleted_files(runner, client):
+    """Test status can ignore deleted files."""
+    write_and_commit_file(client.repository, "source", "source content")
+    assert 0 == runner.invoke(cli, ["run", "head", "source"], stdout="upstream").exit_code
+    assert 0 == runner.invoke(cli, ["run", "tail", "upstream"], stdout="deleted").exit_code
+
+    write_and_commit_file(client.repository, "source", "changes")
+    Path("deleted").unlink()
+
+    result = runner.invoke(cli, ["status", "--ignore-deleted"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "deleted: source" not in result.output
+    assert "upstream: source" in result.output
+
+
+def test_status_ignore_deleted_files_config(runner, client):
+    """Test status can ignore deleted files when proper config is set."""
+    write_and_commit_file(client.repository, "source", "source content")
+    assert 0 == runner.invoke(cli, ["run", "head", "source"], stdout="upstream").exit_code
+    assert 0 == runner.invoke(cli, ["run", "tail", "upstream"], stdout="deleted").exit_code
+
+    write_and_commit_file(client.repository, "source", "changes")
+    Path("deleted").unlink()
+    # Set config to ignore deleted files
+    client.set_value("renku", "update_ignore_delete", "True")
+
+    result = runner.invoke(cli, ["status"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "upstream: source" in result.output
+    assert "deleted: source" not in result.output
+
+
+def test_status_deleted_files_reported_with_siblings(runner, client):
+    """Test status reports deleted file if they have existing siblings."""
+    write_and_commit_file(client.repository, "source", "source content")
+    assert 0 == runner.invoke(cli, ["run", "--input", "source", "touch", "deleted", "sibling"]).exit_code
+
+    write_and_commit_file(client.repository, "source", "changes")
+    Path("deleted").unlink()
+
+    result = runner.invoke(cli, ["status", "--ignore-deleted"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "deleted: source" in result.output
+    assert "sibling: source" in result.output
+
+
+def test_status_deleted_files_reported_with_downstream(runner, client):
+    """Test status reports deleted file if they have existing downstreams."""
+    write_and_commit_file(client.repository, "source", "source content")
+    assert 0 == runner.invoke(cli, ["run", "head", "source"], stdout="deleted").exit_code
+    assert 0 == runner.invoke(cli, ["run", "tail", "deleted"], stdout="downstream").exit_code
+
+    write_and_commit_file(client.repository, "source", "changes")
+    Path("deleted").unlink()
+
+    result = runner.invoke(cli, ["status", "--ignore-deleted"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "deleted: source" in result.output
+    assert "downstream: source" in result.output

@@ -33,6 +33,7 @@ from renku.core.util.metadata import add_activity_if_recent, filter_overridden_a
 from renku.core.util.os import get_relative_paths
 from renku.core.workflow.activity import sort_activities
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
+from renku.domain_model.entity import Entity
 from renku.domain_model.provenance.activity import Activity
 from renku.domain_model.workflow.plan import AbstractPlan
 
@@ -46,6 +47,7 @@ def update_command():
 def _update(
     update_all,
     dry_run,
+    ignore_deleted,
     client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     provider: str,
@@ -60,10 +62,19 @@ def _update(
     client = client_dispatcher.current_client
 
     paths = paths or []
-    paths = get_relative_paths(base=client.path, paths=paths)
+    paths = get_relative_paths(base=client.path, paths=[Path.cwd() / p for p in paths])
 
-    modified_activities, modified_paths = _get_modified_activities_and_paths(client.repository, activity_gateway)
-    activities = _get_downstream_activities(modified_activities, activity_gateway, paths)
+    modified, _ = get_all_modified_and_deleted_activities_and_entities(client.repository, activity_gateway)
+    modified_activities = {a for a, _ in modified if is_activity_valid(a)}
+    modified_paths = {e.path for _, e in modified}
+
+    activities = get_downstream_generating_activities(
+        starting_activities=modified_activities,
+        activity_gateway=activity_gateway,
+        paths=paths,
+        ignore_deleted=ignore_deleted,
+        client_path=client.path,
+    )
 
     if len(activities) == 0:
         raise errors.NothingToExecuteError()
@@ -78,24 +89,17 @@ def _update(
 
 
 @inject.autoparams()
-def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_dispatcher: IClientDispatcher) -> bool:
+def is_activity_valid(activity: Activity, plan_gateway: IPlanGateway) -> bool:
     """Return whether this plan is current and has not been deleted.
 
     Args:
         activity(Activity): The Activity whose Plan should be checked.
         plan_gateway(IPlanGateway): The injected Plan gateway.
-        client_dispatcher(IClientDispatcher): The injected client dispatcher.
 
     Returns:
         bool: True if the activities' Plan is still valid, False otherwise.
 
     """
-    client = client_dispatcher.current_client
-
-    for usage in activity.usages:
-        if not (client.path / usage.entity.path).exists():
-            return False
-
     plan = activity.association.plan
 
     if plan.invalidated_at is not None:
@@ -117,35 +121,44 @@ def _is_activity_valid(activity: Activity, plan_gateway: IPlanGateway, client_di
     return plan.invalidated_at is None
 
 
-def _get_modified_activities_and_paths(repository, activity_gateway) -> Tuple[Set[Activity], Set[str]]:
-    """Return latest activities that one of their inputs is modified.
+def get_all_modified_and_deleted_activities_and_entities(
+    repository, activity_gateway
+) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    """
+    Return latest activities that one of their inputs is modified/deleted along with the modified/deleted input entity.
+
+    An activity can be repeated if more than one of its inputs are modified.
 
     Args:
         repository: The current ``Repository``.
         activity_gateway: The injected Activity gateway.
 
     Returns:
-        Tuple[Set[Activity],Set[str]]: Tuple of modified activites and modified paths.
+        Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]: Tuple of modified and deleted activities and
+            entities.
 
     """
     all_activities = activity_gateway.get_all_activities()
     relevant_activities = filter_overridden_activities(all_activities)
-    modified, _ = get_modified_activities(activities=list(relevant_activities), repository=repository)
-    return {a for a, _ in modified if _is_activity_valid(a)}, {e.path for _, e in modified}
+    return get_modified_activities(activities=relevant_activities, repository=repository)
 
 
-def _get_downstream_activities(
-    starting_activities: Set[Activity], activity_gateway: IActivityGateway, paths: List[str]
+def get_downstream_generating_activities(
+    starting_activities: Set[Activity],
+    activity_gateway: IActivityGateway,
+    paths: List[str],
+    ignore_deleted: bool,
+    client_path: Path,
 ) -> List[Activity]:
-    """Return activities downstream of passed activities.
+    """Return activities downstream of passed activities that generate at least a path in ``paths``.
 
     Args:
         starting_activities(Set[Activity]): Activities to use as starting/upstream nodes.
         activity_gateway(IActivityGateway): The injected Activity gateway.
-        paths(List[str]): Optional gnerated paths to end downstream chains at.
+        paths(List[str]): Optional generated paths to end downstream chains at.
 
     Returns:
-        Set[Activity]: All activites and their downstream activities.
+        Set[Activity]: All activities and their downstream activities.
 
     """
     all_activities: Dict[str, Set[Activity]] = defaultdict(set)
@@ -154,29 +167,43 @@ def _get_downstream_activities(
         existing_activities = all_activities[activity.association.plan.id]
         add_activity_if_recent(activity=activity, activities=existing_activities)
 
-    def does_activity_generate_any_paths(activity):
+    def does_activity_generate_any_paths(activity) -> bool:
         is_same = any(g.entity.path in paths for g in activity.generations)
         is_parent = any(Path(p) in Path(g.entity.path).parents for p in paths for g in activity.generations)
 
         return is_same or is_parent
 
-    for activity in starting_activities:
-        downstream_chains = activity_gateway.get_downstream_activity_chains(activity)
+    def has_an_existing_generation(activity) -> bool:
+        for generation in activity.generations:
+            if (client_path / generation.entity.path).exists():
+                return True
+
+        return False
+
+    for starting_activity in starting_activities:
+        downstream_chains = activity_gateway.get_downstream_activity_chains(starting_activity)
 
         if paths:
             # NOTE: Add the activity to check if it also matches the condition
-            downstream_chains.append((activity,))
+            downstream_chains.append((starting_activity,))
             downstream_chains = [c for c in downstream_chains if does_activity_generate_any_paths(c[-1])]
-
-            # NOTE: Include activity only if any of its downstream match the condition
-            if downstream_chains:
-                include_newest_activity(activity)
+            # NOTE: Include activity only if any of its downstream matched the condition
+            include_starting_activity = len(downstream_chains) > 0
+        elif ignore_deleted:  # NOTE: Excluded deleted generations only if they are not passed in ``paths``
+            # NOTE: Add the activity to check if it also matches the condition
+            downstream_chains.append((starting_activity,))
+            downstream_chains = [c for c in downstream_chains if has_an_existing_generation(c[-1])]
+            # NOTE: Include activity only if any of its downstream matched the condition
+            include_starting_activity = len(downstream_chains) > 0
         else:
-            include_newest_activity(activity)
+            include_starting_activity = True
+
+        if include_starting_activity:
+            include_newest_activity(starting_activity)
 
         for chain in downstream_chains:
             for activity in chain:
-                if not _is_activity_valid(activity):
+                if not is_activity_valid(activity):
                     # don't process further downstream activities as the plan in question was deleted
                     break
                 include_newest_activity(activity)

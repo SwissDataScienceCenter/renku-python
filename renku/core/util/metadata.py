@@ -85,7 +85,7 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
 
 
 def get_modified_activities(
-    activities: List["Activity"], repository
+    activities: FrozenSet["Activity"], repository
 ) -> Tuple[Set[Tuple["Activity", "Entity"]], Set[Tuple["Activity", "Entity"]]]:
     """Get lists of activities that have modified/deleted usage entities."""
     modified = set()
@@ -97,7 +97,7 @@ def get_modified_activities(
         for usage in activity.usages:
             paths.append(usage.entity.path)
 
-    hashes = repository.get_object_hashes(paths=paths, revision="HEAD")
+    hashes = repository.get_object_hashes(paths=paths)
 
     for activity in activities:
         for usage in activity.usages:
@@ -111,7 +111,7 @@ def get_modified_activities(
     return modified, deleted
 
 
-def filter_overridden_activities(activities: List["Activity"]) -> List["Activity"]:
+def filter_overridden_activities(activities: List["Activity"]) -> FrozenSet["Activity"]:
     """Filter out overridden activities from a list of activities."""
     relevant_activities: Dict[FrozenSet[str], Activity] = {}
 
@@ -121,21 +121,21 @@ def filter_overridden_activities(activities: List["Activity"]) -> List["Activity
         subset_of = set()
         superset_of = set()
 
-        for k, a in relevant_activities.items():
-            if outputs.issubset(k):
-                subset_of.add((k, a))
-            elif outputs.issuperset(k):
-                superset_of.add((k, a))
+        for o, a in relevant_activities.items():
+            if outputs.issubset(o):
+                subset_of.add((o, a))
+            elif outputs.issuperset(o):
+                superset_of.add((o, a))
 
         if not subset_of and not superset_of:
             relevant_activities[outputs] = activity
             continue
 
-        if subset_of and any(activity.ended_at_time < s.ended_at_time for _, s in subset_of):
+        if subset_of and any(activity.ended_at_time < a.ended_at_time for _, a in subset_of):
             # activity is a subset of another, newer activity, ignore it
             continue
 
-        older_subsets = [k for k, s in superset_of if activity.ended_at_time > s.ended_at_time]
+        older_subsets = [o for o, a in superset_of if activity.ended_at_time > a.ended_at_time]
 
         for older_subset in older_subsets:
             # remove other activities that this activity is a superset of
@@ -143,11 +143,14 @@ def filter_overridden_activities(activities: List["Activity"]) -> List["Activity
 
         relevant_activities[outputs] = activity
 
-    return list(relevant_activities.values())
+    return frozenset(relevant_activities.values())
 
 
 def add_activity_if_recent(activity: "Activity", activities: Set["Activity"]):
-    """Add ``activity`` to ``activities`` if it's not in the set or is the latest executed instance."""
+    """Add ``activity`` to ``activities`` if it's not in the set or is the latest executed instance.
+
+    Remove existing activities that were executed earlier.
+    """
     if activity in activities:
         return
 
