@@ -43,7 +43,14 @@ def test_graph_export_view(svc_client_cache, it_remote_repo_url):
 
     assert_rpc_response(response)
     assert "graph" in response.json["result"]
-    assert len(response.json["result"]["graph"]) == 5852
+    assert "https://dev.renku.ch/datasets/0b1e2d0211a39ef6ca941f161812e267" in response.json["result"]["graph"]
+    assert "https://dev.renku.ch/datasets/12e0ac1b427e4b0dab461f161812e267" in response.json["result"]["graph"]
+    assert (
+        "https://dev.renku.ch/projects/renku-python-integration-tests/core-integration-test"
+        in response.json["result"]["graph"]
+    )
+    assert "mailto:contact@justsam.io" in response.json["result"]["graph"]
+    assert len(response.json["result"]["graph"]) > 5000
 
 
 @pytest.mark.service
@@ -79,7 +86,14 @@ def test_graph_export_no_callback(svc_client_cache, it_remote_repo_url):
 
     assert_rpc_response(response)
     assert "graph" in response.json["result"]
-    assert len(response.json["result"]["graph"]) == 5852
+    assert "https://dev.renku.ch/datasets/0b1e2d0211a39ef6ca941f161812e267" in response.json["result"]["graph"]
+    assert "https://dev.renku.ch/datasets/12e0ac1b427e4b0dab461f161812e267" in response.json["result"]["graph"]
+    assert (
+        "https://dev.renku.ch/projects/renku-python-integration-tests/core-integration-test"
+        in response.json["result"]["graph"]
+    )
+    assert "mailto:contact@justsam.io" in response.json["result"]["graph"]
+    assert len(response.json["result"]["graph"]) > 5000
 
 
 @pytest.mark.service
@@ -94,4 +108,11 @@ def test_graph_export_no_revision(svc_client_cache, it_remote_repo_url):
     response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
     assert "graph" in response.json["result"]
-    assert len(response.json["result"]["graph"]) == 5852
+    assert "https://dev.renku.ch/datasets/0b1e2d0211a39ef6ca941f161812e267" in response.json["result"]["graph"]
+    assert "https://dev.renku.ch/datasets/12e0ac1b427e4b0dab461f161812e267" in response.json["result"]["graph"]
+    assert (
+        "https://dev.renku.ch/projects/renku-python-integration-tests/core-integration-test"
+        in response.json["result"]["graph"]
+    )
+    assert "mailto:contact@justsam.io" in response.json["result"]["graph"]
+    assert len(response.json["result"]["graph"]) > 5000
