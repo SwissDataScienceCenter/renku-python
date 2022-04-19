@@ -185,9 +185,9 @@ class ImageObject(Slots):
         super().__init__(content_url=content_url, position=position, id=id)
 
     @staticmethod
-    def generate_id(dataset: "Dataset", position: int) -> str:
+    def generate_id(dataset_id: str, position: int) -> str:
         """Generate @id field."""
-        return f"{dataset.id}/images/{position}"
+        return f"{dataset_id}/images/{position}"
 
     @property
     def is_absolute(self):

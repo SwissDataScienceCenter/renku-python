@@ -64,7 +64,7 @@ class ImageRequestModel:
                 return ImageObject(
                     content_url=self.content_url,
                     position=self.position,
-                    id=ImageObject.generate_id(dataset, self.position),
+                    id=ImageObject.generate_id(dataset_id=dataset.id, position=self.position),
                 )
 
             # NOTE: mirror the image locally
@@ -105,5 +105,5 @@ class ImageRequestModel:
         return ImageObject(
             content_url=str(img_path.relative_to(client.path)),
             position=self.position,
-            id=ImageObject.generate_id(dataset=dataset, position=self.position),
+            id=ImageObject.generate_id(dataset_id=dataset.id, position=self.position),
         )

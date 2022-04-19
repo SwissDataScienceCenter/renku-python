@@ -36,6 +36,7 @@ from renku.core.errors import (
     MigrationRequired,
     ParameterError,
     RenkuException,
+    TemplateMissingReferenceError,
     TemplateUpdateError,
     UninitializedProject,
 )
@@ -44,6 +45,7 @@ from renku.ui.service.errors import (
     IntermittentDatasetExistsError,
     IntermittentFileNotExistsError,
     IntermittentProjectIdError,
+    IntermittentProjectTemplateUnavailable,
     IntermittentRedisError,
     IntermittentSettingExistsError,
     IntermittentTimeoutError,
@@ -65,6 +67,7 @@ from renku.ui.service.errors import (
     UserNonRenkuProjectError,
     UserOutdatedProjectError,
     UserProjectCreationError,
+    UserProjectTemplateReferenceError,
     UserRepoBranchInvalidError,
     UserRepoNoAccessError,
     UserRepoUrlInvalidError,
@@ -248,25 +251,27 @@ def handle_templates_create_errors(f):
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
 
-        def match_schema(target, message):
-            if re.match(f".*{target}.*contains.*unsupported characters.*", message):
-                return True
-            return False
+        def get_schema_error_message(e):
+            if isinstance(getattr(e, "messages", None), dict) and e.messages.get("_schema"):
+                message = (
+                    "; ".join(e.messages.get("_schema"))
+                    if isinstance(e.messages.get("_schema"), list)
+                    else str(e.messages.get("_schema"))
+                )
+                return message
+            return None
 
         try:
             return f(*args, **kwargs)
         except ValidationError as e:
             if getattr(e, "field_name", None) == "_schema":
-                error_message = str(e)
-                if match_schema("Project name", error_message):
-                    raise UserProjectCreationError(e, "project name must contain at least a valid character")
-                elif match_schema("git_url", error_message):
-                    raise ProgramProjectCreationError(e, "git_url is invalid")
-            raise
-        except KeyError as e:
-            # NOTE: it's hard to determine if the error is user generated here
-            error_message = str(e).strip("'").replace("_", " ")
-            raise UserProjectCreationError(e, f"provide a value for {error_message}")
+                error_message = get_schema_error_message(e)
+                if error_message:
+                    raise UserProjectCreationError(e, error_message)
+                else:
+                    raise ProgramProjectCreationError(e, str(e))
+            else:
+                raise ProgramProjectCreationError(e)
 
     return decorated_function
 
@@ -375,8 +380,25 @@ def handle_datasets_unlink_errors(f):
     return decorated_function
 
 
-def handle_migration_errors(f):
-    """Wrapper which handles migrations exceptions."""
+def handle_migration_read_errors(f):
+    """Wrapper which handles migrations read exceptions."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except TemplateMissingReferenceError as e:
+            raise UserProjectTemplateReferenceError(e)
+        except (InvalidTemplateError, TemplateUpdateError) as e:
+            raise IntermittentProjectTemplateUnavailable(e)
+
+    return decorated_function
+
+
+@handle_migration_read_errors
+def handle_migration_write_errors(f):
+    """Wrapper which handles migrations write exceptions."""
     # noqa
     @wraps(f)
     def decorated_function(*args, **kwargs):
