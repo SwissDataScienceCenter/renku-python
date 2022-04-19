@@ -252,7 +252,7 @@ def handle_templates_create_errors(f):
         """Represents decorated function."""
 
         def get_schema_error_message(e):
-            if getattr(e, "messages", None) and e.messages.get("_schema"):
+            if isinstance(getattr(e, "messages", None), dict) and e.messages.get("_schema"):
                 message = (
                     "; ".join(e.messages.get("_schema"))
                     if isinstance(e.messages.get("_schema"), list)
