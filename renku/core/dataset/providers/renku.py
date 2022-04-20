@@ -55,7 +55,7 @@ class RenkuProvider(ProviderApi):
 
     @staticmethod
     def supports(uri):
-        """Whether or not this provider supports a given uri."""
+        """Whether or not this provider supports a given URI."""
         parsed_url = urllib.parse.urlparse(uri)
 
         if not parsed_url.netloc:
@@ -221,7 +221,7 @@ class RenkuProvider(ProviderApi):
 
 
 class RenkuRecordSerializer(ProviderRecordSerializerApi):
-    """Renku record Serializer."""
+    """Renku record serializer."""
 
     def __init__(
         self, uri, identifier, name, latest_version_uri, project_url_ssh, project_url_http, gitlab_token, renku_token
@@ -338,12 +338,12 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
 
     @property
     def latest_uri(self):
-        """Get uri of the latest version."""
+        """Get URI of the latest version."""
         return self._latest_version_uri
 
     @property
     def datadir_exists(self):
-        """Whether the dataset datadir exists (might be missing in git if empty)."""
+        """Whether the dataset data directory exists (might be missing in git if empty)."""
         return (self._remote_client.path / self._dataset.data_dir).exists()
 
     @inject.autoparams()

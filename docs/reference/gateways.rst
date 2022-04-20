@@ -27,13 +27,66 @@ Interfaces
 
 Interfaces that the Gateways implement.
 
-.. automodule:: renku.core.interface
+.. automodule:: renku.core.interface.activity_gateway
    :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.interface.client_dispatcher
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.interface.database_dispatcher
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.interface.database_gateway
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.interface.dataset_gateway
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.interface.plan_gateway
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.interface.project_gateway
+   :members:
+   :show-inheritance:
 
 Implementations
 ---------------
 
 Implementation of Gateway interfaces.
 
-.. automodule:: renku.infrastructure.gateway
+.. automodule:: renku.infrastructure.gateway.activity_gateway
    :members:
+   :show-inheritance:
+
+.. automodule:: renku.infrastructure.gateway.database_gateway
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.infrastructure.gateway.dataset_gateway
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.infrastructure.gateway.plan_gateway
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.infrastructure.gateway.project_gateway
+   :members:
+   :show-inheritance:
+
+
+Repository
+----------
+
+Renku uses git repositories for tracking changes. To abstract away git internals,
+we delegate all git calls to the ``Repository`` class.
+
+.. automodule:: renku.infrastructure.repository
+   :members:
+   :show-inheritance:

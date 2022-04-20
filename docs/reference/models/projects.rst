@@ -20,3 +20,4 @@ Projects
 
 .. automodule:: renku.domain_model.project
    :members:
+   :show-inheritance:
