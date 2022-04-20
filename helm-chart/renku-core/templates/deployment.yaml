@@ -47,11 +47,15 @@ spec:
         {{- include "certificates.volumes" $ | nindent 8 }}
       initContainers:
         {{- include "certificates.initContainer" $ | nindent 8 }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
       containers:
       {{ if $.Values.metrics.enabled }}
         - name: {{ $.Chart.Name}}-rqmetrics
           image: "{{ $.Values.metrics.image.repository }}:{{ $.Values.metrics.image.tag }}"
           imagePullPolicy: {{ $.Values.metrics.image.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
           env:
             - name: RQ_REDIS_HOST
               value: {{ $.Values.global.redis.host | quote }}
@@ -74,9 +78,7 @@ spec:
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
           securityContext:
-            runAsUser: 1000
-            runAsGroup: 1000
-            allowPrivilegeEscalation: false
+            {{- toYaml $.Values.securityContext | nindent 12 }}
           args: ["service", "api"]
           env:
             - name: REDIS_HOST
@@ -152,6 +154,8 @@ spec:
         - name: {{ $.Chart.Name }}-datasets-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
           args: ["service", "worker"]
           env:
             - name: REDIS_HOST
@@ -206,6 +210,8 @@ spec:
         - name: {{ $.Chart.Name }}-management-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
           args: ["service", "worker"]
           env:
             - name: REDIS_HOST
@@ -258,6 +264,8 @@ spec:
         - name: {{ $.Chart.Name }}-scheduler
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
           args: ["service", "scheduler"]
           env:
             - name: REDIS_HOST
