@@ -132,7 +132,15 @@ def update_template(
             "break your project"
         )
 
-    templates_source = fetch_templates_source(source=template_metadata.source, reference=template_metadata.reference)
+    try:
+        templates_source = fetch_templates_source(
+            source=template_metadata.source, reference=template_metadata.reference
+        )
+    except errors.TemplateMissingReferenceError as e:
+        message = f"{str(e)}; You can still manually update the template and set a difference reference."
+        raise errors.TemplateUpdateError(message)
+    except errors.InvalidTemplateError:
+        raise errors.TemplateUpdateError("Template cannot be fetched.")
 
     update_available, latest_reference = templates_source.is_update_available(
         id=template_metadata.id, reference=template_metadata.reference, version=template_metadata.version
