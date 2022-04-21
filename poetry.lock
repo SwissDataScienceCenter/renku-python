@@ -1876,7 +1876,7 @@ pycodegen = ["black"]
 
 [[package]]
 name = "sentry-sdk"
-version = "1.5.7"
+version = "1.5.10"
 description = "Python client for Sentry (https://sentry.io)"
 category = "main"
 optional = true
@@ -2522,7 +2522,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "f98241cde10330d38f5aa3a5b51b8d17c19d09f55a92b2a016ece33189eddd38"
+content-hash = "d93d918848f5f1405fc42faebf6fc1b358e2bbef85f03a0155fe28cf78a8dcd0"
 
 [metadata.files]
 addict = [
@@ -3837,8 +3837,8 @@ schema-salad = [
     {file = "schema_salad-8.2.20220204150214-py3-none-any.whl", hash = "sha256:ce49adf0bc97fd44d99df98bf00d6bc66b38a2483b3cc721cbd200d010add3c5"},
 ]
 sentry-sdk = [
-    {file = "sentry-sdk-1.5.7.tar.gz", hash = "sha256:aa52da941c56b5a76fd838f8e9e92a850bf893a9eb1e33ffce6c21431d07ee30"},
-    {file = "sentry_sdk-1.5.7-py2.py3-none-any.whl", hash = "sha256:411a8495bd18cf13038e5749e4710beb4efa53da6351f67b4c2f307c2d9b6d49"},
+    {file = "sentry-sdk-1.5.10.tar.gz", hash = "sha256:0a9eb20a84f4c17c08c57488d59fdad18669db71ebecb28fb0721423a33535f9"},
+    {file = "sentry_sdk-1.5.10-py2.py3-none-any.whl", hash = "sha256:972c8fe9318a415b5cf35f687f568321472ef94b36806407c370ce9c88a67f2e"},
 ]
 shellescape = [
     {file = "shellescape-3.8.1-py2.py3-none-any.whl", hash = "sha256:f17127e390fa3f9aaa80c69c16ea73615fd9b5318fd8309c1dca6168ae7d85bf"},
