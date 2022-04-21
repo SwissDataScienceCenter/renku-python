@@ -375,3 +375,7 @@ class CompositePlan(AbstractPlan):
         derived.links = self.links.copy()
         derived.assign_new_id()
         return derived
+
+    def is_derivation(self) -> bool:
+        """Return if an ``CompositePlan`` has correct derived_from."""
+        return self.derived_from is not None and self.id != self.derived_from

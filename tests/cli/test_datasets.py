@@ -1491,7 +1491,7 @@ def test_lfs_hook_autocommit(runner, client, subdirectory, large_file, use_env_v
     )
     for filename in filenames:
         assert filename in result[1]
-    assert ".gitattributes" in result[1]
+
     assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
     assert "Adding files to LFS" in result[2]
     for filename in filenames:

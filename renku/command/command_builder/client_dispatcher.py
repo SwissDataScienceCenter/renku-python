@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku client dispatcher."""
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
@@ -35,7 +35,7 @@ class ClientDispatcher(IClientDispatcher):
         self.client_stack = []
 
     @property
-    def current_client(self) -> Optional[LocalClient]:
+    def current_client(self) -> LocalClient:
         """Get the currently active client."""
         if len(self.client_stack) == 0:
             raise errors.ConfigurationError("No client configured for injection")

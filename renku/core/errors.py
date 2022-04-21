@@ -595,3 +595,7 @@ class DockerError(RenkuException):
     def __init__(self, reason: str):
         """Embed exception and build a custom message."""
         super().__init__(f"Docker failed: {reason}")
+
+
+class MetadataMergeError(RenkuException):
+    """Raise when merging of metadata failed."""

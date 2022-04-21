@@ -221,8 +221,12 @@ class BaseRepository:
 
         return Commit.from_commit(self._repository, self._repository.head.commit)
 
-    def checkout(self, reference: Union["Branch", "Tag", str]):
+    def checkout(self, reference: Optional[Union["Branch", "Tag", str]] = None, sparse: Optional[List[Path]] = None):
         """Check-out a specific reference."""
+        if sparse is not None:
+            self.run_git_command("sparse-checkout", "init", "--cone")
+            self.run_git_command("sparse-checkout", "set", *sparse)
+
         self.run_git_command("checkout", reference)
 
     def clean(self):
@@ -303,6 +307,26 @@ class BaseRepository:
     def status(self) -> str:
         """Return status of a repository."""
         return self.run_git_command("status")
+
+    def create_worktree(
+        self, path: Path, reference: Union["Branch", "Commit", "Reference", str], checkout: bool = True
+    ):
+        """Create a git worktree.
+
+        Args:
+            path(Path): Target folder.
+            reference(Union[Branch, Commit, Reference, str]): the reference to base the tree on.
+            checkout(bool): Whether to perform a checkout of the reference (Default value = False).
+        """
+        self.run_git_command("worktree", "add", path, reference, checkout=checkout)
+
+    def remove_worktree(self, path: Path):
+        """Create a git worktree.
+
+        Args:
+            path(Path): Worktree folder.
+        """
+        self.run_git_command("worktree", "remove", path)
 
     def is_dirty(self, untracked_files: bool = False) -> bool:
         """Return True if the repository has modified or untracked files ignoring submodules."""
