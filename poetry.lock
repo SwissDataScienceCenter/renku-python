@@ -1451,7 +1451,7 @@ jsonld = ["rdflib-jsonld (>=0.4.0,<0.6)"]
 
 [[package]]
 name = "pyte"
-version = "0.8.0"
+version = "0.8.1"
 description = "Simple VTXXX-compatible terminal emulator."
 category = "main"
 optional = true
@@ -3589,7 +3589,7 @@ pyshacl = [
     {file = "pyshacl-0.17.2.tar.gz", hash = "sha256:46f31c7a7f7298aa5b483d92dbc850ff79a144d26f1f41e83267ed84b4d6ae23"},
 ]
 pyte = [
-    {file = "pyte-0.8.0.tar.gz", hash = "sha256:7e71d03e972d6f262cbe8704ff70039855f05ee6f7ad9d7129df9c977b5a88c5"},
+    {file = "pyte-0.8.1-py3-none-any.whl", hash = "sha256:d760ea9a7d455d179d9d7a4288fac3d231190b5226715f1fe8c62547bed9b9aa"},
 ]
 pytest = [
     {file = "pytest-7.1.1-py3-none-any.whl", hash = "sha256:92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea"},
