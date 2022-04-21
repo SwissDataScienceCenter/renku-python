@@ -120,3 +120,11 @@ versions:
       repository: renku/renku-core
       tag: "v0.16.7"
       pullPolicy: IfNotPresent
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 100
+
+securityContext:
+  allowPrivilegeEscalation: false

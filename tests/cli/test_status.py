@@ -33,7 +33,8 @@ def test_status(runner, project, subdirectory):
 
     write_and_commit_file(repo, source, "content")
 
-    assert 0 == runner.invoke(cli, ["run", "cp", source, output]).exit_code
+    result = runner.invoke(cli, ["run", "cp", source, output])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -149,7 +150,8 @@ def test_status_with_path_all_generation(runner, project):
 
     write_and_commit_file(repo, source, "content")
 
-    assert 0 == runner.invoke(cli, ["run", "--input", source, "touch", output1, output2]).exit_code
+    result = runner.invoke(cli, ["run", "--input", source, "touch", output1, output2])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     write_and_commit_file(repo, source, "new content")
 
