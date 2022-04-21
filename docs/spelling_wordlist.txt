@@ -125,6 +125,7 @@ migrationscheck
 minikube
 minimalistic
 mistyped
+mls
 mydomain
 namespace
 namespaces
@@ -164,6 +165,7 @@ Renga
 renku
 Renku
 renkulab
+renku-mls
 renv
 repo
 reproducibility
