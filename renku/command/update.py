@@ -45,11 +45,10 @@ def update_command():
 
 @inject.autoparams()
 def _update(
-    update_all,
-    dry_run,
-    ignore_deleted,
+    update_all: bool,
+    dry_run: bool,
+    ignore_deleted: bool,
     client_dispatcher: IClientDispatcher,
-    activity_gateway: IActivityGateway,
     provider: str,
     config: Optional[str],
     paths=None,
@@ -64,13 +63,12 @@ def _update(
     paths = paths or []
     paths = get_relative_paths(base=client.path, paths=[Path.cwd() / p for p in paths])
 
-    modified, _ = get_all_modified_and_deleted_activities_and_entities(client.repository, activity_gateway)
+    modified, _ = get_all_modified_and_deleted_activities_and_entities(client.repository)
     modified_activities = {a for a, _ in modified if is_activity_valid(a)}
     modified_paths = {e.path for _, e in modified}
 
     activities = get_downstream_generating_activities(
         starting_activities=modified_activities,
-        activity_gateway=activity_gateway,
         paths=paths,
         ignore_deleted=ignore_deleted,
         client_path=client.path,
@@ -121,17 +119,18 @@ def is_activity_valid(activity: Activity, plan_gateway: IPlanGateway) -> bool:
     return plan.invalidated_at is None
 
 
+@inject.autoparams()
 def get_all_modified_and_deleted_activities_and_entities(
-    repository, activity_gateway
+    repository, activity_gateway: IActivityGateway
 ) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
     """
-    Return latest activities that one of their inputs is modified/deleted along with the modified/deleted input entity.
+    Return latest activities with at least one modified or deleted input along with the modified/deleted input entity.
 
     An activity can be repeated if more than one of its inputs are modified.
 
     Args:
         repository: The current ``Repository``.
-        activity_gateway: The injected Activity gateway.
+        activity_gateway(IActivityGateway): The injected Activity gateway.
 
     Returns:
         Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]: Tuple of modified and deleted activities and
@@ -143,19 +142,22 @@ def get_all_modified_and_deleted_activities_and_entities(
     return get_modified_activities(activities=relevant_activities, repository=repository)
 
 
+@inject.autoparams()
 def get_downstream_generating_activities(
     starting_activities: Set[Activity],
-    activity_gateway: IActivityGateway,
     paths: List[str],
     ignore_deleted: bool,
     client_path: Path,
+    activity_gateway: IActivityGateway,
 ) -> List[Activity]:
     """Return activities downstream of passed activities that generate at least a path in ``paths``.
 
     Args:
         starting_activities(Set[Activity]): Activities to use as starting/upstream nodes.
-        activity_gateway(IActivityGateway): The injected Activity gateway.
         paths(List[str]): Optional generated paths to end downstream chains at.
+        ignore_deleted(bool): Whether to ignore deleted generations.
+        client_path(Path): Path to project's root directory.
+        activity_gateway(IActivityGateway): The injected Activity gateway.
 
     Returns:
         Set[Activity]: All activities and their downstream activities.

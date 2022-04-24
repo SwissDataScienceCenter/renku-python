@@ -56,7 +56,7 @@ from renku.ui.cli.utils.callback import ClickCallback
 
 @click.command()
 @click.pass_context
-@click.option("--ignore-deleted", is_flag=True, help="Ignore deleted paths.")
+@click.option("-i", "--ignore-deleted", is_flag=True, help="Ignore deleted paths.")
 @click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 def status(ctx, paths, ignore_deleted):
     """Show a status of the repository."""

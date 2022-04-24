@@ -130,7 +130,7 @@ Ignoring deleted paths
 
 The update command will regenerate any deleted files/directories. If you don't
 want to regenerate deleted paths, pass ``--ignore-deleted`` to the update
-command. You can make this as the default behavior by setting
+command. You can make this the default behavior by setting
 ``update_ignore_delete`` config value for a project or globally:
 
   .. code-block:: console
@@ -166,7 +166,7 @@ from renku.ui.cli.utils.plugins import available_workflow_providers
 @click.option(
     "config", "-c", "--config", metavar="<config file>", help="YAML file containing configuration for the provider."
 )
-@click.option("--ignore-deleted", is_flag=True, help="Ignore deleted paths.")
+@click.option("-i", "--ignore-deleted", is_flag=True, help="Ignore deleted paths.")
 def update(update_all, dry_run, paths, provider, config, ignore_deleted):
     """Update existing files by rerunning their outdated workflow."""
     from renku.command.format.activity import tabulate_activities

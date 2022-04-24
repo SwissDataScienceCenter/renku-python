@@ -28,7 +28,6 @@ from renku.command.update import (
     get_downstream_generating_activities,
     is_activity_valid,
 )
-from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util.os import get_relative_path_to_cwd, get_relative_paths
 
@@ -39,7 +38,7 @@ def get_status_command():
 
 
 @inject.autoparams()
-def _get_status(ignore_deleted, client_dispatcher: IClientDispatcher, activity_gateway: IActivityGateway, paths=None):
+def _get_status(ignore_deleted: bool, client_dispatcher: IClientDispatcher, paths=None):
     def mark_generations_as_stale(activity):
         for generation in activity.generations:
             generation_path = get_relative_path_to_cwd(client.path / generation.entity.path)
@@ -49,7 +48,7 @@ def _get_status(ignore_deleted, client_dispatcher: IClientDispatcher, activity_g
 
     ignore_deleted = ignore_deleted or client.get_value("renku", "update_ignore_delete")
 
-    modified, deleted = get_all_modified_and_deleted_activities_and_entities(client.repository, activity_gateway)
+    modified, deleted = get_all_modified_and_deleted_activities_and_entities(client.repository)
 
     modified = {(a, e) for a, e in modified if is_activity_valid(a)}
     deleted = {(a, e) for a, e in deleted if is_activity_valid(a)}
@@ -73,7 +72,6 @@ def _get_status(ignore_deleted, client_dispatcher: IClientDispatcher, activity_g
 
         activities = get_downstream_generating_activities(
             starting_activities={start_activity},
-            activity_gateway=activity_gateway,
             paths=generation_paths,
             ignore_deleted=ignore_deleted,
             client_path=client.path,
