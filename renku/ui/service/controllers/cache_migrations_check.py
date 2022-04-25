@@ -79,7 +79,7 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
                 result = self._fast_op_without_cache()
             except (AuthenticationError, ProjectNotFound):
                 raise
-            except Exception:
+            except BaseException:
                 result = self.execute_op()
 
         return result_response(self.RESPONSE_SERIALIZER, result)
