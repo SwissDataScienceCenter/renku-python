@@ -106,8 +106,19 @@ echo -e ""
 echo -e "\U0001F438 Enjoy Renku!"
 echo -e ""
 
-telepresence \
-    --swap-deployment "${POD_NAME}" \
-    --namespace "${DEV_NAMESPACE}" \
-    --expose 5000:8080 \
-    --run-shell
+if [[ $(telepresence version) == *"lient: v2."* ]]
+then
+    echo -e "Telepresence V2 detected."
+    telepresence  \
+        intercept "${POD_NAME}" \
+        --namespace "${DEV_NAMESPACE}" \
+        --port 5000 \
+        -- bash
+else
+    echo -e "Telepresence may be outdated."
+    telepresence \
+        --swap-deployment "${POD_NAME}" \
+        --namespace "${DEV_NAMESPACE}" \
+        --expose 5000:8080 \
+        --run-shell
+fi
