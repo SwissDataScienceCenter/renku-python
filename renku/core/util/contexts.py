@@ -106,7 +106,7 @@ def measure(message="TOTAL"):
 
 def click_context(path, command):
     """Provide a click context with repo path injected."""
-    from renku.core.management import RENKU_HOME
+    from renku.core.constant import RENKU_HOME
     from renku.core.management.client import LocalClient
 
     return click.Context(

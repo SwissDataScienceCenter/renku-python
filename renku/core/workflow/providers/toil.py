@@ -37,11 +37,10 @@ from toil.lib.docker import apiDockerCall
 
 from renku.command.echo import progressbar
 from renku.core import errors
+from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.errors import WorkflowExecuteError
-from renku.core.management.config import RENKU_HOME
 from renku.core.plugin import hookimpl
 from renku.core.plugin.provider import RENKU_ENV_PREFIX
-from renku.core.workflow.plan_factory import RENKU_TMP
 from renku.domain_model.workflow.parameter import CommandParameterBase
 from renku.domain_model.workflow.plan import Plan
 from renku.domain_model.workflow.provider import IWorkflowProvider
