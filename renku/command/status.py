@@ -23,13 +23,13 @@ from typing import Dict, Set
 
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
-from renku.command.update import (
+from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.util.os import get_relative_path_to_cwd, get_relative_paths
+from renku.core.workflow.activity import (
     get_all_modified_and_deleted_activities_and_entities,
     get_downstream_generating_activities,
     is_activity_valid,
 )
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.util.os import get_relative_path_to_cwd, get_relative_paths
 
 
 def get_status_command():
