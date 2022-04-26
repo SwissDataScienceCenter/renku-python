@@ -688,8 +688,10 @@ def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_ur
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_migrations_remote_errors(svc_client, identity_headers, it_remote_repo_url):
-    """Check if migrations are required for a remote project."""
+def test_check_migrations_remote_errors(
+    svc_client, identity_headers, it_remote_repo_url, it_remote_public_renku_repo_url
+):
+    """Check migrations throws the correct errors."""
 
     # NOTE: repo doesn't exist
     fake_url = f"{it_remote_repo_url}FAKE_URL"
@@ -697,6 +699,24 @@ def test_check_migrations_remote_errors(svc_client, identity_headers, it_remote_
 
     assert_rpc_response(response, "error")
     assert UserRepoUrlInvalidError.code == response.json["error"]["code"]
+
+    # NOTE: token errors
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+    )
+    assert_rpc_response(response)
+
+    identity_headers["Authorization"] = "Bearer 123abc"
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+    )
+    assert_rpc_response(response, "error")
+    assert UserRepoUrlInvalidError.code == response.json["error"]["code"]
+
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_public_renku_repo_url), headers=identity_headers
+    )
+    assert_rpc_response(response)
 
 
 @pytest.mark.service
