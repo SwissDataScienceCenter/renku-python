@@ -236,6 +236,16 @@ def write_and_commit_file(repository: Repository, path: Union[Path, str], conten
     repository.commit(f"Updated '{path.relative_to(repository.path)}'")
 
 
+def delete_and_commit_file(repository: Repository, path: Union[Path, str]):
+    """Delete a file and make a commit."""
+    path = repository.path / path
+
+    path.unlink()
+
+    repository.add(path)
+    repository.commit(f"Deleted '{path.relative_to(repository.path)}'")
+
+
 def create_dummy_activity(
     plan: Union[Plan, str],
     usages: List[Union[Path, str, Usage]] = [],
