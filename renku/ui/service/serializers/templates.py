@@ -19,7 +19,7 @@
 
 from urllib.parse import urlparse
 
-from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load
 from yagup import GitURL
 from yagup.exceptions import InvalidURL
 
@@ -54,29 +54,23 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     """Request schema for listing manifest templates."""
 
     identifier = fields.String(required=True)
+    initial_branch = fields.String(missing=None)
     parameters = fields.List(fields.Nested(TemplateParameterSchema), missing=[])
-
     project_name = fields.String(required=True)
     project_namespace = fields.String(required=True)
     project_repository = fields.String(required=True)
-    project_slug = fields.String(required=True)
     project_description = fields.String(missing=None)
     project_keywords = fields.List(fields.String(), missing=None)
     project_custom_metadata = fields.Dict(missing=None)
 
-    new_project_url = fields.String(required=True)
-    project_name_stripped = fields.String(required=True)
-
-    initial_branch = fields.String(missing=None)
-
-    @pre_load()
-    def create_new_project_url(self, data, **kwargs):
-        """Set owner and name fields."""
+    @post_load()
+    def add_required_fields(self, data, **kwargs):
+        """Add necessary fields."""
+        project_name_stripped = normalize_to_ascii(data["project_name"])
+        if len(project_name_stripped) == 0:
+            raise ValidationError("Project name contains only unsupported characters")
+        new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
         try:
-            project_name_stripped = normalize_to_ascii(data["project_name"])
-            if len(project_name_stripped) == 0:
-                raise ValidationError("Project name contains only unsupported characters")
-            new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
             _ = GitURL.parse(new_project_url)
         except InvalidURL as e:
             raise ValidationError("`git_url` contains unsupported characters") from e
@@ -86,25 +80,9 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
         data["project_name_stripped"] = project_name_stripped
         data["project_slug"] = project_slug
 
-        return data
-
-    @validates("new_project_url")
-    def validate_new_project_url(self, value):
-        """Validates git url."""
-        try:
-            GitURL.parse(value)
-        except InvalidURL as e:
-            raise ValidationError(str(e))
-
-        return value
-
-    @post_load()
-    def format_new_project_url(self, data, **kwargs):
-        """Format URL with an access token."""
-        new_project_url = urlparse(data["new_project_url"])
-
-        url = "oauth2:{0}@{1}".format(data["token"], new_project_url.netloc)
-        data["new_project_url_with_auth"] = new_project_url._replace(netloc=url).geturl()
+        new_project_url_parsed = urlparse(new_project_url)
+        url = "oauth2:{0}@{1}".format(data["token"], new_project_url_parsed.netloc)
+        data["new_project_url_with_auth"] = new_project_url_parsed._replace(netloc=url).geturl()
 
         return data
 
