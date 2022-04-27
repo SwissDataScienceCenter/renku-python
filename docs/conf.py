@@ -335,7 +335,7 @@ intersphinx_mapping = {
 
 # Autodoc configuraton.
 autoclass_content = "both"
-autodoc_mock_imports = ["persistent", "ZODB"]
+autodoc_mock_imports = ["persistent", "ZODB", "calamus"]
 autodoc_typehints = "none"
 autodoc_typehints_description_target = "documented"
 
@@ -349,9 +349,11 @@ nitpick_ignore = [
     ("py:class", "CommandResult"),
     ("py:class", "CommunicationCallback"),
     ("py:class", "DynamicProxy"),
+    ("py:class", "IActivityGateway"),
     ("py:class", "IClientDispatcher"),
     ("py:class", "IDatabaseDispatcher"),
     ("py:class", "IDatasetGateway"),
+    ("py:class", "IPlanGateway"),
     ("py:class", "LocalClient"),
     ("py:class", "OID_TYPE"),
     ("py:class", "Path"),
@@ -361,4 +363,11 @@ nitpick_ignore = [
     ("py:class", '"LocalClient"'),
     ("py:class", '"ValueResolver"'),
     ("py:exc", "errors.ParameterError"),
+]
+
+nitpick_ignore_regex = [
+    ("py:class", r"calamus.*"),
+    ("py:class", r"docker.*"),
+    ("py:class", r"marshmallow.*"),
+    ("py:class", r"yaml.*"),
 ]

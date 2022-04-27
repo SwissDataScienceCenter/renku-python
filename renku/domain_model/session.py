@@ -48,7 +48,7 @@ class ISessionProvider(metaclass=ABCMeta):
             config: Path to the session provider specific configuration YAML.
 
         Returns:
-            str: a unique id for the created interactive sesssion.
+            str: a unique id for the created interactive session.
         """
         pass
 
@@ -112,7 +112,7 @@ class ISessionProvider(metaclass=ABCMeta):
             gpu_request: GPU device request for the session.
 
         Returns:
-            str: a unique id for the created interactive sesssion.
+            str: a unique id for the created interactive session.
         """
         pass
 

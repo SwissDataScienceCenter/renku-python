@@ -120,7 +120,7 @@ def is_ascii(data):
 
 
 def normalize_to_ascii(input_string, sep="-"):
-    """Adjust chars to make the input compatible as scm source."""
+    """Convert a string to only contain ASCII characters, with non-ASCII substring replaced with ``sep``."""
     replace_all = [sep, "_", "."]
     for replacement in replace_all:
         input_string = input_string.replace(replacement, " ")

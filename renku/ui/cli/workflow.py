@@ -1046,7 +1046,7 @@ def execute(
 @click.option(
     "--from",
     "sources",
-    type=click.Path(exists=True, dir_okay=False),
+    type=click.Path(exists=False, dir_okay=False),
     multiple=True,
     help="Start drawing the graph from this file.",
 )
@@ -1070,7 +1070,7 @@ def execute(
     type=click.STRING,
     help="Git revision to generate the graph for.",
 )
-@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
+@click.argument("paths", type=click.Path(exists=False, dir_okay=True), nargs=-1)
 def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pager, no_pager, revision, paths):
     """Visualization of workflows that produced outputs at the specified paths.
 

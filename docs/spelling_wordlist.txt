@@ -47,6 +47,7 @@ cwl
 CWL
 dataset
 datasets
+datetimes
 dataverse
 Dataverse
 deployer
@@ -54,6 +55,7 @@ deserialization
 deserialize
 Deserialize
 Deserialized
+deserializing
 discoverable
 Dockerfile
 dockerfiles
@@ -79,7 +81,9 @@ gitkeep
 gitlab
 GitLab
 gitlabClientSecret
+GitPython
 GraphQL
+hexsha
 Homebrew
 hostname
 hotfix
@@ -124,6 +128,7 @@ middleware
 migrationscheck
 minikube
 minimalistic
+misconfiguration
 mistyped
 mls
 mydomain
@@ -171,6 +176,7 @@ repo
 reproducibility
 Reproducibility
 reproducibly
+resolvers
 resync
 reusability
 Reusability
@@ -183,6 +189,8 @@ runnable
 runtime
 runtimes
 scala
+serializer
+sha
 shacl
 Slurm
 SPARQL
@@ -200,6 +208,8 @@ Subclasses
 subcommand
 subdirectories
 subdirectory
+subfolder
+subfolders
 subgraph
 Subgraph
 submodule
@@ -207,6 +217,7 @@ submodules
 subpath
 substep
 substeps
+substring
 subsubcommand
 subsubcommands
 sudo
@@ -231,9 +242,12 @@ unlink
 Unlink
 unlinking
 unmapped
+unmerged
 untracked
 untracked
+updatable
 url
+urls
 username
 validator
 versioned

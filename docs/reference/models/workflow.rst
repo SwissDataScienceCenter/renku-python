@@ -23,56 +23,26 @@ Renku Workflow
 Renku uses PROV-O and its own Renku ontology to represent workflows.
 
 
-Plans
------
+plan
+----------------------------------------
 
 .. automodule:: renku.domain_model.workflow.plan
    :members:
+   :show-inheritance:
 
+composite\_plan
+---------------------------------------------------
 
 .. automodule:: renku.domain_model.workflow.composite_plan
    :members:
+   :show-inheritance:
 
-Parameters
-----------
+parameter
+---------------------------------------------
 
 .. automodule:: renku.domain_model.workflow.parameter
    :members:
-
-
-Renku Workflow Logic
-====================
-
-.. py:module:: renku.core.workflow
-
-Execution Graph
----------------
-
-.. automodule:: renku.core.workflow.concrete_execution_graph
-   :members:
-
-Value Resolution
-----------------
-
-.. automodule:: renku.core.workflow.value_resolution
-   :members:
-
-Plan Factory
-------------
-
-Used to create ``Plan`` objects based on command line arguments
-
-.. automodule:: renku.core.workflow.plan_factory
-   :members:
-
-Renku Provenance Logic
-----------------------
-
-Use for building a direct acyclic graph of past executions.
-
-.. automodule:: renku.core.workflow.activity
-   :members:
-
+   :show-inheritance:
 
 
 Renku Workflow Conversion

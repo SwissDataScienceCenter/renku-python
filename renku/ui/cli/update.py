@@ -19,7 +19,7 @@ r"""Update outdated files created by the "run" command.
 
 .. image:: ../_static/asciicasts/update.delay.gif
    :width: 850
-   :alt: Update outdate files
+   :alt: Update outdated files
 
 Recreating outdated files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -28,7 +28,7 @@ The information about dependencies for each file in a Renku project is stored
 in various metadata.
 
 When an update command is executed, Renku looks into the most recent execution
-of each workflow (Run and Plan combination) and checks which one is outdated
+of each workflow (Plan and Activity combination) and checks which one is outdated
 (i.e. at least one of its inputs is modified). It generates a minimal
 dependency graph for each outdated file stored in the repository. It means
 that only the necessary steps will be executed.
@@ -125,6 +125,21 @@ The following commands will produce the same result.
    $ renku update C
    $ renku update B C D
 
+Ignoring deleted paths
+~~~~~~~~~~~~~~~~~~~~~~
+
+The update command will regenerate any deleted files/directories. If you don't
+want to regenerate deleted paths, pass ``--ignore-deleted`` to the update
+command. You can make this the default behavior by setting
+``update_ignore_delete`` config value for a project or globally:
+
+  .. code-block:: console
+
+     $ renku config set [--global] update_ignore_delete True
+
+Note that deleted path always will be regenerated if they have siblings or
+downstream dependencies that aren't deleted.
+
 """
 
 import click
@@ -151,7 +166,8 @@ from renku.ui.cli.utils.plugins import available_workflow_providers
 @click.option(
     "config", "-c", "--config", metavar="<config file>", help="YAML file containing configuration for the provider."
 )
-def update(update_all, dry_run, paths, provider, config):
+@click.option("-i", "--ignore-deleted", is_flag=True, help="Ignore deleted paths.")
+def update(update_all, dry_run, paths, provider, config, ignore_deleted):
     """Update existing files by rerunning their outdated workflow."""
     from renku.command.format.activity import tabulate_activities
     from renku.command.update import update_command
@@ -163,7 +179,14 @@ def update(update_all, dry_run, paths, provider, config):
             update_command()
             .with_communicator(communicator)
             .build()
-            .execute(update_all=update_all, dry_run=dry_run, paths=paths, provider=provider, config=config)
+            .execute(
+                update_all=update_all,
+                dry_run=dry_run,
+                paths=paths,
+                provider=provider,
+                config=config,
+                ignore_deleted=ignore_deleted,
+            )
         )
     except errors.NothingToExecuteError:
         exit(1)

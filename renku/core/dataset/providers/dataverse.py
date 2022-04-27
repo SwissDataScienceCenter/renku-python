@@ -149,7 +149,7 @@ class DataverseProvider(ProviderApi):
 
     @staticmethod
     def supports(uri):
-        """Check if provider supports a given uri."""
+        """Check if provider supports a given URI."""
         is_doi_ = is_doi(uri)
 
         is_dataverse_uri = is_doi_ is None and check_dataverse_uri(uri)
@@ -177,7 +177,7 @@ class DataverseProvider(ProviderApi):
 
     @staticmethod
     def record_id(uri):
-        """Extract record id from uri."""
+        """Extract record id from URI."""
         parsed = urlparse.urlparse(uri)
         return urlparse.parse_qs(parsed.query)["persistentId"][0]
 
@@ -188,7 +188,7 @@ class DataverseProvider(ProviderApi):
             uri: DOI or URL.
 
         Returns:
-            DataverseRecord: The found record
+            DataverseRecordSerializer: The found record
 
         """
         if self.is_doi:
@@ -236,7 +236,7 @@ class DataverseProvider(ProviderApi):
 
 
 class DataverseRecordSerializer(ProviderRecordSerializerApi):
-    """Dataverse record Serializer."""
+    """Dataverse record serializer."""
 
     def __init__(self, uri: str, json: Dict[str, Any]):
         super().__init__(uri=uri)
@@ -274,7 +274,7 @@ class DataverseRecordSerializer(ProviderRecordSerializerApi):
 
     @property
     def latest_uri(self):
-        """Get uri of latest version."""
+        """Get URI of latest version."""
         return self._uri
 
     def get_files(self):

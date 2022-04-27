@@ -224,8 +224,8 @@ def test_explicit_inputs_can_be_in_inputs(renku_cli, client, subdirectory):
 
     exit_code, activity = renku_cli("run", "--input", foo, "--no-output", "ls", foo)
 
-    plan = activity.association.plan
     assert 0 == exit_code
+    plan = activity.association.plan
     assert 1 == len(plan.inputs)
 
     assert "foo" == str(plan.inputs[0].default_value)
