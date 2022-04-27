@@ -21,12 +21,14 @@ from pathlib import Path
 
 import pytest
 
+IT_REMOTE_REPO_URL = os.getenv(
+    "IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-integration-test"
+)
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
     "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-protected.git"
 )
-
-IT_REMOTE_REPO_URL = os.getenv(
-    "IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-integration-test"
+IT_PUBLIC_REMOTE_REPO_URL = os.getenv(
+    "IT_PUBLIC_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-public"
 )
 IT_REMOTE_NON_RENKU_REPO_URL = os.getenv(
     "IT_REMOTE_NON_RENKU_REPO_URL", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-non-renku"
