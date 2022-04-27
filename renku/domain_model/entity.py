@@ -52,6 +52,9 @@ class Entity(Immutable):
     def __hash__(self):
         return hash((self.checksum, self.path))
 
+    def __repr__(self) -> str:
+        return f"{self.path}#{self.checksum}"
+
     @staticmethod
     def generate_id(checksum: str, path: Union[Path, str]) -> str:
         """Generate an Entity identifier."""
