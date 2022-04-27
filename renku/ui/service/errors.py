@@ -628,7 +628,7 @@ class IntermittentAuthenticationError(ServiceError):
     This may happen for a number of reasons. Triggering a new login will likely fix it.
     """
 
-    code = SVC_ERROR_USER + 30
+    code = SVC_ERROR_INTERMITTENT + 30
     userMessage = "Invalid user credentials. Please try to log out and in again."
     devMessage = "Authentication error. Check the Sentry exception to inspect the headers"
 

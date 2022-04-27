@@ -22,76 +22,18 @@ Provenance
 
 Extract provenance information from the repository.
 
-
-Activities
-----------
-
-.. py:module:: renku.domain_model.provenance.activity
-
-.. autoclass:: Activity
+.. automodule:: renku.domain_model.provenance.activity
    :members:
-   :inherited-members:
+   :show-inheritance:
 
-.. autoclass:: ActivityCollection
+.. automodule:: renku.domain_model.provenance.agent
    :members:
-   :inherited-members:
+   :show-inheritance:
 
-.. autoclass:: Association
+.. automodule:: renku.domain_model.provenance.annotation
    :members:
-   :inherited-members:
+   :show-inheritance:
 
-.. autoclass:: Generation
+.. automodule:: renku.domain_model.provenance.parameter
    :members:
-   :inherited-members:
-
-.. autoclass:: Usage
-   :members:
-   :inherited-members:
-
-
-Entities
---------
-
-.. py:module:: renku.domain_model.entity
-
-.. autoclass:: Entity
-   :members:
-   :inherited-members:
-
-.. autoclass:: Collection
-   :members:
-   :inherited-members:
-
-
-Agents
-------
-
-.. py:module:: renku.domain_model.provenance.agent
-
-.. autoclass:: Person
-   :members:
-   :inherited-members:
-
-.. autoclass:: SoftwareAgent
-   :members:
-   :inherited-members:
-
-
-Annotations
------------
-
-.. py:module:: renku.domain_model.provenance.annotation
-
-.. autoclass:: Annotation
-   :members:
-   :inherited-members:
-
-
-Parameters
-----------
-
-.. py:module:: renku.domain_model.provenance.parameter
-
-.. autoclass:: ParameterValue
-   :members:
-   :inherited-members:
+   :show-inheritance:

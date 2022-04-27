@@ -42,7 +42,7 @@ class NoDatesSafeLoader(SafeLoader):
         Takes care not to modify resolvers in super classes.
 
         We want to load datetimes as strings, not dates, because we
-        go on to serialise as json which doesn't have the advanced types
+        go on to serialize as json which doesn't have the advanced types
         of yaml, and leads to incompatibilities down the track.
         """
         if "yaml_implicit_resolvers" not in cls.__dict__:

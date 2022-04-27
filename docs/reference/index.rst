@@ -25,9 +25,10 @@ Internals of the ``renku-python`` library.
     :maxdepth: 1
 
     commands
+    api
     models/index
     database
     gateways
-    management
+    core
     plugins
     service

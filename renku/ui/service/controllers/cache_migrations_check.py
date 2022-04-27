@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 from renku.command.migrate import migrations_check
-from renku.core.errors import MinimumVersionError, RenkuException
+from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.util.contexts import click_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
@@ -100,11 +100,15 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(self.RESPONSE_SERIALIZER, self.execute_op())
+        if "project_id" in self.context:
+            result = self.execute_op()
+        else:
+            # NOTE: use quick flow but fallback to regular flow in case of unexpected exceptions
+            try:
+                result = self._fast_op_without_cache()
+            except (AuthenticationError, ProjectNotFound):
+                raise
+            except BaseException:
+                result = self.execute_op()
 
-        # TODO: Enable this optimization. See https://github.com/SwissDataScienceCenter/renku-python/issues/2546
-        # if "project_id" in self.context:
-        #     # use regular flow using cache
-        #     return result_response(self.RESPONSE_SERIALIZER, self.execute_op())
-        #
-        # return result_response(self.RESPONSE_SERIALIZER, self._fast_op_without_cache())
+        return result_response(self.RESPONSE_SERIALIZER, result)

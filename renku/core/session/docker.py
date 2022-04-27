@@ -43,7 +43,10 @@ class DockerSessionProvider(ISessionProvider):
         Note:
             This is not a @property, even though it should be, because ``pluggy``
             will call it in that case in unrelated parts of the code that will
-            raise errors.DockerError exception when docker is not available.
+        Raises:
+            errors.DockerError: Exception when docker is not available.
+        Returns:
+            The docker client.
         """
         if self._docker_client is None:
             try:
@@ -120,7 +123,7 @@ class DockerSessionProvider(ISessionProvider):
         """Creates an interactive session.
 
         Returns:
-            str: a unique id for the created interactive sesssion.
+            str: a unique id for the created interactive session.
         """
 
         try:

@@ -15,21 +15,9 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-.. _models:
+Entity
+-------
 
-Models
-======
-
-.. automodule:: renku.domain_model
-
-.. toctree::
-   :maxdepth: 1
-
-   projects
-   entity
-   datasets
-   provenance
-   workflow
-   session
-   template
-   refs
+.. automodule:: renku.domain_model.entity
+   :members:
+   :show-inheritance:
