@@ -590,7 +590,7 @@ class TerminalSizeError(RenkuException):
 
 
 class DockerError(RenkuException):
-    """Raised when error has occured while executing docker command."""
+    """Raised when error has occurred while executing docker command."""
 
     def __init__(self, reason: str):
         """Embed exception and build a custom message."""
