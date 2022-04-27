@@ -26,6 +26,7 @@ from redis import RedisError
 from requests import RequestException
 
 from renku.core.errors import (
+    AuthenticationError,
     DatasetExistsError,
     DatasetImageError,
     DockerfileUpdateError,
@@ -35,6 +36,7 @@ from renku.core.errors import (
     MigrationError,
     MigrationRequired,
     ParameterError,
+    ProjectNotFound,
     RenkuException,
     TemplateMissingReferenceError,
     TemplateUpdateError,
@@ -126,7 +128,7 @@ def handle_jwt_except(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
-        except (ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError) as e:
+        except (AuthenticationError, ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError) as e:
             raise IntermittentAuthenticationError(e)
 
     return decorated_function
@@ -392,6 +394,8 @@ def handle_migration_read_errors(f):
             raise UserProjectTemplateReferenceError(e)
         except (InvalidTemplateError, TemplateUpdateError) as e:
             raise IntermittentProjectTemplateUnavailable(e)
+        except ProjectNotFound as e:
+            raise UserRepoUrlInvalidError(e)
 
     return decorated_function
 
