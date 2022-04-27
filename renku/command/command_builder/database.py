@@ -84,7 +84,10 @@ class DatabaseCommand(Command):
             try:
                 with open(client.database_path / "project", "r") as f:
                     project = json.load(f)
-                    minimum_renku_version = Version(project.get("minimum_renku_version"))
+                    min_version = project.get("minimum_renku_version")
+                    if min_version is None:
+                        return
+                    minimum_renku_version = Version(min_version)
             except (KeyError, OSError, json.JSONDecodeError):
                 # NOTE: We don't check minimum version if there's no project metadata available
                 return
