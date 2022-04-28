@@ -721,6 +721,7 @@ def test_check_migrations_remote_errors(
 
 @pytest.mark.service
 @pytest.mark.integration
+@retry_failed
 def test_mirgate_wrong_template_failure(svc_client_with_repo, template, monkeypatch):
     """Check if migrations gracefully fail when the project template is not available."""
     import renku.core.template.usecase
