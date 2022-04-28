@@ -23,5 +23,24 @@ Renku uses an internal database store in the ``.renku/metadata`` that uses a
 custom implementation of the ZODB object database, with a separate file per
 main entity.
 
+Database
+--------
+
 .. automodule:: renku.infrastructure.database
+   :members:
+
+Persistent
+----------
+
+Extension of ``persistent.Persistent`` that supports immutability.
+
+.. automodule:: renku.infrastructure.persistent
+   :members:
+
+Immutable
+---------
+
+Classes to support immutability of renku models.
+
+.. automodule:: renku.infrastructure.immutable
    :members:

@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Entities JSON-LD schemas."""
+"""Entities JSON-LD schemes."""
 
 from renku.command.schema.calamus import JsonLDSchema, Nested, fields, prov, renku
 from renku.domain_model.entity import Collection, Entity

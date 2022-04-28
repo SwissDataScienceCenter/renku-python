@@ -54,7 +54,7 @@ _MARKER = object()
 
 
 def git_unicode_unescape(s: Optional[str], encoding: str = "utf-8") -> str:
-    """Undoes git/gitpython unicode encoding."""
+    """Undoes git/GitPython unicode encoding."""
     if s is None:
         return ""
 

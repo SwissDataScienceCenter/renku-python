@@ -15,17 +15,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper utils for handling DOIs."""
+"""Helper utilities for handling DOIs."""
 import re
 
 doi_regexp = re.compile(
     r"(doi:\s*|(?:(?:https|http)://)?(?:(?:dx|www)\.)?doi\.org/)?" + r"(10\.\d+(.\d+)*/.+)$", flags=re.I
 )
-"""See http://en.wikipedia.org/wiki/Digital_object_identifier."""
+# NOTE: See http://en.wikipedia.org/wiki/Digital_object_identifier
 
 
 def is_doi(uri):
-    """Check if uri is DOI."""
+    """Check if URI is DOI."""
     return doi_regexp.match(uri)
 
 
