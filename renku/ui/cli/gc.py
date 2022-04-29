@@ -15,4 +15,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku repository management."""
+r"""Free up disk space by removing temporary files and caches in a Renku project.
+
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku gc
+   :description: Free up disk space used for caches and temporary files.
+   :extended:
+"""
+
+import click
+
+
+@click.command()
+def gc():
+    """Cache and temporary files cleanup."""
+    from renku.command.gc import gc_command
+
+    gc_command().build().execute()

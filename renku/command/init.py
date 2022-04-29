@@ -27,10 +27,10 @@ from renku.command.command_builder.command import Command, inject
 from renku.command.git import set_git_home
 from renku.command.mergetool import setup_mergetool
 from renku.core import errors
+from renku.core.constant import RENKU_HOME
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
-from renku.core.management import RENKU_HOME
 from renku.core.migration.utils import OLD_METADATA_PATH
 from renku.core.template.template import (
     FileAction,

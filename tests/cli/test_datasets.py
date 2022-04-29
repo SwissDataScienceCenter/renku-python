@@ -29,11 +29,11 @@ import pytest
 from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core import errors
+from renku.core.constant import RENKU_HOME
 from renku.core.dataset.constant import renku_pointers_path
 from renku.core.dataset.providers import ProviderFactory
 from renku.core.dataset.providers.dataverse import DataverseProvider
 from renku.core.dataset.providers.zenodo import ZenodoProvider
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset

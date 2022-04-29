@@ -18,6 +18,16 @@
 Changes
 =======
 
+`1.2.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.1...v1.2.2>`__ (2022-04-13)
+-------------------------------------------------------------------------------------------------------
+
+This is a hotfix release.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix SHACL shape to properly validate imported ``Dataset.datePublished`` for Zenodo
+
 `1.2.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.0...v1.2.1>`__ (2022-04-11)
 -------------------------------------------------------------------------------------------------------
 

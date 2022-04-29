@@ -30,7 +30,8 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
-from renku.core.dataset.constant import CACHE, renku_pointers_path
+from renku.core.constant import CACHE
+from renku.core.dataset.constant import renku_pointers_path
 from renku.core.dataset.context import DatasetContext
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file

@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Union
 
 from renku.core import errors
+from renku.core.constant import RENKU_HOME
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
 
 

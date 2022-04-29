@@ -155,6 +155,7 @@ def copy_template_to_client(
         except OSError as e:
             # TODO: Use a general cleanup strategy: https://github.com/SwissDataScienceCenter/renku-python/issues/736
             if cleanup:
+                client.repository.reset(hard=True)
                 client.repository.clean()
 
             raise errors.TemplateUpdateError(f"Cannot write to '{destination}'") from e

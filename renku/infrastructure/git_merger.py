@@ -31,9 +31,9 @@ from zc.relation.catalog import Catalog
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
+from renku.core.constant import RENKU_HOME
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
 from renku.core.util import communication
 from renku.domain_model.dataset import Dataset, Url
