@@ -3,4 +3,4 @@ appVersion: "1.0"
 description: A Helm chart for Kubernetes
 name: renku-core
 icon: https://avatars0.githubusercontent.com/u/53332360?s=400&u=a4311d22842343604ef61a8c8a1e5793209a67e9&v=4
-version: 1.2.1
+version: 1.2.2

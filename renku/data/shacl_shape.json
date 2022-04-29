@@ -408,7 +408,7 @@
                   "@id": "xsd:string"
                },
                "maxCount": 1,
-               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2})?"
+               "sh:pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2})?$"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1134,6 +1134,11 @@
                   },
                   {
                      "datatype": {
+                        "@id": "xsd:double"
+                     }
+                  },
+                  {
+                     "datatype": {
                         "@id": "xsd:integer"
                      }
                   },
@@ -1359,6 +1364,11 @@
                "nodeKind": "sh:Literal",
                "path": "schema:value",
                "or": [
+                  {
+                     "datatype": {
+                        "@id": "xsd:double"
+                     }
+                  },
                   {
                      "datatype": {
                         "@id": "xsd:decimal"
