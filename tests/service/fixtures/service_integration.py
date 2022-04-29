@@ -27,7 +27,7 @@ import pytest
 
 from renku.core import errors
 from renku.infrastructure.repository import Repository
-from tests.utils import format_result_exception, modified_environ
+from tests.utils import assert_rpc_response, format_result_exception, modified_environ
 
 
 @contextlib.contextmanager
@@ -91,6 +91,7 @@ def integration_repo(headers, project_id, url_components) -> Generator[Repositor
 
 
 @pytest.fixture()
+# ! TODO: THIS IS FAILING
 def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_repo_url):
     """Setup and teardown steps for integration tests."""
     from renku.domain_model.git import GitURL
@@ -101,6 +102,9 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_re
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
+    print(response.json)
+    print(json.dumps(identity_headers))
+    assert_rpc_response(response)
     assert response
     assert {"result"} == set(response.json.keys())
 
