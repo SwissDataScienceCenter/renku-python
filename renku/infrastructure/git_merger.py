@@ -18,6 +18,7 @@
 """Merge strategies."""
 
 import os
+from json import JSONDecodeError
 from pathlib import Path
 from tempfile import mkdtemp
 from typing import List, NamedTuple, Optional, Union, cast
@@ -65,7 +66,10 @@ class GitMerger:
 
         try:
             local_object = self.local_database.get_from_path(str(client.path / local))
-            base_object = self.local_database.get_from_path(str(client.path / base))
+            try:
+                base_object: Optional[Persistent] = self.local_database.get_from_path(str(client.path / base))
+            except (errors.ObjectNotFoundError, JSONDecodeError):
+                base_object = None
 
             for entry in self.remote_entries:
                 try:
@@ -116,7 +120,7 @@ class GitMerger:
                     pass
                 raise
 
-    def merge_objects(self, local: Persistent, remote: Persistent, base: Persistent) -> Persistent:
+    def merge_objects(self, local: Persistent, remote: Persistent, base: Optional[Persistent]) -> Persistent:
         """Merge two database objects."""
         if type(local) != type(remote):
             raise errors.MetadataMergeError(f"Cannot merge {local} and {remote}: disparate types.")
@@ -124,8 +128,10 @@ class GitMerger:
             return self._merge_btrees(local, remote)
         elif isinstance(local, TreeSet):
             return self._merge_treesets(local, remote)
+        elif isinstance(local, Catalog):
+            return self._merge_catalogs(local, remote)
         elif isinstance(local, Project):
-            return self._merge_projects(local, remote, base)
+            return self._merge_projects(local, remote, cast(Optional[Project], base))
         else:
             raise errors.MetadataMergeError(
                 f"Cannot merge {local} and {remote}: type not supported for automated merge."
@@ -233,29 +239,49 @@ class GitMerger:
 
     def _merge_catalogs(self, local: Catalog, remote: Catalog) -> Catalog:
         """Merge two Catalogs."""
-        raise NotImplementedError()
+        for key, value in remote._EMPTY_name_TO_relcount_relset.items():
+            if key not in local._EMPTY_name_TO_relcount_relset:
+                local._EMPTY_name_TO_relcount_relset[key] = value
 
-    def _merge_projects(self, local: Project, remote: Project, base: Project) -> Project:
+        for key, value in remote._name_TO_mapping.items():
+            if key not in local._name_TO_mapping:
+                local._name_TO_mapping[key] = value
+                continue
+            for subkey, subvalue in value.items():
+                if subkey not in local._name_TO_mapping[key]:
+                    local._name_TO_mapping[key][subkey] = subvalue
+
+        for key, value in remote._reltoken_name_TO_objtokenset:
+            if key not in local._reltoken_name_TO_objtokenset:
+                local._reltoken_name_TO_objtokenset[key] = value
+
+        return local
+
+    def _merge_projects(self, local: Project, remote: Project, base: Optional[Project]) -> Project:
         """Merge two Project entries."""
 
         local_changed = (
-            local.keywords != base.keywords
+            base is None
+            or local.keywords != base.keywords
             or local.description != base.description
             or local.annotations != base.annotations
         )
         local_template_changed = (
-            local.template_id != base.template_id
+            base is None
+            or local.template_id != base.template_id
             or local.template_ref != base.template_ref
             or local.template_source != base.template_source
             or local.template_version != base.template_version
         )
         remote_changed = (
-            remote.keywords != base.keywords
+            base is None
+            or remote.keywords != base.keywords
             or remote.description != base.description
             or remote.annotations != base.annotations
         )
         remote_template_changed = (
-            remote.template_id != base.template_id
+            base is None
+            or remote.template_id != base.template_id
             or remote.template_ref != base.template_ref
             or remote.template_source != base.template_source
             or remote.template_version != base.template_version
@@ -269,7 +295,9 @@ class GitMerger:
         if local_changed or remote_changed:
             # NOTE: Merge keywords
             if local.keywords != remote.keywords:
-                if local.keywords != base.keywords and remote.keywords != base.keywords:
+                if base is None:
+                    local.keywords = list(set(local.keywords) | set(remote.keywords))
+                elif local.keywords != base.keywords and remote.keywords != base.keywords:
                     removed = (set(base.keywords) - set(local.keywords)) | (set(base.keywords) - set(remote.keywords))
                     added = (set(local.keywords) - set(base.keywords)) | (set(remote.keywords) - set(base.keywords))
                     existing = set(base.keywords) - removed
@@ -279,7 +307,8 @@ class GitMerger:
 
             # NOTE: Merge description
             if local.description != remote.description:
-                if local.description != base.description and remote.description != base.description:
+
+                if base is None or (local.description != base.description and remote.description != base.description):
                     local.description = communication.prompt(
                         f"Project description was modified in local and remote branch.\n"
                         f"local: {local.description}\nremote: {remote.description}\nEnter merged description: ",
