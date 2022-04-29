@@ -267,7 +267,9 @@ class CWLExporter(IWorkflowConverter):
                 dirents.append(path)
                 jsrequirement = True
 
-            environment_variables.append(cwl.EnvironmentDef(f"{RENKU_ENV_PREFIX}{output_.name}", output_.actual_value))
+            environment_variables.append(
+                cwl.EnvironmentDef(f"{RENKU_ENV_PREFIX}{output_.name}", str(output_.actual_value))
+            )
             outp, arg = CWLExporter._convert_output(output_)
             tool_object.outputs.append(outp)
             if arg:
@@ -280,7 +282,9 @@ class CWLExporter(IWorkflowConverter):
                 cwl.Dirent(entry="$(inputs.{})".format(tool_input.id), entryname=input_.actual_value, writable=False)
             )
 
-            environment_variables.append(cwl.EnvironmentDef(f"{RENKU_ENV_PREFIX}{input_.name}", input_.actual_value))
+            environment_variables.append(
+                cwl.EnvironmentDef(f"{RENKU_ENV_PREFIX}{input_.name}", str(input_.actual_value))
+            )
             tool_object.inputs.append(tool_input)
             if input_.mapped_to:
                 tool_object.stdin = "$(inputs.{}.path)".format(tool_input.id)
@@ -288,7 +292,7 @@ class CWLExporter(IWorkflowConverter):
 
         for parameter in workflow.parameters:
             environment_variables.append(
-                cwl.EnvironmentDef(f"{RENKU_ENV_PREFIX}{parameter.name}", parameter.actual_value)
+                cwl.EnvironmentDef(f"{RENKU_ENV_PREFIX}{parameter.name}", str(parameter.actual_value))
             )
             tool_object.inputs.append(CWLExporter._convert_parameter(parameter))
 

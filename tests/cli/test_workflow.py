@@ -1069,6 +1069,47 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project, capsys, client, provider):
+    """Test executing a workflow with --set float value for a renku.ui.api.Parameter."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+
+    with client.commit():
+        script.write_text("import sys\nprint(sys.argv[1])\n")
+
+    result = run_shell(f"renku run --name run1 -- python {script} 3.98 > {output}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "3.98\n" == output.read_text()
+
+    result = run_shell(f"renku workflow execute -p {provider} --set parameter-2=2.0 run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "2.0\n" == output.read_text()
+
+    result = run_shell(f"renku workflow iterate -p {provider} --map parameter-2=[0.1,0.3,0.5,0.8,0.95] run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+    assert output.read_text() in [
+        "0.1\n",
+        "0.3\n",
+        "0.5\n",
+        "0.8\n",
+        "0.95\n",
+    ]
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
 def test_workflow_cycle_detection(run_shell, project, capsys, client):
     """Test creating a cycle is not possible with renku run or workflow execute."""
     input = client.path / "input"
@@ -1151,6 +1192,7 @@ def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
     ],
 )
 def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, parameters, provider, outputs):
+    """Test executing a workflow with templated parameters."""
     workflow_name = "foobar"
 
     # Run a shell command with pipe.
