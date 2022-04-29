@@ -62,6 +62,13 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.dataset
 
+.. _cli-gc:
+
+``renku gc``
+------------
+
+.. automodule:: renku.ui.cli.gc
+
 .. _cli-graph:
 
 ``renku graph``

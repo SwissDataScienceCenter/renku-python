@@ -23,7 +23,7 @@ from typing import List, Union
 
 import click
 
-from renku.core.management import RENKU_HOME
+from renku.core.constant import RENKU_HOME
 
 
 class RenkuException(Exception):
