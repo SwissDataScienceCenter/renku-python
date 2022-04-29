@@ -408,7 +408,7 @@
                   "@id": "xsd:string"
                },
                "maxCount": 1,
-               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2})?"
+               "sh:pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2})?$"
             },
             {
                "nodeKind": "sh:Literal",
