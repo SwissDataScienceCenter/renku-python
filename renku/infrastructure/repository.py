@@ -207,6 +207,7 @@ class BaseRepository:
         committer: "Actor" = None,
         no_verify: bool = False,
         no_edit: bool = False,
+        paths: Optional[List[Union[Path, str]]] = None,
     ) -> "Commit":
         """Commit added files to the VCS."""
         if self._repository is None:
@@ -217,7 +218,12 @@ class BaseRepository:
         if committer:
             env.update({"GIT_COMMITTER_NAME": committer.name, "GIT_COMMITTER_EMAIL": committer.email})
 
-        self.run_git_command("commit", message=message, no_verify=no_verify, amend=amend, no_edit=no_edit, env=env)
+        # NOTE: Only commit specified paths
+        args = ["--"] + [str(p) for p in paths] if paths else []
+
+        self.run_git_command(
+            "commit", *args, message=message, no_verify=no_verify, amend=amend, no_edit=no_edit, env=env
+        )
 
         return Commit.from_commit(self._repository, self._repository.head.commit)
 
