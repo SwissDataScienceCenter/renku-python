@@ -17,13 +17,13 @@
 # limitations under the License.
 """Test execution of commands in parallel."""
 
-import os
 import subprocess
 import sys
+import textwrap
 import time
 from pathlib import Path
 
-import pytest
+from tests.utils import write_and_commit_file
 
 
 def test_run_in_isolation(runner, project, client, run, subdirectory):
@@ -51,61 +51,51 @@ def test_run_in_isolation(runner, project, client, run, subdirectory):
         assert client.repository.head.commit.hexsha != head
 
 
-@pytest.mark.skip(reason="FIXME: Isolation requires merging the database metadata.")
-def test_file_modification_during_run(
-    tmpdir, runner, project, client, run, subdirectory, no_lfs_size_limit, no_lfs_warning
-):
+def test_file_modification_during_run(tmp_path, runner, client, subdirectory, no_lfs_size_limit, no_lfs_warning):
     """Test run in isolation."""
     script = client.path / "script.py"
     output = client.path / "output"
-    lock = Path(str(tmpdir.join("lock")))
+    lock_file = tmp_path / "lock"
 
-    with client.commit():
-        script.write_text(
-            "import os, time, sys\n"
-            'open("{lock}", "a")\n'
-            'while os.path.exists("{lock}"):\n'
-            "    time.sleep(1)\n"
-            "sys.stdout.write(sys.stdin.read())\n"
-            "sys.stdout.flush()\n".format(lock=str(lock))
-        )
-
-    prefix = [
-        sys.executable,
-        "-m",
-        "renku.ui.cli",
-        "run",
-        "--isolation",
-    ]
-    cmd = ["python", os.path.relpath(script, os.getcwd())]
-
-    previous = client.repository.head.commit
+    write_and_commit_file(
+        client.repository,
+        script,
+        textwrap.dedent(
+            f"""
+            import os, time, sys
+            open("{lock_file}", "a")
+            while os.path.exists("{lock_file}"):
+                time.sleep(0.1)
+            sys.stdout.write(sys.stdin.read())
+            sys.stdout.flush()
+            """
+        ),
+    )
 
     with output.open("wb") as stdout:
-        process = subprocess.Popen(prefix + cmd, stdin=subprocess.PIPE, stdout=stdout)
+        command = [sys.executable, "-m", "renku.ui.cli", "run", "--isolation", "--", "python", script]
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=stdout)
 
-        while not lock.exists() and process.poll() is None:
-            time.sleep(1)
+        while not lock_file.exists() and process.poll() is None:
+            time.sleep(0.1)
 
         assert process.poll() is None, "Subprocess exited prematurely"
 
-        with script.open("w") as fp:
-            fp.write('print("edited")')
+        # NOTE: Modify ``script.py`` in the current worktree
+        script.write_text("print('edited')")
 
-        lock.unlink()
+        # NOTE: Signal the isolated run to continue
+        lock_file.unlink()
 
         process.communicate(input=b"test")
         assert 0 == process.wait()
 
-    with output.open("r") as fp:
-        assert "test" == fp.read().strip()
+    # NOTE: ``script.py`` is modified in the current worktree
+    assert {"script.py"} == {c.a_path for c in client.repository.unstaged_changes}
 
-    # TODO: Make sure that this test fails before fixing it
-    # NOTE: Calculate the diff between HEAD and previous commit; this is not the exact same diff but should be ok
-    diff = [
-        c
-        for commit in client.repository.iterate_commits(revision=f"{previous.hexsha}..HEAD")
-        for c in commit.get_changes()
-    ]
-    modifications = [modification for modification in diff if modification.change_type == "M"]
-    assert 0 == len(modifications), f"{[(f.a_path, f.change_type) for f in diff]}"
+    # NOTE: Isolated run finished with the expected result
+    assert "test" == output.read_text().strip()
+    # NOTE: Isolated run committed its results
+    committed_changed_files_in_run = {c.a_path for c in client.repository.head.commit.get_changes()}
+    assert "output" in committed_changed_files_in_run
+    assert "script.py" not in committed_changed_files_in_run
