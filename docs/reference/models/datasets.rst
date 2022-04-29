@@ -19,21 +19,5 @@ Datasets
 ========
 
 .. automodule:: renku.domain_model.dataset
-   :no-members:
-
-Dataset object
---------------
-
-.. autoclass:: renku.domain_model.dataset.Dataset
    :members:
-   :inherited-members:
-
-
-Dataset file
-------------
-
-Manage files in the dataset.
-
-.. autoclass:: renku.domain_model.dataset.DatasetFile
-   :members:
-   :inherited-members:
+   :show-inheritance:

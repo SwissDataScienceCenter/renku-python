@@ -26,11 +26,18 @@ import pytest
 
 from renku.core.dataset.context import DatasetContext
 from renku.domain_model.git import GitURL
+from renku.domain_model.template import TemplateMetadata
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
-from renku.ui.service.errors import IntermittentFileExistsError, UserAnonymousError
+from renku.ui.service.errors import (
+    IntermittentFileExistsError,
+    IntermittentProjectTemplateUnavailable,
+    UserAnonymousError,
+    UserProjectTemplateReferenceError,
+    UserRepoUrlInvalidError,
+)
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
-from tests.utils import retry_failed
+from tests.utils import assert_rpc_response, retry_failed
 
 
 @pytest.mark.service
@@ -681,18 +688,95 @@ def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_ur
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_no_migrations(svc_client_with_repo):
-    """Check if migrations are not required."""
+def test_check_migrations_remote_errors(
+    svc_client, identity_headers, it_remote_repo_url, it_remote_public_renku_repo_url
+):
+    """Check migrations throws the correct errors."""
+
+    # NOTE: repo doesn't exist
+    fake_url = f"{it_remote_repo_url}FAKE_URL"
+    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=fake_url), headers=identity_headers)
+
+    assert_rpc_response(response, "error")
+    assert UserRepoUrlInvalidError.code == response.json["error"]["code"]
+
+    # NOTE: token errors
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+    )
+    assert_rpc_response(response)
+
+    identity_headers["Authorization"] = "Bearer 123abc"
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+    )
+    assert_rpc_response(response, "error")
+    assert UserRepoUrlInvalidError.code == response.json["error"]["code"]
+
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_public_renku_repo_url), headers=identity_headers
+    )
+    assert_rpc_response(response)
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_mirgate_wrong_template_failure(svc_client_with_repo, template, monkeypatch):
+    """Check if migrations gracefully fail when the project template is not available."""
+    import renku.core.template.usecase
+    from renku.core.template.template import fetch_templates_source
+
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    class DummyTemplateMetadata(TemplateMetadata):
+        def __init__(self, metadata, immutable_files):
+            super().__init__(metadata=metadata, immutable_files=immutable_files)
 
-    assert 200 == response.status_code
+        def set_fake_source(self, value):
+            """Toggle source between fake and real"""
+            self.fake_source = value
 
-    assert not response.json["result"]["core_compatibility_status"]["migration_required"]
-    assert not response.json["result"]["template_status"]["newer_template_available"]
-    assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
-    assert response.json["result"]["project_supported"]
+        @property
+        def source(self):
+            """Template source."""
+            template_url = template["url"]
+            if self.fake_source:
+                return f"{template_url}FAKE_URL"
+            return template_url
+
+        @property
+        def reference(self):
+            """Template reference."""
+            return "FAKE_REF"
+
+    def dummy_check_for_template_update(client):
+        metadata = DummyTemplateMetadata.from_client(client=client)
+        metadata.set_fake_source(fake_source)
+        templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
+        update_available, latest_reference = templates_source.is_update_available(
+            id=metadata.id, reference=metadata.reference, version=metadata.version
+        )
+        return update_available, metadata.allow_update, metadata.reference, latest_reference
+
+    # NOTE: fake URL and fake REF
+    fake_source = True
+    with monkeypatch.context() as monkey:
+        monkey.setattr(renku.command.migrate, "check_for_template_update", dummy_check_for_template_update)
+
+        response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+
+        assert_rpc_response(response, "error")
+        assert IntermittentProjectTemplateUnavailable.code == response.json["error"]["code"]
+
+    # NOTE: valid URL but fake REF
+    fake_source = False
+    with monkeypatch.context() as monkey:
+        monkey.setattr(renku.command.migrate, "check_for_template_update", dummy_check_for_template_update)
+
+        response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+
+        assert_rpc_response(response, "error")
+        assert UserProjectTemplateReferenceError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service

@@ -185,9 +185,9 @@ class ImageObject(Slots):
         super().__init__(content_url=content_url, position=position, id=id)
 
     @staticmethod
-    def generate_id(dataset: "Dataset", position: int) -> str:
+    def generate_id(dataset_id: str, position: int) -> str:
         """Generate @id field."""
-        return f"{dataset.id}/images/{position}"
+        return f"{dataset_id}/images/{position}"
 
     @property
     def is_absolute(self):
@@ -234,10 +234,10 @@ class DatasetFile(Slots):
     def __init__(
         self,
         *,
+        entity: "Entity",
         based_on: Optional[RemoteEntity] = None,
         date_added: Optional[datetime] = None,
         date_removed: Optional[datetime] = None,
-        entity: Optional["Entity"] = None,
         id: Optional[str] = None,
         is_external: Optional[bool] = False,
         source: Optional[Union[Path, str]] = None,
@@ -251,7 +251,7 @@ class DatasetFile(Slots):
         self.based_on: Optional[RemoteEntity] = based_on
         self.date_added: datetime = fix_datetime(date_added) or local_now()
         self.date_removed: Optional[datetime] = fix_datetime(date_removed)
-        self.entity: Optional["Entity"] = entity
+        self.entity: "Entity" = entity
         self.id: str = id or DatasetFile.generate_id()
         self.is_external: bool = is_external or False
         self.source: Optional[str] = str(source)
@@ -495,7 +495,7 @@ class Dataset(Persistent):
         """Find a file in the dataset using its relative path."""
         path = str(path)
         for file in self.dataset_files:
-            if str(file.entity.path) == path and not file.is_removed():  # type: ignore
+            if str(file.entity.path) == path and not file.is_removed():
                 return file
 
         return None
@@ -582,13 +582,10 @@ class Dataset(Persistent):
         new_files = []
 
         for file in files:
-            existing_file = self.find_file(file.entity.path)  # type: ignore
+            existing_file = self.find_file(file.entity.path)
             if not existing_file:
                 new_files.append(file)
-            elif (
-                file.entity.checksum != existing_file.entity.checksum  # type: ignore
-                or file.date_added != existing_file.date_added
-            ):
+            elif file.entity.checksum != existing_file.entity.checksum or file.date_added != existing_file.date_added:
                 self.dataset_files.remove(existing_file)
                 new_files.append(file)
 

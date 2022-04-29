@@ -29,7 +29,7 @@ import jinja2
 import yaml
 
 from renku.core import errors
-from renku.core.management import RENKU_HOME
+from renku.core.constant import RENKU_HOME
 from renku.core.util.os import get_safe_relative_path, hash_file
 
 TEMPLATE_MANIFEST = "manifest.yaml"

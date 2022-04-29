@@ -155,6 +155,7 @@ def copy_template_to_client(
         except OSError as e:
             # TODO: Use a general cleanup strategy: https://github.com/SwissDataScienceCenter/renku-python/issues/736
             if cleanup:
+                client.repository.reset(hard=True)
                 client.repository.clean()
 
             raise errors.TemplateUpdateError(f"Cannot write to '{destination}'") from e
@@ -420,6 +421,10 @@ class RepositoryTemplates(TemplatesSource):
         try:
             repository = clone_repository(url=source, path=path, checkout_revision=reference, install_lfs=False)
         except errors.GitError as e:
+            if "Cannot checkout reference" in str(e):
+                raise errors.TemplateMissingReferenceError(
+                    f"Cannot find the reference '{reference}' in the template repository from {source}"
+                ) from e
             raise errors.InvalidTemplateError(f"Cannot clone template repository from {source}") from e
 
         version = repository.head.commit.hexsha

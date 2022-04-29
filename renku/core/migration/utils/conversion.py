@@ -60,11 +60,12 @@ def _convert_language(language: Optional[old_datasets.Language]) -> Optional[Lan
     return Language(name=language.name, alternate_name=language.alternate_name)
 
 
-def _convert_image_object(image_object: Optional[old_datasets.ImageObject]) -> Optional[ImageObject]:
+def _convert_image_object(image_object: Optional[old_datasets.ImageObject], dataset_id: str) -> Optional[ImageObject]:
     """Create from old ImageObject instance."""
     if not image_object:
         return
-    return ImageObject(content_url=image_object.content_url, position=image_object.position, id=image_object.id)
+    id = ImageObject.generate_id(dataset_id=dataset_id, position=image_object.position)
+    return ImageObject(content_url=image_object.content_url, position=image_object.position, id=id)
 
 
 def _create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> Optional[RemoteEntity]:
@@ -182,6 +183,9 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
     tags = [_convert_dataset_tag(tag) for tag in (dataset.tags or [])]
     name = get_slug(dataset.name) if not is_dataset_name_valid(dataset.name) else dataset.name
 
+    identifier = _convert_dataset_identifier(dataset.identifier)
+    id = Dataset.generate_id(identifier=identifier)
+
     return (
         Dataset(
             creators=[_convert_agent(creator) for creator in dataset.creators],
@@ -191,9 +195,9 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             date_removed=None,
             derived_from=convert_derived_from(dataset.derived_from, dataset.same_as),
             description=dataset.description,
-            id=None,
-            identifier=_convert_dataset_identifier(dataset.identifier),
-            images=[_convert_image_object(image) for image in (dataset.images or [])],
+            id=id,
+            identifier=identifier,
+            images=[_convert_image_object(image, dataset_id=id) for image in (dataset.images or [])],
             in_language=_convert_language(dataset.in_language),
             keywords=dataset.keywords,
             license=convert_license(dataset.license),

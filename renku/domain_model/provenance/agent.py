@@ -66,7 +66,7 @@ class Person(Agent):
 
     __slots__ = ("affiliation", "alternate_name", "email")
 
-    affiliation: str
+    affiliation: Optional[str]
     alternate_name: str
     email: str
 

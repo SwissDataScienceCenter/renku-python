@@ -16,13 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataverse API integration."""
+
 import json
 import pathlib
 import re
 import urllib
 from pathlib import Path
 from string import Template
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, Dict
 from urllib import parse as urlparse
 
 import attr
@@ -30,7 +31,7 @@ from tqdm import tqdm
 
 from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi
+from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderRecordSerializerApi
 from renku.core.dataset.providers.dataverse_metadata_templates import (
     AUTHOR_METADATA_TEMPLATE,
     CONTACT_METADATA_TEMPLATE,
@@ -41,7 +42,6 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util import communication
 from renku.core.util.doi import extract_doi, is_doi
 from renku.core.util.file_size import bytes_to_unit
-from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset
@@ -143,15 +143,13 @@ class DataverseProvider(ProviderApi):
 
     is_doi = attr.ib(default=False)
 
-    _accept = attr.ib(default="application/json")
-
     _server_url = attr.ib(default=None)
 
     _dataverse_name = attr.ib(default=None)
 
     @staticmethod
     def supports(uri):
-        """Check if provider supports a given uri."""
+        """Check if provider supports a given URI."""
         is_doi_ = is_doi(uri)
 
         is_dataverse_uri = is_doi_ is None and check_dataverse_uri(uri)
@@ -179,27 +177,18 @@ class DataverseProvider(ProviderApi):
 
     @staticmethod
     def record_id(uri):
-        """Extract record id from uri."""
+        """Extract record id from URI."""
         parsed = urlparse.urlparse(uri)
         return urlparse.parse_qs(parsed.query)["persistentId"][0]
 
-    def _make_request(self, uri):
-        """Execute network request."""
-        from renku.core.util import requests
-
-        response = requests.get(uri, headers={"Accept": self._accept})
-        if response.status_code != 200:
-            raise LookupError("record not found. Status: {}".format(response.status_code))
-        return response
-
-    def find_record(self, uri, **kwargs):
+    def find_record(self, uri, **kwargs) -> "DataverseRecordSerializer":
         """Retrieves a record from Dataverse.
 
         Args:
             uri: DOI or URL.
 
         Returns:
-            DataverseRecord: The found record
+            DataverseRecordSerializer: The found record
 
         """
         if self.is_doi:
@@ -207,20 +196,16 @@ class DataverseProvider(ProviderApi):
             uri = doi.url
 
         uri = self._get_export_uri(uri)
+        response = _make_request(uri)
 
-        return self._get_record(uri)
+        return DataverseRecordSerializer(json=response.json(), uri=uri)
 
-    def _get_export_uri(self, uri):
+    @staticmethod
+    def _get_export_uri(uri):
         """Gets a dataverse api export URI from a dataverse entry."""
         record_id = DataverseProvider.record_id(uri)
         uri = make_records_url(record_id, uri)
         return uri
-
-    def _get_record(self, uri):
-        """Retrieve metadata and return ``DataverseRecordSerializer``."""
-        response = self._make_request(uri)
-
-        return DataverseRecordSerializer(json=response.json(), dataverse=self, uri=uri)
 
     def get_exporter(self, dataset, access_token):
         """Create export manager for given dataset."""
@@ -231,14 +216,14 @@ class DataverseProvider(ProviderApi):
     @inject.autoparams()
     def set_parameters(self, client_dispatcher: IClientDispatcher, *, dataverse_server, dataverse_name, **kwargs):
         """Set and validate required parameters for a provider."""
-        CONFIG_BASE_URL = "server_url"
+        config_base_url = "server_url"
 
         client = client_dispatcher.current_client
 
         if not dataverse_server:
-            dataverse_server = client.get_value("dataverse", CONFIG_BASE_URL)
+            dataverse_server = client.get_value("dataverse", config_base_url)
         else:
-            client.set_value("dataverse", CONFIG_BASE_URL, dataverse_server, global_only=True)
+            client.set_value("dataverse", config_base_url, dataverse_server, global_only=True)
 
         if not dataverse_server:
             raise errors.ParameterError("Dataverse server URL is required.")
@@ -250,35 +235,23 @@ class DataverseProvider(ProviderApi):
         self._dataverse_name = dataverse_name
 
 
-@attr.s
-class DataverseRecordSerializer:
-    """Dataverse record Serializer."""
+class DataverseRecordSerializer(ProviderRecordSerializerApi):
+    """Dataverse record serializer."""
 
-    _dataverse = attr.ib(default=None, kw_only=True)
-
-    _uri = attr.ib(default=None, kw_only=True)
-
-    _json = attr.ib(default=None, kw_only=True)
-
-    _files_info = attr.ib(default=None, kw_only=True)
+    def __init__(self, uri: str, json: Dict[str, Any]):
+        super().__init__(uri=uri)
+        self._json: Dict[str, Any] = json
 
     def is_last_version(self, uri):
         """Check if record is at last possible version."""
         return True
 
-    def _convert_json_property_name(self, property_name):
+    @staticmethod
+    def _convert_json_property_name(property_name):
         """Removes '@' and converts names to snake_case."""
         property_name = property_name.strip("@")
         property_name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", property_name)
         return re.sub("([a-z0-9])([A-Z])", r"\1_\2", property_name).lower()
-
-    @property
-    def files_info(self) -> List[DynamicProxy]:
-        """Return list of dataset file proxies.
-
-        This is only valid after a call to ``as_dataset``.
-        """
-        return self._files_info
 
     @property
     def files(self):
@@ -295,13 +268,13 @@ class DataverseRecordSerializer:
     def version(self):
         """Get the major and minor version of this dataset."""
         uri = make_versions_url(DataverseProvider.record_id(self._uri), self._uri)
-        response = self._dataverse._make_request(uri).json()
+        response = _make_request(uri).json()
         newest_version = response["data"][0]
         return "{}.{}".format(newest_version["versionNumber"], newest_version["versionMinorNumber"])
 
     @property
     def latest_uri(self):
-        """Get uri of latest version."""
+        """Get URI of latest version."""
         return self._uri
 
     def get_files(self):
@@ -318,8 +291,7 @@ class DataverseRecordSerializer:
         from marshmallow import pre_load
 
         from renku.command.schema.agent import PersonSchema
-        from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetSchema
-        from renku.domain_model.dataset import DatasetFile
+        from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile, ProviderDatasetSchema
 
         class _DataverseDatasetSchema(ProviderDatasetSchema):
             """Schema for Dataverse datasets."""
@@ -358,22 +330,17 @@ class DataverseRecordSerializer:
             if creator.affiliation == "":
                 creator.affiliation = None
 
-        dataset_files = []
-        files_info = []
-        for file in files:
-            remote = file.remote_url
-            dataset_file = DatasetFile(entity=None, source=remote.geturl())
-            file_info = DynamicProxy(dataset_file)
-            file_info.filename = Path(file.name).name
-            file_info.checksum = ""
-            file_info.size_in_mb = bytes_to_unit(file.content_size, "mi")
-            file_info.filetype = file.file_format
-
-            dataset_files.append(dataset_file)
-            files_info.append(file_info)
-
-        dataset.dataset_files = dataset_files
-        self._files_info = files_info
+        self._files_info = [
+            ProviderDatasetFile(
+                source=file.remote_url.geturl(),
+                filename=Path(file.name).name,
+                checksum="",
+                size_in_mb=bytes_to_unit(file.content_size, "mi"),
+                filetype=file.file_format,
+                path="",
+            )
+            for file in files
+        ]
 
         return dataset
 
@@ -474,7 +441,8 @@ class DataverseExporter(ExporterApi):
         )
         return json.loads(metadata)
 
-    def _get_subject(self):
+    @staticmethod
+    def _get_subject():
         text_prompt = "Subject of this dataset: \n\n"
         text_prompt += "\n".join(f"{s}\t[{i}]" for i, s in enumerate(DATAVERSE_SUBJECTS, start=1))
         text_prompt += "\n\nSubject"
@@ -594,3 +562,13 @@ def _escape_json_string(value):
     if isinstance(value, str):
         return json.dumps(value)[1:-1]
     return value
+
+
+def _make_request(uri):
+    """Execute network request."""
+    from renku.core.util import requests
+
+    response = requests.get(uri, headers={"Accept": "application/json"})
+    if response.status_code != 200:
+        raise LookupError("record not found. Status: {}".format(response.status_code))
+    return response

@@ -31,9 +31,9 @@ import yaml
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
+from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.management import RENKU_HOME
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
@@ -49,8 +49,6 @@ from renku.domain_model.workflow.parameter import (
 from renku.domain_model.workflow.plan import Plan
 
 STARTED_AT = int(time.time() * 1000)
-
-RENKU_TMP = "tmp"
 
 
 class PlanFactory:

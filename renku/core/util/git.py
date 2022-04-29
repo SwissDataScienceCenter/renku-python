@@ -84,7 +84,7 @@ def is_valid_git_repository(repository: Optional["Repository"]) -> bool:
     """Return if is a git repository and has a valid HEAD.
 
     Args:
-        repository(Optional["Repository"]): The repository to check.
+        repository(Optional[Repository]): The repository to check.
 
     Returns:
         bool: Whether or not this is a valid Git repository.
@@ -137,7 +137,7 @@ def get_cache_directory_for_repository(client, url) -> Path:
         Path: The path of the cache.
 
     """
-    from renku.core.dataset.constant import CACHE
+    from renku.core.constant import CACHE
 
     return client.renku_path / CACHE / get_full_repository_path(url)
 
@@ -205,12 +205,12 @@ def create_backup_remote(repository: "Repository", remote_name: str, url: str) -
     """Create a backup for ``remote_name`` and sets its url to ``url``.
 
     Args:
-        repository("Repository"): The current repository.
+        repository(Repository): The current repository.
         remote_name(str): The name of the backup remote.
         url(str): The remote URL.
 
     Returns:
-        Tuple[str, bool, Optional["Remote"]]: Tuple of backup remote name, whether it existed already and the created
+        Tuple[str, bool, Optional[Remote]]: Tuple of backup remote name, whether it existed already and the created
             remote if successful.
     """
     backup_remote_name = f"{RENKU_BACKUP_PREFIX}-{remote_name}"
@@ -259,10 +259,10 @@ def get_committer_agent(commit: "Commit") -> "SoftwareAgent":
     """Return committer SoftwareAgent.
 
     Args:
-        commit("Commit"): The commit to check.
+        commit(Commit): The commit to check.
 
     Returns:
-        "SoftwareAgent": The agent responsible for the commit.
+        SoftwareAgent: The agent responsible for the commit.
     """
     from renku.domain_model.provenance.agent import SoftwareAgent
 
@@ -273,10 +273,10 @@ def get_git_user(repository: Optional["Repository"]) -> Optional["Person"]:
     """Return git user.
 
     Args:
-        repository(Optional["Repository"]): The Git repository.
+        repository(Optional[Repository]): The Git repository.
 
     Returns:
-        Optional["Person"]: The person associated with the repository.
+        Optional[Person]: The person associated with the repository.
 
     """
     from renku.domain_model.provenance.agent import Person
@@ -294,12 +294,12 @@ def get_remote(
     """Return repository's remote using its name or url or return default remote if any.
 
     Args:
-        repository(Optional["Repository"]): The Git repository.
+        repository(Optional[Repository]): The Git repository.
         name(str, optional): The name of the remote (Default value = None).
         url(str, optional): The remote URL (Default value = None).
 
     Returns:
-        Optional["Remote"]: The remote, if found.
+        Optional[Remote]: The remote, if found.
 
     """
     if not repository or len(repository.remotes) == 0:
@@ -356,13 +356,13 @@ def get_entity_from_revision(
     """Return an Entity instance from given path and revision.
 
     Args:
-        repository("Repository"): The current repository.
+        repository(Repository): The current repository.
         path(Union[Path, str]): The path of the entity.
         revision(str, optional): The revision to check at (Default value = None).
         bypass_cache(bool): Whether to ignore cached entries and get information from disk (Default value = False).
 
     Returns:
-        "Entity": The Entity for the given path and revision.
+        Entity: The Entity for the given path and revision.
 
     """
     from renku.domain_model.entity import Collection, Entity
@@ -426,7 +426,7 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
 
     Args:
         *paths(Union[Path, str]): The paths to commit.
-        repository("Repository"): The repository to commit to.
+        repository(Repository): The repository to commit to.
         message: The commit message (Default value = None).
     Raises:
         errors.GitError: If paths couldn't be committed.
@@ -469,7 +469,7 @@ def push_changes(repository: "Repository", remote: Optional[str] = None, reset: 
     """Push to a remote branch. If the remote branch is protected a new remote branch will be created and pushed to.
 
     Args:
-        repository("Repository"): The current repository.
+        repository(Repository): The current repository.
         remote(str, optional): The remote to push to (Default value = None).
         reset(bool, optional): Whether to reset active branch to its upstream branch, used if changes get
             pushed to a temporary branch (Default value = True).
@@ -586,7 +586,7 @@ def clone_renku_repository(
         gitlab_token: The gitlab OAuth2 token (Default value = None).
         deployment_hostname: The hostname of the current renku deployment (Default value = None).
         depth(Optional[int], optional): The clone depth, number of commits from HEAD (Default value = None).
-        install_githooks: Whether to install githooks (Default value = False).
+        install_githooks: Whether to install git hooks (Default value = False).
         install_lfs: Whether to install Git LFS (Default value = True).
         skip_smudge: Whether to pull files from Git LFS (Default value = True).
         recursive: Whether to clone recursively (Default value = True).
@@ -661,7 +661,7 @@ def clone_repository(
     Args:
         url: The Git URL to clone.
         path(Union[Path, str], optional): The path to clone into (Default value = None).
-        install_githooks: Whether to install githooks (Default value = True).
+        install_githooks: Whether to install git hooks (Default value = True).
         install_lfs: Whether to install Git LFS (Default value = True).
         skip_smudge: Whether to pull files from Git LFS (Default value = True).
         recursive: Whether to clone recursively (Default value = True).

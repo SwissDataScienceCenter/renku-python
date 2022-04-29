@@ -16,11 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """DOI API integration."""
+
 import urllib
 
-import attr
-
-from renku.core.dataset.providers.api import ProviderApi
+from renku.core.dataset.providers.api import ProviderApi, ProviderRecordSerializerApi
 from renku.core.errors import RenkuImportError
 from renku.core.util.doi import extract_doi, is_doi
 
@@ -29,58 +28,81 @@ DOI_BASE_URL = "https://dx.doi.org"
 
 def make_doi_url(doi):
     """Create URL to access DOI metadata."""
-    urlparts = urllib.parse.urlparse(doi)
-    if urlparts.scheme == "doi":
-        urlparts = urlparts._replace(scheme="")
-        doi = urlparts.geturl()
+    parsed_url = urllib.parse.urlparse(doi)
+    if parsed_url.scheme == "doi":
+        parsed_url = parsed_url._replace(scheme="")
+        doi = parsed_url.geturl()
     return urllib.parse.urljoin(DOI_BASE_URL, doi)
 
 
-@attr.s
-class DOIMetadataSerializer:
-    """Response from doi.org for DOI metadata."""
+class DOIMetadataSerializer(ProviderRecordSerializerApi):
+    """Response from `doi.org <http://doi.org>`_ for DOI metadata."""
 
-    id = attr.ib(kw_only=True)
+    def __init__(
+        self,
+        id,
+        doi,
+        url,
+        abstract=None,
+        author=None,
+        categories=None,
+        container_title=None,
+        contributor=None,
+        copyright=None,
+        issued=None,
+        language=None,
+        publisher=None,
+        title=None,
+        type=None,
+        version=None,
+    ):
+        super().__init__(uri=url)
 
-    doi = attr.ib(kw_only=True)
+        self.id = id
+        self.doi = doi
 
-    url = attr.ib(kw_only=True)
+        self.abstract = abstract
+        self.author = author
+        self.categories = categories
+        self.container_title = container_title
+        self.contributor = contributor
+        self.copyright = copyright
+        self.issued = issued
+        self.language = language
+        self.publisher = publisher
+        self.title = title
+        self.type = type
+        self._version = version
 
-    type = attr.ib(kw_only=True, default=None)
+    @property
+    def version(self) -> str:
+        """Get record version."""
+        return self._version
 
-    categories = attr.ib(kw_only=True, default=None)
+    @property
+    def latest_uri(self) -> str:
+        """Get URI of the latest version."""
+        return self.url
 
-    author = attr.ib(kw_only=True, default=None)
+    def as_dataset(self, client):
+        """Deserialize this record to a ``ProviderDataset``."""
+        raise NotImplementedError
 
-    contributor = attr.ib(kw_only=True, default=None)
-
-    version = attr.ib(kw_only=True, default=None)
-
-    issued = attr.ib(kw_only=True, default=None)
-
-    title = attr.ib(kw_only=True, default=None)
-
-    abstract = attr.ib(kw_only=True, default=None)
-
-    language = attr.ib(kw_only=True, default=None)
-
-    publisher = attr.ib(kw_only=True, default=None)
-
-    container_title = attr.ib(kw_only=True, default=None)
-
-    copyright = attr.ib(kw_only=True, default=None)
+    def is_last_version(self, uri) -> bool:
+        """Check if record is at last possible version."""
+        return True
 
 
-@attr.s
 class DOIProvider(ProviderApi):
-    """doi.org registry API provider."""
+    """`doi.org <http://doi.org>`_ registry API provider."""
 
-    headers = attr.ib(default={"accept": "application/vnd.citationstyles.csl+json"})
-    timeout = attr.ib(default=3)
+    def __init__(self, headers=None, timeout=3):
+        self.timeout = timeout
+        self.headers = headers if headers is not None else {"accept": "application/vnd.citationstyles.csl+json"}
 
     @staticmethod
     def supports(uri):
-        """Whether or not this provider supports a given uri."""
+        """Whether or not this provider supports a given URI."""
         return bool(is_doi(uri))
 
     @staticmethod
@@ -106,7 +128,7 @@ class DOIProvider(ProviderApi):
 
         return response
 
-    def find_record(self, uri, client=None, **kwargs):
+    def find_record(self, uri, client=None, **kwargs) -> DOIMetadataSerializer:
         """Finds DOI record."""
         response = self._query(uri).json()
         return DOIProvider._serialize(response)

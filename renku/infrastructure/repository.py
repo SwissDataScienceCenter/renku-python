@@ -54,7 +54,7 @@ _MARKER = object()
 
 
 def git_unicode_unescape(s: Optional[str], encoding: str = "utf-8") -> str:
-    """Undoes git/gitpython unicode encoding."""
+    """Undoes git/GitPython unicode encoding."""
     if s is None:
         return ""
 
@@ -225,10 +225,9 @@ class BaseRepository:
         """Check-out a specific reference."""
         self.run_git_command("checkout", reference)
 
-    def clean(self):
-        """Remove all untracked files and reset the repo."""
-        self.reset(hard=True)
-        self.run_git_command("clean", "-xdff")
+    def clean(self, paths: List[Union[Path, str]] = None):
+        """Remove untracked files."""
+        self.run_git_command("clean", "-xdff", paths)
 
     def fetch(
         self,

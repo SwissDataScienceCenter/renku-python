@@ -40,7 +40,7 @@ class OLOSProvider(ProviderApi):
 
     @staticmethod
     def supports(uri):
-        """Check if provider supports a given uri for importing."""
+        """Check if provider supports a given URI for importing."""
         return False
 
     @staticmethod
@@ -56,7 +56,7 @@ class OLOSProvider(ProviderApi):
         }
 
     def find_record(self, uri, client=None, **kwargs):
-        """Find record by uri."""
+        """Find record by URI."""
         return None
 
     def get_exporter(self, dataset, access_token):

@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper utils for handling file size strings."""
+"""Helper utilities for handling file size strings."""
 
 import re
 
@@ -44,7 +44,7 @@ units = {
 
 
 def parse_file_size(size_str):
-    """Parse a human readable filesize to bytes."""
+    """Parse a human readable file size to bytes."""
     res = re.search(r"([0-9.]+)([a-zA-Z]{1,2})", size_str)
     if not res or res.group(2).lower() not in units:
         raise ValueError(

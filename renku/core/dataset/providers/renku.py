@@ -23,7 +23,7 @@ import shutil
 import urllib
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
-from typing import List
+from typing import TYPE_CHECKING, List, Optional
 
 import attr
 
@@ -31,13 +31,15 @@ from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.dataset.providers.api import ProviderApi
+from renku.core.dataset.providers.api import ProviderApi, ProviderRecordSerializerApi
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util import communication
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository
-from renku.infrastructure.immutable import DynamicProxy
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
 
 
 @attr.s
@@ -53,7 +55,7 @@ class RenkuProvider(ProviderApi):
 
     @staticmethod
     def supports(uri):
-        """Whether or not this provider supports a given uri."""
+        """Whether or not this provider supports a given URI."""
         parsed_url = urllib.parse.urlparse(uri)
 
         if not parsed_url.netloc:
@@ -74,7 +76,7 @@ class RenkuProvider(ProviderApi):
             uri: URL to search for.
 
         Returns:
-            _RenkuRecordSerializer: Serializer containing record data.
+            RenkuRecordSerializer: Serializer containing record data.
         """
         self._uri = uri
         self._gitlab_token = kwargs.get("gitlab_token")
@@ -85,7 +87,7 @@ class RenkuProvider(ProviderApi):
 
         project_url_ssh, project_url_http = self._get_project_urls(kg_url)
 
-        return _RenkuRecordSerializer(
+        return RenkuRecordSerializer(
             uri=uri,
             name=name,
             identifier=identifier,
@@ -218,14 +220,15 @@ class RenkuProvider(ProviderApi):
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
 
 
-class _RenkuRecordSerializer:
-    """Renku record Serializer."""
+class RenkuRecordSerializer(ProviderRecordSerializerApi):
+    """Renku record serializer."""
 
     def __init__(
         self, uri, identifier, name, latest_version_uri, project_url_ssh, project_url_http, gitlab_token, renku_token
     ):
-        """Create a _RenkuRecordSerializer from a Dataset."""
-        self._uri = uri
+        """Create a RenkuRecordSerializer from a Dataset."""
+        super().__init__(uri=uri)
+
         self._identifier = identifier
         self._name = name
         self._latest_version_uri = latest_version_uri
@@ -234,11 +237,11 @@ class _RenkuRecordSerializer:
         self._gitlab_token = gitlab_token
         self._renku_token = renku_token
 
-        self._dataset = None
+        self._dataset: Optional["ProviderDataset"] = None
         self._project_url = None
         self._project_repo = None
         self._remote_client = None
-        self._files_info = []
+        self._files_info: List["ProviderDatasetFile"] = []
 
     @staticmethod
     def _get_file_size(remote_client, path):
@@ -280,22 +283,17 @@ class _RenkuRecordSerializer:
         full_path = remote_client.path / path
         return float(os.path.getsize(full_path))
 
-    @property
-    def files_info(self) -> List[DynamicProxy]:
-        """Return list of dataset file proxies.
-
-        This is only valid after a call to ``as_dataset``.
-        """
-        return self._files_info
-
-    def as_dataset(self, client):
+    def as_dataset(self, client) -> "ProviderDataset":
         """Return encapsulated dataset instance."""
-        self._fetch_dataset()
-        return self._dataset
+        provider_dataset = self._fetch_dataset()
+        self._dataset = provider_dataset
+        return provider_dataset
 
     @inject.autoparams()
     def import_images(self, dataset, client_dispatcher: IClientDispatcher):
         """Add images from remote dataset."""
+        assert self._dataset is not None, "Dataset was not fetched"
+
         client = client_dispatcher.current_client
 
         if not self._dataset.images:
@@ -340,16 +338,17 @@ class _RenkuRecordSerializer:
 
     @property
     def latest_uri(self):
-        """Get uri of the latest version."""
+        """Get URI of the latest version."""
         return self._latest_version_uri
 
     @property
     def datadir_exists(self):
-        """Whether the dataset datadir exists (might be missing in git if empty)."""
+        """Whether the dataset data directory exists (might be missing in git if empty)."""
         return (self._remote_client.path / self._dataset.data_dir).exists()
 
     @inject.autoparams()
     def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
+        from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
         from renku.core.management.client import LocalClient
         from renku.domain_model.dataset import get_dataset_data_dir
 
@@ -388,29 +387,32 @@ class _RenkuRecordSerializer:
             self._migrate_project()
             self._project_repo = repository
 
-            self._dataset = DatasetsProvenance().get_by_name(self._name)
+            dataset = DatasetsProvenance().get_by_name(self._name)
+            if not dataset:
+                raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
+            provider_dataset = ProviderDataset.from_dataset(dataset)
         finally:
             database_dispatcher.pop_database()
             client_dispatcher.pop_client()
 
-        if not self._dataset:
-            raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
+        provider_dataset.data_dir = get_dataset_data_dir(self._remote_client, provider_dataset)
+        provider_dataset.derived_from = None
 
-        self._dataset.data_dir = get_dataset_data_dir(self._remote_client, self._dataset)
-        self._dataset.derived_from = None
-
-        files_info = []
-        for file in self._dataset.files:
-            file_info = DynamicProxy(file)
-            file_info.checksum = file.entity.checksum
-            file_info.filename = Path(file.entity.path).name
-            file_info.size_in_mb = bytes_to_unit(
-                _RenkuRecordSerializer._get_file_size(self._remote_client, file.entity.path), "mi"
+        self._files_info = [
+            ProviderDatasetFile(
+                source=file.source,
+                filename=Path(file.entity.path).name,
+                checksum=file.entity.checksum,
+                size_in_mb=bytes_to_unit(
+                    RenkuRecordSerializer._get_file_size(self._remote_client, file.entity.path), "mi"
+                ),
+                filetype=Path(file.entity.path).suffix.replace(".", ""),
+                path=file.entity.path,
             )
-            file_info.filetype = Path(file.entity.path).suffix.replace(".", "")
-            files_info.append(file_info)
+            for file in dataset.files
+        ]
 
-        self._files_info = files_info
+        return provider_dataset
 
     @staticmethod
     def _migrate_project():

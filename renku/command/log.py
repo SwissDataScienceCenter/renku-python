@@ -66,7 +66,8 @@ def _log(
             yield current_dataset
 
             if current_dataset.is_derivation():
-                current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)  # type: ignore
+                assert current_dataset.derived_from is not None
+                current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.value)
             else:
                 return
 
