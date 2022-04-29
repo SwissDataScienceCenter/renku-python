@@ -19,15 +19,12 @@
 
 from pathlib import Path
 
-from renku.core.management import RENKU_HOME
+from renku.core.constant import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
 from renku.domain_model.refs import LinkReference
 
 POINTERS = "pointers"
 """Directory for storing external pointer files."""
-
-CACHE = "cache"
-"""Directory to cache transient data."""
 
 DATASET_IMAGES = "dataset_images"
 """Directory for dataset images."""

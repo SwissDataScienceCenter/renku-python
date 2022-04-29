@@ -23,11 +23,10 @@ from pathlib import Path
 
 import pytest
 
+from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
-from renku.core.workflow.plan_factory import RENKU_TMP
 from renku.domain_model.dataset import RemoteEntity
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository

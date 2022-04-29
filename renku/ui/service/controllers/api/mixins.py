@@ -24,8 +24,8 @@ from pathlib import Path
 
 import portalocker
 
+from renku.core.constant import RENKU_HOME
 from renku.core.errors import GitCommandError, GitConfigurationError, RenkuException, UninitializedProject
-from renku.core.management import RENKU_HOME
 from renku.core.util.contexts import click_context
 from renku.infrastructure.repository import Repository
 from renku.ui.service.cache.config import REDIS_NAMESPACE

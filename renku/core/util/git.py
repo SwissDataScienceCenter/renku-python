@@ -137,7 +137,7 @@ def get_cache_directory_for_repository(client, url) -> Path:
         Path: The path of the cache.
 
     """
-    from renku.core.dataset.constant import CACHE
+    from renku.core.constant import CACHE
 
     return client.renku_path / CACHE / get_full_repository_path(url)
 
