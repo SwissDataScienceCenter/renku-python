@@ -19,7 +19,10 @@
 
 from abc import ABC
 from pathlib import Path
-from typing import Union
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from renku.core.management.client import LocalClient
 
 
 class IClientDispatcher(ABC):
@@ -29,7 +32,7 @@ class IClientDispatcher(ABC):
     """
 
     @property
-    def current_client(self):
+    def current_client(self) -> "LocalClient":
         """Get the currently active client."""
         raise NotImplementedError
 

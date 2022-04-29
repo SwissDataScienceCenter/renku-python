@@ -37,6 +37,7 @@ from pathlib import Path
 from packaging.version import Version
 
 from renku.command.command_builder.command import inject
+from renku.core.constant import RENKU_TMP
 from renku.core.errors import (
     DockerfileUpdateError,
     MigrationError,
@@ -55,7 +56,6 @@ from renku.core.migration.utils import (
     read_project_version,
 )
 from renku.core.util import communication
-from renku.core.workflow.plan_factory import RENKU_TMP
 
 try:
     import importlib_resources
@@ -165,7 +165,7 @@ def migrate(
 
 
 def _remove_untracked_renku_files(renku_path):
-    from renku.core.dataset.constant import CACHE
+    from renku.core.constant import CACHE
 
     untracked_paths = [RENKU_TMP, CACHE, "vendors"]
     for path in untracked_paths:
