@@ -100,7 +100,7 @@ def update_config():
         Command()
         .command(_update_config)
         .require_migration()
-        .with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH)
+        .with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH, skip_staging=True)
         .with_database()
     )
 

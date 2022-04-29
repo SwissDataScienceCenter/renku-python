@@ -38,13 +38,13 @@ COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
 
 
-def prepare_commit(
-    client,
-    commit_only=None,
-    skip_dirty_checks=False,
-):
+def prepare_commit(client, commit_only=None, skip_dirty_checks=False, skip_staging: bool = False):
     """Gather information about repo needed for committing later on."""
     diff_before = set()
+
+    if skip_staging:
+        if not isinstance(commit_only, list) or len(commit_only) == 0:
+            raise errors.OperationError("Cannot use ``skip_staging`` without specifying files to commit.")
 
     if commit_only == COMMIT_DIFF_STRATEGY:
         if len(client.repository.staged_changes) > 0 or len(client.repository.unstaged_changes) > 0:
@@ -73,6 +73,7 @@ def finalize_commit(
     raise_if_empty=False,
     commit_message=None,
     abbreviate_message=True,
+    skip_staging: bool = False,
 ):
     """Commit modified/added paths."""
     from renku.infrastructure.repository import Actor
@@ -127,8 +128,10 @@ def finalize_commit(
     if abbreviate_message:
         commit_message = shorten_message(commit_message)
 
+    # NOTE: Only commit specified paths when skipping staging area
+    paths = commit_only if skip_staging else []
     # Ignore pre-commit hooks since we have already done everything.
-    client.repository.commit(commit_message + client.transaction_id, committer=committer, no_verify=True)
+    client.repository.commit(commit_message + client.transaction_id, committer=committer, no_verify=True, paths=paths)
 
 
 def prepare_worktree(
