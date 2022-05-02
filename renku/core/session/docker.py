@@ -17,6 +17,7 @@
 # limitations under the License.
 """Docker based interactive session provider."""
 
+import os.path
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 from uuid import uuid4
@@ -158,6 +159,19 @@ class DockerSessionProvider(ISessionProvider):
                         docker.types.DeviceRequest(count=[gpu_request], capabilities=[["compute", "utility"]])
                     ]
 
+            # NOTE: set git user
+            environment = {}
+            volumes = [f"{str(client.path.resolve())}:/home/jovyan/work"]
+
+            global_git_config_path = os.path.normpath(os.path.expanduser("~/.gitconfig"))
+
+            if os.path.exists(global_git_config_path):
+                volumes.append(f"{global_git_config_path}:/home/jovyan/.gitconfig")
+            else:
+                user = client.repository.get_global_user()
+                environment["GIT_AUTHOR_NAME"] = user.name
+                environment["GIT_AUTHOR_EMAIL"] = user.email
+
             container = self.docker_client().containers.run(
                 image_name,
                 f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}'
@@ -167,7 +181,8 @@ class DockerSessionProvider(ISessionProvider):
                 labels={"renku_project": project_name, "jupyter_token": auth_token},
                 ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": None},
                 remove=True,
-                volumes=[f"{str(client.path.resolve())}:/home/jovyan/work"],
+                environment=environment,
+                volumes=volumes,
                 **resource_requests,
             )
 
