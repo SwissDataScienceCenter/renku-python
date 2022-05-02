@@ -721,15 +721,17 @@ def test_check_migrations_remote_errors(
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_migrate_wrong_template_source(svc_client_setup, template, monkeypatch):
+def test_migrate_wrong_template_source(svc_client_setup, monkeypatch):
     """Check if migrations gracefully fail when the project template is not available."""
     svc_client, headers, project_id, _, _ = svc_client_setup
 
     # NOTE: fake source
     with monkeypatch.context() as monkey:
-        from renku.core.template.usecase import TemplateMetadata
+        import renku.core.template.usecase
 
-        monkey.setattr(TemplateMetadata, "source", property(MagicMock(return_value="https://FAKE_URL")))
+        monkey.setattr(
+            renku.core.template.usecase.TemplateMetadata, "source", property(MagicMock(return_value="https://FAKE_URL"))
+        )
 
         response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
