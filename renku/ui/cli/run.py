@@ -254,7 +254,6 @@ directories, respectively.
 
 import click
 
-from renku.command.options import option_isolation
 from renku.ui.cli.utils.callback import ClickCallback
 
 
@@ -276,7 +275,7 @@ from renku.ui.cli.utils.callback import ClickCallback
     callback=lambda _, __, values: [int(value) % 256 for value in values],
     help="Allowed command exit-code.",
 )
-@option_isolation
+@click.option("--isolation", is_flag=True, default=False, help="Invoke the given command in isolation.")
 @click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
 @click.option("--verbose", is_flag=True, default=False, help="Print generated plan after the execution.")
 def run(
