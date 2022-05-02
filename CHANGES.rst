@@ -18,6 +18,54 @@
 Changes
 =======
 
+`1.2.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.2...v1.2.3>`__ (2022-04-29)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** inform user if a dataset wasn't found in dataset show
+   (`#2830 <https://github.com/SwissDataScienceCenter/renku-python/issues/2830>`__)
+   (`046a756 <https://github.com/SwissDataScienceCenter/renku-python/commit/046a7562bb885129058c1e523594785de804d2ca>`__)
+-  **core:** tests for renku session sub-commands
+   (`#2814 <https://github.com/SwissDataScienceCenter/renku-python/issues/2814>`__)
+   (`a1a07c7 <https://github.com/SwissDataScienceCenter/renku-python/commit/a1a07c766d674c53ecf37a4c3338133c86edbd06>`__)
+-  **dataset:** correct dataset image id after migration to v1.0.0
+   (`#2842 <https://github.com/SwissDataScienceCenter/renku-python/issues/2842>`__)
+   (`c2e08c8 <https://github.com/SwissDataScienceCenter/renku-python/commit/c2e08c8afeacf09bcd3f541ad7d48fb4ec72b929>`__)
+-  **service:** fix project_id not being auto-generated if missing in
+   request schema
+   (`#2828 <https://github.com/SwissDataScienceCenter/renku-python/issues/2828>`__)
+   (`ab46cd5 <https://github.com/SwissDataScienceCenter/renku-python/commit/ab46cd5672e96865997c0f53d8dc59e7cb0ccb09>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** added renku gc command for cleaning up renku cache
+   (`#2866 <https://github.com/SwissDataScienceCenter/renku-python/issues/2866>`__)
+   (`0d3c176 <https://github.com/SwissDataScienceCenter/renku-python/commit/0d3c17653e1f3f40313e5535823edd8a701240ad>`__)
+-  **core:** add support for template variables for workflow parameters
+   (`#2704 <https://github.com/SwissDataScienceCenter/renku-python/issues/2704>`__)
+   (`7e6e0da <https://github.com/SwissDataScienceCenter/renku-python/commit/7e6e0dac1c69ef00de7af1f13ea3de864bdfbfee>`__)
+-  **core** handle migration errors from the template
+   (`#2819 <https://github.com/SwissDataScienceCenter/renku-python/issues/2819>`__)
+   (`1ddc16e <https://github.com/SwissDataScienceCenter/renku-python/commit/1ddc16e677ed9a8526c3b5d36491a4718dad0ad6>`__),
+   closes
+   `#2769 <https://github.com/SwissDataScienceCenter/renku-python/issues/2769>`__
+-  **service:** restore optimized migration check
+   (`#2854 <https://github.com/SwissDataScienceCenter/renku-python/issues/2854>`__)
+   (`7e2a3d4 <https://github.com/SwissDataScienceCenter/renku-python/commit/7e2a3d4765f32cab3cc0c328b3525c98d4e96ea8>`__),
+   closes
+   `#2546 <https://github.com/SwissDataScienceCenter/renku-python/issues/2546>`__
+-  **service:** update template schema and errors
+   (`#2845 <https://github.com/SwissDataScienceCenter/renku-python/issues/2845>`__)
+   (`905d1ae <https://github.com/SwissDataScienceCenter/renku-python/commit/905d1aeba093d342b3a01c0ef4a54ef1b757ff6b>`__),
+   closes
+   `#2729 <https://github.com/SwissDataScienceCenter/renku-python/issues/2729>`__
+-  **workflow:** option to ignore deleted outputs in status/update
+   (`#2832 <https://github.com/SwissDataScienceCenter/renku-python/issues/2832>`__)
+   (`fe1c2c7 <https://github.com/SwissDataScienceCenter/renku-python/commit/fe1c2c70b0ef2facea83e1add21e39f03df9e569>`__)
+
 `1.2.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.1...v1.2.2>`__ (2022-04-13)
 -------------------------------------------------------------------------------------------------------
 
