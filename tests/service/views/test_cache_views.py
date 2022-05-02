@@ -721,15 +721,15 @@ def test_check_migrations_remote_errors(
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_mirgate_wrong_template_source(svc_client_with_repo, template, monkeypatch):
+def test_migrate_wrong_template_source(svc_client_setup, template, monkeypatch):
     """Check if migrations gracefully fail when the project template is not available."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, _, _ = svc_client_setup
 
     # NOTE: fake source
     with monkeypatch.context() as monkey:
         from renku.core.template.usecase import TemplateMetadata
 
-        monkey.setattr(TemplateMetadata, "source", property(MagicMock(return_value=f"{template['url']}FAKE_URL")))
+        monkey.setattr(TemplateMetadata, "source", property(MagicMock(return_value="https://FAKE_URL")))
 
         response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
@@ -739,9 +739,9 @@ def test_mirgate_wrong_template_source(svc_client_with_repo, template, monkeypat
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_mirgate_wrong_template_ref(svc_client_with_repo, template, monkeypatch):
+def test_migrate_wrong_template_ref(svc_client_setup, template, monkeypatch):
     """Check if migrations gracefully fail when the project template points to a wrong ref."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, _, _ = svc_client_setup
     # NOTE: fake reference
     with monkeypatch.context() as monkey:
         from renku.domain_model.template import TemplateMetadata
