@@ -15,4 +15,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku repository management."""
+"""Renku core constants."""
+
+CACHE = "cache"
+"""Directory to cache transient data."""
+
+RENKU_HOME = ".renku"
+"""Project directory name."""
+
+RENKU_TMP = "tmp"

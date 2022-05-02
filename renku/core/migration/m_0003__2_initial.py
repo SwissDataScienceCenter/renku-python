@@ -21,7 +21,7 @@ import shutil
 import urllib
 from pathlib import Path
 
-from renku.core.management import RENKU_HOME
+from renku.core.constant import RENKU_HOME
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.migration.models.v3 import Collection, Dataset, Project, get_client_datasets
 from renku.core.migration.models.v9 import generate_file_id, generate_label

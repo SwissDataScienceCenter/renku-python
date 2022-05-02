@@ -84,8 +84,8 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
 
 def is_external_file(path: Union[Path, str], client_path: Path):
     """Checks if a path is an external file."""
+    from renku.core.constant import RENKU_HOME
     from renku.core.dataset.constant import POINTERS
-    from renku.core.management import RENKU_HOME
 
     path = client_path / path
     if not path.is_symlink() or not is_subpath(path=path, base=client_path):

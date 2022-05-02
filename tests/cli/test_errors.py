@@ -32,6 +32,7 @@ from tests.utils import format_result_exception
         ["config"],
         ["dataset"],
         ["doctor"],
+        ["gc"],
         ["githooks"],
         ["graph", "export"],
         ["migrate"],

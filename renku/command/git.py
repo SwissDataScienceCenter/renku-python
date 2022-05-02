@@ -24,7 +24,6 @@ import click
 from renku.core import errors
 
 GIT_KEY = "renku.git"
-GIT_ISOLATION = "renku.worktree"
 
 
 def set_git_home(value: Path):
@@ -57,25 +56,3 @@ def get_git_home(path=".") -> Path:
         return Repository(path, search_parent_directories=True).path
     except errors.GitError:
         raise ValueError(f"Cannot find a git repository at '{path}'")
-
-
-def set_git_isolation(value):
-    """Set Git isolation.
-
-    Args:
-        value: Git isolation level.
-
-    Returns:
-        The value passed.
-    """
-    ctx = click.get_current_context()
-    ctx.meta[GIT_ISOLATION] = value
-
-    return value
-
-
-def get_git_isolation():
-    """Get Git isolation from the current context."""
-    ctx = click.get_current_context(silent=True)
-    if ctx and GIT_ISOLATION in ctx.meta:
-        return ctx.meta[GIT_ISOLATION]
