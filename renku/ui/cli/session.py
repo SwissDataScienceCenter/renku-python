@@ -127,7 +127,7 @@ def stop(session_name, stop_all, provider):
     if stop_all:
         click.echo("All running interactive sessions for this project have been stopped.")
     else:
-        click.echo(f"Interactive '{session_name}' has been successfully stopped.")
+        click.echo(f"Interactive session '{session_name}' has been successfully stopped.")
 
 
 @session.command("open")

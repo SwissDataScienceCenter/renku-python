@@ -595,3 +595,23 @@ class DockerError(RenkuException):
     def __init__(self, reason: str):
         """Embed exception and build a custom message."""
         super().__init__(f"Docker failed: {reason}")
+
+
+class NotebookServiceSessionError(RenkuException):
+    """Raised when an error occurs trying to start sessions with the notebook service."""
+
+
+class RemoteCommitDoesNotExistError(RenkuException):
+    """Raised when a commit does not exist on a specific remote."""
+
+
+class NoUntrackedFilesAllowedError(RenkuException):
+    """Raised when untracked changes are present but should not be."""
+
+
+class NotebookSessionNotReadyError(RenkuException):
+    """Raised when a user attempts to open a session that is not ready."""
+
+
+class NotebookSessionImageNotExistError(RenkuException):
+    """Raised when a user attempts to start a session with an image that does not exist."""

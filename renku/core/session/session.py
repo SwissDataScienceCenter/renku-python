@@ -27,15 +27,10 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.plugin.session import supported_session_providers
+from renku.core.session.utils import get_renku_project_name
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
 from renku.domain_model.session import ISessionProvider
-
-
-@inject.autoparams()
-def _get_renku_project_name(client_dispatcher: IClientDispatcher) -> str:
-    client = client_dispatcher.current_client
-    return f"{client.remote['owner']}/{client.remote['name']}" if client.remote["name"] else f"{client.path.name}"
 
 
 def _safe_get_provider(provider: str) -> ISessionProvider:
@@ -49,7 +44,7 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
 
 def session_list(config_path: str, provider: Optional[str] = None):
     """List interactive sessions."""
-    project_name = _get_renku_project_name()
+    project_name = get_renku_project_name()
     config = safe_read_yaml(config_path) if config_path else dict()
 
     providers = supported_session_providers()
@@ -83,7 +78,7 @@ def session_start(
     provider_api = _safe_get_provider(provider)
     config = safe_read_yaml(config_path) if config_path else dict()
 
-    project_name = _get_renku_project_name()
+    project_name = get_renku_project_name()
     if image_name is None:
         tag = client.repository.head.commit.hexsha[:7]
         image_name = f"{project_name}:{tag}"
@@ -120,7 +115,7 @@ def session_start(
 
 def session_stop(session_name: str, stop_all: bool = False, provider: Optional[str] = None):
     """Stop interactive session."""
-    project_name = _get_renku_project_name()
+    project_name = get_renku_project_name()
     if provider:
         p = _safe_get_provider(provider)
         is_stopped = p.session_stop(project_name=project_name, session_name=session_name, stop_all=stop_all)

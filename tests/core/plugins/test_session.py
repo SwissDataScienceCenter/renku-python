@@ -24,6 +24,7 @@ import pytest
 from renku.core.errors import ParameterError
 from renku.core.plugin.session import supported_session_providers
 from renku.core.session.docker import DockerSessionProvider
+from renku.core.session.notebook_service import NotebookServiceSessionProvider
 from renku.core.session.session import session_list, session_start, session_stop
 
 
@@ -61,7 +62,13 @@ def fake_session_list(self, project_name, config):
     return ["0xdeadbeef"]
 
 
-@pytest.mark.parametrize("provider", ["docker"])
+@pytest.mark.parametrize(
+    "provider_name,session_provider,provider_patches",
+    [
+        ("docker", DockerSessionProvider, {}),
+        ("notebook_service", NotebookServiceSessionProvider, {}),
+    ],
+)
 @pytest.mark.parametrize(
     "parameters,result",
     [
@@ -70,22 +77,41 @@ def fake_session_list(self, project_name, config):
         ({"image_name": "missing_image"}, ParameterError),
     ],
 )
-@patch.multiple(
-    DockerSessionProvider, session_start=fake_start, find_image=fake_find_image, build_image=fake_build_image
+def test_session_start(
+    run_shell,
+    client,
+    provider_name,
+    session_provider,
+    provider_patches,
+    parameters,
+    result,
+    client_database_injection_manager,
+):
+    with patch.multiple(
+        session_provider,
+        session_start=fake_start,
+        find_image=fake_find_image,
+        build_image=fake_build_image,
+        **provider_patches,
+    ):
+        provider_implementation = next(filter(lambda x: x[1] == provider_name, supported_session_providers()), None)
+        assert provider_implementation is not None
+
+        with client_database_injection_manager(client):
+            if not isinstance(result, str) and issubclass(result, Exception):
+                with pytest.raises(result):
+                    session_start(provider=provider_name, config_path=None, **parameters)
+            else:
+                assert session_start(provider=provider_name, config_path=None, **parameters) == result
+
+
+@pytest.mark.parametrize(
+    "provider_name,session_provider,provider_patches",
+    [
+        ("docker", DockerSessionProvider, {}),
+        ("notebook_service", NotebookServiceSessionProvider, {}),
+    ],
 )
-def test_session_start(run_shell, client, provider, parameters, result, client_database_injection_manager):
-    provider_implementation = next(filter(lambda x: x[1] == provider, supported_session_providers()), None)
-    assert provider_implementation is not None
-
-    with client_database_injection_manager(client):
-        if not isinstance(result, str) and issubclass(result, Exception):
-            with pytest.raises(result):
-                session_start(provider=provider, config_path=None, **parameters)
-        else:
-            assert session_start(provider=provider, config_path=None, **parameters) == result
-
-
-@pytest.mark.parametrize("provider", ["docker"])
 @pytest.mark.parametrize(
     "parameters,result",
     [
@@ -94,25 +120,53 @@ def test_session_start(run_shell, client, provider, parameters, result, client_d
         ({"session_name": "missing_session"}, ParameterError),
     ],
 )
-@patch.object(DockerSessionProvider, "session_stop", fake_stop)
-def test_session_stop(run_shell, client, provider, parameters, result, client_database_injection_manager):
-    provider_implementation = next(filter(lambda x: x[1] == provider, supported_session_providers()), None)
-    assert provider_implementation is not None
+def test_session_stop(
+    run_shell,
+    client,
+    session_provider,
+    provider_name,
+    parameters,
+    provider_patches,
+    result,
+    client_database_injection_manager,
+):
+    with patch.multiple(session_provider, session_stop=fake_stop, **provider_patches):
+        provider_implementation = next(filter(lambda x: x[1] == provider_name, supported_session_providers()), None)
+        assert provider_implementation is not None
 
-    with client_database_injection_manager(client):
-        if result is not None and issubclass(result, Exception):
-            with pytest.raises(result):
-                session_stop(provider=provider, **parameters)
-        else:
-            session_stop(provider=provider, **parameters)
+        with client_database_injection_manager(client):
+            if result is not None and issubclass(result, Exception):
+                with pytest.raises(result):
+                    session_stop(provider=provider_name, **parameters)
+            else:
+                session_stop(provider=provider_name, **parameters)
 
 
-@pytest.mark.parametrize("provider,result", [("docker", ["0xdeadbeef"]), ("no_provider", ParameterError)])
-@patch.object(DockerSessionProvider, "session_list", fake_session_list)
-def test_session_list(run_shell, client, provider, result, client_database_injection_manager):
-    with client_database_injection_manager(client):
-        if not isinstance(result, list) and issubclass(result, Exception):
-            with pytest.raises(result):
-                session_list(provider=provider, config_path=None)
-        else:
-            assert session_list(provider=provider, config_path=None) == result
+@pytest.mark.parametrize(
+    "provider_name,session_provider,provider_patches",
+    [
+        ("docker", DockerSessionProvider, {}),
+        ("notebook_service", NotebookServiceSessionProvider, {}),
+    ],
+)
+@pytest.mark.parametrize("provider_exists,result", [(True, ["0xdeadbeef"]), (False, ParameterError)])
+def test_session_list(
+    run_shell,
+    client,
+    provider_name,
+    session_provider,
+    provider_patches,
+    provider_exists,
+    result,
+    client_database_injection_manager,
+):
+    with patch.multiple(session_provider, session_list=fake_session_list, **provider_patches):
+        with client_database_injection_manager(client):
+            if not isinstance(result, list) and issubclass(result, Exception):
+                with pytest.raises(result):
+                    session_list(provider=provider_name if provider_exists else "no_provider", config_path=None)
+            else:
+                assert (
+                    session_list(provider=provider_name if provider_exists else "no_provider", config_path=None)
+                    == result
+                )

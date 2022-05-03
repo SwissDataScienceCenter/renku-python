@@ -1273,6 +1273,11 @@ class Remote:
         except git.GitError:
             return None
 
+    @property
+    def head_commit(self) -> git.Commit:
+        """Get the head commit on the remote."""
+        return self._remote.repo.head.commit
+
     def is_valid(self) -> bool:
         """Return True if remote exists."""
         return bool(self._remote.exists())
