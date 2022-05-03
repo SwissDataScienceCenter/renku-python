@@ -211,7 +211,7 @@ class ZenodoRecordSerializer(ProviderRecordSerializerApi):
 
     @property
     def latest_uri(self):
-        """Get uri of latest version."""
+        """Get URI of latest version."""
         return self.links.get("latest_html")
 
     def is_last_version(self, uri):
@@ -448,7 +448,7 @@ class ZenodoExporter(ExporterApi):
 
     @property
     def default_params(self):
-        """Create request default params."""
+        """Create request default parameters."""
         return {"access_token": self.access_token}
 
     def dataset_to_request(self):
@@ -484,13 +484,13 @@ class ZenodoExporter(ExporterApi):
 
 @attr.s
 class ZenodoProvider(ProviderApi):
-    """zenodo.org registry API provider."""
+    """Zenodo registry API provider."""
 
     is_doi = attr.ib(default=False)
 
     @staticmethod
     def supports(uri):
-        """Whether or not this provider supports a given uri."""
+        """Whether or not this provider supports a given URI."""
         if "zenodo" in uri.lower():
             return True
 
@@ -508,7 +508,7 @@ class ZenodoProvider(ProviderApi):
 
     @staticmethod
     def record_id(uri):
-        """Extract record id from uri."""
+        """Extract record id from URI."""
         return urlparse(uri).path.split("/")[-1]
 
     def find_record(self, uri, client=None, **kwargs) -> ZenodoRecordSerializer:
@@ -519,7 +519,7 @@ class ZenodoProvider(ProviderApi):
             client: The ``LocalClient`` (Default value = None).
 
         Returns:
-            ZenodoRecord: Record found.
+            ZenodoRecordSerializer: Record found.
 
         """
         if self.is_doi:
@@ -536,7 +536,7 @@ class ZenodoProvider(ProviderApi):
 
     @staticmethod
     def _get_record(uri):
-        """Retrieve record metadata and return ``ZenodoRecord``."""
+        """Retrieve record metadata and return ``ZenodoRecordSerializer``."""
         response = _make_request(uri)
 
         return ZenodoRecordSerializer(**response.json(), uri=uri)

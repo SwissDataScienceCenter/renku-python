@@ -36,7 +36,7 @@ def make_doi_url(doi):
 
 
 class DOIMetadataSerializer(ProviderRecordSerializerApi):
-    """Response from doi.org for DOI metadata."""
+    """Response from `doi.org <http://doi.org>`_ for DOI metadata."""
 
     def __init__(
         self,
@@ -81,7 +81,7 @@ class DOIMetadataSerializer(ProviderRecordSerializerApi):
 
     @property
     def latest_uri(self) -> str:
-        """Get uri of the latest version."""
+        """Get URI of the latest version."""
         return self.url
 
     def as_dataset(self, client):
@@ -94,7 +94,7 @@ class DOIMetadataSerializer(ProviderRecordSerializerApi):
 
 
 class DOIProvider(ProviderApi):
-    """doi.org registry API provider."""
+    """`doi.org <http://doi.org>`_ registry API provider."""
 
     def __init__(self, headers=None, timeout=3):
         self.timeout = timeout
@@ -102,7 +102,7 @@ class DOIProvider(ProviderApi):
 
     @staticmethod
     def supports(uri):
-        """Whether or not this provider supports a given uri."""
+        """Whether or not this provider supports a given URI."""
         return bool(is_doi(uri))
 
     @staticmethod

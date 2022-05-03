@@ -34,6 +34,7 @@ from renku.ui.service.errors import (
     IntermittentProjectTemplateUnavailable,
     UserAnonymousError,
     UserProjectTemplateReferenceError,
+    UserRepoUrlInvalidError,
 )
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import assert_rpc_response, retry_failed
@@ -683,6 +684,39 @@ def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_ur
     assert response.json["result"]["project_supported"]
     assert response.json["result"]["project_renku_version"]
     assert response.json["result"]["core_renku_version"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_migrations_remote_errors(
+    svc_client, identity_headers, it_remote_repo_url, it_remote_public_renku_repo_url
+):
+    """Check migrations throws the correct errors."""
+
+    # NOTE: repo doesn't exist
+    fake_url = f"{it_remote_repo_url}FAKE_URL"
+    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=fake_url), headers=identity_headers)
+
+    assert_rpc_response(response, "error")
+    assert UserRepoUrlInvalidError.code == response.json["error"]["code"]
+
+    # NOTE: token errors
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+    )
+    assert_rpc_response(response)
+
+    identity_headers["Authorization"] = "Bearer 123abc"
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
+    )
+    assert_rpc_response(response, "error")
+    assert UserRepoUrlInvalidError.code == response.json["error"]["code"]
+
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_public_renku_repo_url), headers=identity_headers
+    )
+    assert_rpc_response(response)
 
 
 @pytest.mark.service

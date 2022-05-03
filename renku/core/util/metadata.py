@@ -21,7 +21,7 @@ import os
 import re
 from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, FrozenSet, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 from packaging.version import Version
 
@@ -29,8 +29,6 @@ from renku.core import errors
 from renku.core.util.os import is_subpath
 
 if TYPE_CHECKING:
-    from renku.domain_model.entity import Entity
-    from renku.domain_model.provenance.activity import Activity
     from renku.domain_model.provenance.agent import Person
 
 
@@ -84,88 +82,10 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
     return person, no_email_warning
 
 
-def get_modified_activities(
-    activities: List["Activity"], repository
-) -> Tuple[Set[Tuple["Activity", "Entity"]], Set[Tuple["Activity", "Entity"]]]:
-    """Get lists of activities that have modified/deleted usage entities."""
-    modified = set()
-    deleted = set()
-
-    paths = []
-
-    for activity in activities:
-        for usage in activity.usages:
-            paths.append(usage.entity.path)
-
-    hashes = repository.get_object_hashes(paths=paths, revision="HEAD")
-
-    for activity in activities:
-        for usage in activity.usages:
-            entity = usage.entity
-            current_checksum = hashes.get(entity.path, None)
-            if current_checksum is None:
-                deleted.add((activity, entity))
-            elif current_checksum != entity.checksum:
-                modified.add((activity, entity))
-
-    return modified, deleted
-
-
-def filter_overridden_activities(activities: List["Activity"]) -> List["Activity"]:
-    """Filter out overridden activities from a list of activities."""
-    relevant_activities: Dict[FrozenSet[str], Activity] = {}
-
-    for activity in activities[::-1]:
-        outputs = frozenset(g.entity.path for g in activity.generations)
-
-        subset_of = set()
-        superset_of = set()
-
-        for k, a in relevant_activities.items():
-            if outputs.issubset(k):
-                subset_of.add((k, a))
-            elif outputs.issuperset(k):
-                superset_of.add((k, a))
-
-        if not subset_of and not superset_of:
-            relevant_activities[outputs] = activity
-            continue
-
-        if subset_of and any(activity.ended_at_time < s.ended_at_time for _, s in subset_of):
-            # activity is a subset of another, newer activity, ignore it
-            continue
-
-        older_subsets = [k for k, s in superset_of if activity.ended_at_time > s.ended_at_time]
-
-        for older_subset in older_subsets:
-            # remove other activities that this activity is a superset of
-            del relevant_activities[older_subset]
-
-        relevant_activities[outputs] = activity
-
-    return list(relevant_activities.values())
-
-
-def add_activity_if_recent(activity: "Activity", activities: Set["Activity"]):
-    """Add ``activity`` to ``activities`` if it's not in the set or is the latest executed instance."""
-    if activity in activities:
-        return
-
-    for existing_activity in activities:
-        if activity.has_identical_inputs_and_outputs_as(existing_activity):
-            if activity.ended_at_time > existing_activity.ended_at_time:  # activity is newer
-                activities.remove(existing_activity)
-                activities.add(activity)
-            return
-
-    # NOTE: No similar activity was found
-    activities.add(activity)
-
-
 def is_external_file(path: Union[Path, str], client_path: Path):
     """Checks if a path is an external file."""
+    from renku.core.constant import RENKU_HOME
     from renku.core.dataset.constant import POINTERS
-    from renku.core.management import RENKU_HOME
 
     path = client_path / path
     if not path.is_symlink() or not is_subpath(path=path, base=client_path):

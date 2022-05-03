@@ -27,7 +27,7 @@ class ProviderApi(abc.ABC):
 
     @abc.abstractmethod
     def find_record(self, uri, **kwargs) -> "ProviderRecordSerializerApi":
-        """Find record by uri."""
+        """Find record by URI."""
         pass
 
     @abc.abstractmethod
@@ -42,7 +42,7 @@ class ProviderApi(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def supports(uri):
-        """Whether or not this provider supports a given uri."""
+        """Whether or not this provider supports a given URI."""
         pass
 
     @staticmethod
@@ -98,7 +98,7 @@ class ProviderRecordSerializerApi(abc.ABC):
 
     @property
     def latest_uri(self) -> str:
-        """Get uri of the latest version."""
+        """Get URI of the latest version."""
         raise NotImplementedError
 
     @abc.abstractmethod

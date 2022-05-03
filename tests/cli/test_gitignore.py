@@ -36,6 +36,7 @@ def test_dataset_add(tmpdir, runner, client, subdirectory):
 
     assert 1 == result.exit_code
 
+    client.repository.reset(hard=True)
     client.repository.clean()
 
     # Use the --force ;)

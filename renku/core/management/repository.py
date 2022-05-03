@@ -30,9 +30,9 @@ import filelock
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.compat import Path
+from renku.core.constant import RENKU_HOME
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.management import RENKU_HOME
 from renku.core.management.git import GitCore
 from renku.core.util.git import default_path
 from renku.domain_model.enums import ConfigFilter

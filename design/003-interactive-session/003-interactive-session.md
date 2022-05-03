@@ -138,7 +138,7 @@ class ISessionProvider:
         :param image_descriptor: Path to the container image descriptor file.
         :param image_name: Container image name.
         :param config: Path to the session provider specific configuration YAML.
-        :returns: a unique id for the created interactive sesssion.
+        :returns: a unique id for the created interactive session.
         """
         pass
 
@@ -184,7 +184,7 @@ class ISessionProvider:
         :param mem_request: Memory size request for the session.
         :param disk_request: Disk size request for the session.
         :param gpu_request: GPU device request for the session.
-        :returns: a unique id for the created interactive sesssion.
+        :returns: a unique id for the created interactive session.
         """
         pass
 

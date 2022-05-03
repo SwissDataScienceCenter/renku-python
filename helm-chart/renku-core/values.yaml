@@ -109,7 +109,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.2.1"
+      tag: "v1.2.3"
       pullPolicy: IfNotPresent
   v8:
     name: v8

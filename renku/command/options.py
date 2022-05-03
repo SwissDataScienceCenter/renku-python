@@ -19,17 +19,6 @@
 
 import click
 
-from .git import set_git_isolation
-
-option_isolation = click.option(
-    "--isolation",
-    is_flag=True,
-    default=False,
-    callback=lambda ctx, param, value: set_git_isolation(value),
-    help="Set up the isolation for invoking of the given command.",
-)
-
-
 option_external_storage_requested = click.option(
     "external_storage_requested",
     "--external-storage/--no-external-storage",

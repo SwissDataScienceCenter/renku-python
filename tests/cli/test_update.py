@@ -29,7 +29,7 @@ from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
-from tests.utils import format_result_exception, write_and_commit_file
+from tests.utils import delete_and_commit_file, format_result_exception, write_and_commit_file
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
@@ -493,19 +493,92 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
     assert "content_beven more modified\n" == (client.path / output2).read_text()
 
 
-def test_update_with_external_files(split_runner, client, directory_tree):
+def test_update_with_external_files(runner, client, directory_tree):
     """Test update commands that use external files."""
-    assert 0 == split_runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
 
     path = client.path / "data" / "my-dataset" / "directory_tree" / "file1"
 
-    assert 0 == split_runner.invoke(cli, ["run", "tail", path], stdout="output").exit_code
+    assert 0 == runner.invoke(cli, ["run", "tail", path], stdout="output").exit_code
 
     (directory_tree / "file1").write_text("updated file1")
 
-    assert 0 == split_runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
 
-    result = split_runner.invoke(cli, ["update", "--all"])
+    result = runner.invoke(cli, ["update", "--all"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "updated file1" in (client.path / "output").read_text()
+
+
+def test_update_ignore_deleted_files(runner, client):
+    """Test update can ignore deleted files."""
+    deleted = client.path / "deleted"
+    write_and_commit_file(client.repository, "source", "source content")
+    assert 0 == runner.invoke(cli, ["run", "--name", "run-1", "head", "source"], stdout="upstream").exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "run-2", "tail", "upstream"], stdout=deleted).exit_code
+
+    write_and_commit_file(client.repository, "source", "changes")
+    delete_and_commit_file(client.repository, deleted)
+
+    result = runner.invoke(cli, ["update", "--dry-run", "--all", "--ignore-deleted"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "run-1" in result.output
+    assert "run-2" not in result.output
+
+    result = runner.invoke(cli, ["update", "--all", "--ignore-deleted"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert not deleted.exists()
+
+
+def test_update_ignore_deleted_files_config(runner, client):
+    """Test update can ignore deleted files when proper config is set."""
+    write_and_commit_file(client.repository, "source", "source content")
+    assert 0 == runner.invoke(cli, ["run", "--name", "run-1", "head", "source"], stdout="upstream").exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "run-2", "tail", "upstream"], stdout="deleted").exit_code
+
+    write_and_commit_file(client.repository, "source", "changes")
+    delete_and_commit_file(client.repository, "deleted")
+    # Set config to ignore deleted files
+    client.set_value("renku", "update_ignore_delete", "True")
+    client.repository.add(all=True)
+    client.repository.commit("Set config")
+
+    result = runner.invoke(cli, ["update", "--all", "--dry-run", "--ignore-deleted"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "run-1" in result.output
+    assert "run-2" not in result.output
+
+
+def test_update_deleted_files_reported_with_siblings(runner, client):
+    """Test update regenerates deleted file if they have existing siblings."""
+    deleted = client.path / "deleted"
+    write_and_commit_file(client.repository, "source", "source content")
+    assert 0 == runner.invoke(cli, ["run", "--input", "source", "touch", deleted, "sibling"]).exit_code
+
+    write_and_commit_file(client.repository, "source", "changes")
+    delete_and_commit_file(client.repository, deleted)
+
+    result = runner.invoke(cli, ["update", "--all", "--ignore-deleted"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert deleted.exists()
+
+
+def test_update_deleted_files_reported_with_downstream(runner, client):
+    """Test update reports deleted file if they have existing downstreams."""
+    deleted = client.path / "deleted"
+    write_and_commit_file(client.repository, "source", "source content")
+    assert 0 == runner.invoke(cli, ["run", "head", "source"], stdout=deleted).exit_code
+    assert 0 == runner.invoke(cli, ["run", "tail", deleted], stdout="downstream").exit_code
+
+    write_and_commit_file(client.repository, "source", "changes")
+    delete_and_commit_file(client.repository, deleted)
+
+    result = runner.invoke(cli, ["update", "--all", "--ignore-deleted"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert deleted.exists()

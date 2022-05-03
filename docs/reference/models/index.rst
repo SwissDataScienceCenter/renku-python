@@ -26,7 +26,10 @@ Models
    :maxdepth: 1
 
    projects
+   entity
    datasets
    provenance
    workflow
+   session
+   template
    refs

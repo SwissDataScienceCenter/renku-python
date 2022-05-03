@@ -131,7 +131,7 @@ def test_rerun_with_from(project, renku_cli, provider, source, content):
 
 
 @pytest.mark.skip(reason="renku rerun not implemented with --edit-inputs yet, reenable later")
-def test_rerun_with_edited_inputs(project, run, no_lfs_warning, split_runner):
+def test_rerun_with_edited_inputs(project, run, no_lfs_warning, runner):
     """Test input modification."""
     cwd = Path(project)
     data = cwd / "examples"
@@ -164,7 +164,7 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning, split_runner):
         # Make sure the input path is relative to the current directory.
         os.chdir(str(data))
 
-        result = split_runner.invoke(
+        result = runner.invoke(
             cli, ["rerun", "--show-inputs", "--from", str(first), str(second)], catch_exceptions=False
         )
         assert 0 == result.exit_code, format_result_exception(result)
@@ -329,18 +329,18 @@ def test_rerun_multiple_paths_common_output(project, renku_cli, runner):
     assert "r4" in result.output
 
 
-def test_rerun_output_in_subdirectory(split_runner, client):
+def test_rerun_output_in_subdirectory(runner, client):
     """Test re-run when an output is in a sub-directory."""
     output = client.path / "sub-dir" / "output"
     write_and_commit_file(client.repository, output, "")
 
-    result = split_runner.invoke(cli, ["run", "bash", "-c", 'touch "$0" ; echo data > "$0"', output])
+    result = runner.invoke(cli, ["run", "bash", "-c", 'touch "$0" ; echo data > "$0"', output])
 
     assert 0 == result.exit_code, format_result_exception(result)
 
     write_and_commit_file(client.repository, output, "")
 
-    result = split_runner.invoke(cli, ["rerun", output])
+    result = runner.invoke(cli, ["rerun", output])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "data" in output.read_text()

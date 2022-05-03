@@ -19,9 +19,7 @@
 
 import os
 from pathlib import Path
-from typing import List
-
-import attr
+from typing import Any, List, Optional
 
 
 class _PathFormatterMixin:
@@ -34,31 +32,21 @@ class _PathFormatterMixin:
         return os.path.relpath(os.path.abspath(str(self.path)), os.path.realpath(os.getcwd()))
 
 
-@attr.s
 class File(_PathFormatterMixin):
     """Represent a file."""
 
-    path: Path = attr.ib(converter=Path)
-    mime_type: List[str] = attr.ib(default=["application/octet-stream"])
+    def __init__(self, path: Path, mime_type: Optional[List[str]] = None) -> None:
+        self.path = path
+        self.mime_type = mime_type or ["application/octet-stream"]
 
 
-@attr.s
 class Directory(_PathFormatterMixin):
     """Represent a directory."""
 
-    # TODO add validation to allow only directories
-    path = attr.ib(default=None)
-    listing = attr.ib(default=attr.Factory(list))
+    def __init__(self, path: Path, listing: Optional[List[Any]] = None) -> None:
+        self.path = path  # TODO add validation to allow only directories
+        self.listing = listing or []
 
 
 PATH_OBJECTS = {"File", "Directory"}
 PATH_TYPES = (File, Directory)
-
-
-@attr.s
-class Dirent(object):
-    """Define a file or subdirectory."""
-
-    entryname = attr.ib(default=None)
-    entry = attr.ib(default=None)
-    writable = attr.ib(default=False)
