@@ -101,6 +101,8 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_re
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
+    print(response.json)
+    print(json.dumps(identity_headers))
     assert response
     assert {"result"} == set(response.json.keys())
 
