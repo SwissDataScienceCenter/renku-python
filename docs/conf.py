@@ -42,12 +42,14 @@ suppress_warnings = ["image.nonlocal_uri"]
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "plantweb.directive",
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
+    "sphinxcontrib.mermaid",
     "sphinxcontrib.spelling",
     "sphinx_tabs.tabs",
     "cheatsheet",
@@ -359,7 +361,6 @@ nitpick_ignore = [
     ("py:class", "Path"),
     ("py:class", "Persistent"),
     ("py:class", "optional"),
-    ("py:class", "persistent.Persistent"),
     ("py:class", '"LocalClient"'),
     ("py:class", '"ValueResolver"'),
     ("py:exc", "errors.ParameterError"),
@@ -369,5 +370,6 @@ nitpick_ignore_regex = [
     ("py:class", r"calamus.*"),
     ("py:class", r"docker.*"),
     ("py:class", r"marshmallow.*"),
+    ("py:class", r"persistent.*"),
     ("py:class", r"yaml.*"),
 ]
