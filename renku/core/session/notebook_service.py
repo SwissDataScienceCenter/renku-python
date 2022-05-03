@@ -214,7 +214,10 @@ class NotebookServiceSessionProvider(ISessionProvider):
                 client.repository.add(all=True)
                 client.repository.commit("Automated commit by Renku CLI.")
                 client.repository.push()
-            if client.repository.head.commit.hexsha != remote.head_commit.hexsha:
+            remote_head_hexsha = client.repository.run_git_command(
+                "rev-parse", f"{remote.name}/{client.repository.active_branch}"
+            )
+            if client.repository.head.commit.hexsha != remote_head_hexsha:
                 communication.confirm(
                     "You have new changes that are present only in your local repository. "
                     "Renku can automatically push these changes so that it builds "
@@ -323,7 +326,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
         if mem_request:
             server_options["mem_request"] = mem_request
         if gpu_request:
-            server_options["gpu_request"] = gpu_request
+            server_options["gpu_request"] = int(gpu_request)
         if disk_request:
             server_options["disk_request"] = disk_request
         payload = {
