@@ -1279,7 +1279,7 @@ class Remote:
             return None
 
     @property
-    def head_commit(self) -> git.Commit:
+    def head_commit(self) -> Commit:
         """Get the head commit on the remote."""
         return self._remote.repo.head.commit
 

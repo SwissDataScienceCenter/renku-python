@@ -21,7 +21,7 @@ import urllib
 from datetime import datetime, timedelta
 from pathlib import Path
 from time import sleep
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from yaspin import yaspin
 
@@ -148,9 +148,11 @@ class NotebookServiceSessionProvider(ISessionProvider):
 
     def _wait_for_session_status(
         self,
-        name: str,
+        name: Optional[str],
         status: str,
     ):
+        if not name:
+            return
         now = datetime.now()
         timeout_time = now + timedelta(seconds=self.DEFAULT_TIMEOUT_SECONDS)
         while now < timeout_time:
@@ -170,7 +172,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
         project_name_enc = gitlab_project_name.replace("/", "%2F")
         res = self._send_renku_request(
             "get",
-            f"{self.renku_url()}/api/projects/{project_name_enc}/jobs",
+            f"{self._renku_url()}/api/projects/{project_name_enc}/jobs",
             params={"scope": ["running", "pending", "created"]},
             headers=self._auth_header(),
         )
@@ -178,6 +180,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
             for job in res.json():
                 if job.get("commit", {}).get("id") == commit_sha:
                     return job["id"]
+        return None
 
     def _wait_for_ci_jobs_completion(
         self,
@@ -231,7 +234,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
 
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image."""
-        if self.find_image(image_name):
+        if self.find_image(image_name, config=config):
             return
         if not self._is_user_registered():
             raise errors.NotebookSessionImageNotExistError(
@@ -314,7 +317,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
             )
         self._commit_and_push_checks()
         project_name_parts = _split_project_name(project_name)
-        server_options = {}
+        server_options: Dict[str, Union[str, float]] = {}
         if cpu_request:
             server_options["cpu_request"] = cpu_request
         if mem_request:
@@ -377,3 +380,4 @@ class NotebookServiceSessionProvider(ISessionProvider):
                     f"The session {session_name} cannot be accessed now because it is not ready."
                 )
             return res.json().get("url")
+        return None
