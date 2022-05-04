@@ -365,8 +365,8 @@ class EmbeddedTemplates(TemplatesSource):
         """Fetch embedded Renku templates."""
         from renku import __template_version__
 
-        path = importlib_resources.files("renku") / "templates"
-        with importlib_resources.as_file(path) as folder:
+        template_path = importlib_resources.files("renku") / "templates"
+        with importlib_resources.as_file(template_path) as folder:
             path = Path(folder)
 
         return cls(path=path, source="renku", reference=__template_version__, version=__template_version__)
