@@ -542,7 +542,7 @@ name = "docutils"
 version = "0.16"
 description = "Docutils -- Python Documentation Utilities"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
@@ -1154,7 +1154,7 @@ name = "plantweb"
 version = "1.2.1"
 description = "Python client for the PlantUML server"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [package.dependencies]
@@ -1902,7 +1902,7 @@ pycodegen = ["black"]
 
 [[package]]
 name = "sentry-sdk"
-version = "1.5.5"
+version = "1.5.11"
 description = "Python client for Sentry (https://sentry.io)"
 category = "main"
 optional = true
@@ -2098,20 +2098,6 @@ description = "Mermaid diagrams in yours Sphinx powered docs"
 category = "main"
 optional = true
 python-versions = "*"
-
-[[package]]
-name = "sphinxcontrib-plantuml"
-version = "0.23"
-description = "Sphinx \"plantuml\" extension"
-category = "main"
-optional = true
-python-versions = "*"
-
-[package.dependencies]
-Sphinx = ">=1.6"
-
-[package.extras]
-test = ["pillow", "flake8", "pytest"]
 
 [[package]]
 name = "sphinxcontrib-qthelp"
@@ -2621,8 +2607,8 @@ cffi = {version = ">=1.11", markers = "platform_python_implementation == \"PyPy\
 cffi = ["cffi (>=1.11)"]
 
 [extras]
-all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "marshmallow", "mypy", "pexpect", "pillow", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-plantuml", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
-docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-plantuml", "sphinxcontrib-spelling", "sphinx-tabs"]
+all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "marshmallow", "mypy", "pexpect", "pillow", "plantweb", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
+docs = ["plantweb", "renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
 service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "marshmallow", "pillow", "ptvsd", "python-dotenv", "redis", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
 tests = ["black", "check-manifest", "coverage", "fakeredis", "flakehell", "flaky", "freezegun", "isort", "mypy", "pexpect", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "responses", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate"]
 toil = ["toil"]
@@ -2630,7 +2616,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "44895b065c899af116e6045289d798744de3a3fecc6b28bf8b5272f79577d6c2"
+content-hash = "7ae7fdcf5fa255e07e11826a4f9bf16cb577d597c0ada415a659d2a9837d126e"
 
 [metadata.files]
 addict = [
@@ -3946,8 +3932,8 @@ schema-salad = [
     {file = "schema_salad-8.2.20220204150214-py3-none-any.whl", hash = "sha256:ce49adf0bc97fd44d99df98bf00d6bc66b38a2483b3cc721cbd200d010add3c5"},
 ]
 sentry-sdk = [
-    {file = "sentry-sdk-1.5.5.tar.gz", hash = "sha256:98fd155fa5d5fec1dbabed32a1a4ae2705f1edaa5dae4e7f7b62a384ba30e759"},
-    {file = "sentry_sdk-1.5.5-py2.py3-none-any.whl", hash = "sha256:3817274fba2498c8ebf6b896ee98ac916c5598706340573268c07bf2bb30d831"},
+    {file = "sentry-sdk-1.5.11.tar.gz", hash = "sha256:6c01d9d0b65935fd275adc120194737d1df317dce811e642cbf0394d0d37a007"},
+    {file = "sentry_sdk-1.5.11-py2.py3-none-any.whl", hash = "sha256:c17179183cac614e900cbd048dab03f49a48e2820182ec686c25e7ce46f8548f"},
 ]
 shellescape = [
     {file = "shellescape-3.8.1-py2.py3-none-any.whl", hash = "sha256:f17127e390fa3f9aaa80c69c16ea73615fd9b5318fd8309c1dca6168ae7d85bf"},
@@ -4004,9 +3990,6 @@ sphinxcontrib-jsmath = [
 sphinxcontrib-mermaid = [
     {file = "sphinxcontrib-mermaid-0.7.1.tar.gz", hash = "sha256:aa8a40b50ec86ad12824b62180240ca52a9bda8424455d7eb252eae9aa5d293c"},
     {file = "sphinxcontrib_mermaid-0.7.1-py2.py3-none-any.whl", hash = "sha256:3e20de1937c30dfa807e446bf99983d73d0dd3dc5c6524addda59800fe928762"},
-]
-sphinxcontrib-plantuml = [
-    {file = "sphinxcontrib-plantuml-0.23.tar.gz", hash = "sha256:1d55518f0a86ecd6c96ba8ff8c884adca05bac3e58e76a692a3cd19aa7f42acf"},
 ]
 sphinxcontrib-qthelp = [
     {file = "sphinxcontrib-qthelp-1.0.3.tar.gz", hash = "sha256:4c33767ee058b70dba89a6fc5c1892c0d57a54be67ddd3e7875a18d14cba5a72"},
