@@ -77,8 +77,8 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
             # NOTE: use quick flow but fallback to regular flow in case of unexpected exceptions
             try:
                 result = self._fast_op_without_cache()
-            except (AuthenticationError, ProjectNotFound):
-                raise
+            # except (AuthenticationError, ProjectNotFound):
+            #     raise
             except BaseException:
                 result = self.execute_op()
 
