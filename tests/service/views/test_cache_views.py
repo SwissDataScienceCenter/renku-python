@@ -34,7 +34,6 @@ from renku.ui.service.errors import (
     IntermittentProjectTemplateUnavailable,
     UserAnonymousError,
     UserProjectTemplateReferenceError,
-    UserRepoNoAccessError,
     UserRepoUrlInvalidError,
 )
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
