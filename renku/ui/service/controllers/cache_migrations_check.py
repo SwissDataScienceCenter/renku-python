@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 from renku.command.migrate import migrations_check
-from renku.core.errors import RenkuException
+from renku.core.errors import AuthenticationError, ProjectNotFound, RenkuException
 from renku.core.util.contexts import click_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
@@ -77,8 +77,8 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
             # NOTE: use quick flow but fallback to regular flow in case of unexpected exceptions
             try:
                 result = self._fast_op_without_cache()
-            # except (AuthenticationError, ProjectNotFound):
-            #     raise
+            except (AuthenticationError, ProjectNotFound):
+                raise
             except BaseException:
                 result = self.execute_op()
 

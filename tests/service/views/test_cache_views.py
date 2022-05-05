@@ -721,7 +721,7 @@ def test_check_migrations_remote_errors(
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_migrate_wrong_template_source(svc_client_setup, monkeypatch):
+def test_migrate_wrong_template(svc_client_setup, template, monkeypatch):
     """Check if migrations gracefully fail when the project template is not available."""
     svc_client, headers, project_id, _, _ = svc_client_setup
 
@@ -738,12 +738,6 @@ def test_migrate_wrong_template_source(svc_client_setup, monkeypatch):
         assert_rpc_response(response, "error")
         assert IntermittentProjectTemplateUnavailable.code == response.json["error"]["code"]
 
-
-@pytest.mark.service
-@pytest.mark.integration
-def test_migrate_wrong_template_ref(svc_client_setup, template, monkeypatch):
-    """Check if migrations gracefully fail when the project template points to a wrong ref."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
     # NOTE: fake reference
     with monkeypatch.context() as monkey:
         from renku.domain_model.template import TemplateMetadata
