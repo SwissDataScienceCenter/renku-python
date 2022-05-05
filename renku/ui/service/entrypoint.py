@@ -29,7 +29,7 @@ from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.ui.service.cache import cache
-from renku.ui.service.config import CACHE_DIR, SENTRY_ENABLED, SENTRY_SAMPLERATE, SERVICE_PREFIX
+from renku.ui.service.config import CACHE_DIR, MAX_CONTENT_LENGTH, SENTRY_ENABLED, SENTRY_SAMPLERATE, SERVICE_PREFIX
 from renku.ui.service.errors import (
     ProgramHttpMethodError,
     ProgramHttpMissingError,
@@ -69,9 +69,7 @@ def create_app(custom_exceptions=True):
     app.json_encoder = SvcJSONEncoder
     app.config["UPLOAD_FOLDER"] = CACHE_DIR
 
-    max_content_size = os.getenv("MAX_CONTENT_LENGTH")
-    if max_content_size:
-        app.config["MAX_CONTENT_LENGTH"] = max_content_size
+    app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
     app.config["cache"] = cache
 
@@ -102,7 +100,7 @@ def register_exceptions(app):
 
     @app.errorhandler(Exception)
     def exceptions(e):
-        """This exceptions handler manages Flask/Werkzeug exceptions.
+        """Exception handler that manages Flask/Werkzeug exceptions.
 
         For the other exception handlers check ``service/decorators.py``
         """

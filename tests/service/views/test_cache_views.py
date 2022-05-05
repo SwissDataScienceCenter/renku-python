@@ -97,6 +97,72 @@ def test_file_upload(svc_client, identity_headers):
 
 
 @pytest.mark.service
+def test_file_chunked_upload(svc_client, identity_headers, svc_cache_dir):
+    """Check successful file upload."""
+    headers = copy.deepcopy(identity_headers)
+    headers.pop("Content-Type")
+
+    upload_id = uuid.uuid4().hex
+    filename = uuid.uuid4().hex
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk1"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=0,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk2"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=1,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk3"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=2,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert 1 == len(response.json["result"]["files"])
+    assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
+
+    file = next(svc_cache_dir[1].rglob("*")) / filename
+
+    assert "chunk1chunk2chunk3" == file.read_text()
+
+
+@pytest.mark.service
 def test_file_upload_override(svc_client, identity_headers):
     """Check successful file upload."""
     headers = copy.deepcopy(identity_headers)

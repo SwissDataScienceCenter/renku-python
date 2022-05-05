@@ -24,10 +24,11 @@ import patoolib
 from patoolib.util import PatoolError
 
 from renku.core.errors import RenkuException
-from renku.ui.service.config import CACHE_UPLOADS_PATH, SUPPORTED_ARCHIVES
+from renku.core.util.file_size import bytes_to_unit
+from renku.ui.service.config import CACHE_UPLOADS_PATH, MAX_CONTENT_LENGTH, SUPPORTED_ARCHIVES
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
-from renku.ui.service.errors import IntermittentFileExistsError
+from renku.ui.service.errors import IntermittentFileExistsError, UserUploadTooLargeError
 from renku.ui.service.serializers.cache import FileUploadRequest, FileUploadResponseRPC, extract_file
 from renku.ui.service.views import result_response
 
@@ -47,7 +48,8 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
             "content_type": self.file.content_type,
             "is_archive": self.file.content_type in SUPPORTED_ARCHIVES,
         }
-        self.response_builder.update(UploadFilesCtrl.REQUEST_SERIALIZER.load(flask_request.args))
+        args = {**flask_request.args, **flask_request.form}
+        self.response_builder.update(UploadFilesCtrl.REQUEST_SERIALIZER.load(args))
 
         super(UploadFilesCtrl, self).__init__(cache, user_data, {})
 
@@ -55,6 +57,62 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
     def context(self):
         """Controller operation context."""
         return self.response_builder
+
+    def process_upload(self):
+        """Process an upload."""
+        if self.response_builder.get("chunked_id", None) is None:
+            return self.process_file()
+
+        return self.process_chunked_upload()
+
+    def process_chunked_upload(self):
+        """Process upload done in chunks."""
+        if self.response_builder["total_size"] > MAX_CONTENT_LENGTH:
+            if MAX_CONTENT_LENGTH > 524288000:
+                max_size = bytes_to_unit(MAX_CONTENT_LENGTH, "gb")
+                max_size_str = f"{max_size} gb"
+            else:
+                max_size = bytes_to_unit(MAX_CONTENT_LENGTH, "mb")
+                max_size_str = f"{max_size} mb"
+            raise UserUploadTooLargeError(maximum_size=max_size_str, exception=None)
+
+        chunked_id = self.response_builder["chunked_id"]
+
+        user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
+        chunks_dir = user_cache_dir / chunked_id
+        chunks_dir.mkdir(exist_ok=True, parents=True)
+
+        current_chunk = self.response_builder["chunk_index"]
+        total_chunks = self.response_builder["chunk_count"]
+
+        file_path = chunks_dir / str(current_chunk)
+        relative_path = file_path.relative_to(CACHE_UPLOADS_PATH / self.user.user_id)
+
+        self.file.save(str(file_path))
+
+        with self.cache.model_db.lock(f"chunked_upload_{self.user.user_id}_{chunked_id}"):
+            self.cache.set_file_chunk(
+                self.user,
+                {
+                    "chunked_id": chunked_id,
+                    "file_name": str(current_chunk),
+                    "relative_path": str(relative_path),
+                },
+            )
+            completed = len(list(self.cache.get_chunks(self.user, chunked_id))) == total_chunks
+
+        if not completed:
+            return {}
+
+        file_path = user_cache_dir / self.file.filename
+
+        with open(file_path, "wb") as f:
+            for file_number in range(total_chunks):
+                f.write((chunks_dir / str(file_number)).read_bytes())
+            shutil.rmtree(chunks_dir)
+            self.cache.invalidate_chunks(self.user, chunked_id)
+
+        return self.postprocess_file(file_path, user_cache_dir)
 
     def process_file(self):
         """Process uploaded file."""
@@ -70,6 +128,10 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
 
         self.file.save(str(file_path))
 
+        return self.postprocess_file(file_path, user_cache_dir)
+
+    def postprocess_file(self, file_path, user_cache_dir):
+        """Postprocessing of uploaded file."""
         files = []
         if self.response_builder["unpack_archive"] and self.response_builder["is_archive"]:
             unpack_dir = "{0}.unpacked".format(file_path.name)
@@ -98,11 +160,15 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
         else:
             relative_path = file_path.relative_to(CACHE_UPLOADS_PATH / self.user.user_id)
 
-            self.response_builder["file_size"] = os.stat(file_path).st_size
-            self.response_builder["relative_path"] = str(relative_path)
-            self.response_builder["is_dir"] = file_path.is_dir()
+            file_obj = {
+                "file_name": self.response_builder["file_name"],
+                "file_size": os.stat(file_path).st_size,
+                "relative_path": str(relative_path),
+                "is_dir": file_path.is_dir(),
+                "is_archive": self.response_builder["is_archive"],
+            }
 
-            files.append(self.response_builder)
+            files.append(file_obj)
 
         files = self.cache.set_files(self.user, files)
         return {"files": files}
@@ -114,4 +180,4 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(UploadFilesCtrl.RESPONSE_SERIALIZER, self.process_file())
+        return result_response(UploadFilesCtrl.RESPONSE_SERIALIZER, self.process_upload())

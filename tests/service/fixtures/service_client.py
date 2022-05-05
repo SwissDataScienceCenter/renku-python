@@ -82,7 +82,7 @@ def svc_cache_dir(mocker, tmpdir):
     mocker.patch.object(renku.ui.service.controllers.datasets_create, "CACHE_UPLOADS_PATH", upload_dir)
     mocker.patch.object(renku.ui.service.controllers.datasets_edit, "CACHE_UPLOADS_PATH", upload_dir)
 
-    yield
+    yield project_dir, upload_dir
 
 
 @pytest.fixture(scope="function")

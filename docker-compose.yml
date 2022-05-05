@@ -67,7 +67,7 @@ services:
       - redis
       - reverse-proxy
     ports:
-      - "8081:8080"
+      - "8082:8080"
     volumes:
       - ${PWD}:/code/renku
     command: ["service", "api"]

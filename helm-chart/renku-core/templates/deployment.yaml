@@ -104,6 +104,8 @@ spec:
               value: {{ $.Values.projectCloneDepth | quote }}
             - name: TEMPLATE_CLONE_DEPTH_DEFAULT
               value: {{ $.Values.templateCloneDepth | quote }}
+            - name: MAX_CONTENT_LENGTH
+              value: {{ $.Values.maximumUploadSizeBytes | quote }}
             - name: CORE_SERVICE_PREFIX
               value: /renku
             - name: CORE_SERVICE_API_BASE_PATH
