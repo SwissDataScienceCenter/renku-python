@@ -275,11 +275,10 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                             repository.fetch("origin", repository.active_branch)
                             repository.reset(f"{origin}/{repository.active_branch}", hard=True)
                         except GitCommandError as e:
-                            if "fatal: ambiguous argument" in str(e):
-                                project.purge()
-                                raise IntermittentCacheError(e)
-                            else:
-                                raise
+                            project.purge()
+                            raise IntermittentCacheError(e)
+                        else:
+                            raise
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
         except (portalocker.LockException, portalocker.AlreadyLocked) as e:
