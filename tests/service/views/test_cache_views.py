@@ -34,6 +34,7 @@ from renku.ui.service.errors import (
     IntermittentProjectTemplateUnavailable,
     UserAnonymousError,
     UserProjectTemplateReferenceError,
+    UserRepoNoAccessError,
     UserRepoUrlInvalidError,
 )
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
@@ -706,15 +707,14 @@ def test_check_migrations_remote_errors(
     )
     assert_rpc_response(response)
 
-    identity_headers["Authorization"] = "Bearer 123abc"
-    response = svc_client.get(
-        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
-    )
+    headers = copy.copy(identity_headers)
+    headers["Authorization"] = "Bearer 123abc"
+    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=headers)
     assert_rpc_response(response, "error")
-    assert UserRepoUrlInvalidError.code == response.json["error"]["code"]
+    assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
     response = svc_client.get(
-        "/cache.migrations_check", query_string=dict(git_url=it_remote_public_renku_repo_url), headers=identity_headers
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_public_renku_repo_url), headers=headers
     )
     assert_rpc_response(response)
 
