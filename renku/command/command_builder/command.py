@@ -414,6 +414,7 @@ class Command:
         commit_if_empty: bool = False,
         raise_if_empty: bool = False,
         commit_only: Optional[bool] = None,
+        skip_staging: bool = False,
     ) -> "Command":
         """Create a commit.
 
@@ -426,7 +427,7 @@ class Command:
         """
         from renku.command.command_builder.repo import Commit
 
-        return Commit(self, message, commit_if_empty, raise_if_empty, commit_only)
+        return Commit(self, message, commit_if_empty, raise_if_empty, commit_only, skip_staging)
 
     @check_finalized
     def lock_project(self) -> "Command":

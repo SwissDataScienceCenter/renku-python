@@ -1134,6 +1134,11 @@
                   },
                   {
                      "datatype": {
+                        "@id": "xsd:double"
+                     }
+                  },
+                  {
+                     "datatype": {
                         "@id": "xsd:integer"
                      }
                   },
@@ -1359,6 +1364,11 @@
                "nodeKind": "sh:Literal",
                "path": "schema:value",
                "or": [
+                  {
+                     "datatype": {
+                        "@id": "xsd:double"
+                     }
+                  },
                   {
                      "datatype": {
                         "@id": "xsd:decimal"

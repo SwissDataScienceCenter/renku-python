@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``config`` command."""
+import os
 import subprocess
 import sys
 from threading import Thread
@@ -272,3 +273,22 @@ def test_config_interpolation_is_disabled(client, runner, value):
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert f"{value}\n" == result.output
+
+
+def test_config_commit(client, runner, data_repository, global_config_dir):
+    """Test config changes only commits the renku config file."""
+    commit_sha_before = client.repository.head.commit.hexsha
+
+    (client.path / "untracked").write_text("untracked")
+    (client.path / "staged").write_text("staged")
+    client.repository.add("staged")
+
+    result = runner.invoke(cli, ["config", "set", "key", "value"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert {os.path.join(".renku", "renku.ini")} == {f.a_path for f in client.repository.head.commit.get_changes()}
+    assert {"untracked"} == set(client.repository.untracked_files)
+    assert {"staged"} == {f.a_path for f in client.repository.staged_changes}
+
+    commit_sha_after = client.repository.head.commit.hexsha
+    assert commit_sha_after != commit_sha_before
