@@ -36,6 +36,7 @@ from renku.ui.service.config import PROJECT_CLONE_DEPTH_DEFAULT, PROJECT_CLONE_N
 from renku.ui.service.controllers.utils.remote_project import RemoteProject
 from renku.ui.service.errors import (
     IntermittentAuthenticationError,
+    IntermittentCacheError,
     IntermittentLockError,
     ProgramRenkuError,
     UserAnonymousError,
@@ -269,9 +270,15 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
                         repository.reset(f"{origin}/{repository.active_branch}", hard=True)
                     else:
-                        repository.fetch("origin", repository.active_branch)
-                        repository.reset(f"{origin}/{repository.active_branch}", hard=True)
-
+                        try:
+                            # NOTE: it rarely happens that origin is not reachable. Try again if it fails.
+                            repository.fetch("origin", repository.active_branch)
+                            repository.reset(f"{origin}/{repository.active_branch}", hard=True)
+                        except GitCommandError as e:
+                            project.purge()
+                            raise IntermittentCacheError(e)
+                        else:
+                            raise
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
         except (portalocker.LockException, portalocker.AlreadyLocked) as e:
