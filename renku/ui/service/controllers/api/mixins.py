@@ -277,7 +277,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                         except GitCommandError as e:
                             project.purge()
                             raise IntermittentCacheError(e)
-                        else:
+                        except BaseException:
                             raise
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
