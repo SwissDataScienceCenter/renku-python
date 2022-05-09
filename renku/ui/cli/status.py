@@ -85,7 +85,7 @@ def status(ctx, paths, ignore_deleted):
             output = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{output}: {paths}")
     else:
-        click.secho("All files were generated from the latest inputs.", fg=color.GREEN)
+        click.secho("All files are generated from the latest inputs.", fg=color.GREEN)
 
     click.echo()
 

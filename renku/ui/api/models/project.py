@@ -22,7 +22,7 @@ Inputs/Outputs. It provides access to internals of a Renku project for such
 entities.
 
 Normally, you do not need to create an instance of Project class directly
-unless you want to have access to Project metadata (e.g. path). To separate
+unless you want to have access to Project metadata (e.g. path) or get its status. To separate
 parts of your script that uses Renku entities, you can create a Project context
 manager and interact with Renku inside it:
 
@@ -31,13 +31,25 @@ manager and interact with Renku inside it:
     from renku.ui.api import Project, Input
 
     with Project():
-        input_1 = Input("data_1")
+        input_1 = Input("input_1", "path_1")
+
+You can use Project's ``status`` method to get info about outdated outputs and
+activities, and modified or deleted inputs:
+
+.. code-block:: python
+
+    from renku.ui.api import Project
+
+    outdated_generations, outdated_activities, modified_inputs, deleted_inputs = Project().status()
 
 """
 from functools import wraps
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 from werkzeug.local import LocalStack
 
+from renku.command.status import get_status_command
 from renku.core import errors
 
 
@@ -68,6 +80,24 @@ class Project:
     def path(self):
         """Absolute path to project's root directory."""
         return self._client.path.resolve()
+
+    def status(
+        self, paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False
+    ) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]], Set[str], Set[str]]:
+        """Return status of a project.
+
+        Args:
+            paths(Optional[List[Union[Path, str]]]): Limit the status to this list of paths (Default value = None).
+            ignore_deleted(bool): Whether to ignore deleted generations.
+
+        Returns:
+            Tuple[Dict[str, Set[str]], Dict[str, Set[str]], Set[str], Set[str]]: A quadruple containing a mapping of
+                stale outputs to modified inputs, a mapping of stale activities that have no generation to modified
+                inputs, a set of modified inputs, and a set of deleted inputs.
+
+        """
+        result = get_status_command().build().execute(paths=paths, ignore_deleted=ignore_deleted)
+        return result.output
 
 
 def ensure_project_context(fn):
