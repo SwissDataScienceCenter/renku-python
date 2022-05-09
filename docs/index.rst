@@ -25,6 +25,7 @@
    Getting Started <gettingstarted>
    How-to Guides <how-to-guides/index>
    Reference <reference/index>
+   CLI Plugins <plugins>
 
 .. raw:: html
 
