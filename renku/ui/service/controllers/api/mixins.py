@@ -277,8 +277,6 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                         except GitCommandError as e:
                             project.purge()
                             raise IntermittentCacheError(e)
-                        except BaseException:
-                            raise
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
         except (portalocker.LockException, portalocker.AlreadyLocked) as e:
