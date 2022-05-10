@@ -38,20 +38,20 @@ def test_status(runner, project, subdirectory):
     result = runner.invoke(cli, ["run", "cp", source, output])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = get_status_command().build().execute()
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
-    assert not (stale_generations or stale_activities or modified_inputs or deleted_inputs)
+    result = get_status_command().build().execute().output
+    assert not (
+        result.outdated_outputs or result.outdated_activities or result.modified_inputs or result.deleted_inputs
+    )
 
     write_and_commit_file(repo, source, "new content")
 
-    result = get_status_command().build().execute()
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute().output
 
-    assert (os.path.relpath(output), {os.path.relpath(source)}) in stale_generations.items()
-    assert 1 == len(stale_generations)
-    assert {os.path.relpath(source)} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert (os.path.relpath(output), {os.path.relpath(source)}) in result.outdated_outputs.items()
+    assert 1 == len(result.outdated_outputs)
+    assert {os.path.relpath(source)} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
 
 def test_status_multiple_steps(runner, project):
@@ -69,15 +69,14 @@ def test_status_multiple_steps(runner, project):
 
     write_and_commit_file(repo, source, "new content")
 
-    result = get_status_command().build().execute()
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute().output
 
-    assert ("data/output.txt", {"source.txt"}) in stale_generations.items()
-    assert ("intermediate.txt", {"source.txt"}) in stale_generations.items()
-    assert 2 == len(stale_generations)
-    assert {"source.txt"} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert ("data/output.txt", {"source.txt"}) in result.outdated_outputs.items()
+    assert ("intermediate.txt", {"source.txt"}) in result.outdated_outputs.items()
+    assert 2 == len(result.outdated_outputs)
+    assert {"source.txt"} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
 
 def test_workflow_without_outputs(runner, project):
@@ -93,14 +92,13 @@ def test_workflow_without_outputs(runner, project):
 
     write_and_commit_file(repo, source, "new content")
 
-    result = get_status_command().build().execute()
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute().output
 
-    assert 0 == len(stale_generations)
-    assert {"source.txt"} == modified_inputs
-    assert 1 == len(stale_activities)
-    assert "/activities/" in list(stale_activities.keys())[0]
-    assert 0 == len(deleted_inputs)
+    assert 0 == len(result.outdated_outputs)
+    assert {"source.txt"} == result.modified_inputs
+    assert 1 == len(result.outdated_activities)
+    assert "/activities/" in list(result.outdated_activities.keys())[0]
+    assert 0 == len(result.deleted_inputs)
 
 
 def test_status_with_paths(runner, project, subdirectory):
@@ -121,51 +119,46 @@ def test_status_with_paths(runner, project, subdirectory):
     write_and_commit_file(repo, source1, "new content")
     write_and_commit_file(repo, source2, "new content")
 
-    result = get_status_command().build().execute(paths=[source1])
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(paths=[source1]).output
 
-    assert (os.path.relpath(output1), {os.path.relpath(source1)}) in stale_generations.items()
-    assert 1 == len(stale_generations)
-    assert {os.path.relpath(source1)} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert (os.path.relpath(output1), {os.path.relpath(source1)}) in result.outdated_outputs.items()
+    assert 1 == len(result.outdated_outputs)
+    assert {os.path.relpath(source1)} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
-    result = get_status_command().build().execute(paths=[output1])
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(paths=[output1]).output
 
-    assert (os.path.relpath(output1), {os.path.relpath(source1)}) in stale_generations.items()
-    assert 1 == len(stale_generations)
-    assert {os.path.relpath(source1)} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert (os.path.relpath(output1), {os.path.relpath(source1)}) in result.outdated_outputs.items()
+    assert 1 == len(result.outdated_outputs)
+    assert {os.path.relpath(source1)} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
-    result = get_status_command().build().execute(paths=[source2])
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(paths=[source2]).output
 
-    assert (os.path.relpath(output2), {os.path.relpath(source2)}) in stale_generations.items()
-    assert 1 == len(stale_generations)
-    assert {os.path.relpath(source2)} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert (os.path.relpath(output2), {os.path.relpath(source2)}) in result.outdated_outputs.items()
+    assert 1 == len(result.outdated_outputs)
+    assert {os.path.relpath(source2)} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
-    result = get_status_command().build().execute(paths=[output2])
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(paths=[output2]).output
 
-    assert (os.path.relpath(output2), {os.path.relpath(source2)}) in stale_generations.items()
-    assert 1 == len(stale_generations)
-    assert {os.path.relpath(source2)} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert (os.path.relpath(output2), {os.path.relpath(source2)}) in result.outdated_outputs.items()
+    assert 1 == len(result.outdated_outputs)
+    assert {os.path.relpath(source2)} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
-    result = get_status_command().build().execute(paths=[source1, output2])
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(paths=[source1, output2]).output
 
-    assert (os.path.relpath(output1), {os.path.relpath(source1)}) in stale_generations.items()
-    assert (os.path.relpath(output2), {os.path.relpath(source2)}) in stale_generations.items()
-    assert 2 == len(stale_generations)
-    assert {os.path.relpath(source1), os.path.relpath(source2)} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert (os.path.relpath(output1), {os.path.relpath(source1)}) in result.outdated_outputs.items()
+    assert (os.path.relpath(output2), {os.path.relpath(source2)}) in result.outdated_outputs.items()
+    assert 2 == len(result.outdated_outputs)
+    assert {os.path.relpath(source1), os.path.relpath(source2)} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
 
 def test_status_with_path_all_generation(runner, project):
@@ -183,15 +176,14 @@ def test_status_with_path_all_generation(runner, project):
 
     write_and_commit_file(repo, source, "new content")
 
-    result = get_status_command().build().execute(paths=[output1])
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(paths=[output1]).output
 
-    assert ("data/output1.txt", {"source.txt"}) in stale_generations.items()
-    assert ("data/output2.txt", {"source.txt"}) in stale_generations.items()
-    assert 2 == len(stale_generations)
-    assert {"source.txt"} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert ("data/output1.txt", {"source.txt"}) in result.outdated_outputs.items()
+    assert ("data/output2.txt", {"source.txt"}) in result.outdated_outputs.items()
+    assert 2 == len(result.outdated_outputs)
+    assert {"source.txt"} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
 
 def test_status_works_in_dirty_repository(runner, client):
@@ -205,14 +197,13 @@ def test_status_works_in_dirty_repository(runner, client):
     source.write_text("modified content")
     (client.path / "untracked").write_text("untracked file")
 
-    result = get_status_command().build().execute()
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute().output
 
-    assert ("output", {"source"}) in stale_generations.items()
-    assert 1 == len(stale_generations)
-    assert {"source"} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert ("output", {"source"}) in result.outdated_outputs.items()
+    assert 1 == len(result.outdated_outputs)
+    assert {"source"} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
     assert commit_sha_before == client.repository.head.commit.hexsha
     assert client.repository.untracked_files == ["untracked"]
     assert {c.a_path for c in client.repository.unstaged_changes} == {"source"}
@@ -227,14 +218,13 @@ def test_status_ignore_deleted_files(runner, client):
     write_and_commit_file(client.repository, "source", "changes")
     Path("deleted").unlink()
 
-    result = get_status_command().build().execute(ignore_deleted=True)
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(ignore_deleted=True).output
 
-    assert ("upstream", {"source"}) in stale_generations.items()
-    assert 1 == len(stale_generations)
-    assert {"source"} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert ("upstream", {"source"}) in result.outdated_outputs.items()
+    assert 1 == len(result.outdated_outputs)
+    assert {"source"} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
 
 def test_status_ignore_deleted_files_config(runner, client):
@@ -248,14 +238,13 @@ def test_status_ignore_deleted_files_config(runner, client):
     # Set config to ignore deleted files
     client.set_value("renku", "update_ignore_delete", "True")
 
-    result = get_status_command().build().execute(ignore_deleted=False)
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(ignore_deleted=False).output
 
-    assert ("upstream", {"source"}) in stale_generations.items()
-    assert 1 == len(stale_generations)
-    assert {"source"} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert ("upstream", {"source"}) in result.outdated_outputs.items()
+    assert 1 == len(result.outdated_outputs)
+    assert {"source"} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
 
 def test_status_deleted_files_reported_with_siblings(runner, client):
@@ -266,15 +255,14 @@ def test_status_deleted_files_reported_with_siblings(runner, client):
     write_and_commit_file(client.repository, "source", "changes")
     Path("deleted").unlink()
 
-    result = get_status_command().build().execute(ignore_deleted=True)
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(ignore_deleted=True).output
 
-    assert ("deleted", {"source"}) in stale_generations.items()
-    assert ("sibling", {"source"}) in stale_generations.items()
-    assert 2 == len(stale_generations)
-    assert {"source"} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert 0 == len(deleted_inputs)
+    assert ("deleted", {"source"}) in result.outdated_outputs.items()
+    assert ("sibling", {"source"}) in result.outdated_outputs.items()
+    assert 2 == len(result.outdated_outputs)
+    assert {"source"} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert 0 == len(result.deleted_inputs)
 
 
 def test_status_deleted_files_reported_with_downstream(runner, client):
@@ -286,15 +274,14 @@ def test_status_deleted_files_reported_with_downstream(runner, client):
     write_and_commit_file(client.repository, "source", "changes")
     Path("deleted").unlink()
 
-    result = get_status_command().build().execute(ignore_deleted=True)
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute(ignore_deleted=True).output
 
-    assert ("deleted", {"source"}) in stale_generations.items()
-    assert ("downstream", {"source"}) in stale_generations.items()
-    assert 2 == len(stale_generations)
-    assert {"source"} == modified_inputs
-    assert 0 == len(stale_activities)
-    assert {"deleted"} == deleted_inputs
+    assert ("deleted", {"source"}) in result.outdated_outputs.items()
+    assert ("downstream", {"source"}) in result.outdated_outputs.items()
+    assert 2 == len(result.outdated_outputs)
+    assert {"source"} == result.modified_inputs
+    assert 0 == len(result.outdated_activities)
+    assert {"deleted"} == result.deleted_inputs
 
 
 def test_status_deleted_inputs(runner, project):
@@ -312,10 +299,9 @@ def test_status_deleted_inputs(runner, project):
 
     os.unlink(source)
 
-    result = get_status_command().build().execute()
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result.output
+    result = get_status_command().build().execute().output
 
-    assert 0 == len(stale_generations)
-    assert 0 == len(modified_inputs)
-    assert 0 == len(stale_activities)
-    assert {"source.txt"} == deleted_inputs
+    assert 0 == len(result.outdated_outputs)
+    assert 0 == len(result.modified_inputs)
+    assert 0 == len(result.outdated_activities)
+    assert {"source.txt"} == result.deleted_inputs

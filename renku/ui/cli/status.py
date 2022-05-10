@@ -65,22 +65,20 @@ def status(ctx, paths, ignore_deleted):
     communicator = ClickCallback()
     result = (
         get_status_command().with_communicator(communicator).build().execute(paths=paths, ignore_deleted=ignore_deleted)
-    )
+    ).output
 
-    stales, stale_activities, modified, deleted = result.output
-
-    if not stales and not deleted and not stale_activities:
+    if not result.outdated_outputs and not result.deleted_inputs and not result.outdated_activities:
         click.secho("Everything is up-to-date.", fg=color.GREEN)
         return
 
-    if stales:
+    if result.outdated_outputs:
         click.echo(
-            f"Outdated outputs({len(stales)}):\n"
+            f"Outdated outputs({len(result.outdated_outputs)}):\n"
             "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
             "  (use `renku update --all` to generate the file from its latest inputs)\n"
         )
-        for k in sorted(stales.keys()):
-            v = stales[k]
+        for k in sorted(result.outdated_outputs.keys()):
+            v = result.outdated_outputs[k]
             paths = click.style(", ".join(sorted(v)), fg=color.BLUE, bold=True)
             output = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{output}: {paths}")
@@ -89,29 +87,29 @@ def status(ctx, paths, ignore_deleted):
 
     click.echo()
 
-    if modified:
+    if result.modified_inputs:
         click.echo(
-            f"Modified inputs({len(modified)}):\n"
+            f"Modified inputs({len(result.modified_inputs)}):\n"
             # TODO: Enable once renku workflow visualize is implemented
             # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
         )
-        for v in sorted(modified):
+        for v in sorted(result.modified_inputs):
             click.echo(click.style(f"\t{v}", fg=color.BLUE, bold=True))
         click.echo()
 
-    if deleted:
+    if result.deleted_inputs:
         click.echo("Deleted files used to generate outputs:\n")
-        for v in sorted(deleted):
+        for v in sorted(result.deleted_inputs):
             click.echo(click.style(f"\t{v}", fg=color.BLUE, bold=True))
         click.echo()
 
-    if stale_activities:
-        click.echo(f"Outdated activities that have no outputs({len(stale_activities)}):\n")
-        for k in sorted(stale_activities.keys()):
-            v = stale_activities[k]
+    if result.outdated_activities:
+        click.echo(f"Outdated activities that have no outputs({len(result.outdated_activities)}):\n")
+        for k in sorted(result.outdated_activities.keys()):
+            v = result.outdated_activities[k]
             paths = click.style(", ".join(sorted(v)), fg=color.BLUE, bold=True)
             activity = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{activity}: {paths}")
         click.echo()
 
-    ctx.exit(1 if stales or stale_activities else 0)
+    ctx.exit(1 if result.outdated_outputs or result.outdated_activities else 0)

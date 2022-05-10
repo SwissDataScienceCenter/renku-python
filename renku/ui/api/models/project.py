@@ -45,12 +45,13 @@ activities, and modified or deleted inputs:
 """
 from functools import wraps
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Union
 
 from werkzeug.local import LocalStack
 
 from renku.command.status import get_status_command
 from renku.core import errors
+from renku.core.workflow.run import StatusResult
 
 
 class Project:
@@ -81,9 +82,7 @@ class Project:
         """Absolute path to project's root directory."""
         return self._client.path.resolve()
 
-    def status(
-        self, paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False
-    ) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]], Set[str], Set[str]]:
+    def status(self, paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False) -> StatusResult:
         """Return status of a project.
 
         Args:
@@ -91,13 +90,12 @@ class Project:
             ignore_deleted(bool): Whether to ignore deleted generations.
 
         Returns:
-            Tuple[Dict[str, Set[str]], Dict[str, Set[str]], Set[str], Set[str]]: A quadruple containing a mapping of
-                stale outputs to modified inputs, a mapping of stale activities that have no generation to modified
-                inputs, a set of modified inputs, and a set of deleted inputs.
+            StatusResult: Status of the project.
 
         """
-        result = get_status_command().build().execute(paths=paths, ignore_deleted=ignore_deleted)
-        return result.output
+        return (
+            get_status_command().with_client(self._client).build().execute(paths=paths, ignore_deleted=ignore_deleted)
+        ).output
 
 
 def ensure_project_context(fn):

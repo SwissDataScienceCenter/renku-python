@@ -19,7 +19,7 @@
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Set, Union
 
 from renku.command.command_builder import inject
 from renku.core.interface.client_dispatcher import IClientDispatcher
@@ -31,21 +31,32 @@ from renku.core.workflow.activity import (
 )
 
 
+class StatusResult(NamedTuple):
+    """Represent status of a project.
+
+    A quadruple containing a mapping of stale outputs to modified usages, a mapping of stale activities that have no
+    generation to modified usages, a set of modified usages, and a set of deleted usages.
+    """
+
+    outdated_outputs: Dict[str, Set[str]]
+    outdated_activities: Dict[str, Set[str]]
+    modified_inputs: Set[str]
+    deleted_inputs: Set[str]
+
+
 @inject.autoparams("client_dispatcher")
 def get_status(
     client_dispatcher: IClientDispatcher, paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False
-) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]], Set[str], Set[str]]:
+) -> StatusResult:
     """Return status of a project.
 
     Args:
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         paths(Optional[List[Union[Path, str]]]): Limit the status to this list of paths (Default value = None).
-        ignore_deleted(bool): Whether to ignore deleted generations.
+        ignore_deleted(bool): Whether to ignore deleted generations (Default value = False).
 
     Returns:
-        Tuple[Dict[str, Set[str]], Dict[str, Set[str]], Set[str], Set[str]]: A quadruple containing a mapping of stale
-            outputs to modified inputs, a mapping of stale activities that have no generation to modified inputs, a set
-            of modified inputs, and a set of deleted inputs.
+        StatusResult: Status of the project.
 
     """
 
@@ -64,7 +75,7 @@ def get_status(
     deleted = {(a, e) for a, e in deleted if is_activity_valid(a)}
 
     if not modified and not deleted:
-        return {}, {}, set(), set()
+        return StatusResult({}, {}, set(), set())
 
     paths = paths or []
     paths = get_relative_paths(base=client.path, paths=[Path.cwd() / p for p in paths])  # type: ignore
@@ -98,4 +109,4 @@ def get_status(
     deleted_paths = {e.path for _, e in deleted}
     deleted_paths = {get_relative_path_to_cwd(client.path / d) for d in deleted_paths if not paths or d in paths}
 
-    return stale_outputs, stale_activities, modified_inputs, deleted_paths
+    return StatusResult(stale_outputs, stale_activities, modified_inputs, deleted_paths)

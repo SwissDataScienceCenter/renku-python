@@ -21,7 +21,7 @@ import contextlib
 import functools
 import threading
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import click
 import inject
@@ -29,6 +29,9 @@ import inject
 from renku.core import errors
 from renku.core.util.communication import CommunicationCallback
 from renku.core.util.git import default_path
+
+if TYPE_CHECKING:
+    from renku.core.management.client import LocalClient
 
 _LOCAL = threading.local()
 
@@ -167,6 +170,7 @@ class Command:
         self._finalized: bool = False
         self._track_std_streams: bool = False
         self._working_directory: Optional[str] = None
+        self._client: Optional["LocalClient"] = None
 
     def __getattr__(self, name: str) -> Any:
         """Bubble up attributes of wrapped builders."""
@@ -197,11 +201,15 @@ class Command:
 
         ctx = click.get_current_context(silent=True)
         if ctx is None:
-            dispatcher.push_client_to_stack(path=default_path(self._working_directory or "."))
+            if self._client:
+                dispatcher.push_created_client_to_stack(self._client)
+            else:
+                self._client = dispatcher.push_client_to_stack(path=default_path(self._working_directory or "."))
             ctx = click.Context(click.Command(builder._operation))  # type: ignore
         else:
-            client = ctx.ensure_object(LocalClient)
-            dispatcher.push_created_client_to_stack(client)
+            if not self._client:
+                self._client = ctx.ensure_object(LocalClient)
+            dispatcher.push_created_client_to_stack(self._client)
 
         context["bindings"] = {IClientDispatcher: dispatcher, "IClientDispatcher": dispatcher}
         context["constructor_bindings"] = {}
@@ -397,6 +405,13 @@ class Command:
             Command: This command.
         """
         self._track_std_streams = True
+
+        return self
+
+    @check_finalized
+    def with_client(self, client: "LocalClient") -> "Command":
+        """Set a client."""
+        self._client = client
 
         return self
 

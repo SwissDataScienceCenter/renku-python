@@ -82,10 +82,9 @@ def test_status(runner, client):
     write_and_commit_file(client.repository, source, "new content")
 
     result = Project().status()
-    stale_generations, stale_activities, modified_inputs, deleted_inputs = result
 
-    assert (os.path.relpath(output), {os.path.relpath(source)}) in stale_generations.items()
-    assert "source.txt" in modified_inputs
-    assert 1 == len(stale_activities)
-    assert "/activities/" in list(stale_activities.keys())[0]
-    assert 0 == len(deleted_inputs)
+    assert (os.path.relpath(output), {os.path.relpath(source)}) in result.outdated_outputs.items()
+    assert "source.txt" in result.modified_inputs
+    assert 1 == len(result.outdated_activities)
+    assert "/activities/" in list(result.outdated_activities.keys())[0]
+    assert 0 == len(result.deleted_inputs)
