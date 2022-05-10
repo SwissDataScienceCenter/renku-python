@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Custom git mergetool for renku metadata.
+"""Custom git merge tool for renku metadata.
 
 Support merging Renku metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,7 +41,7 @@ def mergetool():
     pass
 
 
-@mergetool.command()
+@mergetool.command(hidden=True)
 @click.argument("base", type=click.Path(exists=True))
 @click.argument("local", type=click.Path(exists=True))
 @click.argument("remote", type=click.Path(exists=True))

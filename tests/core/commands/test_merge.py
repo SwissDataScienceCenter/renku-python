@@ -37,7 +37,7 @@ def test_merge_dataset_tree_non_conflict_dataset():
     local = BTree({"dataset1": dataset1})
     remote = BTree({"dataset2": dataset2})
 
-    merged = GitMerger()._merge_btrees(local, remote)
+    merged = GitMerger().merge_btrees(local, remote)
     assert "dataset1" in merged
     assert "dataset2" in merged
 
@@ -58,7 +58,7 @@ def test_merge_dataset_tree_local_modified_dataset(mocker):
     merger.local_database = database
     merger.remote_database = database
 
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "dataset" in merged.keys()
     assert "Modified title" == merged["dataset"].title
 
@@ -79,7 +79,7 @@ def test_merge_dataset_tree_remote_modified_dataset(mocker):
     merger.local_database = database
     merger.remote_database = database
 
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "dataset" in merged.keys()
     assert "Modified title" == merged["dataset"].title
 
@@ -108,14 +108,14 @@ def test_merge_dataset_tree_both_modified_dataset(mocker):
     merger.remote_database = database
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="l"))
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "dataset" in merged.keys()
     assert "Modified local title" == merged["dataset"].title
     assert "unrelated_dataset" in merged.keys()
     assert "unrelated" == merged["unrelated_dataset"].title
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="r"))
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "dataset" in merged.keys()
     assert "Modified remote title" == merged["dataset"].title
     assert "unrelated_dataset" in merged.keys()
@@ -130,7 +130,7 @@ def test_merge_plan_tree_non_conflict_plan():
     local = BTree({"plan1": plan1})
     remote = BTree({"plan2": plan2})
 
-    merged = GitMerger()._merge_btrees(local, remote)
+    merged = GitMerger().merge_btrees(local, remote)
     assert "plan1" in merged
     assert "plan2" in merged
 
@@ -150,7 +150,7 @@ def test_merge_plan_tree_local_modified_plan(mocker):
     merger.local_database = database
     merger.remote_database = database
 
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "plan" in merged.keys()
     assert modified_plan.keywords == merged["plan"].keywords
 
@@ -170,7 +170,7 @@ def test_merge_plan_tree_remote_modified_plan(mocker):
     merger.local_database = database
     merger.remote_database = database
 
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "plan" in merged.keys()
     assert modified_plan.keywords == merged["plan"].keywords
 
@@ -198,14 +198,14 @@ def test_merge_plan_tree_both_modified_plan(mocker):
     merger.remote_database = database
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="l"))
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "plan" in merged.keys()
     assert modified_local_plan.keywords == merged["plan"].keywords
     assert "unrelated_plan" in merged.keys()
     assert unrelated_plan.keywords == merged["unrelated_plan"].keywords
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="r"))
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "plan" in merged.keys()
     assert modified_remote_plan.keywords == merged["plan"].keywords
     assert "unrelated_plan" in merged.keys()
@@ -240,14 +240,14 @@ def test_merge_plan_index_both_modified_plan(mocker):
     merger.remote_database = database
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="l"))
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "plan" in merged.keys()
     assert modified_local_plan.keywords == merged["plan"].keywords
     assert "unrelated_plan" in merged.keys()
     assert unrelated_plan.keywords == merged["unrelated_plan"].keywords
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="r"))
-    merged = merger._merge_btrees(local, remote)
+    merged = merger.merge_btrees(local, remote)
     assert "plan" in merged.keys()
     assert modified_remote_plan.keywords == merged["plan"].keywords
     assert "unrelated_plan" in merged.keys()
@@ -263,7 +263,7 @@ def test_merge_project_local_changes():
         creator=Person.from_string("John Doe <jd@example.com>"), name="my-project", description="My modified project"
     )
 
-    result = GitMerger()._merge_projects(local_project, base_project, base_project)
+    result = GitMerger().merge_projects(local_project, base_project, base_project)
 
     assert result == local_project
 
@@ -277,7 +277,7 @@ def test_merge_project_remote_changes():
         creator=Person.from_string("John Doe <jd@example.com>"), name="my-project", description="My modified project"
     )
 
-    result = GitMerger()._merge_projects(base_project, remote_project, base_project)
+    result = GitMerger().merge_projects(base_project, remote_project, base_project)
 
     assert result == remote_project
 
@@ -297,7 +297,7 @@ def test_merge_project_both_changed():
         creator=Person.from_string("John Doe <jd@example.com>"), name="my-project", keywords=["awesome"], version="9"
     )
 
-    result = GitMerger()._merge_projects(local_project, remote_project, base_project)
+    result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
     assert set(result.keywords) == set(["datascience", "awesome"])
     assert "9" == result.version
@@ -333,7 +333,7 @@ def test_merge_project_both_template_changed(mocker):
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="l"))
 
-    result = GitMerger()._merge_projects(local_project, remote_project, base_project)
+    result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
     assert result.template_version == local_project.template_version
     assert result.template_source == local_project.template_source
@@ -342,7 +342,7 @@ def test_merge_project_both_template_changed(mocker):
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="r"))
 
-    result = GitMerger()._merge_projects(local_project, remote_project, base_project)
+    result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
     assert result.template_version == remote_project.template_version
     assert result.template_source == remote_project.template_source
@@ -377,7 +377,7 @@ def test_merge_project_local_template_changed():
         template_version="abcdef",
     )
 
-    result = GitMerger()._merge_projects(local_project, remote_project, base_project)
+    result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
     assert result.template_version == local_project.template_version
     assert result.template_source == local_project.template_source
@@ -412,7 +412,7 @@ def test_merge_project_remote_template_changed():
         template_version="12345",
     )
 
-    result = GitMerger()._merge_projects(local_project, remote_project, base_project)
+    result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
     assert result.template_version == remote_project.template_version
     assert result.template_source == remote_project.template_source

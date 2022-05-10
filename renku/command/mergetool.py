@@ -36,10 +36,7 @@ def _mergetool(local: Path, remote: Path, base: Path) -> None:
     Args:
         local(Path): The file to merge from the local branch.
         remote(Path): The file to merge from the remote branch.
-        target(Path): The path to write the merge result to.
         base(Path): Path to common base of branches to be merged.
-    Returns:
-        bool: True if the merge was successful.
     """
     from renku.infrastructure.git_merger import GitMerger
 
@@ -68,12 +65,13 @@ def setup_mergetool(client_dispatcher: IClientDispatcher, with_attributes: bool 
         return
 
     attributes_path = client.path / ".gitattributes"
+    pattern_string = ".renku/metadata/**    merge=renkumerge\n"
 
     if attributes_path.exists():
         with open(attributes_path, "r") as f:
             content = f.readlines()
-            if ".renku/metadata/*\tmerge=renkumerge\n.renku/metadata/**/*\tmerge=renkumerge\n" in content:
+            if pattern_string in content:
                 return
 
     with open(attributes_path, "a") as f:
-        f.write(".renku/metadata/*\tmerge=renkumerge\n.renku/metadata/**/*\tmerge=renkumerge\n")
+        f.write(pattern_string)

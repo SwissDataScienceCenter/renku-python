@@ -61,7 +61,7 @@ class GitMerger:
 
         self._setup_worktrees(client)
 
-        result = None
+        merged = False
         self.local_database = self.database_dispatcher.current_database
 
         try:
@@ -72,11 +72,14 @@ class GitMerger:
                 base_object = None
 
             for entry in self.remote_entries:
+                # NOTE: Loop through all remote merge branches (Octo merge) and try to merge them
                 try:
                     self.remote_database = entry.database
                     remote_object = self.remote_database.get_from_path(str(client.path / remote))
-                    result = self.merge_objects(local_object, remote_object, base_object)
-                    break
+
+                    # NOTE: treat merge result as new local for subsequent merges
+                    local_object = self.merge_objects(local_object, remote_object, base_object)
+                    merged = True
                 except errors.ObjectNotFoundError:
                     continue
         finally:
@@ -84,10 +87,10 @@ class GitMerger:
             for entry in self.remote_entries:
                 client.repository.remove_worktree(entry.path)
 
-        if result is None:
+        if not merged:
             raise errors.MetadataMergeError("Couldn't merge metadata: remote object not found in merge branches.")
 
-        self.local_database.persist_to_path(result, local)
+        self.local_database.persist_to_path(local_object, local)
 
     def _setup_worktrees(self, client):
         """Setup git worktrees for the remote branches."""
@@ -95,13 +98,14 @@ class GitMerger:
         # NOTE: Get remote branches
         remote_branches = [os.environ[k] for k in os.environ.keys() if k.startswith("GITHEAD")]
 
+        database_path = Path(RENKU_HOME) / LocalClient.DATABASE_PATH
+
         for remote_branch in remote_branches:
             # NOTE: Create a new shallow worktree for each remote branch, could be several in case of an octo merge
             worktree_path = Path(mkdtemp())
             client.repository.create_worktree(worktree_path, remote_branch, checkout=False)
             try:
                 remote_repository = Repository(worktree_path)
-                database_path = Path(RENKU_HOME) / LocalClient.DATABASE_PATH
                 remote_repository.checkout(sparse=[database_path])
 
                 self.remote_entries.append(
@@ -125,19 +129,19 @@ class GitMerger:
         if type(local) != type(remote):
             raise errors.MetadataMergeError(f"Cannot merge {local} and {remote}: disparate types.")
         if isinstance(local, (BTree, Index)):
-            return self._merge_btrees(local, remote)
+            return self.merge_btrees(local, remote)
         elif isinstance(local, TreeSet):
-            return self._merge_treesets(local, remote)
+            return self.merge_treesets(local, remote)
         elif isinstance(local, Catalog):
-            return self._merge_catalogs(local, remote)
+            return self.merge_catalogs(local, remote)
         elif isinstance(local, Project):
-            return self._merge_projects(local, remote, cast(Optional[Project], base))
+            return self.merge_projects(local, remote, cast(Optional[Project], base))
         else:
             raise errors.MetadataMergeError(
                 f"Cannot merge {local} and {remote}: type not supported for automated merge."
             )
 
-    def _merge_btrees(self, local: Union[BTree, Index], remote: Union[BTree, Index]) -> Union[BTree, Index]:
+    def merge_btrees(self, local: Union[BTree, Index], remote: Union[BTree, Index]) -> Union[BTree, Index]:
         """Merge two BTrees."""
         local_key_ids = {k: getattr(v, "_p_oid", None) for k, v in local.items()}
         remote_key_ids = {k: getattr(v, "_p_oid", None) for k, v in remote.items()}
@@ -184,12 +188,12 @@ class GitMerger:
 
         return local
 
-    def _merge_treesets(self, local: TreeSet, remote: TreeSet) -> TreeSet:
+    def merge_treesets(self, local: TreeSet, remote: TreeSet) -> TreeSet:
         """Merge two TreeSets."""
         local.update([e for e in remote if e not in local])
         return local
 
-    def _merge_indices(self, local: Index, remote: Index) -> Index:
+    def merge_indices(self, local: Index, remote: Index) -> Index:
         """Merge two BTrees."""
         local_key_ids = {k: getattr(v, "_p_oid", None) for k, v in local.items()}
         remote_key_ids = {k: getattr(v, "_p_oid", None) for k, v in remote.items()}
@@ -237,7 +241,7 @@ class GitMerger:
 
         return local
 
-    def _merge_catalogs(self, local: Catalog, remote: Catalog) -> Catalog:
+    def merge_catalogs(self, local: Catalog, remote: Catalog) -> Catalog:
         """Merge two Catalogs."""
         for key, value in remote._EMPTY_name_TO_relcount_relset.items():
             if key not in local._EMPTY_name_TO_relcount_relset:
@@ -257,7 +261,7 @@ class GitMerger:
 
         return local
 
-    def _merge_projects(self, local: Project, remote: Project, base: Optional[Project]) -> Project:
+    def merge_projects(self, local: Project, remote: Project, base: Optional[Project]) -> Project:
         """Merge two Project entries."""
 
         local_changed = (
