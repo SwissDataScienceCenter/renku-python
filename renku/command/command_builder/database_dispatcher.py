@@ -44,6 +44,10 @@ class DatabaseDispatcher(IDatabaseDispatcher):
     def push_database_to_stack(self, path: Union[Path, str], commit: bool = False) -> None:
         """Create and push a new client to the stack."""
         new_database = Database.from_path(path)
+        self.push_existing_database_to_stack(new_database, commit)
+
+    def push_existing_database_to_stack(self, new_database: Database, commit: bool = False) -> None:
+        """Push an existing database to the stack."""
         self.database_stack.append((new_database, commit))
 
     def pop_database(self) -> None:

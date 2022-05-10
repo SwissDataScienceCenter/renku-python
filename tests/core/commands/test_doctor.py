@@ -96,7 +96,7 @@ def test_lfs_broken_history(runner, client, tmp_path):
 
 
 def test_check_invalid_imported_dataset(runner, client_with_datasets, client_database_injection_manager):
-    """Test checking imported datasets that have both derived_form and same_as set."""
+    """Test checking imported datasets that have both derived_from and same_as set."""
     with client_database_injection_manager(client_with_datasets):
         with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
@@ -117,7 +117,7 @@ def test_check_invalid_imported_dataset(runner, client_with_datasets, client_dat
 
 
 def test_fix_invalid_imported_dataset(runner, client_with_datasets, client_database_injection_manager):
-    """Test fixing imported datasets that have both derived_form and same_as set."""
+    """Test fixing imported datasets that have both derived_from and same_as set."""
     with client_database_injection_manager(client_with_datasets):
         with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
