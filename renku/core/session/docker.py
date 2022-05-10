@@ -183,6 +183,7 @@ class DockerSessionProvider(ISessionProvider):
                 remove=True,
                 environment=environment,
                 volumes=volumes,
+                working_dir=str(work_dir),
                 **resource_requests,
             )
 
