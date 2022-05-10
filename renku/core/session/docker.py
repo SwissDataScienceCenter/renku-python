@@ -17,7 +17,6 @@
 # limitations under the License.
 """Docker based interactive session provider."""
 
-import os.path
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 from uuid import uuid4
@@ -166,19 +165,12 @@ class DockerSessionProvider(ISessionProvider):
             if working_dir is None:
                 working_dir = "/home/jovyan"
 
-            work_dir = Path(working_dir) / "work"
+            work_dir = Path(working_dir) / "work" / project_name.split("/")[-1]
 
-            environment = {}
             volumes = [f"{str(client.path.resolve())}:{work_dir}"]
 
-            global_git_config_path = os.path.normpath(os.path.expanduser("~/.gitconfig"))
-
-            if os.path.exists(global_git_config_path):
-                volumes.append(f"{global_git_config_path}:{work_dir}/.gitconfig")
-            else:
-                user = client.repository.get_global_user()
-                environment["GIT_AUTHOR_NAME"] = user.name
-                environment["GIT_AUTHOR_EMAIL"] = user.email
+            user = client.repository.get_user()
+            environment = {"GIT_AUTHOR_NAME": user.name, "GIT_AUTHOR_EMAIL": user.email}
 
             container = self.docker_client().containers.run(
                 image_name,
