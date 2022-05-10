@@ -170,7 +170,12 @@ class DockerSessionProvider(ISessionProvider):
             volumes = [f"{str(client.path.resolve())}:{work_dir}"]
 
             user = client.repository.get_user()
-            environment = {"GIT_AUTHOR_NAME": user.name, "GIT_AUTHOR_EMAIL": user.email}
+            environment = {
+                "GIT_AUTHOR_NAME": user.name,
+                "GIT_AUTHOR_EMAIL": user.email,
+                "GIT_COMMITTER_EMAIL": user.email,
+                "EMAIL": user.email,
+            }
 
             container = self.docker_client().containers.run(
                 image_name,
