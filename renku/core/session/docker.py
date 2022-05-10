@@ -166,13 +166,15 @@ class DockerSessionProvider(ISessionProvider):
             if working_dir is None:
                 working_dir = "/home/jovyan"
 
+            work_dir = Path(working_dir) / "work"
+
             environment = {}
-            volumes = [f"{str(client.path.resolve())}:{working_dir}/work"]
+            volumes = [f"{str(client.path.resolve())}:{work_dir}"]
 
             global_git_config_path = os.path.normpath(os.path.expanduser("~/.gitconfig"))
 
             if os.path.exists(global_git_config_path):
-                volumes.append(f"{global_git_config_path}:{working_dir}/.gitconfig")
+                volumes.append(f"{global_git_config_path}:{work_dir}/.gitconfig")
             else:
                 user = client.repository.get_global_user()
                 environment["GIT_AUTHOR_NAME"] = user.name
@@ -182,7 +184,7 @@ class DockerSessionProvider(ISessionProvider):
                 image_name,
                 f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}'
                 f' --NotebookApp.token="{auth_token}" --NotebookApp.default_url="{default_url}"'
-                f" --NotebookApp.notebook_dir={working_dir}/work",
+                f" --NotebookApp.notebook_dir={work_dir}",
                 detach=True,
                 labels={"renku_project": project_name, "jupyter_token": auth_token},
                 ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": None},
