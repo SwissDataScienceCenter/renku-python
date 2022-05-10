@@ -1761,17 +1761,20 @@ tests = ["html5lib", "networkx", "nose (==1.3.7)", "nose-timer", "coverage", "bl
 
 [[package]]
 name = "redis"
-version = "4.0.2"
+version = "4.1.4"
 description = "Python client for Redis database and key-value store"
 category = "main"
 optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
-deprecated = "*"
+deprecated = ">=1.2.3"
+importlib-metadata = {version = ">=1.0", markers = "python_version < \"3.8\""}
+packaging = ">=20.4"
 
 [package.extras]
 hiredis = ["hiredis (>=1.0.0)"]
+ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==20.0.1)", "requests (>=2.26.0)"]
 
 [[package]]
 name = "renku-sphinx-theme"
@@ -2627,7 +2630,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "21d33d199094f8689a510593a1d2b5801166d30943a7a5f266bc7c72e7fe70a9"
+content-hash = "d053e0400b9e13ce635ae460e55c43fc60695b18ac32d93def57c7255af588ab"
 
 [metadata.files]
 addict = [
@@ -3871,8 +3874,8 @@ rdflib = [
     {file = "rdflib-6.0.2.tar.gz", hash = "sha256:6136ae056001474ee2aff5fc5b956e62a11c3a9c66bb0f3d9c0aaa5fbb56854e"},
 ]
 redis = [
-    {file = "redis-4.0.2-py3-none-any.whl", hash = "sha256:c8481cf414474e3497ec7971a1ba9b998c8efad0f0d289a009a5bbef040894f9"},
-    {file = "redis-4.0.2.tar.gz", hash = "sha256:ccf692811f2c1fc7a92b466aa2599e4a6d2d73d5f736a2c70be600657c0da34a"},
+    {file = "redis-4.1.4-py3-none-any.whl", hash = "sha256:04629f8e42be942c4f7d1812f2094568f04c612865ad19ad3ace3005da70631a"},
+    {file = "redis-4.1.4.tar.gz", hash = "sha256:1d9a0cdf89fdd93f84261733e24f55a7bbd413a9b219fdaf56e3e728ca9a2306"},
 ]
 renku-sphinx-theme = [
     {file = "renku-sphinx-theme-0.2.2.tar.gz", hash = "sha256:b33d7bcbae1b95fda678afec0f4995a10a60722663e80609cf9b36a38d63005d"},
