@@ -38,6 +38,10 @@ def schedule(connection=None):
     build_scheduler.log.debug = build_scheduler.log.info
     scheduler_log.info("scheduler created")
 
+    # remove old jobs from the queue
+    for job in build_scheduler.get_jobs():
+        build_scheduler.cancel(job)
+
     build_scheduler.schedule(
         scheduled_time=datetime.utcnow(),
         queue_name=CLEANUP_QUEUE_FILES,
