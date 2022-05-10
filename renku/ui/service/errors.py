@@ -742,3 +742,14 @@ class IntermittentRedisError(ServiceError):
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
+
+
+class IntermittentCacheError(ServiceError):
+    """An operation in the cache failed."""
+
+    code = SVC_ERROR_INTERMITTENT + 203
+    userMessage = "A server-side operation unexpectedly failed. Please try again."
+    devMessage = "Cache error. See Sentry exceptions for details."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)

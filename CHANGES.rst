@@ -18,6 +18,26 @@
 Changes
 =======
 
+`1.2.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.3...v1.2.4>`__ (2022-05-06)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix using float values in renku workflow iterate
+   (`#2875 <https://github.com/SwissDataScienceCenter/renku-python/issues/2875>`__)
+   (`07934a8 <https://github.com/SwissDataScienceCenter/renku-python/commit/07934a8df49a4b8a7a4c25eddaae93b97943ac59>`__)
+-  **service:** set oauth token when using gitlab APIs
+   (`#2884 <https://github.com/SwissDataScienceCenter/renku-python/issues/2884>`__)
+   (`11a69d7 <https://github.com/SwissDataScienceCenter/renku-python/commit/11a69d71fc08854a03bf3e524f0d68d3e86a5685>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** preserve staged files when editing renku config
+   (`#2871 <https://github.com/SwissDataScienceCenter/renku-python/issues/2871>`__)
+   (`3c3cc66 <https://github.com/SwissDataScienceCenter/renku-python/commit/3c3cc66a426c71d742d13b5fb394791d8425a5c6>`__)
+
 `1.2.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.2...v1.2.3>`__ (2022-04-29)
 -------------------------------------------------------------------------------------------------------
 
