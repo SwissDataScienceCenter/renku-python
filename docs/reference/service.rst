@@ -36,6 +36,7 @@ Components:
 
     component "Business Logic" as bl {
         [Controllers] --> renku.core
+        [Jobs] --> renku.core
     }
 
     database "External Git" as git {
