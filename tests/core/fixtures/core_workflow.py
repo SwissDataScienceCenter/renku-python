@@ -22,6 +22,7 @@ import pytest
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.domain_model.workflow.plan import Plan
+from tests.utils import write_and_commit_file
 
 
 def _create_run(name: str) -> Plan:
@@ -85,3 +86,14 @@ def composite_plan():
     grouped = CompositePlan(id=CompositePlan.generate_id(), plans=[run1, run2], name="grouped1")
 
     return grouped, run1, run2
+
+
+@pytest.fixture
+def client_with_runs(client, run, client_database_injection_manager):
+    """A client with runs."""
+    write_and_commit_file(client.repository, "input", "some\ninput\nfile")
+
+    assert 0 == run(["run", "--name", "plan-1", "head", "-n", "2", "input"], stdout="intermediate")
+    assert 0 == run(["run", "--name", "plan-2", "tail", "-n", "1", "intermediate"], stdout="output")
+
+    yield client

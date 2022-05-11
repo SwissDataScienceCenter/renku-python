@@ -86,7 +86,7 @@ class AbstractPlan(Persistent, ABC):
         """Check a name for invalid characters."""
         if not re.match("[a-zA-Z0-9-_]+", name):
             raise errors.ParameterError(
-                f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
+                f"Name {name} contains illegal characters. Only English letters, numbers, _ and - are allowed."
             )
 
     def assign_new_id(self) -> str:
@@ -182,6 +182,16 @@ class Plan(AbstractPlan):
         if duplicates:
             duplicates_string = ", ".join(duplicates)
             raise errors.ParameterError(f"Duplicate input, output or parameter names found: {duplicates_string}")
+
+    @property
+    def keywords_csv(self) -> str:
+        """Comma-separated list of keywords associated with workflow."""
+        return ", ".join(self.keywords)
+
+    @property
+    def deleted(self) -> bool:
+        """True if plan is deleted."""
+        return self.invalidated_at is not None
 
     def is_similar_to(self, other: "Plan") -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
@@ -288,11 +298,6 @@ class Plan(AbstractPlan):
         """Return if an ``Plan`` has correct derived_from."""
         return self.derived_from is not None and self.id != self.derived_from
 
-    @property
-    def keywords_csv(self):
-        """Comma-separated list of keywords associated with workflow."""
-        return ", ".join(self.keywords)
-
     def to_argv(self, with_streams: bool = False) -> List[Any]:
         """Convert a Plan into argv list."""
         arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
@@ -335,6 +340,12 @@ class Plan(AbstractPlan):
         Required where a plan is used several times in a workflow but we need to set different values on them.
         """
         return copy.deepcopy(self)
+
+    def delete(self, when: datetime = local_now()):
+        """Mark a plan as deleted."""
+        self.unfreeze()
+        self.invalidated_at = when
+        self.freeze()
 
 
 class PlanDetailsJson(marshmallow.Schema):
