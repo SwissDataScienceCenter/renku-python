@@ -423,7 +423,7 @@ class Dataset(Persistent):
         return f"<Dataset {self.identifier} {self.name}>"
 
     def is_derivation(self) -> bool:
-        """Return if a dataset has correct derived_form."""
+        """Return if a dataset has correct derived_from."""
         return self.derived_from is not None and not self.same_as and self.id != self.derived_from.url_id
 
     def copy(self) -> "Dataset":

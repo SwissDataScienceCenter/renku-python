@@ -58,7 +58,7 @@ class GitlabAPIProvider(IGitAPIProvider):
 
         git_data = GitURL.parse(remote)
         try:
-            gl = gitlab.Gitlab(git_data.instance_url, private_token=token)
+            gl = gitlab.Gitlab(git_data.instance_url, oauth_token=token)
             project = gl.projects.get(f"{git_data.owner}/{git_data.name}")
         except gitlab.GitlabAuthenticationError:
             # NOTE: Invalid or expired tokens fail even on public projects. Let's give it a try without tokens

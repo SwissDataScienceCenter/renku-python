@@ -598,6 +598,10 @@ class DockerError(RenkuException):
         super().__init__(f"Docker failed: {reason}")
 
 
+class MetadataMergeError(RenkuException):
+    """Raise when merging of metadata failed."""
+
+
 class MinimumVersionError(RenkuException):
     """Raised when accessing a project whose minimum version is larger than the current renku version."""
 

@@ -40,6 +40,10 @@ class IDatabaseDispatcher(ABC):
         """Create and push a new database to the stack."""
         raise NotImplementedError
 
+    def push_existing_database_to_stack(self, new_database: "Database", commit: bool = False) -> None:
+        """Push an existing database to the stack."""
+        raise NotImplementedError
+
     def pop_database(self) -> None:
         """Remove the current database from the stack."""
         raise NotImplementedError

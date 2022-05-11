@@ -161,6 +161,13 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.doctor
 
+.. _cli-mergetool:
+
+``renku mergetool``
+-------------------
+
+.. automodule:: renku.ui.cli.mergetool
+
 .. _cli-migrate:
 
 ``renku migrate``
