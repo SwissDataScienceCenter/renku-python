@@ -488,6 +488,20 @@ typing-extensions = "*"
 deps = ["galaxy-tool-util (>=21.1.0)"]
 
 [[package]]
+name = "deepdiff"
+version = "5.8.0"
+description = "Deep Difference and Search of any Python object/data."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+ordered-set = ">=4.1.0,<4.2.0"
+
+[package.extras]
+cli = ["click (==8.0.3)", "pyyaml (==5.4.1)", "toml (==0.10.2)", "clevercsv (==0.7.1)"]
+
+[[package]]
 name = "deepmerge"
 version = "1.0.1"
 description = "a toolset to deeply merge python dictionaries."
@@ -1056,6 +1070,17 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "ordered-set"
+version = "4.1.0"
+description = "An OrderedSet is a custom MutableSet that remembers its order, so that every"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+dev = ["pytest", "black", "mypy"]
+
+[[package]]
 name = "owlrl"
 version = "5.2.3"
 description = "OWL-RL and RDFS based RDF Closure inferencing for Python"
@@ -1408,10 +1433,10 @@ frozendict = "*"
 lxml = "*"
 
 [package.extras]
-requests = ["requests"]
 aiohttp = ["aiohttp"]
 cachetools = ["cachetools"]
 frozendict = ["frozendict"]
+requests = ["requests"]
 
 [[package]]
 name = "pyopenssl"
@@ -1430,7 +1455,7 @@ test = ["flaky", "pretend", "pytest (>=3.0.1)"]
 
 [[package]]
 name = "pyparsing"
-version = "3.0.8"
+version = "3.0.9"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
 category = "main"
 optional = false
@@ -2256,7 +2281,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "types-python-dateutil"
-version = "2.8.14"
+version = "2.8.15"
 description = "Typing stubs for python-dateutil"
 category = "main"
 optional = true
@@ -2288,7 +2313,7 @@ python-versions = "*"
 
 [[package]]
 name = "types-tabulate"
-version = "0.8.8"
+version = "0.8.9"
 description = "Typing stubs for tabulate"
 category = "main"
 optional = true
@@ -2616,7 +2641,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "7ae7fdcf5fa255e07e11826a4f9bf16cb577d597c0ada415a659d2a9837d126e"
+content-hash = "214f92745890e5b7ed456d666fbad765039c667136038caf71b0d258fd54d875"
 
 [metadata.files]
 addict = [
@@ -2925,6 +2950,10 @@ cwl-utils = [
 cwltool = [
     {file = "cwltool-3.1.20211107152837-py3-none-any.whl", hash = "sha256:91521eee31a37831ac6228eb031eafcbbe9486b79b29eede01ad98ef20b69ab9"},
     {file = "cwltool-3.1.20211107152837.tar.gz", hash = "sha256:ae1cd4626b5330457b1a62bcb2580f36f530264a80222f2cc17cf65899ebf04e"},
+]
+deepdiff = [
+    {file = "deepdiff-5.8.0-py3-none-any.whl", hash = "sha256:6b71714a6a5fb4cd6ab74c97f53303029118f96128082422342a9129a5f25c8f"},
+    {file = "deepdiff-5.8.0.tar.gz", hash = "sha256:7e641c0cd6429c9e1b64a07b8f7713382a5626afe18c72bcafa8a4343c05c701"},
 ]
 deepmerge = [
     {file = "deepmerge-1.0.1-py3-none-any.whl", hash = "sha256:f851fff957697cb8f4580b465acf5c2d35841695306ff0abb9cb9c273ad76112"},
@@ -3403,6 +3432,10 @@ numpy = [
     {file = "numpy-1.21.1-pp37-pypy37_pp73-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:2d4d1de6e6fb3d28781c73fbde702ac97f03d79e4ffd6598b880b2d95d62ead4"},
     {file = "numpy-1.21.1.zip", hash = "sha256:dff4af63638afcc57a3dfb9e4b26d434a7a602d225b42d746ea7fe2edf1342fd"},
 ]
+ordered-set = [
+    {file = "ordered-set-4.1.0.tar.gz", hash = "sha256:694a8e44c87657c59292ede72891eb91d34131f6531463aab3009191c77364a8"},
+    {file = "ordered_set-4.1.0-py3-none-any.whl", hash = "sha256:046e1132c71fcf3330438a539928932caf51ddbc582496833e23de611de14562"},
+]
 owlrl = [
     {file = "owlrl-5.2.3-py3-none-any.whl", hash = "sha256:0514239bfbf72fa67f3e5813a40bcc5bd88fd16093d9f76b45a0d4c84ee1c5e2"},
     {file = "owlrl-5.2.3.tar.gz", hash = "sha256:b1891d75b2c2fb0db9e1504a9b12dab738ed89236414c51393d1030597004342"},
@@ -3667,8 +3700,8 @@ pyopenssl = [
     {file = "pyOpenSSL-22.0.0.tar.gz", hash = "sha256:660b1b1425aac4a1bea1d94168a85d99f0b3144c869dd4390d27629d0087f1bf"},
 ]
 pyparsing = [
-    {file = "pyparsing-3.0.8-py3-none-any.whl", hash = "sha256:ef7b523f6356f763771559412c0d7134753f037822dad1b16945b7b846f7ad06"},
-    {file = "pyparsing-3.0.8.tar.gz", hash = "sha256:7bf433498c016c4314268d95df76c81b842a4cb2b276fa3312cfb1e1d85f6954"},
+    {file = "pyparsing-3.0.9-py3-none-any.whl", hash = "sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc"},
+    {file = "pyparsing-3.0.9.tar.gz", hash = "sha256:2b020ecf7d21b687f219b71ecad3631f644a47f01403fa1d1036b0c6416d70fb"},
 ]
 pyreadline = [
     {file = "pyreadline-2.1.win-amd64.exe", hash = "sha256:9ce5fa65b8992dfa373bddc5b6e0864ead8f291c94fbfec05fbd5c836162e67b"},
@@ -4101,8 +4134,8 @@ typed-ast = [
     {file = "typed_ast-1.5.3.tar.gz", hash = "sha256:27f25232e2dd0edfe1f019d6bfaaf11e86e657d9bdb7b0956db95f560cceb2b3"},
 ]
 types-python-dateutil = [
-    {file = "types-python-dateutil-2.8.14.tar.gz", hash = "sha256:367c1ffa1a52a4b2a534c9b30b40b01f2b7f2ea47a97fd821f6c76d1c7ae3129"},
-    {file = "types_python_dateutil-2.8.14-py3-none-any.whl", hash = "sha256:6ac40f66cf23a5200bd179b78d6be52e81a7750e4f8e45d7cfaf3ddda60ff01f"},
+    {file = "types-python-dateutil-2.8.15.tar.gz", hash = "sha256:7db1e4ed4916bd128cbee3eecdee0e06cc5684da2a1cdfd57f98541cdfbe0861"},
+    {file = "types_python_dateutil-2.8.15-py3-none-any.whl", hash = "sha256:9d6f01382d5ffe1977dc29f0782a01228dfaa36da148a7f4076cbd9beba26647"},
 ]
 types-pyyaml = [
     {file = "types-PyYAML-6.0.7.tar.gz", hash = "sha256:59480cf44595d836aaae050f35e3c39f197f3a833679ef3978d97aa9f2fb7def"},
@@ -4117,8 +4150,8 @@ types-requests = [
     {file = "types_requests-2.27.1-py3-none-any.whl", hash = "sha256:d03823054e34cb683ffcc4a05035482224c264096b20e1e14adb99f2b1775f09"},
 ]
 types-tabulate = [
-    {file = "types-tabulate-0.8.8.tar.gz", hash = "sha256:0b319c7e10dd561f7c15f56dec347c3193fd865f4ebe5ff1ecb020eafa793bc3"},
-    {file = "types_tabulate-0.8.8-py3-none-any.whl", hash = "sha256:628912bf968b449fc8603f5a92a45739d464da38a6eb25d9e0b78a353a6e584c"},
+    {file = "types-tabulate-0.8.9.tar.gz", hash = "sha256:2fc3fa4fe1853ac987cf50e8d4599e3fe446dd53064fe86a46a407a98e9fc04f"},
+    {file = "types_tabulate-0.8.9-py3-none-any.whl", hash = "sha256:7971ed0cd40454eb18d82c01e2f18bcd09ca23cc9eb901c62d2b04e5d1f57f84"},
 ]
 typing-extensions = [
     {file = "typing_extensions-4.2.0-py3-none-any.whl", hash = "sha256:6657594ee297170d19f67d55c05852a874e7eb634f4f753dbd667855e07c1708"},

@@ -152,6 +152,7 @@ yaspin = "==2.1.0"
 "zc.relation" = "<1.2,>=1.1"
 zodb = "==5.6.0"
 zstandard = ">=0.16.0,<0.18.0"
+deepdiff = "^5.8.0"
 
 [tool.poetry.dev-dependencies]
 poetry-lock-package = "^0.4.3"
@@ -344,6 +345,7 @@ module = [
     "appdirs",
     "BTrees.*",
     "calamus.*",
+    "deepdiff",
     "deepmerge",
     "docker",
     "click_option_group",

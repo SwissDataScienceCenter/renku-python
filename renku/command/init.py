@@ -25,6 +25,7 @@ import attr
 
 from renku.command.command_builder.command import Command, inject
 from renku.command.git import set_git_home
+from renku.command.mergetool import setup_mergetool
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
 from renku.core.interface.client_dispatcher import IClientDispatcher
@@ -119,6 +120,7 @@ def _init(
     force,
     data_dir,
     initial_branch,
+    install_mergetool,
     client_dispatcher: IClientDispatcher,
     database_dispatcher: IDatabaseDispatcher,
 ):
@@ -139,6 +141,7 @@ def _init(
         force: Whether to overwrite existing files and delete existing metadata.
         data_dir: Where to store dataset data.
         initial_branch: Default git branch.
+        install_mergetool(bool): Whether to set up the renku metadata mergetool in the created project.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
     """
@@ -234,9 +237,11 @@ def _init(
                 data_dir=data_dir,
                 description=description,
                 keywords=keywords,
+                install_mergetool=install_mergetool,
             )
         except FileExistsError as e:
             raise errors.InvalidFileOperation(e)
+
     if branch_name:
         communication.echo(
             "Project initialized.\n"
@@ -264,6 +269,7 @@ def create_from_template(
     commit_message=None,
     description=None,
     keywords=None,
+    install_mergetool=False,
 ):
     """Initialize a new project from a template.
 
@@ -279,8 +285,12 @@ def create_from_template(
         commit_message: Message for initial commit (Default value = None).
         description: Description of the project (Default value = None).
         keywords: Keywords for project (Default value = None).
+        install_mergetool(bool): Whether to setup renku metadata mergetool (Default value = False).
     """
     commit_only = [f"{RENKU_HOME}/", str(client.template_checksums)] + list(rendered_template.get_files())
+
+    if install_mergetool:
+        commit_only.append(".gitattributes")
 
     if data_dir:
         data_path = client.path / data_dir
@@ -296,6 +306,9 @@ def create_from_template(
             copy_template_to_client(
                 rendered_template=rendered_template, client=client, project=project, actions=actions
             )
+
+        if install_mergetool:
+            setup_mergetool()
 
         if data_dir:
             client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
