@@ -21,13 +21,15 @@ import tempfile
 from pathlib import Path
 
 from renku.command.migrate import migrations_check
-from renku.core.errors import AuthenticationError, ProjectNotFound, RenkuException
+from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
+from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.util.contexts import click_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
 from renku.ui.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.ui.service.views import result_response
+from renku.version import __version__
 
 
 class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
@@ -67,7 +69,34 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        return migrations_check().build().execute().output
+        try:
+            return migrations_check().build().execute().output
+        except MinimumVersionError as e:
+            return {
+                "project_supported": False,
+                "core_renku_version": e.current_version,
+                "project_renku_version": f">={e.minimum_version}",
+                "core_compatibility_status": {
+                    "migration_required": False,
+                    "project_metadata_version": f">={SUPPORTED_PROJECT_VERSION}",
+                    "current_metadata_version": SUPPORTED_PROJECT_VERSION,
+                },
+                "dockerfile_renku_status": {
+                    "dockerfile_renku_version": "unknown",
+                    "latest_renku_version": __version__,
+                    "newer_renku_available": False,
+                    "automated_dockerfile_update": False,
+                },
+                "template_status": {
+                    "automated_template_update": False,
+                    "newer_template_available": False,
+                    "template_source": "unknown",
+                    "template_ref": "unknown",
+                    "template_id": "unknown",
+                    "project_template_version": "unknown",
+                    "latest_template_version": "unknown",
+                },
+            }
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
