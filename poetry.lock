@@ -560,6 +560,18 @@ optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
+name = "dunamai"
+version = "1.12.0"
+description = "Dynamic version generation"
+category = "main"
+optional = true
+python-versions = ">=3.5,<4.0"
+
+[package.dependencies]
+importlib-metadata = {version = ">=1.6.0", markers = "python_version < \"3.8\""}
+packaging = ">=20.9"
+
+[[package]]
 name = "enlighten"
 version = "1.10.2"
 description = "Enlighten Progress Bar"
@@ -1202,6 +1214,19 @@ dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
+name = "poetry-dynamic-versioning"
+version = "0.14.1"
+description = "Plugin for Poetry to enable dynamic versioning based on VCS tags"
+category = "main"
+optional = true
+python-versions = ">=3.5,<4.0"
+
+[package.dependencies]
+dunamai = ">=1.11.1,<2.0.0"
+jinja2 = {version = ">=2.11.1,<4", markers = "python_version >= \"3.6\" and python_version < \"4.0\""}
+tomlkit = ">=0.4"
+
+[[package]]
 name = "poetry-lock-package"
 version = "0.4.4"
 description = "Poetry lock package generator"
@@ -1442,7 +1467,7 @@ test = ["flaky", "pretend", "pytest (>=3.0.1)"]
 
 [[package]]
 name = "pyparsing"
-version = "3.0.8"
+version = "3.0.9"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
 category = "main"
 optional = false
@@ -2211,6 +2236,14 @@ optional = true
 python-versions = ">=3.7"
 
 [[package]]
+name = "tomlkit"
+version = "0.10.2"
+description = "Style preserving TOML library"
+category = "main"
+optional = true
+python-versions = ">=3.6,<4.0"
+
+[[package]]
 name = "tornado"
 version = "6.1"
 description = "Tornado is a Python web framework and asynchronous networking library, originally developed at FriendFeed."
@@ -2611,16 +2644,16 @@ cffi = {version = ">=1.11", markers = "platform_python_implementation == \"PyPy\
 cffi = ["cffi (>=1.11)"]
 
 [extras]
-all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "marshmallow", "mypy", "pexpect", "pillow", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
+all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "marshmallow", "mypy", "pexpect", "pillow", "poetry-dynamic-versioning", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
 docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
 service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "marshmallow", "pillow", "ptvsd", "python-dotenv", "redis", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
-tests = ["black", "check-manifest", "coverage", "fakeredis", "flakehell", "flaky", "freezegun", "isort", "mypy", "pexpect", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "responses", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate"]
+tests = ["black", "check-manifest", "coverage", "fakeredis", "flakehell", "flaky", "freezegun", "isort", "mypy", "pexpect", "poetry-dynamic-versioning", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "responses", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate"]
 toil = ["toil"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "11f207a227c6668bb0d1e6dfd731ff48643fc69f3554c7ec8aa6055a9e8b41df"
+content-hash = "db7c2e0994cadfa61529374f80809e06027fa3fa5e2c9392dbf763bf6ae04783"
 
 [metadata.files]
 addict = [
@@ -2953,6 +2986,10 @@ docker = [
 docutils = [
     {file = "docutils-0.16-py2.py3-none-any.whl", hash = "sha256:0c5b78adfbf7762415433f5515cd5c9e762339e23369dbe8000d84a4bf4ab3af"},
     {file = "docutils-0.16.tar.gz", hash = "sha256:c2de3a60e9e7d07be26b7f2b00ca0309c207e06c100f9cc2a94931fc75a478fc"},
+]
+dunamai = [
+    {file = "dunamai-1.12.0-py3-none-any.whl", hash = "sha256:00b9c1ef58d4950204f76c20f84afe7a28d095f77feaa8512dbb172035415e61"},
+    {file = "dunamai-1.12.0.tar.gz", hash = "sha256:fac4f09e2b8a105bd01f8c50450fea5aa489a6c439c949950a65f0dd388b0d20"},
 ]
 enlighten = [
     {file = "enlighten-1.10.2-py2.py3-none-any.whl", hash = "sha256:b237fe562b320bf9f1d4bb76d0c98e0daf914372a76ab87c35cd02f57aa9d8c1"},
@@ -3526,6 +3563,10 @@ pluggy = [
     {file = "pluggy-1.0.0-py2.py3-none-any.whl", hash = "sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3"},
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
+poetry-dynamic-versioning = [
+    {file = "poetry-dynamic-versioning-0.14.1.tar.gz", hash = "sha256:01cc73a4bc4861bb91b138c235d49851d5563d373643b3f3c5cf8664d1115b5b"},
+    {file = "poetry_dynamic_versioning-0.14.1-py3-none-any.whl", hash = "sha256:29284bc6ae8c2ddde299801f174908ac864bfd8bae201a5f6e627c35d3df38c4"},
+]
 poetry-lock-package = [
     {file = "poetry-lock-package-0.4.4.tar.gz", hash = "sha256:32b8d3472409a84c5056c4532152854dd08cb644f5e1b2507678fdfb044812a1"},
     {file = "poetry_lock_package-0.4.4-py3-none-any.whl", hash = "sha256:b2106e14dbe4ab98ca67be8374c2adcd3871991d483f46adb3ef4e143476917d"},
@@ -3675,8 +3716,8 @@ pyopenssl = [
     {file = "pyOpenSSL-22.0.0.tar.gz", hash = "sha256:660b1b1425aac4a1bea1d94168a85d99f0b3144c869dd4390d27629d0087f1bf"},
 ]
 pyparsing = [
-    {file = "pyparsing-3.0.8-py3-none-any.whl", hash = "sha256:ef7b523f6356f763771559412c0d7134753f037822dad1b16945b7b846f7ad06"},
-    {file = "pyparsing-3.0.8.tar.gz", hash = "sha256:7bf433498c016c4314268d95df76c81b842a4cb2b276fa3312cfb1e1d85f6954"},
+    {file = "pyparsing-3.0.9-py3-none-any.whl", hash = "sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc"},
+    {file = "pyparsing-3.0.9.tar.gz", hash = "sha256:2b020ecf7d21b687f219b71ecad3631f644a47f01403fa1d1036b0c6416d70fb"},
 ]
 pyreadline = [
     {file = "pyreadline-2.1.win-amd64.exe", hash = "sha256:9ce5fa65b8992dfa373bddc5b6e0864ead8f291c94fbfec05fbd5c836162e67b"},
@@ -4026,6 +4067,10 @@ toml = [
 tomli = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
+]
+tomlkit = [
+    {file = "tomlkit-0.10.2-py3-none-any.whl", hash = "sha256:905cf92c2111ef80d355708f47ac24ad1b6fc2adc5107455940088c9bbecaedb"},
+    {file = "tomlkit-0.10.2.tar.gz", hash = "sha256:30d54c0b914e595f3d10a87888599eab5321a2a69abc773bbefff51599b72db6"},
 ]
 tornado = [
     {file = "tornado-6.1-cp35-cp35m-macosx_10_9_x86_64.whl", hash = "sha256:d371e811d6b156d82aa5f9a4e08b58debf97c302a35714f6f45e35139c332e32"},

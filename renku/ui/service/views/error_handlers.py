@@ -35,6 +35,7 @@ from renku.core.errors import (
     InvalidTemplateError,
     MigrationError,
     MigrationRequired,
+    MinimumVersionError,
     ParameterError,
     ProjectNotFound,
     RenkuException,
@@ -66,6 +67,7 @@ from renku.ui.service.errors import (
     UserDatasetsUnreachableImageError,
     UserInvalidGenericFieldsError,
     UserMissingFieldError,
+    UserNewerRenkuProjectError,
     UserNonRenkuProjectError,
     UserOutdatedProjectError,
     UserProjectCreationError,
@@ -146,6 +148,8 @@ def handle_renku_except(f):
             raise UserOutdatedProjectError(e)
         except UninitializedProject as e:
             raise UserNonRenkuProjectError(e)
+        except MinimumVersionError as e:
+            raise UserNewerRenkuProjectError(e, minimum_version=e.minimum_version, current_version=e.current_version)
         except RenkuException as e:
             raise ProgramRenkuError(e)
 
