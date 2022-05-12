@@ -44,17 +44,18 @@ class ClientDispatcher(IClientDispatcher):
 
     def push_client_to_stack(
         self, path: Union[Path, str], renku_home: str = RENKU_HOME, external_storage_requested: bool = True
-    ) -> None:
+    ) -> LocalClient:
         """Create and push a new client to the stack."""
         if isinstance(path, str):
             path = Path(path)
 
         new_client = LocalClient(path=path)
-        self.client_stack.append(new_client)
+        self.push_created_client_to_stack(new_client)
+
+        return new_client
 
     def push_created_client_to_stack(self, client: LocalClient) -> None:
         """Push an already created client to the stack."""
-
         self.client_stack.append(client)
 
     def pop_client(self) -> None:
