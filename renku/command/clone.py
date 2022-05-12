@@ -20,7 +20,6 @@ from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.util.git import clone_renku_repository
 
 
 @inject.autoparams()
@@ -30,6 +29,7 @@ def _project_clone(
     database_dispatcher: IDatabaseDispatcher,
     path=None,
     install_githooks=True,
+    install_mergetool=True,
     skip_smudge=True,
     recursive=True,
     depth=None,
@@ -47,6 +47,7 @@ def _project_clone(
         database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
         path: Path to clone to (Default value = None).
         install_githooks: Whether to install the pre-commit hook or not (Default value = True).
+        install_mergetool: Whether to install the renku metadata git mergetool or not (Default value = True).
         skip_smudge: Whether to skip pulling files from LFS (Default value = True).
         recursive: Recursively clone (Default value = True).
         depth: Clone depth (commits from HEAD) (Default value = None).
@@ -59,7 +60,9 @@ def _project_clone(
     Returns:
         Tuple of cloned ``Repository`` and whether it's a Renku project or not.
     """
+    from renku.command.mergetool import setup_mergetool
     from renku.core.management.migrate import is_renku_project
+    from renku.core.util.git import clone_renku_repository
 
     install_lfs = client_dispatcher.current_client.external_storage_requested
 
@@ -83,6 +86,9 @@ def _project_clone(
 
     try:
         project_initialized = is_renku_project()
+
+        if project_initialized and install_mergetool:
+            setup_mergetool(with_attributes=False)
     finally:
         database_dispatcher.pop_database()
         client_dispatcher.pop_client()

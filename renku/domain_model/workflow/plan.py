@@ -123,6 +123,14 @@ class AbstractPlan(Persistent, ABC):
         """Return the workflow a parameter belongs to."""
         raise NotImplementedError()
 
+    def derive(self) -> "AbstractPlan":
+        """Create a new ``AbstractPlan`` that is derived from self."""
+        raise NotImplementedError()
+
+    def is_derivation(self) -> bool:
+        """Return if an ``AbstractPlan`` has correct derived_from."""
+        raise NotImplementedError()
+
 
 class Plan(AbstractPlan):
     """Represent a `renku run` execution template."""
@@ -275,6 +283,10 @@ class Plan(AbstractPlan):
         derived.success_codes = self.success_codes.copy()
         derived.assign_new_id()
         return derived
+
+    def is_derivation(self) -> bool:
+        """Return if an ``Plan`` has correct derived_from."""
+        return self.derived_from is not None and self.id != self.derived_from
 
     @property
     def keywords_csv(self):
