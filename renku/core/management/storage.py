@@ -44,6 +44,20 @@ from .git import _expand_directories
 from .repository import RepositoryApiMixin  # type: ignore
 
 
+class RenkuGitWildMatchPattern(pathspec.patterns.GitWildMatchPattern):
+    """Custom GitWildMatchPattern matcher."""
+
+    __slots__ = ("pattern",)
+
+    def __init__(self, pattern, include=None):
+        """Initialize RenkuRegexPattern."""
+        super().__init__(pattern, include)
+        self.pattern = pattern
+
+
+pathspec.util.register_pattern("renku_gitwildmatch", RenkuGitWildMatchPattern)
+
+
 def check_external_storage_wrapper(fn):
     """Check availability of external storage on methods that need it.
 

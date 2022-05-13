@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku workflow commands."""
+"""Activity management."""
 
 import itertools
 from collections import defaultdict
@@ -374,7 +374,8 @@ def get_modified_activities(
         for usage in activity.usages:
             entity = usage.entity
             current_checksum = hashes.get(entity.path, None)
-            if current_checksum is None:
+            usage_path = repository.path / usage.entity.path
+            if current_checksum is None or not usage_path.exists():
                 deleted.add((activity, entity))
             elif current_checksum != entity.checksum:
                 modified.add((activity, entity))

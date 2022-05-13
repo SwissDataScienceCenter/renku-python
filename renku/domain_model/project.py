@@ -29,12 +29,17 @@ from renku.core.util.git import get_git_user
 from renku.core.util.os import normalize_to_ascii
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
+from renku.version import __minimum_project_version__
 
 
 class Project(persistent.Persistent):
     """Represent a project."""
 
     keywords: List[str] = list()
+
+    # NOTE: the minimum version of renku to needed to work with a project
+    # This should be bumped on metadata version changes and when we do not forward-compatible on-the-fly migrations
+    minimum_renku_version: str = __minimum_project_version__
 
     def __init__(
         self,
@@ -82,6 +87,9 @@ class Project(persistent.Persistent):
         self.template_version: Optional[str] = template_version
         self.version: str = version
         self.keywords = keywords or []
+
+        # NOTE: We copy this over as class variables don't get saved in the DB
+        self.minimum_renku_version = Project.minimum_renku_version
 
     @classmethod
     def from_client(

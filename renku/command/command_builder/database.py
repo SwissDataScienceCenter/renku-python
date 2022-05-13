@@ -18,8 +18,14 @@
 """Command builder for local object database."""
 
 
+import json
+from typing import TYPE_CHECKING, Optional, cast
+
+from packaging.version import Version
+
 from renku.command.command_builder.command import Command, CommandResult, check_finalized
 from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
+from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
@@ -32,6 +38,9 @@ from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.infrastructure.gateway.project_gateway import ProjectGateway
 
+if TYPE_CHECKING:
+    from renku.domain_model.project import Project
+
 
 class DatabaseCommand(Command):
     """Builder to get a database connection."""
@@ -40,13 +49,18 @@ class DatabaseCommand(Command):
     POST_ORDER = 5
 
     def __init__(self, builder: Command, write: bool = False, path: str = None, create: bool = False) -> None:
+        from renku.domain_model.project import Project
+
         self._builder = builder
         self._write = write
         self._path = path
         self._create = create
+        self.project: Optional[Project] = None
 
     def _injection_pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Create a Database singleton."""
+        from renku.version import __version__
+
         if "client_dispatcher" not in context:
             raise ValueError("Database builder needs a IClientDispatcher to be set.")
 
@@ -63,7 +77,37 @@ class DatabaseCommand(Command):
         context["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
         context["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
 
+        try:
+            self.project = cast("Project", self.dispatcher.current_database["project"])
+            minimum_renku_version = Version(self.project.minimum_renku_version)
+        except (KeyError, ImportError):
+            try:
+                with open(client.database_path / "project", "r") as f:
+                    project = json.load(f)
+                    min_version = project.get("minimum_renku_version")
+                    if min_version is None:
+                        return
+                    minimum_renku_version = Version(min_version)
+            except (KeyError, OSError, json.JSONDecodeError):
+                # NOTE: We don't check minimum version if there's no project metadata available
+                return
+
+        current_version = Version(__version__)
+
+        if current_version < minimum_renku_version:
+            raise errors.MinimumVersionError(current_version, minimum_renku_version)
+
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs) -> None:
+        from renku.domain_model.project import Project
+
+        if (
+            self._write
+            and self.project is not None
+            and Version(self.project.minimum_renku_version) < Version(Project.minimum_renku_version)
+        ):
+            # NOTE: update minimum renku version on write as migrations might happen on the fly
+            self.project.minimum_renku_version = Project.minimum_renku_version
+
         self.dispatcher.finalize_dispatcher()
 
     @check_finalized
