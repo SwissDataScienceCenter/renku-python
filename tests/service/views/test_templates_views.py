@@ -151,6 +151,11 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 
+    # NOTE: Assert backwards compatibility metadata.yml was created
+    old_metadata_path = project_path / ".renku/metadata.yml"
+    assert old_metadata_path.exists()
+    assert "'http://schema.org/schemaVersion': '9'" in old_metadata_path.read_text()
+
     # NOTE:  successfully re-use old name after cleanup
     assert rm_remote() is True
     sleep(1)  # NOTE: sleep to make sure remote isn't locked

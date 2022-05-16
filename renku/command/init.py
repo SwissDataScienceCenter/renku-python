@@ -215,14 +215,6 @@ def _init(
 
     branch_name = create_backup_branch(path=path)
 
-    # add metadata.yml for backwards compatibility
-    metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
-    with open(metadata_path, "w") as f:
-        f.write(
-            "# Dummy file kept for backwards compatibility, does not contain actual version\n"
-            "'http://schema.org/schemaVersion': '9'"
-        )
-
     # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")
     with client.lock:
@@ -298,6 +290,14 @@ def create_from_template(
         keep = data_path / ".gitkeep"
         keep.touch(exist_ok=True)
         commit_only.append(keep)
+
+    # add metadata.yml for backwards compatibility
+    metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
+    with open(metadata_path, "w") as f:
+        f.write(
+            "# Dummy file kept for backwards compatibility, does not contain actual version\n"
+            "'http://schema.org/schemaVersion': '9'"
+        )
 
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
         with client.with_metadata(
