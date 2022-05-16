@@ -17,11 +17,12 @@
 # limitations under the License.
 """test KG against SHACL shape."""
 
+from pathlib import Path
+
 import pyld
 import pytest
 
 from renku.command.schema.dataset import dump_dataset_as_jsonld
-from renku.core.compat import Path
 from renku.core.util.shacl import validate_graph
 from renku.ui.cli import cli
 from tests.utils import load_dataset
