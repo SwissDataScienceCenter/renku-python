@@ -49,7 +49,6 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.mermaid",
     "sphinxcontrib.spelling",
     "sphinx_tabs.tabs",
     "cheatsheet",
