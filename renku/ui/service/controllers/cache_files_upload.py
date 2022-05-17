@@ -106,6 +106,12 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
 
         file_path = user_cache_dir / self.file.filename
 
+        if file_path.exists():
+            if self.response_builder.get("override_existing", False):
+                file_path.unlink()
+            else:
+                raise IntermittentFileExistsError(file_name=self.file.filename)
+
         with open(file_path, "wb") as f:
             for file_number in range(total_chunks):
                 f.write((chunks_dir / str(file_number)).read_bytes())
