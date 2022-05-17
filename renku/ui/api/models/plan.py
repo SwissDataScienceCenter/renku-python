@@ -25,9 +25,10 @@ the ``list`` static method of each of these classes:
 
     from renku.ui.api import Plan
 
-    datasets = Plan.list()
+    plans = Plan.list()
 
 """
+
 from datetime import datetime
 from typing import List, Optional, Union
 
