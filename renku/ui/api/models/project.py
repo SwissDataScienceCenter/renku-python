@@ -28,7 +28,7 @@ manager and interact with Renku inside it:
 
 .. code-block:: python
 
-    from renku.ui.api import Project, Input
+    from renku.api import Project, Input
 
     with Project():
         input_1 = Input("input_1", "path_1")
@@ -38,7 +38,7 @@ activities, and modified or deleted inputs:
 
 .. code-block:: python
 
-    from renku.ui.api import Project
+    from renku.api import Project
 
     outdated_generations, outdated_activities, modified_inputs, deleted_inputs = Project().status()
 

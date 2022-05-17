@@ -325,11 +325,12 @@ flake8-max-line-length = 120
 testpaths = ["docs", "tests", "renku", "conftest.py"]
 markers = [
     "integration: mark a test as a integration.",
-    "service: mark a test as service test.",
     "jobs: mark a test as a job test.",
     "migration: mark a test as a migration test.",
-    "shelled: mark a test as a shelled test.",
+    "publish: mark tests that publish datasets to external providers.",
     "serial: mark a test that can not be run in parallel",
+    "service: mark a test as service test.",
+    "shelled: mark a test as a shelled test.",
 ]
 
 [tool.mypy]

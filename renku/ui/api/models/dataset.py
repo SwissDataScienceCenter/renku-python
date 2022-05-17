@@ -24,7 +24,7 @@ To get a list of available datasets in a Renku project use ``list`` method:
 
 .. code-block:: python
 
-    from renku.ui.api import Dataset
+    from renku.api import Dataset
 
     datasets = Dataset.list()
 

@@ -19,7 +19,7 @@
 
 import os
 
-from renku.ui.api import CompositePlan, Input, Output, Parameter, Plan
+from renku.ui.api import Activity, CompositePlan, Input, Output, Parameter, Plan
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -54,16 +54,27 @@ def test_list_datasets_outside_a_renku_project(directory_tree):
     assert [] == Plan.list()
 
 
+def test_get_plan_attributes(client_with_runs):
+    """Test getting attributes of a plan."""
+    plan = next(p for p in Plan.list() if p.name == "plan-1")
+
+    assert "/plans/1" == plan.id
+    assert "command-1" == plan.command
+    assert ["plans", "1"] == plan.keywords
+    assert "First plan" == plan.description
+    assert [0, 1] == plan.success_codes
+
+
 def test_get_plan_parameters(client_with_runs):
     """Test getting parameters of a plan."""
     plan = next(p for p in Plan.list() if p.name == "plan-1")
 
-    assert {"n-1"} == {p.name for p in plan.parameters}
+    assert {"parameter-1"} == {p.name for p in plan.parameters}
     parameter = plan.parameters[0]
 
     assert isinstance(parameter, Parameter)
-    assert "2" == parameter.default_value
-    assert "2" == parameter.value
+    assert "42" == parameter.default_value
+    assert "42" == parameter.value
     assert "-n" == parameter.prefix.strip()
     assert 1 == parameter.position
 
@@ -72,7 +83,7 @@ def test_get_plan_inputs(client_with_runs):
     """Test getting inputs of a plan."""
     plan = next(p for p in Plan.list() if p.name == "plan-1")
 
-    assert {"input-2"} == {p.name for p in plan.inputs}
+    assert {"input-1"} == {p.name for p in plan.inputs}
     input = plan.inputs[0]
 
     assert isinstance(input, Input)
@@ -87,7 +98,7 @@ def test_get_plan_outputs(client_with_runs):
     """Test getting outputs of a plan."""
     plan = next(p for p in Plan.list() if p.name == "plan-1")
 
-    assert {"output-3"} == {p.name for p in plan.outputs}
+    assert {"output-1"} == {p.name for p in plan.outputs}
     output = plan.outputs[0]
 
     assert isinstance(output, Output)
@@ -138,10 +149,20 @@ def test_list_composite_plans(client_with_runs, runner):
     assert "composite-input-file" == mapping.value
     mapping_parameter = mapping.parameters[0]
     assert isinstance(mapping_parameter, Input)
-    assert "input-2" == mapping_parameter.name
+    assert "input-1" == mapping_parameter.name
 
     assert 1 == len(plan.links)
     link = plan.links[0]
     assert isinstance(link.source, Output)
-    assert "output-3" == link.source.name
-    assert ["input-2"] == [s.name for s in link.sinks]
+    assert "output-1" == link.source.name
+    assert ["input-1"] == [s.name for s in link.sinks]
+
+
+def test_get_plan_activities(client_with_runs):
+    """Test getting activities that are based on a plan."""
+    plan = next(p for p in Plan.list() if p.name == "plan-1")
+
+    assert 1 == len(plan.activities)
+    activity = plan.activities[0]
+
+    assert isinstance(activity, Activity)

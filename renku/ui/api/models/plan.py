@@ -23,7 +23,7 @@ list of all active plans/composite-plans in a project:
 
 .. code-block:: python
 
-    from renku.ui.api import Plan
+    from renku.api import Plan
 
     plans = Plan.list()
 
@@ -52,6 +52,7 @@ class Plan:
         date_created: Optional[datetime] = None,
         deleted: bool = False,
         description: Optional[str] = None,
+        id: str = None,
         inputs: List[Input] = None,
         keywords: Optional[List[str]] = None,
         name: Optional[str] = None,
@@ -63,6 +64,7 @@ class Plan:
         self.date_created: Optional[datetime] = date_created
         self.deleted: bool = deleted
         self.description: Optional[str] = description
+        self.id: Optional[str] = id
         self.inputs: List[Input] = inputs or []
         self.keywords: List[str] = keywords or []
         self.name: Optional[str] = name
@@ -85,6 +87,7 @@ class Plan:
             date_created=plan.date_created,
             deleted=plan.invalidated_at is not None,
             description=plan.description,
+            id=plan.id,
             inputs=[Input.from_parameter(i) for i in plan.inputs],
             keywords=plan.keywords,
             name=plan.name,
@@ -105,6 +108,16 @@ class Plan:
         """
         return _list_plans(include_deleted=include_deleted, type=core_plan.Plan)
 
+    def __repr__(self):
+        return f"<Plan '{self.name}'>"
+
+    @property
+    def activities(self) -> List:
+        """Return a list of upstream activities."""
+        from renku.ui.api.models.activity import get_activities
+
+        return get_activities(plan_id=self.id)
+
 
 class CompositePlan:
     """API CompositePlan."""
@@ -114,6 +127,7 @@ class CompositePlan:
         date_created: Optional[datetime] = None,
         deleted: bool = False,
         description: Optional[str] = None,
+        id: str = None,
         keywords: Optional[List[str]] = None,
         links: List[Link] = None,
         mappings: List[Mapping] = None,
@@ -123,6 +137,7 @@ class CompositePlan:
         self.date_created: Optional[datetime] = date_created
         self.deleted: bool = deleted
         self.description: Optional[str] = description
+        self.id: Optional[str] = id
         self.keywords: List[str] = keywords or []
         self.links: List[Link] = links or []
         self.mappings: List[Mapping] = mappings or []
@@ -143,6 +158,7 @@ class CompositePlan:
             date_created=composite_plan.date_created,
             deleted=composite_plan.invalidated_at is not None,
             description=composite_plan.description,
+            id=composite_plan.id,
             keywords=composite_plan.keywords,
             links=[Link.from_link(link) for link in composite_plan.links],
             mappings=[Mapping.from_parameter(m) for m in composite_plan.mappings],
@@ -161,6 +177,16 @@ class CompositePlan:
             A list of all plans in the supplied project.
         """
         return _list_plans(include_deleted=include_deleted, type=core_composite_plan.CompositePlan)
+
+    def __repr__(self):
+        return f"<CompositePlan '{self.name}'>"
+
+    @property
+    def activities(self) -> List:
+        """Return a list of upstream activities."""
+        from renku.ui.api.models.activity import get_activities
+
+        return get_activities(plan_id=self.id)
 
 
 def _convert_plans(plans: List[Union[core_plan.AbstractPlan]]) -> List[Union[Plan, CompositePlan]]:

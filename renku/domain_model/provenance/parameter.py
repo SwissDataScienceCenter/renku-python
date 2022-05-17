@@ -17,11 +17,9 @@
 # limitations under the License.
 """Classes for tracking parameter values in provenance."""
 
-from itertools import chain
 from typing import Any
 from uuid import uuid4
 
-from renku.core import errors
 from renku.domain_model.workflow.plan import Plan
 
 
@@ -40,9 +38,5 @@ class ParameterValue:
 
     def apply_value_to_parameter(self, plan: Plan) -> None:
         """Apply the current value as actual_value on the plan's parameter."""
-        for parameter in chain(plan.inputs, plan.outputs, plan.parameters):
-            if parameter.id == self.parameter_id:
-                parameter.actual_value = self.value
-                return
-
-        raise errors.ParameterError(f"Parameter {self.parameter_id} not found on plan {plan.id}.")
+        parameter = plan.get_field_by_id(self.parameter_id)
+        parameter.actual_value = self.value

@@ -51,6 +51,24 @@ class ActivityGateway(IActivityGateway):
 
         return list(database["activities-by-generation"].keys())
 
+    def get_activities_by_usage(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
+        """Return the list of all activities that use a path."""
+        by_usage = self.database_dispatcher.current_database["activities-by-usage"]
+        activities = by_usage.get(str(path), [])
+
+        if not checksum:
+            return activities
+
+        result = []
+
+        for activity in activities:
+            usage = next((g for g in activity.usages if g.entity.checksum == checksum), None)
+
+            if usage:
+                result.append(activity)
+
+        return result
+
     def get_activities_by_generation(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
         """Return the list of all activities that generate a path."""
         by_generation = self.database_dispatcher.current_database["activities-by-generation"]
@@ -79,6 +97,16 @@ class ActivityGateway(IActivityGateway):
         downstream = set(activity_catalog.findValues("downstream", tok(upstream=activity), maxDepth=max_depth))
 
         return downstream
+
+    def get_upstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
+        """Get upstream activities that this activity depends on them."""
+        database = self.database_dispatcher.current_database
+
+        activity_catalog = database["activity-catalog"]
+        tok = activity_catalog.tokenizeQuery
+        upstream = set(activity_catalog.findValues("upstream", tok(downstream=activity), maxDepth=max_depth))
+
+        return upstream
 
     def get_downstream_activity_chains(self, activity: Activity) -> List[Tuple[Activity, ...]]:
         """Get a list of tuples of all downstream paths of this activity."""

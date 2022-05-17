@@ -22,7 +22,7 @@ import itertools
 import re
 from abc import ABC
 from datetime import datetime
-from typing import Any, List, Optional, Set, Tuple, cast
+from typing import Any, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 import marshmallow
@@ -65,6 +65,9 @@ class AbstractPlan(Persistent, ABC):
         else:
             AbstractPlan.validate_name(name)
             self.name = name
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} '{self.name}'>"
 
     @staticmethod
     def generate_id(uuid: Optional[str] = None) -> str:
@@ -346,6 +349,14 @@ class Plan(AbstractPlan):
         self.unfreeze()
         self.invalidated_at = when
         self.freeze()
+
+    def get_field_by_id(self, id: str) -> Union[CommandInput, CommandOutput, CommandParameter]:
+        """Return an in Input/Output/Parameter by its id."""
+        for field in itertools.chain(self.inputs, self.outputs, self.parameters):
+            if field.id == id:
+                return field  # type: ignore
+
+        raise errors.ParameterError(f"Parameter {id} not found on plan {self.id}.")
 
 
 class PlanDetailsJson(marshmallow.Schema):
