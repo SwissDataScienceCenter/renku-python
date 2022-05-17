@@ -86,6 +86,7 @@ from renku.ui.cli.graph import graph
 from renku.ui.cli.init import init as init_command
 from renku.ui.cli.log import log
 from renku.ui.cli.login import credentials, login, logout
+from renku.ui.cli.mergetool import mergetool
 from renku.ui.cli.migrate import check_immutable_template_files, migrate, migrationscheck
 from renku.ui.cli.move import move
 from renku.ui.cli.project import project
@@ -259,6 +260,7 @@ cli.add_command(init_command)
 cli.add_command(log)
 cli.add_command(login)
 cli.add_command(logout)
+cli.add_command(mergetool)
 cli.add_command(migrate)
 cli.add_command(migrationscheck)
 cli.add_command(move)
