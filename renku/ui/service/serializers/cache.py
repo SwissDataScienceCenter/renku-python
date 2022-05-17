@@ -91,6 +91,18 @@ class FileUploadResponseRPC(JsonRPCResponse):
     result = fields.Nested(FileUploadResponse)
 
 
+class FileChunksDeleteRequest(Schema):
+    """Request schema for deleting uploaded chunks."""
+
+    chunked_id = fields.String(data_key="dzuuid", missing=None, description="Dropzone upload id.")
+
+
+class FileChunksDeleteResponseRPC(JsonRPCResponse):
+    """RPC response schema for file upload response."""
+
+    result = fields.String()
+
+
 class FileListResponse(Schema):
     """Response schema for files listing."""
 

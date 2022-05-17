@@ -21,7 +21,7 @@ from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.errors import IntermittentProjectIdError
 from renku.ui.service.serializers.jobs import JobDetailsResponseRPC, JobListResponseRPC
 from renku.ui.service.views import result_response
-from renku.ui.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
+from renku.ui.service.views.api_versions import V0_9, V1_0, V1_1, V1_2, VersionedBlueprint
 from renku.ui.service.views.decorators import requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import handle_common_except
 
@@ -29,7 +29,7 @@ JOBS_BLUEPRINT_TAG = "jobs"
 jobs_blueprint = VersionedBlueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@jobs_blueprint.route("/jobs", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1])
+@jobs_blueprint.route("/jobs", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1, V1_2])
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -64,7 +64,9 @@ def list_jobs(user_data, cache):
     return result_response(JobListResponseRPC(), {"jobs": jobs})
 
 
-@jobs_blueprint.route("/jobs/<job_id>", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1])
+@jobs_blueprint.route(
+    "/jobs/<job_id>", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1, V1_2]
+)
 @handle_common_except
 @requires_cache
 @requires_identity

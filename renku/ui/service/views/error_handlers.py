@@ -117,6 +117,7 @@ def handle_validation_except(f):
                 raise UserRepoUrlInvalidError(e, error_message)
             if "Unknown field" in error_message:
                 raise ProgramInvalidGenericFieldsError(e, error_message)
+
             raise UserInvalidGenericFieldsError(e, error_message)
 
     return decorated_function

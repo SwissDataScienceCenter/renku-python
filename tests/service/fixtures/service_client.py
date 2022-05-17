@@ -62,6 +62,7 @@ def svc_cache_dir(mocker, tmpdir):
     import renku.ui.service.cache.models.file
     import renku.ui.service.cache.models.project
     import renku.ui.service.config
+    import renku.ui.service.controllers.cache_files_delete_chunks
     import renku.ui.service.controllers.cache_files_upload
     import renku.ui.service.controllers.datasets_create
     import renku.ui.service.controllers.datasets_edit
@@ -79,6 +80,7 @@ def svc_cache_dir(mocker, tmpdir):
     mocker.patch.object(renku.ui.service.utils, "CACHE_UPLOADS_PATH", upload_dir)
     mocker.patch.object(renku.ui.service.cache.models.file, "CACHE_UPLOADS_PATH", upload_dir)
     mocker.patch.object(renku.ui.service.controllers.cache_files_upload, "CACHE_UPLOADS_PATH", upload_dir)
+    mocker.patch.object(renku.ui.service.controllers.cache_files_delete_chunks, "CACHE_UPLOADS_PATH", upload_dir)
     mocker.patch.object(renku.ui.service.controllers.datasets_create, "CACHE_UPLOADS_PATH", upload_dir)
     mocker.patch.object(renku.ui.service.controllers.datasets_edit, "CACHE_UPLOADS_PATH", upload_dir)
 

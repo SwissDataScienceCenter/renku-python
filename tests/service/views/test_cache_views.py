@@ -165,6 +165,70 @@ def test_file_chunked_upload(svc_client, identity_headers, svc_cache_dir):
 
 
 @pytest.mark.service
+def test_file_chunked_upload_delete(svc_client, identity_headers, svc_cache_dir):
+    """Check successful file upload."""
+    headers = copy.deepcopy(identity_headers)
+    content_type = headers.pop("Content-Type")
+
+    upload_id = uuid.uuid4().hex
+    filename = uuid.uuid4().hex
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk1"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=0,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk2"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=1,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+    upload_path = next(svc_cache_dir[1].rglob("*")) / upload_id
+    assert upload_path.exists()
+
+    headers["Content-Type"] = content_type
+    response = svc_client.post(
+        "/cache.files_delete_chunks",
+        data=json.dumps(
+            dict(
+                dzuuid=upload_id,
+            )
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert f"Deleted chunks for {upload_id}" == response.json["result"]
+
+    assert not upload_path.exists()
+
+
+@pytest.mark.service
 def test_file_upload_override(svc_client, identity_headers):
     """Check successful file upload."""
     headers = copy.deepcopy(identity_headers)
