@@ -18,8 +18,8 @@
 r"""Renku API Plan.
 
 ``Plan`` and ``CompositePlan`` classes represent Renku workflow plans executed
-in a Project. You can get a list of all active plans in a project by calling
-the ``list`` static method of each of these classes:
+in a Project. Each of these classes has a static ``list`` method that returns a
+list of all active plans/composite-plans in a project:
 
 .. code-block:: python
 
@@ -27,10 +27,12 @@ the ``list`` static method of each of these classes:
 
     plans = Plan.list()
 
+    composite_plans = CompositePlan.list()
+
 """
 
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional, Type, Union
 
 from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
 from renku.core import errors
@@ -48,9 +50,9 @@ class Plan:
         self,
         command: str,
         date_created: Optional[datetime] = None,
+        deleted: bool = False,
         description: Optional[str] = None,
         inputs: List[Input] = None,
-        invalidated_at: Optional[datetime] = None,
         keywords: Optional[List[str]] = None,
         name: Optional[str] = None,
         outputs: List[Output] = None,
@@ -59,9 +61,9 @@ class Plan:
     ):
         self.command: str = command
         self.date_created: Optional[datetime] = date_created
+        self.deleted: bool = deleted
         self.description: Optional[str] = description
         self.inputs: List[Input] = inputs or []
-        self.invalidated_at: Optional[datetime] = invalidated_at
         self.keywords: List[str] = keywords or []
         self.name: Optional[str] = name
         self.outputs: List[Output] = outputs or []
@@ -81,9 +83,9 @@ class Plan:
         return cls(
             command=plan.command,
             date_created=plan.date_created,
+            deleted=plan.invalidated_at is not None,
             description=plan.description,
             inputs=[Input.from_parameter(i) for i in plan.inputs],
-            invalidated_at=plan.invalidated_at,
             keywords=plan.keywords,
             name=plan.name,
             outputs=[Output.from_parameter(o) for o in plan.outputs],
@@ -101,12 +103,7 @@ class Plan:
         Returns:
             A list of all plans in the supplied project.
         """
-        return _list_plans(include_deleted=include_deleted)
-
-    @property
-    def deleted(self) -> bool:
-        """True if plan is deleted."""
-        return self.invalidated_at is not None
+        return _list_plans(include_deleted=include_deleted, type=core_plan.Plan)
 
 
 class CompositePlan:
@@ -115,8 +112,8 @@ class CompositePlan:
     def __init__(
         self,
         date_created: Optional[datetime] = None,
+        deleted: bool = False,
         description: Optional[str] = None,
-        invalidated_at: Optional[datetime] = None,
         keywords: Optional[List[str]] = None,
         links: List[Link] = None,
         mappings: List[Mapping] = None,
@@ -124,8 +121,8 @@ class CompositePlan:
         plans: List[Union["CompositePlan", "Plan"]] = None,
     ):
         self.date_created: Optional[datetime] = date_created
+        self.deleted: bool = deleted
         self.description: Optional[str] = description
-        self.invalidated_at: Optional[datetime] = invalidated_at
         self.keywords: List[str] = keywords or []
         self.links: List[Link] = links or []
         self.mappings: List[Mapping] = mappings or []
@@ -144,8 +141,8 @@ class CompositePlan:
         """
         return cls(
             date_created=composite_plan.date_created,
+            deleted=composite_plan.invalidated_at is not None,
             description=composite_plan.description,
-            invalidated_at=composite_plan.invalidated_at,
             keywords=composite_plan.keywords,
             links=[Link.from_link(link) for link in composite_plan.links],
             mappings=[Mapping.from_parameter(m) for m in composite_plan.mappings],
@@ -163,12 +160,7 @@ class CompositePlan:
         Returns:
             A list of all plans in the supplied project.
         """
-        return _list_plans(include_deleted=include_deleted)
-
-    @property
-    def deleted(self) -> bool:
-        """True if plan is deleted."""
-        return self.invalidated_at is not None
+        return _list_plans(include_deleted=include_deleted, type=core_composite_plan.CompositePlan)
 
 
 def _convert_plans(plans: List[Union[core_plan.AbstractPlan]]) -> List[Union[Plan, CompositePlan]]:
@@ -186,7 +178,9 @@ def _convert_plans(plans: List[Union[core_plan.AbstractPlan]]) -> List[Union[Pla
 
 
 @ensure_project_context
-def _list_plans(include_deleted: bool, project) -> List[Union[Plan, CompositePlan]]:
+def _list_plans(
+    include_deleted: bool, type: Type[Union[core_plan.Plan, core_composite_plan.CompositePlan]], project
+) -> List[Union[Plan, CompositePlan]]:
     """List all plans in a project.
 
     Args:
@@ -209,5 +203,7 @@ def _list_plans(include_deleted: bool, project) -> List[Union[Plan, CompositePla
 
     if not include_deleted:
         plans = [p for p in plans if p.invalidated_at is None]
+
+    plans = [p for p in plans if isinstance(p, type)]
 
     return _convert_plans(plans)

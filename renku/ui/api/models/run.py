@@ -104,44 +104,35 @@ class Parameter:
     """API Parameter model."""
 
     @ensure_project_context
-    def __init__(
-        self,
-        name: str,
-        value: Union[Path, str, bool, int, float],
-        project,
-        default_value: Union[Path, str, bool, int, float] = None,
-        description: str = None,
-        position: int = None,
-        prefix: str = None,
-        skip_addition: bool = False,
-    ):
+    def __init__(self, name: str, value: Union[Path, str, bool, int, float], project, skip_addition: bool = False):
         _validate_name(name)
 
-        value = value if value is not None else default_value
         value = self._get_parameter_value(name=name, value=value)
 
         self.name: str = name
         self.value: Union[Path, str, bool, int, float] = value
-        self.default_value: Union[Path, str, bool, int, float] = default_value if default_value is not None else value
-        self.description: Optional[str] = description
-        self.position: Optional[int] = position
-        self.prefix: Optional[str] = prefix
+        self.default_value: Union[Path, str, bool, int, float] = value
+        self.description: Optional[str] = None
+        self.position: Optional[int] = None
+        self.prefix: Optional[str] = None
 
         if not skip_addition:
             add_indirect_parameter(project.path, name=name, value=value)
 
     @classmethod
-    def from_parameter(cls, parameter: core_parameter.CommandParameterBase) -> "Parameter":
+    def from_parameter(cls, parameter: core_parameter.CommandParameter) -> "Parameter":
         """Create an instance from a core CommandParameterBase."""
-        return cls(
-            name=parameter.name,
-            value=parameter.actual_value,
-            default_value=parameter.default_value,
-            description=parameter.description,
-            position=parameter.position,
-            prefix=parameter.prefix,
-            skip_addition=True,
-        )
+        value = parameter.actual_value
+        default_value = parameter.default_value
+        value = value if value is not None else default_value
+
+        self = cls(name=parameter.name, value=value, skip_addition=True)
+        self.default_value = default_value if default_value is not None else value
+        self.description = parameter.description
+        self.position = parameter.position
+        self.prefix = parameter.prefix
+
+        return self
 
     @staticmethod
     def _get_parameter_value(name: str, value: Any) -> Union[str, bool, int, float]:
@@ -181,45 +172,24 @@ class Input(_PathBase, Parameter):
     def _get_indirect_list_path(project_path):
         return get_indirect_inputs_path(project_path)
 
-    def __init__(
-        self,
-        name: str,
-        path: Union[str, Path],
-        description: str = None,
-        mapped_stream: str = None,
-        position: int = None,
-        prefix: str = None,
-        skip_addition: bool = False,
-    ):
-        assert mapped_stream is None or mapped_stream == "stdin"
-
+    def __init__(self, name: str, path: Union[str, Path], skip_addition: bool = False):
         _PathBase.__init__(self, name=name, path=path, skip_addition=skip_addition)
-        Parameter.__init__(
-            self,
-            name=name,
-            value=path,
-            description=description,
-            prefix=prefix,
-            position=position,
-            skip_addition=True,
-        )
+        Parameter.__init__(self, name=name, value=path, skip_addition=True)
 
-        self.mapped_stream: Optional[str] = mapped_stream
+        self.mapped_stream: Optional[str] = None
 
     @classmethod
-    def from_parameter(cls, input: core_parameter.CommandParameterBase) -> "Input":
+    def from_parameter(cls, input: core_parameter.CommandInput) -> "Input":  # type: ignore
         """Create an instance from a CommandInput."""
         assert isinstance(input, core_parameter.CommandInput)
 
-        return cls(
-            name=input.name,
-            path=input.default_value,
-            description=input.description,
-            prefix=input.prefix,
-            position=input.position,
-            mapped_stream=input.mapped_to.stream_type if input.mapped_to else None,
-            skip_addition=True,
-        )
+        self = cls(name=input.name, path=input.default_value, skip_addition=True)
+        self.description = input.description
+        self.prefix = input.prefix
+        self.position = input.position
+        self.mapped_stream = input.mapped_to.stream_type if input.mapped_to else None
+
+        return self
 
 
 class Output(_PathBase, Parameter):
@@ -229,45 +199,24 @@ class Output(_PathBase, Parameter):
     def _get_indirect_list_path(project_path):
         return get_indirect_outputs_path(project_path)
 
-    def __init__(
-        self,
-        name: str,
-        path: Union[str, Path],
-        description: str = None,
-        mapped_stream: str = None,
-        position: int = None,
-        prefix: str = None,
-        skip_addition: bool = False,
-    ):
-        assert mapped_stream is None or mapped_stream in ("stdout", "stderr")
-
+    def __init__(self, name: str, path: Union[str, Path], skip_addition: bool = False):
         _PathBase.__init__(self, name=name, path=path, skip_addition=skip_addition)
-        Parameter.__init__(
-            self,
-            name=name,
-            value=path,
-            description=description,
-            prefix=prefix,
-            position=position,
-            skip_addition=True,
-        )
+        Parameter.__init__(self, name=name, value=path, skip_addition=True)
 
-        self.mapped_stream: Optional[str] = mapped_stream
+        self.mapped_stream: Optional[str] = None
 
     @classmethod
-    def from_parameter(cls, output: core_parameter.CommandParameterBase) -> "Output":
+    def from_parameter(cls, output: core_parameter.CommandOutput) -> "Output":  # type: ignore
         """Create an instance from a CommandOutput."""
         assert isinstance(output, core_parameter.CommandOutput)
 
-        return cls(
-            name=output.name,
-            path=output.default_value,
-            description=output.description,
-            prefix=output.prefix,
-            position=output.position,
-            mapped_stream=output.mapped_to.stream_type if output.mapped_to else None,
-            skip_addition=True,
-        )
+        self = cls(name=output.name, path=output.default_value, skip_addition=True)
+        self.description = output.description
+        self.prefix = output.prefix
+        self.position = output.position
+        self.mapped_stream = output.mapped_to.stream_type if output.mapped_to else None
+
+        return self
 
 
 class Link:
@@ -294,7 +243,9 @@ class Mapping(Parameter):
         description: Optional[str] = None,
         parameters: List[Parameter] = None,
     ):
-        super().__init__(name=name, value=value, default_value=default_value, description=description)
+        super().__init__(name=name, value=value)
+        self.default_value: Union[Path, str, bool, int, float] = default_value if default_value is not None else value
+        self.description: Optional[str] = description
         self.parameters: List[Parameter] = parameters or []
 
     @classmethod
@@ -303,9 +254,9 @@ class Mapping(Parameter):
         assert isinstance(mapping, core_parameter.ParameterMapping)
 
         return cls(
+            name=mapping.name,
             value=mapping.actual_value,
             default_value=mapping.default_value,
-            name=mapping.name,
             description=mapping.description,
             parameters=[convert_parameter(p) for p in mapping.mapped_parameters],
         )

@@ -122,7 +122,12 @@ def test_list_composite_plans(client_with_runs, runner):
 
     plans = Plan.list()
 
-    assert {"plan-1", "plan-2", "composite-plan"} == {p.name for p in plans}
+    assert {"plan-1", "plan-2"} == {p.name for p in plans}
+
+    plans = CompositePlan.list()
+
+    assert {"composite-plan"} == {p.name for p in plans}
+
     plan = next(p for p in plans if p.name == "composite-plan")
     assert isinstance(plan, CompositePlan)
     assert "Composite plan" == plan.description
