@@ -21,6 +21,51 @@ Renku Core Service
 The Renku Core service exposes a functionality similar to the Renku CLI via a
 JSON-RPC API.
 
+Components:
+
+.. uml::
+
+    @startuml
+    skinparam componentStyle rectangle
+    skinparam lineStyle ortho
+
+    component Frontend {
+        [Views] -down-> RequestModel
+        ResponseModel -up-> [Views]
+    }
+
+    component "Business Logic" as bl {
+        [Controllers] --> renku.core
+        [Jobs] --> renku.core
+    }
+
+    database "External Git" as git {
+        folder "Remote Projects" as rp
+    }
+
+    database "Redis" as redis {
+        frame "Metadata" as metadata
+        frame "Jobs" as jobs
+    }
+
+    database "File Cache" as filecache {
+        folder "Projects" as projects
+        folder "Uploaded Files" as files
+    }
+
+    RequestModel -down-> bl
+    bl -up-> ResponseModel
+    [Controllers] -right-> rp
+    [Workers] -right-> bl
+    bl -left-> [Workers]
+    [Workers] -down-> jobs
+    bl -down-> filecache
+    bl -down-> redis
+
+    projects -[hidden]down-> files
+    metadata -[hidden]down-> jobs
+    @enduml
+
 
 API Specification
 -----------------
