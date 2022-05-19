@@ -39,8 +39,8 @@ from renku.core import errors
 from renku.domain_model.workflow import composite_plan as core_composite_plan
 from renku.domain_model.workflow import plan as core_plan
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
+from renku.ui.api.models.parameter import Input, Link, Mapping, Output, Parameter
 from renku.ui.api.models.project import ensure_project_context
-from renku.ui.api.models.run import Input, Link, Mapping, Output, Parameter
 
 
 class Plan:

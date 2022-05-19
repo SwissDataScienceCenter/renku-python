@@ -18,8 +18,8 @@
 """Renku API."""
 
 from renku.ui.api.models.dataset import Dataset
+from renku.ui.api.models.parameter import Input, Link, Mapping, Output, Parameter
 from renku.ui.api.models.plan import CompositePlan, Plan
 from renku.ui.api.models.project import Project
-from renku.ui.api.models.run import Input, Link, Mapping, Output, Parameter
 
 __all__ = ("CompositePlan", "Dataset", "Input", "Link", "Mapping", "Output", "Parameter", "Plan", "Project")
