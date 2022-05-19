@@ -45,13 +45,16 @@ activities, and modified or deleted inputs:
 """
 from functools import wraps
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from werkzeug.local import LocalStack
 
 from renku.command.status import get_status_command
 from renku.core import errors
 from renku.core.workflow.run import StatusResult
+
+if TYPE_CHECKING:
+    from renku.core.management.client import LocalClient
 
 
 class Project:
@@ -60,7 +63,7 @@ class Project:
     _project_contexts = LocalStack()
 
     def __init__(self):
-        self._client = _get_local_client()
+        self._client: "LocalClient" = _get_local_client()
 
     def __enter__(self):
         self._project_contexts.push(self)
@@ -73,9 +76,9 @@ class Project:
             raise RuntimeError("Project context was changed.")
 
     @property
-    def client(self):
+    def client(self) -> Optional["LocalClient"]:
         """Return the LocalClient instance."""
-        return self._client
+        return None if self._client.repository is None else self._client
 
     @property
     def path(self):
@@ -125,14 +128,14 @@ def _get_current_project():
     return Project._project_contexts.top if Project._project_contexts.top else None
 
 
-def _get_local_client():
+def _get_local_client() -> "LocalClient":
     from renku.core.management.client import LocalClient
     from renku.infrastructure.repository import Repository
 
     try:
         repository = Repository(".", search_parent_directories=True)
     except errors.GitError:
-        path = "."
+        path = Path(".")
     else:
         path = repository.path
 
