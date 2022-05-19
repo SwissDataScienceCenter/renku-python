@@ -619,9 +619,9 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
     output = client.path / "output"
 
     with client.commit():
-        script.write_text("from renku.ui.api import Parameter\n" 'print(Parameter("test", "hello world"))\n')
+        script.write_text("from renku.ui.api import Parameter\n" 'print(Parameter("test", "hello world").value)\n')
 
-    result = run_shell(f"renku run --name run1 -- python {script} > {output}")
+    result = run_shell(f"renku run --name run1 -- python3 {script} > {output}")
 
     # Assert expected empty stdout.
     assert b"" == result[0]
@@ -657,7 +657,7 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
             "    print(f.read())"
         )
 
-    result = run_shell(f"renku run --name run1 -- python {script.name} > {output.name}")
+    result = run_shell(f"renku run --name run1 -- python3 {script.name} > {output.name}")
 
     # Assert expected empty stdout.
     assert b"" == result[0]
@@ -689,7 +689,7 @@ def test_workflow_execute_command_with_api_output_set(runner, run_shell, project
             "    f.write('test')"
         )
 
-    result = run_shell(f"renku run --name run1 -- python {script.name}")
+    result = run_shell(f"renku run --name run1 -- python3 {script.name}")
 
     # Assert expected empty stdout.
     assert b"" == result[0]
@@ -737,7 +737,7 @@ def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_sh
             f"open(Output('my-output', '{output.name}'), 'w')"
         )
 
-    result = run_shell(f"renku run --name run1 -- python {script.name}")
+    result = run_shell(f"renku run --name run1 -- python3 {script.name}")
 
     # Assert expected empty stdout.
     assert b"" == result[0]
