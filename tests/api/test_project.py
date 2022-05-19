@@ -63,7 +63,7 @@ def test_get_project_outside_a_renku_project(directory_tree):
     os.chdir(directory_tree)
 
     with Project() as project:
-        assert project.client is not None
+        assert project.client is None
 
 
 def test_status(runner, client):
