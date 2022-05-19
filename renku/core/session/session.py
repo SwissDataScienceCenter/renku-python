@@ -21,13 +21,11 @@ import webbrowser
 from itertools import chain
 from typing import Optional
 
-from yaspin import yaspin
-
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.plugin.session import supported_session_providers
-from renku.core.session.utils import get_renku_project_name
+from renku.core.session.utils import get_renku_project_name, get_image_repository_host
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
 from renku.domain_model.session import ISessionProvider
@@ -78,19 +76,22 @@ def session_start(
     provider_api = _safe_get_provider(provider)
     config = safe_read_yaml(config_path) if config_path else dict()
 
+    provider_api.pre_start_checks()
+
     project_name = get_renku_project_name()
     if image_name is None:
         tag = client.repository.head.commit.hexsha[:7]
+        repo_host = get_image_repository_host()
         image_name = f"{project_name}:{tag}"
+        if repo_host:
+            image_name = f"{repo_host}/{image_name}"
 
         if not provider_api.find_image(image_name, config):
             communication.confirm(
                 f"The container image '{image_name}' does not exists. Would you like to build it?",
                 abort=True,
             )
-
-            with yaspin(text="Building image"):
-                _ = provider_api.build_image(client.docker_path.parent, image_name, config)
+            _ = provider_api.build_image(client.docker_path.parent, image_name, config)
     else:
         if not provider_api.find_image(image_name, config):
             raise errors.ParameterError(f"Cannot find the provided container image '{image_name}'!")

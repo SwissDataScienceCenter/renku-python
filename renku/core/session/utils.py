@@ -16,9 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utility functions used for sessions."""
+import urllib
+from typing import Optional
+
 from renku.command.command_builder import inject
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util.git import get_remote
+from renku.core.util.urls import parse_authentication_endpoint
 
 
 @inject.autoparams()
@@ -31,3 +35,19 @@ def get_renku_project_name(client_dispatcher: IClientDispatcher) -> str:
     if get_remote(client.repository, name="renku-backup-origin") and project_name.startswith("repos/"):
         project_name = project_name.lstrip("repos/")
     return project_name
+
+
+def get_renku_url() -> Optional[str]:
+    """Derive the URL of the Renku deployment."""
+    renku_url = parse_authentication_endpoint(use_remote=True)
+    if renku_url:
+        renku_url = urllib.parse.urlunparse(renku_url)
+    return renku_url
+
+
+def get_image_repository_host() -> Optional[str]:
+    """Derive the hostname for the gitlab container registry."""
+    renku_url = get_renku_url()
+    if not renku_url:
+        return
+    return "registry." + urllib.parse.urlparse(renku_url).netloc

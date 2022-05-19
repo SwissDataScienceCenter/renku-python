@@ -22,6 +22,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 from uuid import uuid4
 
 import docker
+from yaspin import yaspin
 
 from renku.core import errors
 from renku.core.management.client import LocalClient
@@ -67,7 +68,8 @@ class DockerSessionProvider(ISessionProvider):
 
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image."""
-        self.docker_client().images.build(path=str(image_descriptor), tag=image_name)
+        with yaspin(text="Building image"):
+            self.docker_client().images.build(path=str(image_descriptor), tag=image_name)
 
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Find the given container image."""

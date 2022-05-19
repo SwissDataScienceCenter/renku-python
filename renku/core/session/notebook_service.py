@@ -18,11 +18,11 @@
 """Docker based interactive session provider."""
 
 import urllib
-from datetime import datetime, timedelta
 from pathlib import Path
-from time import sleep
+from time import sleep, monotonic
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from lazy_object_proxy import Proxy
 from yaspin import yaspin
 
 from renku.command.command_builder import inject
@@ -30,30 +30,26 @@ from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.client import LocalClient
 from renku.core.plugin import hookimpl
-from renku.core.session.utils import get_renku_project_name
+from renku.core.session.utils import get_renku_url, get_renku_project_name
 from renku.core.util import communication, requests
 from renku.core.util.git import get_remote
-from renku.core.util.urls import parse_authentication_endpoint
 from renku.domain_model.session import ISessionProvider, Session
 
 
-@inject.autoparams("client_dispatcher")
-def _get_token(client_dispatcher: IClientDispatcher, renku_url: str) -> Tuple[str, bool]:
+def _get_token(client: LocalClient, renku_url: str) -> Tuple[str, bool]:
     """Get a token for authenticating with renku.
 
     If the user is logged in then the JWT token from renku login will be used.
     Otherwise the anonymous user token will be used. Returns the token and a flag to
     indicate if the user is registered (true) or anonymous(false).
     """
-    client = client_dispatcher.current_client
     registered_token = client.get_value(section="http", key=urllib.parse.urlparse(renku_url).netloc)
     if not registered_token:
         return _get_anonymous_credentials(renku_url=renku_url), False
     return registered_token, True
 
 
-@inject.autoparams("client_dispatcher")
-def _get_anonymous_credentials(client_dispatcher: IClientDispatcher, renku_url: str) -> str:
+def _get_anonymous_credentials(client: LocalClient, renku_url: str) -> str:
     def _get_anonymous_token() -> Optional[str]:
         import requests
 
@@ -71,9 +67,8 @@ def _get_anonymous_credentials(client_dispatcher: IClientDispatcher, renku_url: 
                 pass
             return session.cookies.get("anon-id")
 
-    client = client_dispatcher.current_client
     renku_host = urllib.parse.urlparse(renku_url).netloc
-    anon_token = client.get_value(section="anonymous_tokens", key=renku_host)
+    anon_token = client.get_value(section="anonymous_token", key=renku_host)
     if not anon_token:
         anon_token = _get_anonymous_token()
         if not anon_token:
@@ -81,30 +76,21 @@ def _get_anonymous_credentials(client_dispatcher: IClientDispatcher, renku_url: 
                 "Could not get anonymous user token from Renku. "
                 f"Ensure the Renku deployment at {renku_url} supports anonymous sessions."
             )
-        client.set_value(section="anonymous_tokens", key=renku_host, value=anon_token, global_only=True)
+        client.set_value(section="anonymous_token", key=renku_host, value=anon_token, global_only=True)
     return anon_token
-
-
-@inject.autoparams()
-def _get_client(client_dispatcher: IClientDispatcher) -> LocalClient:
-    """Get the local client."""
-    client = client_dispatcher.current_client
-    return client
-
-
-def _split_project_name(project_name: str) -> Dict[str, str]:
-    """Split a full project name into the namespace and project components required by the notebooks API."""
-    parts = project_name.split("/")
-    return {
-        "namespace": "/".join(parts[:-1]),
-        "project": parts[-1],
-    }
 
 
 class NotebookServiceSessionProvider(ISessionProvider):
     """A session provider that uses the notebook service API to launch sessions."""
 
     DEFAULT_TIMEOUT_SECONDS = 300
+    _client_dispatcher = None
+
+    @classmethod
+    def client_dispatcher(cls):
+        if not cls._client_dispatcher:
+            cls._client_dispatcher = Proxy(lambda: inject.instance(IClientDispatcher))
+        return cls._client_dispatcher
 
     def __init__(self):
         self.__renku_url = None
@@ -113,13 +99,13 @@ class NotebookServiceSessionProvider(ISessionProvider):
     def _renku_url(self) -> str:
         """Get the URL of the renku instance."""
         if not self.__renku_url:
-            renku_url = parse_authentication_endpoint(use_remote=True)
+            renku_url = get_renku_url()
             if not renku_url:
                 raise errors.UsageError(
                     "Cannot determine the renku URL to launch a session. "
                     "Ensure your current project is a valid Renku project."
                 )
-            self.__renku_url = urllib.parse.urlunparse(renku_url)
+            self.__renku_url = renku_url
         return self.__renku_url
 
     def _notebooks_url(self) -> str:
@@ -131,13 +117,13 @@ class NotebookServiceSessionProvider(ISessionProvider):
 
     def _token(self) -> str:
         """Get the JWT token used to authenticate against Renku."""
-        token, _ = _get_token(renku_url=self._renku_url())
+        token, _ = _get_token(client=self.client_dispatcher().current_client, renku_url=self._renku_url())
         if token is None:
             raise errors.AuthenticationError("Please run the renku login command to authenticate with Renku.")
         return token
 
     def _is_user_registered(self) -> bool:
-        _, is_user_registered = _get_token(renku_url=self._renku_url())
+        _, is_user_registered = _get_token(client=self.client_dispatcher().current_client, renku_url=self._renku_url())
         return is_user_registered
 
     def _auth_header(self) -> Dict[str, str]:
@@ -146,6 +132,29 @@ class NotebookServiceSessionProvider(ISessionProvider):
             return {"Authorization": f"Bearer {self._token()}"}
         return {"Cookie": f"anon-id={self._token()}"}
 
+    def _get_renku_project_name_parts(self) -> Dict[str, str]:
+        client = self.client_dispatcher().current_client
+        if client.remote["name"]:
+            if (
+                get_remote(client.repository, name="renku-backup-origin")
+                and client.remote["owner"].startswith("repos/")
+            ):
+                owner = client.remote["owner"].lstrip("repos/")
+            else:
+                owner = client.remote["owner"]
+            return {
+                "namespace": owner,
+                "project": client.remote["name"],
+            }
+        else:
+            # INFO: In this case the owner/name split is not available. The project name is then
+            # derived from the combined name of the remote and has to be split up in the two parts.
+            parts = get_renku_project_name().split("/")
+            return {
+                "namespace": "/".join(parts[:-1]),
+                "project": parts[:-1],
+            }
+
     def _wait_for_session_status(
         self,
         name: Optional[str],
@@ -153,9 +162,8 @@ class NotebookServiceSessionProvider(ISessionProvider):
     ):
         if not name:
             return
-        now = datetime.now()
-        timeout_time = now + timedelta(seconds=self.DEFAULT_TIMEOUT_SECONDS)
-        while now < timeout_time:
+        start = monotonic()
+        while monotonic() - start < self.DEFAULT_TIMEOUT_SECONDS:
             res = self._send_renku_request(
                 "get", f"{self._notebooks_url()}/servers/{name}", headers=self._auth_header()
             )
@@ -167,64 +175,42 @@ class NotebookServiceSessionProvider(ISessionProvider):
             sleep(5)
         raise errors.NotebookServiceSessionError(f"Waiting for the session {name} to reach status {status} timed out.")
 
-    def _get_in_progress_gitlab_job_id(self, gitlab_project_name: str, commit_sha: str) -> Optional[str]:
-        """Get the ID of any job that is in progress and matches the specified arguments."""
-        project_name_enc = gitlab_project_name.replace("/", "%2F")
-        res = self._send_renku_request(
-            "get",
-            f"{self._renku_url()}/api/projects/{project_name_enc}/jobs",
-            params={"scope": ["running", "pending", "created"]},
-            headers=self._auth_header(),
-        )
-        if res.status_code == 200:
-            for job in res.json():
-                if job.get("commit", {}).get("id") == commit_sha:
-                    return job["id"]
-        return None
-
-    def _wait_for_ci_jobs_completion(
+    def _wait_for_image(
         self,
-        gitlab_project_name: str,
-        commit_sha: str,
+        image_name: str,
+        config: Optional[Dict[str, Any]],
     ):
-        """Wait for all in-progress CI jobs related to the arguments to finish."""
-        if not self._is_user_registered():
-            return
-        now = datetime.now()
-        timeout_time = now + timedelta(seconds=self.DEFAULT_TIMEOUT_SECONDS)
-        while now < timeout_time:
-            if self._get_in_progress_gitlab_job_id(gitlab_project_name, commit_sha) is None:
+        """Check if an image exists, and if it does not wait for it to appear. Timeout
+        after a specific period of time."""
+        start = monotonic()
+        while monotonic() - start < self.DEFAULT_TIMEOUT_SECONDS:
+            if self.find_image(image_name, config):
                 return
             sleep(5)
         raise errors.NotebookServiceSessionError(
-            f"Waiting for the CI jobs for project {gitlab_project_name} to finish timed out."
+            f"Waiting for the image {image_name} to be built timed out."
+            "Are you sure that the image was successfully built? This could be the result "
+            "of problems with your Dockerfile."
         )
 
-    def _commit_and_push_checks(self):
-        client = _get_client()
-        remote = get_remote(client.repository)
-        if self._is_user_registered():
-            if client.repository.is_dirty() or len(client.repository.untracked_files) > 0:
-                communication.confirm(
-                    "You have new uncommitted or untracked changes to your repository. "
-                    "Renku can automatically commit and push these changes so that it builds "
-                    "the correct image for your session. Do you wish to proceed?",
-                    abort=True,
-                )
-                client.repository.add(all=True)
-                client.repository.commit("Automated commit by Renku CLI.")
-                client.repository.push()
-            remote_head_hexsha = client.repository.run_git_command(
-                "rev-parse", f"{remote.name}/{client.repository.active_branch}"
+    def pre_start_checks(self):
+        if not self._is_user_registered():
+            return
+        if self.client_dispatcher().current_client.repository.is_dirty(untracked_files=True):
+            communication.confirm(
+                "You have new uncommitted or untracked changes to your repository. "
+                "Renku can automatically commit these changes so that it builds "
+                "the correct environment for your session. Do you wish to proceed?",
+                abort=True,
             )
-            if client.repository.head.commit.hexsha != remote_head_hexsha:
-                communication.confirm(
-                    "You have new changes that are present only in your local repository. "
-                    "Renku can automatically push these changes so that it builds "
-                    "the correct image for your session. Do you wish to proceed?",
-                    abort=True,
-                )
-                client.repository.push()
+            self.client_dispatcher().current_client.repository.add(all=True)
+            self.client_dispatcher().current_client.repository.commit("Automated commit by Renku CLI.")
+
+    def _remote_head_hexsha(self):
+        remote = get_remote(self.client_dispatcher().current_client.repository)
+        return self.client_dispatcher().current_client.repository.run_git_command(
+            "rev-parse", f"{remote.name}/{self.client_dispatcher().current_client.repository.active_branch}"
+        )
 
     @staticmethod
     def _send_renku_request(req_type: str, *args, **kwargs):
@@ -243,12 +229,10 @@ class NotebookServiceSessionProvider(ISessionProvider):
             raise errors.NotebookSessionImageNotExistError(
                 f"Renku cannot find the image {image_name} and use it in an anonymous session."
             )
-        self._commit_and_push_checks()
-        project_name = get_renku_project_name()
-        client = _get_client()
-        if self._get_in_progress_gitlab_job_id(project_name, client.repository.head.commit.hexsha) is not None:
-            with yaspin(text="Waiting for image to be built..."):
-                self._wait_for_ci_jobs_completion(project_name, client.repository.head.commit.hexsha)
+        if self.client_dispatcher().current_client.repository.head.commit.hexsha != self._remote_head_hexsha():
+            self.client_dispatcher().current_client.repository.push()
+        with yaspin(text="Waiting for image to be built..."):
+            self._wait_for_image(image_name=image_name, config=config)
 
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Find the given container image."""
@@ -281,7 +265,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
             "get",
             f"{self._notebooks_url()}/servers",
             headers=self._auth_header(),
-            params=_split_project_name(project_name),
+            params=self._get_renku_project_name_parts(),
         )
         if sessions_res.status_code == 200:
             return [
@@ -318,8 +302,17 @@ class NotebookServiceSessionProvider(ISessionProvider):
                 "In addition, any changes you make in the new session will be lost when "
                 "the session is shut down."
             )
-        self._commit_and_push_checks()
-        project_name_parts = _split_project_name(project_name)
+        else:
+            if client.repository.head.commit.hexsha != self._remote_head_hexsha():
+                # INFO: The user is registered, the image is pinned or already available
+                # but the local repository is not fully in sync with the remote
+                communication.confirm(
+                    "You have unpushed commits that will not be present in your session. "
+                    "Renku can automatically push these commits so that they are present "
+                    "in the session you are launching. Do you wish to proceed?",
+                    abort=True,
+                )
+                client.repository.push()
         server_options: Dict[str, Union[str, float]] = {}
         if cpu_request:
             server_options["cpu_request"] = cpu_request
@@ -331,10 +324,9 @@ class NotebookServiceSessionProvider(ISessionProvider):
             server_options["disk_request"] = disk_request
         payload = {
             "image": image_name,
-            "project": project_name_parts["project"],
-            "namespace": project_name_parts["namespace"],
             "commit_sha": session_commit,
             "serverOptions": server_options,
+            **self._get_renku_project_name_parts(),
         }
         res = self._send_renku_request(
             "post",
