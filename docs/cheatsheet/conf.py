@@ -42,6 +42,7 @@ suppress_warnings = ["image.nonlocal_uri"]
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "plantweb.directive",
     "sphinx.ext.autodoc",
     "sphinx_tabs.tabs",
     "sphinx.ext.napoleon",
