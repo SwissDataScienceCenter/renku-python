@@ -32,9 +32,16 @@ Renku Python API
 
 .. automodule:: renku.ui.api.models.dataset
 
+.. _api-plan:
+
+``Plan, CompositePlan``
+-----------------------
+
+.. automodule:: renku.ui.api.models.plan
+
 .. _api-run:
 
 ``Inputs, Outputs, and Parameters``
 -----------------------------------
 
-.. automodule:: renku.ui.api.models.run
+.. automodule:: renku.ui.api.models.parameter
