@@ -25,7 +25,7 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.plugin.session import supported_session_providers
-from renku.core.session.utils import get_renku_project_name, get_image_repository_host
+from renku.core.session.utils import get_image_repository_host, get_renku_project_name
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
 from renku.domain_model.session import ISessionProvider

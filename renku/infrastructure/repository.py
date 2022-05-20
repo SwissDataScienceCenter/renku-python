@@ -1285,7 +1285,7 @@ class Remote:
     def set_url(self, url: str):
         """Change URL of a remote."""
         _run_git_command(self._repository, "remote", "set-url", self.name, url)
-    
+
     @property
     def head(self) -> str:
         """The head commit of the remote."""

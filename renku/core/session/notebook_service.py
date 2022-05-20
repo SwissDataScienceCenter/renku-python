@@ -19,7 +19,7 @@
 
 import urllib
 from pathlib import Path
-from time import sleep, monotonic
+from time import monotonic, sleep
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from lazy_object_proxy import Proxy
@@ -30,7 +30,7 @@ from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.client import LocalClient
 from renku.core.plugin import hookimpl
-from renku.core.session.utils import get_renku_url, get_renku_project_name
+from renku.core.session.utils import get_renku_project_name, get_renku_url
 from renku.core.util import communication, requests
 from renku.core.util.git import get_remote
 from renku.domain_model.session import ISessionProvider, Session
@@ -88,6 +88,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
 
     @classmethod
     def client_dispatcher(cls):
+        """Get (and if required set) the client dispatcher class variable."""
         if not cls._client_dispatcher:
             cls._client_dispatcher = Proxy(lambda: inject.instance(IClientDispatcher))
         return cls._client_dispatcher
@@ -135,9 +136,8 @@ class NotebookServiceSessionProvider(ISessionProvider):
     def _get_renku_project_name_parts(self) -> Dict[str, str]:
         client = self.client_dispatcher().current_client
         if client.remote["name"]:
-            if (
-                get_remote(client.repository, name="renku-backup-origin")
-                and client.remote["owner"].startswith("repos/")
+            if get_remote(client.repository, name="renku-backup-origin") and client.remote["owner"].startswith(
+                "repos/"
             ):
                 owner = client.remote["owner"].lstrip("repos/")
             else:
@@ -180,8 +180,10 @@ class NotebookServiceSessionProvider(ISessionProvider):
         image_name: str,
         config: Optional[Dict[str, Any]],
     ):
-        """Check if an image exists, and if it does not wait for it to appear. Timeout
-        after a specific period of time."""
+        """Check if an image exists, and if it does not wait for it to appear.
+
+        Timeout after a specific period of time.
+        """
         start = monotonic()
         while monotonic() - start < self.DEFAULT_TIMEOUT_SECONDS:
             if self.find_image(image_name, config):
@@ -194,6 +196,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
         )
 
     def pre_start_checks(self):
+        """Check if the state of the repository is as expected before starting a session."""
         if not self._is_user_registered():
             return
         if self.client_dispatcher().current_client.repository.is_dirty(untracked_files=True):
@@ -336,7 +339,9 @@ class NotebookServiceSessionProvider(ISessionProvider):
             session_name = res.json()["name"]
             with yaspin(text=f"Waiting for session {session_name} to start...") as spinner:
                 self._wait_for_session_status(session_name, "running")
-                spinner.write(f"Session {session_name} launched successfully, available at {self.session_url(session_name)}")
+                spinner.write(
+                    f"Session {session_name} launched successfully, available at {self.session_url(session_name)}"
+                )
             return session_name
         raise errors.NotebookServiceSessionError("Cannot start session via the notebook service because " + res.text)
 

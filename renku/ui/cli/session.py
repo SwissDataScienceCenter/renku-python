@@ -24,16 +24,16 @@ Docker provider
 ~~~~~~~~~~~~~~~
 
 The ``docker`` provider will take the current state of the repository, build a ``docker``
-image (if one does not already exist) and then launch a session with this image. In 
+image (if one does not already exist) and then launch a session with this image. In
 addition to this the ``docker`` provider will mount the local repository inside
 the ``docker`` container so that changes made in the session are immediatelly reflected
 on the host where the session was originally started from.
 
 Please note that in order to use this provider `Docker <https://docs.docker.com/>`_
 is expected to be installed and available on your computer. In addition, using
-this command from within a Renku interactive session started from the Renku website 
+this command from within a Renku interactive session started from the Renku website
 is not possible. This command is envisioned as a means for users to quickly test
-and check their sessions locally without going to a Renku deployment and launching 
+and check their sessions locally without going to a Renku deployment and launching
 a session there, or in the case where they simply have no accesss to a Renku deployment.
 
 .. code-block:: console
@@ -74,29 +74,29 @@ only if the changes are committed and pushed.
 Managing active sessions
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``session`` command can be used to also list, stop and open active sessions. 
+The ``session`` command can be used to also list, stop and open active sessions.
 In order to see active sessions (from any provider) run the following command:
 
 .. code-block:: console
 
     $ renku session start -p notebook_service
-    ID                                            STATUS    URL
-    --------------------------------------------  --------  --------------------------------------------------------------------------
-    renku-2eol-test-2dpinned-2dimage-2d-e4fe76cc  running   https://dev.renku.ch/sessions/renku-2eol-test-2dpinned-2dimage-2d-e4fe76cc
+    ID                   STATUS    URL
+    -------------------  --------  -------------------------------------------------
+    renku-test-e4fe76cc  running   https://dev.renku.ch/sessions/renku-test-e4fe76cc
 
 An active session can be openend by using its ``ID`` from the list above. For example, the ``open``
 command below will open the single active session in the browser.
 
 .. code-block:: console
 
-    $ renku session open renku-2eol-test-2dpinned-2dimage-2d-e4fe76cc
+    $ renku session open renku-test-e4fe76cc
 
 An active session can be stopped by using the ``stop`` command and the ``ID`` from the list of
 active sessions.
 
 .. code-block:: console
 
-    $ renku session stop renku-2eol-test-2dpinned-2dimage-2d-e4fe76cc
+    $ renku session stop renku-test-e4fe76cc
 
 The command ``renku session stop --all`` will stop all active sessions regardless of the provider.
 """

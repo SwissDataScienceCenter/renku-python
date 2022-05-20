@@ -144,10 +144,10 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     def pre_start_checks(self):
-        """Perform any required checks mostly related to the state of the repository
-        prior to starting a session. The expectation is that this mehod will abort the
+        """Perform any required checks on the state of the repository prior to starting a session.
+
+        The expectation is that this method will abort the
         session start if the checks are not successful or will take corrective actions to
-        make sure that the session launches successfully. By deafult this 
-        method does not do any checks.
+        make sure that the session launches successfully. By deafult this method does not do any checks.
         """
         return None
