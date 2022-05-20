@@ -1023,9 +1023,10 @@ def update_dataset_git_files(
             if url in visited_repos:
                 remote_repository, remote_client = visited_repos[url]
             else:
-                remote_repository = clone_repository(
-                    url=url, path=get_cache_directory_for_repository(client=client, url=url), checkout_revision=ref
-                )
+                with communication.busy(msg="Cloning remote repository..."):
+                    remote_repository = clone_repository(
+                        url=url, path=get_cache_directory_for_repository(client=client, url=url), checkout_revision=ref
+                    )
                 remote_client = LocalClient(path=remote_repository.path)
                 visited_repos[url] = remote_repository, remote_client
 

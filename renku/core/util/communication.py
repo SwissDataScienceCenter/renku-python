@@ -17,6 +17,7 @@
 # limitations under the License.
 """Communicator classes for printing output."""
 
+from contextlib import ExitStack, contextmanager
 from functools import wraps
 from threading import RLock
 
@@ -55,6 +56,14 @@ class CommunicationCallback:
 
     def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt."""
+
+    @contextmanager
+    def busy(self, msg):
+        """Indicate a busy status.
+
+        For instance, show a spinner in the CLI.
+        """
+        yield
 
 
 def lock_communication(method):
@@ -177,6 +186,14 @@ class _CommunicationManger(CommunicationCallback):
         for listener in self._listeners:
             listener.finalize_progress(name)
 
+    @contextmanager
+    def busy(self, msg):
+        """Show busy indicators."""
+        with ExitStack() as stack:
+            for listener in self._listeners:
+                stack.enter_context(listener.busy(msg))
+            yield
+
     @lock_communication
     def disable(self):
         """Disable all outputs; by default everything is enabled."""
@@ -243,7 +260,7 @@ def warn(msg):
 
 @ensure_manager
 def error(msg):
-    """Write an info message to all listeners."""
+    """Write an error message to all listeners."""
     _thread_local.communication_manager.error(msg)
 
 
@@ -281,6 +298,14 @@ def update_progress(name, amount):
 def finalize_progress(name):
     """End a progress tracker on all listeners."""
     _thread_local.communication_manager.finalize_progress(name)
+
+
+@ensure_manager
+@contextmanager
+def busy(msg):
+    """Indicate busy status to all listeners."""
+    with _thread_local.communication_manager.busy(msg):
+        yield
 
 
 @ensure_manager
