@@ -148,6 +148,6 @@ class ISessionProvider(metaclass=ABCMeta):
 
         The expectation is that this method will abort the
         session start if the checks are not successful or will take corrective actions to
-        make sure that the session launches successfully. By deafult this method does not do any checks.
+        make sure that the session launches successfully. By default this method does not do any checks.
         """
         return None

@@ -45,7 +45,7 @@ def _get_token(client: LocalClient, renku_url: str) -> Tuple[str, bool]:
     """
     registered_token = client.get_value(section="http", key=urllib.parse.urlparse(renku_url).netloc)
     if not registered_token:
-        return _get_anonymous_credentials(renku_url=renku_url), False
+        return _get_anonymous_credentials(client=client, renku_url=renku_url), False
     return registered_token, True
 
 

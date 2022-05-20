@@ -49,5 +49,5 @@ def get_image_repository_host() -> Optional[str]:
     """Derive the hostname for the gitlab container registry."""
     renku_url = get_renku_url()
     if not renku_url:
-        return
+        return None
     return "registry." + urllib.parse.urlparse(renku_url).netloc
