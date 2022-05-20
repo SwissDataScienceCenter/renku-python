@@ -15,7 +15,91 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Manage interactive sessions."""
+"""Manage interactive sessions.
+
+Interactive sessions can be started via the command line interface with different
+providers. Currently two providers are supported: ``docker`` and ``notebook_service``.
+
+Docker provider
+~~~~~~~~~~~~~~~
+
+The ``docker`` provider will take the current state of the repository, build a ``docker``
+image (if one does not already exist) and then launch a session with this image. In 
+addition to this the ``docker`` provider will mount the local repository inside
+the ``docker`` container so that changes made in the session are immediatelly reflected
+on the host where the session was originally started from.
+
+Please note that in order to use this provider `Docker <https://docs.docker.com/>`_
+is expected to be installed and available on your computer. In addition, using
+this command from within a Renku interactive session started from the Renku website 
+is not possible. This command is envisioned as a means for users to quickly test
+and check their sessions locally without going to a Renku deployment and launching 
+a session there, or in the case where they simply have no accesss to a Renku deployment.
+
+.. code-block:: console
+
+    $ renku session start -p docker
+
+Notebook_service provider
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``notebook_service`` provider will launch a regular interactive session
+in the Renku deployment that hosts the current project. If the project has not
+been uploaded/created in a Renku deployment then this provider will not be able
+to launch a session. This provider is identical to going through the Renku website
+and launching a session "manually" by selecting the project, commit, branch, etc.
+
+Please note that there are a few limitations with the ``notebook_service`` provider:
+
+* If the user is not logged in (using the ``renku login`` command) then sessions
+can only be launched if the specific Renku deployment supports anonymous sessions.
+* When launching anonymous sessions local changes cannot be reflected in them and
+changes made inside the session cannot be saved nor downloaded locally. This feature
+should be used only for ad-hoc exploration or work that can be discarded when
+the session is closed. The CLI will print a warning every time an anonymous session
+is launched.
+* Changes made inside the interactive session are not immediately reflected locally,
+users should ``git pull`` any changes made inside an interactive session to get the
+same changes locally.
+* Local changes can only be reflected in the interactive session if they are committed
+and pushed to the git repository. When launching a session and uncommitted or unpushed
+changes are present, the user will be prompted to confirm whether Renku should
+commit and push the changes before a session is launched. The session will launch
+only if the changes are committed and pushed.
+
+.. code-block:: console
+
+    $ renku session start -p notebook_service
+
+Managing active sessions
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``session`` command can be used to also list, stop and open active sessions. 
+In order to see active sessions (from any provider) run the following command:
+
+.. code-block:: console
+
+    $ renku session start -p notebook_service
+    ID                                            STATUS    URL
+    --------------------------------------------  --------  --------------------------------------------------------------------------
+    renku-2eol-test-2dpinned-2dimage-2d-e4fe76cc  running   https://dev.renku.ch/sessions/renku-2eol-test-2dpinned-2dimage-2d-e4fe76cc
+
+An active session can be openend by using its ``ID`` from the list above. For example, the ``open``
+command below will open the single active session in the browser.
+
+.. code-block:: console
+
+    $ renku session open renku-2eol-test-2dpinned-2dimage-2d-e4fe76cc
+
+An active session can be stopped by using the ``stop`` command and the ``ID`` from the list of
+active sessions.
+
+.. code-block:: console
+
+    $ renku session stop renku-2eol-test-2dpinned-2dimage-2d-e4fe76cc
+
+The command ``renku session stop --all`` will stop all active sessions regardless of the provider.
+"""
 
 import click
 from lazy_object_proxy import Proxy
