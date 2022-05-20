@@ -37,14 +37,14 @@ class DummyStorage:
         self._files = {}
         self._modification_dates = {}
 
-    def store(self, filename: str, data, compress=False):
+    def store(self, filename: str, data, compress=False, absolute=False):
         """Store object."""
         assert isinstance(filename, str)
 
         self._files[filename] = data
         self._modification_dates[filename] = datetime.datetime.now()
 
-    def load(self, filename: str):
+    def load(self, filename: str, absolute=False):
         """Load data for object with object id oid."""
         assert isinstance(filename, str)
 

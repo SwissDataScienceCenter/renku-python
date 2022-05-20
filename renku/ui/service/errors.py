@@ -342,6 +342,23 @@ class UserOutdatedProjectError(ServiceError):
         super().__init__(exception=exception)
 
 
+class UserNewerRenkuProjectError(ServiceError):
+    """The target repository is valid but it needs a newer renku version than is currently deployed."""
+
+    code = SVC_ERROR_USER + 141
+    userMessage = (
+        "The target project requires renku version {minimum_version}, but this deployment is on "
+        "version {current_version}."
+    )
+    devMessage = "Update the deployed core-service version to support newer projects."
+
+    def __init__(self, exception=None, minimum_version=ERROR_NOT_AVAILABLE, current_version=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            devMessage=self.devMessage.format(minimum_version=minimum_version, current_version=current_version),
+            exception=exception,
+        )
+
+
 class UserProjectTemplateReferenceError(ServiceError):
     """The project's template original reference cannot be found anymore.
 
@@ -739,6 +756,17 @@ class IntermittentRedisError(ServiceError):
     code = SVC_ERROR_INTERMITTENT + 202
     userMessage = "The servers could not run the request operation. Please try it again."
     devMessage = "Redis error. See Sentry exceptions for details."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
+class IntermittentCacheError(ServiceError):
+    """An operation in the cache failed."""
+
+    code = SVC_ERROR_INTERMITTENT + 203
+    userMessage = "A server-side operation unexpectedly failed. Please try again."
+    devMessage = "Cache error. See Sentry exceptions for details."
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)

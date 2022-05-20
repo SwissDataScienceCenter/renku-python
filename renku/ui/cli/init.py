@@ -341,6 +341,7 @@ def init(
         force=force,
         data_dir=data_dir,
         initial_branch=initial_branch,
+        install_mergetool=True,
     )
 
     # Install git hooks

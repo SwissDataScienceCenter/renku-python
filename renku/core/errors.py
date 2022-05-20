@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import List, Union
 
 import click
+from packaging.version import Version
 
 from renku.core.constant import RENKU_HOME
 
@@ -595,3 +596,20 @@ class DockerError(RenkuException):
     def __init__(self, reason: str):
         """Embed exception and build a custom message."""
         super().__init__(f"Docker failed: {reason}")
+
+
+class MetadataMergeError(RenkuException):
+    """Raise when merging of metadata failed."""
+
+
+class MinimumVersionError(RenkuException):
+    """Raised when accessing a project whose minimum version is larger than the current renku version."""
+
+    def __init__(self, current_version: Version, minimum_version: Version) -> None:
+        self.current_version = current_version
+        self.minimum_version = minimum_version
+
+        super().__init__(
+            f"You are using renku version {current_version} but this project requires at least version "
+            f"{minimum_version}. Please upgrade renku to work on this project."
+        )

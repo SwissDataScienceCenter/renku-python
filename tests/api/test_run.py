@@ -120,7 +120,7 @@ def test_parameters(client):
 
     p3 = Parameter("parameter_3 ", 42.42)
 
-    assert (42, "42", 42.42) == (p1, p2, p3)
+    assert (42, "42", 42.42) == (p1.value, p2.value, p3.value)
 
     data = read_indirect_parameters(client.path)
 

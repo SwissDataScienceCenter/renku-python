@@ -179,6 +179,12 @@ class CommandParameter(CommandParameterBase):
             plan_id, parameter_type="parameters", position=position, postfix=postfix
         )
 
+    def __repr__(self):
+        return (
+            f"<Parameter '{self.name}': {self.actual_value} (default: {self.default_value}, prefix: {self.prefix}, "
+            f"position: {self.position})>"
+        )
+
     def _get_default_name(self) -> str:
         return self._generate_name(base="parameter")
 

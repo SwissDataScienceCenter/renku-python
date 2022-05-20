@@ -20,13 +20,15 @@ import copy
 import io
 import json
 import uuid
+from unittest.mock import MagicMock
 
 import jwt
 import pytest
 
 from renku.core.dataset.context import DatasetContext
 from renku.domain_model.git import GitURL
-from renku.domain_model.template import TemplateMetadata
+from renku.domain_model.project import Project
+from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
 from renku.ui.service.errors import (
@@ -706,72 +708,49 @@ def test_check_migrations_remote_errors(
     )
     assert_rpc_response(response)
 
-    identity_headers["Authorization"] = "Bearer 123abc"
-    response = svc_client.get(
-        "/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=identity_headers
-    )
+    headers = copy.copy(identity_headers)
+    headers["Authorization"] = "Bearer 123abc"
+    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=it_remote_repo_url), headers=headers)
     assert_rpc_response(response, "error")
     assert UserRepoUrlInvalidError.code == response.json["error"]["code"]
 
     response = svc_client.get(
-        "/cache.migrations_check", query_string=dict(git_url=it_remote_public_renku_repo_url), headers=identity_headers
+        "/cache.migrations_check", query_string=dict(git_url=it_remote_public_renku_repo_url), headers=headers
     )
     assert_rpc_response(response)
 
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_mirgate_wrong_template_failure(svc_client_with_repo, template, monkeypatch):
+def test_migrate_wrong_template_source(svc_client_setup, monkeypatch):
     """Check if migrations gracefully fail when the project template is not available."""
-    import renku.core.template.usecase
-    from renku.core.template.template import fetch_templates_source
+    svc_client, headers, project_id, _, _ = svc_client_setup
 
-    svc_client, headers, project_id, _ = svc_client_with_repo
-
-    class DummyTemplateMetadata(TemplateMetadata):
-        def __init__(self, metadata, immutable_files):
-            super().__init__(metadata=metadata, immutable_files=immutable_files)
-
-        def set_fake_source(self, value):
-            """Toggle source between fake and real"""
-            self.fake_source = value
-
-        @property
-        def source(self):
-            """Template source."""
-            template_url = template["url"]
-            if self.fake_source:
-                return f"{template_url}FAKE_URL"
-            return template_url
-
-        @property
-        def reference(self):
-            """Template reference."""
-            return "FAKE_REF"
-
-    def dummy_check_for_template_update(client):
-        metadata = DummyTemplateMetadata.from_client(client=client)
-        metadata.set_fake_source(fake_source)
-        templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
-        update_available, latest_reference = templates_source.is_update_available(
-            id=metadata.id, reference=metadata.reference, version=metadata.version
-        )
-        return update_available, metadata.allow_update, metadata.reference, latest_reference
-
-    # NOTE: fake URL and fake REF
-    fake_source = True
+    # NOTE: fake source
     with monkeypatch.context() as monkey:
-        monkey.setattr(renku.command.migrate, "check_for_template_update", dummy_check_for_template_update)
+        import renku.core.template.usecase
+
+        monkey.setattr(
+            renku.core.template.usecase.TemplateMetadata, "source", property(MagicMock(return_value="https://FAKE_URL"))
+        )
 
         response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
         assert_rpc_response(response, "error")
         assert IntermittentProjectTemplateUnavailable.code == response.json["error"]["code"]
 
-    # NOTE: valid URL but fake REF
-    fake_source = False
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_migrate_wrong_template_ref(svc_client_setup, template, monkeypatch):
+    """Check if migrations gracefully fail when the project template points to a wrong ref."""
+    svc_client, headers, project_id, _, _ = svc_client_setup
+    # NOTE: fake reference
     with monkeypatch.context() as monkey:
-        monkey.setattr(renku.command.migrate, "check_for_template_update", dummy_check_for_template_update)
+        from renku.domain_model.template import TemplateMetadata
+
+        monkey.setattr(TemplateMetadata, "source", property(MagicMock(return_value=template["url"])))
+        monkey.setattr(TemplateMetadata, "reference", property(MagicMock(return_value="FAKE_REF")))
 
         response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
@@ -896,3 +875,37 @@ def test_check_migrations_remote_anonymous(svc_client, it_remote_public_repo_url
     assert 200 == response.status_code
 
     assert response.json["result"]["core_compatibility_status"]["migration_required"] is True
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_migrations_local_minimum_version(svc_client_setup, mocker):
+    """Check if migrations are required for a local project."""
+    svc_client, headers, project_id, _, _ = svc_client_setup
+
+    def _mock_database_project(project):
+        def mocked_getter(self, key):
+            if key == "project":
+                return project
+            return getattr(self, key)
+
+        return mocked_getter
+
+    mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "2.0.0")
+    project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
+    mocker.patch(
+        "renku.command.command_builder.database_dispatcher.Database.__getitem__", _mock_database_project(project)
+    )
+    mocker.patch("renku.version.__version__", "1.0.0")
+
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    assert 200 == response.status_code
+
+    assert response.json["result"]["core_compatibility_status"]
+    assert response.json["result"]["template_status"]
+    assert response.json["result"]["dockerfile_renku_status"]
+    assert not response.json["result"]["project_supported"]
+    assert response.json["result"]["project_renku_version"]
+    assert ">=2.0.0" == response.json["result"]["project_renku_version"]
+    assert response.json["result"]["core_renku_version"]
+    assert "1.0.0" == response.json["result"]["core_renku_version"]

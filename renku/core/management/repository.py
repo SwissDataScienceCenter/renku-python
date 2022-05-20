@@ -21,6 +21,7 @@ import os
 import shutil
 from contextlib import contextmanager
 from fnmatch import fnmatch
+from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -29,7 +30,6 @@ import filelock
 
 from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.compat import Path
 from renku.core.constant import RENKU_HOME
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.project_gateway import IProjectGateway
