@@ -83,18 +83,17 @@ class NotebookServiceSessionProvider(ISessionProvider):
     """A session provider that uses the notebook service API to launch sessions."""
 
     DEFAULT_TIMEOUT_SECONDS = 300
-    _client_dispatcher = None
-
-    @classmethod
-    def client_dispatcher(cls):
-        """Get (and if required set) the client dispatcher class variable."""
-        if not cls._client_dispatcher:
-            cls._client_dispatcher = Proxy(lambda: inject.instance(IClientDispatcher))
-        return cls._client_dispatcher
 
     def __init__(self):
         self.__renku_url = None
         self.__notebooks_url = None
+        self.__client_dispatcher = None
+
+    def _client_dispatcher(self):
+        """Get (and if required set) the client dispatcher class variable."""
+        if not self.__client_dispatcher:
+            self.__client_dispatcher = Proxy(lambda: inject.instance(IClientDispatcher))
+        return self.__client_dispatcher
 
     def _renku_url(self) -> str:
         """Get the URL of the renku instance."""
@@ -117,13 +116,13 @@ class NotebookServiceSessionProvider(ISessionProvider):
 
     def _token(self) -> str:
         """Get the JWT token used to authenticate against Renku."""
-        token, _ = _get_token(client=self.client_dispatcher().current_client, renku_url=self._renku_url())
+        token, _ = _get_token(client=self._client_dispatcher().current_client, renku_url=self._renku_url())
         if token is None:
             raise errors.AuthenticationError("Please run the renku login command to authenticate with Renku.")
         return token
 
     def _is_user_registered(self) -> bool:
-        _, is_user_registered = _get_token(client=self.client_dispatcher().current_client, renku_url=self._renku_url())
+        _, is_user_registered = _get_token(client=self._client_dispatcher().current_client, renku_url=self._renku_url())
         return is_user_registered
 
     def _auth_header(self) -> Dict[str, str]:
@@ -133,7 +132,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
         return {"Cookie": f"anon-id={self._token()}"}
 
     def _get_renku_project_name_parts(self) -> Dict[str, str]:
-        client = self.client_dispatcher().current_client
+        client = self._client_dispatcher().current_client
         if client.remote["name"]:
             if get_remote(client.repository, name="renku-backup-origin") and client.remote["owner"].startswith(
                 "repos/"
@@ -198,18 +197,18 @@ class NotebookServiceSessionProvider(ISessionProvider):
         """Check if the state of the repository is as expected before starting a session."""
         if not self._is_user_registered():
             return
-        if self.client_dispatcher().current_client.repository.is_dirty(untracked_files=True):
+        if self._client_dispatcher().current_client.repository.is_dirty(untracked_files=True):
             communication.confirm(
                 "You have new uncommitted or untracked changes to your repository. "
                 "Renku can automatically commit these changes so that it builds "
                 "the correct environment for your session. Do you wish to proceed?",
                 abort=True,
             )
-            self.client_dispatcher().current_client.repository.add(all=True)
-            self.client_dispatcher().current_client.repository.commit("Automated commit by Renku CLI.")
+            self._client_dispatcher().current_client.repository.add(all=True)
+            self._client_dispatcher().current_client.repository.commit("Automated commit by Renku CLI.")
 
     def _remote_head_hexsha(self):
-        return get_remote(self.client_dispatcher().current_client.repository).head
+        return get_remote(self._client_dispatcher().current_client.repository).head
 
     @staticmethod
     def _send_renku_request(req_type: str, *args, **kwargs):
@@ -228,8 +227,8 @@ class NotebookServiceSessionProvider(ISessionProvider):
             raise errors.NotebookSessionImageNotExistError(
                 f"Renku cannot find the image {image_name} and use it in an anonymous session."
             )
-        if self.client_dispatcher().current_client.repository.head.commit.hexsha != self._remote_head_hexsha():
-            self.client_dispatcher().current_client.repository.push()
+        if self._client_dispatcher().current_client.repository.head.commit.hexsha != self._remote_head_hexsha():
+            self._client_dispatcher().current_client.repository.push()
         self._wait_for_image(image_name=image_name, config=config)
 
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
