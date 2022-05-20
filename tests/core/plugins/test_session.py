@@ -62,6 +62,10 @@ def fake_session_list(self, project_name, config):
     return ["0xdeadbeef"]
 
 
+def fake_pre_start_checks(self):
+    pass
+
+
 @pytest.mark.parametrize(
     "provider_name,session_provider,provider_patches",
     [
@@ -92,6 +96,7 @@ def test_session_start(
         session_start=fake_start,
         find_image=fake_find_image,
         build_image=fake_build_image,
+        pre_start_checks=fake_pre_start_checks,
         **provider_patches,
     ):
         provider_implementation = next(filter(lambda x: x[1] == provider_name, supported_session_providers()), None)
