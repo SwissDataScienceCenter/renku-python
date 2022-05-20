@@ -38,11 +38,11 @@ class IClientDispatcher(ABC):
 
     def push_client_to_stack(
         self, path: Union[Path, str], renku_home: str = ".renku", external_storage_requested: bool = True
-    ) -> None:
+    ) -> "LocalClient":
         """Create and push a new client to the stack."""
         raise NotImplementedError
 
-    def push_created_client_to_stack(self, client) -> None:
+    def push_created_client_to_stack(self, client: "LocalClient") -> None:
         """Push an already created client to the stack."""
         raise NotImplementedError
 

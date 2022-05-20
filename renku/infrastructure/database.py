@@ -339,10 +339,8 @@ class Database:
         if object is not None:
             return object
 
-        data = self._storage.load(filename=self._get_filename_from_oid(oid))
-        object = self._reader.deserialize(data)
-        object._p_changed = 0
-        object._p_serial = PERSISTED
+        object = self.get_from_path(path=self._get_filename_from_oid(oid))
+
         if isinstance(object, Persistent):
             object.freeze()
 
@@ -350,6 +348,22 @@ class Database:
         self._pre_cache[oid] = object
         self._cache[oid] = object
         self._pre_cache.pop(oid)
+
+        return object
+
+    def get_from_path(self, path: str, absolute: bool = False) -> persistent.Persistent:
+        """Load a database object from a path.
+
+        Args:
+            path(str): Path of the database object.
+            absolute(bool): Whether the path is absolute or a filename inside the database (Default value: False).
+        Returns:
+            persistent.Persistent: The object.
+        """
+        data = self._storage.load(filename=path, absolute=absolute)
+        object = self._reader.deserialize(data)
+        object._p_changed = 0
+        object._p_serial = PERSISTED
 
         return object
 
@@ -439,6 +453,12 @@ class Database:
 
         object._p_changed = 0  # NOTE: transition from changed to up-to-date
         object._p_serial = PERSISTED
+
+    def persist_to_path(self, object: persistent.Persistent, path: Path):
+        """Store an object to path."""
+        data = self._writer.serialize(object)
+        compress = False if isinstance(object, (Catalog, RenkuOOBTree, OOBucket, Project, Index)) else True
+        self._storage.store(filename=str(path), data=data, compress=compress, absolute=True)
 
     def remove_from_cache(self, object: persistent.Persistent):
         """Remove an object from cache.
@@ -718,23 +738,27 @@ class Storage:
         self.zstd_compressor = zstd.ZstdCompressor()
         self.zstd_decompressor = zstd.ZstdDecompressor()
 
-    def store(self, filename: str, data: Union[Dict, List], compress=False):
+    def store(self, filename: str, data: Union[Dict, List], compress=False, absolute: bool = False):
         """Store object.
 
         Args:
             filename(str): Target file name to store data in.
             data(Union[Dict, List]): The data to store.
-            compress: Whether to compress the data or store it as plain json (Default value = False).
+            compress(bool): Whether to compress the data or store it as plain json (Default value = False).
+            absolute(bool): Whether filename is an absolute path (Default value = False).
         """
         assert isinstance(filename, str)
 
-        is_oid_path = len(filename) == Storage.OID_FILENAME_LENGTH
-        if is_oid_path:
-            path = self.path / filename[0:2] / filename[2:4] / filename
-            path.parent.mkdir(parents=True, exist_ok=True)
+        if absolute:
+            path = Path(filename)
         else:
-            path = self.path / filename
-            self.path.mkdir(parents=True, exist_ok=True)
+            is_oid_path = len(filename) == Storage.OID_FILENAME_LENGTH
+            if is_oid_path:
+                path = self.path / filename[0:2] / filename[2:4] / filename
+                path.parent.mkdir(parents=True, exist_ok=True)
+            else:
+                path = self.path / filename
+                self.path.mkdir(parents=True, exist_ok=True)
 
         if compress:
             with open(path, "wb") as f, self.zstd_compressor.stream_writer(f) as compressor:
@@ -744,22 +768,25 @@ class Storage:
             with open(path, "wt") as f:  # type: ignore
                 json.dump(data, f, ensure_ascii=False, sort_keys=True, indent=2)  # type: ignore
 
-    def load(self, filename: str):
+    def load(self, filename: str, absolute: bool = False):
         """Load data for object with object id oid.
 
         Args:
             filename(str): The file name of the data to load.
-
+            absolute(bool): Whether the path is absolute or a filename inside the database (Default value: False).
         Returns:
             The loaded data in dictionary form.
         """
         assert isinstance(filename, str)
 
-        is_oid_path = len(filename) == Storage.OID_FILENAME_LENGTH
-        if is_oid_path:
-            path = self.path / filename[0:2] / filename[2:4] / filename
+        if absolute:
+            path = Path(filename)
         else:
-            path = self.path / filename
+            is_oid_path = len(filename) == Storage.OID_FILENAME_LENGTH
+            if is_oid_path:
+                path = self.path / filename[0:2] / filename[2:4] / filename
+            else:
+                path = self.path / filename
 
         if not path.exists():
             raise errors.ObjectNotFoundError(filename)

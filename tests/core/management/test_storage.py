@@ -17,6 +17,8 @@
 # limitations under the License.
 """Storage tests."""
 
+import re
+
 import pytest
 
 
@@ -38,7 +40,7 @@ def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path,
     attributes = (client_with_datasets.path / ".gitattributes").read_text()
     assert "file1" in attributes
     assert "file2" not in attributes
-    assert ".renku" not in attributes
+    assert not re.match("^renku/.* filter=lfs diff=lfs merge=lfs -text$", attributes)
 
 
 def test_renku_in_lfs_migrate_exclude_filter(client):

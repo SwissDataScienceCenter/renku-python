@@ -160,16 +160,37 @@ class DockerSessionProvider(ISessionProvider):
                         docker.types.DeviceRequest(count=[gpu_request], capabilities=[["compute", "utility"]])
                     ]
 
+            # NOTE: set git user
+            image_data = self.docker_client().api.inspect_image(image_name)
+            working_dir = image_data.get("Config", {}).get("WorkingDir", None)
+
+            if working_dir is None:
+                working_dir = "/home/jovyan"
+
+            work_dir = Path(working_dir) / "work" / project_name.split("/")[-1]
+
+            volumes = [f"{str(client.path.resolve())}:{work_dir}"]
+
+            user = client.repository.get_user()
+            environment = {
+                "GIT_AUTHOR_NAME": user.name,
+                "GIT_AUTHOR_EMAIL": user.email,
+                "GIT_COMMITTER_EMAIL": user.email,
+                "EMAIL": user.email,
+            }
+
             container = self.docker_client().containers.run(
                 image_name,
                 f'jupyter notebook --NotebookApp.ip="0.0.0.0" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}'
                 f' --NotebookApp.token="{auth_token}" --NotebookApp.default_url="{default_url}"'
-                " --NotebookApp.notebook_dir=/home/jovyan/work",
+                f" --NotebookApp.notebook_dir={work_dir}",
                 detach=True,
                 labels={"renku_project": project_name, "jupyter_token": auth_token},
                 ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": None},
                 remove=True,
-                volumes=[f"{str(client.path.resolve())}:/home/jovyan/work"],
+                environment=environment,
+                volumes=volumes,
+                working_dir=str(work_dir),
                 **resource_requests,
             )
 
