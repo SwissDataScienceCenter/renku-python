@@ -18,6 +18,44 @@
 Changes
 =======
 
+`1.3.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.4...v1.3.0>`__ (2022-05-20)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** add git user configuration to local session
+   (`#2877 <https://github.com/SwissDataScienceCenter/renku-python/issues/2877>`__)
+   (`089488b <https://github.com/SwissDataScienceCenter/renku-python/commit/089488b1e9d63ee88e96248be6d910836dbd1437>`__)
+-  **service:** create dummy metadata.yml when creating a project for backwards compatibility
+   (`#2901 <https://github.com/SwissDataScienceCenter/renku-python/issues/2901>`__)
+   (`ddd757d <https://github.com/SwissDataScienceCenter/renku-python/commit/ddd757ddf3906985486cecc8790c8358487cb95c>`__)
+-  **service:** clean up old scheduled jobs
+   (`#2890 <https://github.com/SwissDataScienceCenter/renku-python/issues/2890>`__)
+   (`396651a <https://github.com/SwissDataScienceCenter/renku-python/commit/396651a1b40b8aadc384b1e58ec8bea95fc5a61d>`__)
+-  **service:** cleanup project when origin is out of sync
+   (`#2878 <https://github.com/SwissDataScienceCenter/renku-python/issues/2878>`__)
+   (`6f3387a <https://github.com/SwissDataScienceCenter/renku-python/commit/6f3387a8f14fd97707330efe7a97e865ca600cfa>`__),
+   closes
+   `#2826 <https://github.com/SwissDataScienceCenter/renku-python/issues/2826>`__
+
+Features
+~~~~~~~~
+
+-  **api:** add plan support in Renku API
+   (`#2909 <https://github.com/SwissDataScienceCenter/renku-python/issues/2909>`__)
+   (`e6cb2d3 <https://github.com/SwissDataScienceCenter/renku-python/commit/e6cb2d3303c2dee35e38d892d48b415bb247e190>`__)
+-  **api:** add project status support in Renku API
+   (`#2893 <https://github.com/SwissDataScienceCenter/renku-python/issues/2893>`__)
+   (`9d49de4 <https://github.com/SwissDataScienceCenter/renku-python/commit/9d49de4ea4161ed3553d58f688a813fac20c5683>`__)
+-  **cli:** add a custom git merge tool for renku metadata
+   (`#2867 <https://github.com/SwissDataScienceCenter/renku-python/issues/2867>`__)
+   (`2021e76 <https://github.com/SwissDataScienceCenter/renku-python/commit/2021e761624da3269cf2109940fc86fd109a2032>`__)
+-  **core:** add a minimum version check to support breaking forward
+   compatibility
+   (`#2840 <https://github.com/SwissDataScienceCenter/renku-python/issues/2840>`__)
+   (`42dc84c <https://github.com/SwissDataScienceCenter/renku-python/commit/42dc84c5d9fc325fefa8f9e993b20b5dd9e9c966>`__)
+
 `1.2.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.3...v1.2.4>`__ (2022-05-06)
 -------------------------------------------------------------------------------------------------------
 
