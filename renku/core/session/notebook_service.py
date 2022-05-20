@@ -23,7 +23,6 @@ from time import monotonic, sleep
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from lazy_object_proxy import Proxy
-from yaspin import yaspin
 
 from renku.command.command_builder import inject
 from renku.core import errors
@@ -231,9 +230,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
             )
         if self.client_dispatcher().current_client.repository.head.commit.hexsha != self._remote_head_hexsha():
             self.client_dispatcher().current_client.repository.push()
-        with yaspin(text="Waiting for image to be built...") as spinner:
-            self._wait_for_image(image_name=image_name, config=config)
-            spinner.write(f"Image {image_name} built successfully.")
+        self._wait_for_image(image_name=image_name, config=config)
 
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Find the given container image."""
@@ -337,11 +334,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
         )
         if res.status_code in [200, 201]:
             session_name = res.json()["name"]
-            with yaspin(text=f"Waiting for session {session_name} to start...") as spinner:
-                self._wait_for_session_status(session_name, "running")
-                spinner.write(
-                    f"Session {session_name} launched successfully, available at {self.session_url(session_name)}"
-                )
+            self._wait_for_session_status(session_name, "running")
             return session_name
         raise errors.NotebookServiceSessionError("Cannot start session via the notebook service because " + res.text)
 
@@ -356,18 +349,14 @@ class NotebookServiceSessionProvider(ISessionProvider):
                         "delete", f"{self._notebooks_url()}/servers/{session.id}", headers=self._auth_header()
                     )
                 )
-                with yaspin(text=f"Waiting for session {session.id} to stop...") as spinner:
-                    self._wait_for_session_status(session.id, "stopping")
-                    spinner.write(f"Session {session.id} stopped successfully")
+                self._wait_for_session_status(session.id, "stopping")
         else:
             responses.append(
                 self._send_renku_request(
                     "delete", f"{self._notebooks_url()}/servers/{session_name}", headers=self._auth_header()
                 )
             )
-            with yaspin(text=f"Waiting for session {session_name} to stop...") as spinner:
-                self._wait_for_session_status(session_name, "stopping")
-                spinner.write(f"Session {session_name} stopped successfully")
+            self._wait_for_session_status(session_name, "stopping")
         return all([response.status_code == 204 for response in responses])
 
     def session_url(self, session_name: str) -> Optional[str]:

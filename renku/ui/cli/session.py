@@ -207,7 +207,10 @@ def stop(session_name, stop_all, provider):
     if not stop_all and session_name is None:
         raise errors.ParameterError("Please specify either a session ID or the '--all' flag.")
 
-    session_stop_command().build().execute(session_name=session_name, stop_all=stop_all, provider=provider)
+    communicator = ClickCallback()
+    session_stop_command().with_communicator(communicator).build().execute(
+        session_name=session_name, stop_all=stop_all, provider=provider
+    )
     if stop_all:
         click.echo("All running interactive sessions for this project have been stopped.")
     else:
