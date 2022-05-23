@@ -18,6 +18,23 @@
 Changes
 =======
 
+`1.3.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.3.0...v1.3.1>`__ (2022-05-23)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **ci:** pin poetry-dynamic-versioning to 0.17.1
+   (`#2920 <https://github.com/SwissDataScienceCenter/renku-python/issues/2920>`__)
+   (`239ef76 <https://github.com/SwissDataScienceCenter/renku-python/commit/239ef766c441ee534a850a965337d9a8126a1588>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** show spinner when cloning repo for dataset import/update
+   (`#2914 <https://github.com/SwissDataScienceCenter/renku-python/issues/2914>`__)
+   (`46508af <https://github.com/SwissDataScienceCenter/renku-python/commit/46508af8573dba967e8ac91420a69c2180d0d7c5>`__)
+
 `1.3.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.4...v1.3.0>`__ (2022-05-20)
 -------------------------------------------------------------------------------------------------------
 
