@@ -15,7 +15,7 @@ COPY pyproject.toml poetry.lock README.rst CHANGES.rst Makefile /code/renku/
 WORKDIR /code/renku
 RUN poetry export --without-hashes -f requirements.txt --output /tmp/requirements.txt && \
     pip install -r /tmp/requirements.txt && \
-    pip install poetry-dynamic-versioning
+    pip install poetry-dynamic-versioning==0.17.1
 
 COPY .git /code/renku/.git
 COPY renku /code/renku/renku
