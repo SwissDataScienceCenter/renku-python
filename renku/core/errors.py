@@ -257,6 +257,14 @@ class DatasetNotFound(RenkuException):
         super().__init__(msg)
 
 
+class DatasetTagNotFound(RenkuException):
+    """Raise when a tag can't be found."""
+
+    def __init__(self, tag) -> None:
+        msg = f"Couldn't find dataset tag '{tag}'."
+        super().__init__(msg)
+
+
 class ExternalFileNotFound(RenkuException):
     """Raise when an external file is not found."""
 
