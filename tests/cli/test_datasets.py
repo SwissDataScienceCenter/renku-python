@@ -177,18 +177,26 @@ def test_dataset_show_tag(runner, client, subdirectory):
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "description3" in result.output
+    assert "description2" not in result.output
+    assert "description1" not in result.output
 
     result = runner.invoke(cli, ["dataset", "show", "--tag", "tag3", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "description3" in result.output
+    assert "description2" not in result.output
+    assert "description1" not in result.output
 
     result = runner.invoke(cli, ["dataset", "show", "--tag", "tag2", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "description2" in result.output
+    assert "description3" not in result.output
+    assert "description1" not in result.output
 
     result = runner.invoke(cli, ["dataset", "show", "--tag", "tag1", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "description1" in result.output
+    assert "description2" not in result.output
+    assert "description3" not in result.output
 
 
 def test_datasets_create_different_names(runner, client):
