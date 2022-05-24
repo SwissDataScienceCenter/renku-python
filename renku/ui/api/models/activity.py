@@ -51,10 +51,9 @@ values, or a function predicate for each of these fields to filter activities:
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Iterable, List, NamedTuple, Optional, Set, Union
+from typing import TYPE_CHECKING, Any, Callable, Iterable, List, NamedTuple, Optional, Set, Union
 
 from renku.command.command_builder.command import replace_injection
-from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
 from renku.core import errors
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util.os import matches
@@ -62,10 +61,12 @@ from renku.domain_model.provenance import activity as core_activity
 from renku.domain_model.provenance import parameter as core_parameter
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.workflow import plan as core_plan
-from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.ui.api.models.parameter import Input, Output, Parameter, convert_parameter
 from renku.ui.api.models.plan import Plan
-from renku.ui.api.models.project import Project, ensure_project_context
+from renku.ui.api.util import get_activity_gateway, get_plan_gateway
+
+if TYPE_CHECKING:
+    from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 
 
 class Activity:
@@ -158,7 +159,7 @@ class Activity:
         Returns:
             A list of all activities that match the criteria.
         """
-        activity_gateway: Optional[ActivityGateway] = get_activity_gateway()
+        activity_gateway: Optional["ActivityGateway"] = get_activity_gateway()
         if activity_gateway is None:
             return []
 
@@ -217,7 +218,7 @@ class Activity:
 
     @staticmethod
     def _filter_by_path(
-        get_all_method: str, get_by_method: str, path, activity_gateway: Optional[ActivityGateway] = None
+        get_all_method: str, get_by_method: str, path, activity_gateway: Optional["ActivityGateway"] = None
     ) -> Set[core_activity.Activity]:
         if activity_gateway is None:
             activity_gateway = get_activity_gateway()
@@ -263,7 +264,7 @@ class Activity:
     def _filter_by_parameter(
         name: Union[str, Iterable[str], Callable[[str], bool]] = None,
         value: Union[Any, Iterable[Any], Callable[[Any], bool]] = None,
-        activity_gateway: Optional[ActivityGateway] = None,
+        activity_gateway: Optional["ActivityGateway"] = None,
     ) -> Set[core_activity.Activity]:
         if activity_gateway is None:
             activity_gateway = get_activity_gateway()
@@ -312,7 +313,7 @@ class Activity:
     @property
     def preceding_activities(self) -> List["Activity"]:
         """Return a list of upstream activities."""
-        activity_gateway: Optional[ActivityGateway] = get_activity_gateway()
+        activity_gateway: Optional["ActivityGateway"] = get_activity_gateway()
         if activity_gateway is None:
             return []
 
@@ -322,7 +323,7 @@ class Activity:
     @property
     def following_activities(self) -> List["Activity"]:
         """Return a list of downstream activities."""
-        activity_gateway: Optional[ActivityGateway] = get_activity_gateway()
+        activity_gateway: Optional["ActivityGateway"] = get_activity_gateway()
         if activity_gateway is None:
             return []
 
@@ -391,9 +392,9 @@ class FieldValue(NamedTuple):
 
     def __repr__(self):
         if isinstance(self.field, Input):
-            return f"<Input '{self.value}'>"
+            return f"<Input '{self.field.name}'={self.value}>"
         elif isinstance(self.field, Output):
-            return f"<Output '{self.value}'>"
+            return f"<Output '{self.field.name}'={self.value}>"
 
         return f"<Parameter '{self.field.name}'={self.value}>"
 
@@ -401,27 +402,20 @@ class FieldValue(NamedTuple):
 def get_activities(plan_id: str = None) -> List[Activity]:
     """Return list of activities from a given ``plan_id``."""
     activity_gateway = get_activity_gateway()
-    if not activity_gateway:
+    plan_gateway = get_plan_gateway()
+    if not activity_gateway or not plan_gateway:
         return []
 
     activities = activity_gateway.get_all_activities()
 
     if plan_id:
-        activities = [a for a in activities if a.association.plan.id == plan_id]
+        ids = {plan_id}
+        plan = plan_gateway.get_by_id(plan_id)
+
+        while plan is not None and plan.derived_from is not None:
+            ids.add(plan.derived_from)
+            plan = plan_gateway.get_by_id(plan.derived_from)
+
+        activities = [a for a in activities if a.association.plan.id in ids]
 
     return [Activity.from_activity(a) for a in activities]
-
-
-@ensure_project_context
-def get_activity_gateway(project: Project) -> Optional[ActivityGateway]:
-    """Return an instance of ActivityGateway when inside a Renku project."""
-    client = project.client
-    if not client:
-        return None
-
-    database_dispatcher = DatabaseDispatcher()
-    database_dispatcher.push_database_to_stack(client.database_path)
-    activity_gateway = ActivityGateway()
-    activity_gateway.database_dispatcher = database_dispatcher
-
-    return activity_gateway

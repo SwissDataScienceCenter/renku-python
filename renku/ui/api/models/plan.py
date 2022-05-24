@@ -34,13 +34,11 @@ list of all active plans/composite-plans in a project:
 from datetime import datetime
 from typing import List, Optional, Type, Union
 
-from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
 from renku.core import errors
 from renku.domain_model.workflow import composite_plan as core_composite_plan
 from renku.domain_model.workflow import plan as core_plan
-from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.ui.api.models.parameter import Input, Link, Mapping, Output, Parameter
-from renku.ui.api.models.project import ensure_project_context
+from renku.ui.api.util import get_plan_gateway
 
 
 class Plan:
@@ -203,27 +201,20 @@ def _convert_plans(plans: List[Union[core_plan.AbstractPlan]]) -> List[Union[Pla
     return [convert_plan(p) for p in plans]
 
 
-@ensure_project_context
 def _list_plans(
-    include_deleted: bool, type: Type[Union[core_plan.Plan, core_composite_plan.CompositePlan]], project
+    include_deleted: bool, type: Type[Union[core_plan.Plan, core_composite_plan.CompositePlan]]
 ) -> List[Union[Plan, CompositePlan]]:
     """List all plans in a project.
 
     Args:
         include_deleted(bool): Whether to include deleted plans.
-        project: The current project
 
     Returns:
         A list of all plans in the supplied project.
     """
-    client = project.client
-    if not client:
+    plan_gateway = get_plan_gateway()
+    if not plan_gateway:
         return []
-
-    database_dispatcher = DatabaseDispatcher()
-    database_dispatcher.push_database_to_stack(client.database_path)
-    plan_gateway = PlanGateway()
-    plan_gateway.database_dispatcher = database_dispatcher
 
     plans = plan_gateway.get_all_plans()
 

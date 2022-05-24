@@ -46,7 +46,7 @@ from typing import List, Optional
 from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
 from renku.domain_model import dataset as core_dataset
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
-from renku.ui.api.models.project import ensure_project_context
+from renku.ui.api.util import ensure_project_context
 
 
 class Dataset:

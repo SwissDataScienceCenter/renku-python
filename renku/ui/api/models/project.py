@@ -43,7 +43,7 @@ activities, and modified or deleted inputs:
     outdated_generations, outdated_activities, modified_inputs, deleted_inputs = Project().status()
 
 """
-from functools import wraps
+
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Union
 
@@ -99,33 +99,6 @@ class Project:
         return (
             get_status_command().with_client(self._client).build().execute(paths=paths, ignore_deleted=ignore_deleted)
         ).output
-
-
-def ensure_project_context(fn):
-    """Check existence of a project context.
-
-    Args:
-        fn: The function to wrap.
-
-    Returns:
-        The function with the current project injected.
-    """
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        project = _get_current_project() or Project()
-        return fn(*args, **kwargs, project=project)
-
-    return wrapper
-
-
-def _get_current_project():
-    """Return current project context if any or a new project object.
-
-    Returns:
-        The current project context or None.
-    """
-    return Project._project_contexts.top if Project._project_contexts.top else None
 
 
 def _get_local_client() -> "LocalClient":

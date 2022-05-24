@@ -61,7 +61,7 @@ from renku.core.workflow.plan_factory import (
 )
 from renku.domain_model.workflow import parameter as core_parameter
 from renku.domain_model.workflow import plan as core_plan
-from renku.ui.api.models.project import ensure_project_context
+from renku.ui.api.util import ensure_project_context
 
 
 def _validate_name(name: str):
@@ -198,7 +198,7 @@ class Input(_PathBase, Parameter):
         return self
 
     def __repr__(self):
-        return f"<Input '{self.path}'>"
+        return f"<Input '{self.name}'={self.path}>"
 
 
 class Output(_PathBase, Parameter):
@@ -228,7 +228,7 @@ class Output(_PathBase, Parameter):
         return self
 
     def __repr__(self):
-        return f"<Output '{self.path}'>"
+        return f"<Output '{self.name}'={self.path}>"
 
 
 class Link:

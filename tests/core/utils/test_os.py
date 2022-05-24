@@ -45,5 +45,5 @@ from renku.core.util.os import matches
     ],
 )
 def test_path_match(path, pattern, should_match):
-    """Test host is set correctly in a different Renku domain."""
+    """Test ``matches`` utility function that checks if a path matches a given pattern."""
     assert matches(path=path, pattern=pattern) is should_match
