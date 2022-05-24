@@ -86,6 +86,15 @@ class BaseRepository:
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.path}>"
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def __del__(self):
+        self.close()
+
     @property
     def path(self) -> Path:
         """Absolute path to the repository's root."""
@@ -675,6 +684,22 @@ class BaseRepository:
         configuration = self.get_configuration()
         return Repository._get_user_from_configuration(configuration)
 
+    def close(self) -> None:
+        """Close the underlying repository.
+
+        Cleans up dangling processes.
+        """
+        if self._repository:
+            self._repository.close()
+            del self._repository
+            self._repository = None
+
+    def refresh_repository(self):
+        """Refreshes the underlying repository."""
+        self.close()
+
+        self._repository = git.Repo(self.path, search_parent_directories=False)
+
     @staticmethod
     def get_global_user() -> "Actor":
         """Return the global git user."""
@@ -795,6 +820,7 @@ class Repository(BaseRepository):
         self, path: Union[Path, str] = ".", search_parent_directories: bool = False, repository: git.Repo = None
     ):
         repo = repository or _create_repository(path, search_parent_directories)
+
         super().__init__(path=Path(repo.working_dir).resolve(), repository=repo)  # type: ignore
 
     @classmethod
@@ -881,6 +907,9 @@ class Submodule(BaseRepository):
     def __repr__(self) -> str:
         return f"<Submodule {self.relative_path}>"
 
+    def __del__(self) -> None:
+        self._repository.close()
+
     @property
     def name(self) -> str:
         """Return submodule's name."""
@@ -902,11 +931,19 @@ class SubmoduleManager:
 
     def __init__(self, repository: git.Repo):
         self._repository = repository
+        self._submodule_cache: Dict[git.Submodule, Submodule] = {}  # type: ignore
         try:
             self.update()
         except errors.GitError:
             # NOTE: Update fails if submodule repo cannot be cloned. Repository still works but submodules are broken.
             pass
+
+    def _get_submodule(self, submodule: git.Submodule) -> Submodule:  # type: ignore
+        """Get a submodule from local cache."""
+        if submodule not in self._submodule_cache:
+            submodule_result = Submodule.from_submodule(self._repository, submodule)
+            self._submodule_cache[submodule] = submodule_result
+        return self._submodule_cache[submodule]
 
     def __getitem__(self, name: str) -> Submodule:
         try:
@@ -914,10 +951,12 @@ class SubmoduleManager:
         except IndexError:
             raise errors.GitError(f"Submodule '{name}' not found")
         else:
-            return Submodule.from_submodule(self._repository, submodule)
+            return self._get_submodule(submodule)
 
     def __iter__(self):
-        return (Submodule.from_submodule(self._repository, s) for s in self._repository.submodules)
+        for s in self._repository.submodules:
+
+            yield self._get_submodule(s)
 
     def __len__(self) -> int:
         return len(self._repository.submodules)

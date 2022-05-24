@@ -190,37 +190,37 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 ref = self.request_data.get("ref", None)
 
                 if ref:
-                    repository = Repository(project.abs_path)
-                    if ref != repository.active_branch.name:
-                        # NOTE: Command called for different branch than the one used in cache, change branch
-                        if len(repository.remotes) != 1:
-                            raise RenkuException("Couldn't find remote for project in cache.")
-                        origin = repository.remotes[0]
-                        remote_branch = f"{origin}/{ref}"
+                    with Repository(project.abs_path) as repository:
+                        if ref != repository.active_branch.name:
+                            # NOTE: Command called for different branch than the one used in cache, change branch
+                            if len(repository.remotes) != 1:
+                                raise RenkuException("Couldn't find remote for project in cache.")
+                            origin = repository.remotes[0]
+                            remote_branch = f"{origin}/{ref}"
 
-                        with project.write_lock():
-                            # NOTE: Add new ref to remote branches
-                            repository.run_git_command("remote", "set-branches", "--add", origin, ref)
-                            if self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH:
-                                repository.fetch(origin, ref)
-                            else:
-                                repository.fetch(origin, ref, depth=self.clone_depth)
+                            with project.write_lock():
+                                # NOTE: Add new ref to remote branches
+                                repository.run_git_command("remote", "set-branches", "--add", origin, ref)
+                                if self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH:
+                                    repository.fetch(origin, ref)
+                                else:
+                                    repository.fetch(origin, ref, depth=self.clone_depth)
 
-                            # NOTE: Switch to new ref
-                            repository.run_git_command("checkout", "--track", "-f", "-b", ref, remote_branch)
+                                # NOTE: Switch to new ref
+                                repository.run_git_command("checkout", "--track", "-f", "-b", ref, remote_branch)
 
-                            # NOTE: cleanup remote branches in case a remote was deleted (fetch fails otherwise)
-                            repository.run_git_command("remote", "prune", origin)
+                                # NOTE: cleanup remote branches in case a remote was deleted (fetch fails otherwise)
+                                repository.run_git_command("remote", "prune", origin)
 
-                            for branch in repository.branches:
-                                if branch.remote_branch and not branch.remote_branch.is_valid():
-                                    repository.branches.remove(branch, force=True)
-                                    # NOTE: Remove left-over refspec
-                                    try:
-                                        with repository.get_configuration(writable=True) as config:
-                                            config.remove_value(f"remote.{origin}.fetch", f"origin.{branch}$")
-                                    except GitConfigurationError:
-                                        pass
+                                for branch in repository.branches:
+                                    if branch.remote_branch and not branch.remote_branch.is_valid():
+                                        repository.branches.remove(branch, force=True)
+                                        # NOTE: Remove left-over refspec
+                                        try:
+                                            with repository.get_configuration(writable=True) as config:
+                                                config.remove_value(f"remote.{origin}.fetch", f"origin.{branch}$")
+                                        except GitConfigurationError:
+                                            pass
                 else:
                     self.reset_local_repo(project)
 
@@ -250,33 +250,33 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                     # NOTE: return immediately in case of multiple writers waiting
                     return
 
-                repository = Repository(project.abs_path)
-                origin = None
-                tracking_branch = repository.active_branch.remote_branch
-                if tracking_branch:
-                    origin = tracking_branch.remote
-                elif len(repository.remotes) == 1:
-                    origin = repository.remotes[0]
+                with Repository(project.abs_path) as repository:
+                    origin = None
+                    tracking_branch = repository.active_branch.remote_branch
+                    if tracking_branch:
+                        origin = tracking_branch.remote
+                    elif len(repository.remotes) == 1:
+                        origin = repository.remotes[0]
 
-                if origin:
-                    unshallow = self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH
-                    if unshallow:
-                        try:
-                            # NOTE: It could happen that repository is already un-shallowed,
-                            # in this case we don't want to leak git exception, but still want to fetch.
-                            repository.fetch("origin", repository.active_branch, unshallow=True)
-                        except GitCommandError:
-                            repository.fetch("origin", repository.active_branch)
+                    if origin:
+                        unshallow = self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH
+                        if unshallow:
+                            try:
+                                # NOTE: It could happen that repository is already un-shallowed,
+                                # in this case we don't want to leak git exception, but still want to fetch.
+                                repository.fetch("origin", repository.active_branch, unshallow=True)
+                            except GitCommandError:
+                                repository.fetch("origin", repository.active_branch)
 
-                        repository.reset(f"{origin}/{repository.active_branch}", hard=True)
-                    else:
-                        try:
-                            # NOTE: it rarely happens that origin is not reachable. Try again if it fails.
-                            repository.fetch("origin", repository.active_branch)
                             repository.reset(f"{origin}/{repository.active_branch}", hard=True)
-                        except GitCommandError as e:
-                            project.purge()
-                            raise IntermittentCacheError(e)
+                        else:
+                            try:
+                                # NOTE: it rarely happens that origin is not reachable. Try again if it fails.
+                                repository.fetch("origin", repository.active_branch)
+                                repository.reset(f"{origin}/{repository.active_branch}", hard=True)
+                            except GitCommandError as e:
+                                project.purge()
+                                raise IntermittentCacheError(e)
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
         except (portalocker.LockException, portalocker.AlreadyLocked) as e:
@@ -346,7 +346,8 @@ class RenkuOpSyncMixin(RenkuOperationMixin, metaclass=ABCMeta):
         if self.project_path is None:
             raise RenkuException("unable to sync with remote since no operation has been executed")
 
-        return push_changes(Repository(self.project_path), remote=remote)
+        with Repository(self.project_path) as repository:
+            return push_changes(repository, remote=remote)
 
     def execute_and_sync(self, remote="origin"):
         """Execute operation which controller implements and sync with the remote."""

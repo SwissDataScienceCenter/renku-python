@@ -295,6 +295,10 @@ class GitCore:
         except errors.GitError:
             self.repository = None
 
+    def __del__(self):
+        if self.repository:
+            self.repository.close()
+
     @property
     def modified_paths(self):
         """Return paths of modified files."""
