@@ -86,14 +86,16 @@ class PlanFactory:
         self.directory = Path(directory)
         if not self.directory.exists():
             raise errors.UsageError(
-                "Current directory doesn't exist. Please make sure you are inside an existing directory."
+                f"Directory '{self.directory}' doesn't exist. Please make sure you are inside an existing directory."
             )
 
         if not working_dir:
             working_dir = os.getcwd()
         self.working_dir = Path(working_dir)
         if not self.working_dir.exists():
-            raise errors.UsageError("Repository path doesn't exist. Make sure you are inside a Renku repository.")
+            raise errors.UsageError(
+                f"Repository path '{self.working_dir}' doesn't exist. Make sure you are inside a Renku repository."
+            )
 
         if isinstance(command_line, (list, tuple)):
             self.command_line = list(command_line)
