@@ -26,6 +26,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from typing import List
 
 import attr
 
@@ -257,9 +258,8 @@ def _clean_streams(repository, mapped_streams):
         if path not in repository.files:
             os.remove(absolute_path)
         else:
-            with open(path, "wb") as output_file:
-                checksum = repository.get_object_hash(path=absolute_path, revision="HEAD")
-                repository.copy_content_to_file(path=absolute_path, checksum=checksum, output_file=output_file)
+            checksum = repository.get_object_hash(path=absolute_path, revision="HEAD")
+            repository.copy_content_to_file(path=absolute_path, checksum=checksum, output_path=path)
 
 
 def _expand_directories(paths):
@@ -321,7 +321,7 @@ class GitCore:
             for path in itertools.chain(self.repository.files, self.repository.untracked_files)
         ]
 
-    def find_ignored_paths(self, *paths):
+    def find_ignored_paths(self, *paths) -> List[str]:
         """Return ignored paths matching ``.gitignore`` file."""
         return self.repository.get_ignored_paths(*paths)
 

@@ -15,6 +15,8 @@
 # limitations under the License.
 """Models for providers."""
 
+from typing import Optional
+
 from marshmallow import EXCLUDE
 
 from renku.command.schema.dataset import DatasetSchema
@@ -73,13 +75,15 @@ class ProviderDataset(Dataset):
 class ProviderDatasetFile:
     """Store metadata for dataset files that will be downloaded from a provider."""
 
-    def __init__(self, source: str, filename: str, checksum: str, size_in_mb: int, filetype: str, path: str):
-        self.source: str = source
-        self.filename: str = filename
+    def __init__(
+        self, source: Optional[str], filename: str, checksum: str, size_in_mb: Optional[float], filetype: str, path: str
+    ):
         self.checksum: str = checksum
-        self.size_in_mb: int = size_in_mb
+        self.filename: str = filename
         self.filetype: str = filetype
         self.path: str = path
+        self.size_in_mb: Optional[float] = size_in_mb
+        self.source: Optional[str] = source
 
 
 class ProviderDatasetSchema(DatasetSchema):

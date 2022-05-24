@@ -23,8 +23,6 @@ from pathlib import Path
 from urllib import parse as urlparse
 from uuid import UUID, uuid4
 
-import attr
-
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi
@@ -32,11 +30,12 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util import communication
 
 
-@attr.s
 class OLOSProvider(ProviderApi):
     """Provider for OLOS integration."""
 
-    _server_url = attr.ib(default=None)
+    def __init__(self, is_doi: bool = False):
+        self.is_doi = is_doi
+        self._server_url = None
 
     @staticmethod
     def supports(uri):
@@ -64,8 +63,8 @@ class OLOSProvider(ProviderApi):
         return OLOSExporter(dataset=dataset, access_token=access_token, server_url=self._server_url)
 
     @inject.autoparams()
-    def set_parameters(self, client_dispatcher: IClientDispatcher, *, dlcm_server=None, **kwargs):
-        """Set and validate required parameters for a provider."""
+    def set_export_parameters(self, client_dispatcher: IClientDispatcher, *, dlcm_server=None, **kwargs):
+        """Set and validate required parameters for exporting for a provider."""
         config_base_url = "server_url"
 
         client = client_dispatcher.current_client
@@ -81,15 +80,13 @@ class OLOSProvider(ProviderApi):
         self._server_url = dlcm_server
 
 
-@attr.s
 class OLOSExporter(ExporterApi):
     """OLOS export manager."""
 
-    dataset = attr.ib(kw_only=True)
-
-    access_token = attr.ib(kw_only=True)
-
-    _server_url = attr.ib(kw_only=True, default=None)
+    def __init__(self, *, dataset, access_token, server_url=None):
+        self.dataset = dataset
+        self.access_token = access_token
+        self.server_url = server_url
 
     def set_access_token(self, access_token):
         """Set access token."""
@@ -97,11 +94,11 @@ class OLOSExporter(ExporterApi):
 
     def access_token_url(self):
         """Endpoint for creation of access token."""
-        return urllib.parse.urljoin(self._server_url, "/portal by clicking on the top-right menu and selecting 'token'")
+        return urllib.parse.urljoin(self.server_url, "/portal by clicking on the top-right menu and selecting 'token'")
 
     def export(self, publish, client=None, **kwargs):
         """Execute export process."""
-        deposition = _OLOSDeposition(server_url=self._server_url, access_token=self.access_token)
+        deposition = _OLOSDeposition(server_url=self.server_url, access_token=self.access_token)
 
         metadata = self._get_dataset_metadata()
         metadata["organizationalUnitId"] = deposition.get_org_unit()
@@ -142,26 +139,32 @@ class OLOSExporter(ExporterApi):
         return metadata
 
 
-@attr.s
 class _OLOSDeposition:
     """OLOS record for deposit."""
 
-    access_token = attr.ib(kw_only=True)
-    server_url = attr.ib(kw_only=True)
-    dataset_pid = attr.ib(kw_only=True, default=None)
-    deposited_at = attr.ib(kw_only=True, default=None)
+    def __init__(
+        self,
+        *,
+        access_token,
+        server_url,
+        dataset_pid=None,
+        deposited_at=None,
+        deposition_base_url=None,
+        admin_base_url=None,
+    ):
+        self.access_token = access_token
+        self.server_url = server_url
+        self.dataset_pid = dataset_pid
+        self.deposited_at = deposited_at
+        self.deposition_base_url = deposition_base_url
+        self.admin_base_url = admin_base_url
 
-    deposition_base_url = attr.ib(kw_only=True, default=None)
-    admin_base_url = attr.ib(kw_only=True, default=None)
+        self._get_base_urls()
 
     ORGANIZATIONAL_UNIT_PATH = "/authorized-organizational-units"
     DATASET_CREATE_PATH = "/deposits"
     FILE_UPLOAD_PATH = "/deposits/{deposit_id}/upload"
     MODULES_PATH = "administration/preservation-planning/modules"
-
-    def __attrs_post_init__(self):
-        """Post init code."""
-        self._get_base_urls()
 
     def _get_base_urls(self):
         """Get base urls for different endpoints."""

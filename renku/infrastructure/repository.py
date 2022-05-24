@@ -27,22 +27,7 @@ from datetime import datetime
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
-from typing import (
-    Any,
-    BinaryIO,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    NamedTuple,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, Set, Tuple, Type, TypeVar, Union, cast
 
 import git
 
@@ -93,7 +78,8 @@ class BaseRepository:
         self.close()
 
     def __del__(self):
-        self.close()
+        # self.close()
+        pass
 
     @property
     def path(self) -> Path:
@@ -197,6 +183,23 @@ class BaseRepository:
     def is_valid(self) -> bool:
         """Return True if a valid repository exists."""
         return self._repository is not None
+
+    def install_lfs(self, skip_smudge: bool = True):
+        """Force install Git LFS in the repository."""
+        os.environ["GIT_LFS_SKIP_SMUDGE"] = "1" if skip_smudge else "0"
+
+        command = ["lfs", "install", "--local", "--force"]
+        if skip_smudge:
+            command += ["--skip-smudge"]
+
+        try:
+            self.run_git_command(*command)
+        except errors.GitCommandError as e:
+            raise errors.GitError(f"Cannot install Git LFS in {self}") from e
+
+    def get_changes_patch(self, path: Union[Path, str]) -> List[str]:
+        """Return a patch of all changes to a file."""
+        return self.run_git_command("log", "--", str(path), patch=True, follow=True).splitlines()
 
     def add(self, *paths: Union[Path, str], force: bool = False, all: bool = False) -> None:
         """Add a list of files to be committed to the VCS."""
@@ -435,7 +438,11 @@ class BaseRepository:
             return wrapped_commit
 
     def get_ignored_paths(self, *paths: Union[Path, str]) -> List[str]:
-        """Return ignored paths matching ``.gitignore`` file."""
+        """Return ignored paths matching ``.gitignore`` file.
+
+        NOTE: This function returns the same value as inputs: If input is an absolute path output is an absolute path.
+        The same is true for relative paths.
+        """
         ignored = []
 
         for batch in split_paths(*paths):
@@ -476,10 +483,14 @@ class BaseRepository:
         path: Union[Path, str],
         revision: Optional[Union["Reference", str]] = None,
         checksum: Optional[str] = None,
-        output_file: Optional[BinaryIO] = None,
+        output_path: Optional[Union[Path, str]] = None,
         apply_filters: bool = True,
     ) -> str:
-        """Get content of an object using its checksum, write it to a file, and return the file's path."""
+        """Get content of an object using its checksum, write it to a file, and return the file's path.
+
+        NOTE: ``apply_filters`` doesn't smudge LFS objects if repository is cloned with ``--skip-smudge`` or if
+        ``GIT_LFS_SKIP_SMUDGE`` is set. Call ``Repository.install_lfs`` before to make sure that LFS objects are pulled.
+        """
         absolute_path = get_absolute_path(path, self.path)
 
         def get_content_helper(output_file) -> bool:
@@ -521,20 +532,20 @@ class BaseRepository:
                         path=absolute_path, checksum=checksum, revision=revision, apply_filters=apply_filters
                     )
 
-        if output_file is None:
+        if output_path is None:
             with tempfile.NamedTemporaryFile(mode="w+b", delete=False) as temp_output_file:
                 if get_content_helper(output_file=temp_output_file):
                     return temp_output_file.name
         else:
-            if get_content_helper(output_file):
-                return output_file.name
+            with open(output_path, "wb") as output_file:
+                if get_content_helper(output_file):
+                    return output_file.name
 
         from_submodules = get_content_from_submodules()
         if from_submodules:
             return from_submodules
 
-        # TODO: Return FileNotFound
-        raise errors.ExportError(f"File not found in the repository: '{revision}/{checksum}:{path}'")
+        raise errors.FileNotFound(path, checksum=checksum, revision=revision)
 
     def get_object_hashes(
         self, paths: List[Union[Path, str]], revision: Optional[str] = None

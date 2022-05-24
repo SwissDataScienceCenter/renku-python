@@ -473,7 +473,7 @@ class RepositoryTemplates(TemplatesSource):
             if isinstance(content, bytes):
                 return False
             manifest = TemplatesManifest.from_string(cast(str, content))
-        except (errors.ExportError, errors.InvalidTemplateError):
+        except (errors.FileNotFound, errors.InvalidTemplateError):
             return False
         else:
             return any(t.id == id for t in manifest.templates)
