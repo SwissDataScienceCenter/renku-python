@@ -104,7 +104,7 @@ psutil = ">=5.4.7,<5.9.1,"
 ptvsd = { version = "<4.4.0,>=4.3.0", optional = true }
 pyasn1 = "<=0.4.8,>=0.4.5"
 pydocstyle = { version = "<6.1.2,>=4.0.1", optional = true }
-pyjwt = ">=2.1.0,<2.4.0"
+pyjwt = ">=2.1.0,<2.5.0"
 pyld = "==2.0.3"
 pyopenssl = ">=19.0.0,<22.1.0"
 pyshacl = ">=0.17.2,<0.18.2"
