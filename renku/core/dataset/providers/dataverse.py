@@ -546,9 +546,11 @@ class _DataverseDeposition:
 
     @staticmethod
     def _check_response(response):
-        if response.status_code not in [200, 201, 202]:
-            if response.status_code == 401:
-                raise errors.AuthenticationError("Access unauthorized - update access token.")
+        from renku.core.util import requests
+
+        try:
+            requests.check_response(response=response)
+        except errors.RequestError:
             json_res = response.json()
             raise errors.ExportError(
                 "HTTP {} - Cannot export dataset: {}".format(

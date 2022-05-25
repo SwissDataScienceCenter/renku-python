@@ -107,21 +107,14 @@ def get_redirect_url(url) -> str:
 
 def check_response(response):
     """Check for expected response status code."""
-    if response.status_code not in [200, 201, 202]:
-        if response.status_code == 401:
-            raise errors.AuthenticationError("Access unauthorized - update access token.")
-
-        if response.status_code == 400:
-            err_response = response.json()
-            messages = [
-                '"{0}" failed with "{1}"'.format(err["field"], err["message"]) for err in err_response["errors"]
-            ]
-
-            raise errors.ExportError(
-                "\n" + "\n".join(messages) + "\nSee `renku dataset edit -h` for details on how to edit" " metadata"
-            )
-
-        raise errors.ExportError(response.content)
+    if response.status_code in [200, 201, 202]:
+        return
+    elif response.status_code == 401:
+        raise errors.AuthenticationError("Access unauthorized - update access token.")
+    else:
+        content = response.content.decode("utf-8") if response.content else ""
+        message = f"Request failed with code {response.status_code}: {content}"
+        raise errors.RequestError(message)
 
 
 def download_file(base_directory: Union[Path, str], url: str, filename, extract, chunk_size=16384):

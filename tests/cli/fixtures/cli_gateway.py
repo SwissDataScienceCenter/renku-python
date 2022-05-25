@@ -16,7 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku CLI fixtures for Gateway."""
+
 import json
+import urllib
 
 import pytest
 import responses
@@ -24,38 +26,63 @@ from _pytest.monkeypatch import MonkeyPatch
 
 ENDPOINT = "renku.deployment.ch"
 ACCESS_TOKEN = "jwt-token"
-USER_CODE = "valid_user_code"
+DEVICE_CODE = "valid-device-code"
 
 
 @pytest.fixture(scope="module")
 def mock_login():
-    """Monkey patch webbrowser module for renku login."""
+    """Monkey patch webbrowser package and keycloak endpoints for renku login."""
     import webbrowser
 
     with MonkeyPatch().context() as monkey_patch:
-        monkey_patch.setattr(webbrowser, "open_new_tab", lambda _: None)
+        monkey_patch.setattr(webbrowser, "open_new_tab", lambda _: True)
 
         with responses.RequestsMock(assert_all_requests_are_fired=False) as requests_mock:
 
-            def callback(token):
-                def func(request):
-                    if request.params.get("server_nonce") == USER_CODE:
+            def device_callback(request):
+                data = dict(urllib.parse.parse_qsl(request.body))
+                if data.get("client_id") != "renku-cli":
+                    return 400, {"Content-Type": "application/json"}, json.dumps({"error": "invalid_client"})
+
+                data = {
+                    "verification_uri": f"https://{ENDPOINT}/auth/realms/Renku/device",
+                    "user_code": "ABC-DEF",
+                    "interval": 0,
+                    "device_code": DEVICE_CODE,
+                }
+                return 200, {"Content-Type": "application/json"}, json.dumps(data)
+
+            def create_token_callback(token):
+                def token_callback(request):
+                    data = dict(urllib.parse.parse_qsl(request.body))
+                    if (
+                        data.get("device_code") == DEVICE_CODE
+                        and data.get("client_id") == "renku-cli"
+                        and data.get("grant_type") == "urn:ietf:params:oauth:grant-type:device_code"
+                    ):
                         return 200, {"Content-Type": "application/json"}, json.dumps({"access_token": token})
 
-                    return 404, {"Content-Type": "application/json"}, ""
+                    return 400, {"Content-Type": "application/json"}, ""
 
-                return func
+                return token_callback
 
             requests_mock.add_passthru("https://pypi.org/")
 
             class RequestMockWrapper:
                 @staticmethod
-                def add_endpoint_token(endpoint, token):
-                    """Add a mocked endpoint and its access token."""
+                def add_device_auth(endpoint, token):
+                    """Add a mocked endpoint."""
                     requests_mock.add_callback(
-                        responses.GET, f"https://{endpoint}/api/auth/cli-token", callback=callback(token)
+                        responses.POST,
+                        f"https://{endpoint}/auth/realms/Renku/protocol/openid-connect/auth/device",
+                        callback=device_callback,
+                    )
+                    requests_mock.add_callback(
+                        responses.POST,
+                        f"https://{endpoint}/auth/realms/Renku/protocol/openid-connect/token",
+                        callback=create_token_callback(token),
                     )
 
-            RequestMockWrapper.add_endpoint_token(ENDPOINT, ACCESS_TOKEN)
+            RequestMockWrapper.add_device_auth(ENDPOINT, ACCESS_TOKEN)
 
             yield RequestMockWrapper
