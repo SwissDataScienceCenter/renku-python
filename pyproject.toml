@@ -20,7 +20,7 @@
 
 [tool.poetry]
 name = "renku"
-version = "1.2.4.dev17+geb9386e8" # placeholder, see poetry-dynamic-versioning
+version = "0.0.0" # placeholder, see poetry-dynamic-versioning
 description = "Python SDK and CLI for the Renku platform."
 license = "Apache License 2.0"
 keywords = ["Renku", "CLI"]
