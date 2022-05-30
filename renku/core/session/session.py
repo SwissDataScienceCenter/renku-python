@@ -21,8 +21,6 @@ import webbrowser
 from itertools import chain
 from typing import Optional
 
-from yaspin import yaspin
-
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
@@ -94,7 +92,7 @@ def session_start(
                 abort=True,
             )
 
-            with yaspin(text="Building image"):
+            with communication.busy(msg="Building image"):
                 _ = provider_api.build_image(client.docker_path.parent, image_name, config)
     else:
         if not provider_api.find_image(image_name, config):

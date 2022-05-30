@@ -131,9 +131,7 @@ def _remove_workflow(name: str, force: bool, plan_gateway: IPlanGateway):
         communication.confirm(prompt_text, abort=True, warning=True)
 
     plan = plan or workflows[name]
-    plan.unfreeze()
-    plan.invalidated_at = local_now()
-    plan.freeze()
+    plan.delete()
 
 
 def remove_workflow_command():

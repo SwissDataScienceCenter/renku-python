@@ -128,6 +128,77 @@ def test_dataset_show(runner, client, subdirectory):
     assert "##" not in result.output
 
 
+def test_dataset_show_tag(runner, client, subdirectory):
+    """Test creating and showing a dataset with metadata."""
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert 'Dataset "my-dataset" is not found.' in result.output
+
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = client.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+
+    result = runner.invoke(
+        cli,
+        [
+            "dataset",
+            "create",
+            "my-dataset",
+            "--title",
+            "Long Title",
+            "--description",
+            "description1",
+        ],
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "OK" in result.output
+
+    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "tag1"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "edit", "-d", "description2", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: description" in result.output
+
+    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "tag2"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "edit", "-d", "description3", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: description" in result.output
+
+    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "tag3"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description3" in result.output
+    assert "description2" not in result.output
+    assert "description1" not in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "--tag", "tag3", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description3" in result.output
+    assert "description2" not in result.output
+    assert "description1" not in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "--tag", "tag2", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description2" in result.output
+    assert "description3" not in result.output
+    assert "description1" not in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "--tag", "tag1", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description1" in result.output
+    assert "description2" not in result.output
+    assert "description3" not in result.output
+
+
 def test_datasets_create_different_names(runner, client):
     """Test creating datasets with same title but different name."""
     result = runner.invoke(cli, ["dataset", "create", "dataset-1", "--title", "title"])
