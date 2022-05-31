@@ -22,11 +22,13 @@ hookspec = pluggy.HookspecMarker("renku")
 
 
 @hookspec
-def process_run_annotations(run):
-    """Plugin Hook to add ``Annotation`` entry list to a ``Activity``.
+def plan_annotations(plan):
+    """Plugin Hook to add ``Annotation`` entry list to a ``Plan``.
+
+    Run when a Plan is created by ``renku run``.
 
     Args:
-        run: A ``Activity`` object to get annotations for.
+        plan: A ``Plan`` object to get annotations for.
 
     Returns:
         A list of ``renku.domain_model.provenance.annotation.Annotation``
@@ -40,23 +42,10 @@ def process_run_annotations(run):
 def activity_annotations(activity):
     """Plugin Hook to add ``Annotation`` entry list to a ``Activity``.
 
+    Run when creating an activity from a ``renku run``.
+
     Args:
         activity: An ``Activity`` object to get annotations for.
-
-    Returns:
-        A list of ``renku.domain_model.provenance.annotation.Annotation``
-        objects.
-
-    """
-    pass
-
-
-@hookspec
-def cmdline_tool_annotations(tool):
-    """Plugin Hook to add ``Annotation`` entry list to a ``WorkflowTool``.
-
-    Args:
-        tool:
 
     Returns:
         A list of ``renku.domain_model.provenance.annotation.Annotation``
