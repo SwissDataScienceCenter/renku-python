@@ -537,14 +537,8 @@ def import_dataset(
 
         sources = []
 
-        if record.datadir_exists:
-            sources = [f"{provider_dataset.data_dir}/*"]
-
         for file in files:
-            try:
-                Path(file.path).relative_to(provider_dataset.data_dir)
-            except ValueError:  # Files that are not in dataset's data directory
-                sources.append(file.path)
+            sources.append(file.path)
 
         new_dataset = add_data_to_dataset(
             urls=[record.project_url],

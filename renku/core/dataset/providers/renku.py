@@ -341,11 +341,6 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
         """Get URI of the latest version."""
         return self._latest_version_uri
 
-    @property
-    def datadir_exists(self):
-        """Whether the dataset data directory exists (might be missing in git if empty)."""
-        return (self._remote_client.path / self._dataset.data_dir).exists()
-
     @inject.autoparams()
     def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
