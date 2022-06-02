@@ -18,7 +18,7 @@
 """Manage interactive sessions.
 
 Interactive sessions can be started via the command line interface with different
-providers. Currently two providers are supported: ``docker`` and ``notebook_service``.
+providers. Currently two providers are supported: ``docker`` and ``renkulab``.
 
 Docker provider
 ~~~~~~~~~~~~~~~
@@ -40,16 +40,16 @@ a session there, or in the case where they simply have no accesss to a Renku dep
 
     $ renku session start -p docker
 
-Notebook_service provider
+Renkulab provider
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``notebook_service`` provider will launch a regular interactive session
+The ``renkulab`` provider will launch a regular interactive session
 in the Renku deployment that hosts the current project. If the project has not
 been uploaded/created in a Renku deployment then this provider will not be able
 to launch a session. This provider is identical to going through the Renku website
 and launching a session "manually" by selecting the project, commit, branch, etc.
 
-Please note that there are a few limitations with the ``notebook_service`` provider:
+Please note that there are a few limitations with the ``renkulab`` provider:
 
 * If the user is not logged in (using the ``renku login`` command) then sessions
 can only be launched if the specific Renku deployment supports anonymous sessions.
@@ -69,7 +69,7 @@ only if the changes are committed and pushed.
 
 .. code-block:: console
 
-    $ renku session start -p notebook_service
+    $ renku session start -p renkulab
 
 Managing active sessions
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -79,7 +79,7 @@ In order to see active sessions (from any provider) run the following command:
 
 .. code-block:: console
 
-    $ renku session start -p notebook_service
+    $ renku session start -p renkulab
     ID                   STATUS    URL
     -------------------  --------  -------------------------------------------------
     renku-test-e4fe76cc  running   https://dev.renku.ch/sessions/renku-test-e4fe76cc

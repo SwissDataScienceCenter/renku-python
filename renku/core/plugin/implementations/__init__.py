@@ -20,7 +20,7 @@
 from typing import TYPE_CHECKING, List, Type
 
 from renku.core.session.docker import DockerSessionProvider
-from renku.core.session.notebook_service import NotebookServiceSessionProvider
+from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.workflow.converters.cwl import CWLExporter
 from renku.core.workflow.providers.cwltool import CWLToolProvider
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 __all__: List[str] = []
 
-session_providers: "List[Type[ISessionProvider]]" = [DockerSessionProvider, NotebookServiceSessionProvider]
+session_providers: "List[Type[ISessionProvider]]" = [DockerSessionProvider, RenkulabSessionProvider]
 workflow_exporters: "List[Type[IWorkflowConverter]]" = [CWLExporter]
 workflow_providers: "List[Type[IWorkflowProvider]]" = [CWLToolProvider]
 

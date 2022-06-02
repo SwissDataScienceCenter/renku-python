@@ -79,7 +79,7 @@ def _get_anonymous_credentials(client: LocalClient, renku_url: str) -> str:
     return anon_token
 
 
-class NotebookServiceSessionProvider(ISessionProvider):
+class RenkulabSessionProvider(ISessionProvider):
     """A session provider that uses the notebook service API to launch sessions."""
 
     DEFAULT_TIMEOUT_SECONDS = 300
@@ -171,7 +171,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
                 if res.json().get("status", {}).get("state") == status:
                     return
             sleep(5)
-        raise errors.NotebookServiceSessionError(f"Waiting for the session {name} to reach status {status} timed out.")
+        raise errors.RenkulabSessionError(f"Waiting for the session {name} to reach status {status} timed out.")
 
     def _wait_for_image(
         self,
@@ -187,7 +187,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
             if self.find_image(image_name, config):
                 return
             sleep(5)
-        raise errors.NotebookServiceSessionError(
+        raise errors.RenkulabSessionError(
             f"Waiting for the image {image_name} to be built timed out."
             "Are you sure that the image was successfully built? This could be the result "
             "of problems with your Dockerfile."
@@ -250,7 +250,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
         Returns:
             a tuple of ``self`` and provider name.
         """
-        return (self, "notebook_service")
+        return (self, "renkulab")
 
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
@@ -335,7 +335,7 @@ class NotebookServiceSessionProvider(ISessionProvider):
             session_name = res.json()["name"]
             self._wait_for_session_status(session_name, "running")
             return session_name
-        raise errors.NotebookServiceSessionError("Cannot start session via the notebook service because " + res.text)
+        raise errors.RenkulabSessionError("Cannot start session via the notebook service because " + res.text)
 
     def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
         """Stops all sessions (for the given project) or a specific interactive session."""
@@ -360,13 +360,14 @@ class NotebookServiceSessionProvider(ISessionProvider):
 
     def session_url(self, session_name: str) -> Optional[str]:
         """Get the URL of the interactive session."""
-        res = self._send_renku_request(
-            "get", f"{self._notebooks_url()}/servers/{session_name}", headers=self._auth_header()
+        project_name_parts = self._get_renku_project_name_parts()
+        return urllib.parse.urljoin(
+            self._renku_url(),
+            "/".join(
+                "projects",
+                project_name_parts["namespace"],
+                project_name_parts["project"],
+                "sessions/show",
+                session_name,
+            ),
         )
-        if res.status_code == 200:
-            if res.json().get("status", {}).get("state") != "running":
-                raise errors.NotebookSessionNotReadyError(
-                    f"The session {session_name} cannot be accessed now because it is not ready."
-                )
-            return res.json().get("url")
-        return None

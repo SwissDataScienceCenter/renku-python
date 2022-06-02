@@ -24,7 +24,7 @@ import pytest
 from renku.core.errors import ParameterError
 from renku.core.plugin.session import supported_session_providers
 from renku.core.session.docker import DockerSessionProvider
-from renku.core.session.notebook_service import NotebookServiceSessionProvider
+from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.session.session import session_list, session_start, session_stop
 
 
@@ -70,7 +70,7 @@ def fake_pre_start_checks(self):
     "provider_name,session_provider,provider_patches",
     [
         ("docker", DockerSessionProvider, {}),
-        ("notebook_service", NotebookServiceSessionProvider, {}),
+        ("renkulab", RenkulabSessionProvider, {}),
     ],
 )
 @pytest.mark.parametrize(
@@ -114,7 +114,7 @@ def test_session_start(
     "provider_name,session_provider,provider_patches",
     [
         ("docker", DockerSessionProvider, {}),
-        ("notebook_service", NotebookServiceSessionProvider, {}),
+        ("renkulab", RenkulabSessionProvider, {}),
     ],
 )
 @pytest.mark.parametrize(
@@ -151,7 +151,7 @@ def test_session_stop(
     "provider_name,session_provider,provider_patches",
     [
         ("docker", DockerSessionProvider, {}),
-        ("notebook_service", NotebookServiceSessionProvider, {}),
+        ("renkulab", RenkulabSessionProvider, {}),
     ],
 )
 @pytest.mark.parametrize("provider_exists,result", [(True, ["0xdeadbeef"]), (False, ParameterError)])
