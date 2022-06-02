@@ -53,14 +53,17 @@ Please note that there are a few limitations with the ``renkulab`` provider:
 
 * If the user is not logged in (using the ``renku login`` command) then sessions
 can only be launched if the specific Renku deployment supports anonymous sessions.
+
 * When launching anonymous sessions local changes cannot be reflected in them and
 changes made inside the session cannot be saved nor downloaded locally. This feature
 should be used only for ad-hoc exploration or work that can be discarded when
 the session is closed. The CLI will print a warning every time an anonymous session
 is launched.
+
 * Changes made inside the interactive session are not immediately reflected locally,
 users should ``git pull`` any changes made inside an interactive session to get the
 same changes locally.
+
 * Local changes can only be reflected in the interactive session if they are committed
 and pushed to the git repository. When launching a session and uncommitted or unpushed
 changes are present, the user will be prompted to confirm whether Renku should

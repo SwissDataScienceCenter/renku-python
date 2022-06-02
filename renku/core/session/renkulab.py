@@ -358,7 +358,7 @@ class RenkulabSessionProvider(ISessionProvider):
             self._wait_for_session_status(session_name, "stopping")
         return all([response.status_code == 204 for response in responses])
 
-    def session_url(self, session_name: str) -> Optional[str]:
+    def session_url(self, session_name: str) -> str:
         """Get the URL of the interactive session."""
         if self._is_user_registered():
             project_name_parts = self._get_renku_project_name_parts()
@@ -375,8 +375,5 @@ class RenkulabSessionProvider(ISessionProvider):
             # with the anonymous user ID, but in this case we need to open a new browser window
             # and need to pass the token in the URL, that is why anonymous sessions will be shown
             # and openeed in the full session view not in the i-frame view like registered sessions
-            session_url_parts = [
-                "sessions",
-                f"{session_name}?token={self._token()}"
-            ]
+            session_url_parts = ["sessions", f"{session_name}?token={self._token()}"]
             return urllib.parse.urljoin(self._renku_url(), "/".join(session_url_parts))
