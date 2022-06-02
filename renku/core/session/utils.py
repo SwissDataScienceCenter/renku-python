@@ -33,7 +33,7 @@ def get_renku_project_name(client_dispatcher: IClientDispatcher) -> str:
         f"{client.remote['owner']}/{client.remote['name']}" if client.remote["name"] else f"{client.path.name}"
     )
     if get_remote(client.repository, name="renku-backup-origin") and project_name.startswith("repos/"):
-        project_name = project_name.lstrip("repos/")
+        project_name = project_name.replace("repos/", "")
     return project_name
 
 
