@@ -137,7 +137,7 @@ class RenkulabSessionProvider(ISessionProvider):
             if get_remote(client.repository, name="renku-backup-origin") and client.remote["owner"].startswith(
                 "repos/"
             ):
-                owner = client.remote["owner"].lstrip("repos/")
+                owner = client.remote["owner"].replace("repos/", "", 1)
             else:
                 owner = client.remote["owner"]
             return {
