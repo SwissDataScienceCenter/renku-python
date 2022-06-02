@@ -400,7 +400,7 @@ class FieldValue(NamedTuple):
 
 
 def get_activities(plan_id: str = None) -> List[Activity]:
-    """Return list of activities from a given ``plan_id``."""
+    """Return list of activities that use a plan or one of its predecessor plans."""
     activity_gateway = get_activity_gateway()
     plan_gateway = get_plan_gateway()
     if not activity_gateway or not plan_gateway:

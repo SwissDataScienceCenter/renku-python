@@ -20,6 +20,7 @@
 import os
 
 from renku.ui.api import Activity, CompositePlan, Input, Output, Parameter, Plan
+from renku.ui.api.util import get_plan_gateway
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -166,3 +167,26 @@ def test_get_plan_activities(client_with_runs):
     activity = plan.activities[0]
 
     assert isinstance(activity, Activity)
+
+
+def test_get_latest_version(client_with_runs):
+    """Test getting the latest version of a plan."""
+    plan_gateway = get_plan_gateway()
+    plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
+    newer_plan = plan.derive()
+    newer_plan.name = "newer-plan-1"
+    plan_gateway.add(newer_plan)
+    plan_gateway.database_dispatcher.current_database.commit()
+
+    plan = next(p for p in Plan.list() if p.name == "plan-1")
+
+    latest_version = plan.get_latest_version()
+
+    assert plan.id != latest_version.id
+    assert newer_plan.id == latest_version.id
+
+    plan = next(p for p in Plan.list() if p.name == "plan-2")
+
+    latest_version = plan.get_latest_version()
+
+    assert plan is latest_version

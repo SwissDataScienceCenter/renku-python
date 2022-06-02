@@ -32,7 +32,7 @@ list of all active plans/composite-plans in a project:
 """
 
 from datetime import datetime
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type, Union, cast
 
 from renku.core import errors
 from renku.domain_model.workflow import composite_plan as core_composite_plan
@@ -46,11 +46,12 @@ class Plan:
 
     def __init__(
         self,
+        *,
         command: str,
         date_created: Optional[datetime] = None,
         deleted: bool = False,
         description: Optional[str] = None,
-        id: str = None,
+        id: str,
         inputs: List[Input] = None,
         keywords: Optional[List[str]] = None,
         name: Optional[str] = None,
@@ -62,7 +63,7 @@ class Plan:
         self.date_created: Optional[datetime] = date_created
         self.deleted: bool = deleted
         self.description: Optional[str] = description
-        self.id: Optional[str] = id
+        self.id: str = id
         self.inputs: List[Input] = inputs or []
         self.keywords: List[str] = keywords or []
         self.name: Optional[str] = name
@@ -104,7 +105,7 @@ class Plan:
         Returns:
             A list of all plans in the supplied project.
         """
-        return _list_plans(include_deleted=include_deleted, type=core_plan.Plan)
+        return _convert_plans(_list_plans(include_deleted=include_deleted, type=core_plan.Plan))
 
     def __repr__(self):
         return f"<Plan '{self.name}'>"
@@ -116,16 +117,21 @@ class Plan:
 
         return get_activities(plan_id=self.id)
 
+    def get_latest_version(self) -> "Plan":
+        """Return the latest version (derivative) of this plan."""
+        return cast(Plan, _get_latest_version(plan_id=self.id, type=core_plan.Plan)) or self
+
 
 class CompositePlan:
     """API CompositePlan."""
 
     def __init__(
         self,
+        *,
         date_created: Optional[datetime] = None,
         deleted: bool = False,
         description: Optional[str] = None,
-        id: str = None,
+        id: str,
         keywords: Optional[List[str]] = None,
         links: List[Link] = None,
         mappings: List[Mapping] = None,
@@ -135,7 +141,7 @@ class CompositePlan:
         self.date_created: Optional[datetime] = date_created
         self.deleted: bool = deleted
         self.description: Optional[str] = description
-        self.id: Optional[str] = id
+        self.id: str = id
         self.keywords: List[str] = keywords or []
         self.links: List[Link] = links or []
         self.mappings: List[Mapping] = mappings or []
@@ -174,7 +180,7 @@ class CompositePlan:
         Returns:
             A list of all plans in the supplied project.
         """
-        return _list_plans(include_deleted=include_deleted, type=core_composite_plan.CompositePlan)
+        return _convert_plans(_list_plans(include_deleted=include_deleted, type=core_composite_plan.CompositePlan))
 
     def __repr__(self):
         return f"<CompositePlan '{self.name}'>"
@@ -186,24 +192,29 @@ class CompositePlan:
 
         return get_activities(plan_id=self.id)
 
+    def get_latest_version(self) -> "CompositePlan":
+        """Return the latest version (derivative) of this plan."""
+        return cast(CompositePlan, _get_latest_version(plan_id=self.id, type=core_composite_plan.CompositePlan)) or self
+
+
+def _convert_plan(plan) -> Union[Plan, CompositePlan]:
+    """Convert a core Plans/CompositePlans to API Plans/CompositePlans."""
+    if isinstance(plan, core_plan.Plan):
+        return Plan.from_plan(plan)
+    elif isinstance(plan, core_composite_plan.CompositePlan):
+        return CompositePlan.from_composite_plan(plan)
+
+    raise errors.ParameterError(f"Invalid plan type: {type(plan)}")
+
 
 def _convert_plans(plans: List[Union[core_plan.AbstractPlan]]) -> List[Union[Plan, CompositePlan]]:
     """Convert a list of core Plans/CompositePlans to API Plans/CompositePlans."""
-
-    def convert_plan(plan):
-        if isinstance(plan, core_plan.Plan):
-            return Plan.from_plan(plan)
-        elif isinstance(plan, core_composite_plan.CompositePlan):
-            return CompositePlan.from_composite_plan(plan)
-
-        raise errors.ParameterError(f"Invalid plan type: {type(plan)}")
-
-    return [convert_plan(p) for p in plans]
+    return [_convert_plan(p) for p in plans]
 
 
 def _list_plans(
     include_deleted: bool, type: Type[Union[core_plan.Plan, core_composite_plan.CompositePlan]]
-) -> List[Union[Plan, CompositePlan]]:
+) -> List[core_plan.AbstractPlan]:
     """List all plans in a project.
 
     Args:
@@ -221,6 +232,19 @@ def _list_plans(
     if not include_deleted:
         plans = [p for p in plans if p.invalidated_at is None]
 
-    plans = [p for p in plans if isinstance(p, type)]
+    return [p for p in plans if isinstance(p, type)]
 
-    return _convert_plans(plans)
+
+def _get_latest_version(
+    plan_id: str, type: Type[Union[core_plan.Plan, core_composite_plan.CompositePlan]]
+) -> Optional[Union[Plan, CompositePlan]]:
+    """Get the latest version (derivative) of a plan or None if the plan is already the latest version."""
+    all_plans = _list_plans(include_deleted=False, type=type)
+    derivatives_mapping = {p.derived_from: p for p in all_plans if p.derived_from is not None}
+
+    plan = None
+    while plan_id in derivatives_mapping:
+        plan = derivatives_mapping[plan_id]
+        plan_id = plan.id
+
+    return _convert_plan(plan) if plan is not None else None
