@@ -269,7 +269,7 @@ class RenkulabSessionProvider(ISessionProvider):
                 Session(
                     session["name"],
                     session.get("status", {}).get("state", "unknown"),
-                    session["url"],
+                    self.session_url(session["name"]),
                 )
                 for session in sessions_res.json().get("servers", {}).values()
             ]
@@ -360,14 +360,23 @@ class RenkulabSessionProvider(ISessionProvider):
 
     def session_url(self, session_name: str) -> Optional[str]:
         """Get the URL of the interactive session."""
-        project_name_parts = self._get_renku_project_name_parts()
-        return urllib.parse.urljoin(
-            self._renku_url(),
-            "/".join(
+        if self._is_user_registered():
+            project_name_parts = self._get_renku_project_name_parts()
+            session_url_parts = [
                 "projects",
                 project_name_parts["namespace"],
                 project_name_parts["project"],
                 "sessions/show",
                 session_name,
-            ),
-        )
+            ]
+            return urllib.parse.urljoin(self._renku_url(), "/".join(session_url_parts))
+        else:
+            # NOTE: The sessions/show logic of the UI expects a cookie to already be present
+            # with the anonymous user ID, but in this case we need to open a new browser window
+            # and need to pass the token in the URL, that is why anonymous sessions will be shown
+            # and openeed in the full session view not in the i-frame view like registered sessions
+            session_url_parts = [
+                "sessions",
+                f"{session_name}?token={self._token()}"
+            ]
+            return urllib.parse.urljoin(self._renku_url(), "/".join(session_url_parts))
