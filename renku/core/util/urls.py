@@ -72,7 +72,7 @@ def get_path(url: str) -> str:
     return urllib.parse.urlparse(url).path
 
 
-@inject.autoparams()
+@inject.autoparams("client_dispatcher")
 def parse_authentication_endpoint(
     client_dispatcher: IClientDispatcher, endpoint: Optional[str] = None, use_remote: bool = False
 ):
