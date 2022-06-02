@@ -231,7 +231,8 @@ class _OLOSDeposition:
 
         return response
 
-    def _make_url(self, server_url, api_path, **query_params):
+    @staticmethod
+    def _make_url(server_url, api_path, **query_params):
         """Create URL for creating a dataset."""
         url_parts = urlparse.urlparse(server_url)
 
@@ -259,15 +260,17 @@ class _OLOSDeposition:
 
     @staticmethod
     def _check_response(response):
+        from renku.core.util import requests
+
         if len(response.history) > 0:
             raise errors.ExportError(
                 f"Couldn't execute request to {response.request.url}, got redirected to {response.url}."
                 "Maybe you mixed up http and https in the server url?"
             )
 
-        if response.status_code not in [200, 201, 202]:
-            if response.status_code == 401:
-                raise errors.AuthenticationError("Access unauthorized - update access token.")
+        try:
+            requests.check_response(response=response)
+        except errors.RequestError:
             json_res = response.json()
             raise errors.ExportError(
                 "HTTP {} - Cannot export dataset: {}".format(

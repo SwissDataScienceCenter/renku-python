@@ -133,6 +133,8 @@ Showing dataset details:
     Description:
     Just some dataset
 
+You can also show details for a specific tag using the ``--tag`` option.
+
 Deleting a dataset:
 
 .. code-block:: console
@@ -681,13 +683,14 @@ def edit(name, title, description, creators, metadata, keyword):
 
 
 @dataset.command("show")
+@click.option("-t", "--tag", default=None, type=click.STRING, help="Tag for which to show dataset metadata.")
 @click.argument("name", shell_complete=_complete_datasets)
-def show(name):
+def show(tag, name):
     """Show metadata of a dataset."""
     from renku.command.dataset import show_dataset_command
     from renku.ui.cli.utils.terminal import print_markdown
 
-    result = show_dataset_command().build().execute(name=name)
+    result = show_dataset_command().build().execute(name=name, tag=tag)
     ds = result.output
 
     click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(ds["name"], bold=True))
