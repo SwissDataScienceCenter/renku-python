@@ -17,7 +17,10 @@
 # limitations under the License.
 """Template use cases."""
 
-from typing import Dict, List, NamedTuple, Optional, Tuple
+import os
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import click
 
@@ -29,6 +32,7 @@ from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management.migrate import is_renku_project
 from renku.core.template.template import (
     FileAction,
+    RepositoryTemplates,
     TemplateAction,
     copy_template_to_client,
     fetch_templates_source,
@@ -38,6 +42,7 @@ from renku.core.template.template import (
 from renku.core.util import communication
 from renku.domain_model.tabulate import tabulate
 from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplatesSource
+from renku.infrastructure.repository import Repository
 
 
 def list_templates(source, reference) -> List[TemplateViewModel]:
@@ -242,3 +247,38 @@ def select_template(templates_source: TemplatesSource, id=None) -> Optional[Temp
         return templates_source.templates[0]
 
     return prompt_to_select_template()
+
+
+def validate_templates(reference: Optional[str] = None) -> Dict[str, Union[str, Dict[str, List[str]]]]:
+    """Validate a template repository."""
+
+    path = Path(os.getcwd())
+    repo = Repository(path=path)
+
+    if reference is not None:
+        path = Path(tempfile.mkdtemp())
+        repo.create_worktree(path, reference=reference)
+        repo = Repository(path=path)
+
+    version = repo.head.commit.hexsha
+
+    result: Dict[str, Any] = {"manifest": None, "templates": {}, "warnings": [], "valid": True}
+
+    try:
+        template_source = RepositoryTemplates(
+            path=path, source=path, reference="", version=version, repository=repo, skip_validation=True
+        )
+        result["warnings"] = template_source.manifest.validate(manifest_only=True)
+    except errors.InvalidTemplateError as e:
+        result["manifest"] = e.args[0] if e.args else str(e)
+        result["valid"] = False
+        return result
+
+    for template in template_source.manifest.templates:
+        template.templates_source = template_source
+        issues = template.validate(skip_files=False, raise_errors=False)
+        if issues:
+            result["templates"][template.id] = issues
+            result["valid"] = False
+
+    return result

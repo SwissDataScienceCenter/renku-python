@@ -114,6 +114,7 @@ list of files that will be updated.
 """
 
 import functools
+import json
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import click
@@ -236,6 +237,41 @@ def update_template(force, interactive, dry_run):
         click.secho("Template is up-to-date", fg="green")
     elif dry_run:
         _print_template_change(result.output)
+
+
+@template.command("validate")
+@click.pass_context
+@click.option("json_format", "--json", is_flag=True, help="Return result as JSON.")
+@click.option(
+    "--revision",
+    type=click.STRING,
+    help="Git revision/branch/tag to validate the template at.",
+)
+def validate_template(ctx, json_format, revision):
+    """Validate a template repository and check for common issues."""
+    from renku.command.template import validate_templates_command
+
+    result = validate_templates_command().build().execute(reference=revision).output
+
+    if json_format:
+        click.echo(json.dumps(result))
+    else:
+        if result["warnings"]:
+            click.echo("Manifest Errors:\n")
+            for warning in result["warnings"]:
+                click.echo(f"\t{warning}\n")
+        if result["manifest"]:
+            click.echo(f"Manifest Errors:\n\t{result['manifest']}\n")
+        if result["templates"]:
+            click.echo("Template Errors:\n")
+
+            for template_id, messages in result["templates"].items():
+                click.echo(f"\t{template_id}:\n")
+
+                for message in messages:
+                    click.echo(f"\t\t{message}\n")
+    if not result["valid"]:
+        ctx.exit(1)
 
 
 def _print_template(template: "TemplateViewModel"):

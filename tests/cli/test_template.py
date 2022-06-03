@@ -19,12 +19,15 @@
 
 import re
 import sys
+from pathlib import Path
 
 import pytest
 from packaging.version import Version
 
 from renku.core.util.contexts import chdir
+from renku.core.util.yaml import write_yaml
 from renku.domain_model.template import TemplateMetadata, TemplateParameter
+from renku.infrastructure.repository import Actor, Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
@@ -337,3 +340,91 @@ def test_template_set_with_parameters(
         template_metadata = TemplateMetadata.from_client(client=client_with_template)
         assert "new-parameter" in template_metadata.metadata
         assert "param-value" == template_metadata.metadata["new-parameter"]
+
+
+def test_template_validate(runner, tmpdir_factory):
+    """Test template validate command."""
+
+    path = Path(tmpdir_factory.mktemp("valid"))
+    valid_repo = Repository().initialize(path)
+
+    readme_path = path / "README.md"
+    readme_path.write_text("The readme")
+    valid_repo.add(readme_path)
+    valid_repo.commit("initial commit", author=Actor("me", "me@example.com"))
+
+    with chdir(path):
+        result = runner.invoke(cli, ["template", "validate"])
+        assert 1 == result.exit_code, format_result_exception(result)
+        assert "There is no manifest file" in result.output
+
+    manifest = path / "manifest.yaml"
+    write_yaml(
+        manifest,
+        [
+            {
+                "folder": "test",
+                "name": "test",
+                "description": "description",
+                "variables": {"some_string": {"description": "somestr desc", "type": "string"}},
+            }
+        ],
+    )
+
+    valid_repo.add(manifest)
+    valid_repo.commit("add manifest", author=Actor("me", "me@example.com"))
+
+    with chdir(path):
+        result = runner.invoke(cli, ["template", "validate"])
+        assert 1 == result.exit_code, format_result_exception(result)
+        assert "Template directory for 'test' does not exists" in result.output
+
+    template_dir = path / "test"
+    template_dir.mkdir()
+
+    renku_dir = template_dir / ".renku"
+    renku_dir.mkdir()
+    renku_ini = template_dir / ".renku" / "renku.ini"
+    renku_ini.write_text("a")
+
+    valid_repo.add(renku_ini)
+    valid_repo.commit("add renku.ini", author=Actor("me", "me@example.com"))
+
+    with chdir(path):
+        result = runner.invoke(cli, ["template", "validate"])
+        assert 1 == result.exit_code, format_result_exception(result)
+        assert "File 'Dockerfile' is required for template 'test'" in result.output
+
+    dockerfile = template_dir / "Dockerfile"
+    dockerfile.write_text("a")
+
+    valid_repo.add(renku_ini, dockerfile)
+    valid_commit = valid_repo.commit("add dockerfile", author=Actor("me", "me@example.com"))
+
+    with chdir(path):
+        result = runner.invoke(cli, ["template", "validate"])
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "" == result.output
+
+    metadata_folder = renku_dir / "metadata"
+    metadata_folder.mkdir()
+
+    project_file = metadata_folder / "project"
+    project_file.write_text("test")
+
+    valid_repo.add(renku_ini, project_file)
+    valid_repo.commit("add prohibited file", author=Actor("me", "me@example.com"))
+
+    with chdir(path):
+        result = runner.invoke(cli, ["template", "validate"])
+        assert 1 == result.exit_code, format_result_exception(result)
+        assert "Template 'test' can't contain path '.renku/metadata'" in result.output
+
+    with chdir(path):
+        result = runner.invoke(cli, ["template", "validate", "--revision", valid_commit.hexsha])
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "" == result.output
+
+        result = runner.invoke(cli, ["template", "validate", "--json", "--revision", valid_commit.hexsha])
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert '"valid": true' in result.output

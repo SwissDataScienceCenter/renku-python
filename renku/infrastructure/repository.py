@@ -323,16 +323,37 @@ class BaseRepository:
         return self.run_git_command("status")
 
     def create_worktree(
-        self, path: Path, reference: Union["Branch", "Commit", "Reference", str], checkout: bool = True
+        self,
+        path: Path,
+        reference: Optional[Union["Branch", "Commit", "Reference", str]],
+        branch: Optional[str] = None,
+        checkout: bool = True,
+        detach: bool = False,
     ):
         """Create a git worktree.
 
         Args:
             path(Path): Target folder.
             reference(Union[Branch, Commit, Reference, str]): the reference to base the tree on.
-            checkout(bool): Whether to perform a checkout of the reference (Default value = False).
+            checkout(bool, optional): Whether to perform a checkout of the reference (Default value = False).
+            detach(bool, optional): Whether to detach HEAD in worktree (Default value = False).
         """
-        self.run_git_command("worktree", "add", path, reference, checkout=checkout)
+        args = ["add"]
+
+        # NOTE: pass args as string to ensure correct order
+        if checkout:
+            args.append("--checkout")
+        if detach:
+            args.append("--detach")
+
+        if branch:
+            args.extend(["-b", branch])
+
+        args.append(str(path))
+
+        if reference:
+            args.append(str(reference))
+        self.run_git_command("worktree", *args)
 
     def remove_worktree(self, path: Path):
         """Create a git worktree.
