@@ -29,7 +29,8 @@ from tests.utils import format_result_exception
 
 def test_login(runner, client_with_remote, mock_login, client_database_injection_manager):
     """Test login command."""
-    remote_url = client_with_remote.repository.remotes[0].url
+    remote_url = f"https://{ENDPOINT}/gitlab/namespace/project"
+    client_with_remote.repository.remotes[0].set_url(remote_url)
 
     result = runner.invoke(cli, ["login", "--git", ENDPOINT], input="y")
 
@@ -37,6 +38,7 @@ def test_login(runner, client_with_remote, mock_login, client_database_injection
 
     with client_database_injection_manager(client_with_remote):
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
+        assert ACCESS_TOKEN == read_renku_token("", get_endpoint_from_remote=True)
         credential = client_with_remote.repository.get_configuration().get_value("credential", "helper")
         assert f"!renku credentials --hostname {ENDPOINT}" == credential
         assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repository.remotes}

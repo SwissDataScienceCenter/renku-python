@@ -73,7 +73,7 @@ def get_path(url: str) -> str:
 
 
 @inject.autoparams()
-def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher, use_remote=False):
+def parse_authentication_endpoint(endpoint: str, client_dispatcher: IClientDispatcher, use_remote=False):
     """Return a parsed url.
 
     If an endpoint is provided then use it, otherwise, look for a configured endpoint. If no configured endpoint exists
