@@ -1369,6 +1369,12 @@ class Remote:
         """Change URL of a remote."""
         _run_git_command(self._repository, "remote", "set-url", self.name, url)
 
+    @property
+    def head(self) -> str:
+        """The head commit of the remote."""
+        self._remote.fetch()
+        return _run_git_command(self._repository, "rev-parse", f"{self._remote.name}/{self._repository.active_branch}")
+
 
 class RemoteManager:
     """Manage remotes of a Repository."""

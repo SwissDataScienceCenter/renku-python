@@ -593,6 +593,18 @@ class DockerError(RenkuException):
         super().__init__(f"Docker failed: {reason}")
 
 
+class RenkulabSessionError(RenkuException):
+    """Raised when an error occurs trying to start sessions with the notebook service."""
+
+
+class NotebookSessionNotReadyError(RenkuException):
+    """Raised when a user attempts to open a session that is not ready."""
+
+
+class NotebookSessionImageNotExistError(RenkuException):
+    """Raised when a user attempts to start a session with an image that does not exist."""
+
+
 class MetadataMergeError(RenkuException):
     """Raise when merging of metadata failed."""
 
