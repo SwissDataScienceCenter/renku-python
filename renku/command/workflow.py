@@ -131,9 +131,7 @@ def _remove_workflow(name: str, force: bool, plan_gateway: IPlanGateway):
         communication.confirm(prompt_text, abort=True, warning=True)
 
     plan = plan or workflows[name]
-    plan.unfreeze()
-    plan.invalidated_at = local_now()
-    plan.freeze()
+    plan.delete()
 
 
 def remove_workflow_command():
@@ -661,13 +659,15 @@ def _visualize_graph(
     client = client_dispatcher.current_client
 
     sources = sources or []
-    sources = get_relative_paths(base=client.path, paths=sources)
+    sources = get_relative_paths(base=client.path, paths=[Path.cwd() / p for p in sources])
 
     if not targets:
         usages = activity_gateway.get_all_usage_paths()
         generations = activity_gateway.get_all_generation_paths()
 
         targets = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
+    else:
+        targets = get_relative_paths(base=client.path, paths=[Path.cwd() / p for p in targets])
 
     activities = get_activities_until_paths(
         paths=targets,

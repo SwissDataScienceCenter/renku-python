@@ -733,16 +733,30 @@ def update_datasets(
     return imported_datasets_view_models, dataset_files_view_models
 
 
-def show_dataset(name):
+def show_dataset(name: str, tag: Optional[str] = None):
     """Show detailed dataset information.
 
     Args:
-        name: Name of dataset to show details for.
+        name(str): Name of dataset to show details for.
+        tag(str, optional): Tags for which to get the metadata (Default value = None).
 
     Returns:
         dict: JSON dictionary of dataset details.
     """
-    dataset = DatasetsProvenance().get_by_name(name)
+    datasets_provenance = DatasetsProvenance()
+    dataset = datasets_provenance.get_by_name(name, strict=True)
+
+    if tag is None:
+        return DatasetDetailsJson().dump(dataset)
+
+    tags = datasets_provenance.get_all_tags(dataset=cast(Dataset, dataset))
+
+    selected_tag = next((t for t in tags if t.name == tag), None)
+
+    if selected_tag is None:
+        raise errors.DatasetTagNotFound(tag)
+
+    dataset = datasets_provenance.get_by_id(selected_tag.dataset_id.value)
     return DatasetDetailsJson().dump(dataset)
 
 
@@ -1022,9 +1036,10 @@ def update_dataset_git_files(
             if url in visited_repos:
                 remote_repository, remote_client = visited_repos[url]
             else:
-                remote_repository = clone_repository(
-                    url=url, path=get_cache_directory_for_repository(client=client, url=url), checkout_revision=ref
-                )
+                with communication.busy(msg="Cloning remote repository..."):
+                    remote_repository = clone_repository(
+                        url=url, path=get_cache_directory_for_repository(client=client, url=url), checkout_revision=ref
+                    )
                 remote_client = LocalClient(path=remote_repository.path)
                 visited_repos[url] = remote_repository, remote_client
 

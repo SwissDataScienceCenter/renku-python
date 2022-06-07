@@ -28,11 +28,13 @@ from urllib.parse import urlparse
 import attr
 from tqdm import tqdm
 
+from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderRecordSerializerApi
 from renku.core.util.file_size import bytes_to_unit
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset
+
 
 ZENODO_BASE_URL = "https://zenodo.org"
 ZENODO_SANDBOX_URL = "https://sandbox.zenodo.org/"
@@ -211,7 +213,7 @@ class ZenodoRecordSerializer(ProviderRecordSerializerApi):
 
     @property
     def latest_uri(self):
-        """Get uri of latest version."""
+        """Get URI of latest version."""
         return self.links.get("latest_html")
 
     def is_last_version(self, uri):
@@ -358,7 +360,7 @@ class ZenodoDeposition:
         response = requests.post(
             url=self.new_deposit_url, params=self.exporter.default_params, json={}, headers=self.exporter.HEADERS
         )
-        requests.check_response(response)
+        self._check_response(response)
 
         return response
 
@@ -371,7 +373,7 @@ class ZenodoDeposition:
         response = requests.post(
             url=self.upload_file_url, params=self.exporter.default_params, data=request_payload, files=file
         )
-        requests.check_response(response)
+        self._check_response(response)
 
         return response
 
@@ -402,7 +404,7 @@ class ZenodoDeposition:
             data=json.dumps(request_payload),
             headers=self.exporter.HEADERS,
         )
-        requests.check_response(response)
+        self._check_response(response)
 
         return response
 
@@ -411,7 +413,7 @@ class ZenodoDeposition:
         from renku.core.util import requests
 
         response = requests.post(url=self.publish_url, params=self.exporter.default_params)
-        requests.check_response(response)
+        self._check_response(response)
 
         return response
 
@@ -419,6 +421,25 @@ class ZenodoDeposition:
         """Post-Init hook to set _id field."""
         response = self.new_deposition()
         self.id = response.json()["id"]
+
+    @staticmethod
+    def _check_response(response):
+        from renku.core.util import requests
+
+        try:
+            requests.check_response(response=response)
+        except errors.RequestError:
+            if response.status_code == 400:
+                err_response = response.json()
+                messages = [
+                    '"{0}" failed with "{1}"'.format(err["field"], err["message"]) for err in err_response["errors"]
+                ]
+
+                raise errors.ExportError(
+                    "\n" + "\n".join(messages) + "\nSee `renku dataset edit -h` for details on how to edit" " metadata"
+                )
+            else:
+                raise errors.ExportError(response.content)
 
 
 @attr.s
@@ -448,7 +469,7 @@ class ZenodoExporter(ExporterApi):
 
     @property
     def default_params(self):
-        """Create request default params."""
+        """Create request default parameters."""
         return {"access_token": self.access_token}
 
     def dataset_to_request(self):
@@ -484,13 +505,13 @@ class ZenodoExporter(ExporterApi):
 
 @attr.s
 class ZenodoProvider(ProviderApi):
-    """zenodo.org registry API provider."""
+    """Zenodo registry API provider."""
 
     is_doi = attr.ib(default=False)
 
     @staticmethod
     def supports(uri):
-        """Whether or not this provider supports a given uri."""
+        """Whether or not this provider supports a given URI."""
         if "zenodo" in uri.lower():
             return True
 
@@ -508,7 +529,7 @@ class ZenodoProvider(ProviderApi):
 
     @staticmethod
     def record_id(uri):
-        """Extract record id from uri."""
+        """Extract record id from URI."""
         return urlparse(uri).path.split("/")[-1]
 
     def find_record(self, uri, client=None, **kwargs) -> ZenodoRecordSerializer:
@@ -519,7 +540,7 @@ class ZenodoProvider(ProviderApi):
             client: The ``LocalClient`` (Default value = None).
 
         Returns:
-            ZenodoRecord: Record found.
+            ZenodoRecordSerializer: Record found.
 
         """
         if self.is_doi:
@@ -536,7 +557,7 @@ class ZenodoProvider(ProviderApi):
 
     @staticmethod
     def _get_record(uri):
-        """Retrieve record metadata and return ``ZenodoRecord``."""
+        """Retrieve record metadata and return ``ZenodoRecordSerializer``."""
         response = _make_request(uri)
 
         return ZenodoRecordSerializer(**response.json(), uri=uri)

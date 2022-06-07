@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helpers utils for interacting with remote source code management tools."""
+"""Helper utilities for interacting with remote source code management tools."""
 
 from functools import reduce
 

@@ -17,9 +17,7 @@
 # limitations under the License.
 """Test utility functions."""
 import contextlib
-import json
 import os
-import re
 import traceback
 import uuid
 from contextlib import contextmanager
@@ -236,6 +234,16 @@ def write_and_commit_file(repository: Repository, path: Union[Path, str], conten
     repository.commit(f"Updated '{path.relative_to(repository.path)}'")
 
 
+def delete_and_commit_file(repository: Repository, path: Union[Path, str]):
+    """Delete a file and make a commit."""
+    path = repository.path / path
+
+    path.unlink()
+
+    repository.add(path)
+    repository.commit(f"Deleted '{path.relative_to(repository.path)}'")
+
+
 def create_dummy_activity(
     plan: Union[Plan, str],
     usages: List[Union[Path, str, Usage]] = [],
@@ -312,5 +320,4 @@ def assert_rpc_response(response, with_key="result"):
     """Check rpc result in response."""
     assert response and 200 == response.status_code
 
-    response_text = re.sub(r"http\S+", "", json.dumps(response.json))
-    assert with_key in response_text
+    assert with_key in response.json.keys()

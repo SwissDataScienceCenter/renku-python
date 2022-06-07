@@ -18,6 +18,149 @@
 Changes
 =======
 
+`1.3.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.3.0...v1.3.1>`__ (2022-05-23)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **ci:** pin poetry-dynamic-versioning to 0.17.1
+   (`#2920 <https://github.com/SwissDataScienceCenter/renku-python/issues/2920>`__)
+   (`239ef76 <https://github.com/SwissDataScienceCenter/renku-python/commit/239ef766c441ee534a850a965337d9a8126a1588>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** show spinner when cloning repo for dataset import/update
+   (`#2914 <https://github.com/SwissDataScienceCenter/renku-python/issues/2914>`__)
+   (`46508af <https://github.com/SwissDataScienceCenter/renku-python/commit/46508af8573dba967e8ac91420a69c2180d0d7c5>`__)
+
+`1.3.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.4...v1.3.0>`__ (2022-05-20)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** add git user configuration to local session
+   (`#2877 <https://github.com/SwissDataScienceCenter/renku-python/issues/2877>`__)
+   (`089488b <https://github.com/SwissDataScienceCenter/renku-python/commit/089488b1e9d63ee88e96248be6d910836dbd1437>`__)
+-  **service:** create dummy metadata.yml when creating a project for backwards compatibility
+   (`#2901 <https://github.com/SwissDataScienceCenter/renku-python/issues/2901>`__)
+   (`ddd757d <https://github.com/SwissDataScienceCenter/renku-python/commit/ddd757ddf3906985486cecc8790c8358487cb95c>`__)
+-  **service:** clean up old scheduled jobs
+   (`#2890 <https://github.com/SwissDataScienceCenter/renku-python/issues/2890>`__)
+   (`396651a <https://github.com/SwissDataScienceCenter/renku-python/commit/396651a1b40b8aadc384b1e58ec8bea95fc5a61d>`__)
+-  **service:** cleanup project when origin is out of sync
+   (`#2878 <https://github.com/SwissDataScienceCenter/renku-python/issues/2878>`__)
+   (`6f3387a <https://github.com/SwissDataScienceCenter/renku-python/commit/6f3387a8f14fd97707330efe7a97e865ca600cfa>`__),
+   closes
+   `#2826 <https://github.com/SwissDataScienceCenter/renku-python/issues/2826>`__
+
+Features
+~~~~~~~~
+
+-  **api:** add plan support in Renku API
+   (`#2909 <https://github.com/SwissDataScienceCenter/renku-python/issues/2909>`__)
+   (`e6cb2d3 <https://github.com/SwissDataScienceCenter/renku-python/commit/e6cb2d3303c2dee35e38d892d48b415bb247e190>`__)
+-  **api:** add project status support in Renku API
+   (`#2893 <https://github.com/SwissDataScienceCenter/renku-python/issues/2893>`__)
+   (`9d49de4 <https://github.com/SwissDataScienceCenter/renku-python/commit/9d49de4ea4161ed3553d58f688a813fac20c5683>`__)
+-  **cli:** add a custom git merge tool for renku metadata
+   (`#2867 <https://github.com/SwissDataScienceCenter/renku-python/issues/2867>`__)
+   (`2021e76 <https://github.com/SwissDataScienceCenter/renku-python/commit/2021e761624da3269cf2109940fc86fd109a2032>`__)
+-  **core:** add a minimum version check to support breaking forward
+   compatibility
+   (`#2840 <https://github.com/SwissDataScienceCenter/renku-python/issues/2840>`__)
+   (`42dc84c <https://github.com/SwissDataScienceCenter/renku-python/commit/42dc84c5d9fc325fefa8f9e993b20b5dd9e9c966>`__)
+
+`1.2.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.3...v1.2.4>`__ (2022-05-06)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix using float values in renku workflow iterate
+   (`#2875 <https://github.com/SwissDataScienceCenter/renku-python/issues/2875>`__)
+   (`07934a8 <https://github.com/SwissDataScienceCenter/renku-python/commit/07934a8df49a4b8a7a4c25eddaae93b97943ac59>`__)
+-  **service:** set oauth token when using gitlab APIs
+   (`#2884 <https://github.com/SwissDataScienceCenter/renku-python/issues/2884>`__)
+   (`11a69d7 <https://github.com/SwissDataScienceCenter/renku-python/commit/11a69d71fc08854a03bf3e524f0d68d3e86a5685>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** preserve staged files when editing renku config
+   (`#2871 <https://github.com/SwissDataScienceCenter/renku-python/issues/2871>`__)
+   (`3c3cc66 <https://github.com/SwissDataScienceCenter/renku-python/commit/3c3cc66a426c71d742d13b5fb394791d8425a5c6>`__)
+
+`1.2.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.2...v1.2.3>`__ (2022-04-29)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** inform user if a dataset wasn't found in dataset show
+   (`#2830 <https://github.com/SwissDataScienceCenter/renku-python/issues/2830>`__)
+   (`046a756 <https://github.com/SwissDataScienceCenter/renku-python/commit/046a7562bb885129058c1e523594785de804d2ca>`__)
+-  **core:** tests for renku session sub-commands
+   (`#2814 <https://github.com/SwissDataScienceCenter/renku-python/issues/2814>`__)
+   (`a1a07c7 <https://github.com/SwissDataScienceCenter/renku-python/commit/a1a07c766d674c53ecf37a4c3338133c86edbd06>`__)
+-  **dataset:** correct dataset image id after migration to v1.0.0
+   (`#2842 <https://github.com/SwissDataScienceCenter/renku-python/issues/2842>`__)
+   (`c2e08c8 <https://github.com/SwissDataScienceCenter/renku-python/commit/c2e08c8afeacf09bcd3f541ad7d48fb4ec72b929>`__)
+-  **service:** fix project_id not being auto-generated if missing in
+   request schema
+   (`#2828 <https://github.com/SwissDataScienceCenter/renku-python/issues/2828>`__)
+   (`ab46cd5 <https://github.com/SwissDataScienceCenter/renku-python/commit/ab46cd5672e96865997c0f53d8dc59e7cb0ccb09>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** added renku gc command for cleaning up renku cache
+   (`#2866 <https://github.com/SwissDataScienceCenter/renku-python/issues/2866>`__)
+   (`0d3c176 <https://github.com/SwissDataScienceCenter/renku-python/commit/0d3c17653e1f3f40313e5535823edd8a701240ad>`__)
+-  **core:** add support for template variables for workflow parameters
+   (`#2704 <https://github.com/SwissDataScienceCenter/renku-python/issues/2704>`__)
+   (`7e6e0da <https://github.com/SwissDataScienceCenter/renku-python/commit/7e6e0dac1c69ef00de7af1f13ea3de864bdfbfee>`__)
+-  **core** handle migration errors from the template
+   (`#2819 <https://github.com/SwissDataScienceCenter/renku-python/issues/2819>`__)
+   (`1ddc16e <https://github.com/SwissDataScienceCenter/renku-python/commit/1ddc16e677ed9a8526c3b5d36491a4718dad0ad6>`__),
+   closes
+   `#2769 <https://github.com/SwissDataScienceCenter/renku-python/issues/2769>`__
+-  **service:** restore optimized migration check
+   (`#2854 <https://github.com/SwissDataScienceCenter/renku-python/issues/2854>`__)
+   (`7e2a3d4 <https://github.com/SwissDataScienceCenter/renku-python/commit/7e2a3d4765f32cab3cc0c328b3525c98d4e96ea8>`__),
+   closes
+   `#2546 <https://github.com/SwissDataScienceCenter/renku-python/issues/2546>`__
+-  **service:** update template schema and errors
+   (`#2845 <https://github.com/SwissDataScienceCenter/renku-python/issues/2845>`__)
+   (`905d1ae <https://github.com/SwissDataScienceCenter/renku-python/commit/905d1aeba093d342b3a01c0ef4a54ef1b757ff6b>`__),
+   closes
+   `#2729 <https://github.com/SwissDataScienceCenter/renku-python/issues/2729>`__
+-  **workflow:** option to ignore deleted outputs in status/update
+   (`#2832 <https://github.com/SwissDataScienceCenter/renku-python/issues/2832>`__)
+   (`fe1c2c7 <https://github.com/SwissDataScienceCenter/renku-python/commit/fe1c2c70b0ef2facea83e1add21e39f03df9e569>`__)
+
+`1.2.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.1...v1.2.2>`__ (2022-04-13)
+-------------------------------------------------------------------------------------------------------
+
+This is a hotfix release.
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix SHACL shape to properly validate imported ``Dataset.datePublished`` for Zenodo
+
+`1.2.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.2.0...v1.2.1>`__ (2022-04-11)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix Plan.invalidated_at datetime not being timezone aware
+   (`#2823 <https://github.com/SwissDataScienceCenter/renku-python/issues/2823>`__)
+   (`df82f9f <https://github.com/SwissDataScienceCenter/renku-python/commit/df82f9fd8c481f6a6c177d1bdcd08484dbd46e79>`__)
+
 `1.2.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.1.4...v1.2.0>`__ (2022-04-08)
 -------------------------------------------------------------------------------------------------------
 

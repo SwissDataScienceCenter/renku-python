@@ -342,6 +342,46 @@ class UserOutdatedProjectError(ServiceError):
         super().__init__(exception=exception)
 
 
+class UserNewerRenkuProjectError(ServiceError):
+    """The target repository is valid but it needs a newer renku version than is currently deployed."""
+
+    code = SVC_ERROR_USER + 141
+    userMessage = (
+        "The target project requires renku version {minimum_version}, but this deployment is on "
+        "version {current_version}."
+    )
+    devMessage = "Update the deployed core-service version to support newer projects."
+
+    def __init__(self, exception=None, minimum_version=ERROR_NOT_AVAILABLE, current_version=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            devMessage=self.devMessage.format(minimum_version=minimum_version, current_version=current_version),
+            exception=exception,
+        )
+
+
+class UserProjectTemplateReferenceError(ServiceError):
+    """The project's template original reference cannot be found anymore.
+
+    The reference has probably been removed, either on purpose or as a side effect of a
+    forced push.
+    """
+
+    code = SVC_ERROR_USER + 141
+    userMessage = (
+        "The project's template original reference has been removed or overwritten."
+        " Manually changing it in a session may fix the problem."
+        " Further details: {message}."
+    )
+    devMessage = "Template reference is not available anymore. Details: {message}."
+
+    def __init__(self, exception):
+        super().__init__(
+            userMessage=self.userMessage.format(message=str(exception)),
+            devMessage=self.devMessage.format(message=str(exception)),
+            exception=exception,
+        )
+
+
 class ProgramInvalidGenericFieldsError(ServiceError):
     """One or more fields are unexpected.
 
@@ -588,7 +628,7 @@ class IntermittentAuthenticationError(ServiceError):
     This may happen for a number of reasons. Triggering a new login will likely fix it.
     """
 
-    code = SVC_ERROR_USER + 30
+    code = SVC_ERROR_INTERMITTENT + 30
     userMessage = "Invalid user credentials. Please try to log out and in again."
     devMessage = "Authentication error. Check the Sentry exception to inspect the headers"
 
@@ -668,6 +708,26 @@ class IntermittentDatasetExistsError(ServiceError):
         super().__init__(exception=exception)
 
 
+class IntermittentProjectTemplateUnavailable(ServiceError):
+    """The reference template for the project is currently unavailable.
+
+    It may be a temporary issue in accessing the remote template, or it may have been deleted,
+    moved, or otherwise not-accessible.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 140
+    userMessage = (
+        "The reference template for the project is currently unavailable."
+        " It may be a temporary problem, or the template may not be accessible anymore."
+    )
+    devMessage = (
+        "Error accessing the project template. This may be temporary, or the project may not be accessible anymore."
+    )
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
 class IntermittentTimeoutError(ServiceError):
     """An operation timed out."""
 
@@ -696,6 +756,17 @@ class IntermittentRedisError(ServiceError):
     code = SVC_ERROR_INTERMITTENT + 202
     userMessage = "The servers could not run the request operation. Please try it again."
     devMessage = "Redis error. See Sentry exceptions for details."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
+class IntermittentCacheError(ServiceError):
+    """An operation in the cache failed."""
+
+    code = SVC_ERROR_INTERMITTENT + 203
+    userMessage = "A server-side operation unexpectedly failed. Please try again."
+    devMessage = "Cache error. See Sentry exceptions for details."
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)

@@ -151,6 +151,11 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 
+    # NOTE: Assert backwards compatibility metadata.yml was created
+    old_metadata_path = project_path / ".renku/metadata.yml"
+    assert old_metadata_path.exists()
+    assert "'http://schema.org/schemaVersion': '9'" in old_metadata_path.read_text()
+
     # NOTE:  successfully re-use old name after cleanup
     assert rm_remote() is True
     sleep(1)  # NOTE: sleep to make sure remote isn't locked
@@ -185,7 +190,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
     assert UserProjectCreationError.code == response.json["error"]["code"]
-    assert "project name" in response.json["error"]["devMessage"]
+    assert "project name" in response.json["error"]["devMessage"].lower()
 
     # NOTE: fail on wrong git url - unexpected when invoked from the UI
     payload_wrong_repo = deepcopy(payload)
@@ -194,7 +199,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload_wrong_repo), headers=headers)
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert ProgramProjectCreationError.code == response.json["error"]["code"]
+    assert UserProjectCreationError.code == response.json["error"]["code"]
     assert "git_url" in response.json["error"]["devMessage"]
 
     # NOTE: missing fields -- unlikely to happen. If that is the case, we should determine if it's a user error or not
@@ -204,12 +209,12 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload_missing_field), headers=headers)
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserProjectCreationError.code == response.json["error"]["code"]
-    assert "provide a value for project repository" in response.json["error"]["devMessage"]
+    assert ProgramProjectCreationError.code == response.json["error"]["code"]
+    assert "missing data for required field" in response.json["error"]["devMessage"].lower()
 
     # NOTE: wrong template identifier
     payload_fake_id = deepcopy(payload)
-    fake_identifier = "__FAKE_IDDENTIFIER__"
+    fake_identifier = "__FAKE_IDENTIFIER__"
     payload_fake_id["identifier"] = fake_identifier
 
     response = svc_client.post("/templates.create_project", data=json.dumps(payload_fake_id), headers=headers)

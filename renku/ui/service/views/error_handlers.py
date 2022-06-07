@@ -26,6 +26,7 @@ from redis import RedisError
 from requests import RequestException
 
 from renku.core.errors import (
+    AuthenticationError,
     DatasetExistsError,
     DatasetImageError,
     DockerfileUpdateError,
@@ -34,8 +35,11 @@ from renku.core.errors import (
     InvalidTemplateError,
     MigrationError,
     MigrationRequired,
+    MinimumVersionError,
     ParameterError,
+    ProjectNotFound,
     RenkuException,
+    TemplateMissingReferenceError,
     TemplateUpdateError,
     UninitializedProject,
 )
@@ -44,6 +48,7 @@ from renku.ui.service.errors import (
     IntermittentDatasetExistsError,
     IntermittentFileNotExistsError,
     IntermittentProjectIdError,
+    IntermittentProjectTemplateUnavailable,
     IntermittentRedisError,
     IntermittentSettingExistsError,
     IntermittentTimeoutError,
@@ -62,9 +67,11 @@ from renku.ui.service.errors import (
     UserDatasetsUnreachableImageError,
     UserInvalidGenericFieldsError,
     UserMissingFieldError,
+    UserNewerRenkuProjectError,
     UserNonRenkuProjectError,
     UserOutdatedProjectError,
     UserProjectCreationError,
+    UserProjectTemplateReferenceError,
     UserRepoBranchInvalidError,
     UserRepoNoAccessError,
     UserRepoUrlInvalidError,
@@ -123,7 +130,7 @@ def handle_jwt_except(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
-        except (ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError) as e:
+        except (AuthenticationError, ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError) as e:
             raise IntermittentAuthenticationError(e)
 
     return decorated_function
@@ -141,6 +148,8 @@ def handle_renku_except(f):
             raise UserOutdatedProjectError(e)
         except UninitializedProject as e:
             raise UserNonRenkuProjectError(e)
+        except MinimumVersionError as e:
+            raise UserNewerRenkuProjectError(e, minimum_version=e.minimum_version, current_version=e.current_version)
         except RenkuException as e:
             raise ProgramRenkuError(e)
 
@@ -248,25 +257,27 @@ def handle_templates_create_errors(f):
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
 
-        def match_schema(target, message):
-            if re.match(f".*{target}.*contains.*unsupported characters.*", message):
-                return True
-            return False
+        def get_schema_error_message(e):
+            if isinstance(getattr(e, "messages", None), dict) and e.messages.get("_schema"):
+                message = (
+                    "; ".join(e.messages.get("_schema"))
+                    if isinstance(e.messages.get("_schema"), list)
+                    else str(e.messages.get("_schema"))
+                )
+                return message
+            return None
 
         try:
             return f(*args, **kwargs)
         except ValidationError as e:
             if getattr(e, "field_name", None) == "_schema":
-                error_message = str(e)
-                if match_schema("Project name", error_message):
-                    raise UserProjectCreationError(e, "project name must contain at least a valid character")
-                elif match_schema("git_url", error_message):
-                    raise ProgramProjectCreationError(e, "git_url is invalid")
-            raise
-        except KeyError as e:
-            # NOTE: it's hard to determine if the error is user generated here
-            error_message = str(e).strip("'").replace("_", " ")
-            raise UserProjectCreationError(e, f"provide a value for {error_message}")
+                error_message = get_schema_error_message(e)
+                if error_message:
+                    raise UserProjectCreationError(e, error_message)
+                else:
+                    raise ProgramProjectCreationError(e, str(e))
+            else:
+                raise ProgramProjectCreationError(e)
 
     return decorated_function
 
@@ -375,8 +386,27 @@ def handle_datasets_unlink_errors(f):
     return decorated_function
 
 
-def handle_migration_errors(f):
-    """Wrapper which handles migrations exceptions."""
+def handle_migration_read_errors(f):
+    """Wrapper which handles migrations read exceptions."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except TemplateMissingReferenceError as e:
+            raise UserProjectTemplateReferenceError(e)
+        except (InvalidTemplateError, TemplateUpdateError) as e:
+            raise IntermittentProjectTemplateUnavailable(e)
+        except ProjectNotFound as e:
+            raise UserRepoUrlInvalidError(e)
+
+    return decorated_function
+
+
+@handle_migration_read_errors
+def handle_migration_write_errors(f):
+    """Wrapper which handles migrations write exceptions."""
     # noqa
     @wraps(f)
     def decorated_function(*args, **kwargs):

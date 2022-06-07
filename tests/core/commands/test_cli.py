@@ -192,7 +192,7 @@ def test_streams_cleanup(runner, project, run):
     result = runner.invoke(cli, ["status"])
 
     # Dirty repository check.
-    assert 1 == result.exit_code
+    assert 0 == result.exit_code
 
     # File from the Git index should be restored.
     repository = Repository(project)
@@ -430,7 +430,7 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_status_consistency(client, split_runner):
+def test_status_consistency(client, runner):
     """Test if the renku status output is consistent when running the
     command from directories other than the repository root."""
     os.mkdir("somedirectory")
@@ -440,7 +440,7 @@ def test_status_consistency(client, split_runner):
     client.repository.add("somedirectory/woop")
     client.repository.commit("add woop")
 
-    result = split_runner.invoke(cli, ["run", "cp", "somedirectory/woop", "somedirectory/meeh"])
+    result = runner.invoke(cli, ["run", "cp", "somedirectory/woop", "somedirectory/meeh"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     with open("somedirectory/woop", "w") as fp:
@@ -449,15 +449,15 @@ def test_status_consistency(client, split_runner):
     client.repository.add("somedirectory/woop")
     client.repository.commit("fix woop")
 
-    base_result = split_runner.invoke(cli, ["status"])
+    base_result = runner.invoke(cli, ["status"])
     os.chdir("somedirectory")
-    comp_result = split_runner.invoke(cli, ["status"])
+    comp_result = runner.invoke(cli, ["status"])
 
     assert 1 == base_result.exit_code, format_result_exception(base_result)
     assert 1 == comp_result.exit_code, format_result_exception(comp_result)
 
     base_result_stdout = "\n".join(base_result.stdout.split("\n"))
-    comp_result_stdout = "\n".join(comp_result.output.split("\n"))
+    comp_result_stdout = "\n".join(comp_result.stdout.split("\n"))
     assert base_result_stdout.replace("somedirectory/", "") == comp_result_stdout
 
 

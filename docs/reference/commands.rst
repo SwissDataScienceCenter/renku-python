@@ -62,6 +62,13 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.dataset
 
+.. _cli-gc:
+
+``renku gc``
+------------
+
+.. automodule:: renku.ui.cli.gc
+
 .. _cli-graph:
 
 ``renku graph``
@@ -154,6 +161,13 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.doctor
 
+.. _cli-mergetool:
+
+``renku mergetool``
+-------------------
+
+.. automodule:: renku.ui.cli.mergetool
+
 .. _cli-migrate:
 
 ``renku migrate``
@@ -181,6 +195,13 @@ Renku Command Line
 ------------------
 
 .. automodule:: renku.ui.cli.githooks
+
+``renku session``
+-----------------
+
+.. automodule:: renku.ui.cli.session
+
+.. _cli-session:
 
 Error Tracking
 --------------

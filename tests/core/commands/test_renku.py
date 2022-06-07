@@ -17,7 +17,12 @@
 # limitations under the License.
 """Module tests."""
 
-from __future__ import absolute_import, print_function
+import pytest
+
+from renku.command.command_builder.command import Command
+from renku.core import errors
+from renku.domain_model.project import Project
+from renku.domain_model.provenance.agent import Person
 
 
 def test_version():
@@ -25,3 +30,69 @@ def test_version():
     from renku import __version__
 
     assert __version__
+
+
+def test_minimum_version(mocker, tmpdir):
+    """Test minimum version required."""
+
+    def _mock_database_project(project):
+        def mocked_getter(self, key):
+            if key == "project":
+                return project
+            return getattr(self, key)
+
+        return mocked_getter
+
+    with tmpdir.as_cwd():
+        # NOTE: Check doesn't raise with identical version
+        mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "1.0.0")
+        project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
+        mocker.patch(
+            "renku.command.command_builder.database_dispatcher.Database.__getitem__", _mock_database_project(project)
+        )
+        mocker.patch("renku.version.__version__", "1.0.0")
+
+        try:
+            Command().command(lambda: "").with_database(write=False).build().execute()
+        except errors.MinimumVersionError:
+            pytest.fail("Shouldn't raise an exception.")
+
+        # NOTE: Check doesn't raise with higher current version
+        mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "0.9.0")
+        project.minimum_renku_version = "0.9.0"
+
+        try:
+            Command().command(lambda: "").with_database(write=False).build().execute()
+        except errors.MinimumVersionError:
+            pytest.fail("Shouldn't raise an exception.")
+        assert "0.9.0" == project.minimum_renku_version
+
+        # NOTE: Check that accessing a project with newer version fails
+        project.minimum_renku_version = "1.1.0"
+
+        with pytest.raises(errors.MinimumVersionError) as e:
+            Command().command(lambda: "").with_database(write=False).build().execute()
+
+        assert "1.0.0" == str(e.value.current_version)
+        assert "1.1.0" == str(e.value.minimum_version)
+
+        # NOTE: Check that accessing an old project with a newer minimum version works
+        mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "1.1.0")
+        mocker.patch("renku.version.__version__", "1.1.0")
+        project.minimum_renku_version = "0.9.0"
+
+        try:
+            Command().command(lambda: "").with_database(write=False).build().execute()
+        except errors.MinimumVersionError:
+            pytest.fail("Shouldn't raise an exception.")
+
+        # NOTE: Assert that minimum_version is increased on write
+        mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "1.0.0")
+        mocker.patch("renku.version.__version__", "1.1.0")
+        project.minimum_renku_version = "0.9.0"
+
+        try:
+            Command().command(lambda: "").with_database(write=True).build().execute()
+        except errors.MinimumVersionError:
+            pytest.fail("Shouldn't raise an exception.")
+        assert "1.0.0" == project.minimum_renku_version

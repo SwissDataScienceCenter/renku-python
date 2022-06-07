@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+    Copyright 2019-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -15,26 +15,9 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Renku Python API
-================
+Template
+--------
 
-.. _api-project:
-
-``Project``
------------
-
-.. automodule:: renku.ui.api.models.project
-
-.. _api-dataset:
-
-``Dataset``
------------
-
-.. automodule:: renku.ui.api.models.dataset
-
-.. _api-run:
-
-``Inputs, Outputs, and Parameters``
------------------------------------
-
-.. automodule:: renku.ui.api.models.run
+.. automodule:: renku.domain_model.template
+   :members:
+   :show-inheritance:

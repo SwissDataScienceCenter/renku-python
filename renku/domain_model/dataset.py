@@ -185,9 +185,9 @@ class ImageObject(Slots):
         super().__init__(content_url=content_url, position=position, id=id)
 
     @staticmethod
-    def generate_id(dataset: "Dataset", position: int) -> str:
+    def generate_id(dataset_id: str, position: int) -> str:
         """Generate @id field."""
-        return f"{dataset.id}/images/{position}"
+        return f"{dataset_id}/images/{position}"
 
     @property
     def is_absolute(self):
@@ -423,7 +423,7 @@ class Dataset(Persistent):
         return f"<Dataset {self.identifier} {self.name}>"
 
     def is_derivation(self) -> bool:
-        """Return if a dataset has correct derived_form."""
+        """Return if a dataset has correct derived_from."""
         return self.derived_from is not None and not self.same_as and self.id != self.derived_from.url_id
 
     def copy(self) -> "Dataset":

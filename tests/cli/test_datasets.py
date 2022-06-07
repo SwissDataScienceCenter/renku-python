@@ -29,11 +29,11 @@ import pytest
 from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core import errors
+from renku.core.constant import RENKU_HOME
 from renku.core.dataset.constant import renku_pointers_path
 from renku.core.dataset.providers import ProviderFactory
 from renku.core.dataset.providers.dataverse import DataverseProvider
 from renku.core.dataset.providers.zenodo import ZenodoProvider
-from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset
@@ -74,7 +74,11 @@ def test_datasets_create_dirty(runner, project, client, load_dataset_with_inject
 
 
 def test_dataset_show(runner, client, subdirectory):
-    """Test creating a dataset with metadata."""
+    """Test creating and showing a dataset with metadata."""
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert 'Dataset "my-dataset" is not found.' in result.output
+
     metadata = {
         "@id": "https://example.com/annotation1",
         "@type": "https://schema.org/specialType",
@@ -122,6 +126,77 @@ def test_dataset_show(runner, client, subdirectory):
     assert "https://example.com/annotation1" in result.output
     assert "https://schema.org/specialType" in result.output
     assert "##" not in result.output
+
+
+def test_dataset_show_tag(runner, client, subdirectory):
+    """Test creating and showing a dataset with metadata."""
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert 'Dataset "my-dataset" is not found.' in result.output
+
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = client.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+
+    result = runner.invoke(
+        cli,
+        [
+            "dataset",
+            "create",
+            "my-dataset",
+            "--title",
+            "Long Title",
+            "--description",
+            "description1",
+        ],
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "OK" in result.output
+
+    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "tag1"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "edit", "-d", "description2", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: description" in result.output
+
+    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "tag2"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "edit", "-d", "description3", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: description" in result.output
+
+    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "tag3"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description3" in result.output
+    assert "description2" not in result.output
+    assert "description1" not in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "--tag", "tag3", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description3" in result.output
+    assert "description2" not in result.output
+    assert "description1" not in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "--tag", "tag2", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description2" in result.output
+    assert "description3" not in result.output
+    assert "description1" not in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "--tag", "tag1", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description1" in result.output
+    assert "description2" not in result.output
+    assert "description3" not in result.output
 
 
 def test_datasets_create_different_names(runner, client):
@@ -1487,7 +1562,7 @@ def test_lfs_hook_autocommit(runner, client, subdirectory, large_file, use_env_v
     )
     for filename in filenames:
         assert filename in result[1]
-    assert ".gitattributes" in result[1]
+
     assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
     assert "Adding files to LFS" in result[2]
     for filename in filenames:

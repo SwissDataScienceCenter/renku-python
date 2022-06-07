@@ -42,6 +42,7 @@ suppress_warnings = ["image.nonlocal_uri"]
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "plantweb.directive",
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
@@ -335,7 +336,7 @@ intersphinx_mapping = {
 
 # Autodoc configuraton.
 autoclass_content = "both"
-autodoc_mock_imports = ["persistent", "ZODB"]
+autodoc_mock_imports = ["persistent", "ZODB", "calamus"]
 autodoc_typehints = "none"
 autodoc_typehints_description_target = "documented"
 
@@ -349,16 +350,25 @@ nitpick_ignore = [
     ("py:class", "CommandResult"),
     ("py:class", "CommunicationCallback"),
     ("py:class", "DynamicProxy"),
+    ("py:class", "IActivityGateway"),
     ("py:class", "IClientDispatcher"),
     ("py:class", "IDatabaseDispatcher"),
     ("py:class", "IDatasetGateway"),
+    ("py:class", "IPlanGateway"),
     ("py:class", "LocalClient"),
     ("py:class", "OID_TYPE"),
     ("py:class", "Path"),
     ("py:class", "Persistent"),
     ("py:class", "optional"),
-    ("py:class", "persistent.Persistent"),
     ("py:class", '"LocalClient"'),
     ("py:class", '"ValueResolver"'),
     ("py:exc", "errors.ParameterError"),
+]
+
+nitpick_ignore_regex = [
+    ("py:class", r"calamus.*"),
+    ("py:class", r"docker.*"),
+    ("py:class", r"marshmallow.*"),
+    ("py:class", r"persistent.*"),
+    ("py:class", r"yaml.*"),
 ]

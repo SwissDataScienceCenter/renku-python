@@ -54,7 +54,7 @@ _MARKER = object()
 
 
 def git_unicode_unescape(s: Optional[str], encoding: str = "utf-8") -> str:
-    """Undoes git/gitpython unicode encoding."""
+    """Undoes git/GitPython unicode encoding."""
     if s is None:
         return ""
 
@@ -85,6 +85,15 @@ class BaseRepository:
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.path}>"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def __del__(self):
+        self.close()
 
     @property
     def path(self) -> Path:
@@ -207,6 +216,7 @@ class BaseRepository:
         committer: "Actor" = None,
         no_verify: bool = False,
         no_edit: bool = False,
+        paths: Optional[List[Union[Path, str]]] = None,
     ) -> "Commit":
         """Commit added files to the VCS."""
         if self._repository is None:
@@ -217,18 +227,26 @@ class BaseRepository:
         if committer:
             env.update({"GIT_COMMITTER_NAME": committer.name, "GIT_COMMITTER_EMAIL": committer.email})
 
-        self.run_git_command("commit", message=message, no_verify=no_verify, amend=amend, no_edit=no_edit, env=env)
+        # NOTE: Only commit specified paths
+        args = ["--"] + [str(p) for p in paths] if paths else []
+
+        self.run_git_command(
+            "commit", *args, message=message, no_verify=no_verify, amend=amend, no_edit=no_edit, env=env
+        )
 
         return Commit.from_commit(self._repository, self._repository.head.commit)
 
-    def checkout(self, reference: Union["Branch", "Tag", str]):
+    def checkout(self, reference: Optional[Union["Branch", "Tag", str]] = None, sparse: Optional[List[Path]] = None):
         """Check-out a specific reference."""
+        if sparse is not None:
+            self.run_git_command("sparse-checkout", "init", "--cone")
+            self.run_git_command("sparse-checkout", "set", *sparse)
+
         self.run_git_command("checkout", reference)
 
-    def clean(self):
-        """Remove all untracked files and reset the repo."""
-        self.reset(hard=True)
-        self.run_git_command("clean", "-xdff")
+    def clean(self, paths: List[Union[Path, str]] = None):
+        """Remove untracked files."""
+        self.run_git_command("clean", "-xdff", paths)
 
     def fetch(
         self,
@@ -303,6 +321,26 @@ class BaseRepository:
     def status(self) -> str:
         """Return status of a repository."""
         return self.run_git_command("status")
+
+    def create_worktree(
+        self, path: Path, reference: Union["Branch", "Commit", "Reference", str], checkout: bool = True
+    ):
+        """Create a git worktree.
+
+        Args:
+            path(Path): Target folder.
+            reference(Union[Branch, Commit, Reference, str]): the reference to base the tree on.
+            checkout(bool): Whether to perform a checkout of the reference (Default value = False).
+        """
+        self.run_git_command("worktree", "add", path, reference, checkout=checkout)
+
+    def remove_worktree(self, path: Path):
+        """Create a git worktree.
+
+        Args:
+            path(Path): Worktree folder.
+        """
+        self.run_git_command("worktree", "remove", path)
 
     def is_dirty(self, untracked_files: bool = False) -> bool:
         """Return True if the repository has modified or untracked files ignoring submodules."""
@@ -646,6 +684,16 @@ class BaseRepository:
         configuration = self.get_configuration()
         return Repository._get_user_from_configuration(configuration)
 
+    def close(self) -> None:
+        """Close the underlying repository.
+
+        Cleans up dangling processes.
+        """
+        if getattr(self, "_repository", None) is not None:
+            self._repository.close()  # type:ignore
+            del self._repository
+            self._repository = None
+
     @staticmethod
     def get_global_user() -> "Actor":
         """Return the global git user."""
@@ -766,6 +814,7 @@ class Repository(BaseRepository):
         self, path: Union[Path, str] = ".", search_parent_directories: bool = False, repository: git.Repo = None
     ):
         repo = repository or _create_repository(path, search_parent_directories)
+
         super().__init__(path=Path(repo.working_dir).resolve(), repository=repo)  # type: ignore
 
     @classmethod
@@ -835,7 +884,7 @@ class Submodule(BaseRepository):
         self._name: str = name
         self._url: str = url
         try:
-            self._repository: git.Repo = _create_repository(path, search_parent_directories=False)
+            self._repository: Optional[git.Repo] = _create_repository(path, search_parent_directories=False)
         except errors.GitError:
             # NOTE: Submodule directory doesn't exist yet, so, we ignore the error
             pass
@@ -851,6 +900,12 @@ class Submodule(BaseRepository):
 
     def __repr__(self) -> str:
         return f"<Submodule {self.relative_path}>"
+
+    def __del__(self) -> None:
+        if getattr(self, "_repository", None) is not None:
+            self._repository.close()  # type:ignore
+            del self._repository
+            self._repository = None
 
     @property
     def name(self) -> str:
@@ -872,25 +927,47 @@ class SubmoduleManager:
     """Manage submodules of a Repository."""
 
     def __init__(self, repository: git.Repo):
-        self._repository = repository
+        self._repository: Optional[git.Repo] = repository
+        self._submodule_cache: Dict[str, Submodule] = {}  # type: ignore
         try:
             self.update()
         except errors.GitError:
             # NOTE: Update fails if submodule repo cannot be cloned. Repository still works but submodules are broken.
             pass
 
+    def _get_submodule(self, submodule: git.Submodule) -> Submodule:  # type: ignore
+        """Get a submodule from local cache."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
+        if submodule.name not in self._submodule_cache:
+            submodule_result = Submodule.from_submodule(self._repository, submodule)
+            self._submodule_cache[submodule.name] = submodule_result
+        return self._submodule_cache[submodule.name]
+
     def __getitem__(self, name: str) -> Submodule:
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         try:
             submodule = self._repository.submodules[name]
         except IndexError:
             raise errors.GitError(f"Submodule '{name}' not found")
         else:
-            return Submodule.from_submodule(self._repository, submodule)
+            return self._get_submodule(submodule)
 
     def __iter__(self):
-        return (Submodule.from_submodule(self._repository, s) for s in self._repository.submodules)
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
+        for s in self._repository.submodules:
+
+            yield self._get_submodule(s)
 
     def __len__(self) -> int:
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         return len(self._repository.submodules)
 
     def __repr__(self) -> str:
@@ -898,16 +975,27 @@ class SubmoduleManager:
 
     def remove(self, submodule: Union[Submodule, str], force: bool = False):
         """Remove an existing submodule."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         name = submodule if isinstance(submodule, str) else submodule.name
 
         try:
-            submodule = self._repository.submodules[name]
-            submodule.remove(force=force)
+            git_submodule = self._repository.submodules[name]
+            git_submodule.remove(force=force)
+
+            if name in self._submodule_cache:
+                submodule = self._submodule_cache[name]
+                del self._submodule_cache[name]
+                submodule.close()
         except git.GitError as e:
             raise errors.GitError(f"Cannot delete submodule '{submodule}'") from e
 
     def update(self, initialize: bool = True):
         """Update all submodule."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         # NOTE: Git complains if ``--init`` comes before ``update``
         args = ("update", "--init") if initialize else ("update",)
         _run_git_command(self._repository, "submodule", *args)
@@ -1280,6 +1368,12 @@ class Remote:
     def set_url(self, url: str):
         """Change URL of a remote."""
         _run_git_command(self._repository, "remote", "set-url", self.name, url)
+
+    @property
+    def head(self) -> str:
+        """The head commit of the remote."""
+        self._remote.fetch()
+        return _run_git_command(self._repository, "rev-parse", f"{self._remote.name}/{self._repository.active_branch}")
 
 
 class RemoteManager:

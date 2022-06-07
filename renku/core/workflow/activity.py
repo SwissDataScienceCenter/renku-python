@@ -15,20 +15,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku workflow commands."""
+"""Activity management."""
 
 import itertools
 from collections import defaultdict
-from typing import Dict, List, Optional, Set
+from pathlib import Path
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple
 
 import networkx
 
+from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.util import communication
-from renku.core.util.metadata import add_activity_if_recent
+from renku.domain_model.entity import Entity
 from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.workflow.plan import AbstractPlan
 
 
 def get_activities_until_paths(
@@ -222,3 +226,212 @@ def sort_activities(activities: List[Activity], remove_overridden_parents=True) 
     graph = create_activity_graph(activities, remove_overridden_parents)
 
     return list(networkx.topological_sort(graph))
+
+
+@inject.autoparams()
+def is_activity_valid(activity: Activity, plan_gateway: IPlanGateway) -> bool:
+    """Return whether this plan is current and has not been deleted.
+
+    Args:
+        activity(Activity): The Activity whose Plan should be checked.
+        plan_gateway(IPlanGateway): The injected Plan gateway.
+
+    Returns:
+        bool: True if the activities' Plan is still valid, False otherwise.
+
+    """
+    plan = activity.association.plan
+
+    if plan.invalidated_at is not None:
+        return False
+
+    # get newest with same name
+    newest_plan = plan_gateway.get_by_name(plan.name)
+
+    if newest_plan is None or newest_plan.invalidated_at is not None:
+        return False
+
+    all_plans = plan_gateway.get_all_plans()
+
+    derived: Optional[AbstractPlan] = plan
+    while derived:
+        plan = derived
+        derived = next((p for p in all_plans if p.derived_from is not None and p.derived_from == plan.id), None)
+
+    return plan.invalidated_at is None
+
+
+@inject.autoparams()
+def get_all_modified_and_deleted_activities_and_entities(
+    repository, activity_gateway: IActivityGateway
+) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    """
+    Return latest activities with at least one modified or deleted input along with the modified/deleted input entity.
+
+    An activity can be repeated if more than one of its inputs are modified.
+
+    Args:
+        repository: The current ``Repository``.
+        activity_gateway(IActivityGateway): The injected Activity gateway.
+
+    Returns:
+        Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]: Tuple of modified and deleted
+            activities and entities.
+
+    """
+    all_activities = activity_gateway.get_all_activities()
+    relevant_activities = filter_overridden_activities(all_activities)
+    return get_modified_activities(activities=relevant_activities, repository=repository)
+
+
+@inject.autoparams()
+def get_downstream_generating_activities(
+    starting_activities: Set[Activity],
+    paths: List[str],
+    ignore_deleted: bool,
+    client_path: Path,
+    activity_gateway: IActivityGateway,
+) -> List[Activity]:
+    """Return activities downstream of passed activities that generate at least a path in ``paths``.
+
+    Args:
+        starting_activities(Set[Activity]): Activities to use as starting/upstream nodes.
+        paths(List[str]): Optional generated paths to end downstream chains at.
+        ignore_deleted(bool): Whether to ignore deleted generations.
+        client_path(Path): Path to project's root directory.
+        activity_gateway(IActivityGateway): The injected Activity gateway.
+
+    Returns:
+        Set[Activity]: All activities and their downstream activities.
+
+    """
+    all_activities: Dict[str, Set[Activity]] = defaultdict(set)
+
+    def include_newest_activity(activity):
+        existing_activities = all_activities[activity.association.plan.id]
+        add_activity_if_recent(activity=activity, activities=existing_activities)
+
+    def does_activity_generate_any_paths(activity) -> bool:
+        is_same = any(g.entity.path in paths for g in activity.generations)
+        is_parent = any(Path(p) in Path(g.entity.path).parents for p in paths for g in activity.generations)
+
+        return is_same or is_parent
+
+    def has_an_existing_generation(activity) -> bool:
+        for generation in activity.generations:
+            if (client_path / generation.entity.path).exists():
+                return True
+
+        return False
+
+    for starting_activity in starting_activities:
+        downstream_chains = activity_gateway.get_downstream_activity_chains(starting_activity)
+
+        if paths:
+            # NOTE: Add the activity to check if it also matches the condition
+            downstream_chains.append((starting_activity,))
+            downstream_chains = [c for c in downstream_chains if does_activity_generate_any_paths(c[-1])]
+            # NOTE: Include activity only if any of its downstream matched the condition
+            include_starting_activity = len(downstream_chains) > 0
+        elif ignore_deleted:  # NOTE: Excluded deleted generations only if they are not passed in ``paths``
+            # NOTE: Add the activity to check if it also matches the condition
+            downstream_chains.append((starting_activity,))
+            downstream_chains = [c for c in downstream_chains if has_an_existing_generation(c[-1])]
+            # NOTE: Include activity only if any of its downstream matched the condition
+            include_starting_activity = len(downstream_chains) > 0
+        else:
+            include_starting_activity = True
+
+        if include_starting_activity:
+            include_newest_activity(starting_activity)
+
+        for chain in downstream_chains:
+            for activity in chain:
+                if not is_activity_valid(activity):
+                    # don't process further downstream activities as the plan in question was deleted
+                    break
+                include_newest_activity(activity)
+
+    return list({a for activities in all_activities.values() for a in activities})
+
+
+def get_modified_activities(
+    activities: FrozenSet[Activity], repository
+) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    """Get lists of activities that have modified/deleted usage entities."""
+    modified = set()
+    deleted = set()
+
+    paths = []
+
+    for activity in activities:
+        for usage in activity.usages:
+            paths.append(usage.entity.path)
+
+    hashes = repository.get_object_hashes(paths=paths)
+
+    for activity in activities:
+        for usage in activity.usages:
+            entity = usage.entity
+            current_checksum = hashes.get(entity.path, None)
+            usage_path = repository.path / usage.entity.path
+            if current_checksum is None or not usage_path.exists():
+                deleted.add((activity, entity))
+            elif current_checksum != entity.checksum:
+                modified.add((activity, entity))
+
+    return modified, deleted
+
+
+def filter_overridden_activities(activities: List[Activity]) -> FrozenSet[Activity]:
+    """Filter out overridden activities from a list of activities."""
+    relevant_activities: Dict[FrozenSet[str], Activity] = {}
+
+    for activity in activities[::-1]:
+        outputs = frozenset(g.entity.path for g in activity.generations)
+
+        subset_of = set()
+        superset_of = set()
+
+        for o, a in relevant_activities.items():
+            if outputs.issubset(o):
+                subset_of.add((o, a))
+            elif outputs.issuperset(o):
+                superset_of.add((o, a))
+
+        if not subset_of and not superset_of:
+            relevant_activities[outputs] = activity
+            continue
+
+        if subset_of and any(activity.ended_at_time < a.ended_at_time for _, a in subset_of):
+            # activity is a subset of another, newer activity, ignore it
+            continue
+
+        older_subsets = [o for o, a in superset_of if activity.ended_at_time > a.ended_at_time]
+
+        for older_subset in older_subsets:
+            # remove other activities that this activity is a superset of
+            del relevant_activities[older_subset]
+
+        relevant_activities[outputs] = activity
+
+    return frozenset(relevant_activities.values())
+
+
+def add_activity_if_recent(activity: Activity, activities: Set[Activity]):
+    """Add ``activity`` to ``activities`` if it's not in the set or is the latest executed instance.
+
+    Remove existing activities that were executed earlier.
+    """
+    if activity in activities:
+        return
+
+    for existing_activity in activities:
+        if activity.has_identical_inputs_and_outputs_as(existing_activity):
+            if activity.ended_at_time > existing_activity.ended_at_time:  # activity is newer
+                activities.remove(existing_activity)
+                activities.add(activity)
+            return
+
+    # NOTE: No similar activity was found
+    activities.add(activity)

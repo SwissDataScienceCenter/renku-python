@@ -17,13 +17,13 @@
 # limitations under the License.
 """Renku exceptions."""
 
-import os
 from pathlib import Path
 from typing import List, Union
 
 import click
+from packaging.version import Version
 
-from renku.core.management import RENKU_HOME
+from renku.core.constant import RENKU_HOME
 
 
 class RenkuException(Exception):
@@ -211,28 +211,16 @@ class InvalidOutputPath(RenkuException):
 class OutputsNotFound(RenkuException):
     """Raise when there are not any detected outputs in the repository."""
 
-    def __init__(self, repository, inputs):
+    def __init__(self):
         """Build a custom message."""
-        from pathlib import Path
 
-        msg = "There are not any detected outputs in the repository."
-
-        paths = [
-            os.path.relpath(input_.default_value)  # relative to cur path
-            for input_ in inputs
-            if Path(input_.default_value).is_dir()
-        ]
-
-        if paths:
-            msg += (
-                '\n  (use "git rm <file>..." to remove them first)'
-                "\n\n" + "\n".join("\t" + click.style(path, fg="yellow") for path in paths) + "\n\n"
-                "Once you have removed files that should be used as outputs,\n"
-                "you can safely rerun the previous command."
-                "\nYou can use --output flag to specify outputs explicitly."
-            )
-        else:
-            msg += "\n\nIf you want to track the command anyway use " "--no-output option."
+        msg = (
+            "There are not any detected outputs in the repository. This can be due to your command not creating "
+            "any new files or due to files that get created already existing before the command was run. In the "
+            "latter case, you can remove those files prior to running your command.\nIf you want to track the command"
+            "without outputs, use the use --no-output option.\nYou can also use the --output flag to track outputs"
+            "manually."
+        )
 
         super(OutputsNotFound, self).__init__(msg)
 
@@ -266,6 +254,14 @@ class DatasetNotFound(RenkuException):
             msg = f'Dataset "{name}" is not found.'
         else:
             msg = "Dataset is not found."
+        super().__init__(msg)
+
+
+class DatasetTagNotFound(RenkuException):
+    """Raise when a tag can't be found."""
+
+    def __init__(self, tag) -> None:
+        msg = f"Couldn't find dataset tag '{tag}'."
         super().__init__(msg)
 
 
@@ -458,6 +454,10 @@ class InvalidTemplateError(TemplateError):
     """Raised when using a non-valid template."""
 
 
+class TemplateMissingReferenceError(TemplateError):
+    """Raised when using a non-valid template."""
+
+
 class TemplateUpdateError(TemplateError):
     """Raised when a project couldn't be updated from its template."""
 
@@ -586,8 +586,37 @@ class TerminalSizeError(RenkuException):
 
 
 class DockerError(RenkuException):
-    """Raised when error has occured while executing docker command."""
+    """Raised when error has occurred while executing docker command."""
 
     def __init__(self, reason: str):
         """Embed exception and build a custom message."""
         super().__init__(f"Docker failed: {reason}")
+
+
+class RenkulabSessionError(RenkuException):
+    """Raised when an error occurs trying to start sessions with the notebook service."""
+
+
+class NotebookSessionNotReadyError(RenkuException):
+    """Raised when a user attempts to open a session that is not ready."""
+
+
+class NotebookSessionImageNotExistError(RenkuException):
+    """Raised when a user attempts to start a session with an image that does not exist."""
+
+
+class MetadataMergeError(RenkuException):
+    """Raise when merging of metadata failed."""
+
+
+class MinimumVersionError(RenkuException):
+    """Raised when accessing a project whose minimum version is larger than the current renku version."""
+
+    def __init__(self, current_version: Version, minimum_version: Version) -> None:
+        self.current_version = current_version
+        self.minimum_version = minimum_version
+
+        super().__init__(
+            f"You are using renku version {current_version} but this project requires at least version "
+            f"{minimum_version}. Please upgrade renku to work on this project."
+        )

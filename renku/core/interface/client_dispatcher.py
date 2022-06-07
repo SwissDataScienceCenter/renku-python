@@ -19,7 +19,10 @@
 
 from abc import ABC
 from pathlib import Path
-from typing import Union
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from renku.core.management.client import LocalClient
 
 
 class IClientDispatcher(ABC):
@@ -29,17 +32,17 @@ class IClientDispatcher(ABC):
     """
 
     @property
-    def current_client(self):
+    def current_client(self) -> "LocalClient":
         """Get the currently active client."""
         raise NotImplementedError
 
     def push_client_to_stack(
         self, path: Union[Path, str], renku_home: str = ".renku", external_storage_requested: bool = True
-    ) -> None:
+    ) -> "LocalClient":
         """Create and push a new client to the stack."""
         raise NotImplementedError
 
-    def push_created_client_to_stack(self, client) -> None:
+    def push_created_client_to_stack(self, client: "LocalClient") -> None:
         """Push an already created client to the stack."""
         raise NotImplementedError
 

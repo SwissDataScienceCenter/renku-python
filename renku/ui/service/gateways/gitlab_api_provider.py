@@ -22,13 +22,25 @@ from typing import List, Optional, Union
 
 import gitlab
 
+from renku.core import errors
 from renku.core.util.os import delete_file
 from renku.domain_model.git import GitURL
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
 
 
 class GitlabAPIProvider(IGitAPIProvider):
-    """Interface a Git API Provider."""
+    """GitLab API provider abstraction layer.
+
+    Args:
+        paths: List of files to download.
+        target_folder: Folder to use to download the files.
+        remote: Remote repository URL.
+        token: User bearer token.
+        ref: optional reference to checkout,
+    Raises:
+        errors.ProjectNotFound: If the remote URL is not accessible.
+        errors.AuthenticationError: If the bearer token is invalid in any way.
+    """
 
     def download_files_from_api(
         self,
@@ -45,8 +57,22 @@ class GitlabAPIProvider(IGitAPIProvider):
         target_folder = Path(target_folder)
 
         git_data = GitURL.parse(remote)
-        gl = gitlab.Gitlab(git_data.instance_url, private_token=token)
-        project = gl.projects.get(f"{git_data.owner}/{git_data.name}")
+        try:
+            gl = gitlab.Gitlab(git_data.instance_url, oauth_token=token)
+            project = gl.projects.get(f"{git_data.owner}/{git_data.name}")
+        except gitlab.GitlabAuthenticationError:
+            # NOTE: Invalid or expired tokens fail even on public projects. Let's give it a try without tokens
+            try:
+                gl = gitlab.Gitlab(git_data.instance_url)
+                project = gl.projects.get(f"{git_data.owner}/{git_data.name}")
+            except gitlab.GitlabAuthenticationError as e:
+                raise errors.AuthenticationError from e
+            except gitlab.GitlabGetError as e:
+                # NOTE: better to re-raise this as a core error since it's a common case
+                if "project not found" in getattr(e, "error_message", "").lower():
+                    raise errors.ProjectNotFound from e
+                else:
+                    raise
 
         result_paths = []
 

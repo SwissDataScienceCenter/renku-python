@@ -80,11 +80,13 @@ from renku.ui.cli.dataset import dataset
 from renku.ui.cli.doctor import doctor
 from renku.ui.cli.env import env
 from renku.ui.cli.exception_handler import IssueFromTraceback
+from renku.ui.cli.gc import gc
 from renku.ui.cli.githooks import githooks as githooks_command
 from renku.ui.cli.graph import graph
 from renku.ui.cli.init import init as init_command
 from renku.ui.cli.log import log
 from renku.ui.cli.login import credentials, login, logout
+from renku.ui.cli.mergetool import mergetool
 from renku.ui.cli.migrate import check_immutable_template_files, migrate, migrationscheck
 from renku.ui.cli.move import move
 from renku.ui.cli.project import project
@@ -130,7 +132,7 @@ def _uuid_representer(dumper, data):
 
 def _is_renku_project(path: Path) -> bool:
     """Check if a path is a renku project."""
-    from renku.core.management import RENKU_HOME
+    from renku.core.constant import RENKU_HOME
     from renku.core.management.repository import RepositoryApiMixin
     from renku.core.migration.utils import OLD_METADATA_PATH
     from renku.infrastructure.database import Database
@@ -251,12 +253,14 @@ cli.add_command(credentials)
 cli.add_command(dataset)
 cli.add_command(doctor)
 cli.add_command(env)
+cli.add_command(gc)
 cli.add_command(githooks_command)
 cli.add_command(graph)
 cli.add_command(init_command)
 cli.add_command(log)
 cli.add_command(login)
 cli.add_command(logout)
+cli.add_command(mergetool)
 cli.add_command(migrate)
 cli.add_command(migrationscheck)
 cli.add_command(move)

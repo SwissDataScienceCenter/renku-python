@@ -15,9 +15,15 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+.. _develop-plugins-reference:
 
 Plugin Support
 ==============
+
+Renku has several plugin hooks that can be used to add additional metadata
+and commands to the Renku CLI.
+
+The following hooks are currently available:
 
 Runtime Plugins
 ---------------

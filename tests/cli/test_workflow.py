@@ -17,6 +17,7 @@
 # limitations under the License.
 """Test ``workflow`` commands."""
 
+import datetime
 import itertools
 import logging
 import os
@@ -36,6 +37,17 @@ from renku.core.util.yaml import write_yaml
 from renku.infrastructure.database import Database
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
+
+
+def _execute(capsys, runner, args):
+    with capsys.disabled():
+        try:
+            cli.main(
+                args=args,
+                prog_name=runner.get_default_prog_name(cli),
+            )
+        except SystemExit as e:
+            assert e.code in {None, 0}
 
 
 def test_workflow_list(runner, project, run_shell, client):
@@ -541,16 +553,6 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
         result = runner.invoke(cli, cmd)
         assert 0 == result.exit_code, format_result_exception(result)
 
-    def _execute(args):
-        with capsys.disabled():
-            try:
-                cli.main(
-                    args=args,
-                    prog_name=runner.get_default_prog_name(cli),
-                )
-            except SystemExit as e:
-                assert e.code in {None, 0}
-
     def _flatten_dict(obj, key_string=""):
         if type(obj) == dict:
             key_string = key_string + "." if key_string else key_string
@@ -563,7 +565,7 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
 
     if not parameters:
         execute_cmd = ["workflow", "execute", "-p", provider, workflow_name]
-        _execute(execute_cmd)
+        _execute(capsys, runner, execute_cmd)
     else:
         database = Database.from_path(client.database_path)
         plan = database["plans-by-name"][workflow_name]
@@ -600,7 +602,7 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
 
         execute_cmd.append(workflow_name)
 
-        _execute(execute_cmd)
+        _execute(capsys, runner, execute_cmd)
 
         # check whether parameters setting was effective
         for o in outputs:
@@ -617,9 +619,9 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
     output = client.path / "output"
 
     with client.commit():
-        script.write_text("from renku.ui.api import Parameter\n" 'print(Parameter("test", "hello world"))\n')
+        script.write_text("from renku.ui.api import Parameter\n" 'print(Parameter("test", "hello world").value)\n')
 
-    result = run_shell(f"renku run --name run1 -- python {script} > {output}")
+    result = run_shell(f"renku run --name run1 -- python3 {script} > {output}")
 
     # Assert expected empty stdout.
     assert b"" == result[0]
@@ -655,7 +657,7 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
             "    print(f.read())"
         )
 
-    result = run_shell(f"renku run --name run1 -- python {script.name} > {output.name}")
+    result = run_shell(f"renku run --name run1 -- python3 {script.name} > {output.name}")
 
     # Assert expected empty stdout.
     assert b"" == result[0]
@@ -687,7 +689,7 @@ def test_workflow_execute_command_with_api_output_set(runner, run_shell, project
             "    f.write('test')"
         )
 
-    result = run_shell(f"renku run --name run1 -- python {script.name}")
+    result = run_shell(f"renku run --name run1 -- python3 {script.name}")
 
     # Assert expected empty stdout.
     assert b"" == result[0]
@@ -735,7 +737,7 @@ def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_sh
             f"open(Output('my-output', '{output.name}'), 'w')"
         )
 
-    result = run_shell(f"renku run --name run1 -- python {script.name}")
+    result = run_shell(f"renku run --name run1 -- python3 {script.name}")
 
     # Assert expected empty stdout.
     assert b"" == result[0]
@@ -1067,6 +1069,47 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project, capsys, client, provider):
+    """Test executing a workflow with --set float value for a renku.ui.api.Parameter."""
+    script = client.path / "script.py"
+    output = client.path / "output"
+
+    with client.commit():
+        script.write_text("import sys\nprint(sys.argv[1])\n")
+
+    result = run_shell(f"renku run --name run1 -- python {script} 3.98 > {output}")
+
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "3.98\n" == output.read_text()
+
+    result = run_shell(f"renku workflow execute -p {provider} --set parameter-2=2.0 run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "2.0\n" == output.read_text()
+
+    result = run_shell(f"renku workflow iterate -p {provider} --map parameter-2=[0.1,0.3,0.5,0.8,0.95] run1")
+
+    # Assert not allocated stderr.
+    assert result[1] is None
+    assert output.read_text() in [
+        "0.1\n",
+        "0.3\n",
+        "0.5\n",
+        "0.8\n",
+        "0.95\n",
+    ]
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
 def test_workflow_cycle_detection(run_shell, project, capsys, client):
     """Test creating a cycle is not possible with renku run or workflow execute."""
     input = client.path / "input"
@@ -1135,3 +1178,33 @@ def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
 
     assert 1 == result.exit_code, format_result_exception(result)
     assert "Cannot run workflows that have stdin or stderr redirection with Docker" in result.output
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+@pytest.mark.parametrize(
+    "workflow, parameters, outputs",
+    [
+        (
+            "touch foo",
+            {"output-1": "{:%Y-%m-%d}"},
+            [datetime.datetime.now().strftime("%Y-%m-%d")],
+        )
+    ],
+)
+def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, parameters, provider, outputs):
+    """Test executing a workflow with templated parameters."""
+    workflow_name = "foobar"
+
+    # Run a shell command with pipe.
+    output = run_shell(f"renku run --name {workflow_name} {workflow}")
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
+
+    execute_cmd = ["workflow", "execute", "-p", provider, workflow_name]
+    [execute_cmd.extend(["--set", f"{k}={v}"]) for k, v in parameters.items()]
+    _execute(capsys, runner, execute_cmd)
+
+    for o in outputs:
+        assert Path(o).resolve().exists()

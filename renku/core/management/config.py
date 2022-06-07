@@ -25,7 +25,7 @@ import attr
 import click
 import portalocker
 
-from renku.core.management import RENKU_HOME
+from renku.core.constant import RENKU_HOME
 from renku.domain_model.enums import ConfigFilter
 
 APP_NAME = "Renku"

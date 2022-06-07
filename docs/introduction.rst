@@ -24,7 +24,6 @@
    installation
    gettingstarted
    reference/index
-   api
    changes
    license
 

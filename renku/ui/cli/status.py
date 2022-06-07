@@ -56,60 +56,60 @@ from renku.ui.cli.utils.callback import ClickCallback
 
 @click.command()
 @click.pass_context
+@click.option("-i", "--ignore-deleted", is_flag=True, help="Ignore deleted paths.")
 @click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
-def status(ctx, paths):
+def status(ctx, paths, ignore_deleted):
     """Show a status of the repository."""
     from renku.command.status import get_status_command
 
     communicator = ClickCallback()
-    result = get_status_command().with_communicator(communicator).build().execute(paths=paths)
+    result = (
+        get_status_command().with_communicator(communicator).build().execute(paths=paths, ignore_deleted=ignore_deleted)
+    ).output
 
-    stales, stale_activities, modified, deleted = result.output
-
-    if not stales and not deleted and not stale_activities:
+    if not result.outdated_outputs and not result.deleted_inputs and not result.outdated_activities:
         click.secho("Everything is up-to-date.", fg=color.GREEN)
         return
 
-    if stales:
+    if result.outdated_outputs:
         click.echo(
-            f"Outdated outputs({len(stales)}):\n"
-            # TODO: Enable once renku workflow visualize is implemented
-            # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
+            f"Outdated outputs({len(result.outdated_outputs)}):\n"
+            "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
             "  (use `renku update --all` to generate the file from its latest inputs)\n"
         )
-        for k in sorted(stales.keys()):
-            v = stales[k]
+        for k in sorted(result.outdated_outputs.keys()):
+            v = result.outdated_outputs[k]
             paths = click.style(", ".join(sorted(v)), fg=color.BLUE, bold=True)
             output = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{output}: {paths}")
     else:
-        click.secho("All files were generated from the latest inputs.", fg=color.GREEN)
+        click.secho("All files are generated from the latest inputs.", fg=color.GREEN)
 
     click.echo()
 
-    if modified:
+    if result.modified_inputs:
         click.echo(
-            f"Modified inputs({len(modified)}):\n"
+            f"Modified inputs({len(result.modified_inputs)}):\n"
             # TODO: Enable once renku workflow visualize is implemented
             # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
         )
-        for v in sorted(modified):
+        for v in sorted(result.modified_inputs):
             click.echo(click.style(f"\t{v}", fg=color.BLUE, bold=True))
         click.echo()
 
-    if deleted:
+    if result.deleted_inputs:
         click.echo("Deleted files used to generate outputs:\n")
-        for v in sorted(deleted):
+        for v in sorted(result.deleted_inputs):
             click.echo(click.style(f"\t{v}", fg=color.BLUE, bold=True))
         click.echo()
 
-    if stale_activities:
-        click.echo(f"Outdated activities that have no outputs({len(stale_activities)}):\n")
-        for k in sorted(stale_activities.keys()):
-            v = stale_activities[k]
+    if result.outdated_activities:
+        click.echo(f"Outdated activities that have no outputs({len(result.outdated_activities)}):\n")
+        for k in sorted(result.outdated_activities.keys()):
+            v = result.outdated_activities[k]
             paths = click.style(", ".join(sorted(v)), fg=color.BLUE, bold=True)
             activity = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{activity}: {paths}")
         click.echo()
 
-    ctx.exit(1 if stales or stale_activities else 0)
+    ctx.exit(1 if result.outdated_outputs or result.outdated_activities else 0)

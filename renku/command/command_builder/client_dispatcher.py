@@ -17,11 +17,11 @@
 # limitations under the License.
 """Renku client dispatcher."""
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 from renku.core import errors
+from renku.core.constant import RENKU_HOME
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.management import RENKU_HOME
 from renku.core.management.client import LocalClient
 
 
@@ -35,7 +35,7 @@ class ClientDispatcher(IClientDispatcher):
         self.client_stack = []
 
     @property
-    def current_client(self) -> Optional[LocalClient]:
+    def current_client(self) -> LocalClient:
         """Get the currently active client."""
         if len(self.client_stack) == 0:
             raise errors.ConfigurationError("No client configured for injection")
@@ -44,17 +44,18 @@ class ClientDispatcher(IClientDispatcher):
 
     def push_client_to_stack(
         self, path: Union[Path, str], renku_home: str = RENKU_HOME, external_storage_requested: bool = True
-    ) -> None:
+    ) -> LocalClient:
         """Create and push a new client to the stack."""
         if isinstance(path, str):
             path = Path(path)
 
         new_client = LocalClient(path=path)
-        self.client_stack.append(new_client)
+        self.push_created_client_to_stack(new_client)
+
+        return new_client
 
     def push_created_client_to_stack(self, client: LocalClient) -> None:
         """Push an already created client to the stack."""
-
         self.client_stack.append(client)
 
     def pop_client(self) -> None:
