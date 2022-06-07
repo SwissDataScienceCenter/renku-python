@@ -146,8 +146,8 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
             )
 
 
-def _parse_endpoint(endpoint):
-    parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint)
+def _parse_endpoint(endpoint, use_remote=False):
+    parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint, use_remote=use_remote)
     if not parsed_endpoint:
         raise errors.ParameterError("Parameter 'endpoint' is missing.")
 
@@ -193,22 +193,24 @@ def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote
 
 
 @inject.autoparams()
-def read_renku_token(endpoint, client_dispatcher: IClientDispatcher):
+def read_renku_token(endpoint: str, client_dispatcher: IClientDispatcher, get_endpoint_from_remote=False) -> str:
     """Read renku token from renku config file.
 
     Args:
-        endpoint:  Endpoint to get token for.
+        endpoint(str):  Endpoint to get token for.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
+    Keywords:
+        get_endpoint_from_remote: if no endpoint is specified, use the repository remote to infer one
 
     Returns:
         Token for endpoint.
     """
     try:
-        parsed_endpoint = _parse_endpoint(endpoint)
+        parsed_endpoint = _parse_endpoint(endpoint, use_remote=get_endpoint_from_remote)
     except errors.ParameterError:
-        return
+        return ""
     if not parsed_endpoint:
-        return
+        return ""
 
     return _read_renku_token_for_hostname(client_dispatcher.current_client, parsed_endpoint.netloc)
 
