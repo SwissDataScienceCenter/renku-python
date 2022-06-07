@@ -196,6 +196,13 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.githooks
 
+``renku session``
+-----------------
+
+.. automodule:: renku.ui.cli.session
+
+.. _cli-session:
+
 Error Tracking
 --------------
 

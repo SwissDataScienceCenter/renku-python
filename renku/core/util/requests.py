@@ -60,9 +60,9 @@ def delete(url, headers=None):
     return _request("delete", url=url, headers=headers)
 
 
-def get(url, headers=None):
+def get(url, headers=None, params=None):
     """Send a GET request."""
-    return _request("get", url=url, headers=headers)
+    return _request("get", url=url, headers=headers, params=params)
 
 
 def head(url, *, allow_redirects=False, headers=None):

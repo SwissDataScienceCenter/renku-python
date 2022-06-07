@@ -1,4 +1,5 @@
 acyclic
+adhoc
 admin
 Amalthea
 analytics
@@ -243,6 +244,7 @@ Unlink
 unlinking
 unmapped
 unmerged
+unpushed
 untracked
 untracked
 updatable
