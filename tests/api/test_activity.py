@@ -46,33 +46,33 @@ def test_get_activity_attributes(client_with_runs):
 
     assert "/activities/1" == activity.id
     assert {"input"} == {p.path for p in activity.used_inputs}
-    assert {"intermediate"} == {p.path for p in activity.created_outputs}
+    assert {"intermediate"} == {p.path for p in activity.generated_outputs}
     assert "command-1 -n 42 input > intermediate" == activity.executed_command
     assert "2022-05-20T00:42:00" == activity.started_at.isoformat()
     assert "2022-05-20T00:42:01" == activity.ended_at.isoformat()
     assert "Renku Bot <renku@datascience.ch>" == activity.user
 
 
-def test_get_activity_parameters(client_with_runs):
-    """Test getting parameters of an activity."""
+def test_get_activity_values(client_with_runs):
+    """Test getting values used in an activity."""
     activity = next(p for p in Activity.list() if p.plan.name == "plan-1")
 
-    assert {"input-1", "output-1", "parameter-1"} == {p.field.name for p in activity.parameters}
+    assert {"input-1", "output-1", "parameter-1"} == {p.field.name for p in activity.values}
 
-    parameter = next(p for p in activity.parameters if p.field.name == "input-1")
+    value = next(p for p in activity.values if p.field.name == "input-1")
 
-    assert isinstance(parameter.field, Input)
-    assert "input" == parameter.value
+    assert isinstance(value.field, Input)
+    assert "input" == value.value
 
-    parameter = next(p for p in activity.parameters if p.field.name == "output-1")
+    value = next(p for p in activity.values if p.field.name == "output-1")
 
-    assert isinstance(parameter.field, Output)
-    assert "intermediate" == parameter.value
+    assert isinstance(value.field, Output)
+    assert "intermediate" == value.value
 
-    parameter = next(p for p in activity.parameters if p.field.name == "parameter-1")
+    value = next(p for p in activity.values if p.field.name == "parameter-1")
 
-    assert isinstance(parameter.field, Parameter)
-    assert "42" == parameter.value
+    assert isinstance(value.field, Parameter)
+    assert "42" == value.value
 
 
 def test_get_activity_downstreams(client_with_runs):

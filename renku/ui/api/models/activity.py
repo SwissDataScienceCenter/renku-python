@@ -76,21 +76,21 @@ class Activity:
         self,
         activity: core_activity.Activity,
         annotations: List,
-        created_outputs: List["CreatedOutput"],
+        generated_outputs: List["GeneratedOutput"],
         ended_at: datetime,
         executed_command: str,
         id: str,
-        parameters: List["FieldValue"],
+        values: List["FieldValue"],
         plan: Optional[Plan],
         started_at: datetime,
         used_inputs: List["UsedInput"],
         user: str,
     ):
         self._activity: core_activity.Activity = activity
-        self._parameters: Optional[List["FieldValue"]] = parameters or None
+        self._values: Optional[List["FieldValue"]] = values or None
         self._plan: Optional[Plan] = plan
         self.annotations: List = annotations or []
-        self.created_outputs: List["CreatedOutput"] = created_outputs or []
+        self.generated_outputs: List["GeneratedOutput"] = generated_outputs or []
         self.ended_at: datetime = ended_at
         self.executed_command: str = executed_command
         self.id: str = id
@@ -116,11 +116,11 @@ class Activity:
         return cls(
             activity=activity,
             annotations=activity.annotations,
-            created_outputs=[CreatedOutput.from_generation(g) for g in activity.generations],
+            generated_outputs=[GeneratedOutput.from_generation(g) for g in activity.generations],
             ended_at=activity.ended_at_time,
             executed_command=" ".join(activity.association.plan.to_argv(with_streams=True)),
             id=activity.id,
-            parameters=[],
+            values=[],
             plan=None,
             started_at=activity.started_at_time,
             used_inputs=[UsedInput.from_usage(u) for u in activity.usages],
@@ -331,14 +331,14 @@ class Activity:
             return [Activity.from_activity(a) for a in activity_gateway.get_downstream_activities(self._activity)]
 
     @property
-    def parameters(self) -> List["FieldValue"]:
-        """Return list of parameters in this activity."""
-        if self._parameters is None:
-            self._parameters = [
+    def values(self) -> List["FieldValue"]:
+        """Return list of values for inputs/outputs/parameters that were used in this execution."""
+        if self._values is None:
+            self._values = [
                 FieldValue.from_parameter_value(p, self._activity.association.plan) for p in self._activity.parameters
             ]
 
-        return self._parameters
+        return self._values
 
     @property
     def plan(self) -> Plan:
@@ -364,7 +364,7 @@ class UsedInput(NamedTuple):
         return f"<Input '{self.path}'>"
 
 
-class CreatedOutput(NamedTuple):
+class GeneratedOutput(NamedTuple):
     """Represent an output generated in an execution."""
 
     path: str
