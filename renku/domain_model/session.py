@@ -142,3 +142,12 @@ class ISessionProvider(metaclass=ABCMeta):
             URL of the interactive session.
         """
         pass
+
+    def pre_start_checks(self):
+        """Perform any required checks on the state of the repository prior to starting a session.
+
+        The expectation is that this method will abort the
+        session start if the checks are not successful or will take corrective actions to
+        make sure that the session launches successfully. By default this method does not do any checks.
+        """
+        return None
