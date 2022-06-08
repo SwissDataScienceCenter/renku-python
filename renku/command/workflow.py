@@ -25,6 +25,8 @@ from functools import reduce
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
+from renku.domain_model.provenance.annotation import Annotation
+
 if TYPE_CHECKING:
     from networkx import DiGraph
 
@@ -334,6 +336,7 @@ def _edit_workflow(
     rename_params: List[str],
     describe_params: List[str],
     plan_gateway: IPlanGateway,
+    custom_metadata: Optional[Dict] = None,
 ):
     """Edits a workflow details.
 
@@ -346,6 +349,7 @@ def _edit_workflow(
         rename_params(List[str]): New names for parameters.
         describe_params(List[str]): New descriptions for parameters.
         plan_gateway(IPlanGateway): Injected plan gateway.
+        custom_metadata(Dict, optional): Custom JSON-LD metadata (Default value = None).
 
     Returns:
         Details of the modified Plan.
@@ -359,6 +363,13 @@ def _edit_workflow(
         workflow.description = description
 
     if isinstance(workflow, Plan):
+        if custom_metadata:
+            existing_metadata = [a for a in workflow.annotations if a.source != "renku"]
+
+            existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
+
+            workflow.annotations = existing_metadata
+
         workflow.set_parameters_from_strings(set_params)
 
         def _mod_params(workflow, changed_params, attr):
