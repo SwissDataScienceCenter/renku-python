@@ -111,6 +111,22 @@ list of files that will be updated.
     won't work with a different Renku version. To update Renku version you need
     to use ``renku migrate`` command.
 
+
+Validating a template repository
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are developing you own templates in a template repository, there are
+some rules that templates have to follow. To assist in creating your own
+templates, you can check that everything is ok with:
+
+.. code-block:: console
+
+    $ renku template validate
+
+Running this inside a template repository (not in a Renku project) will
+check that the manifest and individual templates are correct and follow
+Renku template conventions, printing warnings or errors if something
+needs to be changed.
 """
 
 import functools
