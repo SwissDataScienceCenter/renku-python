@@ -21,7 +21,8 @@ from datetime import timezone
 
 import marshmallow
 
-from renku.command.schema.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
+from renku.command.schema.annotation import AnnotationSchema
+from renku.command.schema.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
 from renku.command.schema.parameter import CommandInputSchema, CommandOutputSchema, CommandParameterSchema
 from renku.domain_model.workflow.plan import Plan
 
@@ -51,6 +52,7 @@ class PlanSchema(JsonLDSchema):
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
     parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
+    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
 
     @marshmallow.pre_dump
     def _pre_dump(self, in_data, **kwargs):
