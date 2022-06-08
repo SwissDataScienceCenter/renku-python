@@ -151,7 +151,7 @@ def test_templates_manifest_invalid_yaml(tmp_path):
         ("id: python", "Invalid manifest content type: 'dict'"),
         ("-\n  - id: python", "Invalid template type: 'list'"),
         ("- no-id: python", "Template doesn't have an id:"),
-        ("- id: python\n  parameters: p1", "Invalid template variable type: 'str'"),
+        ("- id: python\n  parameters: p1", "Invalid template variable type on template 'python': 'str'"),
         ("- id: python\n  parameters:\n    p1: 42", "Invalid parameter type 'int' for 'p1'"),
     ],
 )
