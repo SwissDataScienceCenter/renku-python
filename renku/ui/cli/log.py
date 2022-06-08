@@ -221,7 +221,7 @@ def log(columns, format, workflows, datasets, no_pager, no_color):
         text = "\n\n".join([_print_log(e) for e in entries])
 
         if no_color:
-            text = text = strip_ansi_codes(text)
+            text = strip_ansi_codes(text)
 
         if no_pager:
             click.echo(text)
