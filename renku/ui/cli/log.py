@@ -55,9 +55,6 @@ You can select a format using the ``--format <format>`` argument.
    :extended:
 """
 
-import pydoc
-import shutil
-
 import click
 
 import renku.ui.cli.utils.color as color
@@ -68,6 +65,7 @@ from renku.command.view_model.log import (
     DatasetLogViewModel,
     LogViewModel,
 )
+from renku.ui.cli.utils.terminal import show_text_with_pager, strip_ansi_codes
 
 
 def _print_log(log_entry: LogViewModel) -> str:
@@ -212,23 +210,22 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
 @click.option("-w", "--workflows", is_flag=True, default=False, help="Show only workflow executions.")
 @click.option("-d", "--datasets", is_flag=True, default=False, help="Show only dataset modifications.")
 @click.option("--no-pager", is_flag=True, help="Don't use pager (less) for output.")
-def log(columns, format, workflows, datasets, no_pager):
+@click.option("-c", "--no-color", is_flag=True, help="Do not colorize output.")
+def log(columns, format, workflows, datasets, no_pager, no_color):
     """Show a history of renku workflow and dataset commands."""
     from renku.command.log import log_command
-
-    def _show_text(text: str, pager: bool):
-
-        tty_size = shutil.get_terminal_size(fallback=(120, 120))
-
-        if pager and len(text.splitlines()) >= tty_size.lines:
-            pydoc.tempfilepager(text, "less --chop-long-lines -R --tilde")
-        else:
-            click.echo(text)
 
     result = log_command().with_database().build().execute(workflows_only=workflows, datasets_only=datasets).output
     if format == "detailed":
         entries = sorted(result, key=lambda e: e.date, reverse=True)
-        texts = [_print_log(e) for e in entries]
-        _show_text("\n\n".join(texts), not no_pager)
+        text = "\n\n".join([_print_log(e) for e in entries])
+
+        if no_color:
+            text = text = strip_ansi_codes(text)
+
+        if no_pager:
+            click.echo(text)
+        else:
+            show_text_with_pager(text)
     else:
-        _show_text(LOG_FORMATS[format](result, columns), not no_pager)
+        click.echo(LOG_FORMATS[format](result, columns), not no_pager)
