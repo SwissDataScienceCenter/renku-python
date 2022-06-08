@@ -95,6 +95,9 @@ def print_plan(plan: "PlanViewModel", err: bool = False):
     print_key_value("Command: ", plan.full_command)
     print_key_value("Success Codes: ", plan.success_codes)
 
+    if plan.annotations:
+        print_key_value("Annotations:\n", plan.annotations)
+
     if plan.inputs:
         print_key("Inputs:")
         for run_input in plan.inputs:

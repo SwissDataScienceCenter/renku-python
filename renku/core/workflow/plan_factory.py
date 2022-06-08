@@ -34,6 +34,7 @@ from renku.core import errors
 from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.plugin.pluginmanager import get_plugin_manager
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
@@ -648,9 +649,6 @@ class PlanFactory:
 
             client.repository.add(*output_paths)
 
-        results = pm.hook.cmdline_tool_annotations(tool=self)
-        self.annotations = [a for r in results for a in r]
-
     def _path_relative_to_root(self, path) -> str:
         """Make a potentially relative path in a subdirectory relative to the root of the repository."""
         absolute_path = get_absolute_path(path, base=self.directory)
@@ -704,7 +702,7 @@ class PlanFactory:
         keywords: Optional[List[str]] = None,
     ) -> Plan:
         """Return an instance of ``Plan`` based on this factory."""
-        return Plan(
+        plan = Plan(
             id=self.plan_id,
             name=name,
             description=description,
@@ -716,6 +714,15 @@ class PlanFactory:
             project_id=project_gateway.get_project().id,
             success_codes=self.success_codes,
         )
+
+        pm = get_plugin_manager()
+
+        plugin_annotations = list(chain.from_iterable(pm.hook.plan_annotations(plan=plan)))
+
+        if plugin_annotations:
+            plan.annotations.extend(plugin_annotations)
+
+        return plan
 
 
 def read_files_list(files_list: Path):

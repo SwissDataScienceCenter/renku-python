@@ -445,6 +445,30 @@ This would rename the Plan ``my-run`` to ``new-run``, change its description,
 rename its parameter ``input-1`` to ``my-input`` and set the default of this
 parameter to ``other-file.txt`` and set its description.
 
++-----------------------+------------------------------------------------------+
+| Option                | Description                                          |
++=======================+======================================================+
+| ``-n, --name``        | Plan's name                                          |
++-----------------------+------------------------------------------------------+
+| ``-d, --description`` | Plan's description.                                  |
++-----------------------+------------------------------------------------------+
+| ``-s, --set``         | Set default value for a parameter.                   |
+|                       | Accepted format is '<name>=<value>'                  |
++-----------------------+------------------------------------------------------+
+| ``-m, --map``         | Add a new mapping on the Plan.                       |
+|                       | Accepted format is '<name>=<name or expression>'     |
++-----------------------+------------------------------------------------------+
+| ``-r, --rename-param``| Rename a parameter.                                  |
+|                       | Accepted format is '<name>="new name"'               |
++-----------------------+------------------------------------------------------+
+| ``-d,``               | Add a description for a parameter.                   |
+| ``--describe-param``  | Accepted format is '<name>="description"'            |
++-----------------------+------------------------------------------------------+
+| ``-m, --metadata``    | Path to file containing custom JSON-LD metadata to   |
+|                       | be added to the dataset.                             |
++-----------------------+------------------------------------------------------+
+
+
 .. cheatsheet::
    :group: Workflows
    :command: $ renku workflow edit <plan>
@@ -635,7 +659,7 @@ from lazy_object_proxy import Proxy
 
 import renku.ui.cli.utils.color as color
 from renku.command.echo import ERROR
-from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
+from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, json
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
@@ -837,9 +861,10 @@ def compose(
 
 @workflow.command()
 @click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
-@click.option("--name", metavar="<new name>", help="New name of the workflow")
-@click.option("--description", metavar="<new desc>", help="New description of the workflow")
+@click.option("-n", "--name", metavar="<new name>", help="New name of the workflow")
+@click.option("-d", "--description", metavar="<new desc>", help="New description of the workflow")
 @click.option(
+    "-s",
     "--set",
     "set_params",
     multiple=True,
@@ -847,6 +872,7 @@ def compose(
     help="Set default <value> for a <parameter>/add new parameter",
 )
 @click.option(
+    "-m",
     "--map",
     "map_params",
     multiple=True,
@@ -854,6 +880,7 @@ def compose(
     help="New mapping on the workflow",
 )
 @click.option(
+    "-r",
     "--rename-param",
     "rename_params",
     multiple=True,
@@ -867,11 +894,23 @@ def compose(
     metavar='<parameter>="description"',
     help="New description of the workflow",
 )
-def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params):
+@click.option(
+    "-m",
+    "--metadata",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Custom metadata to be associated with the workflow.",
+)
+def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params, metadata):
     """Edit workflow details."""
     from renku.command.view_model.plan import PlanViewModel
     from renku.command.workflow import edit_workflow_command
     from renku.ui.cli.utils.terminal import print_plan
+
+    custom_metadata = None
+
+    if metadata:
+        custom_metadata = json.loads(Path(metadata).read_text())
 
     result = (
         edit_workflow_command()
@@ -884,6 +923,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
             map_params=map_params,
             rename_params=rename_params,
             describe_params=describe_params,
+            custom_metadata=custom_metadata,
         )
     )
     if not result.error:
