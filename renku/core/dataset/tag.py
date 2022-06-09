@@ -100,10 +100,7 @@ def prompt_access_token(exporter):
     Returns:
         The new access token
     """
-    text_prompt = "You must configure an access token\n"
-    text_prompt += "Create one at: {0}\n".format(exporter.access_token_url())
-    text_prompt += "Access token"
-
+    text_prompt = f"You must configure an access token\nCreate one at: {exporter.access_token_url()}\nAccess token: "
     return communication.prompt(text_prompt, type=str)
 
 

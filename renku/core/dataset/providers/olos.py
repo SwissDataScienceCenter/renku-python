@@ -94,7 +94,7 @@ class OLOSExporter(ExporterApi):
 
     def access_token_url(self):
         """Endpoint for creation of access token."""
-        return urllib.parse.urljoin(self.server_url, "/portal by clicking on the top-right menu and selecting 'token'")
+        return urllib.parse.urljoin(self.server_url, "portal")
 
     def export(self, publish, client=None, **kwargs):
         """Execute export process."""

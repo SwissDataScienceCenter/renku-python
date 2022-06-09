@@ -41,7 +41,7 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util import communication, requests
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
-from renku.core.util.metadata import is_external_file, make_temp_dir
+from renku.core.util.metadata import is_external_file, make_project_temp_dir
 from renku.core.util.os import delete_file, get_absolute_path, get_files, get_relative_path, is_subpath
 from renku.core.util.urls import check_url, provider_check, remove_credentials
 from renku.domain_model.dataset import Dataset, DatasetFile, RemoteEntity, get_dataset_data_dir
@@ -566,7 +566,7 @@ def _add_from_renku(
         for file in sources:
             add_file(file, content_path=repository.path / file, checksum=None)
     else:  # NOTE: Renku dataset import with a tag
-        content_path_root = make_temp_dir(client.path)
+        content_path_root = make_project_temp_dir(client.path)
         content_path_root.mkdir(parents=True, exist_ok=True)
         filename = 1
 
@@ -574,7 +574,7 @@ def _add_from_renku(
         repository.install_lfs(skip_smudge=False)  # type: ignore
         # NOTE: Git looks at the current attributes files when loading LFS files which won't includes deleted files, so,
         # we need to include all files that were in LFS at some point
-        git_attributes = repository.get_changes_patch(".gitattributes")
+        git_attributes = repository.get_historical_changes_patch(".gitattributes")
         all_additions = [a.replace("+", "", 1) for a in git_attributes if a.startswith("+") and "filter=lfs" in a]
         (repository.path / ".gitattributes").write_text(os.linesep.join(all_additions))
 

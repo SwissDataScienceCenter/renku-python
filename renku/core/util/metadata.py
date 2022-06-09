@@ -119,7 +119,7 @@ def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
         return None
 
 
-def make_temp_dir(client_path: Path) -> Path:
+def make_project_temp_dir(client_path: Path) -> Path:
     """Create a temporary directory inside project's temp path."""
     base = client_path / RENKU_HOME / RENKU_TMP
     base.mkdir(parents=True, exist_ok=True)

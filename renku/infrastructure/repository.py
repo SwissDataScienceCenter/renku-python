@@ -78,8 +78,7 @@ class BaseRepository:
         self.close()
 
     def __del__(self):
-        # self.close()
-        pass
+        self.close()
 
     @property
     def path(self) -> Path:
@@ -197,7 +196,7 @@ class BaseRepository:
         except errors.GitCommandError as e:
             raise errors.GitError(f"Cannot install Git LFS in {self}") from e
 
-    def get_changes_patch(self, path: Union[Path, str]) -> List[str]:
+    def get_historical_changes_patch(self, path: Union[Path, str]) -> List[str]:
         """Return a patch of all changes to a file."""
         return self.run_git_command("log", "--", str(path), patch=True, follow=True).splitlines()
 
@@ -488,8 +487,20 @@ class BaseRepository:
     ) -> str:
         """Get content of an object using its checksum, write it to a file, and return the file's path.
 
-        NOTE: ``apply_filters`` doesn't smudge LFS objects if repository is cloned with ``--skip-smudge`` or if
-        ``GIT_LFS_SKIP_SMUDGE`` is set. Call ``Repository.install_lfs`` before to make sure that LFS objects are pulled.
+        Args:
+            path(Union[Path, str]): Relative or absolute path to the file.
+            revision(Optional[Union["Reference", str]]): A commit/branch/tag to get the file from. This cannot be passed
+                with ``checksum``.
+            checksum(Optional[str]): Git hash of the file to be retrieved. This cannot be passed with ``revision``.
+            output_path(Optional[Union[Path, str]]): A path to copy the content to. A temporary file is created if it is
+                ``None``.
+            apply_filters(bool): Whether to apply Git filter on the retrieved object.Note that ``apply_filters`` doesn't
+                smudge LFS objects if repository is cloned with ``--skip-smudge`` or if ``GIT_LFS_SKIP_SMUDGE`` is set.
+                Call ``Repository.install_lfs`` before to make sure that LFS objects are pulled.
+
+        Returns:
+            The path to the created file.
+
         """
         absolute_path = get_absolute_path(path, self.path)
 
@@ -701,7 +712,6 @@ class BaseRepository:
         Cleans up dangling processes.
         """
         if getattr(self, "_repository", None) is not None:
-            self._repository.close()  # type:ignore
             del self._repository
             self._repository = None
 
