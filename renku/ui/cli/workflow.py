@@ -649,7 +649,6 @@ respectively.
 """
 
 import os
-import pydoc
 import shutil
 import sys
 from pathlib import Path
@@ -665,6 +664,7 @@ from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import available_workflow_providers, supported_formats
+from renku.ui.cli.utils.terminal import show_text_with_pager
 
 if TYPE_CHECKING:
     from renku.command.view_model.composite_plan import CompositePlanViewModel
@@ -1147,7 +1147,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
             use_pager = True
 
         if use_pager:
-            pydoc.tempfilepager(text_output, "less --chop-long-lines -R --tilde")
+            show_text_with_pager(text_output)
         else:
             click.echo(text_output)
         return

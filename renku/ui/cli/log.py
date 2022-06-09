@@ -65,6 +65,7 @@ from renku.command.view_model.log import (
     DatasetLogViewModel,
     LogViewModel,
 )
+from renku.ui.cli.utils.terminal import show_text_with_pager, strip_ansi_codes
 
 
 def _print_log(log_entry: LogViewModel) -> str:
@@ -208,14 +209,23 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
 )
 @click.option("-w", "--workflows", is_flag=True, default=False, help="Show only workflow executions.")
 @click.option("-d", "--datasets", is_flag=True, default=False, help="Show only dataset modifications.")
-def log(columns, format, workflows, datasets):
+@click.option("--no-pager", is_flag=True, help="Don't use pager (less) for output.")
+@click.option("-c", "--no-color", is_flag=True, help="Do not colorize output.")
+def log(columns, format, workflows, datasets, no_pager, no_color):
     """Show a history of renku workflow and dataset commands."""
     from renku.command.log import log_command
 
     result = log_command().with_database().build().execute(workflows_only=workflows, datasets_only=datasets).output
     if format == "detailed":
         entries = sorted(result, key=lambda e: e.date, reverse=True)
-        texts = [_print_log(e) for e in entries]
-        click.echo("\n\n".join(texts))
+        text = "\n\n".join([_print_log(e) for e in entries])
+
+        if no_color:
+            text = strip_ansi_codes(text)
+
+        if no_pager:
+            click.echo(text)
+        else:
+            show_text_with_pager(text)
     else:
-        click.echo(LOG_FORMATS[format](result, columns))
+        click.echo(LOG_FORMATS[format](result, columns), not no_pager)
