@@ -407,8 +407,10 @@ class RepositoryTemplates(TemplatesSource):
     get available versions of templates.
     """
 
-    def __init__(self, path, source, reference, version, repository: Repository):
-        super().__init__(path=path, source=source, reference=reference, version=version)
+    def __init__(self, path, source, reference, version, repository: Repository, skip_validation: bool = False):
+        super().__init__(
+            path=path, source=source, reference=reference, version=version, skip_validation=skip_validation
+        )
         self.repository: Repository = repository
 
     @classmethod

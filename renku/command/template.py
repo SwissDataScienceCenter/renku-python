@@ -18,7 +18,7 @@
 """Template management commands."""
 
 from renku.command.command_builder.command import Command
-from renku.core.template.usecase import list_templates, set_template, show_template, update_template
+from renku.core.template.usecase import list_templates, set_template, show_template, update_template, validate_templates
 
 
 def list_templates_command():
@@ -55,3 +55,8 @@ def update_template_command():
         .with_database(write=True)
         .with_commit()
     )
+
+
+def validate_templates_command():
+    """Command to validate a template repository."""
+    return Command().command(validate_templates)
