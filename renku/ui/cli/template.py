@@ -260,20 +260,22 @@ def update_template(force, interactive, dry_run):
 @click.pass_context
 @click.option("json_format", "--json", is_flag=True, help="Return result as JSON.")
 @click.option(
-    "--revision",
+    "-r",
+    "--reference",
     type=click.STRING,
     help="Git revision/branch/tag to validate the template at.",
 )
 @click.option(
+    "-s",
     "--source",
     type=click.STRING,
     help="Remote template repository to clone and check.",
 )
-def validate_template(ctx, json_format, revision, source):
+def validate_template(ctx, json_format, reference, source):
     """Validate a template repository and check for common issues."""
     from renku.command.template import validate_templates_command
 
-    result = validate_templates_command().build().execute(source=source, reference=revision).output
+    result = validate_templates_command().build().execute(source=source, reference=reference).output
 
     if json_format:
         click.echo(json.dumps(result))

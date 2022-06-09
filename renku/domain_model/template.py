@@ -23,7 +23,7 @@ import os
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union, cast
 
 import jinja2
 import yaml
@@ -275,7 +275,7 @@ class Template:
             issues.append(issue)
             return issues  # NOTE: no point checking individual files if directory doesn't exist.
 
-        missing_required_files = set()
+        missing_required_files: Set[str] = set()
         for file in self.REQUIRED_FILES:
             if not (self.path / file).is_file():
                 missing_required_files.add(file)
@@ -287,7 +287,7 @@ class Template:
                 raise errors.InvalidTemplateError(issue)
             issues.append(issue)
 
-        existing_prohibited_paths = set()
+        existing_prohibited_paths: Set[str] = set()
 
         for pattern in self.PROHIBITED_PATHS:
             matches = set(

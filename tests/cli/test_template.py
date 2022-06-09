@@ -64,11 +64,11 @@ def test_template_list_from_source(isolated_runner):
         assert "python-minimal" in result.output
         assert "julia-minimal" in result.output
 
-        result = isolated_runner.invoke(cli, command + ["-s", TEMPLATES_URL, "--reference", "0.1.10"])
+        result = isolated_runner.invoke(cli, command + ["-s", TEMPLATES_URL, "--reference", "0.3.2"])
 
         assert 0 == result.exit_code, format_result_exception(result)
         assert "python-minimal" in result.output
-        assert "julia-minimal" not in result.output
+        assert "julia-minimal" in result.output
     finally:
         sys.argv = argv
 
@@ -212,15 +212,15 @@ def test_template_update(runner, client, client_database_injection_manager):
     """Test updating a template."""
     result = runner.invoke(
         cli,
-        ["template", "set", "-f", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.1.10"]
+        ["template", "set", "-f", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.3.2"]
         + ["-p", "description=fixed-version"],
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
         assert "python-minimal" == client.project.template_id
-        assert "0.1.10" == client.project.template_ref
-        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" == client.project.template_version
+        assert "0.3.2" == client.project.template_ref
+        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == client.project.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
@@ -228,7 +228,7 @@ def test_template_update(runner, client, client_database_injection_manager):
     assert "Template is up-to-date" not in result.output
     with client_database_injection_manager(client):
         assert "python-minimal" == client.project.template_id
-        assert Version(client.project.template_ref) > Version("0.1.10")
+        assert Version(client.project.template_ref) > Version("0.3.2")
         assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != client.project.template_version
 
     result = runner.invoke(cli, ["template", "update"])
@@ -263,7 +263,7 @@ def test_template_update_dry_run(runner, client):
     """Test update dry-run doesn't make any changes."""
     result = runner.invoke(
         cli,
-        ["template", "set", "-f", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.1.10"]
+        ["template", "set", "-f", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.3.2"]
         + ["-p", "description=fixed-version"],
     )
 
@@ -363,7 +363,7 @@ def test_template_validate(runner, tmpdir_factory):
         manifest,
         [
             {
-                "folder": "test",
+                "id": "test",
                 "name": "test",
                 "description": "description",
                 "variables": {"some_string": {"description": "somestr desc", "type": "string"}},
@@ -405,7 +405,7 @@ def test_template_validate(runner, tmpdir_factory):
     with chdir(path):
         result = runner.invoke(cli, ["template", "validate"])
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "" == result.output
+        assert "OK\n" == result.output
 
     metadata_folder = renku_dir / "metadata"
     metadata_folder.mkdir()
@@ -423,11 +423,11 @@ def test_template_validate(runner, tmpdir_factory):
         assert ".renku/metadata" in result.output
 
     with chdir(path):
-        result = runner.invoke(cli, ["template", "validate", "--revision", valid_commit.hexsha])
+        result = runner.invoke(cli, ["template", "validate", "--reference", valid_commit.hexsha])
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "" == result.output
+        assert "OK\n" == result.output
 
-        result = runner.invoke(cli, ["template", "validate", "--json", "--revision", valid_commit.hexsha])
+        result = runner.invoke(cli, ["template", "validate", "--json", "--reference", valid_commit.hexsha])
         assert 0 == result.exit_code, format_result_exception(result)
         assert '"valid": true' in result.output
 

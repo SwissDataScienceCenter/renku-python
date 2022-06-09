@@ -263,7 +263,7 @@ def validate_templates(
     """
 
     if source is not None:
-        path = Path(tempfile.mktemp())
+        path = Path(tempfile.mkdtemp())
         repo = Repository.clone_from(path=path, url=source)
         repo.checkout(reference=reference)
     else:
