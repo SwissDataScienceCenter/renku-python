@@ -648,6 +648,7 @@ respectively.
 
 """
 
+import json
 import os
 import shutil
 import sys
@@ -659,7 +660,7 @@ from lazy_object_proxy import Proxy
 
 import renku.ui.cli.utils.color as color
 from renku.command.echo import ERROR
-from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, json
+from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback

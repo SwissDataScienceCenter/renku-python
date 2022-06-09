@@ -166,20 +166,15 @@ class TemplatesManifest:
             id = template_entry.get("id") or template_entry.get("folder")
             if not id:
                 raise errors.InvalidTemplateError(f"Template doesn't have an id: '{template_entry}'")
-            if not template_entry.get("folder"):
-                warnings.append(f"Template '{id}' should use 'folder' attribute instead of 'id'.")
+            if not template_entry.get("id"):
+                warnings.append(f"Template '{id}' should use 'id' attribute instead of 'folder'.")
 
-            parameters = template_entry.get("parameters") or template_entry.get("variables")
+            parameters = template_entry.get("variables")
             if parameters:
-                if template_entry.get("parameters"):
-                    warnings.append(f"Template '{id}' should use 'variables' instead of 'parameters' in manifest.")
-
-                if not template_entry.get("variables"):
-                    template_entry["variables"] = {}
-
                 if not isinstance(parameters, dict):
                     raise errors.InvalidTemplateError(
-                        f"Invalid template variable type on template '{id}': '{type(parameters).__name__}'"
+                        f"Invalid template variable type on template '{id}': '{type(parameters).__name__}', "
+                        "should be 'dict'."
                     )
 
                 for key, parameter in parameters.items():
@@ -201,12 +196,7 @@ class Template:
 
     REQUIRED_ATTRIBUTES = ("name",)
     REQUIRED_FILES = (os.path.join(RENKU_HOME, "renku.ini"), "Dockerfile")
-    PROHIBITED_PATHS = (
-        os.path.join(RENKU_HOME, "metadata"),
-        os.path.join(RENKU_HOME, "metadata.yml"),
-        os.path.join(RENKU_HOME, "template_checksums.json"),
-        os.path.join(RENKU_HOME, "cache"),
-    )
+    PROHIBITED_PATHS = (f"{RENKU_HOME}/*",)
 
     def __init__(
         self,
@@ -285,20 +275,33 @@ class Template:
             issues.append(issue)
             return issues  # NOTE: no point checking individual files if directory doesn't exist.
 
-        # TODO: What are required files
+        missing_required_files = set()
         for file in self.REQUIRED_FILES:
             if not (self.path / file).is_file():
-                issue = f"File '{file}' is required for template '{self.id}'"
-                if raise_errors:
-                    raise errors.InvalidTemplateError(issue)
-                issues.append(issue)
+                missing_required_files.add(file)
 
-        for path in self.PROHIBITED_PATHS:
-            if (self.path / path).exists():
-                issue = f"Template '{self.id}' can't contain path '{path}'"
-                if raise_errors:
-                    raise errors.InvalidTemplateError(issue)
-                issues.append(issue)
+        if missing_required_files:
+            required_files_str = "\n\t\t\t".join(missing_required_files)
+            issue = f"These paths are required but missing:\n\t\t\t{required_files_str}"
+            if raise_errors:
+                raise errors.InvalidTemplateError(issue)
+            issues.append(issue)
+
+        existing_prohibited_paths = set()
+
+        for pattern in self.PROHIBITED_PATHS:
+            matches = set(
+                m for m in self.path.glob(pattern) if str(m.relative_to(self.path)) not in self.REQUIRED_FILES
+            )
+            if matches:
+                existing_prohibited_paths.update(str(m.relative_to(self.path)) for m in matches)
+
+        if existing_prohibited_paths:
+            prohibited_paths_str = "\n\t\t\t".join(p for p in existing_prohibited_paths)
+            issue = f"These paths are not allowed in a template:\n\t\t\t{prohibited_paths_str}"
+            if raise_errors:
+                raise errors.InvalidTemplateError(issue)
+            issues.append(issue)
 
         # NOTE: Validate symlinks resolve to a path inside the template
         for relative_path in self.get_files():

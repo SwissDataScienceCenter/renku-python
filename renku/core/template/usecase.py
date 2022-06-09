@@ -249,16 +249,31 @@ def select_template(templates_source: TemplatesSource, id=None) -> Optional[Temp
     return prompt_to_select_template()
 
 
-def validate_templates(reference: Optional[str] = None) -> Dict[str, Union[str, Dict[str, List[str]]]]:
-    """Validate a template repository."""
+def validate_templates(
+    source: Optional[str] = None, reference: Optional[str] = None
+) -> Dict[str, Union[str, Dict[str, List[str]]]]:
+    """Validate a template repository.
 
-    path = Path(os.getcwd())
-    repo = Repository(path=path)
+    Args:
+        source(str, optional): Remote repository URL to clone and check (Default value = None).
+        reference(str, optional): Git commit/branch/tag to check (Default value = None).
+    Returns:
+        Dict[str, Union[str, Dict[str, List[str]]]]: Dictionary containing errors and warnings for manifest and
+            templates, along with a ``valid`` field telling if all checks passed.
+    """
 
-    if reference is not None:
-        path = Path(tempfile.mkdtemp())
-        repo.create_worktree(path, reference=reference)
+    if source is not None:
+        path = Path(tempfile.mktemp())
+        repo = Repository.clone_from(path=path, url=source)
+        repo.checkout(reference=reference)
+    else:
+        path = Path(os.getcwd())
         repo = Repository(path=path)
+
+        if reference is not None:
+            path = Path(tempfile.mkdtemp())
+            repo.create_worktree(path, reference=reference)
+            repo = Repository(path=path)
 
     version = repo.head.commit.hexsha
 

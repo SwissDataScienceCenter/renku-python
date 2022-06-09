@@ -393,7 +393,8 @@ def test_template_validate(runner, tmpdir_factory):
     with chdir(path):
         result = runner.invoke(cli, ["template", "validate"])
         assert 1 == result.exit_code, format_result_exception(result)
-        assert "File 'Dockerfile' is required for template 'test'" in result.output
+        assert "These paths are required but missing" in result.output
+        assert "Dockerfile" in result.output
 
     dockerfile = template_dir / "Dockerfile"
     dockerfile.write_text("a")
@@ -418,7 +419,8 @@ def test_template_validate(runner, tmpdir_factory):
     with chdir(path):
         result = runner.invoke(cli, ["template", "validate"])
         assert 1 == result.exit_code, format_result_exception(result)
-        assert "Template 'test' can't contain path '.renku/metadata'" in result.output
+        assert "These paths are not allowed in a template" in result.output
+        assert ".renku/metadata" in result.output
 
     with chdir(path):
         result = runner.invoke(cli, ["template", "validate", "--revision", valid_commit.hexsha])
@@ -428,3 +430,11 @@ def test_template_validate(runner, tmpdir_factory):
         result = runner.invoke(cli, ["template", "validate", "--json", "--revision", valid_commit.hexsha])
         assert 0 == result.exit_code, format_result_exception(result)
         assert '"valid": true' in result.output
+
+
+def test_template_validate_remote(runner, tmpdir_factory):
+    """Test template validate command on remote repository."""
+    result = runner.invoke(
+        cli, ["template", "validate", "--source", "https://github.com/SwissDataScienceCenter/renku-project-template"]
+    )
+    assert 0 == result.exit_code, format_result_exception(result)

@@ -115,7 +115,7 @@ list of files that will be updated.
 Validating a template repository
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you are developing you own templates in a template repository, there are
+If you are developing your own templates in a template repository, there are
 some rules that templates have to follow. To assist in creating your own
 templates, you can check that everything is ok with:
 
@@ -135,6 +135,7 @@ from typing import TYPE_CHECKING, Any, Dict, List
 
 import click
 
+import renku.ui.cli.utils.color as color
 from renku.ui.cli.init import parse_parameters
 
 if TYPE_CHECKING:
@@ -263,29 +264,36 @@ def update_template(force, interactive, dry_run):
     type=click.STRING,
     help="Git revision/branch/tag to validate the template at.",
 )
-def validate_template(ctx, json_format, revision):
+@click.option(
+    "--source",
+    type=click.STRING,
+    help="Remote template repository to clone and check.",
+)
+def validate_template(ctx, json_format, revision, source):
     """Validate a template repository and check for common issues."""
     from renku.command.template import validate_templates_command
 
-    result = validate_templates_command().build().execute(reference=revision).output
+    result = validate_templates_command().build().execute(source=source, reference=revision).output
 
     if json_format:
         click.echo(json.dumps(result))
     else:
         if result["warnings"]:
-            click.echo("Manifest Errors:\n")
+            click.secho("Manifest Warnings:", fg="yellow")
             for warning in result["warnings"]:
-                click.echo(f"\t{warning}\n")
+                click.secho(f"\t{warning}", fg="yellow")
         if result["manifest"]:
-            click.echo(f"Manifest Errors:\n\t{result['manifest']}\n")
+            click.secho(f"Manifest Errors:\n\t{result['manifest']}", fg="red")
         if result["templates"]:
-            click.echo("Template Errors:\n")
+            click.secho("Template Errors:", fg="red")
 
             for template_id, messages in result["templates"].items():
-                click.echo(f"\t{template_id}:\n")
+                click.secho(f"\t{template_id}:", fg="red")
 
                 for message in messages:
-                    click.echo(f"\t\t{message}\n")
+                    click.secho(f"\t\t{message}", fg="red")
+        if result["valid"]:
+            click.secho("OK", fg=color.GREEN)
     if not result["valid"]:
         ctx.exit(1)
 
