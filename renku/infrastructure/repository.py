@@ -712,6 +712,10 @@ class BaseRepository:
         Cleans up dangling processes.
         """
         if getattr(self, "_repository", None) is not None:
+            try:
+                self._repository.close()  # type:ignore
+            except AttributeError:
+                pass
             del self._repository
             self._repository = None
 
@@ -924,7 +928,10 @@ class Submodule(BaseRepository):
 
     def __del__(self) -> None:
         if getattr(self, "_repository", None) is not None:
-            self._repository.close()  # type:ignore
+            try:
+                self._repository.close()  # type:ignore
+            except AttributeError:
+                pass
             del self._repository
             self._repository = None
 

@@ -20,7 +20,7 @@ from typing import Optional
 from marshmallow import EXCLUDE
 
 from renku.command.schema.dataset import DatasetSchema
-from renku.domain_model.dataset import Dataset
+from renku.domain_model.dataset import Dataset, DatasetTag
 
 
 class ProviderDataset(Dataset):
@@ -30,6 +30,7 @@ class ProviderDataset(Dataset):
         kwargs.setdefault("initial_identifier", "invalid-initial-id")
         super().__init__(**kwargs)
         self.dataset_files = []  # TODO Make this a property
+        self._tag: Optional[DatasetTag] = None
 
     @classmethod
     def from_jsonld(cls, data, schema_class=None) -> "ProviderDataset":
@@ -70,6 +71,16 @@ class ProviderDataset(Dataset):
     def files(self):
         """Return list of existing files."""
         raise NotImplementedError("ProviderDataset has no files.")
+
+    @property
+    def tag(self) -> Optional[DatasetTag]:
+        """Return dataset's tag."""
+        return self._tag
+
+    @tag.setter
+    def tag(self, value):
+        """Set dataset's tag."""
+        self._tag = value
 
 
 class ProviderDatasetFile:

@@ -562,7 +562,13 @@ def import_dataset(
         if previous_dataset:
             _update_datasets_metadata(new_dataset, previous_dataset, delete, provider_dataset.same_as)
 
-        if provider_dataset.version:
+        if provider_dataset.tag:
+            add_dataset_tag(
+                dataset_name=new_dataset.name,
+                tag=provider_dataset.tag.name,
+                description=provider_dataset.tag.description,
+            )
+        elif provider_dataset.version:
             add_dataset_tag(
                 dataset_name=new_dataset.name,
                 tag=provider_dataset.version,

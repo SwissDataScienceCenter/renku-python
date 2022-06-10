@@ -1808,6 +1808,11 @@ def test_datasets_import_with_tag(client, runner, get_datasets_provenance_with_i
     assert "data/parts/parts.csv" in git_attributes
     assert "data/parts/part_relationships.csv" in git_attributes
 
+    result = runner.invoke(cli, ["dataset", "ls-tags", "parts"])
+
+    assert "v1" in result.output
+    assert "First version updated on 27.02.2022" in result.output
+
 
 @pytest.mark.integration
 @retry_failed

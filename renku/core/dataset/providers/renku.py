@@ -381,12 +381,16 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
                     raise errors.ParameterError(f"Cannot find tag '{self._tag}' for dataset '{self._name}'")
 
                 dataset = datasets_provenance.get_by_id(tag.dataset_id.value)
+            else:
+                tag = None
 
             assert dataset is not None
             provider_dataset = ProviderDataset.from_dataset(dataset)
 
-            # NOTE: Set the dataset version so that it can be checked later to see if a tag was specified for import
+            # NOTE: Set the dataset version to the given tag (to reset the version if no tag was provided)
             provider_dataset.version = self._tag
+            # NOTE: Store the tag so that it can be checked later to see if a tag was specified for import
+            provider_dataset.tag = tag
         finally:
             database_dispatcher.pop_database()
             client_dispatcher.pop_client()
