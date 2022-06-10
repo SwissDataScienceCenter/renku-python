@@ -51,6 +51,34 @@ def test_activity_gateway_downstream_activities(dummy_database_injection_manager
         assert {following.id, intermediate.id} == {a.id for a in downstream}
 
 
+def test_activity_gateway_upstream_activities(dummy_database_injection_manager):
+    """Test getting upstream activities work."""
+    plan = Plan(id=Plan.generate_id(), name="plan", command="")
+
+    previous = create_dummy_activity(plan=plan, generations=["some/"])
+    intermediate = create_dummy_activity(plan=plan, usages=["some/data"], generations=["other/data/file"])
+    following = create_dummy_activity(plan=plan, usages=["other/data"])
+    unrelated = create_dummy_activity(plan=plan, usages=["unrelated_in"], generations=["unrelated_out"])
+
+    with dummy_database_injection_manager(None):
+        activity_gateway = ActivityGateway()
+
+        activity_gateway.add(previous)
+        activity_gateway.add(intermediate)
+        activity_gateway.add(following)
+        activity_gateway.add(unrelated)
+
+        upstream = activity_gateway.get_upstream_activities(previous)
+
+        assert not upstream
+
+        upstream = activity_gateway.get_upstream_activities(intermediate)
+        assert {previous.id} == {a.id for a in upstream}
+
+        upstream = activity_gateway.get_upstream_activities(following)
+        assert {previous.id, intermediate.id} == {a.id for a in upstream}
+
+
 def test_activity_gateway_downstream_activity_chains(dummy_database_injection_manager):
     """Test getting downstream activity chains work."""
     r1 = create_dummy_activity(plan="r1", usages=["a"], generations=["b"])

@@ -103,7 +103,7 @@ class GitMerger:
         for remote_branch in remote_branches:
             # NOTE: Create a new shallow worktree for each remote branch, could be several in case of an octo merge
             worktree_path = Path(mkdtemp())
-            client.repository.create_worktree(worktree_path, remote_branch, checkout=False)
+            client.repository.create_worktree(worktree_path, reference=remote_branch, checkout=False)
             try:
                 remote_repository = Repository(worktree_path)
                 remote_repository.checkout(sparse=[database_path])

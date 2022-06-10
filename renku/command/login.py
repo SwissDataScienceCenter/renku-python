@@ -18,9 +18,8 @@
 """Logging in to a Renku deployment."""
 
 import os
-import sys
+import time
 import urllib
-import uuid
 import webbrowser
 from typing import TYPE_CHECKING
 
@@ -37,6 +36,8 @@ if TYPE_CHECKING:
 
 
 CONFIG_SECTION = "http"
+KEYCLOAK_REALM = "Renku"
+CLIENT_ID = "renku-cli"
 
 
 def login_command():
@@ -67,59 +68,93 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
         else:
             raise errors.ParameterError("Cannot find a unique remote URL for project.")
 
-    cli_nonce = str(uuid.uuid4())
-
-    communication.echo(f"Please log in at {parsed_endpoint.geturl()} on your browser.")
-
-    login_url = _get_url(parsed_endpoint, "/api/auth/login", cli_nonce=cli_nonce)
-    webbrowser.open_new_tab(login_url)
-
-    server_nonce = communication.prompt("Once completed, enter the security code that you receive at the end")
-    cli_token_url = _get_url(parsed_endpoint, "/api/auth/cli-token", cli_nonce=cli_nonce, server_nonce=server_nonce)
+    auth_server_url = _get_url(
+        parsed_endpoint, path=f"auth/realms/{KEYCLOAK_REALM}/protocol/openid-connect/auth/device"
+    )
 
     try:
-        response = requests.get(cli_token_url)
+        response = requests.post(auth_server_url, data={"client_id": CLIENT_ID})
     except errors.RequestError as e:
-        raise errors.OperationError("Cannot get access token from remote host.") from e
+        raise errors.RequestError(f"Cannot connect to authorization server at {auth_server_url}.") from e
 
-    if response.status_code == 200:
-        access_token = response.json().get("access_token")
-        _store_token(parsed_endpoint.netloc, access_token)
+    requests.check_response(response=response)
+    data = response.json()
 
-        if git_login:
-            _set_git_credential_helper(repository=client.repository, hostname=parsed_endpoint.netloc)
-            backup_remote_name, backup_exists, remote = create_backup_remote(
-                repository=client.repository, remote_name=remote_name, url=remote_url  # type:ignore
-            )
-            if backup_exists:
-                communication.echo(f"Backup remote '{backup_remote_name}' already exists. Ignoring '--git' flag.")
-            elif not remote:
-                communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
-            else:
-                _set_renku_url_for_remote(
-                    repository=client.repository,
-                    remote_name=remote_name,  # type:ignore
-                    remote_url=remote_url,  # type:ignore
-                    hostname=parsed_endpoint.netloc,
-                )
+    verification_uri = data.get("verification_uri")
+    user_code = data.get("user_code")
+    verification_uri_complete = f"{verification_uri}?user_code={user_code}"
 
-    else:
-        communication.error(
-            f"Remote host did not return an access token: {parsed_endpoint.geturl()}, "
-            f"status code: {response.status_code}"
+    communication.echo(
+        f"Please grant access to '{CLIENT_ID}' in your browser.\n"
+        f"If a browser window does not open automatically, go to {verification_uri_complete}"
+    )
+
+    webbrowser.open_new_tab(verification_uri_complete)
+
+    polling_interval = min(data.get("interval", 5), 5)
+    token_url = _get_url(parsed_endpoint, path=f"auth/realms/{KEYCLOAK_REALM}/protocol/openid-connect/token")
+    device_code = data.get("device_code")
+
+    while True:
+        time.sleep(polling_interval)
+
+        response = requests.post(
+            token_url,
+            data={
+                "device_code": device_code,
+                "client_id": CLIENT_ID,
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+            },
         )
-        sys.exit(1)
+        status_code = response.status_code
+        if status_code == 200:
+            break
+        elif status_code == 400:
+            error = response.json().get("error")
+
+            if error == "authorization_pending":
+                continue
+            elif error == "slow_down":
+                polling_interval += 1
+            elif error == "access_denied":
+                raise errors.AuthenticationError("Access denied")
+            elif error == "expired_token":
+                raise errors.AuthenticationError("Session expired, try again")
+            else:
+                raise errors.AuthenticationError(f"Invalid error message from server: {response.json()}")
+        else:
+            raise errors.AuthenticationError(f"Invalid status code from server: {status_code} - {response.content}")
+
+    access_token = response.json().get("access_token")
+    _store_token(parsed_endpoint.netloc, access_token)
+
+    if git_login:
+        _set_git_credential_helper(repository=client.repository, hostname=parsed_endpoint.netloc)
+        backup_remote_name, backup_exists, remote = create_backup_remote(
+            repository=client.repository, remote_name=remote_name, url=remote_url  # type:ignore
+        )
+        if backup_exists:
+            communication.echo(f"Backup remote '{backup_remote_name}' already exists. Ignoring '--git' flag.")
+        elif not remote:
+            communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
+        else:
+            _set_renku_url_for_remote(
+                repository=client.repository,
+                remote_name=remote_name,  # type:ignore
+                remote_url=remote_url,  # type:ignore
+                hostname=parsed_endpoint.netloc,
+            )
 
 
-def _parse_endpoint(endpoint):
-    parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint)
+def _parse_endpoint(endpoint, use_remote=False):
+    parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint, use_remote=use_remote)
     if not parsed_endpoint:
         raise errors.ParameterError("Parameter 'endpoint' is missing.")
 
     return parsed_endpoint
 
 
-def _get_url(parsed_endpoint, path, **query_args):
+def _get_url(parsed_endpoint, path, **query_args) -> str:
     query = urllib.parse.urlencode(query_args)
     return parsed_endpoint._replace(path=path, query=query).geturl()
 
@@ -158,22 +193,24 @@ def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote
 
 
 @inject.autoparams()
-def read_renku_token(endpoint, client_dispatcher: IClientDispatcher):
+def read_renku_token(endpoint: str, client_dispatcher: IClientDispatcher, get_endpoint_from_remote=False) -> str:
     """Read renku token from renku config file.
 
     Args:
-        endpoint:  Endpoint to get token for.
+        endpoint(str):  Endpoint to get token for.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
+    Keywords:
+        get_endpoint_from_remote: if no endpoint is specified, use the repository remote to infer one
 
     Returns:
         Token for endpoint.
     """
     try:
-        parsed_endpoint = _parse_endpoint(endpoint)
+        parsed_endpoint = _parse_endpoint(endpoint, use_remote=get_endpoint_from_remote)
     except errors.ParameterError:
-        return
+        return ""
     if not parsed_endpoint:
-        return
+        return ""
 
     return _read_renku_token_for_hostname(client_dispatcher.current_client, parsed_endpoint.netloc)
 

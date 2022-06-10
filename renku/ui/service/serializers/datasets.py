@@ -181,6 +181,7 @@ class DatasetImportRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositoryS
     dataset_uri = fields.String(required=True)
     name = fields.String(description="Optional dataset name.")
     extract = fields.Boolean()
+    tag = fields.String(description="Dataset version to import.")
 
 
 class DatasetImportResponseRPC(JsonRPCResponse):

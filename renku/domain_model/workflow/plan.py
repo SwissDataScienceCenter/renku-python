@@ -22,7 +22,7 @@ import itertools
 import re
 from abc import ABC
 from datetime import datetime
-from typing import Any, List, Optional, Set, Tuple, cast
+from typing import Any, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 import marshmallow
@@ -30,6 +30,7 @@ from werkzeug.utils import secure_filename
 
 from renku.core import errors
 from renku.core.util.datetime8601 import local_now
+from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, CommandParameterBase
 from renku.infrastructure.database import Persistent
 
@@ -65,6 +66,9 @@ class AbstractPlan(Persistent, ABC):
         else:
             AbstractPlan.validate_name(name)
             self.name = name
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} '{self.name}'>"
 
     @staticmethod
     def generate_id(uuid: Optional[str] = None) -> str:
@@ -135,6 +139,8 @@ class AbstractPlan(Persistent, ABC):
 class Plan(AbstractPlan):
     """Represent a `renku run` execution template."""
 
+    annotations: List[Annotation] = list()
+
     def __init__(
         self,
         *,
@@ -151,12 +157,14 @@ class Plan(AbstractPlan):
         project_id: Optional[str] = None,
         outputs: Optional[List[CommandOutput]] = None,
         success_codes: Optional[List[int]] = None,
+        annotations: Optional[List[Annotation]] = None,
     ):
         self.command: str = command
         self.inputs: List[CommandInput] = inputs or []
         self.outputs: List[CommandOutput] = outputs or []
         self.parameters: List[CommandParameter] = parameters or []
         self.success_codes: List[int] = success_codes or []
+        self.annotations: List[Annotation] = annotations or []
         super().__init__(
             id=id,
             description=description,
@@ -346,6 +354,14 @@ class Plan(AbstractPlan):
         self.unfreeze()
         self.invalidated_at = when
         self.freeze()
+
+    def get_field_by_id(self, id: str) -> Union[CommandInput, CommandOutput, CommandParameter]:
+        """Return an in Input/Output/Parameter by its id."""
+        for field in itertools.chain(self.inputs, self.outputs, self.parameters):
+            if field.id == id:
+                return field  # type: ignore
+
+        raise errors.ParameterError(f"Parameter {id} not found on plan {self.id}.")
 
 
 class PlanDetailsJson(marshmallow.Schema):

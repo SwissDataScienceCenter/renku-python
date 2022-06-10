@@ -16,7 +16,7 @@
 """API for providers."""
 
 import abc
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, List
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
@@ -28,22 +28,26 @@ class ProviderApi(abc.ABC):
     @abc.abstractmethod
     def find_record(self, uri, **kwargs) -> "ProviderRecordSerializerApi":
         """Find record by URI."""
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_exporter(self, dataset, access_token):
         """Get export manager."""
+        raise NotImplementedError
+
+    def set_export_parameters(self, **kwargs):
+        """Set and validate required parameters for exporting for a provider."""
         pass
 
-    def set_parameters(self, **kwargs):
-        """Set and validate required parameters for a provider."""
+    def set_import_parameters(self, **kwargs):
+        """Set and validate required parameters for importing for a provider."""
         pass
 
     @staticmethod
     @abc.abstractmethod
     def supports(uri):
         """Whether or not this provider supports a given URI."""
-        pass
+        raise NotImplementedError
 
     @staticmethod
     def supports_export():
@@ -60,10 +64,10 @@ class ProviderApi(abc.ABC):
         """Returns parameters that can be set for export."""
         return {}
 
-    @property
-    def is_git_based(self):
-        """True if provider is a git repository."""
-        return False
+    @staticmethod
+    def import_parameters():
+        """Returns parameters that can be set for import."""
+        return {}
 
     @property
     def supports_images(self):
@@ -110,6 +114,10 @@ class ProviderRecordSerializerApi(abc.ABC):
     def is_last_version(self, uri) -> bool:
         """Check if record is at last possible version."""
         raise NotImplementedError
+
+    def is_version_equal_to(self, dataset: Any) -> bool:
+        """Check if a dataset has the same version as the record."""
+        return self.version == getattr(dataset, "version", object())
 
 
 class ExporterApi(abc.ABC):

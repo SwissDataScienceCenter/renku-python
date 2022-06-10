@@ -895,7 +895,7 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
 
 
 @pytest.mark.integration
-@pytest.mark.vc
+@pytest.mark.vcr
 def test_add_from_url_to_destination(runner, client, load_dataset_with_injection):
     """Test add data from a URL to a new destination."""
     url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
@@ -1783,3 +1783,84 @@ def test_datasets_provenance_after_external_provider_update(client, runner, get_
         current_version = datasets_provenance.get_by_name("my-data")
 
     assert current_version.identifier != current_version.initial_identifier
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_datasets_import_with_tag(client, runner, get_datasets_provenance_with_injection):
+    """Test dataset import from a Renku provider with a specified tag version."""
+    doi = "https://dev.renku.ch/datasets/ddafee6bb38a46f99346cb563afc2c64"
+    result = runner.invoke(cli, ["dataset", "import", "-y", "--tag", "v1", doi])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("parts")
+
+    dataset_path = client.path / "data" / "parts"
+    assert "v1" == dataset.version
+    assert (dataset_path / "README.md").exists()  # This file was deleted in a later version
+    assert doi == dataset.same_as.value
+    assert "Updated on 01.06.2022" not in (dataset_path / "parts.csv").read_text()
+
+    git_attributes = (client.repository.path / ".gitattributes").read_text()
+    assert "data/parts/parts.csv" in git_attributes
+    assert "data/parts/part_relationships.csv" in git_attributes
+
+    result = runner.invoke(cli, ["dataset", "ls-tags", "parts"])
+
+    assert "v1" in result.output
+    assert "First version updated on 27.02.2022" in result.output
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_datasets_imported_with_tag_are_not_updated(client, runner):
+    """Test dataset that are imported with a specified tag version won't be updated."""
+    doi = "https://dev.renku.ch/datasets/ddafee6bb38a46f99346cb563afc2c64"
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--tag", "v1", doi]).exit_code
+
+    commit_sha_before = client.repository.head.commit.hexsha
+
+    result = runner.invoke(cli, ["dataset", "update", "--all"])
+
+    commit_sha_after = client.repository.head.commit.hexsha
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Skipped updating imported Renku dataset 'parts' with tag 'v1'" in result.output
+    assert commit_sha_after == commit_sha_before
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_dataset_update_removes_deleted_files(
+    client, runner, client_database_injection_manager, get_datasets_provenance_with_injection
+):
+    """Test dataset update removes deleted files in the updated renku datasets."""
+    doi = "https://dev.renku.ch/datasets/ddafee6bb38a46f99346cb563afc2c64"
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--tag", "v1", "--name", "parts", doi]).exit_code
+
+    # NOTE: Allow dataset to be updatable by removing ``version`` and setting ``same_as`` to another id of the dataset
+    with client_database_injection_manager(client):
+        with with_dataset(client, name="parts", commit_database=True) as dataset:
+            dataset.version = None
+            dataset.same_as = Url(url_id="https://dev.renku.ch/datasets/abc934939cbf45dca0cfef61d05fa132")
+    client.repository.add(all=True)
+    client.repository.commit("metadata updated")
+
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("parts")
+
+    assert 4 == len(dataset.files)
+
+    result = runner.invoke(cli, ["dataset", "update", "parts"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("parts")
+
+    assert 2 == len(dataset.files)
+    assert {"data/parts/part_categories.csv", "data/parts/parts.csv"} == {f.entity.path for f in dataset.files}

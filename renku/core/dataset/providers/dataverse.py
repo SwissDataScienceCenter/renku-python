@@ -26,7 +26,6 @@ from string import Template
 from typing import TYPE_CHECKING, Any, Dict
 from urllib import parse as urlparse
 
-import attr
 from tqdm import tqdm
 
 from renku.command.command_builder import inject
@@ -137,15 +136,13 @@ def make_file_url(file_id, base_url):
     return urllib.parse.urlunparse(url_parts)
 
 
-@attr.s
 class DataverseProvider(ProviderApi):
     """Dataverse API provider."""
 
-    is_doi = attr.ib(default=False)
-
-    _server_url = attr.ib(default=None)
-
-    _dataverse_name = attr.ib(default=None)
+    def __init__(self, is_doi: bool = False):
+        self.is_doi = is_doi
+        self._server_url = None
+        self._dataverse_name = None
 
     @staticmethod
     def supports(uri):
@@ -214,8 +211,10 @@ class DataverseProvider(ProviderApi):
         )
 
     @inject.autoparams()
-    def set_parameters(self, client_dispatcher: IClientDispatcher, *, dataverse_server, dataverse_name, **kwargs):
-        """Set and validate required parameters for a provider."""
+    def set_export_parameters(
+        self, client_dispatcher: IClientDispatcher, *, dataverse_server, dataverse_name, **kwargs
+    ):
+        """Set and validate required parameters for exporting for a provider."""
         config_base_url = "server_url"
 
         client = client_dispatcher.current_client
@@ -283,7 +282,7 @@ class DataverseRecordSerializer(ProviderRecordSerializerApi):
         if not files:
             raise LookupError("no files have been found - deposit is empty or protected")
 
-        return [DataverseFileSerializer(**file_) for file_ in files]
+        return [DataverseFileSerializer(**file) for file in files]
 
     def as_dataset(self, client) -> "ProviderDataset":
         """Deserialize ``DataverseRecordSerializer`` to ``Dataset``."""
@@ -345,27 +344,31 @@ class DataverseRecordSerializer(ProviderRecordSerializerApi):
         return dataset
 
 
-@attr.s
 class DataverseFileSerializer:
     """Dataverse record file."""
 
-    _id = attr.ib(default=None, kw_only=True)
-
-    identifier = attr.ib(default=None, kw_only=True)
-
-    name = attr.ib(default=None, kw_only=True)
-
-    file_format = attr.ib(default=None, kw_only=True)
-
-    content_size = attr.ib(default=None, kw_only=True)
-
-    description = attr.ib(default=None, kw_only=True)
-
-    content_url = attr.ib(default=None, kw_only=True)
-
-    parent_url = attr.ib(default=None, kw_only=True)
-
-    _type = attr.ib(default=None, kw_only=True)
+    def __init__(
+        self,
+        *,
+        content_size=None,
+        content_url=None,
+        description=None,
+        file_format=None,
+        id=None,
+        identifier=None,
+        name=None,
+        parent_url=None,
+        type=None,
+    ):
+        self.content_size = content_size
+        self.content_url = content_url
+        self.description = description
+        self.file_format = file_format
+        self.id = id
+        self.identifier = identifier
+        self.name = name
+        self.parent_url = parent_url
+        self.type = type
 
     @property
     def remote_url(self):
@@ -386,17 +389,14 @@ class DataverseFileSerializer:
         return urllib.parse.urlparse(file_url)
 
 
-@attr.s
 class DataverseExporter(ExporterApi):
     """Dataverse export manager."""
 
-    dataset = attr.ib(kw_only=True)
-
-    access_token = attr.ib(kw_only=True)
-
-    _server_url = attr.ib(kw_only=True, default=None)
-
-    _dataverse_name = attr.ib(kw_only=True, default=None)
+    def __init__(self, *, dataset, access_token, server_url=None, dataverse_name=None):
+        self.dataset = dataset
+        self.access_token = access_token
+        self._server_url = server_url
+        self._dataverse_name = dataverse_name
 
     def set_access_token(self, access_token):
         """Set access token."""
@@ -473,13 +473,13 @@ class DataverseExporter(ExporterApi):
         return authors, contacts
 
 
-@attr.s
 class _DataverseDeposition:
     """Dataverse record for deposit."""
 
-    access_token = attr.ib(kw_only=True)
-    server_url = attr.ib(kw_only=True)
-    dataset_pid = attr.ib(kw_only=True, default=None)
+    def __init__(self, *, access_token, server_url, dataset_pid=None):
+        self.access_token = access_token
+        self.server_url = server_url
+        self.dataset_pid = dataset_pid
 
     DATASET_CREATE_PATH = "dataverses/{dataverseName}/datasets"
     FILE_UPLOAD_PATH = "datasets/:persistentId/add"
@@ -546,9 +546,11 @@ class _DataverseDeposition:
 
     @staticmethod
     def _check_response(response):
-        if response.status_code not in [200, 201, 202]:
-            if response.status_code == 401:
-                raise errors.AuthenticationError("Access unauthorized - update access token.")
+        from renku.core.util import requests
+
+        try:
+            requests.check_response(response=response)
+        except errors.RequestError:
             json_res = response.json()
             raise errors.ExportError(
                 "HTTP {} - Cannot export dataset: {}".format(

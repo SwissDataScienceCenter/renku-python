@@ -24,7 +24,7 @@ mark a ``data/data.csv`` as an input with name ``my-input`` to the script:
 
 .. code-block:: python
 
-    from renku.ui.api import Input
+    from renku.api import Input
 
     with open(Input("my-input", "data/data.csv")) as input_data:
         for line in input_data:
@@ -36,7 +36,7 @@ Users can track parameters' values in a workflow by defining them using
 
 .. code-block:: python
 
-    from renku.ui.api import Parameter
+    from renku.api import Parameter
 
     nc = Parameter(name="n_components", value=10)
 
@@ -61,7 +61,7 @@ from renku.core.workflow.plan_factory import (
 )
 from renku.domain_model.workflow import parameter as core_parameter
 from renku.domain_model.workflow import plan as core_plan
-from renku.ui.api.models.project import ensure_project_context
+from renku.ui.api.util import ensure_project_context
 
 
 def _validate_name(name: str):
@@ -164,6 +164,12 @@ class Parameter:
 
         return value
 
+    def __repr__(self):
+        return (
+            f"<Parameter '{self.name}': {self.value} (default: {self.default_value}, prefix: {self.prefix}, "
+            f"position: {self.position})>"
+        )
+
 
 class Input(_PathBase, Parameter):
     """API Input model."""
@@ -191,6 +197,9 @@ class Input(_PathBase, Parameter):
 
         return self
 
+    def __repr__(self):
+        return f"<Input '{self.name}'={self.path}>"
+
 
 class Output(_PathBase, Parameter):
     """API Output model."""
@@ -217,6 +226,9 @@ class Output(_PathBase, Parameter):
         self.mapped_stream = output.mapped_to.stream_type if output.mapped_to else None
 
         return self
+
+    def __repr__(self):
+        return f"<Output '{self.name}'={self.path}>"
 
 
 class Link:

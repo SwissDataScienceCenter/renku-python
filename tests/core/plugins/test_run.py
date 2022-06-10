@@ -17,8 +17,6 @@
 # limitations under the License.
 """Test plugins for the ``run`` command."""
 
-import pytest
-
 from renku.core.plugin import pluginmanager as pluginmanager
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
@@ -39,28 +37,10 @@ def test_renku_pre_run_hook(monkeypatch, dummy_pre_run_plugin_hook, runner, proj
         assert 1 == dummy_pre_run_plugin_hook.called
 
 
-def test_renku_run_cwl_hook(monkeypatch, dummy_run_plugin_hook, runner, project):
-    """Tests that the renku run plugin hook on ``CmdLineTool`` is called."""
-    pm = pluginmanager.get_plugin_manager()
-    pm.register(dummy_run_plugin_hook)
-
-    with monkeypatch.context() as m:
-        m.setattr(pluginmanager, "get_plugin_manager", lambda: pm)
-        cmd = ["echo", "test"]
-        result = runner.invoke(cli, ["run", "--no-output"] + cmd)
-        assert 0 == result.exit_code, format_result_exception(result)
-
-        # check for dummy plugin
-        result = runner.invoke(cli, ["graph", "export", "--format", "json-ld"])
-        assert "Dummy Cmdline Hook" in result.output
-        assert "dummy cmdline hook body" in result.output
-
-
-@pytest.mark.skip("Skipped until we have updated our plugin annotations.")
-def test_renku_processrun_cwl_hook(monkeypatch, dummy_processrun_plugin_hook, runner, project):
+def test_renku_activity_hook(monkeypatch, dummy_activity_plugin_hook, runner, project):
     """Tests that the renku run plugin hook on ``Activity`` is called."""
     pm = pluginmanager.get_plugin_manager()
-    pm.register(dummy_processrun_plugin_hook)
+    pm.register(dummy_activity_plugin_hook)
 
     with monkeypatch.context() as m:
         m.setattr(pluginmanager, "get_plugin_manager", lambda: pm)
@@ -72,3 +52,20 @@ def test_renku_processrun_cwl_hook(monkeypatch, dummy_processrun_plugin_hook, ru
         result = runner.invoke(cli, ["graph", "export", "--format", "json-ld"])
         assert "Dummy Activity Hook" in result.output
         assert "dummy Activity hook body" in result.output
+
+
+def test_renku_plan_hook(monkeypatch, dummy_plan_plugin_hook, runner, project):
+    """Tests that the renku run plugin hook on ``Activity`` is called."""
+    pm = pluginmanager.get_plugin_manager()
+    pm.register(dummy_plan_plugin_hook)
+
+    with monkeypatch.context() as m:
+        m.setattr(pluginmanager, "get_plugin_manager", lambda: pm)
+        cmd = ["echo", "test"]
+        result = runner.invoke(cli, ["run", "--no-output"] + cmd)
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        # check for dummy plugin
+        result = runner.invoke(cli, ["graph", "export", "--format", "json-ld"])
+        assert "Dummy Plan Hook" in result.output
+        assert "dummy Plan hook body" in result.output
