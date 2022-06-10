@@ -15,10 +15,12 @@
 # limitations under the License.
 """Models for providers."""
 
+from typing import Optional
+
 from marshmallow import EXCLUDE
 
 from renku.command.schema.dataset import DatasetSchema
-from renku.domain_model.dataset import Dataset
+from renku.domain_model.dataset import Dataset, DatasetTag
 
 
 class ProviderDataset(Dataset):
@@ -28,6 +30,7 @@ class ProviderDataset(Dataset):
         kwargs.setdefault("initial_identifier", "invalid-initial-id")
         super().__init__(**kwargs)
         self.dataset_files = []  # TODO Make this a property
+        self._tag: Optional[DatasetTag] = None
 
     @classmethod
     def from_jsonld(cls, data, schema_class=None) -> "ProviderDataset":
@@ -69,17 +72,29 @@ class ProviderDataset(Dataset):
         """Return list of existing files."""
         raise NotImplementedError("ProviderDataset has no files.")
 
+    @property
+    def tag(self) -> Optional[DatasetTag]:
+        """Return dataset's tag."""
+        return self._tag
+
+    @tag.setter
+    def tag(self, value):
+        """Set dataset's tag."""
+        self._tag = value
+
 
 class ProviderDatasetFile:
     """Store metadata for dataset files that will be downloaded from a provider."""
 
-    def __init__(self, source: str, filename: str, checksum: str, size_in_mb: int, filetype: str, path: str):
-        self.source: str = source
-        self.filename: str = filename
+    def __init__(
+        self, source: Optional[str], filename: str, checksum: str, size_in_mb: Optional[float], filetype: str, path: str
+    ):
         self.checksum: str = checksum
-        self.size_in_mb: int = size_in_mb
+        self.filename: str = filename
         self.filetype: str = filetype
         self.path: str = path
+        self.size_in_mb: Optional[float] = size_in_mb
+        self.source: Optional[str] = source
 
 
 class ProviderDatasetSchema(DatasetSchema):

@@ -51,6 +51,7 @@ from renku.command.schema.calamus import (
 from renku.command.schema.project import ProjectSchema as NewProjectSchema
 from renku.core import errors
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.utils import (
     OLD_METADATA_PATH,
     generate_dataset_file_url,
@@ -64,7 +65,6 @@ from renku.core.util.datetime8601 import fix_datetime, parse_date
 from renku.core.util.doi import extract_doi, is_doi
 from renku.core.util.urls import get_host, get_slug
 from renku.domain_model.dataset import generate_default_name
-from renku.domain_model.refs import LinkReference
 from renku.infrastructure.repository import Commit
 from renku.version import __version__, version_url
 

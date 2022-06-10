@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Optional
 from urllib.parse import urlparse
 
-import attr
 from tqdm import tqdm
 
 from renku.core import errors
@@ -62,19 +61,15 @@ def make_records_url(record_id):
     return urllib.parse.urljoin(ZENODO_BASE_URL, pathlib.posixpath.join(ZENODO_API_PATH, "records", record_id))
 
 
-@attr.s
 class ZenodoFileSerializer:
     """Zenodo record file."""
 
-    id = attr.ib(default=None, kw_only=True)
-
-    checksum = attr.ib(default=None, kw_only=True)
-
-    links = attr.ib(default=None, kw_only=True)
-
-    filename = attr.ib(default=None, kw_only=True)
-
-    filesize = attr.ib(default=None, kw_only=True)
+    def __init__(self, *, id=None, checksum=None, links=None, filename=None, filesize=None):
+        self.id = id
+        self.checksum = checksum
+        self.links = links
+        self.filename = filename
+        self.filesize = filesize
 
     @property
     def remote_url(self):
@@ -87,59 +82,63 @@ class ZenodoFileSerializer:
         return self.filename.split(".")[-1]
 
 
-@attr.s
 class ZenodoMetadataSerializer:
     """Zenodo metadata."""
 
-    access_right = attr.ib(default=None, kw_only=True)
-
-    communities = attr.ib(default=None, kw_only=True)
-
-    contributors = attr.ib(default=None, kw_only=True)
-
-    creators = attr.ib(default=None, kw_only=True)
-
-    description = attr.ib(default=None, kw_only=True)
-
-    doi = attr.ib(default=None, kw_only=True)
-
-    extras = attr.ib(default=None, kw_only=True)
-
-    grants = attr.ib(default=None, kw_only=True)
-
-    image_type = attr.ib(default=None, kw_only=True)
-
-    journal_issue = attr.ib(default=None, kw_only=True)
-
-    journal_pages = attr.ib(default=None, kw_only=True)
-
-    journal_title = attr.ib(default=None, kw_only=True)
-
-    journal_volume = attr.ib(default=None, kw_only=True)
-
-    keywords = attr.ib(default=None, kw_only=True)
-
-    language = attr.ib(default=None, kw_only=True)
-
-    license = attr.ib(default=None, kw_only=True)
-
-    notes = attr.ib(default=None, kw_only=True)
-
-    prereserve_doi = attr.ib(default=None, kw_only=True)
-
-    publication_date = attr.ib(default=None, kw_only=True)
-
-    publication_type = attr.ib(default=None, kw_only=True)
-
-    references = attr.ib(default=None, kw_only=True)
-
-    related_identifiers = attr.ib(default=None, kw_only=True)
-
-    title = attr.ib(default=None, kw_only=True)
-
-    upload_type = attr.ib(default=None, kw_only=True)
-
-    version = attr.ib(default=None, kw_only=True)
+    def __init__(
+        self,
+        *,
+        access_right=None,
+        communities=None,
+        contributors=None,
+        creators=None,
+        description=None,
+        doi=None,
+        extras=None,
+        grants=None,
+        image_type=None,
+        journal_issue=None,
+        journal_pages=None,
+        journal_title=None,
+        journal_volume=None,
+        keywords=None,
+        language=None,
+        license=None,
+        notes=None,
+        prereserve_doi=None,
+        publication_date=None,
+        publication_type=None,
+        references=None,
+        related_identifiers=None,
+        title=None,
+        upload_type=None,
+        version=None,
+    ):
+        self.access_right = access_right
+        self.communities = communities
+        self.contributors = contributors
+        self.creators = creators
+        self.description = description
+        self.doi = doi
+        self.extras = extras
+        self.grants = grants
+        self.image_type = image_type
+        self.journal_issue = journal_issue
+        self.journal_pages = journal_pages
+        self.journal_title = journal_title
+        self.journal_volume = journal_volume
+        self.keywords = keywords
+        self.language = language
+        self.license = license
+        self.notes = notes
+        self.prereserve_doi = prereserve_doi
+        self.publication_date = publication_date
+        self.publication_type = publication_type
+        self.references = references
+        self.related_identifiers = related_identifiers
+        self.title = title
+        self.upload_type = upload_type
+        self.version = version
 
 
 def _metadata_converter(data: Dict[str, Any]) -> ZenodoMetadataSerializer:
@@ -240,7 +239,7 @@ class ZenodoRecordSerializer(ProviderRecordSerializerApi):
         if not self.files:
             raise LookupError("no files have been found - deposit is empty or protected")
 
-        return [ZenodoFileSerializer(**file_) for file_ in self.files]
+        return [ZenodoFileSerializer(**file) for file in self.files]
 
     def as_dataset(self, client) -> "ProviderDataset":
         """Deserialize `ZenodoRecordSerializer` to `Dataset`."""
@@ -297,12 +296,15 @@ class ZenodoRecordSerializer(ProviderRecordSerializerApi):
         return dataset
 
 
-@attr.s
 class ZenodoDeposition:
     """Zenodo record for a deposit."""
 
-    exporter = attr.ib()
-    id = attr.ib(default=None)
+    def __init__(self, exporter, id=None):
+        self.exporter = exporter
+        self.id = id
+
+        response = self.new_deposition()
+        self.id = response.json()["id"]
 
     @property
     def publish_url(self):
@@ -417,11 +419,6 @@ class ZenodoDeposition:
 
         return response
 
-    def __attrs_post_init__(self):
-        """Post-Init hook to set _id field."""
-        response = self.new_deposition()
-        self.id = response.json()["id"]
-
     @staticmethod
     def _check_response(response):
         from renku.core.util import requests
@@ -442,14 +439,14 @@ class ZenodoDeposition:
                 raise errors.ExportError(response.content)
 
 
-@attr.s
 class ZenodoExporter(ExporterApi):
     """Zenodo export manager."""
 
     HEADERS = {"Content-Type": "application/json"}
 
-    dataset = attr.ib()
-    access_token = attr.ib()
+    def __init__(self, dataset, access_token):
+        self.dataset = dataset
+        self.access_token = access_token
 
     @property
     def zenodo_url(self):
@@ -503,11 +500,11 @@ class ZenodoExporter(ExporterApi):
         return deposition.deposit_at
 
 
-@attr.s
 class ZenodoProvider(ProviderApi):
     """Zenodo registry API provider."""
 
-    is_doi = attr.ib(default=False)
+    def __init__(self, is_doi: bool = False):
+        self.is_doi = is_doi
 
     @staticmethod
     def supports(uri):

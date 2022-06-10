@@ -400,7 +400,7 @@ class Dataset(Persistent):
                 raise ValueError(f"Invalid creator type: {creator}")
 
     @property
-    def files(self):
+    def files(self) -> List[DatasetFile]:
         """Return list of existing files."""
         return [f for f in self.dataset_files if not f.is_removed()]
 

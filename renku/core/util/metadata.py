@@ -19,6 +19,7 @@
 
 import os
 import re
+import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
@@ -26,6 +27,7 @@ from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 from packaging.version import Version
 
 from renku.core import errors
+from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.util.os import is_subpath
 
 if TYPE_CHECKING:
@@ -115,3 +117,11 @@ def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
         return str(Version(m.group(1)))
     except ValueError:
         return None
+
+
+def make_project_temp_dir(client_path: Path) -> Path:
+    """Create a temporary directory inside project's temp path."""
+    base = client_path / RENKU_HOME / RENKU_TMP
+    base.mkdir(parents=True, exist_ok=True)
+
+    return Path(tempfile.mkdtemp(dir=base))
