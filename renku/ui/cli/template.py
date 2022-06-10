@@ -111,13 +111,31 @@ list of files that will be updated.
     won't work with a different Renku version. To update Renku version you need
     to use ``renku migrate`` command.
 
+
+Validating a template repository
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are developing your own templates in a template repository, there are
+some rules that templates have to follow. To assist in creating your own
+templates, you can check that everything is ok with:
+
+.. code-block:: console
+
+    $ renku template validate
+
+Running this inside a template repository (not in a Renku project) will
+check that the manifest and individual templates are correct and follow
+Renku template conventions, printing warnings or errors if something
+needs to be changed.
 """
 
 import functools
+import json
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import click
 
+import renku.ui.cli.utils.color as color
 from renku.ui.cli.init import parse_parameters
 
 if TYPE_CHECKING:
@@ -236,6 +254,50 @@ def update_template(force, interactive, dry_run):
         click.secho("Template is up-to-date", fg="green")
     elif dry_run:
         _print_template_change(result.output)
+
+
+@template.command("validate")
+@click.pass_context
+@click.option("json_format", "--json", is_flag=True, help="Return result as JSON.")
+@click.option(
+    "-r",
+    "--reference",
+    type=click.STRING,
+    help="Git revision/branch/tag to validate the template at.",
+)
+@click.option(
+    "-s",
+    "--source",
+    type=click.STRING,
+    help="Remote template repository to clone and check.",
+)
+def validate_template(ctx, json_format, reference, source):
+    """Validate a template repository and check for common issues."""
+    from renku.command.template import validate_templates_command
+
+    result = validate_templates_command().build().execute(source=source, reference=reference).output
+
+    if json_format:
+        click.echo(json.dumps(result))
+    else:
+        if result["warnings"]:
+            click.secho("Manifest Warnings:", fg="yellow")
+            for warning in result["warnings"]:
+                click.secho(f"\t{warning}", fg="yellow")
+        if result["manifest"]:
+            click.secho(f"Manifest Errors:\n\t{result['manifest']}", fg="red")
+        if result["templates"]:
+            click.secho("Template Errors:", fg="red")
+
+            for template_id, messages in result["templates"].items():
+                click.secho(f"\t{template_id}:", fg="red")
+
+                for message in messages:
+                    click.secho(f"\t\t{message}", fg="red")
+        if result["valid"]:
+            click.secho("OK", fg=color.GREEN)
+    if not result["valid"]:
+        ctx.exit(1)
 
 
 def _print_template(template: "TemplateViewModel"):
