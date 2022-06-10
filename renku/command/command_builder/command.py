@@ -102,7 +102,7 @@ def remove_injector():
 
 
 @contextlib.contextmanager
-def replace_injection(bindings, constructor_bindings=None):
+def replace_injection(bindings: Dict, constructor_bindings=None):
     """Temporarily inject various test objects.
 
     Args:

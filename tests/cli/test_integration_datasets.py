@@ -895,7 +895,7 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
 
 
 @pytest.mark.integration
-@pytest.mark.vc
+@pytest.mark.vcr
 def test_add_from_url_to_destination(runner, client, load_dataset_with_injection):
     """Test add data from a URL to a new destination."""
     url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
