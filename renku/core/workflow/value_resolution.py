@@ -89,7 +89,9 @@ class PlanValueResolver(ValueResolver):
         params_map = TemplateVariableFormatter.to_map(chain(self._plan.inputs, self._plan.parameters))
         for param in chain(self._plan.inputs, self._plan.parameters, self._plan.outputs):
             if isinstance(param.actual_value, str):
+                actual_value_set_before = getattr(param, "_v_actual_value_set", False)
                 param.actual_value = self._template_engine.apply(param.actual_value, params_map)
+                param._v_actual_value_set = actual_value_set_before
 
         self.missing_parameters = values_keys
 

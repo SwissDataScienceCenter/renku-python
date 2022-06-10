@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """OS utility functions."""
-
+import fnmatch
 import hashlib
 import os
 import re
@@ -205,3 +205,17 @@ def safe_read_yaml(file: str) -> Dict[str, Any]:
         return yaml.read_yaml(file)
     except Exception as e:
         raise errors.ParameterError(e)
+
+
+def matches(path: Union[Path, str], pattern: str) -> bool:
+    """Check if a path matched a given pattern."""
+    pattern = pattern.rstrip(os.sep)
+
+    path = Path(path)
+    paths = [path] + list(path.parents)[:-1]
+
+    for parent in paths:
+        if fnmatch.fnmatch(str(parent), pattern):
+            return True
+
+    return False

@@ -39,7 +39,14 @@ Renku Python API
 
 .. automodule:: renku.ui.api.models.plan
 
-.. _api-run:
+.. _api-activity:
+
+``Activity``
+------------
+
+.. automodule:: renku.ui.api.models.activity
+
+.. _api-parameter:
 
 ``Inputs, Outputs, and Parameters``
 -----------------------------------
