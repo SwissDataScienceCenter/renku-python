@@ -2676,7 +2676,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "b60483b22459939dd0939e82715000c9bf0682a6976a44d70c117b8b60d19933"
+content-hash = "6abf84a65f4a28ee5a7a87d81654df2bb44a91cf88bcdf3dd68d04eb150c5bd3"
 
 [metadata.files]
 addict = [
@@ -3784,6 +3784,7 @@ pyshacl = [
 ]
 pyte = [
     {file = "pyte-0.8.1-py3-none-any.whl", hash = "sha256:d760ea9a7d455d179d9d7a4288fac3d231190b5226715f1fe8c62547bed9b9aa"},
+    {file = "pyte-0.8.1.tar.gz", hash = "sha256:b9bfd1b781759e7572a6e553c010cc93eef58a19d8d1590446d84c19b1b097b0"},
 ]
 pytest = [
     {file = "pytest-7.1.1-py3-none-any.whl", hash = "sha256:92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea"},

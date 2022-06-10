@@ -17,6 +17,9 @@
 # limitations under the License.
 """Plan view model."""
 
+from __future__ import annotations
+
+import json
 from typing import List, Optional, Union
 
 from renku.domain_model.workflow.composite_plan import CompositePlan
@@ -153,6 +156,7 @@ class PlanViewModel:
         parameters: List[CommandParameterViewModel],
         description: Optional[str] = None,
         success_codes: Optional[str] = None,
+        annotations: Optional[str] = None,
     ):
         self.id = id
         self.name = name
@@ -162,6 +166,7 @@ class PlanViewModel:
         self.inputs = inputs
         self.outputs = outputs
         self.parameters = parameters
+        self.annotations = annotations
 
     @classmethod
     def from_plan(cls, plan: Plan):
@@ -182,6 +187,9 @@ class PlanViewModel:
             inputs=[CommandInputViewModel.from_input(input) for input in plan.inputs],
             outputs=[CommandOutputViewModel.from_output(output) for output in plan.outputs],
             parameters=[CommandParameterViewModel.from_parameter(param) for param in plan.parameters],
+            annotations=json.dumps([{"id": a.id, "body": a.body, "source": a.source} for a in plan.annotations])
+            if plan.annotations
+            else None,
         )
 
 

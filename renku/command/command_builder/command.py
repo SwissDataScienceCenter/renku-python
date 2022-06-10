@@ -171,6 +171,7 @@ class Command:
         self._track_std_streams: bool = False
         self._working_directory: Optional[str] = None
         self._client: Optional["LocalClient"] = None
+        self._client_was_created: bool = False
 
     def __getattr__(self, name: str) -> Any:
         """Bubble up attributes of wrapped builders."""
@@ -205,6 +206,7 @@ class Command:
                 dispatcher.push_created_client_to_stack(self._client)
             else:
                 self._client = dispatcher.push_client_to_stack(path=default_path(self._working_directory or "."))
+                self._client_was_created = True
             ctx = click.Context(click.Command(builder._operation))  # type: ignore
         else:
             if not self._client:
@@ -236,6 +238,9 @@ class Command:
             result("CommandResult"): Result of command execution.
         """
         remove_injector()
+
+        if self._client_was_created and self._client and self._client.repository is not None:
+            self._client.repository.close()
 
         if result.error:
             raise result.error

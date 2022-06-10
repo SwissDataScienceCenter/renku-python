@@ -45,7 +45,7 @@ def test_save_without_remote(runner, project, client, tmpdir_factory):
     client.repository.remotes.remove("origin")
 
 
-def test_save_with_remote(runner, project, client_with_remote, tmpdir_factory):
+def test_save_with_remote(runner, project, client_with_remote):
     """Test saving local changes."""
     with (client_with_remote.path / "tracked").open("w") as fp:
         fp.write("tracked file")
@@ -57,7 +57,7 @@ def test_save_with_remote(runner, project, client_with_remote, tmpdir_factory):
     assert "save changes" in client_with_remote.repository.head.commit.message
 
 
-def test_save_with_merge_conflict(runner, project, client_with_remote, tmpdir_factory):
+def test_save_with_merge_conflict(runner, project, client_with_remote):
     """Test saving local changes."""
     client = client_with_remote
     with (client.path / "tracked").open("w") as fp:
@@ -85,7 +85,7 @@ def test_save_with_merge_conflict(runner, project, client_with_remote, tmpdir_fa
     assert "save changes" in client.repository.head.commit.message
 
 
-def test_save_with_staged(runner, project, client_with_remote, tmpdir_factory):
+def test_save_with_staged(runner, project, client_with_remote):
     """Test saving local changes."""
     client = client_with_remote
 

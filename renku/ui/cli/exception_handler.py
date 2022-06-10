@@ -65,7 +65,6 @@ import portalocker
 
 import renku.ui.cli.utils.color as color
 from renku.command.echo import ERROR
-from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
 from renku.ui.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 
 _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg=color.RED, bold=True)
@@ -88,6 +87,8 @@ class RenkuExceptionsHandler(click.Group):
 
     def main(self, *args, **kwargs):
         """Catch and print all Renku exceptions."""
+        from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
+
         try:
             return super().main(*args, **kwargs)
         except RenkuException as e:

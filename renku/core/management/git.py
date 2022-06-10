@@ -150,16 +150,15 @@ def prepare_worktree(
     # TODO sys.argv
 
     if commit is NULL_TREE:
-        args = ["add", "--detach", path]
-        original_client.repository.run_git_command("worktree", *args)
+        original_client.repository.create_worktree(path, detach=True)
         client = attr.evolve(original_client, path=path)
         client.repository.run_git_command("checkout", "--orphan", branch_name)
         client.repository.remove("*", recursive=True, force=True)
     else:
-        args = ["add", "-b", branch_name, path]
+        revision = None
         if commit:
-            args.append(commit.hexsha)
-        original_client.repository.run_git_command("worktree", *args)
+            revision = commit.hexsha
+        original_client.repository.create_worktree(path, branch=branch_name, reference=revision)
         client = attr.evolve(original_client, path=path)
 
     client.repository.get_configuration = original_client.repository.get_configuration
@@ -207,7 +206,7 @@ def finalize_worktree(
         raise errors.FailedMerge(client.repository, branch_name, merge_args)
 
     if delete:
-        client.repository.run_git_command("worktree", "remove", path)
+        client.repository.remove_worktree(path)
 
         if new_branch:
             # delete the created temporary branch
@@ -294,6 +293,10 @@ class GitCore:
             self.repository = Repository(self.path)
         except errors.GitError:
             self.repository = None
+
+    def __del__(self):
+        if self.repository:
+            self.repository.close()
 
     @property
     def modified_paths(self):

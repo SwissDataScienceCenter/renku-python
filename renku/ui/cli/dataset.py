@@ -106,16 +106,6 @@ Displayed results are sorted based on the value of the first column.
 You can specify output formats by passing ``--format`` with a value of ``tabular``,
 ``json-ld`` or ``json``.
 
-To inspect the state of the dataset on a given commit we can use ``--revision``
-flag for it:
-
-.. code-block:: console
-
-    $ renku dataset ls --revision=1103a42bd3006c94ef2af5d6a5e03a335f071215
-    ID        NAME                 TITLE               VERSION
-    a1fd8ce2  201901_us_flights_1  2019-01 US Flights  1
-    c2d80abe  ds1                  ds1
-
 Showing dataset details:
 
 .. code-block:: console
@@ -132,6 +122,8 @@ Showing dataset details:
     Title: Some Dataset
     Description:
     Just some dataset
+
+You can also show details for a specific tag using the ``--tag`` option.
 
 Deleting a dataset:
 
@@ -511,12 +503,12 @@ import json
 from pathlib import Path
 
 import click
+from lazy_object_proxy import Proxy
 
 import renku.ui.cli.utils.color as color
 from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
-from renku.ui.cli.utils.callback import ClickCallback
 
 
 def _complete_datasets(ctx, param, incomplete):
@@ -583,6 +575,7 @@ def create(name, title, description, creators, metadata, keyword):
     """Create an empty dataset in the current repo."""
     from renku.command.dataset import create_dataset_command
     from renku.core.util.metadata import construct_creators
+    from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
     creators = creators or ()
@@ -639,6 +632,7 @@ def edit(name, title, description, creators, metadata, keyword):
     """Edit dataset metadata."""
     from renku.command.dataset import edit_dataset_command
     from renku.core.util.metadata import construct_creators
+    from renku.ui.cli.utils.callback import ClickCallback
 
     creators = creators or ()
     keywords = keyword or ()
@@ -681,13 +675,14 @@ def edit(name, title, description, creators, metadata, keyword):
 
 
 @dataset.command("show")
+@click.option("-t", "--tag", default=None, type=click.STRING, help="Tag for which to show dataset metadata.")
 @click.argument("name", shell_complete=_complete_datasets)
-def show(name):
+def show(tag, name):
     """Show metadata of a dataset."""
     from renku.command.dataset import show_dataset_command
     from renku.ui.cli.utils.terminal import print_markdown
 
-    result = show_dataset_command().build().execute(name=name)
+    result = show_dataset_command().build().execute(name=name, tag=tag)
     ds = result.output
 
     click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(ds["name"], bold=True))
@@ -734,6 +729,7 @@ def show(name):
 def add(name, urls, external, force, overwrite, create, sources, destination, ref):
     """Add data to a dataset."""
     from renku.command.dataset import add_to_dataset_command
+    from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
     add_to_dataset_command().with_communicator(communicator).build().execute(
@@ -799,6 +795,7 @@ def unlink(name, include, exclude, yes):
     """Remove matching files from a dataset."""
     from renku.command.dataset import file_unlink_command
     from renku.core import errors
+    from renku.ui.cli.utils.callback import ClickCallback
 
     if not include and not exclude:
         raise errors.ParameterError(
@@ -869,10 +866,12 @@ def export_provider_argument(*param_decls, **attrs):
     def wrapper(f):
         from click import argument
 
-        from renku.core.dataset.providers import ProviderFactory
+        def _get_providers():
+            from renku.core.dataset.providers import ProviderFactory
 
-        providers = [k.lower() for k, p in ProviderFactory.providers().items() if p.supports_export]
-        f = argument("provider", type=click.Choice(providers))(f)
+            return [k.lower() for k, p in ProviderFactory.providers().items() if p.supports_export]
+
+        f = argument("provider", type=click.Choice(Proxy(_get_providers)))(f)
         return f
 
     return wrapper
@@ -919,6 +918,7 @@ def export_(name, provider, publish, tag, **kwargs):
     """Export data to 3rd party provider."""
     from renku.command.dataset import export_dataset_command
     from renku.core import errors
+    from renku.ui.cli.utils.callback import ClickCallback
 
     try:
         communicator = ClickCallback()
@@ -942,6 +942,7 @@ def import_(uri, name, extract, yes):
     Supported providers: [Dataverse, Renku, Zenodo]
     """
     from renku.command.dataset import import_dataset_command
+    from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
     import_dataset_command().with_communicator(communicator).build().execute(
@@ -970,6 +971,7 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
     """Updates files in dataset from a remote Git repo."""
     from renku.command.dataset import update_datasets_command
     from renku.core import errors
+    from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
 

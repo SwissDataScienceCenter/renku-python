@@ -30,6 +30,7 @@ from werkzeug.utils import secure_filename
 
 from renku.core import errors
 from renku.core.util.datetime8601 import local_now
+from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, CommandParameterBase
 from renku.infrastructure.database import Persistent
 
@@ -138,6 +139,8 @@ class AbstractPlan(Persistent, ABC):
 class Plan(AbstractPlan):
     """Represent a `renku run` execution template."""
 
+    annotations: List[Annotation] = list()
+
     def __init__(
         self,
         *,
@@ -154,12 +157,14 @@ class Plan(AbstractPlan):
         project_id: Optional[str] = None,
         outputs: Optional[List[CommandOutput]] = None,
         success_codes: Optional[List[int]] = None,
+        annotations: Optional[List[Annotation]] = None,
     ):
         self.command: str = command
         self.inputs: List[CommandInput] = inputs or []
         self.outputs: List[CommandOutput] = outputs or []
         self.parameters: List[CommandParameter] = parameters or []
         self.success_codes: List[int] = success_codes or []
+        self.annotations: List[Annotation] = annotations or []
         super().__init__(
             id=id,
             description=description,

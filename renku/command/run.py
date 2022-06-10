@@ -178,7 +178,10 @@ def _run_command(
                 )
             except FileNotFoundError:
                 command = " ".join(factory.base_command)
-                raise errors.ParameterError(f"Cannot execute command '{command}'")
+                raise errors.ParameterError(
+                    f"Cannot execute command '{command}': "
+                    "This is likely because the executable doesn't exist or has the wrong permissions set."
+                )
 
             ended_at_time = local_now()
 
