@@ -885,7 +885,7 @@ def _iterate_workflow(
 
     from deepmerge import always_merger
 
-    from renku.domain_model.tabulate import tabulate
+    from renku.core.util.tabulate import tabulate
 
     if mapping_path is None and len(mappings) == 0:
         raise errors.UsageError("No mapping has been given for the iteration!")

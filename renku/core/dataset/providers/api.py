@@ -16,10 +16,21 @@
 """API for providers."""
 
 import abc
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, List, NamedTuple, Optional, Type
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
+    from renku.domain_model.dataset import Dataset, DatasetTag
+
+
+class ProviderParameter(NamedTuple):
+    """Provider-specific parameters."""
+
+    name: str
+    aliases: List[str] = []
+    description: str = ""
+    is_flag: bool = False
+    type: Optional[Type] = None
 
 
 class ProviderApi(abc.ABC):
@@ -31,7 +42,7 @@ class ProviderApi(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_exporter(self, dataset, access_token):
+    def get_exporter(self, dataset: "Dataset", tag: Optional["DatasetTag"]) -> "ExporterApi":
         """Get export manager."""
         raise NotImplementedError
 
@@ -60,14 +71,14 @@ class ProviderApi(abc.ABC):
         return False
 
     @staticmethod
-    def export_parameters():
+    def get_export_parameters() -> List[ProviderParameter]:
         """Returns parameters that can be set for export."""
-        return {}
+        return []
 
     @staticmethod
-    def import_parameters():
+    def get_import_parameters() -> List[ProviderParameter]:
         """Returns parameters that can be set for import."""
-        return {}
+        return []
 
     @property
     def supports_images(self):
@@ -123,17 +134,31 @@ class ProviderRecordSerializerApi(abc.ABC):
 class ExporterApi(abc.ABC):
     """Interface defining exporter methods."""
 
+    def __init__(self, dataset: "Dataset"):
+        super().__init__()
+        self._dataset: "Dataset" = dataset
+
+    @property
+    def dataset(self) -> "Dataset":
+        """Return the dataset to be exported."""
+        return self._dataset
+
+    @staticmethod
+    def requires_access_token() -> bool:
+        """Return if export requires an access token."""
+        return True
+
     @abc.abstractmethod
     def set_access_token(self, access_token):
         """Set access token."""
         pass
 
     @abc.abstractmethod
-    def access_token_url(self):
+    def get_access_token_url(self) -> str:
         """Endpoint for creation of access token."""
         pass
 
     @abc.abstractmethod
-    def export(self, publish, **kwargs):
+    def export(self, **kwargs) -> str:
         """Execute export process."""
-        pass
+        raise NotImplementedError

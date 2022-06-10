@@ -20,12 +20,13 @@
 import datetime
 import urllib
 from pathlib import Path
+from typing import List
 from urllib import parse as urlparse
 from uuid import UUID, uuid4
 
 from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi
+from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderParameter
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util import communication
 
@@ -48,19 +49,17 @@ class OLOSProvider(ProviderApi):
         return True
 
     @staticmethod
-    def export_parameters():
+    def get_export_parameters() -> List[ProviderParameter]:
         """Returns parameters that can be set for export."""
-        return {
-            "dlcm-server": ("DLCM server base url.", str),
-        }
+        return [ProviderParameter("dlcm-server", description="DLCM server base url.", type=str)]
 
     def find_record(self, uri, client=None, **kwargs):
         """Find record by URI."""
         return None
 
-    def get_exporter(self, dataset, access_token):
+    def get_exporter(self, dataset, tag) -> "OLOSExporter":
         """Create export manager for given dataset."""
-        return OLOSExporter(dataset=dataset, access_token=access_token, server_url=self._server_url)
+        return OLOSExporter(dataset=dataset, server_url=self._server_url)
 
     @inject.autoparams()
     def set_export_parameters(self, client_dispatcher: IClientDispatcher, *, dlcm_server=None, **kwargs):
@@ -83,41 +82,35 @@ class OLOSProvider(ProviderApi):
 class OLOSExporter(ExporterApi):
     """OLOS export manager."""
 
-    def __init__(self, *, dataset, access_token, server_url=None):
-        self.dataset = dataset
-        self.access_token = access_token
-        self.server_url = server_url
+    def __init__(self, *, dataset, server_url=None):
+        super().__init__(dataset)
+        self._access_token = None
+        self._server_url = server_url
 
     def set_access_token(self, access_token):
         """Set access token."""
-        self.access_token = access_token
+        self._access_token = access_token
 
-    def access_token_url(self):
+    def get_access_token_url(self):
         """Endpoint for creation of access token."""
-        return urllib.parse.urljoin(self.server_url, "portal")
+        return urllib.parse.urljoin(self._server_url, "portal")
 
-    def export(self, publish, client=None, **kwargs):
+    def export(self, client=None, **kwargs):
         """Execute export process."""
-        deposition = _OLOSDeposition(server_url=self.server_url, access_token=self.access_token)
+        from renku.domain_model.dataset import get_file_path_in_dataset
+
+        deposition = _OLOSDeposition(server_url=self._server_url, access_token=self._access_token)
 
         metadata = self._get_dataset_metadata()
         metadata["organizationalUnitId"] = deposition.get_org_unit()
         deposition.create_dataset(metadata=metadata)
 
-        progress_text = "Uploading files"
-        communication.start_progress(progress_text, total=len(self.dataset.files))
-
-        try:
+        with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                try:
-                    path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
-                except ValueError:
-                    path = Path(file.entity.path)
                 filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
-                deposition.upload_file(full_path=filepath, path_in_dataset=path)
-                communication.update_progress(progress_text, amount=1)
-        finally:
-            communication.finalize_progress(progress_text)
+                path_in_dataset = get_file_path_in_dataset(client=client, dataset=self.dataset, dataset_file=file)
+                deposition.upload_file(full_path=filepath, path_in_dataset=path_in_dataset)
+                progressbar.update()
 
         return deposition.deposited_at
 
@@ -213,7 +206,7 @@ class _OLOSDeposition:
 
         return response
 
-    def upload_file(self, full_path, path_in_dataset):
+    def upload_file(self, full_path, path_in_dataset: Path):
         """Upload a file to a previously-created dataset."""
         if self.dataset_pid is None:
             raise errors.ExportError("Dataset not created.")

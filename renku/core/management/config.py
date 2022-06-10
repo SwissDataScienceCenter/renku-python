@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Client for handling a configuration."""
+
 import configparser
 import os
 from io import StringIO
@@ -23,9 +24,9 @@ from pathlib import Path
 
 import attr
 import click
-import portalocker
 
 from renku.core.constant import RENKU_HOME
+from renku.core.util.contexts import Lock
 from renku.domain_model.enums import ConfigFilter
 
 APP_NAME = "Renku"
@@ -69,12 +70,12 @@ class ConfigManagerMixin:
     @property
     def global_config_read_lock(self):
         """Create a user-level config read lock."""
-        return portalocker.Lock(self.global_config_path, timeout=0, flags=portalocker.LOCK_SH | portalocker.LOCK_NB)
+        return Lock(self.global_config_path)
 
     @property
     def global_config_write_lock(self):
         """Create a user-level config write lock."""
-        return portalocker.Lock(self.global_config_path, timeout=0, flags=portalocker.LOCK_EX | portalocker.LOCK_NB)
+        return Lock(self.global_config_path, mode="exclusive")
 
     def load_config(self, config_filter=ConfigFilter.ALL):
         """Loads local, global or both configuration object."""

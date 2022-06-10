@@ -244,10 +244,6 @@ Utilities
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.util.scm
-   :members:
-   :show-inheritance:
-
 .. automodule:: renku.core.util.shacl
    :members:
    :show-inheritance:

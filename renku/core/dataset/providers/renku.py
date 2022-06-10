@@ -27,7 +27,7 @@ from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.dataset.providers.api import ProviderApi, ProviderRecordSerializerApi
+from renku.core.dataset.providers.api import ProviderApi, ProviderParameter, ProviderRecordSerializerApi
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util import communication
@@ -67,11 +67,9 @@ class RenkuProvider(ProviderApi):
         return True
 
     @staticmethod
-    def import_parameters():
+    def get_import_parameters() -> List[ProviderParameter]:
         """Returns parameters that can be set for import."""
-        return {
-            "tag": ("Import a specific tag instead of the latest version.", str),
-        }
+        return [ProviderParameter("tag", description="Import a specific tag instead of the latest version.", type=str)]
 
     def set_import_parameters(self, *, tag=None, **kwargs):
         """Set and validate required parameters for importing for a provider."""
@@ -107,7 +105,7 @@ class RenkuProvider(ProviderApi):
             renku_token=self._renku_token,
         )
 
-    def get_exporter(self, dataset, access_token):
+    def get_exporter(self, dataset, tag):
         """Create export manager for given dataset."""
         raise NotImplementedError
 

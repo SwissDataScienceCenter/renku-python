@@ -133,6 +133,6 @@ class DOIProvider(ProviderApi):
         response = self._query(uri).json()
         return DOIProvider._serialize(response)
 
-    def get_exporter(self, dataset, secret):
+    def get_exporter(self, dataset, tag):
         """Implements interface ProviderApi."""
         pass

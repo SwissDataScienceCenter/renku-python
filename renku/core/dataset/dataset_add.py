@@ -570,14 +570,6 @@ def _add_from_renku(
         content_path_root.mkdir(parents=True, exist_ok=True)
         filename = 1
 
-        # NOTE: This is required to enable LFS filters when getting file content
-        repository.install_lfs(skip_smudge=False)  # type: ignore
-        # NOTE: Git looks at the current attributes files when loading LFS files which won't includes deleted files, so,
-        # we need to include all files that were in LFS at some point
-        git_attributes = repository.get_historical_changes_patch(".gitattributes")
-        all_additions = [a.replace("+", "", 1) for a in git_attributes if a.startswith("+") and "filter=lfs" in a]
-        (repository.path / ".gitattributes").write_text(os.linesep.join(all_additions))
-
         for file, checksum in zip(sources, checksums):  # type: ignore
             content_path = content_path_root / str(filename)
             filename += 1
