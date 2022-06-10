@@ -489,7 +489,7 @@ class BaseRepository:
 
         Args:
             path(Union[Path, str]): Relative or absolute path to the file.
-            revision(Optional[Union["Reference", str]]): A commit/branch/tag to get the file from. This cannot be passed
+            revision(Optional[Union[Reference, str]]): A commit/branch/tag to get the file from. This cannot be passed
                 with ``checksum``.
             checksum(Optional[str]): Git hash of the file to be retrieved. This cannot be passed with ``revision``.
             output_path(Optional[Union[Path, str]]): A path to copy the content to. A temporary file is created if it is
