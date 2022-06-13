@@ -27,22 +27,7 @@ from datetime import datetime
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
-from typing import (
-    Any,
-    BinaryIO,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    NamedTuple,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, Set, Tuple, Type, TypeVar, Union, cast
 
 import git
 
@@ -198,6 +183,23 @@ class BaseRepository:
         """Return True if a valid repository exists."""
         return self._repository is not None
 
+    def install_lfs(self, skip_smudge: bool = True):
+        """Force install Git LFS in the repository."""
+        os.environ["GIT_LFS_SKIP_SMUDGE"] = "1" if skip_smudge else "0"
+
+        command = ["lfs", "install", "--local", "--force"]
+        if skip_smudge:
+            command += ["--skip-smudge"]
+
+        try:
+            self.run_git_command(*command)
+        except errors.GitCommandError as e:
+            raise errors.GitError(f"Cannot install Git LFS in {self}") from e
+
+    def get_historical_changes_patch(self, path: Union[Path, str]) -> List[str]:
+        """Return a patch of all changes to a file."""
+        return self.run_git_command("log", "--", str(path), patch=True, follow=True).splitlines()
+
     def add(self, *paths: Union[Path, str], force: bool = False, all: bool = False) -> None:
         """Add a list of files to be committed to the VCS."""
         if all:
@@ -323,16 +325,37 @@ class BaseRepository:
         return self.run_git_command("status")
 
     def create_worktree(
-        self, path: Path, reference: Union["Branch", "Commit", "Reference", str], checkout: bool = True
+        self,
+        path: Path,
+        reference: Optional[Union["Branch", "Commit", "Reference", str]],
+        branch: Optional[str] = None,
+        checkout: bool = True,
+        detach: bool = False,
     ):
         """Create a git worktree.
 
         Args:
             path(Path): Target folder.
             reference(Union[Branch, Commit, Reference, str]): the reference to base the tree on.
-            checkout(bool): Whether to perform a checkout of the reference (Default value = False).
+            checkout(bool, optional): Whether to perform a checkout of the reference (Default value = False).
+            detach(bool, optional): Whether to detach HEAD in worktree (Default value = False).
         """
-        self.run_git_command("worktree", "add", path, reference, checkout=checkout)
+        args = ["add"]
+
+        # NOTE: pass args as string to ensure correct order
+        if checkout:
+            args.append("--checkout")
+        if detach:
+            args.append("--detach")
+
+        if branch:
+            args.extend(["-b", branch])
+
+        args.append(str(path))
+
+        if reference:
+            args.append(str(reference))
+        self.run_git_command("worktree", *args)
 
     def remove_worktree(self, path: Path):
         """Create a git worktree.
@@ -435,7 +458,11 @@ class BaseRepository:
             return wrapped_commit
 
     def get_ignored_paths(self, *paths: Union[Path, str]) -> List[str]:
-        """Return ignored paths matching ``.gitignore`` file."""
+        """Return ignored paths matching ``.gitignore`` file.
+
+        NOTE: This function returns the same value as inputs: If input is an absolute path output is an absolute path.
+        The same is true for relative paths.
+        """
         ignored = []
 
         for batch in split_paths(*paths):
@@ -476,10 +503,26 @@ class BaseRepository:
         path: Union[Path, str],
         revision: Optional[Union["Reference", str]] = None,
         checksum: Optional[str] = None,
-        output_file: Optional[BinaryIO] = None,
+        output_path: Optional[Union[Path, str]] = None,
         apply_filters: bool = True,
     ) -> str:
-        """Get content of an object using its checksum, write it to a file, and return the file's path."""
+        """Get content of an object using its checksum, write it to a file, and return the file's path.
+
+        Args:
+            path(Union[Path, str]): Relative or absolute path to the file.
+            revision(Optional[Union[Reference, str]]): A commit/branch/tag to get the file from. This cannot be passed
+                with ``checksum``.
+            checksum(Optional[str]): Git hash of the file to be retrieved. This cannot be passed with ``revision``.
+            output_path(Optional[Union[Path, str]]): A path to copy the content to. A temporary file is created if it is
+                ``None``.
+            apply_filters(bool): Whether to apply Git filter on the retrieved object.Note that ``apply_filters`` doesn't
+                smudge LFS objects if repository is cloned with ``--skip-smudge`` or if ``GIT_LFS_SKIP_SMUDGE`` is set.
+                Call ``Repository.install_lfs`` before to make sure that LFS objects are pulled.
+
+        Returns:
+            The path to the created file.
+
+        """
         absolute_path = get_absolute_path(path, self.path)
 
         def get_content_helper(output_file) -> bool:
@@ -521,20 +564,20 @@ class BaseRepository:
                         path=absolute_path, checksum=checksum, revision=revision, apply_filters=apply_filters
                     )
 
-        if output_file is None:
+        if output_path is None:
             with tempfile.NamedTemporaryFile(mode="w+b", delete=False) as temp_output_file:
                 if get_content_helper(output_file=temp_output_file):
                     return temp_output_file.name
         else:
-            if get_content_helper(output_file):
-                return output_file.name
+            with open(output_path, "wb") as output_file:
+                if get_content_helper(output_file):
+                    return output_file.name
 
         from_submodules = get_content_from_submodules()
         if from_submodules:
             return from_submodules
 
-        # TODO: Return FileNotFound
-        raise errors.ExportError(f"File not found in the repository: '{revision}/{checksum}:{path}'")
+        raise errors.FileNotFound(path, checksum=checksum, revision=revision)
 
     def get_object_hashes(
         self, paths: List[Union[Path, str]], revision: Optional[str] = None
@@ -690,7 +733,10 @@ class BaseRepository:
         Cleans up dangling processes.
         """
         if getattr(self, "_repository", None) is not None:
-            self._repository.close()  # type:ignore
+            try:
+                self._repository.close()  # type:ignore
+            except AttributeError:
+                pass
             del self._repository
             self._repository = None
 
@@ -903,7 +949,10 @@ class Submodule(BaseRepository):
 
     def __del__(self) -> None:
         if getattr(self, "_repository", None) is not None:
-            self._repository.close()  # type:ignore
+            try:
+                self._repository.close()  # type:ignore
+            except AttributeError:
+                pass
             del self._repository
             self._repository = None
 

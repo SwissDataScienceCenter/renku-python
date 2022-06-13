@@ -30,14 +30,13 @@ from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FI
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
-from renku.core.dataset.constant import renku_pointers_path
+from renku.core.dataset.constant import REFS, renku_pointers_path
 from renku.core.dataset.providers import ProviderFactory
 from renku.core.dataset.providers.dataverse import DataverseProvider
 from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset
-from renku.domain_model.refs import LinkReference
 from renku.ui.cli import cli
 from tests.utils import assert_dataset_is_mutated, format_result_exception, write_and_commit_file
 
@@ -333,7 +332,7 @@ def test_dataset_create_exception_refs(runner, project, client):
     with (datasets_dir / "a").open("w") as fp:
         fp.write("a")
 
-    refs_dir = client.path / RENKU_HOME / LinkReference.REFS
+    refs_dir = client.path / RENKU_HOME / REFS
     if not refs_dir.exists():
         refs_dir.mkdir()
 
@@ -2391,3 +2390,10 @@ def test_update_mixed_types(runner, client, directory_tree, load_dataset_with_in
     dataset = load_dataset_with_injection("my-data", client)
     assert new_checksum_file2 == dataset.find_file(file2).entity.checksum
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+def test_update_with_no_dataset(runner, client):
+    """Check updating a project with no dataset should not raise an error."""
+    result = runner.invoke(cli, ["dataset", "update", "--all"])
+
+    assert 0 == result.exit_code, format_result_exception(result)

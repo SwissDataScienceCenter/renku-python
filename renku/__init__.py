@@ -96,7 +96,7 @@ class DeprecatedImportInterceptor(importlib.abc.MetaPathFinder):
         return None
 
 
-# NOTE: Patch python impoprt machinery with custom loader
+# NOTE: Patch python import machinery with custom loader
 sys.meta_path.insert(
     0,
     DeprecatedImportInterceptor(
@@ -105,7 +105,7 @@ sys.meta_path.insert(
             "renku.core.metadata": ("renku.infrastructure", False),
             "renku.core.commands": ("renku.command", True),
             "renku.core.plugins": ("renku.core.plugin", True),
-            "renku.api": ("renku.ui.api", True),
+            "renku.api": ("renku.ui.api", False),
             "renku.cli": ("renku.ui.cli", True),
         }
     ),

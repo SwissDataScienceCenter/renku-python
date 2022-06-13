@@ -265,6 +265,21 @@ class DatasetTagNotFound(RenkuException):
         super().__init__(msg)
 
 
+class FileNotFound(RenkuException):
+    """Raise when a file is not found."""
+
+    def __init__(self, path, checksum=None, revision=None):
+        """Build a custom message."""
+        if checksum:
+            message = f"File not found in the repository: {checksum}:{path}"
+        elif revision:
+            message = f"File not found in the repository: {path}@{revision}"
+        else:
+            message = f"Cannot find file {path}"
+
+        super().__init__(message)
+
+
 class ExternalFileNotFound(RenkuException):
     """Raise when an external file is not found."""
 

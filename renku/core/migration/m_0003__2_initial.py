@@ -23,6 +23,7 @@ from pathlib import Path
 
 from renku.core.constant import RENKU_HOME
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.models.v3 import Collection, Dataset, Project, get_client_datasets
 from renku.core.migration.models.v9 import generate_file_id, generate_label
 from renku.core.migration.utils import (
@@ -34,7 +35,6 @@ from renku.core.migration.utils import (
 )
 from renku.core.util.urls import url_to_string
 from renku.domain_model.dataset import generate_default_name
-from renku.domain_model.refs import LinkReference
 
 
 def migrate(migration_context):

@@ -17,15 +17,11 @@
 # limitations under the License.
 """Renku dataset provider."""
 
-import os
 import re
 import shutil
 import urllib
 from pathlib import Path
-from subprocess import PIPE, SubprocessError, run
-from typing import TYPE_CHECKING, List, Optional
-
-import attr
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
@@ -36,22 +32,23 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util import communication
 from renku.core.util.file_size import bytes_to_unit
-from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository
+from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
 
 
-@attr.s
 class RenkuProvider(ProviderApi):
     """Renku API provider."""
 
-    is_doi = attr.ib(default=False)
-    _accept = attr.ib(default="application/json")
-    _authorization_header = attr.ib(default=None)
-    _uri = attr.ib(default="")
-    _gitlab_token = attr.ib(default=None)
-    _renku_token = attr.ib(default=None)
+    def __init__(self, is_doi: bool = False):
+        self.is_doi = is_doi
+        self._accept = "application/json"
+        self._authorization_header = None
+        self._uri = ""
+        self._gitlab_token = None
+        self._renku_token = None
+        self._tag = None
 
     @staticmethod
     def supports(uri):
@@ -68,6 +65,17 @@ class RenkuProvider(ProviderApi):
     def supports_import():
         """Whether this provider supports dataset import."""
         return True
+
+    @staticmethod
+    def import_parameters():
+        """Returns parameters that can be set for import."""
+        return {
+            "tag": ("Import a specific tag instead of the latest version.", str),
+        }
+
+    def set_import_parameters(self, *, tag=None, **kwargs):
+        """Set and validate required parameters for importing for a provider."""
+        self._tag = tag
 
     def find_record(self, uri, **kwargs):
         """Retrieves a dataset from Renku.
@@ -91,6 +99,7 @@ class RenkuProvider(ProviderApi):
             uri=uri,
             name=name,
             identifier=identifier,
+            tag=self._tag,
             latest_version_uri=latest_version_uri,
             project_url_ssh=project_url_ssh,
             project_url_http=project_url_http,
@@ -100,12 +109,7 @@ class RenkuProvider(ProviderApi):
 
     def get_exporter(self, dataset, access_token):
         """Create export manager for given dataset."""
-        raise NotImplementedError()
-
-    @property
-    def is_git_based(self):
-        """True if provider is git-based."""
-        return True
+        raise NotImplementedError
 
     @property
     def supports_images(self):
@@ -224,13 +228,23 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
     """Renku record serializer."""
 
     def __init__(
-        self, uri, identifier, name, latest_version_uri, project_url_ssh, project_url_http, gitlab_token, renku_token
+        self,
+        uri,
+        name,
+        identifier,
+        tag,
+        latest_version_uri,
+        project_url_ssh,
+        project_url_http,
+        gitlab_token,
+        renku_token,
     ):
         """Create a RenkuRecordSerializer from a Dataset."""
         super().__init__(uri=uri)
 
-        self._identifier = identifier
         self._name = name
+        self._identifier = identifier
+        self._tag = tag
         self._latest_version_uri = latest_version_uri
         self._project_url_ssh = project_url_ssh
         self._project_url_http = project_url_http
@@ -242,46 +256,6 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
         self._project_repo = None
         self._remote_client = None
         self._files_info: List["ProviderDatasetFile"] = []
-
-    @staticmethod
-    def _get_file_size(remote_client, path):
-        # Try to get file size from Git LFS
-        try:
-            lfs_run = run(
-                ("git", "lfs", "ls-files", "--name-only", "--size"),
-                stdout=PIPE,
-                cwd=remote_client.path,
-                universal_newlines=True,
-            )
-        except SubprocessError:
-            pass
-        else:
-            lfs_output = lfs_run.stdout.split("\n")
-            # Example line format: relative/path/to/file (7.9 MB)
-            pattern = re.compile(r".*\((.*)\)")
-            for line in lfs_output:
-                if path not in line:
-                    continue
-                match = pattern.search(line)
-                if not match:
-                    continue
-                size_info = match.groups()[0].split()
-                if len(size_info) != 2:
-                    continue
-                try:
-                    size = float(size_info[0])
-                except ValueError:
-                    continue
-                unit = size_info[1].strip().lower()
-                conversions = {"b": 1, "kb": 1e3, "mb": 1e6, "gb": 1e9}
-                multiplier = conversions.get(unit, None)
-                if multiplier is None:
-                    continue
-                return size * multiplier
-
-        # Return size of the file on disk
-        full_path = remote_client.path / path
-        return float(os.path.getsize(full_path))
 
     def as_dataset(self, client) -> "ProviderDataset":
         """Return encapsulated dataset instance."""
@@ -314,6 +288,11 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
     def is_last_version(self, uri):
         """Check if dataset is at last possible version."""
         return self.latest_uri.endswith(self._identifier)
+
+    def is_version_equal_to(self, dataset: Any) -> bool:
+        """Check if a dataset has the identifier as the record."""
+        same_as = getattr(dataset, "same_as", None)
+        return same_as is not None and same_as.value.endswith(self._identifier)
 
     @property
     def project_url(self):
@@ -388,10 +367,30 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
             self._migrate_project()
             self._project_repo = repository
 
-            dataset = DatasetsProvenance().get_by_name(self._name)
+            datasets_provenance = DatasetsProvenance()
+
+            dataset = datasets_provenance.get_by_name(self._name)
             if not dataset:
                 raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
+
+            if self._tag:
+                tags = datasets_provenance.get_all_tags(dataset=dataset)
+                tag = next((t for t in tags if t.name == self._tag), None)
+
+                if tag is None:
+                    raise errors.ParameterError(f"Cannot find tag '{self._tag}' for dataset '{self._name}'")
+
+                dataset = datasets_provenance.get_by_id(tag.dataset_id.value)
+            else:
+                tag = None
+
+            assert dataset is not None
             provider_dataset = ProviderDataset.from_dataset(dataset)
+
+            # NOTE: Set the dataset version to the given tag (to reset the version if no tag was provided)
+            provider_dataset.version = self._tag
+            # NOTE: Store the tag so that it can be checked later to see if a tag was specified for import
+            provider_dataset.tag = tag
         finally:
             database_dispatcher.pop_database()
             client_dispatcher.pop_client()
@@ -401,14 +400,12 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
 
         self._files_info = [
             ProviderDatasetFile(
-                source=file.source,
-                filename=Path(file.entity.path).name,
-                checksum=file.entity.checksum,
-                size_in_mb=bytes_to_unit(
-                    RenkuRecordSerializer._get_file_size(self._remote_client, file.entity.path), "mi"
-                ),
-                filetype=Path(file.entity.path).suffix.replace(".", ""),
                 path=file.entity.path,
+                checksum=file.entity.checksum,
+                filename=Path(file.entity.path).name,
+                filetype=Path(file.entity.path).suffix.replace(".", ""),
+                size_in_mb=bytes_to_unit(get_file_size(self._remote_client.path, file.entity.path), "mi"),
+                source=file.source,
             )
             for file in dataset.files
         ]

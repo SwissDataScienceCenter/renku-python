@@ -30,8 +30,6 @@ import psutil
 
 import renku.ui.cli.utils.color as color
 from renku.command.echo import ERROR
-from renku.core.util.contexts import chdir
-from renku.domain_model.tabulate import tabulate
 
 RENKU_DAEMON_LOG_FILE = "renku.log"
 RENKU_DAEMON_ERR_FILE = "renku.err"
@@ -253,6 +251,8 @@ def worker_start(queue):
 @click.pass_context
 def ps(ctx):
     """Check status of running services."""
+    from renku.domain_model.tabulate import tabulate
+
     processes = list_renku_processes()
     headers = [{k.upper(): v for k, v in rec.items()} for rec in processes]
 
@@ -272,6 +272,8 @@ def ps(ctx):
 def all_start(ctx, daemon, runtime_dir):
     """Start all service components."""
     from circus import get_arbiter
+
+    from renku.core.util.contexts import chdir
 
     services = [
         {

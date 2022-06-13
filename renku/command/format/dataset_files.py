@@ -157,7 +157,7 @@ DATASET_FILES_FORMATS: Dict[str, Callable] = {
 
 DATASET_FILES_COLUMNS = {
     "added": ("date_added", "added"),
-    "commit": ("entity.checksum", "commit"),
+    "checksum": ("entity.checksum", "checksum"),
     "creators": ("creators_csv", "creators"),
     "creators_full": ("creators_full_csv", "creators"),
     "dataset": ("title", "dataset"),
@@ -167,6 +167,7 @@ DATASET_FILES_COLUMNS = {
     "dataset_name": ("dataset_name", "dataset name"),
     "size": ("size", None),
     "lfs": ("is_lfs", "lfs"),
+    "source": ("source", None),
 }
 
 DATASET_FILES_COLUMNS_ALIGNMENTS = {"size": "right"}

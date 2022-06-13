@@ -25,6 +25,7 @@ import attr
 
 from renku.command.command_builder import inject
 from renku.core import errors
+from renku.core.dataset.constant import REFS
 from renku.core.interface.client_dispatcher import IClientDispatcher
 
 
@@ -34,9 +35,6 @@ class LinkReference:
 
     client = attr.ib(default=None, kw_only=True)
     name = attr.ib()
-
-    REFS = "refs"
-    """Define a name of the folder with references in the Renku folder."""
 
     @classmethod
     def check_ref_format(cls, name, no_slashes=False):
@@ -65,7 +63,7 @@ class LinkReference:
     @property
     def path(self):
         """Return full reference path."""
-        return self.client.renku_path / self.REFS / self.name
+        return self.client.renku_path / REFS / self.name
 
     @property
     def reference(self):
@@ -89,7 +87,7 @@ class LinkReference:
         """Find all references in the repository."""
         client = client_dispatcher.current_client
 
-        refs_path = path = client.renku_path / cls.REFS
+        refs_path = path = client.renku_path / REFS
         if common_path:
             path = path / common_path
 

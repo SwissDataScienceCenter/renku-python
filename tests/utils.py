@@ -16,7 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test utility functions."""
+
 import contextlib
+import itertools
 import os
 import traceback
 import uuid
@@ -24,7 +26,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from typing import Iterator, List, Optional, Union, cast
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
 import pytest
 from flaky import flaky
@@ -37,6 +39,8 @@ from renku.domain_model.dataset import Dataset
 from renku.domain_model.entity import Entity
 from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
 from renku.domain_model.provenance.agent import Person, SoftwareAgent
+from renku.domain_model.provenance.parameter import ParameterValue
+from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.repository import Repository
 
@@ -129,7 +133,7 @@ def modified_environ(*remove, **update):
 
 
 def format_result_exception(result):
-    """Format a `runner.invoke` exception result into a nice string repesentation."""
+    """Format a `runner.invoke` exception result into a nice string representation."""
 
     if getattr(result, "exc_info", None):
         stacktrace = "".join(traceback.format_exception(*result.exc_info))
@@ -185,7 +189,7 @@ def retry_failed(fn=None, extended: bool = False):
         extended (bool, optional): allow more repetitions than usual (Default value = False).
     """
 
-    def decorate(fn):
+    def decorate():
         limit = 20 if extended else 5
 
         @flaky(max_runs=limit, min_passes=1)
@@ -195,14 +199,12 @@ def retry_failed(fn=None, extended: bool = False):
 
         return wrapper
 
-    if fn:
-        return decorate(fn)
-    return decorate
+    return decorate() if fn else decorate
 
 
 @contextlib.contextmanager
 def injection_manager(bindings):
-    """Context manager to temporarly do injections."""
+    """Context manager to temporarily do injections."""
 
     def _bind(binder):
         for key, value in bindings["bindings"].items():
@@ -246,12 +248,17 @@ def delete_and_commit_file(repository: Repository, path: Union[Path, str]):
 
 def create_dummy_activity(
     plan: Union[Plan, str],
-    usages: List[Union[Path, str, Usage]] = [],
-    generations: List[Union[Path, str, Generation]] = [],
+    *,
     ended_at_time=None,
+    generations: Iterable[Union[Path, str, Generation]] = (),
     id: Optional[str] = None,
+    index: Optional[int] = None,
+    parameters: Dict[str, Any] = None,
+    usages: Iterable[Union[Path, str, Usage]] = (),
 ) -> Activity:
     """Create a dummy activity."""
+    assert id is None or index is None, "Cannot set both 'id' and 'index'"
+
     if not isinstance(plan, Plan):
         assert isinstance(plan, str)
         plan = Plan(id=Plan.generate_id(), name=plan, command=plan)
@@ -259,15 +266,18 @@ def create_dummy_activity(
     ended_at_time = ended_at_time or (datetime.utcnow() - timedelta(hours=1))
     checksum = "abc123"
 
-    activity_id = id or Activity.generate_id()
+    activity_id = id or Activity.generate_id(uuid=None if index is None else str(index))
+
+    parameters_ids = {p.name: p.id for p in itertools.chain(plan.inputs, plan.outputs, plan.parameters)}
+    parameters = parameters or {}
 
     return Activity(
         id=activity_id,
-        started_at_time=ended_at_time - timedelta(hours=1),
+        started_at_time=ended_at_time - timedelta(seconds=1),
         ended_at_time=ended_at_time,
         agents=[
             SoftwareAgent(name="renku test", id="https://github.com/swissdatasciencecenter/renku-python/tree/test"),
-            Person(name="Renkubot", email="test@renkulab.io"),
+            Person(name="Renku-bot", email="test@renkulab.io"),
         ],
         association=Association(
             id=Association.generate_id(activity_id),
@@ -294,7 +304,85 @@ def create_dummy_activity(
             else cast(Usage, u)
             for u in usages
         ],
+        parameters=[
+            ParameterValue(id=ParameterValue.generate_id(activity_id), parameter_id=parameters_ids[name], value=value)
+            for name, value in parameters.items()
+        ],
     )
+
+
+def create_dummy_plan(
+    *,
+    command: str,
+    date_created: datetime = None,
+    description: str = None,
+    index: int,
+    inputs: Iterable[Union[str, Tuple[str, str]]] = (),
+    keywords: List[str] = None,
+    name: str,
+    outputs: Iterable[Union[str, Tuple[str, str]]] = (),
+    parameters: Iterable[Tuple[str, Any, str]] = (),
+    success_codes: List[int] = None,
+) -> Plan:
+    """Create a dummy plan."""
+    id = Plan.generate_id(uuid=str(index))
+
+    plan = Plan(
+        command=command,
+        date_created=date_created or datetime(2022, 5, 20, 0, 42, 0),
+        description=description,
+        id=id,
+        inputs=[],
+        keywords=keywords,
+        name=name,
+        outputs=[],
+        parameters=[],
+        project_id="/projects/renku/abc123",
+        success_codes=success_codes,
+    )
+
+    position = 1
+
+    for index, parameter in enumerate(parameters, start=1):
+        name, value, prefix = parameter
+        plan.parameters.append(
+            CommandParameter(
+                default_value=value,
+                id=CommandParameter.generate_id(plan_id=id, position=index),
+                name=name,
+                position=position,
+                prefix=prefix,
+            )
+        )
+        position += 1
+
+    for index, input in enumerate(inputs, start=1):
+        path, stream_type = input if isinstance(input, tuple) else (input, None)
+        plan.inputs.append(
+            CommandInput(
+                default_value=path,
+                id=CommandInput.generate_id(plan_id=id, position=index),
+                mapped_to=MappedIOStream(stream_type=stream_type) if stream_type else None,
+                name=f"input-{index}",
+                position=position,
+            )
+        )
+        position += 1
+
+    for index, output in enumerate(outputs, start=1):
+        path, stream_type = output if isinstance(output, tuple) else (output, None)
+        plan.outputs.append(
+            CommandOutput(
+                default_value=path,
+                id=CommandOutput.generate_id(plan_id=id, position=index),
+                mapped_to=MappedIOStream(stream_type=stream_type) if stream_type else None,
+                name=f"output-{index}",
+                position=position,
+            )
+        )
+        position += 1
+
+    return plan
 
 
 def clone_compressed_repository(base_path, name) -> Repository:
