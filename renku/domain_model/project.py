@@ -27,6 +27,7 @@ from renku.core import errors
 from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.git import get_git_user
 from renku.core.util.os import normalize_to_ascii
+from renku.core.util.util import NO_VALUE
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.version import __minimum_project_version__
@@ -155,12 +156,13 @@ class Project(persistent.Persistent):
         for name, value in kwargs.items():
             if name not in editable_attributes:
                 raise errors.ParameterError(f"Cannot edit field: '{name}'")
-            if value and value != getattr(self, name):
+            if value is not NO_VALUE and value != getattr(self, name):
                 setattr(self, name, value)
 
-        if custom_metadata:
+        if custom_metadata is not NO_VALUE:
             existing_metadata = [a for a in self.annotations if a.source != "renku"]
 
-            existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
+            if custom_metadata is not None:
+                existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
 
             self.annotations = existing_metadata

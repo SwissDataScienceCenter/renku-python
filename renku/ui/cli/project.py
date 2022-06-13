@@ -55,6 +55,9 @@ for a project.
 | -m, --metadata    | Path to json file containing custom metadata to be   |
 |                   | added to the project knowledge graph.                |
 +-------------------+------------------------------------------------------+
+| -u, --unset <type>| Remove a value from a project. One of ``creators``,  |
+|                   | ``m``, ``keywords``, ``k``, ``metadata``, ``m``      |
++-------------------+------------------------------------------------------+
 """
 
 import json
@@ -63,6 +66,7 @@ from pathlib import Path
 import click
 
 import renku.ui.cli.utils.color as color
+from renku.core.util.util import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
 
 
@@ -72,35 +76,66 @@ def project():
 
 
 @project.command()
-@click.option("-d", "--description", default=None, type=click.STRING, help="Project's description.")
-@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
+@click.option("-d", "--description", default=NO_VALUE, type=click.UNPROCESSED, help="Project's description.")
+@click.option(
+    "-k", "--keyword", "keywords", default=[NO_VALUE], multiple=True, type=click.UNPROCESSED, help="List of keywords."
+)
 @click.option(
     "-c",
     "--creator",
-    default=None,
-    type=click.STRING,
+    "creators",
+    default=[NO_VALUE],
+    type=click.UNPROCESSED,
     help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
 @click.option(
     "-m",
     "--metadata",
-    default=None,
-    type=click.Path(exists=True, dir_okay=False),
+    default=NO_VALUE,
+    type=click.UNPROCESSED,
     help="Custom metadata to be associated with the project.",
 )
-def edit(description, keyword, creator, metadata):
+@click.option(
+    "-u",
+    "--unset",
+    default=[],
+    multiple=True,
+    type=click.Choice(["keywords", "k", "metadata", "m"]),
+    help="Remove keywords from dataset.",
+)
+def edit(description, keywords, creators, metadata, unset):
     """Edit project metadata."""
     from renku.command.project import edit_project_command
 
-    custom_metadata = None
+    if list(creators) == [NO_VALUE]:
+        creators = NO_VALUE
 
-    if metadata:
+    if list(keywords) == [NO_VALUE]:
+        keywords = NO_VALUE
+
+    if "k" in unset or "keywords" in unset:
+        if keywords is not NO_VALUE:
+            raise click.UsageError("Cant user '--creator' together with unsetting creators")
+        keywords = None
+
+    if "m" in unset or "metadata" in unset:
+        if metadata is not NO_VALUE:
+            raise click.UsageError("Cant user '--creator' together with unsetting creators")
+        metadata = None
+
+    custom_metadata = metadata
+
+    if metadata and metadata is not NO_VALUE:
+        path = Path(metadata)
+
+        if not path.exists():
+            raise click.UsageError(f"Path {path} does not exist.")
         custom_metadata = json.loads(Path(metadata).read_text())
 
     result = (
         edit_project_command()
         .build()
-        .execute(description=description, creator=creator, keywords=keyword, custom_metadata=custom_metadata)
+        .execute(description=description, creator=creators, keywords=keywords, custom_metadata=custom_metadata)
     )
 
     updated, no_email_warning = result.output

@@ -23,7 +23,7 @@ import shutil
 import urllib
 from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
 import patoolib
 
@@ -47,6 +47,7 @@ from renku.core.util.git import clone_repository, get_cache_directory_for_reposi
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import delete_file
 from renku.core.util.urls import get_slug, remove_credentials
+from renku.core.util.util import NO_VALUE, NoValueType
 from renku.domain_model.dataset import (
     Dataset,
     DatasetDetailsJson,
@@ -175,32 +176,37 @@ def create_dataset(
 @inject.autoparams("client_dispatcher")
 def edit_dataset(
     name: str,
-    title: str,
-    description: str,
-    creators: List[Person],
+    title: Optional[Union[str, NoValueType]],
+    description: Optional[Union[str, NoValueType]],
+    creators: Optional[Union[List[Person], NoValueType]],
     client_dispatcher: IClientDispatcher,
-    keywords: Optional[List[str]] = None,
-    images: Optional[List[ImageRequestModel]] = None,
-    skip_image_update: bool = False,
-    custom_metadata: Optional[Dict] = None,
+    keywords: Optional[Union[List[str], NoValueType]] = NO_VALUE,
+    images: Optional[Union[List[ImageRequestModel], NoValueType]] = NO_VALUE,
+    custom_metadata: Optional[Union[Dict, NoValueType]] = NO_VALUE,
 ):
     """Edit dataset metadata.
 
     Args:
         name(str): Name of the dataset to edit
-        title(str): New title for the dataset.
-        description(str): New description for the dataset.
-        creators(List[Person]): New creators for the dataset.
+        title(Optional[Union[str, NoValueType]]): New title for the dataset.
+        description(Optional[Union[str, NoValueType]]): New description for the dataset.
+        creators(Optional[Union[List[Person], NoValueType]]): New creators for the dataset.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        keywords(List[str], optional): New keywords for dataset (Default value = None).
-        images(List[ImageRequestModel], optional): New images for dataset (Default value = None).
-        skip_image_update(bool, optional): Whether or not to skip updating dataset images (Default value = False).
-        custom_metadata(Dict, optional): Custom JSON-LD metadata (Default value = None).
+        keywords(Optional[Union[List[str], NoValueType]]): New keywords for dataset (Default value = ``NO_VALUE``).
+        images(Optional[Union[List[ImageRequestModel], NoValueType]]): New images for dataset
+            (Default value = ``NO_VALUE``).
+        custom_metadata(Optional[Union[Dict, NoValueType]]): Custom JSON-LD metadata (Default value = ``NO_VALUE``).
 
     Returns:
         bool: True if updates were performed.
     """
     client = client_dispatcher.current_client
+
+    if isinstance(title, str):
+        title = title.strip()
+
+    if title is None:
+        title = ""
 
     possible_updates = {
         "creators": creators,
@@ -209,29 +215,29 @@ def edit_dataset(
         "title": title,
     }
 
-    title = title.strip() if isinstance(title, str) else ""
-
     dataset_provenance = DatasetsProvenance()
     dataset = dataset_provenance.get_by_name(name=name)
 
     if dataset is None:
         raise errors.ParameterError("Dataset does not exist.")
 
-    updated: Dict[str, Any] = {k: v for k, v in possible_updates.items() if v}
+    updated: Dict[str, Any] = {k: v for k, v in possible_updates.items() if v != NO_VALUE}
 
     if updated:
         dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
 
-    if skip_image_update:
+    if images == NO_VALUE:
         images_updated = False
     else:
-        images_updated = set_dataset_images(client, dataset, images)
+        images_updated = set_dataset_images(client, dataset, cast(Optional[List[ImageRequestModel]], images))
 
     if images_updated:
-        updated["images"] = [{"content_url": i.content_url, "position": i.position} for i in dataset.images]
+        updated["images"] = (
+            None if images is None else [{"content_url": i.content_url, "position": i.position} for i in dataset.images]
+        )
 
-    if custom_metadata:
-        update_dataset_custom_metadata(dataset, custom_metadata)
+    if custom_metadata is not NO_VALUE:
+        update_dataset_custom_metadata(dataset, cast(Optional[Dict], custom_metadata))
         updated["custom_metadata"] = custom_metadata
 
     if not updated:
@@ -838,7 +844,7 @@ def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional
     return images_updated or dataset.images != previous_images
 
 
-def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Dict):
+def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Optional[Dict]):
     """Update custom metadata on a dataset.
 
     Args:
@@ -848,7 +854,8 @@ def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Dict):
 
     existing_metadata = [a for a in dataset.annotations if a.source != "renku"]
 
-    existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
+    if custom_metadata is not None:
+        existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
 
     dataset.annotations = existing_metadata
 

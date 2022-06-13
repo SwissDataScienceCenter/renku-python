@@ -1253,6 +1253,78 @@ def test_edit_datasets_view_without_modification(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
+def test_edit_datasets_view_unset_values(svc_client_with_repo):
+    """Test editing dataset metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    name = uuid.uuid4().hex
+
+    payload = {
+        "project_id": project_id,
+        "name": name,
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "title": "my-title",
+        "description": "my description",
+        "keywords": ["keywords"],
+        "images": [
+            {"content_url": "https://example.com/image1.jpg", "position": 1},
+        ],
+        "custom_metadata": {"test": "test"},
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
+
+    assert_rpc_response(response)
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params_list = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
+
+    assert_rpc_response(response)
+    edit_payload = {
+        "project_id": project_id,
+        "name": name,
+        "creators": None,
+        "description": None,
+        "keywords": None,
+        "images": None,
+        "custom_metadata": None,
+    }
+    response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
+
+    assert_rpc_response(response)
+    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {
+        "keywords": [],
+        "creators": None,
+        "description": None,
+        "custom_metadata": None,
+        "images": [],
+    } == response.json["result"]["edited"]
+
+    params_list = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
+
+    assert_rpc_response(response)
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    assert edit_payload["name"] == ds["name"]
+    assert edit_payload["description"] == ds["description"]
+    assert 1 == len(ds["creators"])
+    assert "Renkubot" == ds["creators"][0]["name"]
+    assert 0 == len(ds["keywords"])
+    assert 0 == len(ds["annotations"])
+    assert 0 == len(ds["images"])
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
 def test_edit_dataset_with_images(svc_client_with_repo):
     """Edit images of a dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo

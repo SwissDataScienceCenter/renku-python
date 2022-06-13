@@ -16,7 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project edit controller."""
+from typing import Dict, cast
+
 from renku.command.project import edit_project_command
+from renku.core.util.util import NO_VALUE
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOpSyncMixin
@@ -32,7 +35,7 @@ class ProjectEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a project edit controller."""
-        self.ctx = ProjectEditCtrl.REQUEST_SERIALIZER.load(request_data)
+        self.ctx = cast(Dict, ProjectEditCtrl.REQUEST_SERIALIZER.load(request_data))
 
         if self.ctx.get("commit_message") is None:
             self.ctx["commit_message"] = "service: project edit"
@@ -46,15 +49,35 @@ class ProjectEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
+        if "description" in self.ctx:
+            description = self.ctx.get("description")
+        else:
+            description = NO_VALUE
+
+        if "creator" in self.ctx:
+            creator = self.ctx.get("creator")
+        else:
+            creator = NO_VALUE
+
+        if "custom_metadata" in self.ctx:
+            custom_metadata = self.ctx.get("custom_metadata")
+        else:
+            custom_metadata = NO_VALUE
+
+        if "keywords" in self.ctx:
+            keywords = self.ctx.get("keywords")
+        else:
+            keywords = NO_VALUE
+
         result = (
             edit_project_command()
             .with_commit_message(self.ctx["commit_message"])
             .build()
             .execute(
-                description=self.ctx.get("description"),
-                creator=self.ctx.get("creator"),
-                custom_metadata=self.ctx.get("custom_metadata"),
-                keywords=self.ctx.get("keywords"),
+                description=description,
+                creator=creator,
+                custom_metadata=custom_metadata,
+                keywords=keywords,
             )
         )
 

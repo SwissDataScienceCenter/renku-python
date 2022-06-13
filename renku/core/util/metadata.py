@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from renku.domain_model.provenance.agent import Person
 
 
-def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
+def construct_creators(creators: Optional[List[Union[dict, str]]], ignore_email=False):
     """Parse input and return a list of Person."""
     creators = creators or []
 
