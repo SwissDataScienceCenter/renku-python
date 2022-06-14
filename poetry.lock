@@ -2402,11 +2402,11 @@ redis = ">=3.0.0"
 
 [[package]]
 name = "wcmatch"
-version = "8.2"
+version = "8.4"
 description = "Wildcard/glob file name matcher."
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 bracex = ">=2.1.1"
@@ -2676,7 +2676,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "0c3ae881c4ff1c6a03b1a4e8b79e69f5e1218ed9394067915e3e1d4a234c659d"
+content-hash = "5aa5f9b64a22e9c788b3cfc246948dbdf9edaabec1cf2a37ad44a48051c1892d"
 
 [metadata.files]
 addict = [
@@ -4217,8 +4217,8 @@ walrus = [
     {file = "walrus-0.9.1.tar.gz", hash = "sha256:966dc34c8fba842d58131ac513db298c7ced141d0d0beb9c8b1ec025590b2287"},
 ]
 wcmatch = [
-    {file = "wcmatch-8.2-py3-none-any.whl", hash = "sha256:9146b1ab9354e0797ef6ef69bc89cb32cb9f46d1b9eeef69c559aeec8f3bffb6"},
-    {file = "wcmatch-8.2.tar.gz", hash = "sha256:4d54ddb506c90b5a5bba3a96a1cfb0bb07127909e19046a71d689ddfb18c3617"},
+    {file = "wcmatch-8.4-py3-none-any.whl", hash = "sha256:dc7351e5a7f8bbf4c6828d51ad20c1770113f5f3fd3dfe2a03cfde2a63f03f98"},
+    {file = "wcmatch-8.4.tar.gz", hash = "sha256:ba4fc5558f8946bf1ffc7034b05b814d825d694112499c86035e0e4d398b6a67"},
 ]
 wcwidth = [
     {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},
