@@ -20,6 +20,7 @@ import copy
 import io
 import json
 import uuid
+import zipfile
 from unittest.mock import MagicMock
 
 import jwt
@@ -165,6 +166,72 @@ def test_file_chunked_upload(svc_client, identity_headers, svc_cache_dir):
     file = next(svc_cache_dir[1].rglob("*")) / filename
 
     assert "chunk1chunk2chunk3" == file.read_text()
+
+
+@pytest.mark.service
+def test_file_chunked_upload_zipped(svc_client, identity_headers, svc_cache_dir):
+    """Check successful file upload."""
+
+    input_str = "".join(f"chunk{i}" for i in range(1000))
+
+    with io.BytesIO() as f:
+        z = zipfile.ZipFile(f, "w", zipfile.ZIP_DEFLATED)
+        z.writestr("filename", input_str.encode("utf-8"))
+        z.close()
+
+        data = f.getvalue()
+
+    headers = copy.deepcopy(identity_headers)
+    headers.pop("Content-Type")
+
+    upload_id = uuid.uuid4().hex
+    filename = uuid.uuid4().hex
+
+    filesize = len(data)
+    chunksize = filesize // 2 + 1
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(data[:chunksize]), filename),
+            dzuuid=upload_id,
+            dzchunkindex=0,
+            dztotalchunkcount=2,
+            dztotalfilesize=filesize,
+            chunked_content_type="application/zip",
+            unpack_archive=True,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(data[chunksize:]), filename),
+            dzuuid=upload_id,
+            dzchunkindex=1,
+            dztotalchunkcount=2,
+            dztotalfilesize=filesize,
+            chunked_content_type="application/zip",
+            unpack_archive=True,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert 1 == len(response.json["result"]["files"])
+    assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
+
+    file = next(svc_cache_dir[1].rglob("*")) / response.json["result"]["files"][0]["relative_path"]
+
+    assert input_str == file.read_text()
 
 
 @pytest.mark.service
