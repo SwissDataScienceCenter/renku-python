@@ -115,6 +115,7 @@ def test_file_chunked_upload(svc_client, identity_headers, svc_cache_dir):
             dzchunkindex=0,
             dztotalchunkcount=3,
             dztotalfilesize=18,
+            chunked_content_type="application/text",
         ),
         headers=headers,
     )
@@ -132,6 +133,7 @@ def test_file_chunked_upload(svc_client, identity_headers, svc_cache_dir):
             dzchunkindex=1,
             dztotalchunkcount=3,
             dztotalfilesize=18,
+            chunked_content_type="application/text",
         ),
         headers=headers,
     )
@@ -149,6 +151,7 @@ def test_file_chunked_upload(svc_client, identity_headers, svc_cache_dir):
             dzchunkindex=2,
             dztotalchunkcount=3,
             dztotalfilesize=18,
+            chunked_content_type="application/text",
         ),
         headers=headers,
     )
@@ -181,6 +184,7 @@ def test_file_chunked_upload_delete(svc_client, identity_headers, svc_cache_dir)
             dzchunkindex=0,
             dztotalchunkcount=3,
             dztotalfilesize=18,
+            chunked_content_type="application/text",
         ),
         headers=headers,
     )
@@ -198,6 +202,7 @@ def test_file_chunked_upload_delete(svc_client, identity_headers, svc_cache_dir)
             dzchunkindex=1,
             dztotalchunkcount=3,
             dztotalfilesize=18,
+            chunked_content_type="application/text",
         ),
         headers=headers,
     )

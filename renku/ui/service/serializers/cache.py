@@ -70,6 +70,7 @@ class FileUploadRequest(ArchiveSchema):
     chunk_count = fields.Integer(data_key="dztotalchunkcount", missing=None, description="Dropzone total chunk count.")
     chunk_size = fields.Integer(data_key="dzchunksize", missing=None, description="Dropzone chunk size.")
     chunk_byte_offset = fields.Integer(data_key="dzchunkbyteoffset", missing=None, description="Dropzone chunk offset.")
+    chunked_content_type = fields.String(missing=None, description="Content type of file file for chunked uploads.")
     total_size = fields.Integer(data_key="dztotalfilesize", missing=None, description="Dropzone total file size.")
 
     @validates_schema

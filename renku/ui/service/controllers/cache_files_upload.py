@@ -118,6 +118,8 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
             shutil.rmtree(chunks_dir)
             self.cache.invalidate_chunks(self.user, chunked_id)
 
+        self.response_builder["is_archive"] = self.response_builder.get("chunked_content_type") in SUPPORTED_ARCHIVES
+
         return self.postprocess_file(file_path, user_cache_dir)
 
     def process_file(self):
