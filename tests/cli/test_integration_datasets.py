@@ -1910,3 +1910,25 @@ def test_dataset_update_removes_deleted_files(
 
     assert 2 == len(dataset.files)
     assert {"data/parts/part_categories.csv", "data/parts/parts.csv"} == {f.entity.path for f in dataset.files}
+
+
+@pytest.mark.integration
+def test_dataset_ls_with_tag(runner, tmp_path):
+    """Test listing dataset files from a given tag."""
+    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    repository = Repository.clone_from(url=url, path=tmp_path / "repo")
+
+    os.chdir(repository.path)
+
+    result = runner.invoke(cli, ["dataset", "ls-files", "--tag", "v1"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    lines = result.output.split(os.linesep)
+
+    deleted_file = next(line for line in lines if "data/parts/README.md" in line)
+    assert "36  B" in deleted_file
+    assert "*" not in deleted_file
+
+    deleted_lfs_file = next(line for line in lines if "data/parts/part_relationships.csv" in line)
+    assert "548 KB" in deleted_lfs_file
+    assert "*" in deleted_lfs_file

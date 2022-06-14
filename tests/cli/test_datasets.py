@@ -1041,7 +1041,7 @@ def test_dataset_unlink_file_not_found(runner, project):
 
     result = runner.invoke(cli, ["dataset", "unlink", "my-dataset", "--include", "notthere.csv"])
 
-    assert 2 == result.exit_code
+    assert 2 == result.exit_code, format_result_exception(result)
 
 
 def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):

@@ -243,10 +243,11 @@ def edit_dataset(
     return updated
 
 
-@inject.autoparams()
+@inject.autoparams("client_dispatcher")
 def list_dataset_files(
     client_dispatcher: IClientDispatcher,
-    datasets=None,
+    datasets: List[str] = None,
+    tag: Optional[str] = None,
     creators=None,
     include=None,
     exclude=None,
@@ -255,7 +256,8 @@ def list_dataset_files(
 
     Args:
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        datasets: Datasets to list files for (Default value = None).
+        datasets(List[str]): Datasets to list files for (Default value = None).
+        tag(str): Tag to filter by (Default value = None).
         creators: Creators to filter by (Default value = None).
         include: Include filters for file paths (Default value = None).
         exclude: Exclude filters for file paths (Default value = None).
@@ -263,11 +265,13 @@ def list_dataset_files(
     Returns:
         List[DynamicProxy]: Filtered dataset files.
     """
-    from renku.command.format.dataset_files import get_lfs_file_sizes, get_lfs_tracking
+    from renku.command.format.dataset_files import get_lfs_tracking_and_file_sizes
 
     client = client_dispatcher.current_client
 
-    records = filter_dataset_files(names=datasets, creators=creators, include=include, exclude=exclude, immutable=True)
+    records = filter_dataset_files(
+        names=datasets, tag=tag, creators=creators, include=include, exclude=exclude, immutable=True
+    )
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
@@ -279,8 +283,7 @@ def list_dataset_files(
         record.name = Path(record.entity.path).name
         record.added = record.date_added
 
-    get_lfs_file_sizes(records)
-    get_lfs_tracking(records)
+    get_lfs_tracking_and_file_sizes(records, has_tag=bool(tag))
 
     return records
 
@@ -1138,11 +1141,12 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
     return updated_files
 
 
-@inject.autoparams()
+@inject.autoparams("client_dispatcher", "dataset_gateway")
 def filter_dataset_files(
     client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
     names=None,
+    tag: Optional[str] = None,
     creators=None,
     include=None,
     exclude=None,
@@ -1154,16 +1158,33 @@ def filter_dataset_files(
     Args:
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway):Injected dataset gateway.
-        names: Filter by specified dataset names. (Default value = None).
-        creators: Filter by creators. (Default value = None).
-        include: Include files matching file pattern. (Default value = None).
-        exclude: Exclude files matching file pattern. (Default value = None).
-        ignore: Ignored datasets. (Default value = None).
-        immutable: Return immutable copies of dataset objects. (Default value = False).
+        names: Filter by specified dataset names (Default value = None).
+        tag(Optional[str]): Filter by specified tag (Default value = None).
+        creators: Filter by creators (Default value = None).
+        include: Tuple containing patterns to which include from result (Default value = None).
+        exclude: Tuple containing patterns to which exclude from result (Default value = None).
+        ignore: Ignored datasets (Default value = None).
+        immutable: Return immutable copies of dataset objects (Default value = False).
 
     Returns:
         List[DynamicProxy]: List of filtered files sorted by date added.
     """
+
+    def should_include(filepath: Path) -> bool:
+        """Check if file matches one of include filters and not in exclude filter."""
+        if exclude:
+            for pattern in exclude:
+                if filepath.match(pattern):
+                    return False
+
+        if include:
+            for pattern in include:
+                if filepath.match(pattern):
+                    return True
+            return False
+
+        return True
+
     client = client_dispatcher.current_client
 
     if isinstance(creators, str):
@@ -1174,54 +1195,40 @@ def filter_dataset_files(
 
     records = []
     unused_names = set(names)
+
     for dataset in dataset_gateway.get_all_active_datasets():
+        if (names and dataset.name not in names) or (ignore and dataset.name in ignore):
+            continue
+
+        if tag:
+            tags = dataset_gateway.get_all_tags(dataset)
+            selected_tag = next((t for t in tags if t.name == tag), None)
+            if not selected_tag:
+                continue
+            dataset = dataset_gateway.get_by_id(selected_tag.dataset_id.value)
+
         if not immutable:
             dataset = dataset.copy()
-        if (not names or dataset.name in names) and (not ignore or dataset.name not in ignore):
-            if unused_names:
-                unused_names.remove(dataset.name)
-            for file in dataset.files:
-                record = DynamicProxy(file)
-                record.dataset = dataset
-                record.client = client
-                path = Path(record.entity.path)
-                match = _include_exclude(path, include, exclude)
 
-                if creators:
-                    c: Person
-                    dataset_creators = {c.name for c in dataset.creators}
-                    match = match and creators.issubset(dataset_creators)
+        if unused_names:
+            unused_names.remove(dataset.name)
 
-                if match:
-                    records.append(record)
+        if creators:
+            dataset_creators = {creator.name for creator in dataset.creators}
+            if not creators.issubset(dataset_creators):
+                continue
+
+        for file in dataset.files:
+            if not should_include(Path(file.entity.path)):
+                continue
+
+            record = DynamicProxy(file)
+            record.dataset = dataset
+            record.client = client
+            records.append(record)
 
     if unused_names:
         unused_names_str = ", ".join(unused_names)
-        raise errors.ParameterError(f"Dataset does not exist: {unused_names_str}")
+        raise errors.ParameterError(f"These datasets don't exist: {unused_names_str}")
 
     return sorted(records, key=lambda r: r.date_added)
-
-
-def _include_exclude(file_path, include=None, exclude=None):
-    """Check if file matches one of include filters and not in exclude filter.
-
-    Args:
-        file_path: Path to the file.
-        include: Tuple containing patterns to which include from result (Default value = None).
-        exclude: Tuple containing patterns to which exclude from result (Default value = None).
-
-    Returns:
-        bool: True if a file should be included, False otherwise.
-    """
-    if exclude is not None and exclude:
-        for pattern in exclude:
-            if file_path.match(pattern):
-                return False
-
-    if include is not None and include:
-        for pattern in include:
-            if file_path.match(pattern):
-                return True
-        return False
-
-    return True
