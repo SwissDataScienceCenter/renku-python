@@ -315,7 +315,7 @@ test = ["nose", "nose-cov", "coverage", "mock", "circus-web", "gevent", "papa", 
 
 [[package]]
 name = "click"
-version = "8.1.2"
+version = "8.1.3"
 description = "Composable command line interface toolkit"
 category = "main"
 optional = false
@@ -2676,7 +2676,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "5aa5f9b64a22e9c788b3cfc246948dbdf9edaabec1cf2a37ad44a48051c1892d"
+content-hash = "ccca58319a741b239cde788d752619f0a5ffc4c3a60a27737c666c4d9c1c5f81"
 
 [metadata.files]
 addict = [
@@ -2882,8 +2882,8 @@ circus = [
     {file = "circus-0.17.1.tar.gz", hash = "sha256:7e15dd1ef94f06e1aa00ac0dabe05b9e312633a7e58fa5e2361459e7f915f4c5"},
 ]
 click = [
-    {file = "click-8.1.2-py3-none-any.whl", hash = "sha256:24e1a4a9ec5bf6299411369b208c1df2188d9eb8d916302fe6bf03faed227f1e"},
-    {file = "click-8.1.2.tar.gz", hash = "sha256:479707fe14d9ec9a0757618b7a100a0ae4c4e236fac5b7f80ca68028141a1a72"},
+    {file = "click-8.1.3-py3-none-any.whl", hash = "sha256:bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48"},
+    {file = "click-8.1.3.tar.gz", hash = "sha256:7682dc8afb30297001674575ea00d1814d808d6a36af415a82bd481d37ba7b8e"},
 ]
 click-option-group = [
     {file = "click-option-group-0.5.3.tar.gz", hash = "sha256:a6e924f3c46b657feb5b72679f7e930f8e5b224b766ab35c91ae4019b4e0615e"},
@@ -3766,6 +3766,7 @@ pyshacl = [
 ]
 pyte = [
     {file = "pyte-0.8.1-py3-none-any.whl", hash = "sha256:d760ea9a7d455d179d9d7a4288fac3d231190b5226715f1fe8c62547bed9b9aa"},
+    {file = "pyte-0.8.1.tar.gz", hash = "sha256:b9bfd1b781759e7572a6e553c010cc93eef58a19d8d1590446d84c19b1b097b0"},
 ]
 pytest = [
     {file = "pytest-7.1.1-py3-none-any.whl", hash = "sha256:92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea"},
