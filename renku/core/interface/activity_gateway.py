@@ -35,12 +35,20 @@ class IActivityGateway(ABC):
         """Return all generation paths."""
         raise NotImplementedError
 
+    def get_activities_by_usage(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
+        """Return the list of all activities that use a path."""
+        raise NotImplementedError
+
     def get_activities_by_generation(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
         """Return the list of all activities that generate a path."""
         raise NotImplementedError
 
     def get_downstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
+        raise NotImplementedError
+
+    def get_upstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
+        """Get upstream activities that this activity depends on."""
         raise NotImplementedError
 
     def get_downstream_activity_chains(self, activity: Activity) -> List[Tuple[Activity, ...]]:

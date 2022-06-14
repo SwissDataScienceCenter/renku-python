@@ -22,7 +22,7 @@ import re
 try:
     from importlib.metadata import distribution
 except ImportError:
-    from importlib_metadata import distribution
+    from importlib_metadata import distribution  # type: ignore
 
 __version__ = "0.0.0"
 __template_version__ = "0.3.1"

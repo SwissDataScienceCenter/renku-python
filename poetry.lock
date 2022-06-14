@@ -1204,6 +1204,19 @@ docs = ["olefile", "sphinx (>=2.4)", "sphinx-copybutton", "sphinx-issues (>=3.0.
 tests = ["check-manifest", "coverage", "defusedxml", "markdown2", "olefile", "packaging", "pyroma", "pytest", "pytest-cov", "pytest-timeout"]
 
 [[package]]
+name = "plantweb"
+version = "1.2.1"
+description = "Python client for the PlantUML server"
+category = "main"
+optional = true
+python-versions = "*"
+
+[package.dependencies]
+docutils = "*"
+requests = "*"
+six = "*"
+
+[[package]]
 name = "platformdirs"
 version = "2.5.2"
 description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
@@ -2663,8 +2676,8 @@ cffi = {version = ">=1.11", markers = "platform_python_implementation == \"PyPy\
 cffi = ["cffi (>=1.11)"]
 
 [extras]
-all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "marshmallow", "mypy", "pexpect", "pillow", "poetry-dynamic-versioning", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
-docs = ["renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
+all = ["apispec", "apispec-webframeworks", "black", "check-manifest", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "freezegun", "gunicorn", "isort", "marshmallow", "mypy", "pexpect", "pillow", "plantweb", "poetry-dynamic-versioning", "ptvsd", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-rtd-theme", "sphinx-tabs", "toil", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
+docs = ["plantweb", "renku-sphinx-theme", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
 service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "marshmallow", "pillow", "ptvsd", "python-dotenv", "redis", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
 tests = ["black", "check-manifest", "coverage", "fakeredis", "flakehell", "flaky", "freezegun", "isort", "mypy", "pexpect", "poetry-dynamic-versioning", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "responses", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate"]
 toil = ["toil"]
@@ -2672,7 +2685,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "f0cce58262483e94861b8d5782e4014bb21cf601074b9f158220e9bf4fd656fa"
+content-hash = "0b4bf5859bb1c0f6e34b42c24c1ea75f2d1b0dedaf3fa0b98cf4d4a3e97e7317"
 
 [metadata.files]
 addict = [
@@ -3664,6 +3677,10 @@ pillow = [
     {file = "Pillow-9.1.1-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:937a54e5694684f74dcbf6e24cc453bfc5b33940216ddd8f4cd8f0f79167f765"},
     {file = "Pillow-9.1.1-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:baf3be0b9446a4083cc0c5bb9f9c964034be5374b5bc09757be89f5d2fa247b8"},
     {file = "Pillow-9.1.1.tar.gz", hash = "sha256:7502539939b53d7565f3d11d87c78e7ec900d3c72945d4ee0e2f250d598309a0"},
+]
+plantweb = [
+    {file = "plantweb-1.2.1-py3-none-any.whl", hash = "sha256:d24e9ce1ab8356bcbd9704e405ba3f0b0f583c366a945352f6ea3febd0146a13"},
+    {file = "plantweb-1.2.1.tar.gz", hash = "sha256:148e5b7eaac464d76adcbdb98dcc192ef824d721b16ce82b2fcb1e84e17ae3db"},
 ]
 platformdirs = [
     {file = "platformdirs-2.5.2-py3-none-any.whl", hash = "sha256:027d8e83a2d7de06bbac4e5ef7e023c02b863d7ea5d079477e722bb41ab25788"},

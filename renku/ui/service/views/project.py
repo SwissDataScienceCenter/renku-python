@@ -22,7 +22,7 @@ from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.project_edit import ProjectEditCtrl
 from renku.ui.service.controllers.project_lock_status import ProjectLockStatusCtrl
 from renku.ui.service.controllers.project_show import ProjectShowCtrl
-from renku.ui.service.views.api_versions import V1_0, V1_1, V1_2, VersionedBlueprint
+from renku.ui.service.views.api_versions import VERSIONS_FROM_V1_0, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import handle_common_except, handle_project_write_errors
 
@@ -31,7 +31,7 @@ project_blueprint = VersionedBlueprint(PROJECT_BLUEPRINT_TAG, __name__, url_pref
 
 
 @project_blueprint.route(
-    "/project.show", methods=["POST"], provide_automatic_options=False, versions=[V1_0, V1_1, V1_2]
+    "/project.show", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_0
 )
 @handle_common_except
 @accepts_json
@@ -61,7 +61,7 @@ def show_project_view(user_data, cache):
 
 
 @project_blueprint.route(
-    "/project.edit", methods=["POST"], provide_automatic_options=False, versions=[V1_0, V1_1, V1_2]
+    "/project.edit", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_0
 )
 @handle_common_except
 @handle_project_write_errors
@@ -92,7 +92,7 @@ def edit_project_view(user_data, cache):
 
 
 @project_blueprint.route(
-    "/project.lock_status", methods=["GET"], provide_automatic_options=False, versions=[V1_0, V1_1, V1_2]
+    "/project.lock_status", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_0
 )
 @handle_common_except
 @requires_cache

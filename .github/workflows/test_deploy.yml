@@ -64,7 +64,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -106,7 +106,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -145,7 +145,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -190,7 +190,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           python -m pip install .[all]
       - name: Install renku into cache
@@ -250,7 +250,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           pip install .[all]
@@ -296,7 +296,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -354,7 +354,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -418,7 +418,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -482,7 +482,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -532,7 +532,7 @@ jobs:
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
-          python -m pip install wheel poetry-dynamic-versioning
+          python -m pip install wheel poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -568,7 +568,7 @@ jobs:
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
-          python -m pip install wheel poetry-dynamic-versioning
+          python -m pip install wheel poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -611,7 +611,7 @@ jobs:
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
-          python -m pip install wheel poetry-dynamic-versioning
+          python -m pip install wheel poetry-dynamic-versioning==0.17.1
           make download-templates
           poetry-dynamic-versioning
           python -m pip install .[all]
@@ -696,7 +696,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -775,7 +775,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
           poetry-dynamic-versioning
           make download-templates
           python -m pip install .[all]
@@ -890,7 +890,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install poetry poetry-dynamic-versioning poetry-lock-package twine
+          python -m pip install poetry poetry-dynamic-versioning==0.17.1 poetry-lock-package twine
           python -m pip install .[all]
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"

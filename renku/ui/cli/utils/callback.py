@@ -18,9 +18,11 @@
 """Communicator class for printing click output."""
 
 import sys
+from contextlib import contextmanager
 
 import click
 from tqdm import tqdm
+from yaspin import yaspin
 
 import renku.ui.cli.utils.color as color
 from renku.core.util.communication import CommunicationCallback
@@ -92,6 +94,12 @@ class StandardOutput(CommunicationCallback):
 
         self._progress_bars[name].close()
         del self._progress_bars[name]
+
+    @contextmanager
+    def busy(self, msg):
+        """Indicate busy status using a spinner."""
+        with yaspin(text=msg):
+            yield
 
 
 class ClickCallback(StandardOutput):

@@ -24,9 +24,10 @@ import os
 import shutil
 import time
 import urllib
+from collections import defaultdict
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Set, Tuple, Union, cast
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
@@ -40,7 +41,7 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util import communication, requests
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
-from renku.core.util.metadata import is_external_file
+from renku.core.util.metadata import is_external_file, make_project_temp_dir
 from renku.core.util.os import delete_file, get_absolute_path, get_files, get_relative_path, is_subpath
 from renku.core.util.urls import check_url, provider_check, remove_credentials
 from renku.domain_model.dataset import Dataset, DatasetFile, RemoteEntity, get_dataset_data_dir
@@ -56,6 +57,27 @@ class AddAction(Enum):
     COPY = auto()
     MOVE = auto()
     SYMLINK = auto()
+    NONE = auto()
+
+
+class NewDatasetFile(NamedTuple):
+    """Represent a new file that will be added to a dataset."""
+
+    entity_path: Path
+    url: str
+    action: AddAction
+    source: Path
+    destination: Path
+    based_on: Optional[RemoteEntity] = None
+
+    @property
+    def has_action(self) -> bool:
+        """Returns if file action is not NONE."""
+        return self.action != AddAction.NONE
+
+    def get_absolute_commit_path(self, client_path: Path) -> str:
+        """Return path of the file in the repository."""
+        return os.path.join(client_path, self.entity_path)
 
 
 @inject.autoparams("client_dispatcher", "database_dispatcher")
@@ -69,15 +91,18 @@ def add_data_to_dataset(
     overwrite: bool = False,
     sources: Optional[List[Union[str, Path]]] = None,
     destination: str = "",
+    checksums: Optional[List[str]] = None,
     ref: Optional[str] = None,
     external: bool = False,
     extract: bool = False,
-    all_at_once: bool = False,
+    is_import: bool = False,
+    is_renku_import: bool = False,
     destination_names: Optional[List[str]] = None,
     repository: Optional[Repository] = None,
     clear_files_before: bool = False,
     total_size: Optional[int] = None,
     with_metadata: Optional[ProviderDataset] = None,
+    dataset_datadir: Optional[str] = None,
 ) -> Dataset:
     """Import the data into the data directory."""
     client = client_dispatcher.current_client
@@ -97,28 +122,31 @@ def add_data_to_dataset(
             client.check_external_storage()
 
             files = _process_urls(
-                client,
-                dataset,
-                urls,
-                destination_path,
-                ref,
-                sources,
-                destination_names,
-                external,
-                extract,
-                all_at_once,
-                repository,
+                client=client,
+                dataset=dataset,
+                urls=urls,
+                destination=destination_path,
+                ref=ref,
+                sources=sources,
+                destination_names=destination_names,
+                checksums=checksums,
+                external=external,
+                extract=extract,
+                is_import=is_import,
+                is_renku_import=is_renku_import,
+                repository=repository,
+                dataset_datadir=dataset_datadir,
             )
 
             # Remove all files that are under a .git directory
-            paths_to_avoid = [f["path"] for f in files if ".git" in str(f["path"]).split(os.path.sep)]
+            paths_to_avoid = [f.entity_path for f in files if ".git" in str(f.entity_path).split(os.path.sep)]
             if paths_to_avoid:
-                files = [f for f in files if f["path"] not in paths_to_avoid]
+                files = [f for f in files if f.entity_path not in paths_to_avoid]
                 communication.warn(
                     "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
-            files_to_commit = {str(client.path / f["path"]) for f in files}
+            files_to_commit = {f.get_absolute_commit_path(client.path) for f in files}
 
             if not force:
                 files, files_to_commit = _check_ignored_files(client, files_to_commit, files)
@@ -177,26 +205,49 @@ def _process_urls(
     ref: Optional[str] = None,
     sources: Optional[List[Union[str, Path]]] = None,
     destination_names: Optional[List[str]] = None,
+    checksums: Optional[List[str]] = None,
     external: bool = False,
     extract: bool = False,
-    all_at_once: bool = False,
+    is_import: bool = False,
+    is_renku_import: bool = False,
     repository: Optional[Repository] = None,
-):
+    dataset_datadir: Optional[str] = None,
+) -> List[NewDatasetFile]:
     """Process file URLs for adding to a dataset."""
     files = []
     tracked_external_warnings = []
-    if all_at_once:  # Importing a non-git dataset
+
+    if is_import:  # Importing a non-git dataset
         if not destination_names:
-            raise errors.ParameterError("'destination_names' has to be set when using 'all_at_once=True'")
+            raise errors.ParameterError("'destination_names' has to be set when using 'is_import=True'")
         files = _add_from_urls(
             client, urls=urls, destination_names=destination_names, destination=destination, extract=extract
+        )
+    elif is_renku_import:
+        assert len(urls) == 1, f"Only a single URL must be specified when importing from Renku: {urls}"
+        assert repository is not None, "Repository must be passed for Renku imports"
+        assert dataset_datadir, "Source dataset's datadir is not set"
+
+        files = _add_from_renku(
+            client=client,
+            url=urls[0],
+            sources=cast(List[str], sources) or [],
+            destination=destination,
+            checksums=checksums,
+            repository=repository,
+            dataset_datadir=dataset_datadir,
         )
     else:
         for url in urls:
             is_remote, is_git, url = check_url(url)
             if is_git and is_remote:  # Remote repository
                 new_files = _add_from_git(
-                    client, url=url, sources=sources, destination=destination, ref=ref, repository=repository
+                    client=client,
+                    url=url,
+                    sources=sources,
+                    destination=destination,
+                    ref=ref,
+                    repository=repository,
                 )
             else:
                 if sources:
@@ -259,82 +310,76 @@ def _create_destination_directory(
     return dataset_datadir / relative_path
 
 
-def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files: List[Dict]):
+def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files: List[NewDatasetFile]):
     """Check if any files added were ignored."""
-    ignored_files = client.find_ignored_paths(*files_to_commit)
+    ignored_files = set(client.find_ignored_paths(*files_to_commit))
     if ignored_files:
-        ignored_files = set(ignored_files)
-        files_to_commit = files_to_commit.difference(ignored_files)
         ignored_sources = []
-        for file_ in files:
-            if str(client.path / file_["path"]) in ignored_files:
-                operation = file_.get("operation")
-                if operation:
-                    src, _, _ = operation
-                    ignored_sources.append(src)
-                else:
-                    ignored_sources.append(file_["path"])
+        for file in files:
+            if file.get_absolute_commit_path(client.path) in ignored_files:
+                ignored_sources.append(file.source)
 
-        files = [f for f in files if str(client.path / f["path"]) in files_to_commit]
         communication.warn(
             "Theses paths are ignored by one of your .gitignore files (use '--force' flag if you really want to add "
             "them):\n\t" + "\n\t".join([str(p) for p in ignored_sources])
         )
 
+        files_to_commit = files_to_commit.difference(ignored_files)
+        files = [f for f in files if f.get_absolute_commit_path(client.path) not in ignored_files]
+
     return files, files_to_commit
 
 
-def _check_existing_files(client: "LocalClient", dataset: Dataset, files_to_commit: Set[str], files: List[Dict]):
+def _check_existing_files(
+    client: "LocalClient", dataset: Dataset, files_to_commit: Set[str], files: List[NewDatasetFile]
+):
     """Check if files added already exist."""
-    existing_files = []
+    existing_files = set()
     for path in files_to_commit:
         relative_path = Path(path).relative_to(client.path)
         if dataset.find_file(relative_path):
-            existing_files.append(path)
+            existing_files.add(path)
 
     if existing_files:
-        files_to_commit = files_to_commit.difference(existing_files)
-        files = [f for f in files if str(client.path / f["path"]) in files_to_commit]
         communication.warn(
             "These existing files were not overwritten (use '--overwrite' flag to overwrite them):\n\t"
             + "\n\t".join([str(p) for p in existing_files])
         )
 
+        files_to_commit = files_to_commit.difference(existing_files)
+        files = [f for f in files if f.get_absolute_commit_path(client.path) not in existing_files]
+
     return files, files_to_commit
 
 
-def move_files_to_dataset(client: "LocalClient", files: List[Dict]):
+def move_files_to_dataset(client: "LocalClient", files: List[NewDatasetFile]):
     """Copy/Move files into a dataset's directory."""
-    for data in files:
-        operation = data.pop("operation", None)
-        if not operation:
+    for file in files:
+        if not file.has_action:
             continue
 
-        src, dst, action = operation
-
         # Remove existing file if any; required as a safety-net to avoid corrupting external files
-        delete_file(dst, follow_symlinks=True)
-        dst.parent.mkdir(parents=True, exist_ok=True)
+        delete_file(file.destination, follow_symlinks=True)
+        file.destination.parent.mkdir(parents=True, exist_ok=True)
 
-        if action == AddAction.COPY:
-            shutil.copy(src, dst)
-        elif action == AddAction.MOVE:
-            shutil.move(src, dst, copy_function=shutil.copy)
-        elif action == AddAction.SYMLINK:
-            create_external_file(client=client, target=src, path=dst)
-            data["is_external"] = True
+        if file.action == AddAction.COPY:
+            shutil.copy(file.source, file.destination)
+        elif file.action == AddAction.MOVE:
+            shutil.move(file.source, file.destination, copy_function=shutil.copy)  # type: ignore
+        elif file.action == AddAction.SYMLINK:
+            create_external_file(client=client, target=file.source, path=file.destination)
         else:
-            raise errors.OperationError(f"Invalid action {action}")
+            raise errors.OperationError(f"Invalid action {file.action}")
 
 
 def _generate_dataset_files(
-    client: "LocalClient", dataset: Dataset, files: List[Dict], clear_files_before: bool = False
+    client: "LocalClient", dataset: Dataset, files: List[NewDatasetFile], clear_files_before: bool = False
 ):
     """Generate DatasetFile entries from file dict."""
     dataset_files = []
-    for data in files:
+    for file in files:
         dataset_file = DatasetFile.from_path(
-            client=client, path=data["path"], source=data["source"], based_on=data.get("based_on")
+            client=client, path=file.entity_path, source=file.url, based_on=file.based_on
         )
         dataset_files.append(dataset_file)
 
@@ -350,7 +395,7 @@ def _add_from_git(
     destination: Path,
     ref: Optional[str] = None,
     repository: Optional[Repository] = None,
-):
+) -> List[NewDatasetFile]:
     """Process adding resources from another git repository."""
     from renku.core.management.client import LocalClient
 
@@ -373,7 +418,7 @@ def _add_from_git(
             if not is_subpath(path=source, base=repository.path):
                 raise errors.ParameterError(f"Path '{source}' is not within the repository")
 
-    def get_paths_from_remote_repo() -> Set[Path]:
+    def get_source_paths() -> Set[Path]:
         """Return all paths from the repo that match a source pattern."""
         if not sources:
             return set(repository.path.glob("*"))  # type: ignore
@@ -391,57 +436,49 @@ def _add_from_git(
 
         return paths
 
-    def get_destination_root(n_paths, path: Path):
-        has_multiple_paths = n_paths > 1
-        multiple_sources = has_multiple_paths or path.is_dir()
+    def should_copy(source_paths: List[Path]) -> bool:
+        n_paths = len(source_paths)
+        has_multiple_sources = n_paths > 1
+        source_is_dir = has_multiple_sources or (n_paths == 1 and source_paths[0].is_dir())
 
-        if multiple_sources and destination_exists and not destination_is_dir:
+        if source_is_dir and destination_exists and not destination_is_dir:
             raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
 
-        return (
-            destination / path.name
-            if has_multiple_paths or (destination_exists and destination_is_dir)
-            else destination
-        )
+        return has_multiple_sources or (destination_exists and destination_is_dir)
 
-    def get_metadata(src, dst) -> Optional[Dict]:
+    def get_metadata(src: Path, dst: Path) -> Optional[NewDatasetFile]:
         path_in_src_repo = src.relative_to(repository.path)  # type: ignore
         path_in_dst_repo = dst.relative_to(client.path)
 
-        if path_in_dst_repo in new_files:  # A path with the same destination is already copied
-            return  # type: ignore
-
-        new_files.add(path_in_dst_repo)
-
-        if is_external_file(path=src, client_path=repository.path):  # type: ignore
-            operation = (src.resolve(), dst, AddAction.SYMLINK)
-        else:
-            operation = (src, dst, AddAction.MOVE)
+        already_copied = path_in_dst_repo in new_files  # A path with the same destination is already copied
+        new_files[path_in_dst_repo].append(path_in_src_repo)
+        if already_copied:
+            return None
 
         checksum = repository.get_object_hash(revision="HEAD", path=path_in_src_repo)  # type: ignore
-
         if not checksum:
-            raise errors.GitCommitNotFoundError(f"Couldn't find a checksum for {path_in_src_repo}")
+            raise errors.FileNotFound(f"Cannot find '{file}' in the remote project")
 
-        based_on = RemoteEntity(checksum=checksum, path=path_in_src_repo, url=url)
-
-        return {
-            "path": path_in_dst_repo,
-            "source": remove_credentials(url),
-            "based_on": based_on,
-            "operation": operation,
-        }
+        return NewDatasetFile(
+            entity_path=path_in_dst_repo,
+            url=remove_credentials(url),
+            based_on=RemoteEntity(checksum=checksum, path=path_in_src_repo, url=url),
+            action=AddAction.MOVE,
+            source=src,
+            destination=dst,
+        )
 
     check_sources_are_within_remote_repo()
-    paths = get_paths_from_remote_repo()
-    n_paths = len(paths)
-
-    LocalClient(path=repository.path).pull_paths_from_storage(*paths)
 
     results = []
-    new_files: Set[Path] = set()
+    new_files: Dict[Path, List[Path]] = defaultdict(list)
+
+    paths = get_source_paths()
+    LocalClient(path=repository.path).pull_paths_from_storage(*paths)
+    is_copy = should_copy(list(paths))
+
     for path in paths:
-        dst_root = get_destination_root(n_paths=n_paths, path=path)
+        dst_root = destination / path.name if is_copy else destination
 
         for file in get_files(path):
             src = file
@@ -452,12 +489,118 @@ def _add_from_git(
             if metadata:
                 results.append(metadata)
 
+    duplicates = [v for v in new_files.values() if len(v) > 1]
+    if duplicates:
+        files = {str(p) for paths in duplicates for p in paths}
+        files_str = "/n/t".join(sorted(files))
+        communication.warn(f"The following files overwrite each other in the destination project:/n/t{files_str}")
+
+    return results
+
+
+def _add_from_renku(
+    client: "LocalClient",
+    url: str,
+    sources: List[str],
+    destination: Path,
+    repository: Repository,
+    dataset_datadir: str,
+    checksums: Optional[List[str]] = None,
+) -> List[NewDatasetFile]:
+    """Process adding resources from another git repository."""
+    from renku.core.management.client import LocalClient
+
+    assert destination.exists() and destination.is_dir(), "Destination dir must exist when importing a dataset"
+    if checksums is not None:
+        assert len(checksums) == len(sources), "Each source must have a corresponding checksum"  # type: ignore
+
+    def add_file(src_entity_path: str, content_path: Path, checksum) -> None:
+        """
+        Create a NewDatasetFile.
+
+        Args:
+            src_entity_path: Entity path from the source dataset which is a relative path.
+            content_path: Absolute path of the file content when copied with a checksum.
+            checksum: Entity checksum.
+        """
+        try:
+            relative_path = Path(src_entity_path).relative_to(dataset_datadir)
+        except ValueError:  # Files that are not in dataset's data directory
+            relative_path = Path(src_entity_path)
+
+        dst = destination / relative_path
+        path_in_dst_repo = dst.relative_to(client.path)
+
+        already_copied = path_in_dst_repo in new_files  # A path with the same destination is already copied
+        new_files[path_in_dst_repo].append(src_entity_path)
+        if already_copied:
+            return
+
+        if is_external_file(path=src_entity_path, client_path=repository.path):  # type: ignore
+            source = (repository.path / src_entity_path).resolve()
+            action = AddAction.SYMLINK
+        else:
+            source = content_path
+            action = AddAction.MOVE
+
+        checksum = checksum or repository.get_object_hash(revision="HEAD", path=src_entity_path)  # type: ignore
+        if not checksum:
+            raise errors.FileNotFound(f"Cannot find '{file}' in the remote project")
+
+        new_file = NewDatasetFile(
+            entity_path=path_in_dst_repo,
+            url=remove_credentials(url),
+            based_on=RemoteEntity(checksum=checksum, path=src_entity_path, url=url),
+            action=action,
+            source=source,
+            destination=dst,
+        )
+        results.append(new_file)
+
+    results: List[NewDatasetFile] = []
+    new_files: Dict[Path, List[str]] = defaultdict(list)
+
+    if checksums is None:
+        LocalClient(path=repository.path).pull_paths_from_storage(*(repository.path / p for p in sources))
+
+        for file in sources:
+            add_file(file, content_path=repository.path / file, checksum=None)
+    else:  # NOTE: Renku dataset import with a tag
+        content_path_root = make_project_temp_dir(client.path)
+        content_path_root.mkdir(parents=True, exist_ok=True)
+        filename = 1
+
+        # NOTE: This is required to enable LFS filters when getting file content
+        repository.install_lfs(skip_smudge=False)  # type: ignore
+        # NOTE: Git looks at the current attributes files when loading LFS files which won't includes deleted files, so,
+        # we need to include all files that were in LFS at some point
+        git_attributes = repository.get_historical_changes_patch(".gitattributes")
+        all_additions = [a.replace("+", "", 1) for a in git_attributes if a.startswith("+") and "filter=lfs" in a]
+        (repository.path / ".gitattributes").write_text(os.linesep.join(all_additions))
+
+        for file, checksum in zip(sources, checksums):  # type: ignore
+            content_path = content_path_root / str(filename)
+            filename += 1
+
+            try:
+                repository.copy_content_to_file(path=file, checksum=checksum, output_path=content_path)  # type: ignore
+            except errors.FileNotFound:
+                raise errors.FileNotFound(f"Cannot find '{file}' with hash '{checksum}' in the remote project")
+
+            add_file(file, content_path=content_path, checksum=checksum)
+
+    duplicates = [v for v in new_files.values() if len(v) > 1]
+    if duplicates:
+        files = {str(p) for paths in duplicates for p in paths}
+        files_str = "/n/t".join(sorted(files))
+        communication.warn(f"The following files overwrite each other in the destination project:/n/t{files_str}")
+
     return results
 
 
 def _add_from_urls(
     client: "LocalClient", urls: List[str], destination: Path, destination_names: List[str], extract: bool
-):
+) -> List[NewDatasetFile]:
     """Add files from urls."""
     if destination.exists() and not destination.is_dir():
         raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
@@ -500,7 +643,7 @@ def _add_from_urls(
 
 def _add_from_url(
     client: "LocalClient", url: str, destination: Path, extract: bool, filename=None, multiple: bool = False
-):
+) -> List[NewDatasetFile]:
     """Process adding from url and return the location on disk."""
     from renku.core.util import requests
 
@@ -531,19 +674,22 @@ def _add_from_url(
         tmp_root = paths[0].parent if destination.exists() else paths[0]
 
     paths = [(src, destination / src.relative_to(tmp_root)) for src in paths if not src.is_dir()]
+
     return [
-        {
-            "operation": (src, dst, AddAction.MOVE),
-            "path": dst.relative_to(client.path),
-            "source": remove_credentials(url),
-        }
+        NewDatasetFile(
+            entity_path=dst.relative_to(client.path),
+            url=remove_credentials(url),
+            action=AddAction.MOVE,
+            source=src,
+            destination=dst,
+        )
         for src, dst in paths
     ]
 
 
 def _add_from_local(
     client: "LocalClient", dataset: Dataset, path: Union[str, Path], external: bool, destination: Path
-) -> Tuple[List[Dict], List[str]]:
+) -> Tuple[List[NewDatasetFile], List[str]]:
     """Add a file or directory from a local filesystem."""
     action = AddAction.SYMLINK if external else AddAction.COPY
     absolute_dataset_data_dir = (client.path / get_dataset_data_dir(client, dataset)).resolve()
@@ -571,23 +717,31 @@ def _add_from_local(
 
         return destination / source_root.name if destination_exists and destination_is_dir else destination
 
-    def get_metadata(src: Path) -> Dict:
+    def get_metadata(src: Path) -> NewDatasetFile:
         is_tracked = client.repository.contains(src)
 
         if is_tracked or (is_within_repo and not external):
             path_in_repo = src.relative_to(client.path)
             if external:
                 warnings.append(str(path_in_repo))
-            return {"path": path_in_repo, "source": path_in_repo}
+            return NewDatasetFile(
+                entity_path=path_in_repo,
+                url=str(path_in_repo),
+                action=AddAction.NONE,
+                source=path_in_repo,
+                destination=path_in_repo,
+            )
         else:
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
 
-            return {
-                "path": dst.relative_to(client.path),
-                "source": os.path.relpath(src, client.path),
-                "operation": (src, dst, action),
-            }
+            return NewDatasetFile(
+                entity_path=dst.relative_to(client.path),
+                url=os.path.relpath(src, client.path),
+                action=action,
+                source=src,
+                destination=dst,
+            )
 
     destination_root = get_destination_root()
 

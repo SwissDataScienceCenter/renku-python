@@ -24,7 +24,7 @@ To get a list of available datasets in a Renku project use ``list`` method:
 
 .. code-block:: python
 
-    from renku.ui.api import Dataset
+    from renku.api import Dataset
 
     datasets = Dataset.list()
 
@@ -41,12 +41,12 @@ property:
 
 from operator import attrgetter
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
 from renku.domain_model import dataset as core_dataset
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
-from renku.ui.api.models.project import ensure_project_context
+from renku.ui.api.util import ensure_project_context
 
 
 class Dataset:
@@ -73,14 +73,14 @@ class Dataset:
         self._files = []
 
     @classmethod
-    def _from_dataset(cls, dataset: core_dataset.Dataset):
+    def _from_dataset(cls, dataset: core_dataset.Dataset) -> "Dataset":
         """Create an instance from Dataset metadata.
 
         Args:
             dataset(core_dataset.Dataset): The core dataset to wrap.
 
         Returns:
-            An API ``Dataset`` wrapping a core dataset.
+            Dataset: An API ``Dataset`` wrapping a core dataset.
         """
         self = cls()
         self._dataset = dataset
@@ -90,14 +90,14 @@ class Dataset:
 
     @staticmethod
     @ensure_project_context
-    def list(project):
+    def list(project) -> List["Dataset"]:
         """List all datasets in a project.
 
         Args:
             project: The current project
 
         Returns:
-            A list of all datasets in the supplied project.
+            List["Dataset"]: A list of all datasets in the supplied project.
         """
         client = project.client
         if not client or not client.has_graph_files():

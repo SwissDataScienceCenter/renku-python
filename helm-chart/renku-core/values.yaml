@@ -73,7 +73,7 @@ metrics:
   enabled: false
   image:
     repository: renku/rqmetrics
-    tag: latest
+    tag: 0.0.2
     pullPolicy: IfNotPresent
 
 resources: {}
@@ -110,7 +110,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.2.4"
+      tag: "v1.4.0"
       pullPolicy: IfNotPresent
   v8:
     name: v8

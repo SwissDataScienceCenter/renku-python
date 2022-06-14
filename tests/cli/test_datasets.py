@@ -30,14 +30,13 @@ from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FI
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
-from renku.core.dataset.constant import renku_pointers_path
+from renku.core.dataset.constant import REFS, renku_pointers_path
 from renku.core.dataset.providers import ProviderFactory
 from renku.core.dataset.providers.dataverse import DataverseProvider
 from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset
-from renku.domain_model.refs import LinkReference
 from renku.ui.cli import cli
 from tests.utils import assert_dataset_is_mutated, format_result_exception, write_and_commit_file
 
@@ -126,6 +125,77 @@ def test_dataset_show(runner, client, subdirectory):
     assert "https://example.com/annotation1" in result.output
     assert "https://schema.org/specialType" in result.output
     assert "##" not in result.output
+
+
+def test_dataset_show_tag(runner, client, subdirectory):
+    """Test creating and showing a dataset with metadata."""
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert 'Dataset "my-dataset" is not found.' in result.output
+
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = client.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+
+    result = runner.invoke(
+        cli,
+        [
+            "dataset",
+            "create",
+            "my-dataset",
+            "--title",
+            "Long Title",
+            "--description",
+            "description1",
+        ],
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "OK" in result.output
+
+    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "tag1"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "edit", "-d", "description2", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: description" in result.output
+
+    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "tag2"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "edit", "-d", "description3", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: description" in result.output
+
+    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "tag3"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description3" in result.output
+    assert "description2" not in result.output
+    assert "description1" not in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "--tag", "tag3", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description3" in result.output
+    assert "description2" not in result.output
+    assert "description1" not in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "--tag", "tag2", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description2" in result.output
+    assert "description3" not in result.output
+    assert "description1" not in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "--tag", "tag1", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "description1" in result.output
+    assert "description2" not in result.output
+    assert "description3" not in result.output
 
 
 def test_datasets_create_different_names(runner, client):
@@ -262,7 +332,7 @@ def test_dataset_create_exception_refs(runner, project, client):
     with (datasets_dir / "a").open("w") as fp:
         fp.write("a")
 
-    refs_dir = client.path / RENKU_HOME / LinkReference.REFS
+    refs_dir = client.path / RENKU_HOME / REFS
     if not refs_dir.exists():
         refs_dir.mkdir()
 
@@ -2320,3 +2390,10 @@ def test_update_mixed_types(runner, client, directory_tree, load_dataset_with_in
     dataset = load_dataset_with_injection("my-data", client)
     assert new_checksum_file2 == dataset.find_file(file2).entity.checksum
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+def test_update_with_no_dataset(runner, client):
+    """Check updating a project with no dataset should not raise an error."""
+    result = runner.invoke(cli, ["dataset", "update", "--all"])
+
+    assert 0 == result.exit_code, format_result_exception(result)

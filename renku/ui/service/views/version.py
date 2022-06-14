@@ -17,24 +17,14 @@
 
 from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.version import VersionCtrl
-from renku.ui.service.views.api_versions import (
-    MAXIMUM_VERSION,
-    MINIMUM_VERSION,
-    V0_9,
-    V1_0,
-    V1_1,
-    V1_2,
-    VersionedBlueprint,
-)
+from renku.ui.service.views.api_versions import ALL_VERSIONS, MAXIMUM_VERSION, MINIMUM_VERSION, VersionedBlueprint
 from renku.ui.service.views.error_handlers import handle_common_except
 
 VERSION_BLUEPRINT_TAG = "version"
 version_blueprint = VersionedBlueprint("version", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@version_blueprint.route(
-    "/apiversion", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1, V1_2]
-)
+@version_blueprint.route("/apiversion", methods=["GET"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 def version():
     """

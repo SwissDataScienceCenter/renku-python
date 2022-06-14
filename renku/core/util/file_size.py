@@ -18,6 +18,7 @@
 """Helper utilities for handling file size strings."""
 
 import re
+from typing import Optional
 
 units = {
     "b": 1,
@@ -57,7 +58,7 @@ def parse_file_size(size_str):
     return int(value * unit)
 
 
-def bytes_to_unit(size_in_bytes, unit: str):
+def bytes_to_unit(size_in_bytes, unit: str) -> Optional[float]:
     """Return size in the provided unit."""
     unit = unit.lower()
     if unit not in units:

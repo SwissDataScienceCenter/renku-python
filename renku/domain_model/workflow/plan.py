@@ -22,7 +22,7 @@ import itertools
 import re
 from abc import ABC
 from datetime import datetime
-from typing import Any, List, Optional, Set, Tuple, cast
+from typing import Any, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 import marshmallow
@@ -30,6 +30,7 @@ from werkzeug.utils import secure_filename
 
 from renku.core import errors
 from renku.core.util.datetime8601 import local_now
+from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, CommandParameterBase
 from renku.infrastructure.database import Persistent
 
@@ -66,6 +67,9 @@ class AbstractPlan(Persistent, ABC):
             AbstractPlan.validate_name(name)
             self.name = name
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} '{self.name}'>"
+
     @staticmethod
     def generate_id(uuid: Optional[str] = None) -> str:
         """Generate an identifier for Plan."""
@@ -86,7 +90,7 @@ class AbstractPlan(Persistent, ABC):
         """Check a name for invalid characters."""
         if not re.match("[a-zA-Z0-9-_]+", name):
             raise errors.ParameterError(
-                f"Name {name} contains illegal characters. Only characters, numbers, _ and - are allowed."
+                f"Name {name} contains illegal characters. Only English letters, numbers, _ and - are allowed."
             )
 
     def assign_new_id(self) -> str:
@@ -135,6 +139,8 @@ class AbstractPlan(Persistent, ABC):
 class Plan(AbstractPlan):
     """Represent a `renku run` execution template."""
 
+    annotations: List[Annotation] = list()
+
     def __init__(
         self,
         *,
@@ -151,12 +157,14 @@ class Plan(AbstractPlan):
         project_id: Optional[str] = None,
         outputs: Optional[List[CommandOutput]] = None,
         success_codes: Optional[List[int]] = None,
+        annotations: Optional[List[Annotation]] = None,
     ):
         self.command: str = command
         self.inputs: List[CommandInput] = inputs or []
         self.outputs: List[CommandOutput] = outputs or []
         self.parameters: List[CommandParameter] = parameters or []
         self.success_codes: List[int] = success_codes or []
+        self.annotations: List[Annotation] = annotations or []
         super().__init__(
             id=id,
             description=description,
@@ -182,6 +190,16 @@ class Plan(AbstractPlan):
         if duplicates:
             duplicates_string = ", ".join(duplicates)
             raise errors.ParameterError(f"Duplicate input, output or parameter names found: {duplicates_string}")
+
+    @property
+    def keywords_csv(self) -> str:
+        """Comma-separated list of keywords associated with workflow."""
+        return ", ".join(self.keywords)
+
+    @property
+    def deleted(self) -> bool:
+        """True if plan is deleted."""
+        return self.invalidated_at is not None
 
     def is_similar_to(self, other: "Plan") -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
@@ -288,11 +306,6 @@ class Plan(AbstractPlan):
         """Return if an ``Plan`` has correct derived_from."""
         return self.derived_from is not None and self.id != self.derived_from
 
-    @property
-    def keywords_csv(self):
-        """Comma-separated list of keywords associated with workflow."""
-        return ", ".join(self.keywords)
-
     def to_argv(self, with_streams: bool = False) -> List[Any]:
         """Convert a Plan into argv list."""
         arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
@@ -335,6 +348,20 @@ class Plan(AbstractPlan):
         Required where a plan is used several times in a workflow but we need to set different values on them.
         """
         return copy.deepcopy(self)
+
+    def delete(self, when: datetime = local_now()):
+        """Mark a plan as deleted."""
+        self.unfreeze()
+        self.invalidated_at = when
+        self.freeze()
+
+    def get_field_by_id(self, id: str) -> Union[CommandInput, CommandOutput, CommandParameter]:
+        """Return an in Input/Output/Parameter by its id."""
+        for field in itertools.chain(self.inputs, self.outputs, self.parameters):
+            if field.id == id:
+                return field  # type: ignore
+
+        raise errors.ParameterError(f"Parameter {id} not found on plan {self.id}.")
 
 
 class PlanDetailsJson(marshmallow.Schema):
