@@ -28,8 +28,9 @@
       },
       "maximumUploadSizeBytes": {
         "description": "Maximum allowed file upload size.",
-        "type": "integer",
-        "minimum": 1
+        "type": "string",
+        "minimum": 1,
+        "pattern": "^\\d+"
       },
       "datasetsWorkerQueues": {
         "description": "Name of the worker queue for dataset jobs",

@@ -39,7 +39,7 @@ cacheDirectory: /svc/cache
 cleanupInterval: 60  # NOTE: This needs to be a divisor of, and less than cleanupFilesTTL|cleanupProjectsTTL.
 projectCloneDepth: 1
 templateCloneDepth: 1
-maximumUploadSizeBytes: 1073741824 # 1 Gigabyte
+maximumUploadSizeBytes: "1073741824" # 1 Gigabyte, store as string to keep Helm from converting it to scientific notation
 
 datasetsWorkerQueues: datasets.jobs,delayed.ctrl.DatasetsCreateCtrl,delayed.ctrl.DatasetsAddFileCtrl,delayed.ctrl.DatasetsRemoveCtrl,delayed.ctrl.DatasetsImportCtrl,delayed.ctrl.DatasetsEditCtrl,delayed.ctrl.DatasetsUnlinkCtrl
 managementWorkerQueues: cache.cleanup.files,cache.cleanup.projects,delayed.ctrl.MigrateProjectCtrl,delayed.ctrl.SetConfigCtrl
