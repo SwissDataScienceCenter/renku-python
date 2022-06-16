@@ -256,3 +256,62 @@ def test_contains_untracked_file(git_repository):
     path.write_text("untracked")
 
     assert git_repository.contains(path) is False
+
+
+@pytest.mark.integration
+def test_get_content_from_lfs(tmp_path):
+    """Test can get file content from LFS."""
+    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    repository = Repository.clone_from(url=url, path=tmp_path / "repo")
+    # NOTE: Install LFS and disable LFS smudge filter to make sure that we can get valid content in that case
+    repository.lfs.install(skip_smudge=True)
+
+    output_path: Path = tmp_path / "output.csv"
+
+    valid_checksum = "451601edc010810d78bb93d9fef76dca3fc71a16"
+
+    # Getting a file that is in LFS
+    input = repository.path / "data" / "parts" / "parts.csv"
+    repository.copy_content_to_file(input, checksum=valid_checksum, output_path=output_path)
+
+    assert str(input.relative_to(repository.path)) in (repository.path / ".gitattributes").read_text()
+    assert repository.lfs.is_pointer_file(input)
+    assert "Updated on 01.06.2022" in output_path.read_text()
+
+    # Getting a file that was in LFS and is deleted
+    input = repository.path / "data" / "parts" / "part_relationships.csv"
+    repository.copy_content_to_file(input, checksum="d257eeb6693eb3b8a1e56f54766b39d67416b7ef", output_path=output_path)
+
+    assert str(input.relative_to(repository.path)) not in (repository.path / ".gitattributes").read_text()
+    assert not input.exists()
+    assert "rel_type,child_part_num,parent_part_num" in output_path.read_text()
+    assert "Updated on 01.06.2022" not in output_path.read_text()
+
+    # Getting a file that is not in LFS -> It returns the input as output
+    input = repository.path / "data" / "parts" / "part_categories.csv"
+    repository.copy_content_to_file(input, checksum="540169dea8638cc3c61f648d81736ddcd51506a6", output_path=output_path)
+
+    assert str(input.relative_to(repository.path)) not in (repository.path / ".gitattributes").read_text()
+    assert input.read_text().startswith("id,name")
+    assert output_path.read_text() == input.read_text()
+
+    # Getting a pointer file with invalid LFS object -> It returns the pointer file as output
+    input = repository.path / "data" / "parts" / "parts.csv"
+    input.write_text(input.read_text().replace("sha256:8cf145d1a", "sha256:000000000"))  # Make object checksum invalid
+    repository.add(all=True)
+    repository.commit("Make an invalid LFS pointer")
+
+    repository.copy_content_to_file(input, checksum=repository.hash_object(input), output_path=output_path)
+
+    assert str(input.relative_to(repository.path)) in (repository.path / ".gitattributes").read_text()
+    assert repository.lfs.is_pointer_file(input)
+    assert output_path.read_text() == input.read_text()
+
+    # Getting a non-existing path AND checksum raises a FileNotFound
+    with pytest.raises(errors.FileNotFound):
+        repository.copy_content_to_file("non-existing", checksum="0000000", output_path=output_path)
+
+    # Getting a non-existing path with a valid checksum return the object with the checksum
+    repository.copy_content_to_file("non-existing", checksum=valid_checksum, output_path=output_path)
+
+    assert "Updated on 01.06.2022" in output_path.read_text()

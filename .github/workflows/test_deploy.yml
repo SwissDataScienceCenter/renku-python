@@ -924,6 +924,8 @@ jobs:
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: merge changes from master
+        env:
+          GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
         run: |
           git merge origin/master --message "Merge branch 'master' into develop"
           git push

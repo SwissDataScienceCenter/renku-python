@@ -122,8 +122,8 @@ def jsonld(records, **kwargs):
     Args:
         records: Filtered collection.
     """
+    from renku.command.format.json import dumps
     from renku.command.schema.dataset import DatasetFileSchema
-    from renku.domain_model.json import dumps
 
     data = [DatasetFileSchema(flattened=True).dump(record) for record in records]
     return dumps(data, indent=2)
@@ -138,8 +138,8 @@ def json(records, **kwargs):
     Returns:
         String of records in JSON representation.
     """
+    from renku.command.format.json import dumps
     from renku.domain_model.dataset import DatasetFileDetailsJson
-    from renku.domain_model.json import dumps
 
     for record in records:
         record.creators = record.dataset.creators

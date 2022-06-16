@@ -23,14 +23,12 @@ import re
 import urllib
 from pathlib import Path
 from string import Template
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib import parse as urlparse
-
-from tqdm import tqdm
 
 from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderRecordSerializerApi
+from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderParameter, ProviderRecordSerializerApi
 from renku.core.dataset.providers.dataverse_metadata_templates import (
     AUTHOR_METADATA_TEMPLATE,
     CONTACT_METADATA_TEMPLATE,
@@ -44,6 +42,7 @@ from renku.core.util.file_size import bytes_to_unit
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset
+    from renku.domain_model.dataset import Dataset, DatasetTag
 
 DATAVERSE_API_PATH = "api/v1"
 
@@ -143,6 +142,7 @@ class DataverseProvider(ProviderApi):
         self.is_doi = is_doi
         self._server_url = None
         self._dataverse_name = None
+        self._publish: bool = False
 
     @staticmethod
     def supports(uri):
@@ -165,12 +165,13 @@ class DataverseProvider(ProviderApi):
         return True
 
     @staticmethod
-    def export_parameters():
+    def get_export_parameters() -> List[ProviderParameter]:
         """Returns parameters that can be set for export."""
-        return {
-            "dataverse-server": ("Dataverse server URL.", str),
-            "dataverse-name": ("Dataverse name to export to.", str),
-        }
+        return [
+            ProviderParameter("dataverse-server", description="Dataverse server URL.", type=str),
+            ProviderParameter("dataverse-name", description="Dataverse name to export to.", type=str),
+            ProviderParameter("publish", description="Publish the exported dataset.", is_flag=True),
+        ]
 
     @staticmethod
     def record_id(uri):
@@ -204,15 +205,13 @@ class DataverseProvider(ProviderApi):
         uri = make_records_url(record_id, uri)
         return uri
 
-    def get_exporter(self, dataset, access_token):
+    def get_exporter(self, dataset: "Dataset", tag: Optional["DatasetTag"]) -> "ExporterApi":
         """Create export manager for given dataset."""
-        return DataverseExporter(
-            dataset=dataset, access_token=access_token, server_url=self._server_url, dataverse_name=self._dataverse_name
-        )
+        return DataverseExporter(dataset=dataset, server_url=self._server_url, dataverse_name=self._dataverse_name)
 
     @inject.autoparams()
     def set_export_parameters(
-        self, client_dispatcher: IClientDispatcher, *, dataverse_server, dataverse_name, **kwargs
+        self, client_dispatcher: IClientDispatcher, *, dataverse_server, dataverse_name, publish=False, **kwargs
     ):
         """Set and validate required parameters for exporting for a provider."""
         config_base_url = "server_url"
@@ -232,6 +231,7 @@ class DataverseProvider(ProviderApi):
 
         self._server_url = dataverse_server
         self._dataverse_name = dataverse_name
+        self._publish = publish
 
 
 class DataverseRecordSerializer(ProviderRecordSerializerApi):
@@ -392,38 +392,38 @@ class DataverseFileSerializer:
 class DataverseExporter(ExporterApi):
     """Dataverse export manager."""
 
-    def __init__(self, *, dataset, access_token, server_url=None, dataverse_name=None):
-        self.dataset = dataset
-        self.access_token = access_token
+    def __init__(self, *, dataset, server_url=None, dataverse_name=None, publish=False):
+        super().__init__(dataset)
+        self._access_token = None
         self._server_url = server_url
         self._dataverse_name = dataverse_name
+        self._publish = publish
 
     def set_access_token(self, access_token):
         """Set access token."""
-        self.access_token = access_token
+        self._access_token = access_token
 
-    def access_token_url(self):
+    def get_access_token_url(self):
         """Endpoint for creation of access token."""
         return urllib.parse.urljoin(self._server_url, "/dataverseuser.xhtml?selectTab=apiTokenTab")
 
-    def export(self, publish, client=None, **kwargs):
+    def export(self, client=None, **kwargs):
         """Execute export process."""
-        deposition = _DataverseDeposition(server_url=self._server_url, access_token=self.access_token)
+        from renku.domain_model.dataset import get_file_path_in_dataset
+
+        deposition = _DataverseDeposition(server_url=self._server_url, access_token=self._access_token)
         metadata = self._get_dataset_metadata()
         response = deposition.create_dataset(dataverse_name=self._dataverse_name, metadata=metadata)
         dataset_pid = response.json()["data"]["persistentId"]
 
-        with tqdm(total=len(self.dataset.files)) as progressbar:
+        with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                try:
-                    path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
-                except ValueError:
-                    path = Path(file.entity.path)
                 filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
-                deposition.upload_file(full_path=filepath, path_in_dataset=path)
-                progressbar.update(1)
+                path_in_dataset = get_file_path_in_dataset(client=client, dataset=self.dataset, dataset_file=file)
+                deposition.upload_file(full_path=filepath, path_in_dataset=path_in_dataset)
+                progressbar.update()
 
-        if publish:
+        if self._publish:
             deposition.publish_dataset()
 
         return dataset_pid

@@ -33,6 +33,10 @@ class RenkuException(Exception):
     """
 
 
+class LockError(RenkuException):
+    """Raise when a project cannot be locked."""
+
+
 class RequestError(RenkuException):
     """Raise when a ``requests`` call fails."""
 
@@ -286,6 +290,14 @@ class ExternalFileNotFound(RenkuException):
     def __init__(self, path):
         """Build a custom message."""
         super().__init__(f"Cannot find external file '{path}'")
+
+
+class DirectoryNotEmptyError(RenkuException):
+    """Raised when a directory passed as output is not empty."""
+
+    def __init__(self, path):
+        """Build a custom message."""
+        super().__init__(f"Destination directory is not empty: '{path}'")
 
 
 class DatasetExistsError(RenkuException):

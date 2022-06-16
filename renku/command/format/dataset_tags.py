@@ -30,7 +30,7 @@ def tabular(tags):
     Returns:
         String of tags in tabular representation.
     """
-    from renku.domain_model.tabulate import tabulate
+    from renku.core.util.tabulate import tabulate
 
     return tabulate(
         tags,
@@ -58,8 +58,8 @@ def jsonld(tags):
     Returns:
         String of tags in JSON-LD representation.
     """
+    from renku.command.format.json import dumps
     from renku.command.schema.dataset import DatasetTagSchema
-    from renku.domain_model.json import dumps
 
     data = [DatasetTagSchema().dump(tag) for tag in tags]
     return dumps(data, indent=2)

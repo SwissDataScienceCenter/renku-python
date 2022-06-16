@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """OS utility functions."""
+
 import fnmatch
 import hashlib
 import os
@@ -110,7 +111,7 @@ def is_path_empty(path: Union[Path, str]) -> bool:
 
     :ref path: target path
     """
-    subpaths = Path(path).rglob("*")
+    subpaths = Path(path).glob("*")
     return not any(subpaths)
 
 

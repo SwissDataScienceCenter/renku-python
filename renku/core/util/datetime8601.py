@@ -16,10 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku datetime utilities."""
+
 import re
 from datetime import datetime, timezone
-
-from dateutil.parser import parse as dateutil_parse_date
+from typing import Optional
 
 regex = (
     r"^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12]["
@@ -41,12 +41,14 @@ def validate_iso8601(str_val):
 
 def parse_date(value):
     """Convert date to datetime."""
+    from dateutil.parser import parse as date_util_parse_date
+
     if value is None:
         return
     if isinstance(value, datetime):
         date = value
     else:
-        date = dateutil_parse_date(value)
+        date = date_util_parse_date(value)
 
     if not date.tzinfo:
         date = _set_to_local_timezone(date)
@@ -54,10 +56,10 @@ def parse_date(value):
     return date
 
 
-def fix_datetime(value):
+def fix_datetime(value) -> Optional[datetime]:
     """Fix timezone of non-aware datetime objects and remove microseconds."""
     if value is None:
-        return
+        return None
 
     if isinstance(value, datetime):
         if not value.tzinfo:
@@ -73,6 +75,6 @@ def _set_to_local_timezone(value):
     return value.replace(tzinfo=local_tz)
 
 
-def local_now():
+def local_now() -> datetime:
     """Return current datetime in local timezone."""
     return datetime.now(timezone.utc).replace(microsecond=0).astimezone()

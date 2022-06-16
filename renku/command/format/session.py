@@ -17,7 +17,7 @@
 # limitations under the License.
 """Serializers for sessions."""
 
-from .tabulate import tabulate
+from renku.command.format.tabulate import tabulate
 
 
 def tabular(sessions, *, columns=None):

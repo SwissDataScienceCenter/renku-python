@@ -40,7 +40,7 @@ from renku.core.template.template import (
     set_template_parameters,
 )
 from renku.core.util import communication
-from renku.domain_model.tabulate import tabulate
+from renku.core.util.tabulate import tabulate
 from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplatesSource
 from renku.infrastructure.repository import Repository
 

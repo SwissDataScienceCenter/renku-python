@@ -251,7 +251,7 @@ def worker_start(queue):
 @click.pass_context
 def ps(ctx):
     """Check status of running services."""
-    from renku.domain_model.tabulate import tabulate
+    from renku.core.util.tabulate import tabulate
 
     processes = list_renku_processes()
     headers = [{k.upper(): v for k, v in rec.items()} for rec in processes]

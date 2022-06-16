@@ -22,17 +22,17 @@ import os
 import pathlib
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from tqdm import tqdm
-
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderRecordSerializerApi
+from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderParameter, ProviderRecordSerializerApi
+from renku.core.util import communication
 from renku.core.util.file_size import bytes_to_unit
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset
+    from renku.domain_model.dataset import Dataset, DatasetTag
 
 
 ZENODO_BASE_URL = "https://zenodo.org"
@@ -410,7 +410,7 @@ class ZenodoDeposition:
 
         return response
 
-    def publish_deposition(self, secret):
+    def publish_deposition(self):
         """Publish existing deposition."""
         from renku.core.util import requests
 
@@ -444,9 +444,11 @@ class ZenodoExporter(ExporterApi):
 
     HEADERS = {"Content-Type": "application/json"}
 
-    def __init__(self, dataset, access_token):
-        self.dataset = dataset
-        self.access_token = access_token
+    def __init__(self, dataset, publish, tag):
+        super().__init__(dataset)
+        self._access_token = None
+        self._publish = publish
+        self._tag = tag
 
     @property
     def zenodo_url(self):
@@ -458,16 +460,16 @@ class ZenodoExporter(ExporterApi):
 
     def set_access_token(self, access_token):
         """Set access token."""
-        self.access_token = access_token
+        self._access_token = access_token
 
-    def access_token_url(self):
+    def get_access_token_url(self):
         """Endpoint for creation of access token."""
         return urllib.parse.urlparse("https://zenodo.org/account/settings/applications/tokens/new/").geturl()
 
     @property
     def default_params(self):
         """Create request default parameters."""
-        return {"access_token": self.access_token}
+        return {"access_token": self._access_token}
 
     def dataset_to_request(self):
         """Prepare dataset metadata for request."""
@@ -477,24 +479,24 @@ class ZenodoExporter(ExporterApi):
         jsonld["upload_type"] = "dataset"
         return jsonld
 
-    def export(self, publish, tag=None, client=None, **kwargs):
+    def export(self, client=None, **kwargs):
         """Execute entire export process."""
         # Step 1. Create new deposition
         deposition = ZenodoDeposition(exporter=self)
 
         # Step 2. Attach metadata to deposition
-        deposition.attach_metadata(self.dataset, tag)
+        deposition.attach_metadata(self.dataset, self._tag)
 
         # Step 3. Upload all files to created deposition
-        with tqdm(total=len(self.dataset.files)) as progressbar:
+        with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
                 filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
                 deposition.upload_file(filepath, path_in_repo=file.entity.path)
-                progressbar.update(1)
+                progressbar.update()
 
         # Step 4. Publish newly created deposition
-        if publish:
-            deposition.publish_deposition(self.access_token)
+        if self._publish:
+            deposition.publish_deposition()
             return deposition.published_at
 
         return deposition.deposit_at
@@ -505,6 +507,7 @@ class ZenodoProvider(ProviderApi):
 
     def __init__(self, is_doi: bool = False):
         self.is_doi = is_doi
+        self._publish: bool = False
 
     @staticmethod
     def supports(uri):
@@ -528,6 +531,15 @@ class ZenodoProvider(ProviderApi):
     def record_id(uri):
         """Extract record id from URI."""
         return urlparse(uri).path.split("/")[-1]
+
+    @staticmethod
+    def get_export_parameters() -> List[ProviderParameter]:
+        """Returns parameters that can be set for export."""
+        return [ProviderParameter("publish", description="Publish the exported dataset.", is_flag=True)]
+
+    def set_export_parameters(self, *, publish=False, **kwargs):
+        """Set and validate required parameters for exporting for a provider."""
+        self._publish = publish
 
     def find_record(self, uri, client=None, **kwargs) -> ZenodoRecordSerializer:
         """Retrieves a record from Zenodo.
@@ -559,9 +571,9 @@ class ZenodoProvider(ProviderApi):
 
         return ZenodoRecordSerializer(**response.json(), uri=uri)
 
-    def get_exporter(self, dataset, access_token):
+    def get_exporter(self, dataset: "Dataset", tag: Optional["DatasetTag"]) -> "ZenodoExporter":
         """Create export manager for given dataset."""
-        return ZenodoExporter(dataset=dataset, access_token=access_token)
+        return ZenodoExporter(dataset=dataset, publish=self._publish, tag=tag)
 
 
 def _make_request(uri, accept: str = "application/json"):

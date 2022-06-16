@@ -22,13 +22,14 @@ import pathlib
 import threading
 import uuid
 from enum import IntFlag
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 from urllib.parse import ParseResult, quote, urljoin, urlparse
 
-import pyld
-
-from renku.core.management.client import LocalClient
 from renku.core.util.yaml import read_yaml
+
+if TYPE_CHECKING:
+    from renku.core.management.client import LocalClient
+
 
 OLD_METADATA_PATH = "metadata.yml"
 OLD_DATASETS_PATH = "datasets"
@@ -57,7 +58,7 @@ class MigrationOptions(NamedTuple):
 class MigrationContext(NamedTuple):
     """Context containing required migration information."""
 
-    client: LocalClient
+    client: "LocalClient"
     options: MigrationOptions
 
 
@@ -193,6 +194,8 @@ def read_project_version(client):
 
 def read_latest_agent(client):
     """Read project version from metadata file."""
+    import pyld
+
     try:
         return client.latest_agent
     except (NotImplementedError, ValueError):
@@ -207,6 +210,8 @@ def read_latest_agent(client):
 
 def read_project_version_from_yaml(yaml_data):
     """Read project version from YAML data."""
+    import pyld
+
     jsonld = pyld.jsonld.expand(yaml_data)[0]
     jsonld = normalize(jsonld)
     return _get_jsonld_property(jsonld, "http://schema.org/schemaVersion", "1")

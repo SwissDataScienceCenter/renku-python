@@ -302,6 +302,25 @@ def finalize_progress(name):
 
 @ensure_manager
 @contextmanager
+def progress(message, total: int):
+    """Create a progress context manager."""
+
+    class Progressbar:
+        def __init__(self, name):
+            self.name = name
+
+        def update(self, amount: int = 1):
+            update_progress(name=self.name, amount=amount)
+
+    try:
+        start_progress(name=message, total=total)
+        yield Progressbar(message)
+    finally:
+        finalize_progress(message)
+
+
+@ensure_manager
+@contextmanager
 def busy(msg):
     """Indicate busy status to all listeners."""
     with _thread_local.communication_manager.busy(msg):

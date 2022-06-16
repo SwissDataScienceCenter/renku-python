@@ -46,6 +46,7 @@ from renku.core.util.doi import is_doi
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import delete_file
+from renku.core.util.tabulate import tabulate
 from renku.core.util.urls import get_slug, remove_credentials
 from renku.domain_model.dataset import (
     Dataset,
@@ -59,7 +60,6 @@ from renku.domain_model.dataset import (
 )
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
-from renku.domain_model.tabulate import tabulate
 from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
@@ -344,13 +344,12 @@ def remove_dataset(name):
 
 
 @inject.autoparams()
-def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClientDispatcher, **kwargs):
+def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatcher, **kwargs):
     """Export data to 3rd party provider.
 
     Args:
         name: Name of dataset to export.
         provider_name: Provider to use for export.
-        publish: Whether to export as proper version or draft.
         tag: Dataset tag from which to export.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
@@ -392,20 +391,23 @@ def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClient
     dataset = cast(Dataset, DynamicProxy(dataset))
     dataset.data_dir = data_dir
 
-    access_token = client.get_value(provider_name, config_key_secret)
-    exporter = provider.get_exporter(dataset, access_token=access_token)
+    exporter = provider.get_exporter(dataset=dataset, tag=selected_tag)
 
-    if access_token is None:
-        access_token = prompt_access_token(exporter)
+    if exporter.requires_access_token():
+        access_token = client.get_value(provider_name, config_key_secret)
 
-        if access_token is None or len(access_token) == 0:
-            raise errors.InvalidAccessToken()
+        if access_token is None:
+            access_token = prompt_access_token(exporter)
 
-        client.set_value(provider_name, config_key_secret, access_token, global_only=True)
+            if access_token is None or len(access_token) == 0:
+                raise errors.InvalidAccessToken()
+
+            client.set_value(provider_name, config_key_secret, access_token, global_only=True)
+
         exporter.set_access_token(access_token)
 
     try:
-        destination = exporter.export(publish=publish, tag=selected_tag, client=client)
+        destination = exporter.export(client=client)
     except errors.AuthenticationError:
         client.remove_value(provider_name, config_key_secret, global_only=True)
         raise
