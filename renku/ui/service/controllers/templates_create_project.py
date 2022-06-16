@@ -18,6 +18,7 @@
 """Renku service template create project controller."""
 import shutil
 from pathlib import Path
+from typing import Dict
 
 from marshmallow import EXCLUDE
 
@@ -79,7 +80,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         return metadata
 
     @property
-    def git_user(self):
+    def git_user(self) -> Dict[str, str]:
         """Extract git user from the user data."""
         return {
             "email": self.user_data["email"],
@@ -149,7 +150,8 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         with click_context(new_project_path, "create_from_template"):
             create_from_template_local_command().build().execute(
                 source_path,
-                self.ctx["project_name"],
+                name=self.ctx["project_name"],
+                namespace=self.ctx["project_namespace"],
                 metadata=provided_parameters,
                 default_metadata=self.default_metadata,
                 custom_metadata=self.ctx["project_custom_metadata"],
@@ -157,9 +159,6 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 immutable_template_files=self.template.get("immutable_template_files", []),
                 automated_template_update=self.template.get("allow_template_update", True),
                 user=self.git_user,
-                source=self.ctx["url"],
-                ref=self.ctx["ref"],
-                invoked_from="service",
                 initial_branch=self.ctx["initial_branch"],
                 commit_message=self.ctx["commit_message"],
                 description=self.ctx["project_description"],
